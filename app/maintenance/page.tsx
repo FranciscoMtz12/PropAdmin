@@ -3,19 +3,17 @@
 /*
   Módulo general de Mantenimiento.
 
-  Objetivo de esta versión:
-  - Mantener toda la UI visible en español
-  - Convertir mantenimiento en una vista operativa semanal
-  - Mostrar una semana real de lunes a sábado
-  - Permitir filtrar por edificio
-  - Diferenciar visualmente:
-    - mantenimientos realizados
-    - mantenimientos programados / próximos
+  Esta versión agrega:
+  - vista semanal
+  - vista mensual
+  - vista anual
+  - filtro por edificio
+  - eventos realizados y próximos/programados
 
-  Nota importante:
-  - Esta versión usa únicamente campos que hoy sí existen en maintenance_logs.
-  - Más adelante, si agregamos flags para urgencia / recurrente / manual,
-    podremos distinguirlos con mayor precisión.
+  Importante:
+  - Toda la UI visible queda en español.
+  - Esta versión usa solo campos que hoy sí existen en maintenance_logs.
+  - Se normaliza el manejo de fechas para que semana, mes y año coincidan.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -40,7 +38,6 @@ import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
-import AppBadge from "@/components/AppBadge";
 import UiButton from "@/components/UiButton";
 
 type MaintenanceCategory = {
@@ -88,6 +85,7 @@ type EnrichedRecentLogRow = RecentLogRow & {
 type CalendarEvent = {
   id: string;
   dayKey: string;
+  isoDate: string;
   title: string;
   subtitle: string;
   kind: "done" | "upcoming";
@@ -102,6 +100,8 @@ type WeekDayColumn = {
   shortDate: string;
   isoDate: string;
 };
+
+type ViewMode = "week" | "month" | "year";
 
 const DAY_ORDER = [
   "monday",
@@ -139,7 +139,7 @@ const MONTH_LABELS = [
 
 function getStartOfWeek(date: Date) {
   const copy = new Date(date);
-  const jsDay = copy.getDay(); // 0 domingo
+  const jsDay = copy.getDay();
   const diff = jsDay === 0 ? -6 : 1 - jsDay;
   copy.setDate(copy.getDate() + diff);
   copy.setHours(0, 0, 0, 0);
@@ -150,6 +150,14 @@ function addDays(date: Date, days: number) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
   return copy;
+}
+
+function getStartOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth(), 1);
+}
+
+function getEndOfMonth(date: Date) {
+  return new Date(date.getFullYear(), date.getMonth() + 1, 0);
 }
 
 function formatShortDate(date: Date) {
@@ -170,15 +178,36 @@ function formatWeekRange(start: Date) {
   return `${start.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()} - ${end.getDate()} ${MONTH_LABELS[end.getMonth()]} ${end.getFullYear()}`;
 }
 
-function getIsoDate(dateValue: string | null) {
+function formatMonthLabel(date: Date) {
+  return `${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
+}
+
+function formatYearLabel(date: Date) {
+  return `${date.getFullYear()}`;
+}
+
+/*
+  Toma cualquier timestamp/string y se queda solo con la parte YYYY-MM-DD.
+  Así evitamos que la zona horaria cambie el día visual.
+*/
+function getDateOnlyKey(dateValue: string | null) {
   if (!dateValue) return "";
   return dateValue.slice(0, 10);
 }
 
-function getDayKeyFromDate(dateValue: string | null) {
-  if (!dateValue) return "";
+/*
+  Convierte YYYY-MM-DD a Date local sin depender de UTC.
+*/
+function parseDateOnly(dateKey: string) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  return new Date(year, month - 1, day);
+}
 
-  const date = new Date(dateValue);
+function getDayKeyFromDateValue(dateValue: string | null) {
+  const dateKey = getDateOnlyKey(dateValue);
+  if (!dateKey) return "";
+
+  const date = parseDateOnly(dateKey);
   const jsDay = date.getDay();
 
   if (jsDay === 0) return "sunday";
@@ -202,6 +231,31 @@ function formatLogType(logType: string) {
   return logType || "Sin tipo";
 }
 
+function renderViewTab(
+  label: string,
+  active: boolean,
+  onClick: () => void
+) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: "1px solid #E5E7EB",
+        borderRadius: 999,
+        padding: "6px 12px",
+        background: active ? "#EEF2FF" : "#F3F4F6",
+        color: active ? "#4338CA" : "#374151",
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+      }}
+    >
+      {label}
+    </button>
+  );
+}
+
 export default function MaintenancePage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
@@ -213,7 +267,12 @@ export default function MaintenancePage() {
   const [msg, setMsg] = useState("");
 
   const [selectedBuildingId, setSelectedBuildingId] = useState("ALL");
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [referenceDate, setReferenceDate] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -265,7 +324,7 @@ export default function MaintenancePage() {
       .eq("company_id", user.company_id)
       .order("performed_at", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(1000);
 
     if (logsError) {
       setMsg("Se cargaron las categorías, pero no se pudo cargar la actividad de mantenimiento.");
@@ -335,11 +394,14 @@ export default function MaintenancePage() {
     setLoadingData(false);
   }
 
-  const weekStart = useMemo(() => {
-    const today = new Date();
-    const start = getStartOfWeek(today);
-    return addDays(start, weekOffset * 7);
-  }, [weekOffset]);
+  const filteredLogs = useMemo(() => {
+    return recentLogs.filter((log) => {
+      if (selectedBuildingId === "ALL") return true;
+      return log.building_id === selectedBuildingId;
+    });
+  }, [recentLogs, selectedBuildingId]);
+
+  const weekStart = useMemo(() => getStartOfWeek(referenceDate), [referenceDate]);
 
   const weekDays = useMemo<WeekDayColumn[]>(() => {
     return DAY_ORDER.map((dayKey, index) => {
@@ -354,27 +416,21 @@ export default function MaintenancePage() {
     });
   }, [weekStart]);
 
-  const filteredLogs = useMemo(() => {
-    return recentLogs.filter((log) => {
-      if (selectedBuildingId === "ALL") return true;
-      return log.building_id === selectedBuildingId;
-    });
-  }, [recentLogs, selectedBuildingId]);
-
   const weekEvents = useMemo<CalendarEvent[]>(() => {
     const weekDateSet = new Set(weekDays.map((day) => day.isoDate));
 
     const doneEvents: CalendarEvent[] = filteredLogs
       .filter((log) => {
-        const iso = getIsoDate(log.performed_at);
+        const iso = getDateOnlyKey(log.performed_at);
         return iso && weekDateSet.has(iso);
       })
       .map((log) => {
-        const dayKey = getDayKeyFromDate(log.performed_at);
+        const isoDate = getDateOnlyKey(log.performed_at);
 
         return {
           id: `done-${log.id}`,
-          dayKey,
+          dayKey: getDayKeyFromDateValue(log.performed_at),
+          isoDate,
           title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
           subtitle: `${log.title} · ${formatLogType(log.log_type)}`,
           kind: "done",
@@ -386,15 +442,16 @@ export default function MaintenancePage() {
 
     const upcomingEvents: CalendarEvent[] = filteredLogs
       .filter((log) => {
-        const iso = getIsoDate(log.next_due_at);
+        const iso = getDateOnlyKey(log.next_due_at);
         return iso && weekDateSet.has(iso);
       })
       .map((log) => {
-        const dayKey = getDayKeyFromDate(log.next_due_at);
+        const isoDate = getDateOnlyKey(log.next_due_at);
 
         return {
           id: `upcoming-${log.id}`,
-          dayKey,
+          dayKey: getDayKeyFromDateValue(log.next_due_at),
+          isoDate,
           title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
           subtitle: `${log.title} · Próximo`,
           kind: "upcoming",
@@ -409,7 +466,7 @@ export default function MaintenancePage() {
       .sort((a, b) => a.title.localeCompare(b.title));
   }, [filteredLogs, weekDays]);
 
-  const eventsByDay = useMemo(() => {
+  const weekEventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
 
     DAY_ORDER.forEach((day) => {
@@ -425,18 +482,129 @@ export default function MaintenancePage() {
     return map;
   }, [weekEvents]);
 
+  const monthDays = useMemo(() => {
+    const monthStart = getStartOfMonth(referenceDate);
+    const monthEnd = getEndOfMonth(referenceDate);
+
+    const days: { isoDate: string; label: string; dayNumber: number }[] = [];
+    let cursor = new Date(monthStart);
+
+    while (cursor <= monthEnd) {
+      const isoDate = cursor.toISOString().slice(0, 10);
+      const dayKey = getDayKeyFromDateValue(isoDate);
+
+      if (dayKey !== "sunday") {
+        days.push({
+          isoDate,
+          label: DAY_LABELS[dayKey],
+          dayNumber: cursor.getDate(),
+        });
+      }
+
+      cursor = addDays(cursor, 1);
+    }
+
+    return days;
+  }, [referenceDate]);
+
+  const monthEventsByDate = useMemo(() => {
+    const monthDateSet = new Set(monthDays.map((day) => day.isoDate));
+    const map = new Map<string, CalendarEvent[]>();
+
+    monthDays.forEach((day) => {
+      map.set(day.isoDate, []);
+    });
+
+    const doneEvents = filteredLogs
+      .filter((log) => {
+        const iso = getDateOnlyKey(log.performed_at);
+        return iso && monthDateSet.has(iso);
+      })
+      .map((log) => ({
+        id: `done-${log.id}`,
+        dayKey: getDayKeyFromDateValue(log.performed_at),
+        isoDate: getDateOnlyKey(log.performed_at),
+        title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
+        subtitle: `${log.title} · ${formatLogType(log.log_type)}`,
+        kind: "done" as const,
+        colorBackground: "#FFF7ED",
+        colorBorder: "#FED7AA",
+        colorText: "#9A3412",
+      }));
+
+    const upcomingEvents = filteredLogs
+      .filter((log) => {
+        const iso = getDateOnlyKey(log.next_due_at);
+        return iso && monthDateSet.has(iso);
+      })
+      .map((log) => ({
+        id: `upcoming-${log.id}`,
+        dayKey: getDayKeyFromDateValue(log.next_due_at),
+        isoDate: getDateOnlyKey(log.next_due_at),
+        title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
+        subtitle: `${log.title} · Próximo`,
+        kind: "upcoming" as const,
+        colorBackground: "#FEF3C7",
+        colorBorder: "#FCD34D",
+        colorText: "#92400E",
+      }));
+
+    [...doneEvents, ...upcomingEvents]
+      .filter((event) => event.dayKey !== "sunday")
+      .forEach((event) => {
+        const current = map.get(event.isoDate) || [];
+        current.push(event);
+        map.set(event.isoDate, current);
+      });
+
+    return map;
+  }, [filteredLogs, monthDays]);
+
+  const yearSummary = useMemo(() => {
+    const targetYear = referenceDate.getFullYear();
+
+    return MONTH_LABELS.map((monthLabel, monthIndex) => {
+      const monthDone = filteredLogs.filter((log) => {
+        const iso = getDateOnlyKey(log.performed_at);
+        if (!iso) return false;
+
+        const date = parseDateOnly(iso);
+        return (
+          date.getFullYear() === targetYear &&
+          date.getMonth() === monthIndex &&
+          date.getDay() !== 0
+        );
+      }).length;
+
+      const monthUpcoming = filteredLogs.filter((log) => {
+        const iso = getDateOnlyKey(log.next_due_at);
+        if (!iso) return false;
+
+        const date = parseDateOnly(iso);
+        return (
+          date.getFullYear() === targetYear &&
+          date.getMonth() === monthIndex &&
+          date.getDay() !== 0
+        );
+      }).length;
+
+      return {
+        monthLabel,
+        done: monthDone,
+        upcoming: monthUpcoming,
+        total: monthDone + monthUpcoming,
+      };
+    });
+  }, [filteredLogs, referenceDate]);
+
   const totals = useMemo(() => {
     const done = recentLogs.filter((log) => log.status === "DONE").length;
     const upcoming = recentLogs.filter((log) => !!log.next_due_at).length;
-    const preventive = recentLogs.filter((log) => log.log_type === "preventive").length;
     const corrective = recentLogs.filter((log) => log.log_type === "corrective").length;
 
     return {
       categories: categories.length,
-      logs: recentLogs.length,
-      done,
       upcoming,
-      preventive,
       corrective,
     };
   }, [categories, recentLogs]);
@@ -445,6 +613,47 @@ export default function MaintenancePage() {
     selectedBuildingId === "ALL"
       ? "Todos los edificios"
       : buildings.find((b) => b.id === selectedBuildingId)?.name || "Edificio";
+
+  function goPrevious() {
+    if (viewMode === "week") {
+      setReferenceDate((prev) => addDays(prev, -7));
+      return;
+    }
+
+    if (viewMode === "month") {
+      setReferenceDate((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+      return;
+    }
+
+    setReferenceDate((prev) => new Date(prev.getFullYear() - 1, 0, 1));
+  }
+
+  function goCurrent() {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    setReferenceDate(today);
+  }
+
+  function goNext() {
+    if (viewMode === "week") {
+      setReferenceDate((prev) => addDays(prev, 7));
+      return;
+    }
+
+    if (viewMode === "month") {
+      setReferenceDate((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+      return;
+    }
+
+    setReferenceDate((prev) => new Date(prev.getFullYear() + 1, 0, 1));
+  }
+
+  const currentLabel =
+    viewMode === "week"
+      ? formatWeekRange(weekStart)
+      : viewMode === "month"
+      ? formatMonthLabel(referenceDate)
+      : formatYearLabel(referenceDate);
 
   if (loading) {
     return (
@@ -468,7 +677,7 @@ export default function MaintenancePage() {
     <PageContainer>
       <PageHeader
         title="Mantenimiento"
-        subtitle="Vista operativa semanal para revisar actividad, próximos trabajos y seguimiento."
+        subtitle="Vista operativa de mantenimiento con seguimiento semanal, mensual y anual."
         titleIcon={<Wrench size={18} />}
       />
 
@@ -491,8 +700,14 @@ export default function MaintenancePage() {
       <AppGrid minWidth={220}>
         <MetricCard
           label="Vista activa"
-          value="Semana"
-          helper={formatWeekRange(weekStart)}
+          value={
+            viewMode === "week"
+              ? "Semana"
+              : viewMode === "month"
+              ? "Mes"
+              : "Año"
+          }
+          helper={currentLabel}
           icon={<CalendarClock size={18} />}
         />
         <MetricCard
@@ -518,8 +733,8 @@ export default function MaintenancePage() {
       <div style={{ height: 16 }} />
 
       <SectionCard
-        title="Calendario semanal de mantenimiento"
-        subtitle="Vista operativa de mantenimiento agrupada por día."
+        title="Calendario de mantenimiento"
+        subtitle="Vista operativa para revisar trabajos realizados y próximos trabajos."
         icon={<CalendarClock size={18} />}
       >
         <AppCard>
@@ -534,9 +749,9 @@ export default function MaintenancePage() {
               }}
             >
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <AppBadge backgroundColor="#EEF2FF" textColor="#4338CA">
-                  Semana
-                </AppBadge>
+                {renderViewTab("Semana", viewMode === "week", () => setViewMode("week"))}
+                {renderViewTab("Mes", viewMode === "month", () => setViewMode("month"))}
+                {renderViewTab("Año", viewMode === "year", () => setViewMode("year"))}
               </div>
 
               <div
@@ -547,22 +762,28 @@ export default function MaintenancePage() {
                   alignItems: "center",
                 }}
               >
-                <UiButton
-                  onClick={() => setWeekOffset((prev) => prev - 1)}
-                  icon={<ChevronLeft size={16} />}
-                >
-                  Semana anterior
+                <UiButton onClick={goPrevious} icon={<ChevronLeft size={16} />}>
+                  {viewMode === "week"
+                    ? "Semana anterior"
+                    : viewMode === "month"
+                    ? "Mes anterior"
+                    : "Año anterior"}
                 </UiButton>
 
-                <UiButton onClick={() => setWeekOffset(0)}>
-                  Semana actual
+                <UiButton onClick={goCurrent}>
+                  {viewMode === "week"
+                    ? "Semana actual"
+                    : viewMode === "month"
+                    ? "Mes actual"
+                    : "Año actual"}
                 </UiButton>
 
-                <UiButton
-                  onClick={() => setWeekOffset((prev) => prev + 1)}
-                  icon={<ChevronRight size={16} />}
-                >
-                  Semana siguiente
+                <UiButton onClick={goNext} icon={<ChevronRight size={16} />}>
+                  {viewMode === "week"
+                    ? "Semana siguiente"
+                    : viewMode === "month"
+                    ? "Mes siguiente"
+                    : "Año siguiente"}
                 </UiButton>
               </div>
             </div>
@@ -614,19 +835,233 @@ export default function MaintenancePage() {
               </select>
             </div>
 
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-                gap: 16,
-              }}
-            >
-              {weekDays.map((day) => {
-                const dayEvents = eventsByDay.get(day.key) || [];
+            {viewMode === "week" ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {weekDays.map((day) => {
+                  const dayEvents = weekEventsByDay.get(day.key) || [];
 
-                return (
+                  return (
+                    <div
+                      key={day.key}
+                      style={{
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 16,
+                        padding: 14,
+                        background: "#FFFFFF",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 14,
+                        minHeight: 280,
+                      }}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                        <div
+                          style={{
+                            fontSize: 14,
+                            fontWeight: 800,
+                            color: "#111827",
+                          }}
+                        >
+                          {day.label}
+                        </div>
+
+                        <div
+                          style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: "#6B7280",
+                          }}
+                        >
+                          {day.shortDate}
+                        </div>
+                      </div>
+
+                      {dayEvents.length === 0 ? (
+                        <div
+                          style={{
+                            borderRadius: 12,
+                            padding: "10px 10px",
+                            background: "#F9FAFB",
+                            border: "1px dashed #D1D5DB",
+                            fontSize: 12,
+                            color: "#6B7280",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Sin eventos
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                          {dayEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              style={{
+                                borderRadius: 12,
+                                padding: "10px 10px",
+                                background: event.colorBackground,
+                                border: `1px solid ${event.colorBorder}`,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 4,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 800,
+                                  color: event.colorText,
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {event.title}
+                              </span>
+
+                              <span
+                                style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 700,
+                                  color: event.colorText,
+                                  opacity: 0.9,
+                                  lineHeight: 1.35,
+                                }}
+                              >
+                                {event.subtitle}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {viewMode === "month" ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {monthDays.map((day) => {
+                  const dayEvents = monthEventsByDate.get(day.isoDate) || [];
+                  const visibleEvents = dayEvents.slice(0, 3);
+
+                  return (
+                    <div
+                      key={day.isoDate}
+                      style={{
+                        border: "1px solid #E5E7EB",
+                        borderRadius: 16,
+                        padding: 12,
+                        background: "#FFFFFF",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 10,
+                        minHeight: 170,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 13,
+                          fontWeight: 800,
+                          color: "#111827",
+                        }}
+                      >
+                        {day.dayNumber} · {day.label}
+                      </div>
+
+                      {dayEvents.length === 0 ? (
+                        <div
+                          style={{
+                            borderRadius: 10,
+                            padding: "8px 8px",
+                            background: "#F9FAFB",
+                            border: "1px dashed #D1D5DB",
+                            fontSize: 11,
+                            color: "#6B7280",
+                            fontWeight: 600,
+                          }}
+                        >
+                          Sin eventos
+                        </div>
+                      ) : (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {visibleEvents.map((event) => (
+                            <div
+                              key={event.id}
+                              style={{
+                                borderRadius: 10,
+                                padding: "8px 8px",
+                                background: event.colorBackground,
+                                border: `1px solid ${event.colorBorder}`,
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 3,
+                              }}
+                            >
+                              <span
+                                style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 800,
+                                  color: event.colorText,
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {event.title}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 10,
+                                  fontWeight: 700,
+                                  color: event.colorText,
+                                  opacity: 0.9,
+                                  lineHeight: 1.3,
+                                }}
+                              >
+                                {event.subtitle}
+                              </span>
+                            </div>
+                          ))}
+
+                          {dayEvents.length > 3 ? (
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                color: "#6B7280",
+                              }}
+                            >
+                              + {dayEvents.length - 3} más
+                            </span>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {viewMode === "year" ? (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+                  gap: 16,
+                }}
+              >
+                {yearSummary.map((month) => (
                   <div
-                    key={day.key}
+                    key={month.monthLabel}
                     style={{
                       border: "1px solid #E5E7EB",
                       borderRadius: 16,
@@ -634,91 +1069,69 @@ export default function MaintenancePage() {
                       background: "#FFFFFF",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 14,
-                      minHeight: 280,
+                      gap: 10,
+                      minHeight: 150,
                     }}
                   >
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <div
-                        style={{
-                          fontSize: 14,
-                          fontWeight: 800,
-                          color: "#111827",
-                        }}
-                      >
-                        {day.label}
-                      </div>
-
-                      <div
-                        style={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          color: "#6B7280",
-                        }}
-                      >
-                        {day.shortDate}
-                      </div>
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 800,
+                        color: "#111827",
+                      }}
+                    >
+                      {month.monthLabel}
                     </div>
 
-                    {dayEvents.length === 0 ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
+                      }}
+                    >
                       <div
                         style={{
-                          borderRadius: 12,
+                          borderRadius: 10,
                           padding: "10px 10px",
-                          background: "#F9FAFB",
-                          border: "1px dashed #D1D5DB",
+                          background: "#FFF7ED",
+                          border: "1px solid #FED7AA",
                           fontSize: 12,
-                          color: "#6B7280",
-                          fontWeight: 600,
+                          fontWeight: 700,
+                          color: "#9A3412",
                         }}
                       >
-                        Sin eventos
+                        Realizados: {month.done}
                       </div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {dayEvents.map((event) => (
-                          <div
-                            key={event.id}
-                            style={{
-                              borderRadius: 12,
-                              padding: "10px 10px",
-                              background: event.colorBackground,
-                              border: `1px solid ${event.colorBorder}`,
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                            }}
-                          >
-                            <span
-                              style={{
-                                fontSize: 11,
-                                fontWeight: 800,
-                                color: event.colorText,
-                                lineHeight: 1.35,
-                              }}
-                            >
-                              {event.title}
-                            </span>
 
-                            <span
-                              style={{
-                                fontSize: 10.5,
-                                fontWeight: 700,
-                                color: event.colorText,
-                                opacity: 0.9,
-                                lineHeight: 1.35,
-                              }}
-                            >
-                              {event.subtitle}
-                            </span>
-                          </div>
-                        ))}
+                      <div
+                        style={{
+                          borderRadius: 10,
+                          padding: "10px 10px",
+                          background: "#FEF3C7",
+                          border: "1px solid #FCD34D",
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#92400E",
+                        }}
+                      >
+                        Próximos: {month.upcoming}
                       </div>
-                    )}
+
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#6B7280",
+                        }}
+                      >
+                        Total: {month.total}
+                      </div>
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                ))}
+              </div>
+            ) : null}
           </div>
         </AppCard>
       </SectionCard>
