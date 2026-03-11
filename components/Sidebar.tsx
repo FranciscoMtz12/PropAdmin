@@ -8,6 +8,7 @@ import {
   CreditCard,
   Home,
   LogOut,
+  Sparkles,
   Wrench,
 } from "lucide-react";
 
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { label: "Calendario", href: "/calendar", icon: CalendarDays },
   { label: "Pagos", href: "/payments", icon: CreditCard },
   { label: "Edificios", href: "/buildings", icon: Building2 },
+  { label: "Limpieza", href: "/cleaning", icon: Sparkles },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench },
 ];
 
