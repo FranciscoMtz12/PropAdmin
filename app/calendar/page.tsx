@@ -3,8 +3,8 @@
 /*
   Calendario global del sistema.
 
-  Esta versión mantiene lo que ya funcionaba para limpieza y agrega
-  mantenimiento real usando maintenance_logs.
+  Esta versión mantiene lo que ya funcionaba para limpieza y mantenimiento,
+  y agrega filtros por módulo para controlar qué se ve en el calendario.
 
   Reglas que respeta:
   - UI en español
@@ -150,6 +150,18 @@ const MAINTENANCE_COLORS = {
   text: "#9A3412",
 };
 
+const PAYMENTS_COLORS = {
+  background: "#EFF6FF",
+  border: "#93C5FD",
+  text: "#1D4ED8",
+};
+
+const COLLECTIONS_COLORS = {
+  background: "#FEFCE8",
+  border: "#FDE68A",
+  text: "#A16207",
+};
+
 function getStartOfWeek(date: Date) {
   const copy = new Date(date);
   const jsDay = copy.getDay();
@@ -277,6 +289,47 @@ function renderViewTab(
   );
 }
 
+function renderModuleToggle(
+  label: string,
+  active: boolean,
+  onClick: () => void,
+  colors: { background: string; border: string; text: string },
+  dimmed?: boolean
+) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        border: `1px solid ${colors.border}`,
+        borderRadius: 999,
+        padding: "8px 12px",
+        background: active ? colors.background : "#FFFFFF",
+        color: colors.text,
+        fontSize: 13,
+        fontWeight: 700,
+        cursor: "pointer",
+        opacity: dimmed ? 0.7 : 1,
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+      }}
+    >
+      <span
+        style={{
+          width: 10,
+          height: 10,
+          borderRadius: 999,
+          background: colors.text,
+          display: "inline-block",
+          flexShrink: 0,
+        }}
+      />
+      {label}
+    </button>
+  );
+}
+
 export default function CalendarPage() {
   const { user, loading } = useCurrentUser();
 
@@ -295,6 +348,15 @@ export default function CalendarPage() {
     today.setHours(0, 0, 0, 0);
     return today;
   });
+
+  /*
+    Filtros visuales por módulo.
+    Esto deja el calendario global listo para seguir creciendo.
+  */
+  const [showCleaning, setShowCleaning] = useState(true);
+  const [showMaintenance, setShowMaintenance] = useState(true);
+  const [showPayments, setShowPayments] = useState(true);
+  const [showCollections, setShowCollections] = useState(true);
 
   useEffect(() => {
     if (loading) return;
@@ -399,7 +461,7 @@ export default function CalendarPage() {
     });
   }, [weekStart]);
 
-  const events = useMemo<CalendarEvent[]>(() => {
+  const allEvents = useMemo<CalendarEvent[]>(() => {
     const buildingMap = new Map<string, Building>();
     const unitMap = new Map<string, Unit>();
 
@@ -468,12 +530,6 @@ export default function CalendarPage() {
         };
       });
 
-    /*
-      Mantenimiento real:
-      - performed_at = trabajo ya realizado
-      - next_due_at = próxima atención programada
-      Ambos se convierten en eventos fechados reales.
-    */
     const maintenanceEvents: CalendarEvent[] = [];
 
     filteredMaintenanceLogs.forEach((log) => {
@@ -546,6 +602,26 @@ export default function CalendarPage() {
     unitSchedules,
     maintenanceLogs,
     selectedBuildingId,
+  ]);
+
+  /*
+    Aplicamos los filtros visuales aquí.
+    Así afectan métricas, semana, mes y año de forma consistente.
+  */
+  const events = useMemo(() => {
+    return allEvents.filter((event) => {
+      if (event.module === "cleaning" && !showCleaning) return false;
+      if (event.module === "maintenance" && !showMaintenance) return false;
+      if (event.module === "payments" && !showPayments) return false;
+      if (event.module === "collections" && !showCollections) return false;
+      return true;
+    });
+  }, [
+    allEvents,
+    showCleaning,
+    showMaintenance,
+    showPayments,
+    showCollections,
   ]);
 
   /*
@@ -625,6 +701,8 @@ export default function CalendarPage() {
       let total = 0;
       let cleaningTotal = 0;
       let maintenanceTotal = 0;
+      let paymentsTotal = 0;
+      let collectionsTotal = 0;
 
       for (let day = 1; day <= monthDaysCount; day += 1) {
         const isoDate = dateToIsoKey(new Date(targetYear, monthIndex, day));
@@ -637,6 +715,8 @@ export default function CalendarPage() {
         total += dayEvents.length;
         cleaningTotal += dayEvents.filter((event) => event.module === "cleaning").length;
         maintenanceTotal += dayEvents.filter((event) => event.module === "maintenance").length;
+        paymentsTotal += dayEvents.filter((event) => event.module === "payments").length;
+        collectionsTotal += dayEvents.filter((event) => event.module === "collections").length;
       }
 
       return {
@@ -644,6 +724,8 @@ export default function CalendarPage() {
         total,
         cleaningTotal,
         maintenanceTotal,
+        paymentsTotal,
+        collectionsTotal,
       };
     });
   }, [referenceDate, getEventsForDate]);
@@ -654,6 +736,14 @@ export default function CalendarPage() {
 
   const totalMaintenanceEvents = useMemo(() => {
     return events.filter((event) => event.module === "maintenance").length;
+  }, [events]);
+
+  const totalPaymentsEvents = useMemo(() => {
+    return events.filter((event) => event.module === "payments").length;
+  }, [events]);
+
+  const totalCollectionsEvents = useMemo(() => {
+    return events.filter((event) => event.module === "collections").length;
   }, [events]);
 
   const selectedBuildingName =
@@ -765,14 +855,14 @@ export default function CalendarPage() {
         />
         <MetricCard
           label="Pagos"
-          value="Próximamente"
-          helper="Mensual"
+          value={String(totalPaymentsEvents)}
+          helper="Pendiente de integración"
           icon={<CreditCard size={18} />}
         />
         <MetricCard
           label="Cobranza"
-          value="Próximamente"
-          helper="Mensual"
+          value={String(totalCollectionsEvents)}
+          helper="Pendiente de integración"
           icon={<Wallet size={18} />}
         />
       </AppGrid>
@@ -879,6 +969,45 @@ export default function CalendarPage() {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 10,
+                alignItems: "center",
+              }}
+            >
+              {renderModuleToggle(
+                "Limpieza",
+                showCleaning,
+                () => setShowCleaning((prev) => !prev),
+                CLEANING_COLORS
+              )}
+
+              {renderModuleToggle(
+                "Mantenimiento",
+                showMaintenance,
+                () => setShowMaintenance((prev) => !prev),
+                MAINTENANCE_COLORS
+              )}
+
+              {renderModuleToggle(
+                "Pagos",
+                showPayments,
+                () => setShowPayments((prev) => !prev),
+                PAYMENTS_COLORS,
+                true
+              )}
+
+              {renderModuleToggle(
+                "Cobranza",
+                showCollections,
+                () => setShowCollections((prev) => !prev),
+                COLLECTIONS_COLORS,
+                true
+              )}
             </div>
 
             {viewMode === "week" ? (
@@ -1169,6 +1298,26 @@ export default function CalendarPage() {
                       >
                         Mantenimiento: {month.maintenanceTotal}
                       </div>
+
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: PAYMENTS_COLORS.text,
+                        }}
+                      >
+                        Pagos: {month.paymentsTotal}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: COLLECTIONS_COLORS.text,
+                        }}
+                      >
+                        Cobranza: {month.collectionsTotal}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -1222,7 +1371,7 @@ export default function CalendarPage() {
         </AppCard>
 
         <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.55 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
             <div
               style={{
                 width: 14,
@@ -1239,7 +1388,7 @@ export default function CalendarPage() {
         </AppCard>
 
         <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.55 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
             <div
               style={{
                 width: 14,
