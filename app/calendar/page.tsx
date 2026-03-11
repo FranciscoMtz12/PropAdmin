@@ -79,7 +79,6 @@ const DAY_ORDER = [
   "thursday",
   "friday",
   "saturday",
-  "sunday",
 ] as const;
 
 const DAY_LABELS: Record<string, string> = {
@@ -109,7 +108,7 @@ const MONTH_LABELS = [
 
 function getStartOfWeek(date: Date) {
   const copy = new Date(date);
-  const jsDay = copy.getDay(); // 0 domingo, 1 lunes, ...
+  const jsDay = copy.getDay();
   const diff = jsDay === 0 ? -6 : 1 - jsDay;
   copy.setDate(copy.getDate() + diff);
   copy.setHours(0, 0, 0, 0);
@@ -127,7 +126,7 @@ function formatShortDate(date: Date) {
 }
 
 function formatWeekRange(start: Date) {
-  const end = addDays(start, 6);
+  const end = addDays(start, 5);
 
   if (start.getMonth() === end.getMonth()) {
     return `${start.getDate()} - ${end.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()}`;
@@ -272,55 +271,52 @@ export default function CalendarPage() {
         ? unitSchedules
         : unitSchedules.filter((item) => item.building_id === selectedBuildingId);
 
-    const buildingEvents: CalendarEvent[] = filteredBuildingSchedules.map((schedule) => {
-      const building = buildingMap.get(schedule.building_id);
-      const buildingName = building?.name || "Edificio";
+    const buildingEvents: CalendarEvent[] = filteredBuildingSchedules
+      .filter((schedule) => schedule.day_of_week !== "sunday")
+      .map((schedule) => {
+        const building = buildingMap.get(schedule.building_id);
+        const buildingName = building?.name || "Edificio";
 
-      const typeLabel =
-        schedule.cleaning_type === "exterior"
-          ? "Exterior"
-          : "Áreas comunes";
+        const typeLabel =
+          schedule.cleaning_type === "exterior" ? "Exterior" : "Áreas comunes";
 
-      const blockLabel =
-        schedule.time_block === "morning"
-          ? "Mañana"
-          : "Tarde";
+        const blockLabel =
+          schedule.time_block === "morning" ? "Mañana" : "Tarde";
 
-      return {
-        id: `building-${schedule.id}`,
-        day_of_week: schedule.day_of_week,
-        category: "cleaning",
-        title: `${buildingName} · ${typeLabel}`,
-        subtitle: blockLabel,
-        buildingName,
-        colorBackground: "#ECFDF5",
-        colorBorder: "#A7F3D0",
-        colorText: "#166534",
-      };
-    });
+        return {
+          id: `building-${schedule.id}`,
+          day_of_week: schedule.day_of_week,
+          category: "cleaning",
+          title: `${buildingName} · ${typeLabel}`,
+          subtitle: blockLabel,
+          buildingName,
+          colorBackground: "#ECFDF5",
+          colorBorder: "#A7F3D0",
+          colorText: "#166534",
+        };
+      });
 
-    const unitEvents: CalendarEvent[] = filteredUnitSchedules.map((schedule) => {
-      const building = buildingMap.get(schedule.building_id);
-      const unit = unitMap.get(schedule.unit_id);
+    const unitEvents: CalendarEvent[] = filteredUnitSchedules
+      .filter((schedule) => schedule.day_of_week !== "sunday")
+      .map((schedule) => {
+        const building = buildingMap.get(schedule.building_id);
+        const unit = unitMap.get(schedule.unit_id);
 
-      const buildingName = building?.name || "Edificio";
-      const unitLabel =
-        unit?.display_code || unit?.unit_number || "Unidad";
+        const buildingName = building?.name || "Edificio";
+        const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
 
-      return {
-        id: `unit-${schedule.id}`,
-        day_of_week: schedule.day_of_week,
-        category: "cleaning",
-        title: `${buildingName} · Unidad ${unitLabel}`,
-        subtitle: `${formatTime(schedule.start_time)} · ${formatDuration(
-          schedule.duration_hours
-        )}`,
-        buildingName,
-        colorBackground: "#ECFDF5",
-        colorBorder: "#A7F3D0",
-        colorText: "#166534",
-      };
-    });
+        return {
+          id: `unit-${schedule.id}`,
+          day_of_week: schedule.day_of_week,
+          category: "cleaning",
+          title: `${buildingName} · Unidad ${unitLabel}`,
+          subtitle: `${formatTime(schedule.start_time)} · ${formatDuration(schedule.duration_hours)}`,
+          buildingName,
+          colorBackground: "#ECFDF5",
+          colorBorder: "#A7F3D0",
+          colorText: "#166534",
+        };
+      });
 
     return [...buildingEvents, ...unitEvents].sort((a, b) =>
       a.title.localeCompare(b.title)
@@ -353,7 +349,9 @@ export default function CalendarPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando calendario...</div>
+        <div style={{ padding: "32px 0", color: "#6B7280" }}>
+          Cargando calendario...
+        </div>
       </PageContainer>
     );
   }
@@ -526,10 +524,8 @@ export default function CalendarPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(7, minmax(220px, 1fr))",
+                gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
                 gap: 16,
-                overflowX: "auto",
-                paddingBottom: 10,
               }}
             >
               {weekDays.map((day) => {
@@ -539,20 +535,20 @@ export default function CalendarPage() {
                   <div
                     key={day.key}
                     style={{
-                      minWidth: 220,
                       border: "1px solid #E5E7EB",
                       borderRadius: 16,
-                      padding: 16,
+                      padding: 14,
                       background: "#FFFFFF",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 16,
+                      gap: 14,
+                      minHeight: 280,
                     }}
                   >
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <div
                         style={{
-                          fontSize: 15,
+                          fontSize: 14,
                           fontWeight: 800,
                           color: "#111827",
                         }}
@@ -562,7 +558,7 @@ export default function CalendarPage() {
 
                       <div
                         style={{
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: 600,
                           color: "#6B7280",
                         }}
@@ -575,10 +571,10 @@ export default function CalendarPage() {
                       <div
                         style={{
                           borderRadius: 12,
-                          padding: "12px 12px",
+                          padding: "10px 10px",
                           background: "#F9FAFB",
                           border: "1px dashed #D1D5DB",
-                          fontSize: 13,
+                          fontSize: 12,
                           color: "#6B7280",
                           fontWeight: 600,
                         }}
@@ -590,7 +586,7 @@ export default function CalendarPage() {
                         style={{
                           display: "flex",
                           flexDirection: "column",
-                          gap: 12,
+                          gap: 10,
                         }}
                       >
                         {events.map((event) => (
@@ -598,20 +594,20 @@ export default function CalendarPage() {
                             key={event.id}
                             style={{
                               borderRadius: 12,
-                              padding: "12px 12px",
+                              padding: "10px 10px",
                               background: event.colorBackground,
                               border: `1px solid ${event.colorBorder}`,
                               display: "flex",
                               flexDirection: "column",
-                              gap: 6,
+                              gap: 4,
                             }}
                           >
                             <span
                               style={{
-                                fontSize: 13,
+                                fontSize: 11,
                                 fontWeight: 800,
                                 color: event.colorText,
-                                lineHeight: 1.4,
+                                lineHeight: 1.35,
                               }}
                             >
                               {event.title}
@@ -619,11 +615,11 @@ export default function CalendarPage() {
 
                             <span
                               style={{
-                                fontSize: 12,
+                                fontSize: 10.5,
                                 fontWeight: 700,
                                 color: event.colorText,
                                 opacity: 0.85,
-                                lineHeight: 1.4,
+                                lineHeight: 1.35,
                               }}
                             >
                               {event.subtitle}
