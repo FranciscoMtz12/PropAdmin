@@ -4,13 +4,13 @@ import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 
-export default function AgendaPage() {
+export default function calendarPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Agenda"
+        title="calendar"
         titleIcon={<CalendarDays size={20} />}
-        subtitle="Base visual del módulo de agenda con métricas, cards e iconos consistentes para futuros eventos y recordatorios."
+        subtitle="Base visual del módulo de calendar con métricas, cards e iconos consistentes para futuros eventos y recordatorios."
       />
 
       <div
@@ -27,7 +27,7 @@ export default function AgendaPage() {
       </div>
 
       <SectionCard
-        title="Agenda en preparación"
+        title="calendar en preparación"
         subtitle="Aquí se integrará la vista calendario con filtros por edificio, pagos y mantenimiento."
         icon={<BellRing size={18} />}
       >
