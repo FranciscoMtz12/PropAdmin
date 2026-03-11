@@ -10,12 +10,13 @@ import {
   LogOut,
   Wrench,
 } from "lucide-react";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
-  { label: "Agenda", href: "/agenda", icon: CalendarDays },
+  { label: "Calendario", href: "/calendar", icon: CalendarDays },
   { label: "Pagos", href: "/payments", icon: CreditCard },
   { label: "Edificios", href: "/buildings", icon: Building2 },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench },
@@ -36,30 +37,47 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: "248px",
+        width: 280,
         minHeight: "100vh",
+        background: "#FFFFFF",
         borderRight: "1px solid #E5E7EB",
-        background: "#F8FAFC",
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        padding: "18px 14px",
+        padding: 20,
         position: "sticky",
         top: 0,
       }}
     >
-      <div>
-        <div style={{ padding: "8px 10px", marginBottom: "18px" }}>
-          <div style={{ fontSize: "30px", fontWeight: 800, lineHeight: 1 }}>PropAdmin</div>
-          <div style={{ fontSize: "13px", color: "#6B7280", marginTop: "4px" }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div>
+          <div
+            style={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: "#111827",
+              letterSpacing: "-0.02em",
+            }}
+          >
+            PropAdmin
+          </div>
+
+          <div
+            style={{
+              fontSize: 13,
+              color: "#6B7280",
+              marginTop: 6,
+            }}
+          >
             Gestión de Propiedades
           </div>
         </div>
 
-        <nav style={{ display: "grid", gap: "6px" }}>
+        <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const active =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
               <Link
@@ -68,14 +86,14 @@ export default function Sidebar() {
                 style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: "10px",
-                  borderRadius: "14px",
-                  padding: "12px 12px",
+                  gap: 12,
+                  padding: "12px 14px",
+                  borderRadius: 14,
                   textDecoration: "none",
-                  fontWeight: active ? 700 : 500,
-                  fontSize: "15px",
-                  color: active ? "#2563EB" : "#374151",
-                  background: active ? "#EAF1FF" : "transparent",
+                  background: active ? "#EEF2FF" : "transparent",
+                  color: active ? "#4338CA" : "#374151",
+                  fontWeight: active ? 700 : 600,
+                  transition: "all 0.2s ease",
                 }}
               >
                 <Icon size={18} />
@@ -86,25 +104,49 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      <div style={{ display: "grid", gap: "10px", padding: "8px 6px 0 6px" }}>
-        <div
-          style={{
-            border: "1px solid #E5E7EB",
-            borderRadius: "14px",
-            padding: "12px",
-            background: "white",
-          }}
-        >
-          <div style={{ fontSize: "12px", color: "#6B7280", marginBottom: "4px" }}>
+      <div
+        style={{
+          borderTop: "1px solid #E5E7EB",
+          paddingTop: 16,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.04em",
+              color: "#6B7280",
+            }}
+          >
             Usuario actual
-          </div>
-          <div style={{ fontWeight: 700, color: "#111827", fontSize: "14px" }}>
+          </span>
+
+          <span
+            style={{
+              fontSize: 14,
+              fontWeight: 600,
+              color: "#111827",
+              lineHeight: 1.5,
+            }}
+          >
             {user?.full_name || user?.email || "Sin usuario"}
-          </div>
+          </span>
+
           {user?.company_id ? (
-            <div style={{ fontSize: "12px", color: "#6B7280", marginTop: "4px" }}>
+            <span
+              style={{
+                fontSize: 12,
+                color: "#059669",
+                fontWeight: 600,
+              }}
+            >
               Empresa activa configurada
-            </div>
+            </span>
           ) : null}
         </div>
 
@@ -114,14 +156,14 @@ export default function Sidebar() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: "8px",
-            width: "100%",
-            border: "1px solid #E5E7EB",
-            borderRadius: "12px",
+            gap: 10,
             padding: "12px 14px",
-            background: "white",
-            color: "#111827",
-            fontWeight: 600,
+            borderRadius: 14,
+            border: "1px solid #E5E7EB",
+            background: "#FFFFFF",
+            color: "#374151",
+            fontSize: 14,
+            fontWeight: 700,
             cursor: "pointer",
           }}
         >
