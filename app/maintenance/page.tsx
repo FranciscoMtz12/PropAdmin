@@ -3,34 +3,45 @@
 /*
   Módulo general de Mantenimiento.
 
-  Esta página ya está pensada para ser la entrada directa al tema operativo,
-  sin obligar al usuario a pasar por toda la jerarquía de edificios,
-  departamentos y assets cada vez que solo quiere revisar actividad.
+  Objetivo de esta versión:
+  - Mantener toda la UI visible en español
+  - Convertir mantenimiento en una vista operativa semanal
+  - Mostrar una semana real de lunes a sábado
+  - Permitir filtrar por edificio
+  - Diferenciar visualmente:
+    - mantenimientos realizados
+    - mantenimientos programados / próximos
 
-  En esta versión dejamos tres mejoras importantes:
-  1) toda la interfaz visible queda en español.
-  2) la actividad reciente ya muestra contexto real:
-     edificio y departamento cuando esa información exista.
-  3) agregamos filtros simples para que la revisión diaria sea más práctica.
-
-  En fases futuras aquí conectaremos:
-  - calendario
-  - mantenimientos programados por edificio
-  - work orders / tickets
-  - vistas operativas más completas
+  Nota importante:
+  - Esta versión usa únicamente campos que hoy sí existen en maintenance_logs.
+  - Más adelante, si agregamos flags para urgencia / recurrente / manual,
+    podremos distinguirlos con mayor precisión.
 */
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  CalendarClock,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Filter,
+  ShieldCheck,
+  Wrench,
+  CircleAlert,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
-import Modal from "@/components/Modal";
+import AppCard from "@/components/AppCard";
+import AppGrid from "@/components/AppGrid";
+import AppBadge from "@/components/AppBadge";
 import UiButton from "@/components/UiButton";
-import { ClipboardList, Plus, ShieldCheck, Wrench, CalendarClock, CircleAlert } from "lucide-react";
 
 type MaintenanceCategory = {
   id: string;
@@ -45,7 +56,7 @@ type RecentLogRow = {
   id: string;
   title: string;
   log_type: string;
-  performed_at: string;
+  performed_at: string | null;
   next_due_at: string | null;
   status: string;
   asset_name_snapshot: string | null;
@@ -74,6 +85,111 @@ type EnrichedRecentLogRow = RecentLogRow & {
   unit_label: string;
 };
 
+type CalendarEvent = {
+  id: string;
+  dayKey: string;
+  title: string;
+  subtitle: string;
+  kind: "done" | "upcoming";
+  colorBackground: string;
+  colorBorder: string;
+  colorText: string;
+};
+
+type WeekDayColumn = {
+  key: string;
+  label: string;
+  shortDate: string;
+  isoDate: string;
+};
+
+const DAY_ORDER = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+] as const;
+
+const DAY_LABELS: Record<string, string> = {
+  monday: "Lunes",
+  tuesday: "Martes",
+  wednesday: "Miércoles",
+  thursday: "Jueves",
+  friday: "Viernes",
+  saturday: "Sábado",
+  sunday: "Domingo",
+};
+
+const MONTH_LABELS = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
+function getStartOfWeek(date: Date) {
+  const copy = new Date(date);
+  const jsDay = copy.getDay(); // 0 domingo
+  const diff = jsDay === 0 ? -6 : 1 - jsDay;
+  copy.setDate(copy.getDate() + diff);
+  copy.setHours(0, 0, 0, 0);
+  return copy;
+}
+
+function addDays(date: Date, days: number) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + days);
+  return copy;
+}
+
+function formatShortDate(date: Date) {
+  return `${date.getDate()} ${MONTH_LABELS[date.getMonth()].slice(0, 3)}`;
+}
+
+function formatWeekRange(start: Date) {
+  const end = addDays(start, 5);
+
+  if (start.getMonth() === end.getMonth()) {
+    return `${start.getDate()} - ${end.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()}`;
+  }
+
+  if (start.getFullYear() === end.getFullYear()) {
+    return `${start.getDate()} ${MONTH_LABELS[start.getMonth()]} - ${end.getDate()} ${MONTH_LABELS[end.getMonth()]} ${start.getFullYear()}`;
+  }
+
+  return `${start.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()} - ${end.getDate()} ${MONTH_LABELS[end.getMonth()]} ${end.getFullYear()}`;
+}
+
+function getIsoDate(dateValue: string | null) {
+  if (!dateValue) return "";
+  return dateValue.slice(0, 10);
+}
+
+function getDayKeyFromDate(dateValue: string | null) {
+  if (!dateValue) return "";
+
+  const date = new Date(dateValue);
+  const jsDay = date.getDay();
+
+  if (jsDay === 0) return "sunday";
+  if (jsDay === 1) return "monday";
+  if (jsDay === 2) return "tuesday";
+  if (jsDay === 3) return "wednesday";
+  if (jsDay === 4) return "thursday";
+  if (jsDay === 5) return "friday";
+  return "saturday";
+}
+
 function formatLogType(logType: string) {
   const normalized = (logType || "").toLowerCase();
 
@@ -93,31 +209,11 @@ export default function MaintenancePage() {
   const [categories, setCategories] = useState<MaintenanceCategory[]>([]);
   const [recentLogs, setRecentLogs] = useState<EnrichedRecentLogRow[]>([]);
   const [buildings, setBuildings] = useState<BuildingOption[]>([]);
-
-  /*
-    Formulario simple para crear categorías nuevas.
-    Esto mantiene flexible el sistema para grupos como:
-    - Baño
-    - Cocina
-    - Minisplits
-    - Boilers
-    - General
-  */
-  const [categoryName, setCategoryName] = useState("");
-  const [categoryDescription, setCategoryDescription] = useState("");
-  const [isCreateCategoryModalOpen, setIsCreateCategoryModalOpen] = useState(false);
-
-  /*
-    Filtros simples de la vista operativa.
-    selectedBuildingId = filtro por edificio.
-    searchTerm = búsqueda libre por título, asset o departamento.
-  */
-  const [selectedBuildingId, setSelectedBuildingId] = useState("ALL");
-  const [searchTerm, setSearchTerm] = useState("");
-
   const [loadingData, setLoadingData] = useState(true);
-  const [savingCategory, setSavingCategory] = useState(false);
   const [msg, setMsg] = useState("");
+
+  const [selectedBuildingId, setSelectedBuildingId] = useState("ALL");
+  const [weekOffset, setWeekOffset] = useState(0);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -169,10 +265,10 @@ export default function MaintenancePage() {
       .eq("company_id", user.company_id)
       .order("performed_at", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(200);
 
     if (logsError) {
-      setMsg("Se cargaron las categorías, pero no se pudo cargar la actividad reciente.");
+      setMsg("Se cargaron las categorías, pero no se pudo cargar la actividad de mantenimiento.");
       setCategories((categoriesData as MaintenanceCategory[]) || []);
       setRecentLogs([]);
       setLoadingData(false);
@@ -223,8 +319,9 @@ export default function MaintenancePage() {
       const unit = log.unit_id ? unitMap.get(log.unit_id) : null;
 
       const buildingLabel = building ? building.name : "Sin edificio ligado";
-
-      const unitLabel = unit ? `Departamento ${unit.unit_number}` : "";
+      const unitLabel = unit
+        ? `Departamento ${unit.display_code || unit.unit_number}`
+        : "";
 
       return {
         ...log,
@@ -238,76 +335,95 @@ export default function MaintenancePage() {
     setLoadingData(false);
   }
 
-  async function handleCreateCategory(e: React.FormEvent) {
-    e.preventDefault();
-    setMsg("");
+  const weekStart = useMemo(() => {
+    const today = new Date();
+    const start = getStartOfWeek(today);
+    return addDays(start, weekOffset * 7);
+  }, [weekOffset]);
 
-    if (!user?.company_id) {
-      setMsg("No se encontró la empresa del usuario.");
-      return;
-    }
+  const weekDays = useMemo<WeekDayColumn[]>(() => {
+    return DAY_ORDER.map((dayKey, index) => {
+      const date = addDays(weekStart, index);
 
-    if (!categoryName.trim()) {
-      setMsg("El nombre de la categoría es obligatorio.");
-      return;
-    }
-
-    setSavingCategory(true);
-
-    const { error } = await supabase.from("maintenance_categories").insert({
-      company_id: user.company_id,
-      name: categoryName.trim(),
-      description: categoryDescription.trim() || null,
-      status: "ACTIVE",
+      return {
+        key: dayKey,
+        label: DAY_LABELS[dayKey],
+        shortDate: formatShortDate(date),
+        isoDate: date.toISOString().slice(0, 10),
+      };
     });
-
-    setSavingCategory(false);
-
-    if (error) {
-      if (error.message.toLowerCase().includes("duplicate") || error.message.toLowerCase().includes("unique")) {
-        setMsg("Ya existe una categoría con ese nombre para tu empresa.");
-      } else {
-        setMsg(error.message);
-      }
-      return;
-    }
-
-    setCategoryName("");
-    setCategoryDescription("");
-    setMsg("Categoría guardada correctamente.");
-    await loadPageData();
-  }
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
-  }
+  }, [weekStart]);
 
   const filteredLogs = useMemo(() => {
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-
     return recentLogs.filter((log) => {
-      const matchesBuilding = selectedBuildingId === "ALL" || log.building_id === selectedBuildingId;
-
-      if (!matchesBuilding) return false;
-
-      if (!normalizedSearch) return true;
-
-      const haystack = [
-        log.title,
-        log.asset_name_snapshot,
-        log.asset_type_snapshot,
-        log.category_name_snapshot,
-        log.building_label,
-        log.unit_label,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      return haystack.includes(normalizedSearch);
+      if (selectedBuildingId === "ALL") return true;
+      return log.building_id === selectedBuildingId;
     });
-  }, [recentLogs, selectedBuildingId, searchTerm]);
+  }, [recentLogs, selectedBuildingId]);
+
+  const weekEvents = useMemo<CalendarEvent[]>(() => {
+    const weekDateSet = new Set(weekDays.map((day) => day.isoDate));
+
+    const doneEvents: CalendarEvent[] = filteredLogs
+      .filter((log) => {
+        const iso = getIsoDate(log.performed_at);
+        return iso && weekDateSet.has(iso);
+      })
+      .map((log) => {
+        const dayKey = getDayKeyFromDate(log.performed_at);
+
+        return {
+          id: `done-${log.id}`,
+          dayKey,
+          title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
+          subtitle: `${log.title} · ${formatLogType(log.log_type)}`,
+          kind: "done",
+          colorBackground: "#FFF7ED",
+          colorBorder: "#FED7AA",
+          colorText: "#9A3412",
+        };
+      });
+
+    const upcomingEvents: CalendarEvent[] = filteredLogs
+      .filter((log) => {
+        const iso = getIsoDate(log.next_due_at);
+        return iso && weekDateSet.has(iso);
+      })
+      .map((log) => {
+        const dayKey = getDayKeyFromDate(log.next_due_at);
+
+        return {
+          id: `upcoming-${log.id}`,
+          dayKey,
+          title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
+          subtitle: `${log.title} · Próximo`,
+          kind: "upcoming",
+          colorBackground: "#FEF3C7",
+          colorBorder: "#FCD34D",
+          colorText: "#92400E",
+        };
+      });
+
+    return [...doneEvents, ...upcomingEvents]
+      .filter((event) => event.dayKey !== "sunday")
+      .sort((a, b) => a.title.localeCompare(b.title));
+  }, [filteredLogs, weekDays]);
+
+  const eventsByDay = useMemo(() => {
+    const map = new Map<string, CalendarEvent[]>();
+
+    DAY_ORDER.forEach((day) => {
+      map.set(day, []);
+    });
+
+    weekEvents.forEach((event) => {
+      const current = map.get(event.dayKey) || [];
+      current.push(event);
+      map.set(event.dayKey, current);
+    });
+
+    return map;
+  }, [weekEvents]);
 
   const totals = useMemo(() => {
     const done = recentLogs.filter((log) => log.status === "DONE").length;
@@ -325,153 +441,331 @@ export default function MaintenancePage() {
     };
   }, [categories, recentLogs]);
 
+  const selectedBuildingLabel =
+    selectedBuildingId === "ALL"
+      ? "Todos los edificios"
+      : buildings.find((b) => b.id === selectedBuildingId)?.name || "Edificio";
+
   if (loading) {
-    return <PageContainer>Cargando usuario...</PageContainer>;
+    return (
+      <PageContainer>
+        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando usuario...</div>
+      </PageContainer>
+    );
   }
 
   if (!user) return null;
 
   if (loadingData) {
-    return <PageContainer>Cargando mantenimiento...</PageContainer>;
+    return (
+      <PageContainer>
+        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando mantenimiento...</div>
+      </PageContainer>
+    );
   }
 
   return (
     <PageContainer>
       <PageHeader
         title="Mantenimiento"
-        subtitle="Centro operativo para categorías y actividad reciente de mantenimiento con el mismo sistema visual del resto de PropAdmin."
-        actions={
-          <>
-            <UiButton href="/dashboard">Ir al dashboard</UiButton>
-            <UiButton onClick={() => setIsCreateCategoryModalOpen(true)} variant="primary">
-              <Plus size={16} />
-              Nueva categoría
-            </UiButton>
-          </>
-        }
+        subtitle="Vista operativa semanal para revisar actividad, próximos trabajos y seguimiento."
+        titleIcon={<Wrench size={18} />}
       />
 
       {msg ? (
-        <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: "16px" }}>
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: "#FEF2F2",
+            color: "#B91C1C",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
           {msg}
-        </p>
+        </div>
       ) : null}
+
+      <AppGrid minWidth={220}>
+        <MetricCard
+          label="Vista activa"
+          value="Semana"
+          helper={formatWeekRange(weekStart)}
+          icon={<CalendarClock size={18} />}
+        />
+        <MetricCard
+          label="Categorías"
+          value={String(totals.categories)}
+          helper="Tipos activos"
+          icon={<ClipboardList size={18} />}
+        />
+        <MetricCard
+          label="Programados"
+          value={String(totals.upcoming)}
+          helper={selectedBuildingLabel}
+          icon={<ShieldCheck size={18} />}
+        />
+        <MetricCard
+          label="Correctivos"
+          value={String(totals.corrective)}
+          helper="Seguimiento"
+          icon={<CircleAlert size={18} />}
+        />
+      </AppGrid>
+
+      <div style={{ height: 16 }} />
+
+      <SectionCard
+        title="Calendario semanal de mantenimiento"
+        subtitle="Vista operativa de mantenimiento agrupada por día."
+        icon={<CalendarClock size={18} />}
+      >
+        <AppCard>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
+                justifyContent: "space-between",
+                alignItems: "center",
+              }}
+            >
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <AppBadge backgroundColor="#EEF2FF" textColor="#4338CA">
+                  Semana
+                </AppBadge>
+              </div>
+
+              <div
+                style={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                  alignItems: "center",
+                }}
+              >
+                <UiButton
+                  onClick={() => setWeekOffset((prev) => prev - 1)}
+                  icon={<ChevronLeft size={16} />}
+                >
+                  Semana anterior
+                </UiButton>
+
+                <UiButton onClick={() => setWeekOffset(0)}>
+                  Semana actual
+                </UiButton>
+
+                <UiButton
+                  onClick={() => setWeekOffset((prev) => prev + 1)}
+                  icon={<ChevronRight size={16} />}
+                >
+                  Semana siguiente
+                </UiButton>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: 12,
+                alignItems: "center",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: "#6B7280",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                <Filter size={14} />
+                Edificio
+              </div>
+
+              <select
+                value={selectedBuildingId}
+                onChange={(e) => setSelectedBuildingId(e.target.value)}
+                style={{
+                  minWidth: 240,
+                  padding: "10px 12px",
+                  borderRadius: 12,
+                  border: "1px solid #E5E7EB",
+                  background: "#FFFFFF",
+                  color: "#111827",
+                  fontSize: 14,
+                }}
+              >
+                <option value="ALL">Todos los edificios</option>
+                {buildings.map((building) => (
+                  <option key={building.id} value={building.id}>
+                    {building.code ? `${building.code} - ` : ""}
+                    {building.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                gap: 16,
+              }}
+            >
+              {weekDays.map((day) => {
+                const dayEvents = eventsByDay.get(day.key) || [];
+
+                return (
+                  <div
+                    key={day.key}
+                    style={{
+                      border: "1px solid #E5E7EB",
+                      borderRadius: 16,
+                      padding: 14,
+                      background: "#FFFFFF",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 14,
+                      minHeight: 280,
+                    }}
+                  >
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 800,
+                          color: "#111827",
+                        }}
+                      >
+                        {day.label}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: "#6B7280",
+                        }}
+                      >
+                        {day.shortDate}
+                      </div>
+                    </div>
+
+                    {dayEvents.length === 0 ? (
+                      <div
+                        style={{
+                          borderRadius: 12,
+                          padding: "10px 10px",
+                          background: "#F9FAFB",
+                          border: "1px dashed #D1D5DB",
+                          fontSize: 12,
+                          color: "#6B7280",
+                          fontWeight: 600,
+                        }}
+                      >
+                        Sin eventos
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {dayEvents.map((event) => (
+                          <div
+                            key={event.id}
+                            style={{
+                              borderRadius: 12,
+                              padding: "10px 10px",
+                              background: event.colorBackground,
+                              border: `1px solid ${event.colorBorder}`,
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontSize: 11,
+                                fontWeight: 800,
+                                color: event.colorText,
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {event.title}
+                            </span>
+
+                            <span
+                              style={{
+                                fontSize: 10.5,
+                                fontWeight: 700,
+                                color: event.colorText,
+                                opacity: 0.9,
+                                lineHeight: 1.35,
+                              }}
+                            >
+                              {event.subtitle}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </AppCard>
+      </SectionCard>
+
+      <div style={{ height: 16 }} />
 
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-          gap: "14px",
-          marginBottom: "24px",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 16,
         }}
       >
-        <MetricCard label="Categorías" value={totals.categories} icon={<ClipboardList size={18} />} helper="Tipos activos" />
-        <MetricCard label="Registros recientes" value={totals.logs} icon={<Wrench size={18} />} helper="Bitácora" />
-        <MetricCard label="Preventivos" value={totals.preventive} icon={<ShieldCheck size={18} />} helper="Programados" />
-        <MetricCard label="Correctivos" value={totals.corrective} icon={<CircleAlert size={18} />} helper="Incidencias" />
-        <MetricCard label="Con próxima fecha" value={totals.upcoming} icon={<CalendarClock size={18} />} helper="Seguimiento" />
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#F97316",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Realizado
+            </span>
+          </div>
+        </AppCard>
+
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#EAB308",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Próximo / programado
+            </span>
+          </div>
+        </AppCard>
       </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "24px", marginBottom: "24px" }}>
-        <SectionCard title="Categorías activas" subtitle="Puedes empezar con grupos como Baño, Cocina, Minisplits o Boilers." icon={<ClipboardList size={18} />}>
-          {categories.length === 0 ? (
-            <p>Aún no hay categorías. Puedes empezar con algunas como Baño, Cocina, Minisplits o Boilers.</p>
-          ) : (
-            <div style={{ display: "grid", gap: "12px" }}>
-              {categories.map((category) => (
-                <div key={category.id} style={{ border: "1px solid #E5E7EB", borderRadius: "12px", padding: "16px" }}>
-                  <p style={{ fontWeight: "bold", marginBottom: "6px" }}>{category.name}</p>
-                  <p style={{ marginBottom: "6px" }}>Estatus: {category.status}</p>
-                  <p>{category.description || "Sin descripción"}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Actividad reciente" subtitle="Aquí ya puedes ubicar rápidamente de qué edificio y departamento viene cada registro." icon={<Wrench size={18} />}>
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "18px" }}>
-            <select
-              value={selectedBuildingId}
-              onChange={(e) => setSelectedBuildingId(e.target.value)}
-              style={{ padding: "10px 12px", border: "1px solid #D0D5DD", borderRadius: "10px", background: "white", minWidth: "220px" }}
-            >
-              <option value="ALL">Todos los edificios</option>
-              {buildings.map((building) => (
-                <option key={building.id} value={building.id}>
-                  {building.code ? `${building.code} - ` : ""}
-                  {building.name}
-                </option>
-              ))}
-            </select>
-
-            <input
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Buscar por título, asset o departamento"
-              style={{ padding: "10px 12px", border: "1px solid #D0D5DD", borderRadius: "10px", minWidth: "260px" }}
-            />
-          </div>
-
-          {filteredLogs.length === 0 ? (
-            <p>No hay registros que coincidan con los filtros actuales.</p>
-          ) : (
-            <div style={{ display: "grid", gap: "12px" }}>
-              {filteredLogs.map((log) => (
-                <div key={log.id} style={{ border: "1px solid #E5E7EB", borderRadius: "12px", padding: "16px" }}>
-                  <p style={{ fontSize: "13px", color: "#667085", marginBottom: "6px" }}>
-                    <strong>{log.building_label}</strong>
-                    {log.unit_label ? " · " : ""}
-                    {log.unit_label}
-                  </p>
-                  <p style={{ fontWeight: "bold", marginBottom: "6px" }}>{log.title}</p>
-                  <p style={{ marginBottom: "6px" }}>Tipo: {formatLogType(log.log_type)}</p>
-                  <p style={{ marginBottom: "6px" }}>Fecha realizada: {log.performed_at || "Sin fecha"}</p>
-                  <p style={{ marginBottom: "6px" }}>Equipo / área: {log.asset_name_snapshot || "Sin equipo ligado"}</p>
-                  <p style={{ marginBottom: "6px" }}>Categoría: {log.category_name_snapshot || "Sin categoría"}</p>
-                  <p>Próxima fecha: {log.next_due_at || "Sin próxima fecha"}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      <Modal
-        open={isCreateCategoryModalOpen}
-        onClose={() => setIsCreateCategoryModalOpen(false)}
-        title="Crear categoría de mantenimiento"
-        subtitle="El formulario ahora vive en modal para no robar protagonismo a la vista operativa."
-      >
-        <form onSubmit={handleCreateCategory}>
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>Nombre</label>
-            <input
-              value={categoryName}
-              onChange={(e) => setCategoryName(e.target.value)}
-              placeholder="Ej. Baño, Cocina, Minisplits, Boilers"
-              style={{ width: "100%", padding: "12px", border: "1px solid #D0D5DD", borderRadius: "10px" }}
-            />
-          </div>
-
-          <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>Descripción</label>
-            <textarea
-              value={categoryDescription}
-              onChange={(e) => setCategoryDescription(e.target.value)}
-              placeholder="Opcional. Útil para explicar qué entra dentro de esta categoría."
-              style={{ width: "100%", minHeight: "100px", padding: "12px", border: "1px solid #D0D5DD", borderRadius: "10px", resize: "vertical" }}
-            />
-          </div>
-
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={savingCategory} variant="primary">
-              {savingCategory ? "Guardando..." : "Guardar categoría"}
-            </UiButton>
-            <UiButton onClick={() => setIsCreateCategoryModalOpen(false)}>Cancelar</UiButton>
-          </div>
-        </form>
-      </Modal>
     </PageContainer>
   );
 }
