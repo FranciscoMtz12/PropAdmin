@@ -26,6 +26,7 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AssetTypeIcon from "@/components/AssetTypeIcon";
 
+
 type Building = {
   id: string;
   company_id: string;
