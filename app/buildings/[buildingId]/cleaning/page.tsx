@@ -7,6 +7,7 @@
   - mantiene colores por categoría
   - mantiene nombre y dirección del edificio
   - muestra un resumen real y más útil por módulo
+  - distingue unidades activas e inactivas en limpieza interior
   - deja navegación clara hacia:
     - exterior
     - common
@@ -143,8 +144,7 @@ export default function BuildingCleaningPage() {
         .from("cleaning_unit_schedules")
         .select("id, unit_id, day_of_week, start_time, duration_hours, active")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
-        .eq("active", true),
+        .eq("company_id", user.company_id),
 
       supabase
         .from("units")
@@ -240,7 +240,10 @@ export default function BuildingCleaningPage() {
       unitMap.set(unit.id, unit);
     });
 
-    const orderedSchedules = [...unitSchedules].sort((a, b) => {
+    const activeSchedules = unitSchedules.filter((item) => item.active);
+    const inactiveSchedules = unitSchedules.filter((item) => !item.active);
+
+    const orderedActive = [...activeSchedules].sort((a, b) => {
       const aUnit = unitMap.get(a.unit_id);
       const bUnit = unitMap.get(b.unit_id);
 
@@ -250,21 +253,25 @@ export default function BuildingCleaningPage() {
       return aLabel.localeCompare(bLabel);
     });
 
-    const visibleSchedules = orderedSchedules.slice(0, 3);
+    const lines: string[] = [
+      `Activas: ${activeSchedules.length}`,
+      `Inactivas: ${inactiveSchedules.length}`,
+    ];
 
-    const lines = visibleSchedules.map((schedule) => {
+    const visibleSchedules = orderedActive.slice(0, 2);
+
+    visibleSchedules.forEach((schedule) => {
       const unit = unitMap.get(schedule.unit_id);
-      const unitLabel =
-        unit?.display_code || unit?.unit_number || "Unidad";
+      const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
       const dayLabel = formatDay(schedule.day_of_week);
       const timeLabel = formatTime(schedule.start_time);
       const durationLabel = formatDuration(schedule.duration_hours);
 
-      return `${unitLabel}: ${dayLabel}, ${timeLabel}, ${durationLabel}`;
+      lines.push(`${unitLabel}: ${dayLabel}, ${timeLabel}, ${durationLabel}`);
     });
 
-    if (orderedSchedules.length > 3) {
-      lines.push(`+ ${orderedSchedules.length - 3} unidades más`);
+    if (orderedActive.length > 2) {
+      lines.push(`+ ${orderedActive.length - 2} unidades activas más`);
     }
 
     return lines;
@@ -322,14 +329,14 @@ export default function BuildingCleaningPage() {
         icon: <Home size={18} />,
         href: `/buildings/${buildingId}/cleaning/units`,
         buttonLabel: "Ver unidades",
-        summaryTitle: "Horario con día",
+        summaryTitle: "Resumen interior",
         summaryLines: buildUnitSummaryLines(),
       },
     ];
   }, [buildingId, buildingSchedules, unitSchedules, units]);
 
   const totalBuildingSchedules = buildingSchedules.length;
-  const totalUnitSchedules = unitSchedules.filter((item) => item.active).length;
+  const totalActiveUnitSchedules = unitSchedules.filter((item) => item.active).length;
 
   if (loading || loadingPage) {
     return (
@@ -447,10 +454,10 @@ export default function BuildingCleaningPage() {
                 Unidades activas
               </span>
               <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
-                {totalUnitSchedules}
+                {totalActiveUnitSchedules}
               </span>
               <span style={{ fontSize: 13, color: "#6B7280" }}>
-                Limpieza interior programada
+                Limpieza interior activa
               </span>
             </div>
           </AppCard>
@@ -542,7 +549,7 @@ export default function BuildingCleaningPage() {
                     display: "flex",
                     flexDirection: "column",
                     gap: 8,
-                    minHeight: 112,
+                    minHeight: 132,
                   }}
                 >
                   <span
@@ -563,7 +570,7 @@ export default function BuildingCleaningPage() {
                         key={`${area.key}-${index}`}
                         style={{
                           fontSize: 14,
-                          fontWeight: 600,
+                          fontWeight: index < 2 && area.key === "units" ? 700 : 600,
                           color: "#111827",
                           lineHeight: 1.5,
                         }}
