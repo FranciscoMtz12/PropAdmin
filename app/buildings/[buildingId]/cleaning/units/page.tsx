@@ -5,8 +5,8 @@ Página de limpieza interior de unidades.
 
 Objetivo:
 - Mostrar todas las unidades del edificio
-- Indicar visualmente si cada unidad tiene limpieza programada o no
-- Mostrar día, hora y duración cuando exista programación activa
+- Indicar visualmente si cada unidad tiene limpieza programada activa, inactiva o no tiene programación
+- Mostrar día, hora y duración cuando exista programación
 - Permitir entrar a configurar la limpieza de cada unidad
 
 Importante:
@@ -64,7 +64,7 @@ type UnitRow = {
   unitLabel: string;
   floorLabel: string;
   unitStatus: string;
-  hasCleaning: boolean;
+  cleaningState: "active" | "inactive" | "none";
   cleaningDay: string;
   cleaningTime: string;
   cleaningDuration: string;
@@ -131,8 +131,7 @@ export default function CleaningUnitsPage() {
         .from("cleaning_unit_schedules")
         .select("id, unit_id, day_of_week, start_time, duration_hours, active")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
-        .eq("active", true),
+        .eq("company_id", user.company_id),
     ]);
 
     if (buildingRes.error || !buildingRes.data) {
@@ -195,7 +194,11 @@ export default function CleaningUnitsPage() {
         unitLabel,
         floorLabel: unit.floor !== null ? `Piso ${unit.floor}` : "Sin piso",
         unitStatus: unit.status || "Sin estatus",
-        hasCleaning: Boolean(schedule),
+        cleaningState: schedule
+          ? schedule.active
+            ? "active"
+            : "inactive"
+          : "none",
         cleaningDay: schedule ? formatDay(schedule.day_of_week) : "—",
         cleaningTime: schedule ? formatTime(schedule.start_time) : "—",
         cleaningDuration: schedule ? formatDuration(schedule.duration_hours) : "—",
@@ -268,7 +271,7 @@ export default function CleaningUnitsPage() {
 
       <SectionCard
         title="Unidades del edificio"
-        subtitle="Las unidades con limpieza programada aparecen en verde tenue."
+        subtitle="Verde tenue = activa, amarillo tenue = inactiva."
       >
         {rows.length === 0 ? (
           <AppEmptyState
@@ -299,57 +302,93 @@ export default function CleaningUnitsPage() {
                 </thead>
 
                 <tbody>
-                  {rows.map((row) => (
-                    <tr
-                      key={row.id}
-                      style={{
-                        background: row.hasCleaning ? "#F0FDF4" : "#FFFFFF",
-                        borderBottom: "1px solid #E5E7EB",
-                      }}
-                    >
-                      <td style={tableCellStyleStrong}>{row.unitLabel}</td>
-                      <td style={tableCellStyle}>{row.floorLabel}</td>
-                      <td style={tableCellStyle}>{row.unitStatus}</td>
-                      <td style={tableCellStyle}>
-                        <span
-                          style={{
-                            display: "inline-flex",
-                            alignItems: "center",
-                            gap: 8,
-                            padding: "6px 10px",
-                            borderRadius: 999,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            background: row.hasCleaning ? "#DCFCE7" : "#F3F4F6",
-                            color: row.hasCleaning ? "#166534" : "#4B5563",
-                          }}
-                        >
-                          {row.hasCleaning ? (
-                            <CheckCircle2 size={14} />
-                          ) : (
-                            <XCircle size={14} />
-                          )}
-                          {row.hasCleaning ? "Programada" : "Sin programar"}
-                        </span>
-                      </td>
-                      <td style={tableCellStyle}>{row.cleaningDay}</td>
-                      <td style={tableCellStyle}>
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <Clock3 size={14} />
-                          {row.cleaningTime}
-                        </span>
-                      </td>
-                      <td style={tableCellStyle}>{row.cleaningDuration}</td>
-                      <td style={tableCellStyle}>
-                        <UiButton
-                          href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
-                          icon={<Settings2 size={14} />}
-                        >
-                          Configurar
-                        </UiButton>
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.map((row) => {
+                    const rowBackground =
+                      row.cleaningState === "active"
+                        ? "#F0FDF4"
+                        : row.cleaningState === "inactive"
+                        ? "#FFFBEB"
+                        : "#FFFFFF";
+
+                    const badgeBackground =
+                      row.cleaningState === "active"
+                        ? "#DCFCE7"
+                        : row.cleaningState === "inactive"
+                        ? "#FEF3C7"
+                        : "#F3F4F6";
+
+                    const badgeColor =
+                      row.cleaningState === "active"
+                        ? "#166534"
+                        : row.cleaningState === "inactive"
+                        ? "#92400E"
+                        : "#4B5563";
+
+                    const badgeLabel =
+                      row.cleaningState === "active"
+                        ? "Programada"
+                        : row.cleaningState === "inactive"
+                        ? "Inactiva"
+                        : "Sin programar";
+
+                    return (
+                      <tr
+                        key={row.id}
+                        style={{
+                          background: rowBackground,
+                          borderBottom: "1px solid #E5E7EB",
+                        }}
+                      >
+                        <td style={tableCellStyleStrong}>{row.unitLabel}</td>
+                        <td style={tableCellStyle}>{row.floorLabel}</td>
+                        <td style={tableCellStyle}>{row.unitStatus}</td>
+                        <td style={tableCellStyle}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 8,
+                              padding: "6px 10px",
+                              borderRadius: 999,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              background: badgeBackground,
+                              color: badgeColor,
+                            }}
+                          >
+                            {row.cleaningState === "active" ? (
+                              <CheckCircle2 size={14} />
+                            ) : (
+                              <XCircle size={14} />
+                            )}
+                            {badgeLabel}
+                          </span>
+                        </td>
+                        <td style={tableCellStyle}>{row.cleaningDay}</td>
+                        <td style={tableCellStyle}>
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
+                          >
+                            <Clock3 size={14} />
+                            {row.cleaningTime}
+                          </span>
+                        </td>
+                        <td style={tableCellStyle}>{row.cleaningDuration}</td>
+                        <td style={tableCellStyle}>
+                          <UiButton
+                            href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
+                            icon={<Settings2 size={14} />}
+                          >
+                            Configurar
+                          </UiButton>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
