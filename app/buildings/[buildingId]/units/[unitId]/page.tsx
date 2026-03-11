@@ -7,13 +7,24 @@
   - AppTabs para separar resumen / lease / assets / historial
   - AppStatBar para visualizar el estado de los assets del departamento
   - cards y accesos rápidos con el mismo design system de PropAdmin
+
+  Cambio importante:
+  - La consulta de assets ahora excluye registros con soft delete:
+    .is("deleted_at", null)
+
+  Así esta página ya no cuenta ni muestra assets eliminados lógicamente.
 */
 
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Building2,
-  Edit3,
   Hash,
   History,
   Home,
@@ -21,8 +32,10 @@ import {
   Package,
   Users,
 } from "lucide-react";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -57,9 +70,7 @@ type UnitDetail = {
   display_code: string | null;
   floor: number | null;
   status: string;
-  unit_types: {
-    name: string;
-  } | null;
+  unit_types: { name: string } | null;
 };
 
 type LeaseRow = {
@@ -121,9 +132,18 @@ function getUnitStatusLabel(status: string) {
 }
 
 function getUnitStatusColors(status: string) {
-  if (status === "VACANT") return { background: "#DCFCE7", color: "#166534" };
-  if (status === "RENTED") return { background: "#DBEAFE", color: "#1D4ED8" };
-  if (status === "MAINTENANCE") return { background: "#FEF3C7", color: "#B45309" };
+  if (status === "VACANT") {
+    return { background: "#DCFCE7", color: "#166534" };
+  }
+
+  if (status === "RENTED") {
+    return { background: "#DBEAFE", color: "#1D4ED8" };
+  }
+
+  if (status === "MAINTENANCE") {
+    return { background: "#FEF3C7", color: "#B45309" };
+  }
+
   return { background: "#F3F4F6", color: "#374151" };
 }
 
@@ -149,12 +169,12 @@ function StatusPill({ status }: { status: string }) {
       style={{
         display: "inline-flex",
         alignItems: "center",
-        padding: "4px 10px",
         borderRadius: "999px",
-        background: colors.background,
-        color: colors.color,
+        padding: "6px 10px",
         fontSize: "12px",
         fontWeight: 700,
+        background: colors.background,
+        color: colors.color,
       }}
     >
       {getUnitStatusLabel(status)}
@@ -172,16 +192,36 @@ function InfoStatCard({
   value: React.ReactNode;
 }) {
   return (
-    <SectionCard>
-      <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
-        <AppIconBox size={42} radius={12}>{icon}</AppIconBox>
+    <AppCard>
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        <AppIconBox size={42} radius={14} background="#F3F4F6" color="#111827">
+          {icon}
+        </AppIconBox>
 
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: "13px", color: "#667085", marginBottom: "6px" }}>{label}</div>
-          <div style={{ fontSize: "18px", fontWeight: 700, color: "#111827", lineHeight: 1.2 }}>{value}</div>
+        <div>
+          <div
+            style={{
+              fontSize: "13px",
+              color: "#6B7280",
+              fontWeight: 600,
+            }}
+          >
+            {label}
+          </div>
+
+          <div
+            style={{
+              marginTop: "4px",
+              fontSize: "16px",
+              color: "#111827",
+              fontWeight: 700,
+            }}
+          >
+            {value}
+          </div>
         </div>
       </div>
-    </SectionCard>
+    </AppCard>
   );
 }
 
@@ -204,8 +244,8 @@ export default function UnitDetailPage() {
   const [selectedUnitTypeId, setSelectedUnitTypeId] = useState("");
   const [floor, setFloor] = useState("");
   const [status, setStatus] = useState("VACANT");
-  const [activeTab, setActiveTab] = useState("summary");
 
+  const [activeTab, setActiveTab] = useState("summary");
   const [showEditForm, setShowEditForm] = useState(false);
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
@@ -219,7 +259,7 @@ export default function UnitDetailPage() {
 
   useEffect(() => {
     if (user?.company_id && buildingId && unitId) {
-      loadPageData();
+      void loadPageData();
     }
   }, [user, buildingId, unitId]);
 
@@ -242,7 +282,7 @@ export default function UnitDetailPage() {
       return;
     }
 
-    setBuilding(buildingData);
+    setBuilding(buildingData as Building);
 
     const { data: unitData, error: unitError } = await supabase
       .from("units")
@@ -269,18 +309,28 @@ export default function UnitDetailPage() {
     }
 
     const parsedUnit = unitData as unknown as UnitDetail;
+
     setUnit(parsedUnit);
     setUnitNumber(parsedUnit.unit_number || "");
     setSelectedUnitTypeId(parsedUnit.unit_type_id || "");
-    setFloor(parsedUnit.floor !== null && parsedUnit.floor !== undefined ? String(parsedUnit.floor) : "");
+    setFloor(
+      parsedUnit.floor !== null && parsedUnit.floor !== undefined
+        ? String(parsedUnit.floor)
+        : ""
+    );
     setStatus(parsedUnit.status || "VACANT");
 
-    const [{ data: unitTypeData, error: unitTypeError }, { data: leaseData, error: leaseError }, { data: assetData }] = await Promise.all([
+    const [
+      { data: unitTypeData, error: unitTypeError },
+      { data: leaseData, error: leaseError },
+      { data: assetData, error: assetError },
+    ] = await Promise.all([
       supabase
         .from("unit_types")
         .select("id, building_id, name")
         .eq("building_id", buildingId)
         .order("created_at", { ascending: false }),
+
       supabase
         .from("leases")
         .select(`
@@ -293,12 +343,14 @@ export default function UnitDetailPage() {
         `)
         .eq("unit_id", unitId)
         .order("created_at", { ascending: false }),
+
       supabase
         .from("assets")
         .select("id, status, name, asset_type")
         .eq("unit_id", unitId)
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
     ]);
 
     if (unitTypeError) {
@@ -313,7 +365,13 @@ export default function UnitDetailPage() {
       return;
     }
 
-    setUnitTypes(unitTypeData || []);
+    if (assetError) {
+      setMsg("No se pudieron cargar los assets del departamento.");
+      setLoadingData(false);
+      return;
+    }
+
+    setUnitTypes((unitTypeData as UnitType[]) || []);
     setLeaseHistory((leaseData as unknown as LeaseRow[]) || []);
     setAssets((assetData as AssetMiniRow[]) || []);
     setLoadingData(false);
@@ -338,9 +396,12 @@ export default function UnitDetailPage() {
     if (unit) {
       setUnitNumber(unit.unit_number || "");
       setSelectedUnitTypeId(unit.unit_type_id || "");
-      setFloor(unit.floor !== null && unit.floor !== undefined ? String(unit.floor) : "");
+      setFloor(
+        unit.floor !== null && unit.floor !== undefined ? String(unit.floor) : ""
+      );
       setStatus(unit.status || "VACANT");
     }
+
     setShowEditForm(false);
     setMsg("");
   }
@@ -420,7 +481,18 @@ export default function UnitDetailPage() {
   if (loading || loadingData) {
     return (
       <PageContainer>
-        <p style={{ color: "#0F172A" }}>{loading ? "Cargando usuario..." : "Cargando departamento..."}</p>
+        <div
+          style={{
+            minHeight: "40vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            color: "#6B7280",
+            fontWeight: 600,
+          }}
+        >
+          {loading ? "Cargando usuario..." : "Cargando departamento..."}
+        </div>
       </PageContainer>
     );
   }
@@ -430,8 +502,19 @@ export default function UnitDetailPage() {
   if (!building || !unit) {
     return (
       <PageContainer>
-        <p style={{ color: "#B91C1C", marginBottom: "16px" }}>{msg || "No se encontró el departamento."}</p>
-        <UiButton href={`/buildings/${buildingId}/units`}>Volver a departamentos</UiButton>
+        <AppCard>
+          <div style={{ display: "grid", gap: "14px" }}>
+            <div style={{ color: "#B91C1C", fontWeight: 600 }}>
+              {msg || "No se encontró el departamento."}
+            </div>
+
+            <div>
+              <UiButton onClick={() => router.push(`/buildings/${buildingId}/units`)}>
+                Volver a departamentos
+              </UiButton>
+            </div>
+          </div>
+        </AppCard>
       </PageContainer>
     );
   }
@@ -439,138 +522,335 @@ export default function UnitDetailPage() {
   return (
     <PageContainer>
       <PageHeader
-        title={`Departamento ${unit.unit_number}`}
-        subtitle={`${building.name}${unit.display_code ? ` • Código visible: ${unit.display_code}` : ""}`}
+        title={`Departamento ${unit.display_code || unit.unit_number}`}
+        subtitle={`Detalle operativo del departamento dentro de ${building.name}.`}
         actions={
-          <>
-            <UiButton href={`/buildings/${building.id}/units`}>Volver a departamentos</UiButton>
-            <UiButton href={`/buildings/${building.id}/units/${unit.id}/assets`} variant="primary">
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            <UiButton onClick={() => router.push(`/buildings/${buildingId}/units`)}>
+              Volver a departamentos
+            </UiButton>
+
+            <UiButton
+              onClick={() =>
+                router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
+              }
+            >
               Administrar assets
             </UiButton>
-          </>
+          </div>
         }
       />
 
       {msg && !showEditForm ? (
-        <div
-          style={{
-            marginBottom: "18px",
-            border: `1px solid ${msg.includes("correctamente") ? "#BBF7D0" : "#FECACA"}`,
-            background: msg.includes("correctamente") ? "#F0FDF4" : "#FEF2F2",
-            color: msg.includes("correctamente") ? "#166534" : "#B91C1C",
-            padding: "12px 14px",
-            borderRadius: "12px",
-            fontWeight: 600,
-          }}
-        >
-          {msg}
-        </div>
+        <AppCard>
+          <div style={{ color: "#1D4ED8", fontWeight: 600 }}>{msg}</div>
+        </AppCard>
       ) : null}
 
-      <AppGrid minWidth={220} gap={16} style={{ marginBottom: "20px" }}>
-        <InfoStatCard icon={<Hash size={18} />} label="Número" value={unit.unit_number} />
-        <InfoStatCard icon={<Layers3 size={18} />} label="Tipología" value={unit.unit_types?.name || "Sin tipología"} />
-        <InfoStatCard icon={<Building2 size={18} />} label="Piso" value={unit.floor ?? "Sin piso"} />
-        <InfoStatCard icon={<Home size={18} />} label="Estatus" value={<StatusPill status={unit.status} />} />
+      <AppGrid minWidth={220}>
+        <InfoStatCard
+          icon={<Hash size={18} />}
+          label="Número"
+          value={unit.unit_number}
+        />
+
+        <InfoStatCard
+          icon={<Layers3 size={18} />}
+          label="Tipología"
+          value={unit.unit_types?.name || "Sin tipología"}
+        />
+
+        <InfoStatCard
+          icon={<Building2 size={18} />}
+          label="Piso"
+          value={unit.floor ?? "Sin piso"}
+        />
+
+        <InfoStatCard
+          icon={<Home size={18} />}
+          label="Estatus"
+          value={<StatusPill status={unit.status} />}
+        />
       </AppGrid>
 
-      <AppTabs
-        activeKey={activeTab}
-        onChange={setActiveTab}
-        items={[
-          { key: "summary", label: "Resumen", icon: <Home size={16} /> },
-          { key: "lease", label: "Lease actual", icon: <Users size={16} />, count: activeLease ? 1 : 0 },
-          { key: "assets", label: "Assets", icon: <Package size={16} />, count: assets.length },
-          { key: "history", label: "Historial", icon: <History size={16} />, count: leaseHistory.length },
-        ]}
-      />
+      <div style={{ marginTop: "18px" }}>
+        <AppTabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
+          tabs={[
+            { key: "summary", label: "Resumen", icon: <Home size={16} /> },
+            {
+              key: "lease",
+              label: "Lease actual",
+              icon: <Users size={16} />,
+              count: activeLease ? 1 : 0,
+            },
+            {
+              key: "assets",
+              label: "Assets",
+              icon: <Package size={16} />,
+              count: assets.length,
+            },
+            {
+              key: "history",
+              label: "Historial",
+              icon: <History size={16} />,
+              count: leaseHistory.length,
+            },
+          ]}
+        />
+      </div>
 
       {activeTab === "summary" ? (
-        <div style={{ display: "grid", gap: "20px" }}>
-          <AppStatBar
-            title="Estado de assets del departamento"
-            totalLabel={`Total: ${assets.length}`}
-            segments={
-              assetStatusSegments.length > 0
-                ? assetStatusSegments
-                : [{ label: "Sin assets", value: 0, color: "#CBD5E1" }]
-            }
-          />
+        <div style={{ display: "grid", gap: "18px", marginTop: "18px" }}>
+          <SectionCard
+            title="Resumen del departamento"
+            subtitle="Vista general del estado actual y datos base."
+          >
+            <div style={{ display: "grid", gap: "18px" }}>
+              <AppStatBar
+                title="Distribución de assets por estatus"
+                segments={
+                  assetStatusSegments.length > 0
+                    ? assetStatusSegments
+                    : [{ label: "Sin assets", value: 0, color: "#CBD5E1" }]
+                }
+              />
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: "20px" }}>
-            <SectionCard title="Información actual" subtitle="Información base de la unidad dentro del edificio.">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "16px", marginBottom: "18px", flexWrap: "wrap" }}>
-                <div style={{ display: "grid", gap: "12px" }}>
-                  <div><strong>Número:</strong> {unit.unit_number}</div>
-                  <div><strong>Código visible:</strong> {unit.display_code || "Sin código"}</div>
-                  <div><strong>Tipología:</strong> {unit.unit_types?.name || "Sin tipología"}</div>
-                  <div><strong>Piso:</strong> {unit.floor ?? "Sin piso"}</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-                    <strong>Estatus:</strong>
-                    <StatusPill status={unit.status} />
-                  </div>
-                </div>
-
-                <UiButton onClick={handleOpenEdit}>
-                  <Edit3 size={16} />
-                  Editar departamento
-                </UiButton>
-              </div>
-            </SectionCard>
-
-            <SectionCard title="Accesos rápidos" subtitle="Navega a lo más usado de esta unidad.">
-              <div style={{ display: "grid", gap: 12 }}>
-                <AppCard style={{ padding: 16, borderRadius: 14 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                    <div>
-                      <strong style={{ display: "block", marginBottom: 4 }}>Assets del departamento</strong>
-                      <p style={{ margin: 0, color: "#667085", fontSize: 14 }}>Consulta los equipos instalados y su estado actual.</p>
+              <AppGrid minWidth={240}>
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Número
                     </div>
-                    <UiButton href={`/buildings/${building.id}/units/${unit.id}/assets`} variant="primary">Abrir</UiButton>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {unit.unit_number}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Código visible
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {unit.display_code || "Sin código"}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Tipología
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {unit.unit_types?.name || "Sin tipología"}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Piso
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {unit.floor ?? "Sin piso"}
+                    </div>
+                  </div>
+                </AppCard>
+              </AppGrid>
+
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <UiButton onClick={handleOpenEdit}>Editar departamento</UiButton>
+
+                <AppCard>
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "12px",
+                      justifyContent: "space-between",
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <div>
+                      <div
+                        style={{
+                          fontSize: "14px",
+                          fontWeight: 700,
+                          color: "#111827",
+                        }}
+                      >
+                        Assets del departamento
+                      </div>
+                      <div
+                        style={{
+                          marginTop: "4px",
+                          fontSize: "13px",
+                          color: "#6B7280",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Consulta los equipos instalados y su estado actual.
+                      </div>
+                    </div>
+
+                    <UiButton
+                      onClick={() =>
+                        router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
+                      }
+                    >
+                      Abrir
+                    </UiButton>
                   </div>
                 </AppCard>
               </div>
-            </SectionCard>
-          </div>
+            </div>
+          </SectionCard>
         </div>
       ) : null}
 
       {activeTab === "lease" ? (
-        <SectionCard title="Inquilino actual" subtitle="Lease activo ligado a este departamento.">
-          <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: activeLease?.tenants ? "14px" : 0 }}>
-            <AppIconBox size={42} radius={12}>
-              <Users size={18} />
-            </AppIconBox>
-
+        <div style={{ marginTop: "18px" }}>
+          <SectionCard
+            title="Lease actual"
+            subtitle="Información del arrendamiento activo del departamento."
+          >
             {activeLease?.tenants ? (
-              <div style={{ display: "grid", gap: "10px" }}>
-                <div><strong>Nombre:</strong> {activeLease.tenants.full_name}</div>
-                <div><strong>Email:</strong> {activeLease.tenants.email || "Sin email"}</div>
-                <div><strong>Teléfono:</strong> {activeLease.tenants.phone || "Sin teléfono"}</div>
-                <div><strong>Renta:</strong> ${activeLease.rent_amount}</div>
-                <div><strong>Inicio:</strong> {formatDate(activeLease.start_date)}</div>
-                <div><strong>Fin:</strong> {formatDate(activeLease.end_date)}</div>
-              </div>
+              <AppGrid minWidth={240}>
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Nombre
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {activeLease.tenants.full_name}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Email
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {activeLease.tenants.email || "Sin email"}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Teléfono
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {activeLease.tenants.phone || "Sin teléfono"}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Renta
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      ${activeLease.rent_amount}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Inicio
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {formatDate(activeLease.start_date)}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
+                      Fin
+                    </div>
+                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                      {formatDate(activeLease.end_date)}
+                    </div>
+                  </div>
+                </AppCard>
+              </AppGrid>
             ) : (
-              <p style={{ margin: 0, color: "#667085" }}>No hay lease activo para este departamento.</p>
+              <AppCard>
+                <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                  No hay lease activo para este departamento.
+                </div>
+              </AppCard>
             )}
-          </div>
-        </SectionCard>
+          </SectionCard>
+        </div>
       ) : null}
 
       {activeTab === "assets" ? (
-        <div style={{ display: "grid", gap: 20 }}>
-          <SectionCard title="Resumen de assets" subtitle="Equipos instalados y su composición por estado.">
+        <div style={{ marginTop: "18px" }}>
+          <SectionCard
+            title="Assets del departamento"
+            subtitle="Resumen rápido de los equipos actualmente visibles en la unidad."
+          >
             {assets.length === 0 ? (
-              <p style={{ margin: 0, color: "#667085" }}>Todavía no hay assets registrados para este departamento.</p>
+              <AppCard>
+                <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                  Todavía no hay assets registrados para este departamento.
+                </div>
+              </AppCard>
             ) : (
-              <AppGrid minWidth={240} gap={12}>
+              <AppGrid minWidth={240}>
                 {assets.map((asset) => (
-                  <AppCard key={asset.id} style={{ padding: 16, borderRadius: 14 }}>
-                    <div style={{ display: "grid", gap: 8 }}>
-                      <strong>{asset.name}</strong>
-                      <p style={{ margin: 0, color: "#667085", fontSize: 14 }}>{asset.asset_type}</p>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#475467" }}>{getAssetStatusLabel(asset.status)}</span>
+                  <AppCard key={asset.id}>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      <div
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: 700,
+                          color: "#111827",
+                        }}
+                      >
+                        {asset.name}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#6B7280",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {asset.asset_type}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: "13px",
+                          color: "#374151",
+                          fontWeight: 600,
+                        }}
+                      >
+                        {getAssetStatusLabel(asset.status)}
+                      </div>
                     </div>
                   </AppCard>
                 ))}
@@ -581,58 +861,80 @@ export default function UnitDetailPage() {
       ) : null}
 
       {activeTab === "history" ? (
-        <SectionCard title="Historial del departamento" subtitle="Leases registrados anteriormente para esta unidad.">
-          {leaseHistory.length === 0 ? (
-            <div style={{ display: "flex", alignItems: "center", gap: "12px", color: "#667085" }}>
-              <AppIconBox size={40} radius={12} background="#F3F4F6" color="#374151">
-                <History size={18} />
-              </AppIconBox>
-              <p style={{ margin: 0 }}>Todavía no hay historial de leases para este departamento.</p>
-            </div>
-          ) : (
-            <div style={{ display: "grid", gap: "14px" }}>
-              {leaseHistory.map((lease) => (
-                <AppCard
-                  key={lease.id}
-                  style={{
-                    borderRadius: 14,
-                    padding: 16,
-                    background: "#FCFCFD",
-                  }}
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", marginBottom: "10px" }}>
-                    <strong>{lease.tenants?.full_name || "Sin inquilino"}</strong>
-                    <StatusPill status={lease.status === "ACTIVE" ? "RENTED" : "VACANT"} />
-                  </div>
-                  <div style={{ display: "grid", gap: "6px", color: "#334155" }}>
-                    <div><strong>Inicio:</strong> {formatDate(lease.start_date)}</div>
-                    <div><strong>Fin:</strong> {formatDate(lease.end_date)}</div>
-                    <div><strong>Renta:</strong> ${lease.rent_amount}</div>
-                    <div><strong>Estatus del lease:</strong> {lease.status}</div>
-                  </div>
-                </AppCard>
-              ))}
-            </div>
-          )}
-        </SectionCard>
+        <div style={{ marginTop: "18px" }}>
+          <SectionCard
+            title="Historial de leases"
+            subtitle="Registro histórico de arrendamientos de la unidad."
+          >
+            {leaseHistory.length === 0 ? (
+              <AppCard>
+                <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                  Todavía no hay historial de leases para este departamento.
+                </div>
+              </AppCard>
+            ) : (
+              <div style={{ display: "grid", gap: "12px" }}>
+                {leaseHistory.map((lease) => (
+                  <AppCard key={lease.id}>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      <div
+                        style={{
+                          fontSize: "16px",
+                          fontWeight: 700,
+                          color: "#111827",
+                        }}
+                      >
+                        {lease.tenants?.full_name || "Sin inquilino"}
+                      </div>
+
+                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
+                        Inicio: {formatDate(lease.start_date)}
+                      </div>
+
+                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
+                        Fin: {formatDate(lease.end_date)}
+                      </div>
+
+                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
+                        Renta: ${lease.rent_amount}
+                      </div>
+
+                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
+                        Estatus del lease: {lease.status}
+                      </div>
+                    </div>
+                  </AppCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </div>
       ) : null}
 
       <Modal
         open={showEditForm}
-        title="Editar departamento"
-        subtitle="Actualiza la información base del departamento sin alterar el resto del flujo visual de la página."
         onClose={handleCancelEdit}
+        title="Editar departamento"
+        subtitle="Actualiza los datos base del departamento sin salir de la vista de detalle."
       >
         <form onSubmit={handleUpdateUnit}>
           <div style={{ display: "grid", gap: "16px" }}>
             <div>
               <label style={labelStyle}>Número de departamento</label>
-              <input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} style={inputStyle} />
+              <input
+                value={unitNumber}
+                onChange={(e) => setUnitNumber(e.target.value)}
+                style={inputStyle}
+              />
             </div>
 
             <div>
               <label style={labelStyle}>Tipología</label>
-              <select value={selectedUnitTypeId} onChange={(e) => setSelectedUnitTypeId(e.target.value)} style={inputStyle}>
+              <select
+                value={selectedUnitTypeId}
+                onChange={(e) => setSelectedUnitTypeId(e.target.value)}
+                style={inputStyle}
+              >
                 <option value="">Selecciona una tipología</option>
                 {unitTypes.map((unitType) => (
                   <option key={unitType.id} value={unitType.id}>
@@ -644,12 +946,20 @@ export default function UnitDetailPage() {
 
             <div>
               <label style={labelStyle}>Piso</label>
-              <input type="number" value={floor} onChange={(e) => setFloor(e.target.value)} style={inputStyle} />
+              <input
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                style={inputStyle}
+              />
             </div>
 
             <div>
               <label style={labelStyle}>Estatus</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                style={inputStyle}
+              >
                 <option value="VACANT">VACANT</option>
                 <option value="RENTED">RENTED</option>
                 <option value="MAINTENANCE">MAINTENANCE</option>
@@ -657,17 +967,36 @@ export default function UnitDetailPage() {
             </div>
 
             {building.code && unitNumber.trim() ? (
-              <div style={{ fontSize: "13px", color: "#667085" }}>
-                Display code que se generará: {generateDisplayCode(building.code, unitNumber)}
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  background: "#F9FAFB",
+                  border: "1px solid #E5E7EB",
+                  color: "#374151",
+                  fontSize: "14px",
+                  fontWeight: 500,
+                }}
+              >
+                Display code que se generará:{" "}
+                <strong>{generateDisplayCode(building.code, unitNumber)}</strong>
               </div>
             ) : null}
 
             {msg ? (
-              <div style={{ color: msg.includes("correctamente") ? "#166534" : "#B91C1C", fontWeight: 600 }}>{msg}</div>
+              <div style={{ color: "#1D4ED8", fontWeight: 600 }}>{msg}</div>
             ) : null}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "10px", marginTop: "6px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+                marginTop: "6px",
+              }}
+            >
               <UiButton onClick={handleCancelEdit}>Cancelar</UiButton>
+
               <UiButton type="submit" variant="primary" disabled={saving}>
                 {saving ? "Guardando..." : "Guardar cambios"}
               </UiButton>
