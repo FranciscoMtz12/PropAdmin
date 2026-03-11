@@ -8,6 +8,7 @@ Objetivo:
 - Indicar visualmente si cada unidad tiene limpieza programada activa, inactiva o no tiene programación
 - Mostrar día, hora y duración cuando exista programación
 - Permitir entrar a configurar la limpieza de cada unidad
+- Permitir activar o desactivar rápidamente una programación existente
 
 Importante:
 - La UI está en español
@@ -21,6 +22,8 @@ import {
   CheckCircle2,
   Clock3,
   Home,
+  PauseCircle,
+  PlayCircle,
   Settings2,
   XCircle,
 } from "lucide-react";
@@ -68,6 +71,7 @@ type UnitRow = {
   cleaningDay: string;
   cleaningTime: string;
   cleaningDuration: string;
+  scheduleId: string | null;
 };
 
 const dayLabels: Record<string, string> = {
@@ -92,6 +96,7 @@ export default function CleaningUnitsPage() {
   const [schedules, setSchedules] = useState<CleaningUnitSchedule[]>([]);
   const [loadingPage, setLoadingPage] = useState(true);
   const [msg, setMsg] = useState("");
+  const [togglingScheduleId, setTogglingScheduleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -158,6 +163,34 @@ export default function CleaningUnitsPage() {
     setLoadingPage(false);
   }
 
+  async function toggleScheduleStatus(scheduleId: string, nextActive: boolean) {
+    if (!user?.company_id) return;
+
+    setTogglingScheduleId(scheduleId);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("cleaning_unit_schedules")
+      .update({ active: nextActive })
+      .eq("id", scheduleId)
+      .eq("building_id", buildingId)
+      .eq("company_id", user.company_id);
+
+    setTogglingScheduleId(null);
+
+    if (error) {
+      setMsg("No se pudo actualizar el estado de la programación.");
+      return;
+    }
+
+    await loadPageData();
+    setMsg(
+      nextActive
+        ? "La programación se activó correctamente."
+        : "La programación se desactivó correctamente."
+    );
+  }
+
   function formatDay(dayValue: string | null) {
     if (!dayValue) return "—";
     return dayLabels[dayValue] || dayValue;
@@ -202,6 +235,7 @@ export default function CleaningUnitsPage() {
         cleaningDay: schedule ? formatDay(schedule.day_of_week) : "—",
         cleaningTime: schedule ? formatTime(schedule.start_time) : "—",
         cleaningDuration: schedule ? formatDuration(schedule.duration_hours) : "—",
+        scheduleId: schedule?.id || null,
       };
     });
   }, [units, schedules]);
@@ -273,6 +307,22 @@ export default function CleaningUnitsPage() {
         title="Unidades del edificio"
         subtitle="Verde tenue = activa, amarillo tenue = inactiva."
       >
+        {msg ? (
+          <div
+            style={{
+              marginBottom: 16,
+              padding: "12px 14px",
+              borderRadius: 12,
+              background: msg.includes("correctamente") ? "#ECFDF5" : "#FEF2F2",
+              color: msg.includes("correctamente") ? "#166534" : "#B91C1C",
+              fontSize: 14,
+              fontWeight: 600,
+            }}
+          >
+            {msg}
+          </div>
+        ) : null}
+
         {rows.length === 0 ? (
           <AppEmptyState
             title="No hay unidades registradas"
@@ -285,7 +335,7 @@ export default function CleaningUnitsPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: 900,
+                  minWidth: 980,
                 }}
               >
                 <thead>
@@ -330,6 +380,8 @@ export default function CleaningUnitsPage() {
                         : row.cleaningState === "inactive"
                         ? "Inactiva"
                         : "Sin programar";
+
+                    const isToggling = togglingScheduleId === row.scheduleId;
 
                     return (
                       <tr
@@ -379,12 +431,46 @@ export default function CleaningUnitsPage() {
                         </td>
                         <td style={tableCellStyle}>{row.cleaningDuration}</td>
                         <td style={tableCellStyle}>
-                          <UiButton
-                            href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
-                            icon={<Settings2 size={14} />}
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 8,
+                              alignItems: "flex-start",
+                            }}
                           >
-                            Configurar
-                          </UiButton>
+                            <UiButton
+                              href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
+                              icon={<Settings2 size={14} />}
+                            >
+                              Configurar
+                            </UiButton>
+
+                            {row.scheduleId ? (
+                              <UiButton
+                                onClick={() =>
+                                  toggleScheduleStatus(
+                                    row.scheduleId as string,
+                                    row.cleaningState !== "active"
+                                  )
+                                }
+                                icon={
+                                  row.cleaningState === "active" ? (
+                                    <PauseCircle size={14} />
+                                  ) : (
+                                    <PlayCircle size={14} />
+                                  )
+                                }
+                                disabled={isToggling}
+                              >
+                                {isToggling
+                                  ? "Guardando..."
+                                  : row.cleaningState === "active"
+                                  ? "Desactivar"
+                                  : "Activar"}
+                              </UiButton>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
                     );
