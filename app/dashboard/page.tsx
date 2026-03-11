@@ -56,7 +56,7 @@ export default function DashboardPage() {
   const quickLinks = useMemo(
     () => [
       { label: "Edificios", href: "/buildings", icon: Building2, description: "Portafolio y detalle de edificios" },
-      { label: "Agenda", href: "/agenda", icon: CalendarDays, description: "Vista consolidada de recordatorios" },
+      { label: "Agenda", href: "/calendar", icon: CalendarDays, description: "Vista consolidada de recordatorios" },
       { label: "Pagos", href: "/payments", icon: CreditCard, description: "Seguimiento de pagos recurrentes" },
       { label: "Mantenimiento", href: "/maintenance", icon: Wrench, description: "Actividad operativa y bitácoras" },
     ],

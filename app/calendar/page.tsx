@@ -1,9 +1,9 @@
 import {
-  BellRing,
   CalendarDays,
   Clock3,
   CreditCard,
   Sparkles,
+  Wallet,
   Wrench,
 } from "lucide-react";
 
@@ -44,12 +44,20 @@ export default function CalendarPage() {
           icon={<Wrench size={18} />}
         />
         <MetricCard
-          label="Cobranza"
+          label="Pagos"
           value="Próximamente"
           helper="Mensual"
           icon={<CreditCard size={18} />}
         />
+        <MetricCard
+          label="Cobranza"
+          value="Próximamente"
+          helper="Mensual"
+          icon={<Wallet size={18} />}
+        />
       </AppGrid>
+
+      <div style={{ height: 16 }} />
 
       <SectionCard
         title="Calendario general"
@@ -57,7 +65,7 @@ export default function CalendarPage() {
         icon={<CalendarDays size={18} />}
       >
         <AppCard>
-          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             <div
               style={{
                 display: "flex",
@@ -85,9 +93,10 @@ export default function CalendarPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(7, minmax(160px, 1fr))",
-                gap: 12,
+                gridTemplateColumns: "repeat(7, minmax(170px, 1fr))",
+                gap: 16,
                 overflowX: "auto",
+                paddingBottom: 10,
               }}
             >
               {[
@@ -102,19 +111,19 @@ export default function CalendarPage() {
                 <div
                   key={day}
                   style={{
-                    minWidth: 160,
+                    minWidth: 170,
                     border: "1px solid #E5E7EB",
                     borderRadius: 16,
-                    padding: 14,
+                    padding: 16,
                     background: "#FFFFFF",
                     display: "flex",
                     flexDirection: "column",
-                    gap: 12,
+                    gap: 16,
                   }}
                 >
                   <div
                     style={{
-                      fontSize: 14,
+                      fontSize: 15,
                       fontWeight: 800,
                       color: "#111827",
                     }}
@@ -126,18 +135,19 @@ export default function CalendarPage() {
                     style={{
                       display: "flex",
                       flexDirection: "column",
-                      gap: 10,
+                      gap: 12,
                     }}
                   >
                     <div
                       style={{
                         borderRadius: 12,
-                        padding: "10px 12px",
+                        padding: "12px 12px",
                         background: "#ECFDF5",
                         border: "1px solid #A7F3D0",
                         fontSize: 13,
                         color: "#166534",
                         fontWeight: 700,
+                        lineHeight: 1.4,
                       }}
                     >
                       Limpieza
@@ -146,12 +156,13 @@ export default function CalendarPage() {
                     <div
                       style={{
                         borderRadius: 12,
-                        padding: "10px 12px",
+                        padding: "12px 12px",
                         background: "#FFF7ED",
                         border: "1px solid #FED7AA",
                         fontSize: 13,
                         color: "#9A3412",
                         fontWeight: 700,
+                        lineHeight: 1.4,
                       }}
                     >
                       Mantenimiento
@@ -160,15 +171,31 @@ export default function CalendarPage() {
                     <div
                       style={{
                         borderRadius: 12,
-                        padding: "10px 12px",
+                        padding: "12px 12px",
+                        background: "#EFF6FF",
+                        border: "1px solid #BFDBFE",
+                        fontSize: 13,
+                        color: "#1D4ED8",
+                        fontWeight: 700,
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      Pagos
+                    </div>
+
+                    <div
+                      style={{
+                        borderRadius: 12,
+                        padding: "12px 12px",
                         background: "#FEFCE8",
                         border: "1px solid #FDE68A",
                         fontSize: 13,
                         color: "#A16207",
                         fontWeight: 700,
+                        lineHeight: 1.4,
                       }}
                     >
-                      Pagos / Cobranza
+                      Cobranza
                     </div>
                   </div>
                 </div>
@@ -178,61 +205,84 @@ export default function CalendarPage() {
         </AppCard>
       </SectionCard>
 
-      <SectionCard
-        title="Leyenda"
-        subtitle="Colores base para los eventos del sistema."
-        icon={<BellRing size={18} />}
+      <div style={{ height: 16 }} />
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 16,
+          marginBottom: 16,
+        }}
       >
-        <AppGrid minWidth={220}>
-          <AppCard>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 999,
-                  background: "#10B981",
-                }}
-              />
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-                Limpieza
-              </span>
-            </div>
-          </AppCard>
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#10B981",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Limpieza
+            </span>
+          </div>
+        </AppCard>
 
-          <AppCard>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 999,
-                  background: "#F97316",
-                }}
-              />
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-                Mantenimiento
-              </span>
-            </div>
-          </AppCard>
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#F97316",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Mantenimiento
+            </span>
+          </div>
+        </AppCard>
 
-          <AppCard>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div
-                style={{
-                  width: 14,
-                  height: 14,
-                  borderRadius: 999,
-                  background: "#EAB308",
-                }}
-              />
-              <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-                Pagos / Cobranza
-              </span>
-            </div>
-          </AppCard>
-        </AppGrid>
-      </SectionCard>
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#2563EB",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Pagos
+            </span>
+          </div>
+        </AppCard>
+
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#EAB308",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Cobranza
+            </span>
+          </div>
+        </AppCard>
+      </div>
 
       <SectionCard
         title="Siguiente fase"

@@ -44,7 +44,7 @@ This file gives AI tools and developers a fast structural map of the project.
 - `app/dashboard/page.tsx`
   Dashboard module
 
-- `app/agenda/page.tsx`
+- `app/calendar/page.tsx`
   Agenda / scheduling module
 
 - `app/payments/page.tsx`
