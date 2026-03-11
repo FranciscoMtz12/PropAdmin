@@ -3,13 +3,11 @@
 /*
   Cleaning landing page for a building.
 
-  Esta versión mezcla lo mejor de las dos ideas:
-  - Mantiene el look visual que ya te gustaba:
-    - colores por categoría
-    - nombre del edificio
-    - dirección
-  - Simplifica el contenido para que no se vea sobrecargado
-  - Deja navegación clara hacia:
+  Esta versión:
+  - mantiene colores por categoría
+  - mantiene nombre y dirección del edificio
+  - muestra un resumen real y más útil por módulo
+  - deja navegación clara hacia:
     - exterior
     - common
     - units
@@ -17,7 +15,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Brush, Building2, Home, Leaf, Sparkles } from "lucide-react";
+import {
+  ArrowLeft,
+  Brush,
+  Building2,
+  CalendarClock,
+  CheckCircle2,
+  Home,
+  Leaf,
+  Sparkles,
+} from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -39,6 +46,28 @@ type Building = {
   code: string | null;
 };
 
+type CleaningBuildingSchedule = {
+  id: string;
+  cleaning_type: "exterior" | "common";
+  day_of_week: string;
+  time_block: "morning" | "afternoon";
+};
+
+type Unit = {
+  id: string;
+  unit_number: string | null;
+  display_code: string | null;
+};
+
+type CleaningUnitSchedule = {
+  id: string;
+  unit_id: string;
+  day_of_week: string;
+  start_time: string;
+  duration_hours: number;
+  active: boolean;
+};
+
 type CleaningArea = {
   key: string;
   title: string;
@@ -50,6 +79,18 @@ type CleaningArea = {
   icon: React.ReactNode;
   href: string;
   buttonLabel: string;
+  summaryTitle: string;
+  summaryLines: string[];
+};
+
+const dayLabels: Record<string, string> = {
+  monday: "Lunes",
+  tuesday: "Martes",
+  wednesday: "Miércoles",
+  thursday: "Jueves",
+  friday: "Viernes",
+  saturday: "Sábado",
+  sunday: "Domingo",
 };
 
 export default function BuildingCleaningPage() {
@@ -60,7 +101,10 @@ export default function BuildingCleaningPage() {
   const { user, loading } = useCurrentUser();
 
   const [building, setBuilding] = useState<Building | null>(null);
-  const [loadingBuilding, setLoadingBuilding] = useState(true);
+  const [buildingSchedules, setBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
+  const [unitSchedules, setUnitSchedules] = useState<CleaningUnitSchedule[]>([]);
+  const [units, setUnits] = useState<Unit[]>([]);
+  const [loadingPage, setLoadingPage] = useState(true);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -71,35 +115,171 @@ export default function BuildingCleaningPage() {
 
   useEffect(() => {
     if (user?.company_id && buildingId) {
-      loadBuilding();
+      loadPageData();
     }
   }, [user, buildingId]);
 
-  async function loadBuilding() {
+  async function loadPageData() {
     if (!user?.company_id || !buildingId) return;
 
-    setLoadingBuilding(true);
+    setLoadingPage(true);
     setMsg("");
 
-    const { data, error } = await supabase
-      .from("buildings")
-      .select("id, company_id, name, address, code")
-      .eq("id", buildingId)
-      .eq("company_id", user.company_id)
-      .single();
+    const [buildingRes, buildingSchedulesRes, unitSchedulesRes, unitsRes] = await Promise.all([
+      supabase
+        .from("buildings")
+        .select("id, company_id, name, address, code")
+        .eq("id", buildingId)
+        .eq("company_id", user.company_id)
+        .single(),
 
-    if (error || !data) {
+      supabase
+        .from("cleaning_building_schedules")
+        .select("id, cleaning_type, day_of_week, time_block")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id),
+
+      supabase
+        .from("cleaning_unit_schedules")
+        .select("id, unit_id, day_of_week, start_time, duration_hours, active")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .eq("active", true),
+
+      supabase
+        .from("units")
+        .select("id, unit_number, display_code")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id),
+    ]);
+
+    if (buildingRes.error || !buildingRes.data) {
       setMsg("No se pudo cargar la información del edificio.");
-      setLoadingBuilding(false);
+      setLoadingPage(false);
       return;
     }
 
-    setBuilding(data as Building);
-    setLoadingBuilding(false);
+    if (buildingSchedulesRes.error) {
+      setMsg("No se pudo cargar la programación de limpieza del edificio.");
+      setLoadingPage(false);
+      return;
+    }
+
+    if (unitSchedulesRes.error) {
+      setMsg("No se pudo cargar la programación interior de unidades.");
+      setLoadingPage(false);
+      return;
+    }
+
+    if (unitsRes.error) {
+      setMsg("No se pudieron cargar las unidades del edificio.");
+      setLoadingPage(false);
+      return;
+    }
+
+    setBuilding(buildingRes.data as Building);
+    setBuildingSchedules((buildingSchedulesRes.data as CleaningBuildingSchedule[]) || []);
+    setUnitSchedules((unitSchedulesRes.data as CleaningUnitSchedule[]) || []);
+    setUnits((unitsRes.data as Unit[]) || []);
+    setLoadingPage(false);
   }
 
-  const cleaningAreas = useMemo<CleaningArea[]>(
-    () => [
+  function formatDay(dayValue: string) {
+    return dayLabels[dayValue] || dayValue;
+  }
+
+  function formatTime(timeValue: string | null) {
+    if (!timeValue) return "—";
+
+    const parts = timeValue.split(":");
+    if (parts.length < 2) return timeValue;
+
+    return `${parts[0]}:${parts[1]}`;
+  }
+
+  function formatDuration(duration: number | null) {
+    if (!duration) return "—";
+    return `${duration} h`;
+  }
+
+  function buildBuildingSummaryLines(
+    schedules: CleaningBuildingSchedule[]
+  ): string[] {
+    if (schedules.length === 0) {
+      return ["Sin programación"];
+    }
+
+    const morning = schedules
+      .filter((item) => item.time_block === "morning")
+      .map((item) => formatDay(item.day_of_week));
+
+    const afternoon = schedules
+      .filter((item) => item.time_block === "afternoon")
+      .map((item) => formatDay(item.day_of_week));
+
+    const lines: string[] = [];
+
+    if (morning.length > 0) {
+      lines.push(`Mañana: ${morning.join(", ")}`);
+    }
+
+    if (afternoon.length > 0) {
+      lines.push(`Tarde: ${afternoon.join(", ")}`);
+    }
+
+    return lines;
+  }
+
+  function buildUnitSummaryLines(): string[] {
+    if (unitSchedules.length === 0) {
+      return ["Sin unidades programadas"];
+    }
+
+    const unitMap = new Map<string, Unit>();
+    units.forEach((unit) => {
+      unitMap.set(unit.id, unit);
+    });
+
+    const orderedSchedules = [...unitSchedules].sort((a, b) => {
+      const aUnit = unitMap.get(a.unit_id);
+      const bUnit = unitMap.get(b.unit_id);
+
+      const aLabel = aUnit?.display_code || aUnit?.unit_number || "";
+      const bLabel = bUnit?.display_code || bUnit?.unit_number || "";
+
+      return aLabel.localeCompare(bLabel);
+    });
+
+    const visibleSchedules = orderedSchedules.slice(0, 3);
+
+    const lines = visibleSchedules.map((schedule) => {
+      const unit = unitMap.get(schedule.unit_id);
+      const unitLabel =
+        unit?.display_code || unit?.unit_number || "Unidad";
+      const dayLabel = formatDay(schedule.day_of_week);
+      const timeLabel = formatTime(schedule.start_time);
+      const durationLabel = formatDuration(schedule.duration_hours);
+
+      return `${unitLabel}: ${dayLabel}, ${timeLabel}, ${durationLabel}`;
+    });
+
+    if (orderedSchedules.length > 3) {
+      lines.push(`+ ${orderedSchedules.length - 3} unidades más`);
+    }
+
+    return lines;
+  }
+
+  const cleaningAreas = useMemo<CleaningArea[]>(() => {
+    const exteriorSchedules = buildingSchedules.filter(
+      (item) => item.cleaning_type === "exterior"
+    );
+
+    const commonSchedules = buildingSchedules.filter(
+      (item) => item.cleaning_type === "common"
+    );
+
+    return [
       {
         key: "exterior",
         title: "Exterior del edificio",
@@ -112,6 +292,8 @@ export default function BuildingCleaningPage() {
         icon: <Leaf size={18} />,
         href: `/buildings/${buildingId}/cleaning/exterior`,
         buttonLabel: "Ver programación",
+        summaryTitle: "Programación",
+        summaryLines: buildBuildingSummaryLines(exteriorSchedules),
       },
       {
         key: "common",
@@ -125,6 +307,8 @@ export default function BuildingCleaningPage() {
         icon: <Brush size={18} />,
         href: `/buildings/${buildingId}/cleaning/common`,
         buttonLabel: "Ver programación",
+        summaryTitle: "Programación",
+        summaryLines: buildBuildingSummaryLines(commonSchedules),
       },
       {
         key: "units",
@@ -138,28 +322,24 @@ export default function BuildingCleaningPage() {
         icon: <Home size={18} />,
         href: `/buildings/${buildingId}/cleaning/units`,
         buttonLabel: "Ver unidades",
+        summaryTitle: "Horario con día",
+        summaryLines: buildUnitSummaryLines(),
       },
-    ],
-    [buildingId]
-  );
+    ];
+  }, [buildingId, buildingSchedules, unitSchedules, units]);
 
-  if (loading) {
+  const totalBuildingSchedules = buildingSchedules.length;
+  const totalUnitSchedules = unitSchedules.filter((item) => item.active).length;
+
+  if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando usuario...</div>
+        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando...</div>
       </PageContainer>
     );
   }
 
   if (!user) return null;
-
-  if (loadingBuilding) {
-    return (
-      <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando edificio...</div>
-      </PageContainer>
-    );
-  }
 
   if (!building) {
     return (
@@ -192,7 +372,7 @@ export default function BuildingCleaningPage() {
         subtitle="Contexto base para la programación de limpieza."
         icon={<Building2 size={18} />}
       >
-        <AppGrid minWidth={280}>
+        <AppGrid minWidth={240}>
           <AppCard>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
@@ -230,13 +410,57 @@ export default function BuildingCleaningPage() {
               </span>
             </div>
           </AppCard>
+
+          <AppCard>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#6B7280",
+                }}
+              >
+                Programación edificio
+              </span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+                {totalBuildingSchedules}
+              </span>
+              <span style={{ fontSize: 13, color: "#6B7280" }}>
+                Exterior + áreas comunes
+              </span>
+            </div>
+          </AppCard>
+
+          <AppCard>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                  color: "#6B7280",
+                }}
+              >
+                Unidades activas
+              </span>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+                {totalUnitSchedules}
+              </span>
+              <span style={{ fontSize: 13, color: "#6B7280" }}>
+                Limpieza interior programada
+              </span>
+            </div>
+          </AppCard>
         </AppGrid>
       </SectionCard>
 
       <SectionCard
         title="Áreas de limpieza"
         subtitle="Selecciona qué tipo de limpieza quieres programar."
-        icon={<Brush size={18} />}
+        icon={<CalendarClock size={18} />}
       >
         <AppGrid minWidth={300}>
           {cleaningAreas.map((area) => (
@@ -311,11 +535,68 @@ export default function BuildingCleaningPage() {
 
                 <div
                   style={{
+                    padding: "14px 16px",
+                    borderRadius: 14,
+                    background: "rgba(255,255,255,0.7)",
+                    border: `1px solid ${area.border}`,
                     display: "flex",
-                    justifyContent: "flex-start",
+                    flexDirection: "column",
+                    gap: 8,
+                    minHeight: 112,
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      letterSpacing: "0.04em",
+                      textTransform: "uppercase",
+                      color: "#6B7280",
+                    }}
+                  >
+                    {area.summaryTitle}
+                  </span>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {area.summaryLines.map((line, index) => (
+                      <span
+                        key={`${area.key}-${index}`}
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 600,
+                          color: "#111827",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {line}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12,
                     paddingTop: 4,
                   }}
                 >
+                  <div
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      color: area.color,
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <CheckCircle2 size={14} />
+                    Módulo listo
+                  </div>
+
                   <UiButton href={area.href}>{area.buttonLabel}</UiButton>
                 </div>
               </div>
