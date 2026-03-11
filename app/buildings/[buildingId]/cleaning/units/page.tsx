@@ -7,15 +7,23 @@ Objetivo:
 - Mostrar todas las unidades del edificio
 - Indicar visualmente si cada unidad tiene limpieza programada o no
 - Mostrar día, hora y duración cuando exista programación activa
+- Permitir entrar a configurar la limpieza de cada unidad
 
 Importante:
 - La UI está en español
 - La base de datos guarda day_of_week en inglés
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, CheckCircle2, Clock3, Home, XCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  Clock3,
+  Home,
+  Settings2,
+  XCircle,
+} from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -162,19 +170,11 @@ export default function CleaningUnitsPage() {
     const parts = timeValue.split(":");
     if (parts.length < 2) return timeValue;
 
-    const hour = parts[0];
-    const minute = parts[1];
-
-    return `${hour}:${minute}`;
+    return `${parts[0]}:${parts[1]}`;
   }
 
   function formatDuration(duration: number | null) {
     if (!duration) return "—";
-
-    if (Number.isInteger(duration)) {
-      return `${duration} h`;
-    }
-
     return `${duration} h`;
   }
 
@@ -252,35 +252,13 @@ export default function CleaningUnitsPage() {
             }}
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "#6B7280",
-                }}
-              >
-                Edificio
-              </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
-                {building.name}
-              </span>
+              <span style={labelTinyStyle}>Edificio</span>
+              <span style={valueStrongStyle}>{building.name}</span>
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <span
-                style={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  color: "#6B7280",
-                }}
-              >
-                Dirección
-              </span>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>
+              <span style={labelTinyStyle}>Dirección</span>
+              <span style={valueStrongStyle}>
                 {building.address || "Sin dirección registrada"}
               </span>
             </div>
@@ -304,7 +282,7 @@ export default function CleaningUnitsPage() {
                 style={{
                   width: "100%",
                   borderCollapse: "collapse",
-                  minWidth: 760,
+                  minWidth: 900,
                 }}
               >
                 <thead>
@@ -316,6 +294,7 @@ export default function CleaningUnitsPage() {
                     <th style={tableHeadStyle}>Día</th>
                     <th style={tableHeadStyle}>Hora</th>
                     <th style={tableHeadStyle}>Duración</th>
+                    <th style={tableHeadStyle}>Acción</th>
                   </tr>
                 </thead>
 
@@ -361,6 +340,14 @@ export default function CleaningUnitsPage() {
                         </span>
                       </td>
                       <td style={tableCellStyle}>{row.cleaningDuration}</td>
+                      <td style={tableCellStyle}>
+                        <UiButton
+                          href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
+                          icon={<Settings2 size={14} />}
+                        >
+                          Configurar
+                        </UiButton>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -373,7 +360,21 @@ export default function CleaningUnitsPage() {
   );
 }
 
-const tableHeadStyle: React.CSSProperties = {
+const labelTinyStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  color: "#6B7280",
+};
+
+const valueStrongStyle: CSSProperties = {
+  fontSize: 16,
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const tableHeadStyle: CSSProperties = {
   textAlign: "left",
   padding: "12px 14px",
   fontSize: 12,
@@ -385,14 +386,14 @@ const tableHeadStyle: React.CSSProperties = {
   background: "#F9FAFB",
 };
 
-const tableCellStyle: React.CSSProperties = {
+const tableCellStyle: CSSProperties = {
   padding: "14px",
   fontSize: 14,
   color: "#374151",
   verticalAlign: "middle",
 };
 
-const tableCellStyleStrong: React.CSSProperties = {
+const tableCellStyleStrong: CSSProperties = {
   ...tableCellStyle,
   fontWeight: 700,
   color: "#111827",
