@@ -1,32 +1,23 @@
 "use client";
 
 /*
-  Página de Cleaning del edificio.
+  Cleaning landing page for a building.
 
-  Objetivo de esta versión:
-  - Mantener la base ya conectada al building detail.
-  - Mejorar la presentación del módulo para que se sienta alineado al design system.
-  - Dejar claro que Cleaning será un módulo separado de Maintenance.
-  - Preparar el terreno para próximas fases:
-    1) detalle por categoría
-    2) tareas recurrentes
-    3) responsables
-    4) agenda / calendario
+  Esta versión mezcla lo mejor de las dos ideas:
+  - Mantiene el look visual que ya te gustaba:
+    - colores por categoría
+    - nombre del edificio
+    - dirección
+  - Simplifica el contenido para que no se vea sobrecargado
+  - Deja navegación clara hacia:
+    - exterior
+    - common
+    - units
 */
 
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import {
-  ArrowLeft,
-  Brush,
-  Building2,
-  CalendarClock,
-  CheckCircle2,
-  Home,
-  Leaf,
-  Sparkles,
-  Wrench,
-} from "lucide-react";
+import { ArrowLeft, Brush, Building2, Home, Leaf, Sparkles } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -34,7 +25,6 @@ import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
-import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppIconBox from "@/components/AppIconBox";
@@ -58,7 +48,8 @@ type CleaningArea = {
   border: string;
   badgeText: string;
   icon: React.ReactNode;
-  bullets: string[];
+  href: string;
+  buttonLabel: string;
 };
 
 export default function BuildingCleaningPage() {
@@ -113,52 +104,43 @@ export default function BuildingCleaningPage() {
         key: "exterior",
         title: "Exterior del edificio",
         description:
-          "Controla la limpieza de accesos, fachada, estacionamiento y perímetro general.",
+          "Programa qué días se limpia el exterior del edificio, con bloques simples de mañana y tarde.",
         color: "#166534",
         background: "#F0FDF4",
         border: "#BBF7D0",
         badgeText: "Exterior",
         icon: <Leaf size={18} />,
-        bullets: [
-          "Fachada y acceso principal",
-          "Perímetro y estacionamiento",
-          "Basura exterior y presentación general",
-        ],
+        href: `/buildings/${buildingId}/cleaning/exterior`,
+        buttonLabel: "Ver programación",
       },
       {
         key: "common",
         title: "Áreas comunes",
         description:
-          "Organiza pasillos, escaleras, lobby y espacios compartidos del edificio.",
+          "Define los días de limpieza para pasillos, lobby y espacios compartidos del edificio.",
         color: "#1D4ED8",
         background: "#EFF6FF",
         border: "#BFDBFE",
         badgeText: "Común",
         icon: <Brush size={18} />,
-        bullets: [
-          "Lobby, escaleras y elevadores",
-          "Pasillos y zonas de circulación",
-          "Áreas de convivencia o amenities",
-        ],
+        href: `/buildings/${buildingId}/cleaning/common`,
+        buttonLabel: "Ver programación",
       },
       {
         key: "units",
         title: "Interior de unidades",
         description:
-          "Prepara la operación para limpiezas profundas, entregas y rotación de departamentos.",
+          "Administra la limpieza interior por departamento, con horario y duración estimada.",
         color: "#7C3AED",
         background: "#F5F3FF",
         border: "#DDD6FE",
         badgeText: "Unidad",
         icon: <Home size={18} />,
-        bullets: [
-          "Limpieza pre check-in / post salida",
-          "Limpieza profunda de unidades",
-          "Seguimiento de estándar interior",
-        ],
+        href: `/buildings/${buildingId}/cleaning/units`,
+        buttonLabel: "Ver unidades",
       },
     ],
-    []
+    [buildingId]
   );
 
   if (loading) {
@@ -193,57 +175,21 @@ export default function BuildingCleaningPage() {
     <PageContainer>
       <PageHeader
         title="Cleaning"
-        subtitle="Módulo operativo para organizar la limpieza del edificio por áreas, con una base lista para crecer hacia tareas, responsables y agenda."
+        subtitle="Configura la programación de limpieza del edificio de forma simple y visual."
         titleIcon={<Sparkles size={18} />}
         actions={
-          <>
-            <UiButton
-              href={`/buildings/${buildingId}`}
-              icon={<ArrowLeft size={16} />}
-            >
-              Volver al edificio
-            </UiButton>
-
-            <UiButton
-              href={`/buildings/${buildingId}/maintenance`}
-              icon={<Wrench size={16} />}
-            >
-              Mantenimiento
-            </UiButton>
-          </>
+          <UiButton
+            href={`/buildings/${buildingId}`}
+            icon={<ArrowLeft size={16} />}
+          >
+            Volver al edificio
+          </UiButton>
         }
       />
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Edificio"
-          value={building.name}
-          helper="Activo"
-          icon={<Building2 size={18} />}
-        />
-        <MetricCard
-          label="Código"
-          value={building.code || "Sin código"}
-          helper="Referencia"
-          icon={<CheckCircle2 size={18} />}
-        />
-        <MetricCard
-          label="Categorías de limpieza"
-          value={cleaningAreas.length}
-          helper="Base del módulo"
-          icon={<Brush size={18} />}
-        />
-        <MetricCard
-          label="Agenda"
-          value="Próximamente"
-          helper="Siguiente fase"
-          icon={<CalendarClock size={18} />}
-        />
-      </AppGrid>
-
       <SectionCard
         title="Resumen del edificio"
-        subtitle="Contexto base del inmueble para trabajar la operación de limpieza."
+        subtitle="Contexto base para la programación de limpieza."
         icon={<Building2 size={18} />}
       >
         <AppGrid minWidth={280}>
@@ -289,7 +235,7 @@ export default function BuildingCleaningPage() {
 
       <SectionCard
         title="Áreas de limpieza"
-        subtitle="Cada bloque representa una futura línea operativa separada dentro del módulo de Cleaning."
+        subtitle="Selecciona qué tipo de limpieza quieres programar."
         icon={<Brush size={18} />}
       >
         <AppGrid minWidth={300}>
@@ -363,32 +309,6 @@ export default function BuildingCleaningPage() {
                   {area.description}
                 </p>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {area.bullets.map((bullet) => (
-                    <div
-                      key={bullet}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 8,
-                        fontSize: 14,
-                        color: "#374151",
-                      }}
-                    >
-                      <span
-                        style={{
-                          width: 8,
-                          height: 8,
-                          borderRadius: 999,
-                          background: area.color,
-                          flexShrink: 0,
-                        }}
-                      />
-                      <span>{bullet}</span>
-                    </div>
-                  ))}
-                </div>
-
                 <div
                   style={{
                     display: "flex",
@@ -396,97 +316,11 @@ export default function BuildingCleaningPage() {
                     paddingTop: 4,
                   }}
                 >
-                  <UiButton disabled>Ver detalle (próximamente)</UiButton>
+                  <UiButton href={area.href}>{area.buttonLabel}</UiButton>
                 </div>
               </div>
             </AppCard>
           ))}
-        </AppGrid>
-      </SectionCard>
-
-      <SectionCard
-        title="Qué sigue en este módulo"
-        subtitle="Esta parte deja claro el crecimiento lógico de Cleaning sin mezclarlo con Maintenance."
-        icon={<CalendarClock size={18} />}
-      >
-        <AppGrid minWidth={260}>
-          <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#111827",
-                }}
-              >
-                1. Detalle por categoría
-              </h3>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "#4B5563",
-                }}
-              >
-                Crear una vista individual para Exterior, Áreas comunes e Interior de
-                unidades.
-              </p>
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#111827",
-                }}
-              >
-                2. Tareas recurrentes
-              </h3>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "#4B5563",
-                }}
-              >
-                Registrar frecuencia, checklist, prioridad y estatus operativo de cada
-                limpieza.
-              </p>
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <h3
-                style={{
-                  margin: 0,
-                  fontSize: 16,
-                  fontWeight: 700,
-                  color: "#111827",
-                }}
-              >
-                3. Agenda y responsables
-              </h3>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: 14,
-                  lineHeight: 1.6,
-                  color: "#4B5563",
-                }}
-              >
-                Conectar el módulo con programación operativa, calendario y personal
-                asignado.
-              </p>
-            </div>
-          </AppCard>
         </AppGrid>
       </SectionCard>
     </PageContainer>
