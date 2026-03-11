@@ -1,5 +1,19 @@
 "use client";
 
+/*
+  Calendario global del sistema.
+
+  Esta versión mantiene lo que ya funcionaba para limpieza y agrega
+  mantenimiento real usando maintenance_logs.
+
+  Reglas que respeta:
+  - UI en español
+  - vistas Semana / Mes / Año
+  - no mostrar domingo
+  - usar lógica de fechas consistente
+  - mantener el design system actual
+*/
+
 import { useEffect, useMemo, useState } from "react";
 import {
   CalendarDays,
@@ -53,8 +67,25 @@ type CleaningUnitSchedule = {
   active: boolean;
 };
 
+type MaintenanceLog = {
+  id: string;
+  title: string;
+  log_type: string | null;
+  performed_at: string | null;
+  next_due_at: string | null;
+  status: string;
+  asset_name_snapshot: string | null;
+  asset_type_snapshot: string | null;
+  category_name_snapshot: string | null;
+  building_id: string | null;
+  unit_id: string | null;
+  asset_id: string | null;
+};
+
 type CalendarEvent = {
   id: string;
+  module: "cleaning" | "maintenance" | "payments" | "collections";
+  recurrence: "recurring" | "dated";
   dayKey: string;
   isoDate: string;
   title: string;
@@ -107,6 +138,18 @@ const MONTH_LABELS = [
   "Diciembre",
 ];
 
+const CLEANING_COLORS = {
+  background: "#ECFDF5",
+  border: "#A7F3D0",
+  text: "#166534",
+};
+
+const MAINTENANCE_COLORS = {
+  background: "#FFF7ED",
+  border: "#FDBA74",
+  text: "#9A3412",
+};
+
 function getStartOfWeek(date: Date) {
   const copy = new Date(date);
   const jsDay = copy.getDay();
@@ -119,6 +162,7 @@ function getStartOfWeek(date: Date) {
 function addDays(date: Date, days: number) {
   const copy = new Date(date);
   copy.setDate(copy.getDate() + days);
+  copy.setHours(0, 0, 0, 0);
   return copy;
 }
 
@@ -156,11 +200,18 @@ function formatYearLabel(date: Date) {
   return `${date.getFullYear()}`;
 }
 
+/*
+  Extrae solo YYYY-MM-DD.
+  Esto evita que la zona horaria cambie el día visual.
+*/
 function getDateOnlyKey(dateValue: string | null) {
   if (!dateValue) return "";
   return dateValue.slice(0, 10);
 }
 
+/*
+  Convierte YYYY-MM-DD a Date local sin depender de UTC.
+*/
 function parseDateOnly(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day);
@@ -180,6 +231,13 @@ function getDayKeyFromDateValue(dateValue: string | null) {
   if (jsDay === 4) return "thursday";
   if (jsDay === 5) return "friday";
   return "saturday";
+}
+
+function dateToIsoKey(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function formatTime(timeValue: string | null) {
@@ -226,6 +284,7 @@ export default function CalendarPage() {
   const [units, setUnits] = useState<Unit[]>([]);
   const [buildingSchedules, setBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
   const [unitSchedules, setUnitSchedules] = useState<CleaningUnitSchedule[]>([]);
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
   const [loadingPage, setLoadingPage] = useState(true);
   const [msg, setMsg] = useState("");
 
@@ -249,30 +308,43 @@ export default function CalendarPage() {
     setLoadingPage(true);
     setMsg("");
 
-    const [buildingsRes, unitsRes, buildingSchedulesRes, unitSchedulesRes] =
-      await Promise.all([
-        supabase
-          .from("buildings")
-          .select("id, name")
-          .eq("company_id", user.company_id)
-          .order("name", { ascending: true }),
+    const [
+      buildingsRes,
+      unitsRes,
+      buildingSchedulesRes,
+      unitSchedulesRes,
+      maintenanceLogsRes,
+    ] = await Promise.all([
+      supabase
+        .from("buildings")
+        .select("id, name")
+        .eq("company_id", user.company_id)
+        .order("name", { ascending: true }),
 
-        supabase
-          .from("units")
-          .select("id, building_id, unit_number, display_code")
-          .eq("company_id", user.company_id),
+      supabase
+        .from("units")
+        .select("id, building_id, unit_number, display_code")
+        .eq("company_id", user.company_id),
 
-        supabase
-          .from("cleaning_building_schedules")
-          .select("id, building_id, cleaning_type, day_of_week, time_block")
-          .eq("company_id", user.company_id),
+      supabase
+        .from("cleaning_building_schedules")
+        .select("id, building_id, cleaning_type, day_of_week, time_block")
+        .eq("company_id", user.company_id),
 
-        supabase
-          .from("cleaning_unit_schedules")
-          .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active")
-          .eq("company_id", user.company_id)
-          .eq("active", true),
-      ]);
+      supabase
+        .from("cleaning_unit_schedules")
+        .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active")
+        .eq("company_id", user.company_id)
+        .eq("active", true),
+
+      supabase
+        .from("maintenance_logs")
+        .select(
+          "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
+        )
+        .eq("company_id", user.company_id)
+        .order("created_at", { ascending: false }),
+    ]);
 
     if (buildingsRes.error) {
       setMsg("No se pudieron cargar los edificios.");
@@ -298,10 +370,17 @@ export default function CalendarPage() {
       return;
     }
 
+    if (maintenanceLogsRes.error) {
+      setMsg("No se pudieron cargar los registros de mantenimiento.");
+      setLoadingPage(false);
+      return;
+    }
+
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
     setBuildingSchedules((buildingSchedulesRes.data as CleaningBuildingSchedule[]) || []);
     setUnitSchedules((unitSchedulesRes.data as CleaningUnitSchedule[]) || []);
+    setMaintenanceLogs((maintenanceLogsRes.data as MaintenanceLog[]) || []);
     setLoadingPage(false);
   }
 
@@ -315,7 +394,7 @@ export default function CalendarPage() {
         key: dayKey,
         label: DAY_LABELS[dayKey],
         shortDate: formatShortDate(date),
-        isoDate: date.toISOString().slice(0, 10),
+        isoDate: dateToIsoKey(date),
       };
     });
   }, [weekStart]);
@@ -337,6 +416,11 @@ export default function CalendarPage() {
         ? unitSchedules
         : unitSchedules.filter((item) => item.building_id === selectedBuildingId);
 
+    const filteredMaintenanceLogs =
+      selectedBuildingId === "all"
+        ? maintenanceLogs
+        : maintenanceLogs.filter((item) => item.building_id === selectedBuildingId);
+
     const buildingEvents: CalendarEvent[] = filteredBuildingSchedules
       .filter((schedule) => schedule.day_of_week !== "sunday")
       .map((schedule) => {
@@ -349,13 +433,15 @@ export default function CalendarPage() {
 
         return {
           id: `building-${schedule.id}`,
+          module: "cleaning",
+          recurrence: "recurring",
           dayKey: schedule.day_of_week,
           isoDate: "",
           title: `${buildingName} · ${typeLabel}`,
           subtitle: blockLabel,
-          colorBackground: "#ECFDF5",
-          colorBorder: "#A7F3D0",
-          colorText: "#166534",
+          colorBackground: CLEANING_COLORS.background,
+          colorBorder: CLEANING_COLORS.border,
+          colorText: CLEANING_COLORS.text,
         };
       });
 
@@ -370,34 +456,130 @@ export default function CalendarPage() {
 
         return {
           id: `unit-${schedule.id}`,
+          module: "cleaning",
+          recurrence: "recurring",
           dayKey: schedule.day_of_week,
           isoDate: "",
           title: `${buildingName} · Unidad ${unitLabel}`,
           subtitle: `${formatTime(schedule.start_time)} · ${formatDuration(schedule.duration_hours)}`,
-          colorBackground: "#ECFDF5",
-          colorBorder: "#A7F3D0",
-          colorText: "#166534",
+          colorBackground: CLEANING_COLORS.background,
+          colorBorder: CLEANING_COLORS.border,
+          colorText: CLEANING_COLORS.text,
         };
       });
 
-    return [...buildingEvents, ...unitEvents].sort((a, b) =>
-      a.title.localeCompare(b.title)
-    );
-  }, [buildings, units, buildingSchedules, unitSchedules, selectedBuildingId]);
+    /*
+      Mantenimiento real:
+      - performed_at = trabajo ya realizado
+      - next_due_at = próxima atención programada
+      Ambos se convierten en eventos fechados reales.
+    */
+    const maintenanceEvents: CalendarEvent[] = [];
+
+    filteredMaintenanceLogs.forEach((log) => {
+      const building = log.building_id ? buildingMap.get(log.building_id) : null;
+      const unit = log.unit_id ? unitMap.get(log.unit_id) : null;
+
+      const buildingName = building?.name || "Edificio";
+      const unitLabel = unit?.display_code || unit?.unit_number || "General";
+
+      const baseTitle =
+        log.title?.trim() ||
+        log.asset_name_snapshot?.trim() ||
+        "Mantenimiento";
+
+      const subtitleParts = [
+        buildingName,
+        `Unidad ${unitLabel}`,
+        log.category_name_snapshot || log.asset_type_snapshot || log.log_type || log.status,
+      ].filter(Boolean);
+
+      const performedDateKey = getDateOnlyKey(log.performed_at);
+      if (performedDateKey) {
+        const performedDayKey = getDayKeyFromDateValue(performedDateKey);
+
+        if (performedDayKey !== "sunday") {
+          maintenanceEvents.push({
+            id: `maintenance-done-${log.id}`,
+            module: "maintenance",
+            recurrence: "dated",
+            dayKey: performedDayKey,
+            isoDate: performedDateKey,
+            title: `${baseTitle} · Realizado`,
+            subtitle: subtitleParts.join(" · "),
+            colorBackground: MAINTENANCE_COLORS.background,
+            colorBorder: MAINTENANCE_COLORS.border,
+            colorText: MAINTENANCE_COLORS.text,
+          });
+        }
+      }
+
+      const nextDueDateKey = getDateOnlyKey(log.next_due_at);
+      if (nextDueDateKey) {
+        const nextDueDayKey = getDayKeyFromDateValue(nextDueDateKey);
+
+        if (nextDueDayKey !== "sunday") {
+          maintenanceEvents.push({
+            id: `maintenance-next-${log.id}`,
+            module: "maintenance",
+            recurrence: "dated",
+            dayKey: nextDueDayKey,
+            isoDate: nextDueDateKey,
+            title: `${baseTitle} · Programado`,
+            subtitle: subtitleParts.join(" · "),
+            colorBackground: MAINTENANCE_COLORS.background,
+            colorBorder: MAINTENANCE_COLORS.border,
+            colorText: MAINTENANCE_COLORS.text,
+          });
+        }
+      }
+    });
+
+    return [...buildingEvents, ...unitEvents, ...maintenanceEvents].sort((a, b) => {
+      if (a.module !== b.module) return a.module.localeCompare(b.module);
+      return a.title.localeCompare(b.title);
+    });
+  }, [
+    buildings,
+    units,
+    buildingSchedules,
+    unitSchedules,
+    maintenanceLogs,
+    selectedBuildingId,
+  ]);
+
+  /*
+    Helper central:
+    devuelve lo que debe verse en una fecha concreta.
+
+    - eventos recurrentes: limpieza por día de semana
+    - eventos fechados: mantenimiento por fecha exacta
+  */
+  const getEventsForDate = useMemo(() => {
+    return (isoDate: string) => {
+      const dayKey = getDayKeyFromDateValue(isoDate);
+
+      return events
+        .filter((event) => {
+          if (event.recurrence === "recurring") {
+            return event.dayKey === dayKey;
+          }
+
+          return event.isoDate === isoDate;
+        })
+        .sort((a, b) => a.title.localeCompare(b.title));
+    };
+  }, [events]);
 
   const weekEventsByDay = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
 
-    DAY_ORDER.forEach((day) => map.set(day, []));
-
-    events.forEach((event) => {
-      const current = map.get(event.dayKey) || [];
-      current.push(event);
-      map.set(event.dayKey, current);
+    weekDays.forEach((day) => {
+      map.set(day.key, getEventsForDate(day.isoDate));
     });
 
     return map;
-  }, [events]);
+  }, [weekDays, getEventsForDate]);
 
   const monthDays = useMemo(() => {
     const monthStart = getStartOfMonth(referenceDate);
@@ -407,7 +589,7 @@ export default function CalendarPage() {
     let cursor = new Date(monthStart);
 
     while (cursor <= monthEnd) {
-      const isoDate = cursor.toISOString().slice(0, 10);
+      const isoDate = dateToIsoKey(cursor);
       const dayKey = getDayKeyFromDateValue(isoDate);
 
       if (dayKey !== "sunday") {
@@ -426,23 +608,13 @@ export default function CalendarPage() {
 
   const monthEventsByDate = useMemo(() => {
     const map = new Map<string, CalendarEvent[]>();
-    monthDays.forEach((day) => map.set(day.isoDate, []));
 
     monthDays.forEach((day) => {
-      const dayKey = getDayKeyFromDateValue(day.isoDate);
-      const dayEvents = events
-        .filter((event) => event.dayKey === dayKey)
-        .map((event) => ({
-          ...event,
-          id: `${event.id}-${day.isoDate}`,
-          isoDate: day.isoDate,
-        }));
-
-      map.set(day.isoDate, dayEvents);
+      map.set(day.isoDate, getEventsForDate(day.isoDate));
     });
 
     return map;
-  }, [monthDays, events]);
+  }, [monthDays, getEventsForDate]);
 
   const yearSummary = useMemo(() => {
     const targetYear = referenceDate.getFullYear();
@@ -451,26 +623,38 @@ export default function CalendarPage() {
       const monthDaysCount = new Date(targetYear, monthIndex + 1, 0).getDate();
 
       let total = 0;
+      let cleaningTotal = 0;
+      let maintenanceTotal = 0;
 
       for (let day = 1; day <= monthDaysCount; day += 1) {
-        const isoDate = new Date(targetYear, monthIndex, day)
-          .toISOString()
-          .slice(0, 10);
-
+        const isoDate = dateToIsoKey(new Date(targetYear, monthIndex, day));
         const dayKey = getDayKeyFromDateValue(isoDate);
+
         if (dayKey === "sunday") continue;
 
-        total += events.filter((event) => event.dayKey === dayKey).length;
+        const dayEvents = getEventsForDate(isoDate);
+
+        total += dayEvents.length;
+        cleaningTotal += dayEvents.filter((event) => event.module === "cleaning").length;
+        maintenanceTotal += dayEvents.filter((event) => event.module === "maintenance").length;
       }
 
       return {
         monthLabel,
         total,
+        cleaningTotal,
+        maintenanceTotal,
       };
     });
-  }, [referenceDate, events]);
+  }, [referenceDate, getEventsForDate]);
 
-  const totalCleaningEvents = events.length;
+  const totalCleaningEvents = useMemo(() => {
+    return events.filter((event) => event.module === "cleaning").length;
+  }, [events]);
+
+  const totalMaintenanceEvents = useMemo(() => {
+    return events.filter((event) => event.module === "maintenance").length;
+  }, [events]);
 
   const selectedBuildingName =
     selectedBuildingId === "all"
@@ -575,8 +759,8 @@ export default function CalendarPage() {
         />
         <MetricCard
           label="Mantenimiento"
-          value="Próximamente"
-          helper="Semanal"
+          value={String(totalMaintenanceEvents)}
+          helper={selectedBuildingName}
           icon={<Wrench size={18} />}
         />
         <MetricCard
@@ -597,7 +781,7 @@ export default function CalendarPage() {
 
       <SectionCard
         title="Calendario general"
-        subtitle="Vista general de limpieza con seguimiento semanal, mensual y anual."
+        subtitle="Vista general de limpieza y mantenimiento con seguimiento semanal, mensual y anual."
         icon={<CalendarDays size={18} />}
       >
         <AppCard>
@@ -762,7 +946,7 @@ export default function CalendarPage() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                           {dayEvents.map((event) => (
                             <div
-                              key={event.id}
+                              key={`${event.id}-${day.isoDate}`}
                               style={{
                                 borderRadius: 12,
                                 padding: "10px 10px",
@@ -859,7 +1043,7 @@ export default function CalendarPage() {
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {visibleEvents.map((event) => (
                             <div
-                              key={event.id}
+                              key={`${event.id}-${day.isoDate}`}
                               style={{
                                 borderRadius: 10,
                                 padding: "8px 8px",
@@ -949,14 +1133,42 @@ export default function CalendarPage() {
                       style={{
                         borderRadius: 10,
                         padding: "10px 10px",
-                        background: "#ECFDF5",
-                        border: "1px solid #A7F3D0",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        color: "#166534",
+                        background: "#F9FAFB",
+                        border: "1px solid #E5E7EB",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 8,
                       }}
                     >
-                      Eventos: {month.total}
+                      <div
+                        style={{
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: "#111827",
+                        }}
+                      >
+                        Eventos: {month.total}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: CLEANING_COLORS.text,
+                        }}
+                      >
+                        Limpieza: {month.cleaningTotal}
+                      </div>
+
+                      <div
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: MAINTENANCE_COLORS.text,
+                        }}
+                      >
+                        Mantenimiento: {month.maintenanceTotal}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -993,7 +1205,7 @@ export default function CalendarPage() {
         </AppCard>
 
         <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.55 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
                 width: 14,
