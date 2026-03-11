@@ -17,7 +17,7 @@ Importante:
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Leaf, Save } from "lucide-react";
+import { ArrowLeft, Leaf, Save, Trash2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -61,6 +61,8 @@ export default function CleaningExteriorPage() {
   const [morningSelected, setMorningSelected] = useState<string[]>([]);
   const [afternoonSelected, setAfternoonSelected] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [msg, setMsg] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -75,14 +77,14 @@ export default function CleaningExteriorPage() {
   }, [user, buildingId]);
 
   async function loadSchedule() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("cleaning_building_schedules")
       .select("*")
       .eq("building_id", buildingId)
       .eq("company_id", user?.company_id)
       .eq("cleaning_type", "exterior");
 
-    if (!data) return;
+    if (error || !data) return;
 
     const morning = data
       .filter((item) => item.time_block === "morning")
@@ -114,6 +116,7 @@ export default function CleaningExteriorPage() {
 
     try {
       setSaving(true);
+      setMsg("");
 
       await supabase
         .from("cleaning_building_schedules")
@@ -145,14 +148,47 @@ export default function CleaningExteriorPage() {
           .insert(rows);
 
         if (error) {
-          alert("No se pudo guardar la programación.");
+          setMsg("No se pudo guardar la programación.");
           return;
         }
       }
 
-      alert("Programación guardada correctamente.");
+      setMsg("Programación guardada correctamente.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function clearSchedule() {
+    if (!user?.company_id) return;
+
+    const confirmed = window.confirm(
+      "¿Seguro que quieres eliminar toda la programación de limpieza exterior?"
+    );
+
+    if (!confirmed) return;
+
+    try {
+      setClearing(true);
+      setMsg("");
+
+      const { error } = await supabase
+        .from("cleaning_building_schedules")
+        .delete()
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .eq("cleaning_type", "exterior");
+
+      if (error) {
+        setMsg("No se pudo limpiar la programación.");
+        return;
+      }
+
+      setMorningSelected([]);
+      setAfternoonSelected([]);
+      setMsg("La programación se eliminó correctamente.");
+    } finally {
+      setClearing(false);
     }
   }
 
@@ -181,6 +217,22 @@ export default function CleaningExteriorPage() {
           </UiButton>
         }
       />
+
+      {msg ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: msg.includes("correctamente") ? "#ECFDF5" : "#FEF2F2",
+            color: msg.includes("correctamente") ? "#166534" : "#B91C1C",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          {msg}
+        </div>
+      ) : null}
 
       <AppGrid minWidth={300}>
         <SectionCard title="Turno de mañana">
@@ -238,13 +290,28 @@ export default function CleaningExteriorPage() {
         </SectionCard>
       </AppGrid>
 
-      <div style={{ marginTop: 24 }}>
+      <div
+        style={{
+          marginTop: 24,
+          display: "flex",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
         <UiButton
           icon={<Save size={16} />}
           onClick={saveSchedule}
-          disabled={saving}
+          disabled={saving || clearing}
         >
           {saving ? "Guardando..." : "Guardar programación"}
+        </UiButton>
+
+        <UiButton
+          icon={<Trash2 size={16} />}
+          onClick={clearSchedule}
+          disabled={saving || clearing}
+        >
+          {clearing ? "Limpiando..." : "Limpiar programación"}
         </UiButton>
       </div>
     </PageContainer>
