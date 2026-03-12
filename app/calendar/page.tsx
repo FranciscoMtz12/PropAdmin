@@ -9,12 +9,10 @@
   - Pagos administrativos
   - Cobranza
 
-  Reglas que respeta:
-  - UI en español
-  - vistas Semana / Mes / Año
-  - no mostrar domingo
-  - usar lógica de fechas consistente
-  - mantener el design system actual
+  Corrección aplicada:
+  - La consulta a leases ahora es tolerante con el esquema real.
+  - Ya no depende de columnas fijas como tenant_name o tenant_email.
+  - Esto evita que se rompa toda la carga del calendario si leases cambia.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -52,12 +50,7 @@ type Unit = {
   display_code: string | null;
 };
 
-type Lease = {
-  id: string;
-  unit_id: string | null;
-  tenant_name: string | null;
-  tenant_email: string | null;
-};
+type LeaseRow = Record<string, unknown>;
 
 type CleaningBuildingSchedule = {
   id: string;
@@ -355,29 +348,47 @@ function formatCurrency(amount: number) {
   }).format(amount || 0);
 }
 
-function formatPeriod(periodYear: number, periodMonth: number) {
-  return `${MONTH_LABELS[periodMonth - 1] || "Mes"} ${periodYear}`;
+function pickFirstString(row: LeaseRow, keys: string[]) {
+  for (const key of keys) {
+    const value = row[key];
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+  return "";
 }
 
-function getExpenseTypeLabel(type: ExpenseSchedule["expense_type"]) {
-  if (type === "electricity") return "Electricidad";
-  if (type === "water") return "Agua";
-  if (type === "gas") return "Gas";
-  if (type === "internet") return "Internet";
-  if (type === "phone") return "Telefonía";
-  if (type === "maintenance_service") return "Servicio de mantenimiento";
-  if (type === "security") return "Seguridad";
-  if (type === "cleaning_service") return "Servicio de limpieza";
-  return "Otro";
+function getLeaseId(row: LeaseRow) {
+  const value = row["id"];
+  return typeof value === "string" ? value : "";
 }
 
-function getChargeTypeLabel(type: CollectionSchedule["charge_type"]) {
-  if (type === "rent") return "Renta";
-  if (type === "maintenance_fee") return "Mantenimiento";
-  if (type === "services") return "Servicios";
-  if (type === "parking") return "Estacionamiento";
-  if (type === "penalty") return "Penalización";
-  return "Otro";
+function getLeaseUnitId(row: LeaseRow) {
+  const value = row["unit_id"];
+  return typeof value === "string" ? value : "";
+}
+
+function getLeaseDisplayLabel(row: LeaseRow) {
+  const name = pickFirstString(row, [
+    "tenant_name",
+    "tenant_full_name",
+    "resident_name",
+    "primary_tenant_name",
+    "full_name",
+    "name",
+  ]);
+
+  if (name) return name;
+
+  const email = pickFirstString(row, [
+    "tenant_email",
+    "resident_email",
+    "email",
+  ]);
+
+  if (email) return email;
+
+  return "Sin inquilino";
 }
 
 function renderViewTab(
@@ -449,7 +460,7 @@ export default function CalendarPage() {
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
-  const [leases, setLeases] = useState<Lease[]>([]);
+  const [leases, setLeases] = useState<LeaseRow[]>([]);
   const [buildingSchedules, setBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
   const [unitSchedules, setUnitSchedules] = useState<CleaningUnitSchedule[]>([]);
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
@@ -509,9 +520,14 @@ export default function CalendarPage() {
         .select("id, building_id, unit_number, display_code")
         .eq("company_id", user.company_id),
 
+      /*
+        Consulta tolerante:
+        leases puede no tener tenant_name / tenant_email exactos.
+        Por eso usamos select("*") y luego inferimos.
+      */
       supabase
         .from("leases")
-        .select("id, unit_id, tenant_name, tenant_email")
+        .select("*")
         .eq("company_id", user.company_id),
 
       supabase
@@ -629,7 +645,7 @@ export default function CalendarPage() {
 
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
-    setLeases((leasesRes.data as Lease[]) || []);
+    setLeases((leasesRes.data as LeaseRow[]) || []);
     setBuildingSchedules((buildingSchedulesRes.data as CleaningBuildingSchedule[]) || []);
     setUnitSchedules((unitSchedulesRes.data as CleaningUnitSchedule[]) || []);
     setMaintenanceLogs((maintenanceLogsRes.data as MaintenanceLog[]) || []);
@@ -658,13 +674,16 @@ export default function CalendarPage() {
   const allEvents = useMemo<CalendarEvent[]>(() => {
     const buildingMap = new Map<string, Building>();
     const unitMap = new Map<string, Unit>();
-    const leaseMap = new Map<string, Lease>();
+    const leaseMap = new Map<string, LeaseRow>();
     const expenseScheduleMap = new Map<string, ExpenseSchedule>();
     const collectionScheduleMap = new Map<string, CollectionSchedule>();
 
     buildings.forEach((building) => buildingMap.set(building.id, building));
     units.forEach((unit) => unitMap.set(unit.id, unit));
-    leases.forEach((lease) => leaseMap.set(lease.id, lease));
+    leases.forEach((lease) => {
+      const leaseId = getLeaseId(lease);
+      if (leaseId) leaseMap.set(leaseId, lease);
+    });
     expenseSchedules.forEach((schedule) => expenseScheduleMap.set(schedule.id, schedule));
     collectionSchedules.forEach((schedule) => collectionScheduleMap.set(schedule.id, schedule));
 
@@ -812,14 +831,16 @@ export default function CalendarPage() {
       const dueDayKey = getDayKeyFromDateValue(dueDateKey);
       if (!dueDateKey || dueDayKey === "sunday") return;
 
-      const building = buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
+      const building =
+        buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
       const unit =
         (payment.unit_id ? unitMap.get(payment.unit_id) : null) ||
         (schedule.unit_id ? unitMap.get(schedule.unit_id) : null);
 
       const buildingName = building?.name || "Edificio";
       const unitLabel = unit?.display_code || unit?.unit_number || "General";
-      const scopeLabel = schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
+      const scopeLabel =
+        schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
       const amountLabel = formatCurrency(payment.amount_due);
 
       let statusLabel = "Pendiente";
@@ -850,15 +871,18 @@ export default function CalendarPage() {
       const dueDayKey = getDayKeyFromDateValue(dueDateKey);
       if (!dueDateKey || dueDayKey === "sunday") return;
 
-      const building = buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
-      const unit = unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
+      const building =
+        buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
+      const unit =
+        unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
+
       const lease =
         (record.lease_id ? leaseMap.get(record.lease_id) : null) ||
         (schedule.lease_id ? leaseMap.get(schedule.lease_id) : null);
 
       const buildingName = building?.name || "Edificio";
       const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
-      const tenantLabel = lease?.tenant_name || lease?.tenant_email || "Sin inquilino";
+      const tenantLabel = lease ? getLeaseDisplayLabel(lease) : "Sin inquilino";
       const amountLabel = formatCurrency(record.amount_due);
 
       let statusLabel = "Pendiente";
