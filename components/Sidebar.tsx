@@ -10,22 +10,27 @@ import {
   ReceiptText,
   Sparkles,
   Wrench,
+  Wallet,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
 /*
-  Sidebar global del sistema.
+Sidebar global del sistema.
 
-  Cambio aplicado:
-  - "Pagos" ahora usa ReceiptText en lugar de CreditCard,
-    porque representa mejor el listado de pagos administrativos.
+Cambios aplicados:
+- "Pagos" usa ReceiptText (pagos administrativos)
+- Se agrega módulo "Cobranza"
 */
+
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Calendario", href: "/calendar", icon: CalendarDays },
+
   { label: "Pagos", href: "/payments", icon: ReceiptText },
+  { label: "Cobranza", href: "/collections", icon: Wallet },
+
   { label: "Edificios", href: "/buildings", icon: Building2 },
   { label: "Limpieza", href: "/cleaning", icon: Sparkles },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench },
@@ -59,6 +64,7 @@ export default function Sidebar() {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* LOGO / APP NAME */}
         <div>
           <div
             style={{
@@ -81,6 +87,7 @@ export default function Sidebar() {
           </div>
         </div>
 
+        {/* NAVIGATION */}
         <nav
           style={{
             display: "flex",
@@ -90,8 +97,10 @@ export default function Sidebar() {
         >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
+
             const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+              pathname === item.href ||
+              pathname.startsWith(`${item.href}/`);
 
             return (
               <Link
@@ -124,6 +133,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
+      {/* USER SECTION */}
       <div
         style={{
           display: "flex",
