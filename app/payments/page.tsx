@@ -3,34 +3,40 @@
 /*
   Módulo de Pagos administrativos.
 
-  Esta página usa:
-  - expense_schedules
-  - expense_payments
+  Esta versión ya soporta:
+  - creación de plantillas recurrentes
+  - frecuencia mensual / bimestral
+  - generación automática del pago pendiente del periodo actual
+  - edición de pagos ya creados
+  - captura posterior de datos reales del recibo
 
-  Nuevo en esta versión:
-  - Formulario para crear pagos administrativos reales
-  - Al guardar:
-    1) crea la configuración en expense_schedules
-    2) crea el registro del periodo en expense_payments
-  - Esto permite que ya aparezcan eventos azules en el calendario
+  Idea de operación:
+  1) Se crea la plantilla recurrente en expense_schedules
+  2) La pantalla se asegura de que exista el pago del periodo actual
+  3) Si aún no llega el recibo, el pago puede existir como placeholder
+  4) Cuando llega el recibo, se edita el registro mensual real
 
-  Alcance de esta versión:
-  - enfocada en pagos administrativos pagados por empresa o edificio
-  - no usa invoices
-  - no maneja todavía edición inline ni cambio de estado desde la tabla
+  Nota importante:
+  - amount_due en expense_payments es NOT NULL en la base actual
+  - por eso, cuando aún no se conoce el monto real, guardamos 0
+    y marcamos is_generated_placeholder = true
 */
 
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Building2,
+  CalendarClock,
   CheckCircle2,
   Clock3,
   CreditCard,
+  Edit3,
   Filter,
   Plus,
   ReceiptText,
+  RotateCw,
   Save,
+  X,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -58,8 +64,14 @@ type Unit = {
   display_code: string | null;
 };
 
+type ExpenseFrequencyType = "monthly" | "bimonthly";
+type ExpenseResponsibilityType = "company" | "building" | "tenant";
+type ExpenseAppliesToType = "building" | "unit";
+type ExpensePaymentStatus = "pending" | "paid" | "overdue";
+
 type ExpenseSchedule = {
   id: string;
+  company_id?: string;
   building_id: string;
   unit_id: string | null;
   expense_type:
@@ -74,12 +86,20 @@ type ExpenseSchedule = {
     | "other";
   title: string;
   vendor_name: string | null;
-  responsibility_type: "company" | "building" | "tenant";
-  applies_to: "building" | "unit";
+  responsibility_type: ExpenseResponsibilityType;
+  applies_to: ExpenseAppliesToType;
   amount_estimated: number | null;
   due_day: number;
   active: boolean;
   notes: string | null;
+
+  // Nuevos campos de recurrencia
+  frequency_type: ExpenseFrequencyType | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  auto_generate: boolean | null;
+  expected_issue_day: number | null;
+  expected_cutoff_day: number | null;
 };
 
 type ExpensePayment = {
@@ -92,17 +112,25 @@ type ExpensePayment = {
   period_month: number;
   due_date: string;
   amount_due: number;
-  status: "pending" | "paid" | "overdue";
+  status: ExpensePaymentStatus;
   paid_at: string | null;
   payment_reference: string | null;
   notes: string | null;
   created_at: string;
+
+  // Nuevos campos del registro mensual
+  invoice_received_at: string | null;
+  cutoff_date: string | null;
+  billing_period_label: string | null;
+  is_generated_placeholder: boolean | null;
+  amount_estimated_snapshot: number | null;
 };
 
 type PaymentStatusFilter = "all" | "pending" | "paid" | "overdue";
 
 type PaymentRow = {
   id: string;
+  scheduleId: string;
   buildingId: string;
   buildingName: string;
   unitLabel: string;
@@ -111,39 +139,82 @@ type PaymentRow = {
   expenseTypeLabel: string;
   responsibilityLabel: string;
   appliesToLabel: string;
+  frequencyLabel: string;
   periodLabel: string;
   dueDate: string;
   dueDateLabel: string;
   amountDue: number;
   amountDueLabel: string;
-  status: "pending" | "paid" | "overdue";
+  status: ExpensePaymentStatus;
   statusLabel: string;
   paymentReference: string;
   notes: string;
+  isGeneratedPlaceholder: boolean;
+  invoiceReceivedAt: string | null;
+  cutoffDate: string | null;
 };
 
 type CreatePaymentForm = {
   buildingId: string;
-  appliesTo: "building" | "unit";
+  appliesTo: ExpenseAppliesToType;
   unitId: string;
-  expenseType:
-    | "electricity"
-    | "water"
-    | "gas"
-    | "internet"
-    | "phone"
-    | "maintenance_service"
-    | "security"
-    | "cleaning_service"
-    | "other";
+  expenseType: ExpenseSchedule["expense_type"];
   title: string;
   vendorName: string;
   responsibilityType: "company" | "building";
-  amountDue: string;
+
+  frequencyType: ExpenseFrequencyType;
+  startsOn: string;
+  endsOn: string;
+  autoGenerate: boolean;
+  expectedIssueDay: string;
+  expectedCutoffDay: string;
+
+  amountEstimated: string;
   dueDay: string;
+
   periodMonth: string;
   periodYear: string;
-  status: "pending" | "paid" | "overdue";
+
+  amountDue: string;
+  dueDate: string;
+  invoiceReceivedAt: string;
+  cutoffDate: string;
+
+  status: ExpensePaymentStatus;
+  paymentReference: string;
+  notes: string;
+};
+
+type EditPaymentForm = {
+  paymentId: string;
+  scheduleId: string;
+
+  buildingId: string;
+  appliesTo: ExpenseAppliesToType;
+  unitId: string;
+  title: string;
+  vendorName: string;
+  expenseType: ExpenseSchedule["expense_type"];
+  responsibilityType: "company" | "building";
+
+  frequencyType: ExpenseFrequencyType;
+  startsOn: string;
+  endsOn: string;
+  autoGenerate: boolean;
+  expectedIssueDay: string;
+  expectedCutoffDay: string;
+  amountEstimated: string;
+  dueDay: string;
+
+  periodMonth: string;
+  periodYear: string;
+  amountDue: string;
+  dueDate: string;
+  invoiceReceivedAt: string;
+  cutoffDate: string;
+
+  status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
 };
@@ -179,6 +250,12 @@ function getDefaultYear() {
   return String(new Date().getFullYear());
 }
 
+function getDefaultDateForCurrentMonth(dayValue: number) {
+  const year = Number(getDefaultYear());
+  const month = Number(getDefaultMonth());
+  return getDueDateFromPeriod(year, month, dayValue);
+}
+
 function parseDateOnly(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, (month || 1) - 1, day || 1);
@@ -186,7 +263,6 @@ function parseDateOnly(dateKey: string) {
 
 function formatDate(dateKey: string) {
   if (!dateKey) return "Sin fecha";
-
   const date = parseDateOnly(dateKey);
   return `${date.getDate()} ${MONTH_LABELS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -215,23 +291,28 @@ function getExpenseTypeLabel(type: ExpenseSchedule["expense_type"]) {
   return "Otro";
 }
 
-function getResponsibilityLabel(type: ExpenseSchedule["responsibility_type"]) {
+function getResponsibilityLabel(type: ExpenseResponsibilityType) {
   if (type === "company") return "Empresa";
   if (type === "building") return "Edificio";
   return "Inquilino";
 }
 
-function getAppliesToLabel(type: ExpenseSchedule["applies_to"]) {
+function getAppliesToLabel(type: ExpenseAppliesToType) {
   return type === "unit" ? "Unidad" : "Edificio";
 }
 
-function getStatusLabel(status: PaymentRow["status"]) {
+function getFrequencyLabel(type: ExpenseFrequencyType | null) {
+  if (type === "bimonthly") return "Bimestral";
+  return "Mensual";
+}
+
+function getStatusLabel(status: ExpensePaymentStatus) {
   if (status === "pending") return "Pendiente";
   if (status === "paid") return "Pagado";
   return "Vencido";
 }
 
-function getStatusColors(status: PaymentRow["status"]) {
+function getStatusColors(status: ExpensePaymentStatus) {
   if (status === "paid") {
     return {
       background: "#ECFDF5",
@@ -263,11 +344,78 @@ function getDueDateFromPeriod(periodYear: number, periodMonth: number, dueDay: n
   return `${periodYear}-${month}-${day}`;
 }
 
+function parseOptionalNumber(value: string) {
+  if (!value.trim()) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isScheduleActiveForCurrentPeriod(schedule: ExpenseSchedule, currentYear: number, currentMonth: number) {
+  const startsOn = schedule.starts_on ? parseDateOnly(schedule.starts_on) : null;
+  const endsOn = schedule.ends_on ? parseDateOnly(schedule.ends_on) : null;
+  const currentDate = new Date(currentYear, currentMonth - 1, 1);
+
+  if (startsOn && currentDate < new Date(startsOn.getFullYear(), startsOn.getMonth(), 1)) {
+    return false;
+  }
+
+  if (endsOn && currentDate > new Date(endsOn.getFullYear(), endsOn.getMonth(), 1)) {
+    return false;
+  }
+
+  const frequency = schedule.frequency_type || "monthly";
+  if (frequency === "monthly") return true;
+
+  /*
+    Lógica bimestral:
+    usamos starts_on como ancla. Si no existe, usamos el mes actual como compatible.
+  */
+  if (!startsOn) return true;
+
+  const startIndex = startsOn.getFullYear() * 12 + startsOn.getMonth();
+  const currentIndex = currentYear * 12 + (currentMonth - 1);
+  return (currentIndex - startIndex) % 2 === 0;
+}
+
+function getInitialCreateForm(buildingId = ""): CreatePaymentForm {
+  return {
+    buildingId,
+    appliesTo: "building",
+    unitId: "",
+    expenseType: "electricity",
+    title: "",
+    vendorName: "",
+    responsibilityType: "company",
+
+    frequencyType: "monthly",
+    startsOn: getTodayDateOnlyKey(),
+    endsOn: "",
+    autoGenerate: true,
+    expectedIssueDay: "",
+    expectedCutoffDay: "",
+
+    amountEstimated: "",
+    dueDay: "",
+    periodMonth: getDefaultMonth(),
+    periodYear: getDefaultYear(),
+
+    amountDue: "",
+    dueDate: "",
+    invoiceReceivedAt: "",
+    cutoffDate: "",
+
+    status: "pending",
+    paymentReference: "",
+    notes: "",
+  };
+}
+
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [syncingCurrentPeriod, setSyncingCurrentPeriod] = useState(false);
   const [message, setMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
@@ -279,34 +427,19 @@ export default function PaymentsPage() {
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<PaymentStatusFilter>("all");
 
-  const [form, setForm] = useState<CreatePaymentForm>({
-    buildingId: "",
-    appliesTo: "building",
-    unitId: "",
-    expenseType: "electricity",
-    title: "",
-    vendorName: "",
-    responsibilityType: "company",
-    amountDue: "",
-    dueDay: "",
-    periodMonth: getDefaultMonth(),
-    periodYear: getDefaultYear(),
-    status: "pending",
-    paymentReference: "",
-    notes: "",
-  });
+  const [form, setForm] = useState<CreatePaymentForm>(getInitialCreateForm());
+  const [editingPayment, setEditingPayment] = useState<EditPaymentForm | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
-
     loadPaymentsData();
   }, [loading, user?.company_id]);
 
-  async function loadPaymentsData() {
+  async function loadPaymentsData(showLoader = true) {
     if (!user?.company_id) return;
 
-    setLoadingPage(true);
+    if (showLoader) setLoadingPage(true);
     setMessage("");
 
     const [buildingsRes, unitsRes, schedulesRes, paymentsRes] = await Promise.all([
@@ -324,7 +457,27 @@ export default function PaymentsPage() {
       supabase
         .from("expense_schedules")
         .select(
-          "id, building_id, unit_id, expense_type, title, vendor_name, responsibility_type, applies_to, amount_estimated, due_day, active, notes"
+          `
+          id,
+          company_id,
+          building_id,
+          unit_id,
+          expense_type,
+          title,
+          vendor_name,
+          responsibility_type,
+          applies_to,
+          amount_estimated,
+          due_day,
+          active,
+          notes,
+          frequency_type,
+          starts_on,
+          ends_on,
+          auto_generate,
+          expected_issue_day,
+          expected_cutoff_day
+        `
         )
         .eq("company_id", user.company_id)
         .eq("active", true)
@@ -333,7 +486,27 @@ export default function PaymentsPage() {
       supabase
         .from("expense_payments")
         .select(
-          "id, expense_schedule_id, company_id, building_id, unit_id, period_year, period_month, due_date, amount_due, status, paid_at, payment_reference, notes, created_at"
+          `
+          id,
+          expense_schedule_id,
+          company_id,
+          building_id,
+          unit_id,
+          period_year,
+          period_month,
+          due_date,
+          amount_due,
+          status,
+          paid_at,
+          payment_reference,
+          notes,
+          created_at,
+          invoice_received_at,
+          cutoff_date,
+          billing_period_label,
+          is_generated_placeholder,
+          amount_estimated_snapshot
+        `
         )
         .eq("company_id", user.company_id)
         .order("due_date", { ascending: true }),
@@ -341,46 +514,170 @@ export default function PaymentsPage() {
 
     if (buildingsRes.error) {
       setMessage("No se pudieron cargar los edificios.");
-      setLoadingPage(false);
+      if (showLoader) setLoadingPage(false);
       return;
     }
 
     if (unitsRes.error) {
       setMessage("No se pudieron cargar las unidades.");
-      setLoadingPage(false);
+      if (showLoader) setLoadingPage(false);
       return;
     }
 
     if (schedulesRes.error) {
       setMessage("No se pudieron cargar las configuraciones de pagos.");
-      setLoadingPage(false);
+      if (showLoader) setLoadingPage(false);
       return;
     }
 
     if (paymentsRes.error) {
       setMessage("No se pudieron cargar los registros de pagos.");
-      setLoadingPage(false);
+      if (showLoader) setLoadingPage(false);
       return;
     }
 
     const nextBuildings = (buildingsRes.data as Building[]) || [];
+    const nextUnits = (unitsRes.data as Unit[]) || [];
+    const nextSchedules = (schedulesRes.data as ExpenseSchedule[]) || [];
+    const nextPayments = (paymentsRes.data as ExpensePayment[]) || [];
+
     setBuildings(nextBuildings);
-    setUnits((unitsRes.data as Unit[]) || []);
-    setExpenseSchedules((schedulesRes.data as ExpenseSchedule[]) || []);
-    setExpensePayments((paymentsRes.data as ExpensePayment[]) || []);
+    setUnits(nextUnits);
+    setExpenseSchedules(nextSchedules);
+    setExpensePayments(nextPayments);
 
-    setForm((prev) => ({
-      ...prev,
-      buildingId: prev.buildingId || nextBuildings[0]?.id || "",
-    }));
+    setForm((prev) => {
+      const fallbackBuildingId = prev.buildingId || nextBuildings[0]?.id || "";
+      return {
+        ...prev,
+        buildingId: fallbackBuildingId,
+      };
+    });
 
-    setLoadingPage(false);
+    if (showLoader) setLoadingPage(false);
+
+    await ensureCurrentPeriodPayments(nextSchedules, nextPayments);
+  }
+
+  async function ensureCurrentPeriodPayments(
+    schedulesInput?: ExpenseSchedule[],
+    paymentsInput?: ExpensePayment[]
+  ) {
+    if (!user?.company_id) return;
+
+    const schedules = schedulesInput ?? expenseSchedules;
+    const payments = paymentsInput ?? expensePayments;
+
+    const currentYear = Number(getDefaultYear());
+    const currentMonth = Number(getDefaultMonth());
+
+    const existingBySchedule = new Set(
+      payments
+        .filter(
+          (payment) =>
+            payment.period_year === currentYear && payment.period_month === currentMonth
+        )
+        .map((payment) => payment.expense_schedule_id)
+    );
+
+    const schedulesToGenerate = schedules.filter((schedule) => {
+      if (!schedule.active) return false;
+      if (schedule.responsibility_type === "tenant") return false;
+      if (schedule.auto_generate === false) return false;
+      if (!isScheduleActiveForCurrentPeriod(schedule, currentYear, currentMonth)) return false;
+      if (existingBySchedule.has(schedule.id)) return false;
+      return true;
+    });
+
+    if (schedulesToGenerate.length === 0) {
+      return;
+    }
+
+    setSyncingCurrentPeriod(true);
+
+    try {
+      const rowsToInsert = schedulesToGenerate.map((schedule) => {
+        const amountValue = schedule.amount_estimated ?? 0;
+        const dueDate = getDueDateFromPeriod(
+          currentYear,
+          currentMonth,
+          schedule.due_day
+        );
+
+        return {
+          expense_schedule_id: schedule.id,
+          company_id: user.company_id,
+          building_id: schedule.building_id,
+          unit_id: schedule.applies_to === "unit" ? schedule.unit_id : null,
+          period_year: currentYear,
+          period_month: currentMonth,
+          due_date: dueDate,
+          amount_due: amountValue,
+          status: "pending" as ExpensePaymentStatus,
+          paid_at: null,
+          payment_reference: null,
+          notes: schedule.notes || null,
+          billing_period_label: formatPeriod(currentYear, currentMonth),
+          is_generated_placeholder: true,
+          amount_estimated_snapshot: schedule.amount_estimated ?? null,
+          invoice_received_at: null,
+          cutoff_date: null,
+        };
+      });
+
+      const { error } = await supabase.from("expense_payments").insert(rowsToInsert);
+
+      if (error) {
+        console.error("Error generando pagos del periodo actual:", error);
+        setMessage("No se pudieron generar automáticamente algunos pagos del periodo actual.");
+        return;
+      }
+
+      const { data: refreshedPayments, error: refreshError } = await supabase
+        .from("expense_payments")
+        .select(
+          `
+          id,
+          expense_schedule_id,
+          company_id,
+          building_id,
+          unit_id,
+          period_year,
+          period_month,
+          due_date,
+          amount_due,
+          status,
+          paid_at,
+          payment_reference,
+          notes,
+          created_at,
+          invoice_received_at,
+          cutoff_date,
+          billing_period_label,
+          is_generated_placeholder,
+          amount_estimated_snapshot
+        `
+        )
+        .eq("company_id", user.company_id)
+        .order("due_date", { ascending: true });
+
+      if (!refreshError) {
+        setExpensePayments((refreshedPayments as ExpensePayment[]) || []);
+      }
+    } finally {
+      setSyncingCurrentPeriod(false);
+    }
   }
 
   const unitsForSelectedBuilding = useMemo(() => {
     if (!form.buildingId) return [];
     return units.filter((unit) => unit.building_id === form.buildingId);
   }, [units, form.buildingId]);
+
+  const unitsForEditingBuilding = useMemo(() => {
+    if (!editingPayment?.buildingId) return [];
+    return units.filter((unit) => unit.building_id === editingPayment.buildingId);
+  }, [units, editingPayment]);
 
   const paymentRows = useMemo<PaymentRow[]>(() => {
     const buildingMap = new Map<string, Building>();
@@ -410,14 +707,17 @@ export default function PaymentsPage() {
 
         return {
           id: payment.id,
+          scheduleId: schedule.id,
           buildingId: payment.building_id,
           buildingName: building?.name || "Edificio",
-          unitLabel: schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio",
+          unitLabel:
+            schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio",
           title: schedule.title,
           vendorName: schedule.vendor_name || "Sin proveedor",
           expenseTypeLabel: getExpenseTypeLabel(schedule.expense_type),
           responsibilityLabel: getResponsibilityLabel(schedule.responsibility_type),
           appliesToLabel: getAppliesToLabel(schedule.applies_to),
+          frequencyLabel: getFrequencyLabel(schedule.frequency_type || "monthly"),
           periodLabel: formatPeriod(payment.period_year, payment.period_month),
           dueDate: payment.due_date,
           dueDateLabel: formatDate(payment.due_date),
@@ -427,6 +727,9 @@ export default function PaymentsPage() {
           statusLabel: getStatusLabel(payment.status),
           paymentReference: payment.payment_reference || "—",
           notes: payment.notes || schedule.notes || "—",
+          isGeneratedPlaceholder: Boolean(payment.is_generated_placeholder),
+          invoiceReceivedAt: payment.invoice_received_at,
+          cutoffDate: payment.cutoff_date,
         };
       })
       .filter((row): row is PaymentRow => Boolean(row));
@@ -478,6 +781,16 @@ export default function PaymentsPage() {
     }));
   }
 
+  function updateEditingForm<K extends keyof EditPaymentForm>(key: K, value: EditPaymentForm[K]) {
+    setEditingPayment((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [key]: value,
+      };
+    });
+  }
+
   async function handleCreatePayment() {
     if (!user?.company_id) return;
 
@@ -499,11 +812,6 @@ export default function PaymentsPage() {
       return;
     }
 
-    if (!form.amountDue || Number(form.amountDue) <= 0) {
-      setMessage("Escribe un monto válido.");
-      return;
-    }
-
     if (!form.dueDay || Number(form.dueDay) < 1 || Number(form.dueDay) > 31) {
       setMessage("Escribe un día de vencimiento válido entre 1 y 31.");
       return;
@@ -519,11 +827,16 @@ export default function PaymentsPage() {
       return;
     }
 
-    const amountDue = Number(form.amountDue);
+    const amountEstimated = parseOptionalNumber(form.amountEstimated);
+    const amountDue = parseOptionalNumber(form.amountDue) ?? amountEstimated ?? 0;
     const dueDay = Number(form.dueDay);
     const periodMonth = Number(form.periodMonth);
     const periodYear = Number(form.periodYear);
-    const dueDate = getDueDateFromPeriod(periodYear, periodMonth, dueDay);
+
+    const dueDate =
+      form.dueDate.trim() ||
+      getDueDateFromPeriod(periodYear, periodMonth, dueDay);
+
     const paidAtValue = form.status === "paid" ? new Date().toISOString() : null;
 
     setSavingPayment(true);
@@ -540,10 +853,17 @@ export default function PaymentsPage() {
           vendor_name: form.vendorName.trim() || null,
           responsibility_type: form.responsibilityType,
           applies_to: form.appliesTo,
-          amount_estimated: amountDue,
+          amount_estimated: amountEstimated,
           due_day: dueDay,
           active: true,
           notes: form.notes.trim() || null,
+
+          frequency_type: form.frequencyType,
+          starts_on: form.startsOn || null,
+          ends_on: form.endsOn || null,
+          auto_generate: form.autoGenerate,
+          expected_issue_day: parseOptionalNumber(form.expectedIssueDay),
+          expected_cutoff_day: parseOptionalNumber(form.expectedCutoffDay),
         })
         .select("id")
         .single();
@@ -552,52 +872,212 @@ export default function PaymentsPage() {
         throw new Error(scheduleError?.message || "No se pudo crear la configuración del pago.");
       }
 
-      const { error: paymentError } = await supabase
-        .from("expense_payments")
-        .insert({
-          expense_schedule_id: scheduleData.id,
-          company_id: user.company_id,
-          building_id: form.buildingId,
-          unit_id: form.appliesTo === "unit" ? form.unitId : null,
-          period_year: periodYear,
-          period_month: periodMonth,
-          due_date: dueDate,
-          amount_due: amountDue,
-          status: form.status,
-          paid_at: paidAtValue,
-          payment_reference: form.paymentReference.trim() || null,
-          notes: form.notes.trim() || null,
-        });
+      const { error: paymentError } = await supabase.from("expense_payments").insert({
+        expense_schedule_id: scheduleData.id,
+        company_id: user.company_id,
+        building_id: form.buildingId,
+        unit_id: form.appliesTo === "unit" ? form.unitId : null,
+        period_year: periodYear,
+        period_month: periodMonth,
+        due_date: dueDate,
+        amount_due: amountDue,
+        status: form.status,
+        paid_at: paidAtValue,
+        payment_reference: form.paymentReference.trim() || null,
+        notes: form.notes.trim() || null,
+
+        billing_period_label: formatPeriod(periodYear, periodMonth),
+        is_generated_placeholder: !form.amountDue.trim(),
+        amount_estimated_snapshot: amountEstimated,
+        invoice_received_at: form.invoiceReceivedAt || null,
+        cutoff_date: form.cutoffDate || null,
+      });
 
       if (paymentError) {
         throw new Error(paymentError.message || "No se pudo crear el registro del pago.");
       }
 
       setSuccessMessage("Pago administrativo creado correctamente.");
-      setForm((prev) => ({
-        ...prev,
-        appliesTo: "building",
-        unitId: "",
-        expenseType: "electricity",
-        title: "",
-        vendorName: "",
-        responsibilityType: "company",
-        amountDue: "",
-        dueDay: "",
-        periodMonth: getDefaultMonth(),
-        periodYear: getDefaultYear(),
-        status: "pending",
-        paymentReference: "",
-        notes: "",
-      }));
+      setForm(getInitialCreateForm(form.buildingId));
 
-      await loadPaymentsData();
+      await loadPaymentsData(false);
     } catch (error) {
       console.error("Error creando pago administrativo:", error);
       setMessage(
         error instanceof Error
           ? error.message
           : "Ocurrió un error creando el pago administrativo."
+      );
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
+  function startEditingPayment(row: PaymentRow) {
+    const payment = expensePayments.find((item) => item.id === row.id);
+    const schedule = expenseSchedules.find((item) => item.id === row.scheduleId);
+
+    if (!payment || !schedule) {
+      setMessage("No se pudo abrir la edición del pago seleccionado.");
+      return;
+    }
+
+    setEditingPayment({
+      paymentId: payment.id,
+      scheduleId: schedule.id,
+
+      buildingId: schedule.building_id,
+      appliesTo: schedule.applies_to,
+      unitId: schedule.unit_id || "",
+      title: schedule.title,
+      vendorName: schedule.vendor_name || "",
+      expenseType: schedule.expense_type,
+      responsibilityType:
+        schedule.responsibility_type === "tenant" ? "company" : schedule.responsibility_type,
+
+      frequencyType: schedule.frequency_type || "monthly",
+      startsOn: schedule.starts_on || "",
+      endsOn: schedule.ends_on || "",
+      autoGenerate: schedule.auto_generate !== false,
+      expectedIssueDay:
+        schedule.expected_issue_day !== null && schedule.expected_issue_day !== undefined
+          ? String(schedule.expected_issue_day)
+          : "",
+      expectedCutoffDay:
+        schedule.expected_cutoff_day !== null && schedule.expected_cutoff_day !== undefined
+          ? String(schedule.expected_cutoff_day)
+          : "",
+      amountEstimated:
+        schedule.amount_estimated !== null && schedule.amount_estimated !== undefined
+          ? String(schedule.amount_estimated)
+          : "",
+      dueDay: String(schedule.due_day),
+
+      periodMonth: String(payment.period_month),
+      periodYear: String(payment.period_year),
+      amountDue: String(payment.amount_due),
+      dueDate: payment.due_date,
+      invoiceReceivedAt: payment.invoice_received_at || "",
+      cutoffDate: payment.cutoff_date || "",
+
+      status: payment.status,
+      paymentReference: payment.payment_reference || "",
+      notes: payment.notes || schedule.notes || "",
+    });
+
+    setSuccessMessage("");
+    setMessage("");
+  }
+
+  async function handleSaveEditedPayment() {
+    if (!user?.company_id || !editingPayment) return;
+
+    setMessage("");
+    setSuccessMessage("");
+    setSavingPayment(true);
+
+    try {
+      if (!editingPayment.buildingId) {
+        throw new Error("Selecciona un edificio.");
+      }
+
+      if (editingPayment.appliesTo === "unit" && !editingPayment.unitId) {
+        throw new Error("Selecciona una unidad.");
+      }
+
+      if (!editingPayment.title.trim()) {
+        throw new Error("Escribe un título para el pago.");
+      }
+
+      if (!editingPayment.dueDay || Number(editingPayment.dueDay) < 1 || Number(editingPayment.dueDay) > 31) {
+        throw new Error("Escribe un día de vencimiento válido.");
+      }
+
+      const periodMonth = Number(editingPayment.periodMonth);
+      const periodYear = Number(editingPayment.periodYear);
+      const dueDay = Number(editingPayment.dueDay);
+
+      if (!periodMonth || periodMonth < 1 || periodMonth > 12) {
+        throw new Error("Selecciona un mes válido.");
+      }
+
+      if (!periodYear || periodYear < 2000) {
+        throw new Error("Selecciona un año válido.");
+      }
+
+      const amountEstimated = parseOptionalNumber(editingPayment.amountEstimated);
+      const amountDue = parseOptionalNumber(editingPayment.amountDue) ?? 0;
+      const dueDate =
+        editingPayment.dueDate.trim() ||
+        getDueDateFromPeriod(periodYear, periodMonth, dueDay);
+
+      const paidAtValue =
+        editingPayment.status === "paid" ? new Date().toISOString() : null;
+
+      const { error: scheduleError } = await supabase
+        .from("expense_schedules")
+        .update({
+          building_id: editingPayment.buildingId,
+          unit_id: editingPayment.appliesTo === "unit" ? editingPayment.unitId : null,
+          expense_type: editingPayment.expenseType,
+          title: editingPayment.title.trim(),
+          vendor_name: editingPayment.vendorName.trim() || null,
+          responsibility_type: editingPayment.responsibilityType,
+          applies_to: editingPayment.appliesTo,
+          amount_estimated: amountEstimated,
+          due_day: dueDay,
+          notes: editingPayment.notes.trim() || null,
+
+          frequency_type: editingPayment.frequencyType,
+          starts_on: editingPayment.startsOn || null,
+          ends_on: editingPayment.endsOn || null,
+          auto_generate: editingPayment.autoGenerate,
+          expected_issue_day: parseOptionalNumber(editingPayment.expectedIssueDay),
+          expected_cutoff_day: parseOptionalNumber(editingPayment.expectedCutoffDay),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingPayment.scheduleId);
+
+      if (scheduleError) {
+        throw new Error(scheduleError.message || "No se pudo actualizar la configuración.");
+      }
+
+      const { error: paymentError } = await supabase
+        .from("expense_payments")
+        .update({
+          building_id: editingPayment.buildingId,
+          unit_id: editingPayment.appliesTo === "unit" ? editingPayment.unitId : null,
+          period_year: periodYear,
+          period_month: periodMonth,
+          due_date: dueDate,
+          amount_due: amountDue,
+          status: editingPayment.status,
+          paid_at: paidAtValue,
+          payment_reference: editingPayment.paymentReference.trim() || null,
+          notes: editingPayment.notes.trim() || null,
+
+          invoice_received_at: editingPayment.invoiceReceivedAt || null,
+          cutoff_date: editingPayment.cutoffDate || null,
+          billing_period_label: formatPeriod(periodYear, periodMonth),
+          is_generated_placeholder: amountDue === 0,
+          amount_estimated_snapshot: amountEstimated,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editingPayment.paymentId);
+
+      if (paymentError) {
+        throw new Error(paymentError.message || "No se pudo actualizar el pago.");
+      }
+
+      setEditingPayment(null);
+      setSuccessMessage("Pago actualizado correctamente.");
+      await loadPaymentsData(false);
+    } catch (error) {
+      console.error("Error actualizando pago:", error);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error actualizando el pago."
       );
     } finally {
       setSavingPayment(false);
@@ -658,14 +1138,14 @@ export default function PaymentsPage() {
       ) : null}
 
       <SectionCard
-        title="Nuevo pago administrativo"
-        subtitle="Crea un pago real para que aparezca en este módulo y también en el calendario global."
+        title="Nuevo pago recurrente"
+        subtitle="Crea la plantilla del servicio y también el registro del periodo actual."
         icon={<Plus size={18} />}
       >
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
             gap: 16,
           }}
         >
@@ -704,7 +1184,7 @@ export default function PaymentsPage() {
                   onChange={(event) =>
                     setForm((prev) => ({
                       ...prev,
-                      appliesTo: event.target.value as "building" | "unit",
+                      appliesTo: event.target.value as ExpenseAppliesToType,
                       unitId: event.target.value === "building" ? "" : prev.unitId,
                     }))
                   }
@@ -757,11 +1237,7 @@ export default function PaymentsPage() {
                   <option value="other">Otro</option>
                 </AppSelect>
               </label>
-            </div>
-          </AppCard>
 
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
                   Título
@@ -770,20 +1246,14 @@ export default function PaymentsPage() {
                   value={form.title}
                   onChange={(event) => updateForm("title", event.target.value)}
                   placeholder="Ej. Luz CFE Torre Norte"
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    paddingInline: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
-                  }}
+                  style={inputStyle}
                 />
               </label>
+            </div>
+          </AppCard>
 
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
                   Proveedor
@@ -791,18 +1261,8 @@ export default function PaymentsPage() {
                 <input
                   value={form.vendorName}
                   onChange={(event) => updateForm("vendorName", event.target.value)}
-                  placeholder="Ej. CFE, Telmex, Agua y Drenaje"
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    paddingInline: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
-                  }}
+                  placeholder="Ej. CFE, Telmex"
+                  style={inputStyle}
                 />
               </label>
 
@@ -826,26 +1286,43 @@ export default function PaymentsPage() {
 
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Monto
+                  Frecuencia
+                </span>
+                <AppSelect
+                  value={form.frequencyType}
+                  onChange={(event) =>
+                    updateForm(
+                      "frequencyType",
+                      event.target.value as ExpenseFrequencyType
+                    )
+                  }
+                >
+                  <option value="monthly">Mensual</option>
+                  <option value="bimonthly">Bimestral</option>
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Fecha de inicio de recurrencia
                 </span>
                 <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.amountDue}
-                  onChange={(event) => updateForm("amountDue", event.target.value)}
-                  placeholder="0.00"
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    paddingInline: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
-                  }}
+                  type="date"
+                  value={form.startsOn}
+                  onChange={(event) => updateForm("startsOn", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Fecha fin de recurrencia
+                </span>
+                <input
+                  type="date"
+                  value={form.endsOn}
+                  onChange={(event) => updateForm("endsOn", event.target.value)}
+                  style={inputStyle}
                 />
               </label>
             </div>
@@ -855,29 +1332,94 @@ export default function PaymentsPage() {
             <div style={{ display: "grid", gap: 10 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Día de vencimiento
+                  Día esperado de recibido
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={form.expectedIssueDay}
+                  onChange={(event) => updateForm("expectedIssueDay", event.target.value)}
+                  placeholder="Opcional"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Día esperado de corte
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={form.expectedCutoffDay}
+                  onChange={(event) => updateForm("expectedCutoffDay", event.target.value)}
+                  placeholder="Opcional"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={form.autoGenerate}
+                  onChange={(event) => updateForm("autoGenerate", event.target.checked)}
+                />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Generar automáticamente el periodo actual si falta
+                </span>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Monto estimado
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.amountEstimated}
+                  onChange={(event) => updateForm("amountEstimated", event.target.value)}
+                  placeholder="Opcional"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Día límite de pago
                 </span>
                 <input
                   type="number"
                   min="1"
                   max="31"
                   value={form.dueDay}
-                  onChange={(event) => updateForm("dueDay", event.target.value)}
-                  placeholder="Ej. 10"
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    paddingInline: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
+                  onChange={(event) => {
+                    const nextValue = event.target.value;
+                    updateForm("dueDay", nextValue);
+
+                    const parsed = Number(nextValue);
+                    if (parsed >= 1 && parsed <= 31) {
+                      updateForm(
+                        "dueDate",
+                        getDueDateFromPeriod(
+                          Number(form.periodYear),
+                          Number(form.periodMonth),
+                          parsed
+                        )
+                      );
+                    }
                   }}
+                  placeholder="Ej. 10"
+                  style={inputStyle}
                 />
               </label>
+            </div>
+          </AppCard>
 
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
                   Mes del periodo
@@ -903,17 +1445,34 @@ export default function PaymentsPage() {
                   min="2000"
                   value={form.periodYear}
                   onChange={(event) => updateForm("periodYear", event.target.value)}
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    paddingInline: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
-                  }}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Fecha límite real de pago
+                </span>
+                <input
+                  type="date"
+                  value={form.dueDate}
+                  onChange={(event) => updateForm("dueDate", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Monto real del periodo
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.amountDue}
+                  onChange={(event) => updateForm("amountDue", event.target.value)}
+                  placeholder="Opcional, puede quedar en 0"
+                  style={inputStyle}
                 />
               </label>
 
@@ -926,7 +1485,7 @@ export default function PaymentsPage() {
                   onChange={(event) =>
                     updateForm(
                       "status",
-                      event.target.value as "pending" | "paid" | "overdue"
+                      event.target.value as ExpensePaymentStatus
                     )
                   }
                 >
@@ -942,23 +1501,37 @@ export default function PaymentsPage() {
             <div style={{ display: "grid", gap: 10 }}>
               <label style={{ display: "grid", gap: 6 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Fecha de recibido del recibo
+                </span>
+                <input
+                  type="date"
+                  value={form.invoiceReceivedAt}
+                  onChange={(event) => updateForm("invoiceReceivedAt", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Fecha de corte
+                </span>
+                <input
+                  type="date"
+                  value={form.cutoffDate}
+                  onChange={(event) => updateForm("cutoffDate", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
                   Referencia de pago
                 </span>
                 <input
                   value={form.paymentReference}
                   onChange={(event) => updateForm("paymentReference", event.target.value)}
                   placeholder="Opcional"
-                  style={{
-                    width: "100%",
-                    height: 42,
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    paddingInline: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
-                  }}
+                  style={inputStyle}
                 />
               </label>
 
@@ -970,33 +1543,473 @@ export default function PaymentsPage() {
                   value={form.notes}
                   onChange={(event) => updateForm("notes", event.target.value)}
                   placeholder="Notas administrativas"
-                  rows={5}
-                  style={{
-                    width: "100%",
-                    borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    padding: 12,
-                    fontSize: 14,
-                    color: "#111827",
-                    outline: "none",
-                    resize: "vertical",
-                  }}
+                  rows={4}
+                  style={textareaStyle}
                 />
               </label>
 
-              <div style={{ paddingTop: 8 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 <UiButton
                   onClick={handleCreatePayment}
                   icon={savingPayment ? <Save size={16} /> : <Plus size={16} />}
                 >
-                  {savingPayment ? "Guardando..." : "Crear pago administrativo"}
+                  {savingPayment ? "Guardando..." : "Crear pago"}
+                </UiButton>
+
+                <UiButton
+                  variant="secondary"
+                  onClick={() => ensureCurrentPeriodPayments()}
+                  icon={<RotateCw size={16} />}
+                >
+                  {syncingCurrentPeriod ? "Generando..." : "Generar periodo actual"}
                 </UiButton>
               </div>
             </div>
           </AppCard>
         </div>
       </SectionCard>
+
+      {editingPayment ? (
+        <>
+          <div style={{ height: 16 }} />
+
+          <SectionCard
+            title="Editar pago seleccionado"
+            subtitle="Aquí puedes actualizar el registro mensual real y también la configuración recurrente."
+            icon={<Edit3 size={18} />}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Edificio
+                    </span>
+                    <AppSelect
+                      value={editingPayment.buildingId}
+                      onChange={(event) => {
+                        const nextBuildingId = event.target.value;
+                        setEditingPayment((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                buildingId: nextBuildingId,
+                                unitId: "",
+                              }
+                            : prev
+                        );
+                      }}
+                    >
+                      <option value="">Selecciona un edificio</option>
+                      {buildings.map((building) => (
+                        <option key={building.id} value={building.id}>
+                          {building.name}
+                        </option>
+                      ))}
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Aplica a
+                    </span>
+                    <AppSelect
+                      value={editingPayment.appliesTo}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "appliesTo",
+                          event.target.value as ExpenseAppliesToType
+                        )
+                      }
+                    >
+                      <option value="building">Edificio</option>
+                      <option value="unit">Unidad</option>
+                    </AppSelect>
+                  </label>
+
+                  {editingPayment.appliesTo === "unit" ? (
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                        Unidad
+                      </span>
+                      <AppSelect
+                        value={editingPayment.unitId}
+                        onChange={(event) => updateEditingForm("unitId", event.target.value)}
+                      >
+                        <option value="">Selecciona una unidad</option>
+                        {unitsForEditingBuilding.map((unit) => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.display_code || unit.unit_number || "Unidad"}
+                          </option>
+                        ))}
+                      </AppSelect>
+                    </label>
+                  ) : null}
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Título
+                    </span>
+                    <input
+                      value={editingPayment.title}
+                      onChange={(event) => updateEditingForm("title", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Proveedor
+                    </span>
+                    <input
+                      value={editingPayment.vendorName}
+                      onChange={(event) => updateEditingForm("vendorName", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Tipo de gasto
+                    </span>
+                    <AppSelect
+                      value={editingPayment.expenseType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "expenseType",
+                          event.target.value as ExpenseSchedule["expense_type"]
+                        )
+                      }
+                    >
+                      <option value="electricity">Electricidad</option>
+                      <option value="water">Agua</option>
+                      <option value="gas">Gas</option>
+                      <option value="internet">Internet</option>
+                      <option value="phone">Telefonía</option>
+                      <option value="maintenance_service">Servicio de mantenimiento</option>
+                      <option value="security">Seguridad</option>
+                      <option value="cleaning_service">Servicio de limpieza</option>
+                      <option value="other">Otro</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Quién paga
+                    </span>
+                    <AppSelect
+                      value={editingPayment.responsibilityType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "responsibilityType",
+                          event.target.value as "company" | "building"
+                        )
+                      }
+                    >
+                      <option value="company">Empresa</option>
+                      <option value="building">Edificio</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Frecuencia
+                    </span>
+                    <AppSelect
+                      value={editingPayment.frequencyType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "frequencyType",
+                          event.target.value as ExpenseFrequencyType
+                        )
+                      }
+                    >
+                      <option value="monthly">Mensual</option>
+                      <option value="bimonthly">Bimestral</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={editingPayment.autoGenerate}
+                      onChange={(event) =>
+                        updateEditingForm("autoGenerate", event.target.checked)
+                      }
+                    />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Autogenerar periodo actual
+                    </span>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Inicio recurrencia
+                    </span>
+                    <input
+                      type="date"
+                      value={editingPayment.startsOn}
+                      onChange={(event) => updateEditingForm("startsOn", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Fin recurrencia
+                    </span>
+                    <input
+                      type="date"
+                      value={editingPayment.endsOn}
+                      onChange={(event) => updateEditingForm("endsOn", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Día esperado de recibido
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editingPayment.expectedIssueDay}
+                      onChange={(event) =>
+                        updateEditingForm("expectedIssueDay", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Día esperado de corte
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editingPayment.expectedCutoffDay}
+                      onChange={(event) =>
+                        updateEditingForm("expectedCutoffDay", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Monto estimado
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingPayment.amountEstimated}
+                      onChange={(event) =>
+                        updateEditingForm("amountEstimated", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Día límite de pago
+                    </span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editingPayment.dueDay}
+                      onChange={(event) =>
+                        updateEditingForm("dueDay", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Periodo
+                    </span>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <AppSelect
+                        value={editingPayment.periodMonth}
+                        onChange={(event) =>
+                          updateEditingForm("periodMonth", event.target.value)
+                        }
+                      >
+                        {MONTH_LABELS_SHORT.map((month, index) => (
+                          <option key={month} value={String(index + 1)}>
+                            {month}
+                          </option>
+                        ))}
+                      </AppSelect>
+
+                      <input
+                        type="number"
+                        min="2000"
+                        value={editingPayment.periodYear}
+                        onChange={(event) =>
+                          updateEditingForm("periodYear", event.target.value)
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Fecha límite real
+                    </span>
+                    <input
+                      type="date"
+                      value={editingPayment.dueDate}
+                      onChange={(event) => updateEditingForm("dueDate", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Fecha de recibido
+                    </span>
+                    <input
+                      type="date"
+                      value={editingPayment.invoiceReceivedAt}
+                      onChange={(event) =>
+                        updateEditingForm("invoiceReceivedAt", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Fecha de corte
+                    </span>
+                    <input
+                      type="date"
+                      value={editingPayment.cutoffDate}
+                      onChange={(event) =>
+                        updateEditingForm("cutoffDate", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Monto real
+                    </span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingPayment.amountDue}
+                      onChange={(event) =>
+                        updateEditingForm("amountDue", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Estado
+                    </span>
+                    <AppSelect
+                      value={editingPayment.status}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "status",
+                          event.target.value as ExpensePaymentStatus
+                        )
+                      }
+                    >
+                      <option value="pending">Pendiente</option>
+                      <option value="paid">Pagado</option>
+                      <option value="overdue">Vencido</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Referencia
+                    </span>
+                    <input
+                      value={editingPayment.paymentReference}
+                      onChange={(event) =>
+                        updateEditingForm("paymentReference", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                      Notas
+                    </span>
+                    <textarea
+                      value={editingPayment.notes}
+                      onChange={(event) => updateEditingForm("notes", event.target.value)}
+                      rows={4}
+                      style={textareaStyle}
+                    />
+                  </label>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <UiButton
+                      onClick={handleSaveEditedPayment}
+                      icon={<Save size={16} />}
+                    >
+                      {savingPayment ? "Guardando..." : "Guardar cambios"}
+                    </UiButton>
+
+                    <UiButton
+                      variant="secondary"
+                      onClick={() => setEditingPayment(null)}
+                      icon={<X size={16} />}
+                    >
+                      Cancelar edición
+                    </UiButton>
+                  </div>
+                </div>
+              </AppCard>
+            </div>
+          </SectionCard>
+        </>
+      ) : null}
 
       <div style={{ height: 16 }} />
 
@@ -1092,18 +2105,7 @@ export default function PaymentsPage() {
         >
           <AppCard>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#6B7280",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
+              <div style={filterLabelStyle}>
                 <Building2 size={14} />
                 Edificio
               </div>
@@ -1124,18 +2126,7 @@ export default function PaymentsPage() {
 
           <AppCard>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "#6B7280",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
+              <div style={filterLabelStyle}>
                 <Filter size={14} />
                 Estado
               </div>
@@ -1153,6 +2144,31 @@ export default function PaymentsPage() {
               </AppSelect>
             </div>
           </AppCard>
+
+          <AppCard>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div style={filterLabelStyle}>
+                <CalendarClock size={14} />
+                Plantillas activas
+              </div>
+
+              <div
+                style={{
+                  minHeight: 42,
+                  borderRadius: 12,
+                  border: "1px solid #E5E7EB",
+                  background: "#F9FAFB",
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  color: "#374151",
+                  display: "flex",
+                  alignItems: "center",
+                }}
+              >
+                {expenseSchedules.length} configuraciones activas
+              </div>
+            </div>
+          </AppCard>
         </div>
       </SectionCard>
 
@@ -1160,7 +2176,7 @@ export default function PaymentsPage() {
 
       <SectionCard
         title="Listado de pagos administrativos"
-        subtitle="Solo se muestran pagos absorbidos por la empresa o por el edificio."
+        subtitle="Puedes editar cualquier registro para completar el recibo real cuando llegue."
         icon={<ReceiptText size={18} />}
       >
         <AppTable
@@ -1221,31 +2237,53 @@ export default function PaymentsPage() {
             },
             {
               key: "period",
-              header: "Periodo",
+              header: "Periodo / frecuencia",
               render: (row: PaymentRow) => (
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#374151",
-                    fontWeight: 600,
-                  }}
-                >
-                  {row.periodLabel}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "#374151",
+                      fontWeight: 600,
+                    }}
+                  >
+                    {row.periodLabel}
+                  </span>
+
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#9CA3AF",
+                    }}
+                  >
+                    {row.frequencyLabel}
+                  </span>
+                </div>
               ),
             },
             {
               key: "dueDate",
               header: "Vencimiento",
               render: (row: PaymentRow) => (
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#374151",
-                  }}
-                >
-                  {row.dueDateLabel}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      color: "#374151",
+                    }}
+                  >
+                    {row.dueDateLabel}
+                  </span>
+
+                  <span
+                    style={{
+                      fontSize: 12,
+                      color: "#9CA3AF",
+                    }}
+                  >
+                    {row.invoiceReceivedAt ? `Recibido: ${formatDate(row.invoiceReceivedAt)}` : "Sin recibido"}
+                  </span>
+                </div>
               ),
             },
             {
@@ -1253,30 +2291,28 @@ export default function PaymentsPage() {
               header: "Monto",
               align: "right",
               render: (row: PaymentRow) => (
-                <span
-                  style={{
-                    fontSize: 13,
-                    fontWeight: 800,
-                    color: "#111827",
-                  }}
-                >
-                  {row.amountDueLabel}
-                </span>
-              ),
-            },
-            {
-              key: "responsibility",
-              header: "Responsable",
-              render: (row: PaymentRow) => (
-                <span
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#374151",
-                  }}
-                >
-                  {row.responsibilityLabel}
-                </span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      color: "#111827",
+                    }}
+                  >
+                    {row.amountDueLabel}
+                  </span>
+
+                  {row.isGeneratedPlaceholder ? (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        color: "#9CA3AF",
+                      }}
+                    >
+                      Placeholder
+                    </span>
+                  ) : null}
+                </div>
               ),
             },
             {
@@ -1331,9 +2367,70 @@ export default function PaymentsPage() {
                 </div>
               ),
             },
+            {
+              key: "actions",
+              header: "Acciones",
+              render: (row: PaymentRow) => (
+                <button
+                  type="button"
+                  onClick={() => startEditingPayment(row)}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    borderRadius: 10,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    padding: "8px 10px",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#111827",
+                    cursor: "pointer",
+                  }}
+                >
+                  <Edit3 size={14} />
+                  Editar
+                </button>
+              ),
+            },
           ]}
         />
       </SectionCard>
     </PageContainer>
   );
 }
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 42,
+  borderRadius: 12,
+  border: "1px solid #D1D5DB",
+  background: "#FFFFFF",
+  paddingInline: 12,
+  fontSize: 14,
+  color: "#111827",
+  outline: "none",
+};
+
+const textareaStyle: React.CSSProperties = {
+  width: "100%",
+  borderRadius: 12,
+  border: "1px solid #D1D5DB",
+  background: "#FFFFFF",
+  padding: 12,
+  fontSize: 14,
+  color: "#111827",
+  outline: "none",
+  resize: "vertical",
+};
+
+const filterLabelStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#6B7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
