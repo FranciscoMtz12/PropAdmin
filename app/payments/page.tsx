@@ -23,7 +23,6 @@ import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Building2,
-  CalendarDays,
   CheckCircle2,
   Clock3,
   CreditCard,
@@ -439,24 +438,67 @@ export default function PaymentsPage() {
           helper={selectedBuildingLabel}
           icon={<ReceiptText size={18} />}
         />
+
         <MetricCard
           label="Pagados"
           value={String(paidCount)}
           helper="Pagos realizados"
-          icon={<CheckCircle2 size={18} color="#16A34A" />}
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#DCFCE7",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <CheckCircle2 size={18} color="#16A34A" />
+            </div>
+          }
         />
+
         <MetricCard
           label="Pendientes"
           value={String(pendingCount)}
           helper={nextPendingLabel}
-          icon={<Clock3 size={18} color="#EAB308" />}
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#FEF9C3",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Clock3 size={18} color="#EAB308" />
+            </div>
+          }
         />
+
         <MetricCard
           label="Vencidos"
           value={String(overdueCount)}
           helper="Requieren atención"
-          icon={<AlertCircle size={18} color="#DC2626" />}
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#FEE2E2",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <AlertCircle size={18} color="#DC2626" />
+            </div>
+          }
         />
+
         <MetricCard
           label="Monto pendiente"
           value={formatCurrency(pendingAmount)}
