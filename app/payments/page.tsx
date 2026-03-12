@@ -1,27 +1,6 @@
 "use client";
 
-/*
-  Módulo de Pagos administrativos.
-
-  Objetivos de esta versión:
-  - mantener creación de pagos recurrentes
-  - mantener edición de pagos reales y configuración recurrente
-  - permitir cambio rápido de estado desde la tabla
-  - simplificar la tabla principal
-  - mover información extendida a un panel de "Detalles"
-  - abrir edición en modal flotante
-  - abrir eliminación en modal flotante estilizado
-  - agregar iconos visuales por tipo de servicio
-  - mantener toasts globales para evitar brincos del layout
-*/
-
-import {
-  useEffect,
-  useMemo,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -59,7 +38,6 @@ import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
-import AppTable from "@/components/AppTable";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
@@ -67,6 +45,7 @@ import Modal from "@/components/Modal";
 type Building = {
   id: string;
   name: string;
+  address: string | null;
 };
 
 type Unit = {
@@ -81,21 +60,23 @@ type ExpenseResponsibilityType = "company" | "building" | "tenant";
 type ExpenseAppliesToType = "building" | "unit";
 type ExpensePaymentStatus = "pending" | "paid" | "overdue";
 
+type ExpenseType =
+  | "electricity"
+  | "water"
+  | "gas"
+  | "internet"
+  | "phone"
+  | "maintenance_service"
+  | "security"
+  | "cleaning_service"
+  | "other";
+
 type ExpenseSchedule = {
   id: string;
   company_id?: string;
   building_id: string;
   unit_id: string | null;
-  expense_type:
-    | "electricity"
-    | "water"
-    | "gas"
-    | "internet"
-    | "phone"
-    | "maintenance_service"
-    | "security"
-    | "cleaning_service"
-    | "other";
+  expense_type: ExpenseType;
   title: string;
   vendor_name: string | null;
   responsibility_type: ExpenseResponsibilityType;
@@ -110,6 +91,7 @@ type ExpenseSchedule = {
   auto_generate: boolean | null;
   expected_issue_day: number | null;
   expected_cutoff_day: number | null;
+  service_identifier: string | null;
 };
 
 type ExpensePayment = {
@@ -132,6 +114,9 @@ type ExpensePayment = {
   billing_period_label: string | null;
   is_generated_placeholder: boolean | null;
   amount_estimated_snapshot: number | null;
+  billed_period_label: string | null;
+  consumption_period_label: string | null;
+  billed_month_label: string | null;
 };
 
 type PaymentStatusFilter = "all" | "pending" | "paid" | "overdue";
@@ -141,13 +126,11 @@ type PaymentRow = {
   scheduleId: string;
   buildingId: string;
   buildingName: string;
+  buildingAddress: string;
   unitLabel: string;
   title: string;
   vendorName: string;
-  expenseType: ExpenseSchedule["expense_type"];
-  expenseTypeLabel: string;
-  responsibilityLabel: string;
-  appliesToLabel: string;
+  expenseType: ExpenseType;
   frequencyLabel: string;
   periodLabel: string;
   dueDate: string;
@@ -159,32 +142,31 @@ type PaymentRow = {
   paymentReference: string;
   notes: string;
   isGeneratedPlaceholder: boolean;
-  invoiceReceivedAt: string | null;
   cutoffDate: string | null;
+  serviceIdentifier: string;
+  serviceIdentifierLabel: string;
+  billedPeriodLabel: string;
+  consumptionPeriodLabel: string;
+  billedMonthLabel: string;
 };
 
 type CreatePaymentForm = {
   buildingId: string;
   appliesTo: ExpenseAppliesToType;
   unitId: string;
-  expenseType: ExpenseSchedule["expense_type"];
+  expenseType: ExpenseType;
   title: string;
   vendorName: string;
+  serviceIdentifier: string;
   responsibilityType: "company" | "building";
   frequencyType: ExpenseFrequencyType;
-  startsOn: string;
-  endsOn: string;
   autoGenerate: boolean;
-  expectedIssueDay: string;
-  expectedCutoffDay: string;
   amountEstimated: string;
-  dueDay: string;
-  periodMonth: string;
-  periodYear: string;
-  amountDue: string;
   dueDate: string;
-  invoiceReceivedAt: string;
-  cutoffDate: string;
+  billedPeriodLabel: string;
+  consumptionPeriodLabel: string;
+  billedMonthLabel: string;
+  amountDue: string;
   status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
@@ -198,22 +180,17 @@ type EditPaymentForm = {
   unitId: string;
   title: string;
   vendorName: string;
-  expenseType: ExpenseSchedule["expense_type"];
+  serviceIdentifier: string;
+  expenseType: ExpenseType;
   responsibilityType: "company" | "building";
   frequencyType: ExpenseFrequencyType;
-  startsOn: string;
-  endsOn: string;
   autoGenerate: boolean;
-  expectedIssueDay: string;
-  expectedCutoffDay: string;
   amountEstimated: string;
-  dueDay: string;
-  periodMonth: string;
-  periodYear: string;
-  amountDue: string;
   dueDate: string;
-  invoiceReceivedAt: string;
-  cutoffDate: string;
+  billedPeriodLabel: string;
+  consumptionPeriodLabel: string;
+  billedMonthLabel: string;
+  amountDue: string;
   status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
@@ -242,14 +219,6 @@ function getTodayDateOnlyKey() {
   return `${year}-${month}-${day}`;
 }
 
-function getDefaultMonth() {
-  return String(new Date().getMonth() + 1);
-}
-
-function getDefaultYear() {
-  return String(new Date().getFullYear());
-}
-
 function parseDateOnly(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, (month || 1) - 1, day || 1);
@@ -273,31 +242,8 @@ function formatCurrency(amount: number) {
   }).format(amount || 0);
 }
 
-function getExpenseTypeLabel(type: ExpenseSchedule["expense_type"]) {
-  if (type === "electricity") return "Electricidad";
-  if (type === "water") return "Agua";
-  if (type === "gas") return "Gas";
-  if (type === "internet") return "Internet";
-  if (type === "phone") return "Telefonía";
-  if (type === "maintenance_service") return "Servicio de mantenimiento";
-  if (type === "security") return "Seguridad";
-  if (type === "cleaning_service") return "Servicio de limpieza";
-  return "Otro";
-}
-
-function getResponsibilityLabel(type: ExpenseResponsibilityType) {
-  if (type === "company") return "Empresa";
-  if (type === "building") return "Edificio";
-  return "Inquilino";
-}
-
-function getAppliesToLabel(type: ExpenseAppliesToType) {
-  return type === "unit" ? "Unidad" : "Edificio";
-}
-
 function getFrequencyLabel(type: ExpenseFrequencyType | null) {
-  if (type === "bimonthly") return "Bimestral";
-  return "Mensual";
+  return type === "bimonthly" ? "Bimestral" : "Mensual";
 }
 
 function getStatusLabel(status: ExpensePaymentStatus) {
@@ -308,26 +254,14 @@ function getStatusLabel(status: ExpensePaymentStatus) {
 
 function getStatusColors(status: ExpensePaymentStatus) {
   if (status === "paid") {
-    return {
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      text: "#166534",
-    };
+    return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
   }
 
   if (status === "pending") {
-    return {
-      background: "#FEFCE8",
-      border: "#FDE68A",
-      text: "#A16207",
-    };
+    return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
   }
 
-  return {
-    background: "#FEF2F2",
-    border: "#FECACA",
-    text: "#B91C1C",
-  };
+  return { background: "#FEF2F2", border: "#FECACA", text: "#B91C1C" };
 }
 
 function getNextPaymentStatus(currentStatus: ExpensePaymentStatus): ExpensePaymentStatus {
@@ -336,18 +270,101 @@ function getNextPaymentStatus(currentStatus: ExpensePaymentStatus): ExpensePayme
   return "pending";
 }
 
-function getDueDateFromPeriod(periodYear: number, periodMonth: number, dueDay: number) {
-  const lastDayOfMonth = new Date(periodYear, periodMonth, 0).getDate();
-  const safeDay = Math.min(dueDay, lastDayOfMonth);
-  const month = String(periodMonth).padStart(2, "0");
-  const day = String(safeDay).padStart(2, "0");
-  return `${periodYear}-${month}-${day}`;
-}
-
 function parseOptionalNumber(value: string) {
   if (!value.trim()) return null;
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function getIdentifierLabel(expenseType: ExpenseType) {
+  if (expenseType === "electricity") return "Número de servicio";
+  if (expenseType === "water") return "Número de contrato";
+  if (expenseType === "gas") return "Número de cuenta";
+  if (expenseType === "phone" || expenseType === "internet") return "Número de teléfono";
+  return "Identificador del servicio";
+}
+
+function getServiceVisual(type: ExpenseType) {
+  if (type === "electricity") {
+    return { icon: <Zap size={16} />, background: "#FEF3C7", color: "#CA8A04" };
+  }
+
+  if (type === "water") {
+    return { icon: <Droplet size={16} />, background: "#DBEAFE", color: "#2563EB" };
+  }
+
+  if (type === "gas") {
+    return { icon: <Flame size={16} />, background: "#FFEDD5", color: "#EA580C" };
+  }
+
+  if (type === "internet") {
+    return { icon: <Globe size={16} />, background: "#E0F2FE", color: "#0284C7" };
+  }
+
+  if (type === "phone") {
+    return { icon: <Phone size={16} />, background: "#F3E8FF", color: "#7C3AED" };
+  }
+
+  if (type === "maintenance_service") {
+    return { icon: <Wrench size={16} />, background: "#FFEDD5", color: "#C2410C" };
+  }
+
+  if (type === "security") {
+    return { icon: <Shield size={16} />, background: "#FEE2E2", color: "#DC2626" };
+  }
+
+  if (type === "cleaning_service") {
+    return { icon: <Sparkles size={16} />, background: "#DCFCE7", color: "#16A34A" };
+  }
+
+  return { icon: <Package size={16} />, background: "#E5E7EB", color: "#4B5563" };
+}
+
+function getDueDayFromDate(dateKey: string) {
+  if (!dateKey) return null;
+  return parseDateOnly(dateKey).getDate();
+}
+
+function getCutoffDateFromDueDate(dueDate: string) {
+  if (!dueDate) return "";
+  const next = parseDateOnly(dueDate);
+  next.setDate(next.getDate() + 1);
+  const year = next.getFullYear();
+  const month = String(next.getMonth() + 1).padStart(2, "0");
+  const day = String(next.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function getStartsOnFromDueDate(dueDate: string) {
+  if (!dueDate) return null;
+  const date = parseDateOnly(dueDate);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  return `${year}-${month}-01`;
+}
+
+function getDefaultCreateForm(buildingId = ""): CreatePaymentForm {
+  return {
+    buildingId,
+    appliesTo: "building",
+    unitId: "",
+    expenseType: "electricity",
+    title: "",
+    vendorName: "",
+    serviceIdentifier: "",
+    responsibilityType: "company",
+    frequencyType: "monthly",
+    autoGenerate: true,
+    amountEstimated: "",
+    dueDate: getTodayDateOnlyKey(),
+    billedPeriodLabel: "",
+    consumptionPeriodLabel: "",
+    billedMonthLabel: "",
+    amountDue: "",
+    status: "pending",
+    paymentReference: "",
+    notes: "",
+  };
 }
 
 function isScheduleActiveForCurrentPeriod(
@@ -375,112 +392,6 @@ function isScheduleActiveForCurrentPeriod(
   const startIndex = startsOn.getFullYear() * 12 + startsOn.getMonth();
   const currentIndex = currentYear * 12 + (currentMonth - 1);
   return (currentIndex - startIndex) % 2 === 0;
-}
-
-function getInitialCreateForm(buildingId = ""): CreatePaymentForm {
-  return {
-    buildingId,
-    appliesTo: "building",
-    unitId: "",
-    expenseType: "electricity",
-    title: "",
-    vendorName: "",
-    responsibilityType: "company",
-    frequencyType: "monthly",
-    startsOn: getTodayDateOnlyKey(),
-    endsOn: "",
-    autoGenerate: true,
-    expectedIssueDay: "",
-    expectedCutoffDay: "",
-    amountEstimated: "",
-    dueDay: "",
-    periodMonth: getDefaultMonth(),
-    periodYear: getDefaultYear(),
-    amountDue: "",
-    dueDate: "",
-    invoiceReceivedAt: "",
-    cutoffDate: "",
-    status: "pending",
-    paymentReference: "",
-    notes: "",
-  };
-}
-
-function getServiceVisual(type: ExpenseSchedule["expense_type"]) {
-  if (type === "electricity") {
-    return {
-      icon: <Zap size={16} />,
-      background: "#FEF3C7",
-      color: "#CA8A04",
-    };
-  }
-
-  if (type === "water") {
-    return {
-      icon: <Droplet size={16} />,
-      background: "#DBEAFE",
-      color: "#2563EB",
-    };
-  }
-
-  if (type === "gas") {
-    return {
-      icon: <Flame size={16} />,
-      background: "#FFEDD5",
-      color: "#EA580C",
-    };
-  }
-
-  if (type === "internet") {
-    return {
-      icon: <Globe size={16} />,
-      background: "#E0F2FE",
-      color: "#0284C7",
-    };
-  }
-
-  if (type === "phone") {
-    return {
-      icon: <Phone size={16} />,
-      background: "#F3E8FF",
-      color: "#7C3AED",
-    };
-  }
-
-  if (type === "maintenance_service") {
-    return {
-      icon: <Wrench size={16} />,
-      background: "#FFEDD5",
-      color: "#C2410C",
-    };
-  }
-
-  if (type === "security") {
-    return {
-      icon: <Shield size={16} />,
-      background: "#FEE2E2",
-      color: "#DC2626",
-    };
-  }
-
-  if (type === "cleaning_service") {
-    return {
-      icon: <Sparkles size={16} />,
-      background: "#DCFCE7",
-      color: "#16A34A",
-    };
-  }
-
-  return {
-    icon: <Package size={16} />,
-    background: "#E5E7EB",
-    color: "#4B5563",
-  };
-}
-
-function getConceptLabel(row: PaymentRow) {
-  const preferred = row.vendorName && row.vendorName !== "Sin proveedor" ? row.vendorName : row.title;
-  return preferred.trim() || "Pago";
 }
 
 function getMetricIconBoxStyle(background: string): CSSProperties {
@@ -512,12 +423,12 @@ export default function PaymentsPage() {
   const [selectedStatus, setSelectedStatus] = useState<PaymentStatusFilter>("all");
 
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [form, setForm] = useState<CreatePaymentForm>(getInitialCreateForm());
+  const [createForm, setCreateForm] = useState<CreatePaymentForm>(getDefaultCreateForm());
 
   const [editingPayment, setEditingPayment] = useState<EditPaymentForm | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
-  const [detailsPaymentId, setDetailsPaymentId] = useState<string | null>(null);
+  const [openDetailPaymentId, setOpenDetailPaymentId] = useState<string | null>(null);
   const [deleteTargetRow, setDeleteTargetRow] = useState<PaymentRow | null>(null);
 
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
@@ -538,7 +449,7 @@ export default function PaymentsPage() {
     const [buildingsRes, unitsRes, schedulesRes, paymentsRes] = await Promise.all([
       supabase
         .from("buildings")
-        .select("id, name")
+        .select("id, name, address")
         .eq("company_id", user.company_id)
         .order("name", { ascending: true }),
 
@@ -568,7 +479,8 @@ export default function PaymentsPage() {
           ends_on,
           auto_generate,
           expected_issue_day,
-          expected_cutoff_day
+          expected_cutoff_day,
+          service_identifier
         `)
         .eq("company_id", user.company_id)
         .eq("active", true)
@@ -595,7 +507,10 @@ export default function PaymentsPage() {
           cutoff_date,
           billing_period_label,
           is_generated_placeholder,
-          amount_estimated_snapshot
+          amount_estimated_snapshot,
+          billed_period_label,
+          consumption_period_label,
+          billed_month_label
         `)
         .eq("company_id", user.company_id)
         .order("due_date", { ascending: true }),
@@ -643,7 +558,7 @@ export default function PaymentsPage() {
     setExpenseSchedules(nextSchedules);
     setExpensePayments(nextPayments);
 
-    setForm((prev) => ({
+    setCreateForm((prev) => ({
       ...prev,
       buildingId: prev.buildingId || nextBuildings[0]?.id || "",
     }));
@@ -662,8 +577,8 @@ export default function PaymentsPage() {
     const schedules = schedulesInput ?? expenseSchedules;
     const payments = paymentsInput ?? expensePayments;
 
-    const currentYear = Number(getDefaultYear());
-    const currentMonth = Number(getDefaultMonth());
+    const currentYear = Number(new Date().getFullYear());
+    const currentMonth = Number(new Date().getMonth() + 1);
 
     const existingBySchedule = new Set(
       payments
@@ -683,20 +598,15 @@ export default function PaymentsPage() {
       return true;
     });
 
-    if (schedulesToGenerate.length === 0) {
-      showToast({
-        type: "info",
-        message: "No había pagos nuevos por generar para el periodo actual.",
-      });
-      return;
-    }
+    if (schedulesToGenerate.length === 0) return;
 
     setSyncingCurrentPeriod(true);
 
     try {
       const rowsToInsert = schedulesToGenerate.map((schedule) => {
         const amountValue = schedule.amount_estimated ?? 0;
-        const dueDate = getDueDateFromPeriod(currentYear, currentMonth, schedule.due_day);
+        const dueDay = Math.max(1, Math.min(31, schedule.due_day));
+        const dueDate = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
 
         return {
           expense_schedule_id: schedule.id,
@@ -715,21 +625,24 @@ export default function PaymentsPage() {
           is_generated_placeholder: true,
           amount_estimated_snapshot: schedule.amount_estimated ?? null,
           invoice_received_at: null,
-          cutoff_date: null,
+          cutoff_date: getCutoffDateFromDueDate(dueDate),
+          billed_period_label: null,
+          consumption_period_label: null,
+          billed_month_label: null,
         };
       });
 
       const { error } = await supabase.from("expense_payments").insert(rowsToInsert);
 
       if (error) {
-        const errorText =
-          "No se pudieron generar automáticamente algunos pagos del periodo actual.";
-        setMessage(errorText);
-        showToast({ type: "error", message: errorText });
+        showToast({
+          type: "error",
+          message: "No se pudieron generar automáticamente algunos pagos del periodo actual.",
+        });
         return;
       }
 
-      const { data: refreshedPayments, error: refreshError } = await supabase
+      const { data: refreshedPayments } = await supabase
         .from("expense_payments")
         .select(`
           id,
@@ -750,33 +663,29 @@ export default function PaymentsPage() {
           cutoff_date,
           billing_period_label,
           is_generated_placeholder,
-          amount_estimated_snapshot
+          amount_estimated_snapshot,
+          billed_period_label,
+          consumption_period_label,
+          billed_month_label
         `)
         .eq("company_id", user.company_id)
         .order("due_date", { ascending: true });
 
-      if (!refreshError) {
-        setExpensePayments((refreshedPayments as ExpensePayment[]) || []);
-      }
-
-      showToast({
-        type: "success",
-        message: "Periodo generado correctamente.",
-      });
+      setExpensePayments((refreshedPayments as ExpensePayment[]) || []);
     } finally {
       setSyncingCurrentPeriod(false);
     }
   }
 
   const unitsForSelectedBuilding = useMemo(() => {
-    if (!form.buildingId) return [];
-    return units.filter((unit) => unit.building_id === form.buildingId);
-  }, [units, form.buildingId]);
+    if (!createForm.buildingId) return [];
+    return units.filter((unit) => unit.building_id === createForm.buildingId);
+  }, [units, createForm.buildingId]);
 
   const unitsForEditingBuilding = useMemo(() => {
     if (!editingPayment?.buildingId) return [];
     return units.filter((unit) => unit.building_id === editingPayment.buildingId);
-  }, [units, editingPayment]);
+  }, [units, editingPayment?.buildingId]);
 
   const paymentRows = useMemo<PaymentRow[]>(() => {
     const buildingMap = new Map<string, Building>();
@@ -791,7 +700,6 @@ export default function PaymentsPage() {
       .map((payment) => {
         const schedule = scheduleMap.get(payment.expense_schedule_id);
         if (!schedule) return null;
-        if (schedule.responsibility_type === "tenant") return null;
 
         const building =
           buildingMap.get(payment.building_id) ||
@@ -808,14 +716,11 @@ export default function PaymentsPage() {
           scheduleId: schedule.id,
           buildingId: payment.building_id,
           buildingName: building?.name || "Edificio",
-          unitLabel:
-            schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio",
+          buildingAddress: building?.address || "Sin dirección",
+          unitLabel,
           title: schedule.title,
-          vendorName: schedule.vendor_name || "Sin proveedor",
+          vendorName: schedule.vendor_name || "",
           expenseType: schedule.expense_type,
-          expenseTypeLabel: getExpenseTypeLabel(schedule.expense_type),
-          responsibilityLabel: getResponsibilityLabel(schedule.responsibility_type),
-          appliesToLabel: getAppliesToLabel(schedule.applies_to),
           frequencyLabel: getFrequencyLabel(schedule.frequency_type || "monthly"),
           periodLabel: formatPeriod(payment.period_year, payment.period_month),
           dueDate: payment.due_date,
@@ -827,8 +732,12 @@ export default function PaymentsPage() {
           paymentReference: payment.payment_reference || "—",
           notes: payment.notes || schedule.notes || "—",
           isGeneratedPlaceholder: Boolean(payment.is_generated_placeholder),
-          invoiceReceivedAt: payment.invoice_received_at,
           cutoffDate: payment.cutoff_date,
+          serviceIdentifier: schedule.service_identifier || "Sin identificador",
+          serviceIdentifierLabel: getIdentifierLabel(schedule.expense_type),
+          billedPeriodLabel: payment.billed_period_label || "Sin dato",
+          consumptionPeriodLabel: payment.consumption_period_label || "Sin dato",
+          billedMonthLabel: payment.billed_month_label || "Sin dato",
         };
       })
       .filter((row): row is PaymentRow => Boolean(row));
@@ -836,60 +745,46 @@ export default function PaymentsPage() {
 
   const filteredRows = useMemo(() => {
     return paymentRows.filter((row) => {
-      if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) {
-        return false;
-      }
-      if (selectedStatus !== "all" && row.status !== selectedStatus) {
-        return false;
-      }
+      if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) return false;
+      if (selectedStatus !== "all" && row.status !== selectedStatus) return false;
       return true;
     });
   }, [paymentRows, selectedBuildingId, selectedStatus]);
 
-  const detailsRow = useMemo(() => {
-    return filteredRows.find((row) => row.id === detailsPaymentId) || null;
-  }, [filteredRows, detailsPaymentId]);
+  const totalRecords = filteredRows.length;
+  const paidCount = filteredRows.filter((row) => row.status === "paid").length;
+  const pendingCount = filteredRows.filter((row) => row.status === "pending").length;
+  const overdueCount = filteredRows.filter((row) => row.status === "overdue").length;
+  const pendingAmount = filteredRows
+    .filter((row) => row.status === "pending" || row.status === "overdue")
+    .reduce((sum, row) => sum + row.amountDue, 0);
 
   const selectedBuildingLabel =
     selectedBuildingId === "all"
       ? "Todos los edificios"
       : buildings.find((building) => building.id === selectedBuildingId)?.name || "Edificio";
 
-  const totalRecords = filteredRows.length;
-  const paidCount = filteredRows.filter((row) => row.status === "paid").length;
-  const pendingCount = filteredRows.filter((row) => row.status === "pending").length;
-  const overdueCount = filteredRows.filter((row) => row.status === "overdue").length;
-
-  const pendingAmount = filteredRows
-    .filter((row) => row.status === "pending" || row.status === "overdue")
-    .reduce((sum, row) => sum + row.amountDue, 0);
-
-  const todayKey = getTodayDateOnlyKey();
-
   const nextPendingLabel = useMemo(() => {
     const nextPending = filteredRows
-      .filter((row) => row.status === "pending" && row.dueDate >= todayKey)
+      .filter((row) => row.status === "pending")
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
     if (!nextPending) return "Sin próximos pagos";
-    return `${getConceptLabel(nextPending)} · ${nextPending.dueDateLabel}`;
-  }, [filteredRows, todayKey]);
+    return `${nextPending.title} · ${nextPending.dueDateLabel}`;
+  }, [filteredRows]);
 
-  function updateForm<K extends keyof CreatePaymentForm>(key: K, value: CreatePaymentForm[K]) {
-    setForm((prev) => ({
-      ...prev,
-      [key]: value,
-    }));
+  function updateCreateForm<K extends keyof CreatePaymentForm>(
+    key: K,
+    value: CreatePaymentForm[K]
+  ) {
+    setCreateForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function updateEditingForm<K extends keyof EditPaymentForm>(key: K, value: EditPaymentForm[K]) {
-    setEditingPayment((prev) => {
-      if (!prev) return prev;
-      return {
-        ...prev,
-        [key]: value,
-      };
-    });
+  function updateEditingForm<K extends keyof EditPaymentForm>(
+    key: K,
+    value: EditPaymentForm[K]
+  ) {
+    setEditingPayment((prev) => (prev ? { ...prev, [key]: value } : prev));
   }
 
   async function handleCreatePayment() {
@@ -897,56 +792,50 @@ export default function PaymentsPage() {
 
     setMessage("");
 
-    if (!form.buildingId) {
+    if (!createForm.buildingId) {
       const errorText = "Selecciona un edificio.";
       setMessage(errorText);
       showToast({ type: "warning", message: errorText });
       return;
     }
 
-    if (form.appliesTo === "unit" && !form.unitId) {
-      const errorText = "Selecciona una unidad cuando el pago aplique a una unidad.";
+    if (createForm.appliesTo === "unit" && !createForm.unitId) {
+      const errorText = "Selecciona una unidad.";
       setMessage(errorText);
       showToast({ type: "warning", message: errorText });
       return;
     }
 
-    if (!form.title.trim()) {
-      const errorText = "Escribe un nombre corto para el concepto.";
+    if (!createForm.title.trim()) {
+      const errorText = "Escribe el concepto corto del servicio.";
       setMessage(errorText);
       showToast({ type: "warning", message: errorText });
       return;
     }
 
-    if (!form.dueDay || Number(form.dueDay) < 1 || Number(form.dueDay) > 31) {
-      const errorText = "Escribe un día de vencimiento válido entre 1 y 31.";
+    if (!createForm.dueDate) {
+      const errorText = "Selecciona la fecha límite de pago.";
       setMessage(errorText);
       showToast({ type: "warning", message: errorText });
       return;
     }
 
-    if (!form.periodMonth || Number(form.periodMonth) < 1 || Number(form.periodMonth) > 12) {
-      const errorText = "Selecciona un mes válido.";
+    const dueDay = getDueDayFromDate(createForm.dueDate);
+    if (!dueDay) {
+      const errorText = "No se pudo calcular el día de vencimiento.";
       setMessage(errorText);
       showToast({ type: "warning", message: errorText });
       return;
     }
 
-    if (!form.periodYear || Number(form.periodYear) < 2000) {
-      const errorText = "Selecciona un año válido.";
-      setMessage(errorText);
-      showToast({ type: "warning", message: errorText });
-      return;
-    }
-
-    const amountEstimated = parseOptionalNumber(form.amountEstimated);
-    const amountDue = parseOptionalNumber(form.amountDue) ?? amountEstimated ?? 0;
-    const dueDay = Number(form.dueDay);
-    const periodMonth = Number(form.periodMonth);
-    const periodYear = Number(form.periodYear);
-
-    const dueDate = form.dueDate.trim() || getDueDateFromPeriod(periodYear, periodMonth, dueDay);
-    const paidAtValue = form.status === "paid" ? new Date().toISOString() : null;
+    const dueDateObject = parseDateOnly(createForm.dueDate);
+    const periodMonth = dueDateObject.getMonth() + 1;
+    const periodYear = dueDateObject.getFullYear();
+    const amountEstimated = parseOptionalNumber(createForm.amountEstimated);
+    const amountDue = parseOptionalNumber(createForm.amountDue) ?? amountEstimated ?? 0;
+    const cutoffDate = getCutoffDateFromDueDate(createForm.dueDate);
+    const startsOn = getStartsOnFromDueDate(createForm.dueDate);
+    const paidAtValue = createForm.status === "paid" ? new Date().toISOString() : null;
 
     setSavingPayment(true);
 
@@ -955,23 +844,24 @@ export default function PaymentsPage() {
         .from("expense_schedules")
         .insert({
           company_id: user.company_id,
-          building_id: form.buildingId,
-          unit_id: form.appliesTo === "unit" ? form.unitId : null,
-          expense_type: form.expenseType,
-          title: form.title.trim(),
-          vendor_name: form.vendorName.trim() || null,
-          responsibility_type: form.responsibilityType,
-          applies_to: form.appliesTo,
+          building_id: createForm.buildingId,
+          unit_id: createForm.appliesTo === "unit" ? createForm.unitId : null,
+          expense_type: createForm.expenseType,
+          title: createForm.title.trim(),
+          vendor_name: createForm.vendorName.trim() || null,
+          service_identifier: createForm.serviceIdentifier.trim() || null,
+          responsibility_type: createForm.responsibilityType,
+          applies_to: createForm.appliesTo,
           amount_estimated: amountEstimated,
           due_day: dueDay,
           active: true,
-          notes: form.notes.trim() || null,
-          frequency_type: form.frequencyType,
-          starts_on: form.startsOn || null,
-          ends_on: form.endsOn || null,
-          auto_generate: form.autoGenerate,
-          expected_issue_day: parseOptionalNumber(form.expectedIssueDay),
-          expected_cutoff_day: parseOptionalNumber(form.expectedCutoffDay),
+          notes: createForm.notes.trim() || null,
+          frequency_type: createForm.frequencyType,
+          starts_on: startsOn,
+          ends_on: null,
+          auto_generate: createForm.autoGenerate,
+          expected_issue_day: null,
+          expected_cutoff_day: null,
         })
         .select("id")
         .single();
@@ -983,41 +873,37 @@ export default function PaymentsPage() {
       const { error: paymentError } = await supabase.from("expense_payments").insert({
         expense_schedule_id: scheduleData.id,
         company_id: user.company_id,
-        building_id: form.buildingId,
-        unit_id: form.appliesTo === "unit" ? form.unitId : null,
+        building_id: createForm.buildingId,
+        unit_id: createForm.appliesTo === "unit" ? createForm.unitId : null,
         period_year: periodYear,
         period_month: periodMonth,
-        due_date: dueDate,
+        due_date: createForm.dueDate,
         amount_due: amountDue,
-        status: form.status,
+        status: createForm.status,
         paid_at: paidAtValue,
-        payment_reference: form.paymentReference.trim() || null,
-        notes: form.notes.trim() || null,
+        payment_reference: createForm.paymentReference.trim() || null,
+        notes: createForm.notes.trim() || null,
         billing_period_label: formatPeriod(periodYear, periodMonth),
-        is_generated_placeholder: !form.amountDue.trim(),
+        is_generated_placeholder: !createForm.amountDue.trim(),
         amount_estimated_snapshot: amountEstimated,
-        invoice_received_at: form.invoiceReceivedAt || null,
-        cutoff_date: form.cutoffDate || null,
+        invoice_received_at: null,
+        cutoff_date: cutoffDate || null,
+        billed_period_label: createForm.billedPeriodLabel.trim() || null,
+        consumption_period_label: createForm.consumptionPeriodLabel.trim() || null,
+        billed_month_label: createForm.billedMonthLabel.trim() || null,
       });
 
       if (paymentError) {
         throw new Error(paymentError.message || "No se pudo crear el registro del pago.");
       }
 
-      setForm(getInitialCreateForm(form.buildingId));
+      showToast({ type: "success", message: "Pago administrativo creado correctamente." });
+      setCreateForm(getDefaultCreateForm(createForm.buildingId));
       setShowCreateForm(false);
-
-      showToast({
-        type: "success",
-        message: "Pago administrativo creado correctamente.",
-      });
-
       await loadPaymentsData(false);
     } catch (error) {
       const errorText =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error creando el pago administrativo.";
+        error instanceof Error ? error.message : "Ocurrió un error creando el pago.";
       setMessage(errorText);
       showToast({ type: "error", message: errorText });
     } finally {
@@ -1044,81 +930,58 @@ export default function PaymentsPage() {
       unitId: schedule.unit_id || "",
       title: schedule.title,
       vendorName: schedule.vendor_name || "",
+      serviceIdentifier: schedule.service_identifier || "",
       expenseType: schedule.expense_type,
       responsibilityType:
         schedule.responsibility_type === "tenant" ? "company" : schedule.responsibility_type,
       frequencyType: schedule.frequency_type || "monthly",
-      startsOn: schedule.starts_on || "",
-      endsOn: schedule.ends_on || "",
       autoGenerate: schedule.auto_generate !== false,
-      expectedIssueDay:
-        schedule.expected_issue_day !== null && schedule.expected_issue_day !== undefined
-          ? String(schedule.expected_issue_day)
-          : "",
-      expectedCutoffDay:
-        schedule.expected_cutoff_day !== null && schedule.expected_cutoff_day !== undefined
-          ? String(schedule.expected_cutoff_day)
-          : "",
       amountEstimated:
         schedule.amount_estimated !== null && schedule.amount_estimated !== undefined
           ? String(schedule.amount_estimated)
           : "",
-      dueDay: String(schedule.due_day),
-      periodMonth: String(payment.period_month),
-      periodYear: String(payment.period_year),
-      amountDue: String(payment.amount_due),
       dueDate: payment.due_date,
-      invoiceReceivedAt: payment.invoice_received_at || "",
-      cutoffDate: payment.cutoff_date || "",
+      billedPeriodLabel: payment.billed_period_label || "",
+      consumptionPeriodLabel: payment.consumption_period_label || "",
+      billedMonthLabel: payment.billed_month_label || "",
+      amountDue: String(payment.amount_due),
       status: payment.status,
       paymentReference: payment.payment_reference || "",
       notes: payment.notes || schedule.notes || "",
     });
 
     setIsEditModalOpen(true);
-    setMessage("");
+    setOpenDetailPaymentId(row.id);
   }
 
   async function handleSaveEditedPayment() {
     if (!user?.company_id || !editingPayment) return;
 
-    setMessage("");
     setSavingPayment(true);
+    setMessage("");
 
     try {
-      if (!editingPayment.buildingId) {
-        throw new Error("Selecciona un edificio.");
-      }
-
+      if (!editingPayment.buildingId) throw new Error("Selecciona un edificio.");
       if (editingPayment.appliesTo === "unit" && !editingPayment.unitId) {
         throw new Error("Selecciona una unidad.");
       }
-
       if (!editingPayment.title.trim()) {
-        throw new Error("Escribe un nombre corto para el concepto.");
+        throw new Error("Escribe el concepto corto del servicio.");
+      }
+      if (!editingPayment.dueDate) {
+        throw new Error("Selecciona la fecha límite de pago.");
       }
 
-      if (!editingPayment.dueDay || Number(editingPayment.dueDay) < 1 || Number(editingPayment.dueDay) > 31) {
-        throw new Error("Escribe un día de vencimiento válido.");
-      }
+      const dueDay = getDueDayFromDate(editingPayment.dueDate);
+      if (!dueDay) throw new Error("No se pudo calcular el día de vencimiento.");
 
-      const periodMonth = Number(editingPayment.periodMonth);
-      const periodYear = Number(editingPayment.periodYear);
-      const dueDay = Number(editingPayment.dueDay);
-
-      if (!periodMonth || periodMonth < 1 || periodMonth > 12) {
-        throw new Error("Selecciona un mes válido.");
-      }
-
-      if (!periodYear || periodYear < 2000) {
-        throw new Error("Selecciona un año válido.");
-      }
-
+      const dueDateObject = parseDateOnly(editingPayment.dueDate);
+      const periodMonth = dueDateObject.getMonth() + 1;
+      const periodYear = dueDateObject.getFullYear();
       const amountEstimated = parseOptionalNumber(editingPayment.amountEstimated);
       const amountDue = parseOptionalNumber(editingPayment.amountDue) ?? 0;
-      const dueDate =
-        editingPayment.dueDate.trim() || getDueDateFromPeriod(periodYear, periodMonth, dueDay);
-
+      const cutoffDate = getCutoffDateFromDueDate(editingPayment.dueDate);
+      const startsOn = getStartsOnFromDueDate(editingPayment.dueDate);
       const paidAtValue = editingPayment.status === "paid" ? new Date().toISOString() : null;
 
       const { error: scheduleError } = await supabase
@@ -1129,17 +992,15 @@ export default function PaymentsPage() {
           expense_type: editingPayment.expenseType,
           title: editingPayment.title.trim(),
           vendor_name: editingPayment.vendorName.trim() || null,
+          service_identifier: editingPayment.serviceIdentifier.trim() || null,
           responsibility_type: editingPayment.responsibilityType,
           applies_to: editingPayment.appliesTo,
           amount_estimated: amountEstimated,
           due_day: dueDay,
           notes: editingPayment.notes.trim() || null,
           frequency_type: editingPayment.frequencyType,
-          starts_on: editingPayment.startsOn || null,
-          ends_on: editingPayment.endsOn || null,
+          starts_on: startsOn,
           auto_generate: editingPayment.autoGenerate,
-          expected_issue_day: parseOptionalNumber(editingPayment.expectedIssueDay),
-          expected_cutoff_day: parseOptionalNumber(editingPayment.expectedCutoffDay),
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingPayment.scheduleId);
@@ -1155,17 +1016,20 @@ export default function PaymentsPage() {
           unit_id: editingPayment.appliesTo === "unit" ? editingPayment.unitId : null,
           period_year: periodYear,
           period_month: periodMonth,
-          due_date: dueDate,
+          due_date: editingPayment.dueDate,
           amount_due: amountDue,
           status: editingPayment.status,
           paid_at: paidAtValue,
           payment_reference: editingPayment.paymentReference.trim() || null,
           notes: editingPayment.notes.trim() || null,
-          invoice_received_at: editingPayment.invoiceReceivedAt || null,
-          cutoff_date: editingPayment.cutoffDate || null,
           billing_period_label: formatPeriod(periodYear, periodMonth),
           is_generated_placeholder: amountDue === 0,
           amount_estimated_snapshot: amountEstimated,
+          invoice_received_at: null,
+          cutoff_date: cutoffDate || null,
+          billed_period_label: editingPayment.billedPeriodLabel.trim() || null,
+          consumption_period_label: editingPayment.consumptionPeriodLabel.trim() || null,
+          billed_month_label: editingPayment.billedMonthLabel.trim() || null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editingPayment.paymentId);
@@ -1177,11 +1041,7 @@ export default function PaymentsPage() {
       setIsEditModalOpen(false);
       setEditingPayment(null);
 
-      showToast({
-        type: "success",
-        message: "Pago actualizado correctamente.",
-      });
-
+      showToast({ type: "success", message: "Pago actualizado correctamente." });
       await loadPaymentsData(false);
     } catch (error) {
       const errorText =
@@ -1196,7 +1056,6 @@ export default function PaymentsPage() {
   async function handleCyclePaymentStatus(row: PaymentRow) {
     if (statusUpdatingId || deletingScheduleId) return;
 
-    setMessage("");
     setStatusUpdatingId(row.id);
 
     try {
@@ -1233,10 +1092,7 @@ export default function PaymentsPage() {
       });
     } catch (error) {
       const errorText =
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error actualizando el estado del pago.";
-      setMessage(errorText);
+        error instanceof Error ? error.message : "Ocurrió un error actualizando el estado.";
       showToast({ type: "error", message: errorText });
     } finally {
       setStatusUpdatingId(null);
@@ -1248,9 +1104,8 @@ export default function PaymentsPage() {
   }
 
   async function handleDeletePaymentConfirmed() {
-    if (!deleteTargetRow || statusUpdatingId || deletingScheduleId) return;
+    if (!deleteTargetRow || deletingScheduleId) return;
 
-    setMessage("");
     setDeletingScheduleId(deleteTargetRow.scheduleId);
 
     try {
@@ -1260,7 +1115,7 @@ export default function PaymentsPage() {
         .eq("expense_schedule_id", deleteTargetRow.scheduleId);
 
       if (paymentsError) {
-        throw new Error(paymentsError.message || "No se pudieron eliminar los periodos del pago.");
+        throw new Error(paymentsError.message || "No se pudieron eliminar los periodos.");
       }
 
       const { error: scheduleError } = await supabase
@@ -1269,30 +1124,21 @@ export default function PaymentsPage() {
         .eq("id", deleteTargetRow.scheduleId);
 
       if (scheduleError) {
-        throw new Error(scheduleError.message || "No se pudo eliminar la configuración recurrente.");
+        throw new Error(scheduleError.message || "No se pudo eliminar la configuración.");
       }
 
+      setDeleteTargetRow(null);
+      if (openDetailPaymentId === deleteTargetRow.id) setOpenDetailPaymentId(null);
       if (editingPayment?.scheduleId === deleteTargetRow.scheduleId) {
         setEditingPayment(null);
         setIsEditModalOpen(false);
       }
 
-      if (detailsPaymentId === deleteTargetRow.id) {
-        setDetailsPaymentId(null);
-      }
-
-      setDeleteTargetRow(null);
-
-      showToast({
-        type: "success",
-        message: "Pago eliminado correctamente.",
-      });
-
+      showToast({ type: "success", message: "Pago eliminado correctamente." });
       await loadPaymentsData(false);
     } catch (error) {
       const errorText =
         error instanceof Error ? error.message : "Ocurrió un error eliminando el pago.";
-      setMessage(errorText);
       showToast({ type: "error", message: errorText });
     } finally {
       setDeletingScheduleId(null);
@@ -1313,24 +1159,9 @@ export default function PaymentsPage() {
 
   return (
     <PageContainer>
-      {/* Encabezado principal del módulo. */}
       <PageHeader title="Pagos administrativos" titleIcon={<ReceiptText size={18} />} />
 
-      {message ? (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "12px 14px",
-            borderRadius: 12,
-            background: "#FEF2F2",
-            color: "#B91C1C",
-            fontSize: 14,
-            fontWeight: 600,
-          }}
-        >
-          {message}
-        </div>
-      ) : null}
+      {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
       <AppGrid minWidth={220}>
         <MetricCard
@@ -1392,15 +1223,9 @@ export default function PaymentsPage() {
       <div style={{ height: 16 }} />
 
       <SectionCard title="Filtros" icon={<Filter size={18} />}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: 16,
-          }}
-        >
+        <div style={filtersGridStyle}>
           <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={filterFieldWrapStyle}>
               <div style={filterLabelStyle}>
                 <Building2 size={14} />
                 Edificio
@@ -1421,7 +1246,7 @@ export default function PaymentsPage() {
           </AppCard>
 
           <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={filterFieldWrapStyle}>
               <div style={filterLabelStyle}>
                 <Filter size={14} />
                 Estado
@@ -1429,9 +1254,7 @@ export default function PaymentsPage() {
 
               <AppSelect
                 value={selectedStatus}
-                onChange={(event) =>
-                  setSelectedStatus(event.target.value as PaymentStatusFilter)
-                }
+                onChange={(event) => setSelectedStatus(event.target.value as PaymentStatusFilter)}
               >
                 <option value="all">Todos los estados</option>
                 <option value="pending">Pendiente</option>
@@ -1442,25 +1265,13 @@ export default function PaymentsPage() {
           </AppCard>
 
           <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={filterFieldWrapStyle}>
               <div style={filterLabelStyle}>
                 <CalendarClock size={14} />
                 Plantillas activas
               </div>
 
-              <div
-                style={{
-                  minHeight: 42,
-                  borderRadius: 12,
-                  border: "1px solid #E5E7EB",
-                  background: "#F9FAFB",
-                  padding: "10px 12px",
-                  fontSize: 14,
-                  color: "#374151",
-                  display: "flex",
-                  alignItems: "center",
-                }}
-              >
+              <div style={filterReadonlyStyle}>
                 {expenseSchedules.length} configuraciones activas
               </div>
             </div>
@@ -1472,39 +1283,26 @@ export default function PaymentsPage() {
 
       {showCreateForm ? (
         <>
-          <div style={{ height: 16 }} />
-
-          {/* Formulario para crear una nueva configuración recurrente y su primer periodo. */}
           <SectionCard
             title="Nuevo pago recurrente"
             icon={<Plus size={18} />}
             action={
-              <button
-                type="button"
-                onClick={() => setShowCreateForm(false)}
-                style={ghostButtonStyle}
-              >
+              <button type="button" onClick={() => setShowCreateForm(false)} style={ghostButtonStyle}>
                 <X size={16} />
                 Cerrar
               </button>
             }
           >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 16,
-              }}
-            >
+            <div style={simpleFormGridStyle}>
               <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
+                <div style={simpleFormFieldsStyle}>
+                  <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Edificio</span>
                     <AppSelect
-                      value={form.buildingId}
+                      value={createForm.buildingId}
                       onChange={(event) => {
                         const nextBuildingId = event.target.value;
-                        setForm((prev) => ({
+                        setCreateForm((prev) => ({
                           ...prev,
                           buildingId: nextBuildingId,
                           unitId: "",
@@ -1520,12 +1318,12 @@ export default function PaymentsPage() {
                     </AppSelect>
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
+                  <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Aplica a</span>
                     <AppSelect
-                      value={form.appliesTo}
+                      value={createForm.appliesTo}
                       onChange={(event) =>
-                        setForm((prev) => ({
+                        setCreateForm((prev) => ({
                           ...prev,
                           appliesTo: event.target.value as ExpenseAppliesToType,
                           unitId: event.target.value === "building" ? "" : prev.unitId,
@@ -1537,12 +1335,12 @@ export default function PaymentsPage() {
                     </AppSelect>
                   </label>
 
-                  {form.appliesTo === "unit" ? (
-                    <label style={{ display: "grid", gap: 6 }}>
+                  {createForm.appliesTo === "unit" ? (
+                    <label style={fieldWrapStyle}>
                       <span style={fieldLabelStyle}>Unidad</span>
                       <AppSelect
-                        value={form.unitId}
-                        onChange={(event) => updateForm("unitId", event.target.value)}
+                        value={createForm.unitId}
+                        onChange={(event) => updateCreateForm("unitId", event.target.value)}
                       >
                         <option value="">Selecciona una unidad</option>
                         {unitsForSelectedBuilding.map((unit) => (
@@ -1554,15 +1352,12 @@ export default function PaymentsPage() {
                     </label>
                   ) : null}
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Tipo de gasto</span>
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Tipo de servicio</span>
                     <AppSelect
-                      value={form.expenseType}
+                      value={createForm.expenseType}
                       onChange={(event) =>
-                        updateForm(
-                          "expenseType",
-                          event.target.value as CreatePaymentForm["expenseType"]
-                        )
+                        updateCreateForm("expenseType", event.target.value as ExpenseType)
                       }
                     >
                       <option value="electricity">Electricidad</option>
@@ -1577,12 +1372,36 @@ export default function PaymentsPage() {
                     </AppSelect>
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
+                  <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Concepto corto</span>
                     <input
-                      value={form.title}
-                      onChange={(event) => updateForm("title", event.target.value)}
+                      value={createForm.title}
+                      onChange={(event) => updateCreateForm("title", event.target.value)}
                       placeholder="Ej. CFE, Agua y Drenaje, Telmex"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Proveedor</span>
+                    <input
+                      value={createForm.vendorName}
+                      onChange={(event) => updateCreateForm("vendorName", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>
+                      {getIdentifierLabel(createForm.expenseType)}
+                    </span>
+                    <input
+                      value={createForm.serviceIdentifier}
+                      onChange={(event) =>
+                        updateCreateForm("serviceIdentifier", event.target.value)
+                      }
+                      placeholder="Opcional"
                       style={inputStyle}
                     />
                   </label>
@@ -1590,23 +1409,26 @@ export default function PaymentsPage() {
               </AppCard>
 
               <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Proveedor</span>
-                    <input
-                      value={form.vendorName}
-                      onChange={(event) => updateForm("vendorName", event.target.value)}
-                      placeholder="Opcional"
-                      style={inputStyle}
-                    />
+                <div style={simpleFormFieldsStyle}>
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Frecuencia</span>
+                    <AppSelect
+                      value={createForm.frequencyType}
+                      onChange={(event) =>
+                        updateCreateForm("frequencyType", event.target.value as ExpenseFrequencyType)
+                      }
+                    >
+                      <option value="monthly">Mensual</option>
+                      <option value="bimonthly">Bimestral</option>
+                    </AppSelect>
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
+                  <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Quién paga</span>
                     <AppSelect
-                      value={form.responsibilityType}
+                      value={createForm.responsibilityType}
                       onChange={(event) =>
-                        updateForm(
+                        updateCreateForm(
                           "responsibilityType",
                           event.target.value as "company" | "building"
                         )
@@ -1617,64 +1439,76 @@ export default function PaymentsPage() {
                     </AppSelect>
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Frecuencia</span>
-                    <AppSelect
-                      value={form.frequencyType}
-                      onChange={(event) =>
-                        updateForm("frequencyType", event.target.value as ExpenseFrequencyType)
-                      }
-                    >
-                      <option value="monthly">Mensual</option>
-                      <option value="bimonthly">Bimestral</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de inicio</span>
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Fecha límite de pago</span>
                     <input
                       type="date"
-                      value={form.startsOn}
-                      onChange={(event) => updateForm("startsOn", event.target.value)}
+                      value={createForm.dueDate}
+                      onChange={(event) => updateCreateForm("dueDate", event.target.value)}
                       style={inputStyle}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha fin</span>
-                    <input
-                      type="date"
-                      value={form.endsOn}
-                      onChange={(event) => updateForm("endsOn", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
+                  <div style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Fecha de corte</span>
+                    <div style={readonlyFieldStyle}>
+                      {createForm.dueDate ? formatDate(getCutoffDateFromDueDate(createForm.dueDate)) : "Sin fecha"}
+                    </div>
+                  </div>
 
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Día esperado de recibido</span>
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Periodo facturado</span>
                     <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={form.expectedIssueDay}
-                      onChange={(event) => updateForm("expectedIssueDay", event.target.value)}
+                      value={createForm.billedPeriodLabel}
+                      onChange={(event) => updateCreateForm("billedPeriodLabel", event.target.value)}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Día esperado de corte</span>
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Periodo de consumo</span>
+                    <input
+                      value={createForm.consumptionPeriodLabel}
+                      onChange={(event) =>
+                        updateCreateForm("consumptionPeriodLabel", event.target.value)
+                      }
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Mes facturado</span>
+                    <input
+                      value={createForm.billedMonthLabel}
+                      onChange={(event) => updateCreateForm("billedMonthLabel", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Monto estimado</span>
                     <input
                       type="number"
-                      min="1"
-                      max="31"
-                      value={form.expectedCutoffDay}
-                      onChange={(event) => updateForm("expectedCutoffDay", event.target.value)}
+                      min="0"
+                      step="0.01"
+                      value={createForm.amountEstimated}
+                      onChange={(event) => updateCreateForm("amountEstimated", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Monto real</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={createForm.amountDue}
+                      onChange={(event) => updateCreateForm("amountDue", event.target.value)}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1683,111 +1517,18 @@ export default function PaymentsPage() {
                   <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <input
                       type="checkbox"
-                      checked={form.autoGenerate}
-                      onChange={(event) => updateForm("autoGenerate", event.target.checked)}
+                      checked={createForm.autoGenerate}
+                      onChange={(event) => updateCreateForm("autoGenerate", event.target.checked)}
                     />
-                    <span style={fieldLabelStyle}>Generar automáticamente el periodo actual</span>
+                    <span style={fieldLabelStyle}>Generar automáticamente próximos periodos</span>
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Monto estimado</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.amountEstimated}
-                      onChange={(event) => updateForm("amountEstimated", event.target.value)}
-                      placeholder="Opcional"
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Día límite de pago</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={form.dueDay}
-                      onChange={(event) => {
-                        const nextValue = event.target.value;
-                        updateForm("dueDay", nextValue);
-
-                        const parsed = Number(nextValue);
-                        if (parsed >= 1 && parsed <= 31) {
-                          updateForm(
-                            "dueDate",
-                            getDueDateFromPeriod(
-                              Number(form.periodYear),
-                              Number(form.periodMonth),
-                              parsed
-                            )
-                          );
-                        }
-                      }}
-                      placeholder="Ej. 10"
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Mes del periodo</span>
-                    <AppSelect
-                      value={form.periodMonth}
-                      onChange={(event) => updateForm("periodMonth", event.target.value)}
-                    >
-                      {MONTH_LABELS_SHORT.map((month, index) => (
-                        <option key={month} value={String(index + 1)}>
-                          {month}
-                        </option>
-                      ))}
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Año del periodo</span>
-                    <input
-                      type="number"
-                      min="2000"
-                      value={form.periodYear}
-                      onChange={(event) => updateForm("periodYear", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha límite real</span>
-                    <input
-                      type="date"
-                      value={form.dueDate}
-                      onChange={(event) => updateForm("dueDate", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Monto real del periodo</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={form.amountDue}
-                      onChange={(event) => updateForm("amountDue", event.target.value)}
-                      placeholder="Opcional"
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
+                  <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Estado inicial</span>
                     <AppSelect
-                      value={form.status}
+                      value={createForm.status}
                       onChange={(event) =>
-                        updateForm("status", event.target.value as ExpensePaymentStatus)
+                        updateCreateForm("status", event.target.value as ExpensePaymentStatus)
                       }
                     >
                       <option value="pending">Pendiente</option>
@@ -1795,48 +1536,24 @@ export default function PaymentsPage() {
                       <option value="overdue">Vencido</option>
                     </AppSelect>
                   </label>
-                </div>
-              </AppCard>
 
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de recibido del recibo</span>
-                    <input
-                      type="date"
-                      value={form.invoiceReceivedAt}
-                      onChange={(event) => updateForm("invoiceReceivedAt", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de corte</span>
-                    <input
-                      type="date"
-                      value={form.cutoffDate}
-                      onChange={(event) => updateForm("cutoffDate", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
+                  <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Referencia de pago</span>
                     <input
-                      value={form.paymentReference}
-                      onChange={(event) => updateForm("paymentReference", event.target.value)}
+                      value={createForm.paymentReference}
+                      onChange={(event) => updateCreateForm("paymentReference", event.target.value)}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
                   </label>
 
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Notas</span>
+                  <label style={fieldWrapStyle}>
+                    <span style={fieldLabelStyle}>Notas / comentarios</span>
                     <textarea
-                      value={form.notes}
-                      onChange={(event) => updateForm("notes", event.target.value)}
-                      placeholder="Notas administrativas"
+                      value={createForm.notes}
+                      onChange={(event) => updateCreateForm("notes", event.target.value)}
                       rows={4}
+                      placeholder="Opcional"
                       style={textareaStyle}
                     />
                   </label>
@@ -1857,12 +1574,10 @@ export default function PaymentsPage() {
               </AppCard>
             </div>
           </SectionCard>
+          <div style={{ height: 16 }} />
         </>
       ) : null}
 
-      <div style={{ height: 16 }} />
-
-      {/* Tabla principal simplificada. */}
       <SectionCard
         title="Listado de pagos"
         icon={<ReceiptText size={18} />}
@@ -1889,357 +1604,214 @@ export default function PaymentsPage() {
           </div>
         }
       >
-        <AppTable
-          rows={filteredRows}
-          emptyState="No hay pagos administrativos para mostrar con los filtros actuales."
-          columns={[
-            {
-              key: "concept",
-              header: "Concepto",
-              render: (row: PaymentRow) => {
-                const serviceVisual = getServiceVisual(row.expenseType);
+        {!filteredRows.length ? (
+          <div style={emptyStateStyle}>
+            No hay pagos administrativos para mostrar con los filtros actuales.
+          </div>
+        ) : (
+          <div style={tableShellStyle}>
+            <table style={tableStyle}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: "32%" }}>Concepto</th>
+                  <th style={thStyle}>Edificio</th>
+                  <th style={thStyle}>Periodo / frecuencia</th>
+                  <th style={thStyle}>Vencimiento</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Monto</th>
+                  <th style={thStyle}>Estado</th>
+                  <th style={{ ...thStyle, textAlign: "right" }}>Acciones</th>
+                </tr>
+              </thead>
 
-                return (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div
-                      style={{
-                        width: 34,
-                        height: 34,
-                        borderRadius: 10,
-                        background: serviceVisual.background,
-                        color: serviceVisual.color,
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {serviceVisual.icon}
-                    </div>
+              <tbody>
+                {filteredRows.map((row) => {
+                  const serviceVisual = getServiceVisual(row.expenseType);
+                  const isOpen = openDetailPaymentId === row.id;
+                  const isUpdating = statusUpdatingId === row.id;
 
-                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
-                        {getConceptLabel(row)}
-                      </span>
+                  return (
+                    <FragmentLike key={row.id}>
+                      <tr style={rowStyle}>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div
+                              style={{
+                                width: 34,
+                                height: 34,
+                                borderRadius: 10,
+                                background: serviceVisual.background,
+                                color: serviceVisual.color,
+                                display: "grid",
+                                placeItems: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {serviceVisual.icon}
+                            </div>
 
-                      <span style={{ fontSize: 12, color: "#6B7280" }}>
-                        {row.expenseTypeLabel}
-                      </span>
-                    </div>
-                  </div>
-                );
-              },
-            },
-            {
-              key: "building",
-              header: "Edificio",
-              render: (row: PaymentRow) => (
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
-                  {row.buildingName}
-                </span>
-              ),
-            },
-            {
-              key: "period",
-              header: "Periodo / frecuencia",
-              render: (row: PaymentRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
-                    {row.periodLabel}
-                  </span>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setOpenDetailPaymentId((prev) => (prev === row.id ? null : row.id))
+                              }
+                              style={conceptDropdownButtonStyle}
+                            >
+                              <span style={conceptPrimaryTextStyle}>{row.title}</span>
+                              <span style={conceptSecondaryActionStyle}>
+                                {isOpen ? "Ocultar detalles" : "Ver detalles"}
+                              </span>
+                            </button>
+                          </div>
+                        </td>
 
-                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>{row.frequencyLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "dueDate",
-              header: "Vencimiento",
-              render: (row: PaymentRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 13, color: "#374151" }}>{row.dueDateLabel}</span>
+                        <td style={tdStyle}>
+                          <span style={cellPrimaryTextStyle}>{row.buildingName}</span>
+                        </td>
 
-                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                    {row.invoiceReceivedAt
-                      ? `Recibido: ${formatDate(row.invoiceReceivedAt)}`
-                      : "Sin recibido"}
-                  </span>
-                </div>
-              ),
-            },
-            {
-              key: "amount",
-              header: "Monto",
-              align: "right",
-              render: (row: PaymentRow) => (
-                <div
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 4,
-                    alignItems: "flex-end",
-                  }}
-                >
-                  <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
-                    {row.isGeneratedPlaceholder ? "Pendiente" : row.amountDueLabel}
-                  </span>
+                        <td style={tdStyle}>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            <span style={cellPrimaryTextStyle}>{row.periodLabel}</span>
+                            <span style={cellSecondaryTextStyle}>{row.frequencyLabel}</span>
+                          </div>
+                        </td>
 
-                  {row.isGeneratedPlaceholder ? (
-                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>Monto pendiente</span>
-                  ) : null}
-                </div>
-              ),
-            },
-            {
-              key: "status",
-              header: "Estado",
-              render: (row: PaymentRow) => {
-                const colors = getStatusColors(row.status);
-                const isUpdating = statusUpdatingId === row.id;
+                        <td style={tdStyle}>
+                          <span style={cellPrimaryTextStyle}>{row.dueDateLabel}</span>
+                        </td>
 
-                return (
-                  <button
-                    type="button"
-                    onClick={() => handleCyclePaymentStatus(row)}
-                    disabled={isUpdating || deletingScheduleId === row.scheduleId}
-                    title="Haz clic para cambiar el estado"
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: `1px solid ${colors.border}`,
-                      background: colors.background,
-                      color: colors.text,
-                      fontSize: 12,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                      cursor: isUpdating ? "wait" : "pointer",
-                    }}
-                  >
-                    {isUpdating ? "Actualizando..." : row.statusLabel}
-                  </button>
-                );
-              },
-            },
-            {
-              key: "actions",
-              header: "Acciones",
-              render: (row: PaymentRow) => {
-                const isOpen = detailsPaymentId === row.id;
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          <div
+                            style={{
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                              alignItems: "flex-end",
+                            }}
+                          >
+                            <span style={cellPrimaryTextStyle}>
+                              {row.isGeneratedPlaceholder ? "Pendiente" : row.amountDueLabel}
+                            </span>
 
-                return (
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setDetailsPaymentId((prev) => (prev === row.id ? null : row.id))
-                      }
-                      style={tableActionButtonStyle}
-                    >
-                      {isOpen ? "Ocultar detalles" : "Detalles"}
-                    </button>
-                  </div>
-                );
-              },
-            },
-          ]}
-        />
+                            {row.isGeneratedPlaceholder ? (
+                              <span style={cellSecondaryTextStyle}>Monto pendiente</span>
+                            ) : null}
+                          </div>
+                        </td>
+
+                        <td style={tdStyle}>
+                          <button
+                            type="button"
+                            onClick={() => handleCyclePaymentStatus(row)}
+                            disabled={isUpdating || deletingScheduleId === row.scheduleId}
+                            title="Haz clic para cambiar el estado"
+                            style={{
+                              ...statusButtonStyle,
+                              background: getStatusColors(row.status).background,
+                              color: getStatusColors(row.status).text,
+                              border: `1px solid ${getStatusColors(row.status).border}`,
+                              cursor: isUpdating ? "wait" : "pointer",
+                            }}
+                          >
+                            {isUpdating ? "Actualizando..." : row.statusLabel}
+                          </button>
+                        </td>
+
+                        <td style={{ ...tdStyle, textAlign: "right" }}>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setOpenDetailPaymentId((prev) => (prev === row.id ? null : row.id))
+                            }
+                            style={tableActionButtonStyle}
+                          >
+                            {isOpen ? "Ocultar" : "Detalles"}
+                          </button>
+                        </td>
+                      </tr>
+
+                      {isOpen ? (
+                        <tr>
+                          <td colSpan={7} style={{ ...tdStyle, paddingTop: 0 }}>
+                            <div style={inlineDetailsCardStyle}>
+                              <div style={inlineDetailsGridStyle}>
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Dirección del edificio</div>
+                                  <div style={detailValueStyle}>{row.buildingAddress}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>{row.serviceIdentifierLabel}</div>
+                                  <div style={detailValueStyle}>{row.serviceIdentifier}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Periodo facturado</div>
+                                  <div style={detailValueStyle}>{row.billedPeriodLabel}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Periodo de consumo</div>
+                                  <div style={detailValueStyle}>{row.consumptionPeriodLabel}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Mes facturado</div>
+                                  <div style={detailValueStyle}>{row.billedMonthLabel}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Fecha de corte</div>
+                                  <div style={detailValueStyle}>
+                                    {row.cutoffDate ? formatDate(row.cutoffDate) : "Sin fecha"}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div style={{ marginTop: 14 }}>
+                                <div style={detailLabelStyle}>Notas / comentarios</div>
+                                <div style={notesBoxStyle}>
+                                  {row.notes && row.notes !== "—"
+                                    ? row.notes
+                                    : "No hay notas registradas para este pago."}
+                                </div>
+                              </div>
+
+                              <div style={inlineDetailsActionsStyle}>
+                                <button
+                                  type="button"
+                                  onClick={() => startEditingPayment(row)}
+                                  style={tableActionButtonStyle}
+                                >
+                                  <Edit3 size={14} />
+                                  Editar
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => openDeleteModal(row)}
+                                  style={tableDangerButtonStyle}
+                                >
+                                  <Trash2 size={14} />
+                                  Eliminar
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : null}
+                    </FragmentLike>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </SectionCard>
 
-      {detailsRow ? (
-        <>
-          <div style={{ height: 16 }} />
-
-          {/* Panel inferior con detalles resumidos del pago seleccionado. */}
-          <SectionCard
-            title="Detalles del pago"
-            icon={<ReceiptText size={18} />}
-            action={
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => startEditingPayment(detailsRow)}
-                  style={tableActionButtonStyle}
-                >
-                  <Edit3 size={14} />
-                  Editar
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => openDeleteModal(detailsRow)}
-                  style={tableDangerButtonStyle}
-                >
-                  <Trash2 size={14} />
-                  Eliminar
-                </button>
-              </div>
-            }
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 16,
-              }}
-            >
-              <AppCard>
-                <div style={{ display: "grid", gap: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <div
-                      style={{
-                        width: 40,
-                        height: 40,
-                        borderRadius: 12,
-                        background: getServiceVisual(detailsRow.expenseType).background,
-                        color: getServiceVisual(detailsRow.expenseType).color,
-                        display: "grid",
-                        placeItems: "center",
-                        flexShrink: 0,
-                      }}
-                    >
-                      {getServiceVisual(detailsRow.expenseType).icon}
-                    </div>
-
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>
-                        {getConceptLabel(detailsRow)}
-                      </div>
-                      <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
-                        {detailsRow.expenseTypeLabel}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Concepto interno</span>
-                    <span style={detailValueStyle}>{detailsRow.title}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Proveedor</span>
-                    <span style={detailValueStyle}>{detailsRow.vendorName}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Edificio</span>
-                    <span style={detailValueStyle}>{detailsRow.buildingName}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Aplica a</span>
-                    <span style={detailValueStyle}>
-                      {detailsRow.appliesToLabel === "Unidad"
-                        ? detailsRow.unitLabel
-                        : detailsRow.appliesToLabel}
-                    </span>
-                  </div>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 14 }}>
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Periodo</span>
-                    <span style={detailValueStyle}>{detailsRow.periodLabel}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Frecuencia</span>
-                    <span style={detailValueStyle}>{detailsRow.frequencyLabel}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Vencimiento</span>
-                    <span style={detailValueStyle}>{detailsRow.dueDateLabel}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Monto</span>
-                    <span style={detailValueStyle}>
-                      {detailsRow.isGeneratedPlaceholder ? "Pendiente" : detailsRow.amountDueLabel}
-                    </span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Estado</span>
-                    <span
-                      style={{
-                        ...statusChipStyle,
-                        background: getStatusColors(detailsRow.status).background,
-                        color: getStatusColors(detailsRow.status).text,
-                        borderColor: getStatusColors(detailsRow.status).border,
-                      }}
-                    >
-                      {detailsRow.statusLabel}
-                    </span>
-                  </div>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 14 }}>
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Recibo recibido</span>
-                    <span style={detailValueStyle}>
-                      {detailsRow.invoiceReceivedAt
-                        ? formatDate(detailsRow.invoiceReceivedAt)
-                        : "Sin fecha"}
-                    </span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Fecha de corte</span>
-                    <span style={detailValueStyle}>
-                      {detailsRow.cutoffDate ? formatDate(detailsRow.cutoffDate) : "Sin fecha"}
-                    </span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Referencia</span>
-                    <span style={detailValueStyle}>{detailsRow.paymentReference}</span>
-                  </div>
-
-                  <div style={detailItemStyle}>
-                    <span style={detailLabelStyle}>Quién paga</span>
-                    <span style={detailValueStyle}>{detailsRow.responsibilityLabel}</span>
-                  </div>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <div style={detailLabelStyle}>Notas / comentarios</div>
-
-                  <div
-                    style={{
-                      borderRadius: 12,
-                      border: "1px solid #E5E7EB",
-                      background: "#F9FAFB",
-                      padding: 14,
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      color: "#374151",
-                      minHeight: 120,
-                    }}
-                  >
-                    {detailsRow.notes && detailsRow.notes !== "—"
-                      ? detailsRow.notes
-                      : "No hay notas registradas para este pago."}
-                  </div>
-                </div>
-              </AppCard>
-            </div>
-          </SectionCard>
-        </>
-      ) : null}
-
-      {/* Modal flotante para editar el pago sin expandir toda la página. */}
       <Modal
         open={isEditModalOpen}
         title="Editar pago"
-        subtitle="Actualiza los datos reales del periodo y la configuración recurrente."
+        subtitle="Actualiza los datos del servicio y del periodo sin expandir toda la página."
         onClose={() => {
           if (!savingPayment) {
             setIsEditModalOpen(false);
@@ -2249,27 +1821,15 @@ export default function PaymentsPage() {
       >
         {editingPayment ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                gap: 16,
-              }}
-            >
-              <label style={{ display: "grid", gap: 6 }}>
+            <div style={simpleFormGridStyle}>
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Edificio</span>
                 <AppSelect
                   value={editingPayment.buildingId}
                   onChange={(event) => {
                     const nextBuildingId = event.target.value;
                     setEditingPayment((prev) =>
-                      prev
-                        ? {
-                            ...prev,
-                            buildingId: nextBuildingId,
-                            unitId: "",
-                          }
-                        : prev
+                      prev ? { ...prev, buildingId: nextBuildingId, unitId: "" } : prev
                     );
                   }}
                 >
@@ -2282,7 +1842,7 @@ export default function PaymentsPage() {
                 </AppSelect>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Aplica a</span>
                 <AppSelect
                   value={editingPayment.appliesTo}
@@ -2296,7 +1856,7 @@ export default function PaymentsPage() {
               </label>
 
               {editingPayment.appliesTo === "unit" ? (
-                <label style={{ display: "grid", gap: 6 }}>
+                <label style={fieldWrapStyle}>
                   <span style={fieldLabelStyle}>Unidad</span>
                   <AppSelect
                     value={editingPayment.unitId}
@@ -2312,15 +1872,12 @@ export default function PaymentsPage() {
                 </label>
               ) : null}
 
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Tipo de gasto</span>
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Tipo de servicio</span>
                 <AppSelect
                   value={editingPayment.expenseType}
                   onChange={(event) =>
-                    updateEditingForm(
-                      "expenseType",
-                      event.target.value as EditPaymentForm["expenseType"]
-                    )
+                    updateEditingForm("expenseType", event.target.value as ExpenseType)
                   }
                 >
                   <option value="electricity">Electricidad</option>
@@ -2335,7 +1892,7 @@ export default function PaymentsPage() {
                 </AppSelect>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Concepto corto</span>
                 <input
                   value={editingPayment.title}
@@ -2344,7 +1901,7 @@ export default function PaymentsPage() {
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Proveedor</span>
                 <input
                   value={editingPayment.vendorName}
@@ -2353,7 +1910,29 @@ export default function PaymentsPage() {
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>{getIdentifierLabel(editingPayment.expenseType)}</span>
+                <input
+                  value={editingPayment.serviceIdentifier}
+                  onChange={(event) => updateEditingForm("serviceIdentifier", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Frecuencia</span>
+                <AppSelect
+                  value={editingPayment.frequencyType}
+                  onChange={(event) =>
+                    updateEditingForm("frequencyType", event.target.value as ExpenseFrequencyType)
+                  }
+                >
+                  <option value="monthly">Mensual</option>
+                  <option value="bimonthly">Bimestral</option>
+                </AppSelect>
+              </label>
+
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Quién paga</span>
                 <AppSelect
                   value={editingPayment.responsibilityType}
@@ -2369,73 +1948,55 @@ export default function PaymentsPage() {
                 </AppSelect>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Frecuencia</span>
-                <AppSelect
-                  value={editingPayment.frequencyType}
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Fecha límite de pago</span>
+                <input
+                  type="date"
+                  value={editingPayment.dueDate}
+                  onChange={(event) => updateEditingForm("dueDate", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <div style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Fecha de corte</span>
+                <div style={readonlyFieldStyle}>
+                  {editingPayment.dueDate
+                    ? formatDate(getCutoffDateFromDueDate(editingPayment.dueDate))
+                    : "Sin fecha"}
+                </div>
+              </div>
+
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Periodo facturado</span>
+                <input
+                  value={editingPayment.billedPeriodLabel}
+                  onChange={(event) => updateEditingForm("billedPeriodLabel", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Periodo de consumo</span>
+                <input
+                  value={editingPayment.consumptionPeriodLabel}
                   onChange={(event) =>
-                    updateEditingForm("frequencyType", event.target.value as ExpenseFrequencyType)
+                    updateEditingForm("consumptionPeriodLabel", event.target.value)
                   }
-                >
-                  <option value="monthly">Mensual</option>
-                  <option value="bimonthly">Bimestral</option>
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Fecha de inicio</span>
-                <input
-                  type="date"
-                  value={editingPayment.startsOn}
-                  onChange={(event) => updateEditingForm("startsOn", event.target.value)}
                   style={inputStyle}
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Fecha fin</span>
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Mes facturado</span>
                 <input
-                  type="date"
-                  value={editingPayment.endsOn}
-                  onChange={(event) => updateEditingForm("endsOn", event.target.value)}
+                  value={editingPayment.billedMonthLabel}
+                  onChange={(event) => updateEditingForm("billedMonthLabel", event.target.value)}
                   style={inputStyle}
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Día esperado de recibido</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={editingPayment.expectedIssueDay}
-                  onChange={(event) => updateEditingForm("expectedIssueDay", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Día esperado de corte</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={editingPayment.expectedCutoffDay}
-                  onChange={(event) => updateEditingForm("expectedCutoffDay", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={editingPayment.autoGenerate}
-                  onChange={(event) => updateEditingForm("autoGenerate", event.target.checked)}
-                />
-                <span style={fieldLabelStyle}>Generación automática</span>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Monto estimado</span>
                 <input
                   type="number"
@@ -2447,54 +2008,7 @@ export default function PaymentsPage() {
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Día límite de pago</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={editingPayment.dueDay}
-                  onChange={(event) => updateEditingForm("dueDay", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Mes del periodo</span>
-                <AppSelect
-                  value={editingPayment.periodMonth}
-                  onChange={(event) => updateEditingForm("periodMonth", event.target.value)}
-                >
-                  {MONTH_LABELS_SHORT.map((month, index) => (
-                    <option key={month} value={String(index + 1)}>
-                      {month}
-                    </option>
-                  ))}
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Año del periodo</span>
-                <input
-                  type="number"
-                  min="2000"
-                  value={editingPayment.periodYear}
-                  onChange={(event) => updateEditingForm("periodYear", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Fecha límite real</span>
-                <input
-                  type="date"
-                  value={editingPayment.dueDate}
-                  onChange={(event) => updateEditingForm("dueDate", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Monto real</span>
                 <input
                   type="number"
@@ -2506,7 +2020,16 @@ export default function PaymentsPage() {
                 />
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={editingPayment.autoGenerate}
+                  onChange={(event) => updateEditingForm("autoGenerate", event.target.checked)}
+                />
+                <span style={fieldLabelStyle}>Generar automáticamente próximos periodos</span>
+              </label>
+
+              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Estado</span>
                 <AppSelect
                   value={editingPayment.status}
@@ -2520,42 +2043,18 @@ export default function PaymentsPage() {
                 </AppSelect>
               </label>
 
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Fecha de recibido</span>
-                <input
-                  type="date"
-                  value={editingPayment.invoiceReceivedAt}
-                  onChange={(event) =>
-                    updateEditingForm("invoiceReceivedAt", event.target.value)
-                  }
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Fecha de corte</span>
-                <input
-                  type="date"
-                  value={editingPayment.cutoffDate}
-                  onChange={(event) => updateEditingForm("cutoffDate", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={fieldLabelStyle}>Referencia</span>
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Referencia de pago</span>
                 <input
                   value={editingPayment.paymentReference}
-                  onChange={(event) =>
-                    updateEditingForm("paymentReference", event.target.value)
-                  }
+                  onChange={(event) => updateEditingForm("paymentReference", event.target.value)}
                   style={inputStyle}
                 />
               </label>
             </div>
 
-            <label style={{ display: "grid", gap: 6 }}>
-              <span style={fieldLabelStyle}>Notas</span>
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Notas / comentarios</span>
               <textarea
                 value={editingPayment.notes}
                 onChange={(event) => updateEditingForm("notes", event.target.value)}
@@ -2564,7 +2063,7 @@ export default function PaymentsPage() {
               />
             </label>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => {
@@ -2586,80 +2085,44 @@ export default function PaymentsPage() {
         ) : null}
       </Modal>
 
-      {/* Modal de eliminación estilizado, alineado al patrón usado en assets. */}
       <Modal
         open={Boolean(deleteTargetRow)}
         title="Eliminar pago"
         subtitle="Esta acción eliminará la configuración recurrente y sus periodos asociados."
         onClose={() => {
-          if (!deletingScheduleId) {
-            setDeleteTargetRow(null);
-          }
+          if (!deletingScheduleId) setDeleteTargetRow(null);
         }}
       >
         {deleteTargetRow ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div
-              style={{
-                display: "flex",
-                gap: 12,
-                alignItems: "flex-start",
-                padding: 14,
-                borderRadius: 12,
-                background: "#FEF2F2",
-                border: "1px solid #FECACA",
-              }}
-            >
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: "#FEE2E2",
-                  color: "#B91C1C",
-                  display: "grid",
-                  placeItems: "center",
-                  flexShrink: 0,
-                }}
-              >
+            <div style={deleteAlertBoxStyle}>
+              <div style={deleteAlertIconWrapStyle}>
                 <AlertTriangle size={18} />
               </div>
 
               <div>
-                <p style={{ margin: 0, fontWeight: 700, color: "#991B1B" }}>
-                  ¿Seguro que quieres eliminar este pago?
-                </p>
-
-                <p style={{ margin: "6px 0 0", color: "#7F1D1D", lineHeight: 1.5 }}>
-                  El pago <strong>{getConceptLabel(deleteTargetRow)}</strong> dejará de aparecer
-                  en el módulo de pagos y también se eliminarán sus periodos relacionados.
+                <p style={deleteAlertTitleStyle}>¿Seguro que quieres eliminar este pago?</p>
+                <p style={deleteAlertTextStyle}>
+                  El pago <strong>{deleteTargetRow.title}</strong> dejará de aparecer en el módulo
+                  de pagos y también se eliminarán sus periodos relacionados.
                 </p>
               </div>
             </div>
 
-            <div
-              style={{
-                borderRadius: 12,
-                border: "1px solid #E5E7EB",
-                background: "#F9FAFB",
-                padding: 14,
-                display: "grid",
-                gap: 8,
-              }}
-            >
-              <div style={detailItemStyle}>
-                <span style={detailLabelStyle}>Edificio</span>
-                <span style={detailValueStyle}>{deleteTargetRow.buildingName}</span>
+            <div style={deleteSummaryBoxStyle}>
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Edificio</div>
+                <div style={detailValueStyle}>{deleteTargetRow.buildingName}</div>
               </div>
 
-              <div style={detailItemStyle}>
-                <span style={detailLabelStyle}>Periodo</span>
-                <span style={detailValueStyle}>{deleteTargetRow.periodLabel}</span>
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Periodo</div>
+                <div style={detailValueStyle}>{deleteTargetRow.periodLabel}</div>
               </div>
 
-              <div style={detailItemStyle}>
-                <span style={detailLabelStyle}>Estado</span>
-                <span style={detailValueStyle}>{deleteTargetRow.statusLabel}</span>
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Estado</div>
+                <div style={detailValueStyle}>{deleteTargetRow.statusLabel}</div>
               </div>
             </div>
 
@@ -2667,9 +2130,7 @@ export default function PaymentsPage() {
               <button
                 type="button"
                 onClick={() => {
-                  if (!deletingScheduleId) {
-                    setDeleteTargetRow(null);
-                  }
+                  if (!deletingScheduleId) setDeleteTargetRow(null);
                 }}
                 style={ghostButtonStyle}
               >
@@ -2688,9 +2149,7 @@ export default function PaymentsPage() {
                 }}
               >
                 <Trash2 size={16} />
-                {deletingScheduleId === deleteTargetRow.scheduleId
-                  ? "Eliminando..."
-                  : "Eliminar pago"}
+                {deletingScheduleId === deleteTargetRow.scheduleId ? "Eliminando..." : "Eliminar pago"}
               </button>
             </div>
           </div>
@@ -2699,6 +2158,81 @@ export default function PaymentsPage() {
     </PageContainer>
   );
 }
+
+function FragmentLike({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return <>{children}</>;
+}
+
+const inlineErrorStyle: CSSProperties = {
+  marginBottom: 16,
+  padding: "12px 14px",
+  borderRadius: 12,
+  background: "#FEF2F2",
+  color: "#B91C1C",
+  fontSize: 14,
+  fontWeight: 600,
+};
+
+const filtersGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: 16,
+};
+
+const filterFieldWrapStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 10,
+};
+
+const filterLabelStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#6B7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const filterReadonlyStyle: CSSProperties = {
+  minHeight: 42,
+  borderRadius: 12,
+  border: "1px solid #E5E7EB",
+  background: "#F9FAFB",
+  padding: "10px 12px",
+  fontSize: 14,
+  color: "#374151",
+  display: "flex",
+  alignItems: "center",
+};
+
+const simpleFormGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+  gap: 16,
+};
+
+const simpleFormFieldsStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+};
+
+const fieldWrapStyle: CSSProperties = {
+  display: "grid",
+  gap: 6,
+};
+
+const fieldLabelStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#374151",
+};
 
 const inputStyle: CSSProperties = {
   width: "100%",
@@ -2724,21 +2258,16 @@ const textareaStyle: CSSProperties = {
   resize: "vertical",
 };
 
-const fieldLabelStyle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 700,
-  color: "#374151",
-};
-
-const filterLabelStyle: CSSProperties = {
-  display: "inline-flex",
+const readonlyFieldStyle: CSSProperties = {
+  minHeight: 42,
+  display: "flex",
   alignItems: "center",
-  gap: 8,
-  fontSize: 13,
-  fontWeight: 700,
-  color: "#6B7280",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  borderRadius: 12,
+  border: "1px solid #E5E7EB",
+  background: "#F9FAFB",
+  padding: "10px 12px",
+  fontSize: 14,
+  color: "#111827",
 };
 
 const ghostButtonStyle: CSSProperties = {
@@ -2769,6 +2298,94 @@ const iconOnlyButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
+const emptyStateStyle: CSSProperties = {
+  padding: "18px 16px",
+  borderRadius: 14,
+  border: "1px dashed #D1D5DB",
+  background: "#F9FAFB",
+  color: "#6B7280",
+  fontSize: 14,
+};
+
+const tableShellStyle: CSSProperties = {
+  width: "100%",
+  overflowX: "auto",
+};
+
+const tableStyle: CSSProperties = {
+  width: "100%",
+  borderCollapse: "separate",
+  borderSpacing: 0,
+};
+
+const thStyle: CSSProperties = {
+  padding: "12px 14px",
+  textAlign: "left",
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#6B7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  borderBottom: "1px solid #E5E7EB",
+  background: "#F9FAFB",
+  position: "sticky",
+  top: 0,
+};
+
+const rowStyle: CSSProperties = {
+  background: "#FFFFFF",
+};
+
+const tdStyle: CSSProperties = {
+  padding: "14px",
+  borderBottom: "1px solid #F3F4F6",
+  verticalAlign: "top",
+};
+
+const conceptDropdownButtonStyle: CSSProperties = {
+  border: "none",
+  background: "transparent",
+  padding: 0,
+  textAlign: "left",
+  display: "grid",
+  gap: 2,
+  cursor: "pointer",
+};
+
+const conceptPrimaryTextStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 800,
+  color: "#111827",
+};
+
+const conceptSecondaryActionStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#2563EB",
+  fontWeight: 600,
+};
+
+const cellPrimaryTextStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const cellSecondaryTextStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#9CA3AF",
+};
+
+const statusButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: "6px 10px",
+  borderRadius: 999,
+  fontSize: 12,
+  fontWeight: 800,
+  whiteSpace: "nowrap",
+};
+
 const tableActionButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -2797,21 +2414,22 @@ const tableDangerButtonStyle: CSSProperties = {
   cursor: "pointer",
 };
 
-const dangerPrimaryButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 10,
-  border: "1px solid #DC2626",
-  background: "#DC2626",
-  color: "#FFFFFF",
-  fontWeight: 700,
-  cursor: "pointer",
+const inlineDetailsCardStyle: CSSProperties = {
+  marginTop: 2,
+  marginBottom: 10,
+  border: "1px solid #E5E7EB",
+  background: "#F9FAFB",
+  borderRadius: 14,
+  padding: 14,
 };
 
-const detailItemStyle: CSSProperties = {
+const inlineDetailsGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: 12,
+};
+
+const detailBlockStyle: CSSProperties = {
   display: "grid",
   gap: 4,
 };
@@ -2830,15 +2448,77 @@ const detailValueStyle: CSSProperties = {
   fontWeight: 600,
 };
 
-const statusChipStyle: CSSProperties = {
+const notesBoxStyle: CSSProperties = {
+  marginTop: 6,
+  borderRadius: 12,
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+  padding: 12,
+  fontSize: 13,
+  color: "#374151",
+  lineHeight: 1.5,
+};
+
+const inlineDetailsActionsStyle: CSSProperties = {
+  display: "flex",
+  justifyContent: "flex-end",
+  gap: 10,
+  marginTop: 14,
+  flexWrap: "wrap",
+};
+
+const deleteAlertBoxStyle: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  alignItems: "flex-start",
+  padding: 14,
+  borderRadius: 12,
+  background: "#FEF2F2",
+  border: "1px solid #FECACA",
+};
+
+const deleteAlertIconWrapStyle: CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: "#FEE2E2",
+  color: "#B91C1C",
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
+const deleteAlertTitleStyle: CSSProperties = {
+  margin: 0,
+  fontWeight: 700,
+  color: "#991B1B",
+};
+
+const deleteAlertTextStyle: CSSProperties = {
+  margin: "6px 0 0",
+  color: "#7F1D1D",
+  lineHeight: 1.5,
+};
+
+const deleteSummaryBoxStyle: CSSProperties = {
+  borderRadius: 12,
+  border: "1px solid #E5E7EB",
+  background: "#F9FAFB",
+  padding: 14,
+  display: "grid",
+  gap: 8,
+};
+
+const dangerPrimaryButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  width: "fit-content",
-  padding: "6px 10px",
-  borderRadius: 999,
-  borderWidth: 1,
-  borderStyle: "solid",
-  fontSize: 12,
-  fontWeight: 800,
+  gap: 8,
+  padding: "10px 14px",
+  borderRadius: 10,
+  border: "1px solid #DC2626",
+  background: "#DC2626",
+  color: "#FFFFFF",
+  fontWeight: 700,
+  cursor: "pointer",
 };
