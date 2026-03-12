@@ -22,8 +22,6 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
-  ChevronDown,
-  ChevronUp,
   Clock3,
   CreditCard,
   Edit3,
@@ -32,6 +30,7 @@ import {
   ReceiptText,
   RotateCw,
   Save,
+  Trash2,
   X,
 } from "lucide-react";
 
@@ -313,6 +312,12 @@ function getStatusColors(status: ExpensePaymentStatus) {
   };
 }
 
+function getNextPaymentStatus(currentStatus: ExpensePaymentStatus): ExpensePaymentStatus {
+  if (currentStatus === "pending") return "paid";
+  if (currentStatus === "paid") return "overdue";
+  return "pending";
+}
+
 function getDueDateFromPeriod(periodYear: number, periodMonth: number, dueDay: number) {
   const lastDayOfMonth = new Date(periodYear, periodMonth, 0).getDate();
   const safeDay = Math.min(dueDay, lastDayOfMonth);
@@ -403,6 +408,8 @@ export default function PaymentsPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState<CreatePaymentForm>(getInitialCreateForm());
   const [editingPayment, setEditingPayment] = useState<EditPaymentForm | null>(null);
+  const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
+  const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -1037,6 +1044,104 @@ export default function PaymentsPage() {
     }
   }
 
+  async function handleCyclePaymentStatus(row: PaymentRow) {
+    if (statusUpdatingId || deletingScheduleId) return;
+
+    setMessage("");
+    setSuccessMessage("");
+    setStatusUpdatingId(row.id);
+
+    try {
+      const nextStatus = getNextPaymentStatus(row.status);
+
+      const { error } = await supabase
+        .from("expense_payments")
+        .update({
+          status: nextStatus,
+          paid_at: nextStatus === "paid" ? new Date().toISOString() : null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", row.id);
+
+      if (error) {
+        throw new Error(error.message || "No se pudo actualizar el estado.");
+      }
+
+      setExpensePayments((prev) =>
+        prev.map((payment) =>
+          payment.id === row.id
+            ? {
+                ...payment,
+                status: nextStatus,
+                paid_at: nextStatus === "paid" ? new Date().toISOString() : null,
+              }
+            : payment
+        )
+      );
+
+      setSuccessMessage(`Estado actualizado a ${getStatusLabel(nextStatus).toLowerCase()}.`);
+    } catch (error) {
+      console.error("Error actualizando estado del pago:", error);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error actualizando el estado del pago."
+      );
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  }
+
+  async function handleDeletePayment(row: PaymentRow) {
+    if (statusUpdatingId || deletingScheduleId) return;
+
+    const confirmed = window.confirm(
+      "¿Seguro que quieres eliminar este pago? También se eliminará su configuración recurrente y los periodos asociados."
+    );
+
+    if (!confirmed) return;
+
+    setMessage("");
+    setSuccessMessage("");
+    setDeletingScheduleId(row.scheduleId);
+
+    try {
+      const { error: paymentsError } = await supabase
+        .from("expense_payments")
+        .delete()
+        .eq("expense_schedule_id", row.scheduleId);
+
+      if (paymentsError) {
+        throw new Error(paymentsError.message || "No se pudieron eliminar los periodos del pago.");
+      }
+
+      const { error: scheduleError } = await supabase
+        .from("expense_schedules")
+        .delete()
+        .eq("id", row.scheduleId);
+
+      if (scheduleError) {
+        throw new Error(scheduleError.message || "No se pudo eliminar la configuración recurrente.");
+      }
+
+      if (editingPayment?.scheduleId === row.scheduleId) {
+        setEditingPayment(null);
+      }
+
+      setSuccessMessage("Pago eliminado correctamente.");
+      await loadPaymentsData(false);
+    } catch (error) {
+      console.error("Error eliminando pago:", error);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error eliminando el pago."
+      );
+    } finally {
+      setDeletingScheduleId(null);
+    }
+  }
+
   if (loading || loadingPage) {
     return (
       <PageContainer>
@@ -1051,9 +1156,9 @@ export default function PaymentsPage() {
 
   return (
     <PageContainer>
+      {/* Encabezado principal del módulo de pagos administrativos. */}
       <PageHeader
-        title="Pagos"
-        subtitle="Control administrativo de servicios y gastos pagados por la empresa o por el edificio."
+        title="Pagos administrativos"
         titleIcon={<ReceiptText size={18} />}
       />
 
@@ -1143,7 +1248,6 @@ export default function PaymentsPage() {
 
       <SectionCard
         title="Filtros"
-        subtitle="Ajusta la vista por edificio y estado del pago."
         icon={<Filter size={18} />}
       >
         <div
@@ -1224,98 +1328,25 @@ export default function PaymentsPage() {
 
       <div style={{ height: 16 }} />
 
-      <SectionCard
-        title="Nuevo pago recurrente"
-        subtitle="Empieza compacto para no ocupar espacio, y se expande cuando lo necesitas."
-        icon={<Plus size={18} />}
-      >
-        {!showCreateForm ? (
-          <AppCard>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 16,
-                flexWrap: "wrap",
-              }}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <span
-                  style={{
-                    fontSize: 15,
-                    fontWeight: 800,
-                    color: "#111827",
-                  }}
-                >
-                  Crear nuevo pago recurrente
-                </span>
-                <span
-                  style={{
-                    fontSize: 13,
-                    color: "#6B7280",
-                    lineHeight: 1.45,
-                  }}
-                >
-                  Da de alta luz, agua, internet, Telmex u otros servicios para que
-                  se generen como pendientes del periodo.
-                </span>
-              </div>
+      {showCreateForm ? (
+        <>
+          <div style={{ height: 16 }} />
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <UiButton
-                  onClick={() => setShowCreateForm(true)}
-                  icon={<ChevronDown size={16} />}
-                >
-                  Abrir formulario
-                </UiButton>
-
-                <UiButton
-                  onClick={() => ensureCurrentPeriodPayments()}
-                  icon={<RotateCw size={16} />}
-                >
-                  {syncingCurrentPeriod ? "Generando..." : "Generar periodo actual"}
-                </UiButton>
-              </div>
-            </div>
-          </AppCard>
-        ) : (
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                gap: 12,
-                flexWrap: "wrap",
-              }}
-            >
-              <span
-                style={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: "#374151",
-                }}
-              >
-                Completa la plantilla recurrente y el periodo actual
-              </span>
-
+          {/* Formulario para crear una nueva configuración de pago recurrente y su primer periodo. */}
+          <SectionCard
+            title="Nuevo pago recurrente"
+            icon={<Plus size={18} />}
+            action={
               <button
                 type="button"
                 onClick={() => setShowCreateForm(false)}
                 style={ghostButtonStyle}
               >
-                <ChevronUp size={16} />
+                <X size={16} />
                 Cerrar
               </button>
-            </div>
-
+            }
+          >
             <div
               style={{
                 display: "grid",
@@ -1405,7 +1436,7 @@ export default function PaymentsPage() {
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Título</span>
+                    <span style={fieldLabelStyle}>Concepto</span>
                     <input
                       value={form.title}
                       onChange={(event) => updateForm("title", event.target.value)}
@@ -1461,7 +1492,7 @@ export default function PaymentsPage() {
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de inicio de recurrencia</span>
+                    <span style={fieldLabelStyle}>Fecha de inicio</span>
                     <input
                       type="date"
                       value={form.startsOn}
@@ -1471,7 +1502,7 @@ export default function PaymentsPage() {
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha fin de recurrencia</span>
+                    <span style={fieldLabelStyle}>Fecha fin</span>
                     <input
                       type="date"
                       value={form.endsOn}
@@ -1516,9 +1547,7 @@ export default function PaymentsPage() {
                       checked={form.autoGenerate}
                       onChange={(event) => updateForm("autoGenerate", event.target.checked)}
                     />
-                    <span style={fieldLabelStyle}>
-                      Generar automáticamente el periodo actual si falta
-                    </span>
+                    <span style={fieldLabelStyle}>Generar automáticamente el periodo actual</span>
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
@@ -1592,7 +1621,7 @@ export default function PaymentsPage() {
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha límite real de pago</span>
+                    <span style={fieldLabelStyle}>Fecha límite real</span>
                     <input
                       type="date"
                       value={form.dueDate}
@@ -1609,7 +1638,7 @@ export default function PaymentsPage() {
                       step="0.01"
                       value={form.amountDue}
                       onChange={(event) => updateForm("amountDue", event.target.value)}
-                      placeholder="Opcional, puede quedar en 0"
+                      placeholder="Opcional"
                       style={inputStyle}
                     />
                   </label>
@@ -1691,17 +1720,16 @@ export default function PaymentsPage() {
                 </div>
               </AppCard>
             </div>
-          </div>
-        )}
-      </SectionCard>
+          </SectionCard>
+        </>
+      ) : null}
 
       {editingPayment ? (
         <>
           <div style={{ height: 16 }} />
 
           <SectionCard
-            title="Editar pago seleccionado"
-            subtitle="Aquí puedes actualizar el registro mensual real y también la configuración recurrente."
+            title="Editar pago"
             icon={<Edit3 size={18} />}
           >
             <div
@@ -1773,7 +1801,30 @@ export default function PaymentsPage() {
                   ) : null}
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Título</span>
+                    <span style={fieldLabelStyle}>Tipo de gasto</span>
+                    <AppSelect
+                      value={editingPayment.expenseType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "expenseType",
+                          event.target.value as EditPaymentForm["expenseType"]
+                        )
+                      }
+                    >
+                      <option value="electricity">Electricidad</option>
+                      <option value="water">Agua</option>
+                      <option value="gas">Gas</option>
+                      <option value="internet">Internet</option>
+                      <option value="phone">Telefonía</option>
+                      <option value="maintenance_service">Servicio de mantenimiento</option>
+                      <option value="security">Seguridad</option>
+                      <option value="cleaning_service">Servicio de limpieza</option>
+                      <option value="other">Otro</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Concepto</span>
                     <input
                       value={editingPayment.title}
                       onChange={(event) => updateEditingForm("title", event.target.value)}
@@ -1794,29 +1845,6 @@ export default function PaymentsPage() {
 
               <AppCard>
                 <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Tipo de gasto</span>
-                    <AppSelect
-                      value={editingPayment.expenseType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "expenseType",
-                          event.target.value as ExpenseSchedule["expense_type"]
-                        )
-                      }
-                    >
-                      <option value="electricity">Electricidad</option>
-                      <option value="water">Agua</option>
-                      <option value="gas">Gas</option>
-                      <option value="internet">Internet</option>
-                      <option value="phone">Telefonía</option>
-                      <option value="maintenance_service">Servicio de mantenimiento</option>
-                      <option value="security">Seguridad</option>
-                      <option value="cleaning_service">Servicio de limpieza</option>
-                      <option value="other">Otro</option>
-                    </AppSelect>
-                  </label>
-
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={fieldLabelStyle}>Quién paga</span>
                     <AppSelect
@@ -1849,41 +1877,30 @@ export default function PaymentsPage() {
                     </AppSelect>
                   </label>
 
-                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input
-                      type="checkbox"
-                      checked={editingPayment.autoGenerate}
-                      onChange={(event) =>
-                        updateEditingForm("autoGenerate", event.target.checked)
-                      }
-                    />
-                    <span style={fieldLabelStyle}>Autogenerar periodo actual</span>
-                  </label>
-
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Inicio recurrencia</span>
+                    <span style={fieldLabelStyle}>Fecha de inicio</span>
                     <input
                       type="date"
                       value={editingPayment.startsOn}
-                      onChange={(event) => updateEditingForm("startsOn", event.target.value)}
+                      onChange={(event) =>
+                        updateEditingForm("startsOn", event.target.value)
+                      }
                       style={inputStyle}
                     />
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fin recurrencia</span>
+                    <span style={fieldLabelStyle}>Fecha fin</span>
                     <input
                       type="date"
                       value={editingPayment.endsOn}
-                      onChange={(event) => updateEditingForm("endsOn", event.target.value)}
+                      onChange={(event) =>
+                        updateEditingForm("endsOn", event.target.value)
+                      }
                       style={inputStyle}
                     />
                   </label>
-                </div>
-              </AppCard>
 
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
                   <label style={{ display: "grid", gap: 6 }}>
                     <span style={fieldLabelStyle}>Día esperado de recibido</span>
                     <input
@@ -1910,6 +1927,21 @@ export default function PaymentsPage() {
                       }
                       style={inputStyle}
                     />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={editingPayment.autoGenerate}
+                      onChange={(event) =>
+                        updateEditingForm("autoGenerate", event.target.checked)
+                      }
+                    />
+                    <span style={fieldLabelStyle}>Generación automática</span>
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
@@ -2094,10 +2126,32 @@ export default function PaymentsPage() {
 
       <div style={{ height: 16 }} />
 
+      {/* Tabla principal de pagos administrativos con acciones rápidas. */}
       <SectionCard
-        title="Listado de pagos administrativos"
-        subtitle="Puedes editar cualquier registro para completar el recibo real cuando llegue."
+        title="Listado de pagos"
         icon={<ReceiptText size={18} />}
+        action={
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => setShowCreateForm((prev) => !prev)}
+              style={iconOnlyButtonStyle}
+              title={showCreateForm ? "Cerrar formulario" : "Nuevo pago recurrente"}
+              aria-label={showCreateForm ? "Cerrar formulario" : "Nuevo pago recurrente"}
+            >
+              {showCreateForm ? <X size={16} /> : <Plus size={16} />}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => ensureCurrentPeriodPayments()}
+              style={ghostButtonStyle}
+            >
+              <RotateCw size={16} />
+              {syncingCurrentPeriod ? "Generando..." : "Generar periodo"}
+            </button>
+          </div>
+        }
       >
         <AppTable
           rows={filteredRows}
@@ -2112,25 +2166,21 @@ export default function PaymentsPage() {
                     {row.title}
                   </span>
 
-                  <span style={{ fontSize: 12, color: "#6B7280" }}>
-                    {row.expenseTypeLabel} · {row.vendorName}
-                  </span>
+                  {row.vendorName && row.vendorName !== "Sin proveedor" ? (
+                    <span style={{ fontSize: 12, color: "#6B7280" }}>
+                      {row.vendorName}
+                    </span>
+                  ) : null}
                 </div>
               ),
             },
             {
               key: "building",
-              header: "Edificio / alcance",
+              header: "Edificio",
               render: (row: PaymentRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
-                    {row.buildingName}
-                  </span>
-
-                  <span style={{ fontSize: 12, color: "#6B7280" }}>
-                    {row.unitLabel} · {row.appliesToLabel}
-                  </span>
-                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
+                  {row.buildingName}
+                </span>
               ),
             },
             {
@@ -2179,12 +2229,12 @@ export default function PaymentsPage() {
                   }}
                 >
                   <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
-                    {row.amountDueLabel}
+                    {row.isGeneratedPlaceholder ? "Pendiente" : row.amountDueLabel}
                   </span>
 
                   {row.isGeneratedPlaceholder ? (
                     <span style={{ fontSize: 11, color: "#9CA3AF" }}>
-                      Placeholder
+                      Monto pendiente
                     </span>
                   ) : null}
                 </div>
@@ -2195,9 +2245,14 @@ export default function PaymentsPage() {
               header: "Estado",
               render: (row: PaymentRow) => {
                 const colors = getStatusColors(row.status);
+                const isUpdating = statusUpdatingId === row.id;
 
                 return (
-                  <span
+                  <button
+                    type="button"
+                    onClick={() => handleCyclePaymentStatus(row)}
+                    disabled={isUpdating || deletingScheduleId === row.scheduleId}
+                    title="Haz clic para cambiar el estado"
                     style={{
                       display: "inline-flex",
                       alignItems: "center",
@@ -2210,10 +2265,11 @@ export default function PaymentsPage() {
                       fontSize: 12,
                       fontWeight: 800,
                       whiteSpace: "nowrap",
+                      cursor: isUpdating ? "wait" : "pointer",
                     }}
                   >
-                    {row.statusLabel}
-                  </span>
+                    {isUpdating ? "Actualizando..." : row.statusLabel}
+                  </button>
                 );
               },
             },
@@ -2236,14 +2292,30 @@ export default function PaymentsPage() {
               key: "actions",
               header: "Acciones",
               render: (row: PaymentRow) => (
-                <button
-                  type="button"
-                  onClick={() => startEditingPayment(row)}
-                  style={tableActionButtonStyle}
-                >
-                  <Edit3 size={14} />
-                  Editar
-                </button>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  <button
+                    type="button"
+                    onClick={() => startEditingPayment(row)}
+                    style={tableActionButtonStyle}
+                  >
+                    <Edit3 size={14} />
+                    Editar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleDeletePayment(row)}
+                    disabled={deletingScheduleId === row.scheduleId}
+                    style={{
+                      ...tableDangerButtonStyle,
+                      opacity: deletingScheduleId === row.scheduleId ? 0.65 : 1,
+                      cursor: deletingScheduleId === row.scheduleId ? "wait" : "pointer",
+                    }}
+                  >
+                    <Trash2 size={14} />
+                    {deletingScheduleId === row.scheduleId ? "Eliminando..." : "Eliminar"}
+                  </button>
+                </div>
               ),
             },
           ]}
@@ -2335,6 +2407,19 @@ const ghostButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+const iconOnlyButtonStyle: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  borderRadius: 12,
+  border: "1px solid #D1D5DB",
+  background: "#FFFFFF",
+  color: "#111827",
+  cursor: "pointer",
+};
+
 const tableActionButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -2346,5 +2431,19 @@ const tableActionButtonStyle: React.CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
   color: "#111827",
+  cursor: "pointer",
+};
+
+const tableDangerButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  borderRadius: 10,
+  border: "1px solid #FECACA",
+  background: "#FEF2F2",
+  padding: "8px 10px",
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#B91C1C",
   cursor: "pointer",
 };
