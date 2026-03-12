@@ -3,20 +3,21 @@
 /*
   Módulo de Pagos administrativos.
 
-  Esta página usa la nueva base de datos operativa:
+  Esta página usa:
   - expense_schedules
   - expense_payments
 
-  Objetivo:
-  - mostrar pagos administrativos reales del sidebar
-  - enfocarse en gastos que paga la empresa o el edificio
-  - dejar fuera de esta vista los servicios pagados directamente por el inquilino
-  - mantener el mismo design system del sistema
+  Nuevo en esta versión:
+  - Formulario para crear pagos administrativos reales
+  - Al guardar:
+    1) crea la configuración en expense_schedules
+    2) crea el registro del periodo en expense_payments
+  - Esto permite que ya aparezcan eventos azules en el calendario
 
-  Importante:
-  - aquí NO usamos invoices
-  - aquí NO mostramos facturas futuras al inquilino
-  - esta pantalla es para operación administrativa interna
+  Alcance de esta versión:
+  - enfocada en pagos administrativos pagados por empresa o edificio
+  - no usa invoices
+  - no maneja todavía edición inline ni cambio de estado desde la tabla
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -27,7 +28,9 @@ import {
   Clock3,
   CreditCard,
   Filter,
+  Plus,
   ReceiptText,
+  Save,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -41,6 +44,7 @@ import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppTable from "@/components/AppTable";
 import AppSelect from "@/components/AppSelect";
+import UiButton from "@/components/UiButton";
 
 type Building = {
   id: string;
@@ -118,6 +122,32 @@ type PaymentRow = {
   notes: string;
 };
 
+type CreatePaymentForm = {
+  buildingId: string;
+  appliesTo: "building" | "unit";
+  unitId: string;
+  expenseType:
+    | "electricity"
+    | "water"
+    | "gas"
+    | "internet"
+    | "phone"
+    | "maintenance_service"
+    | "security"
+    | "cleaning_service"
+    | "other";
+  title: string;
+  vendorName: string;
+  responsibilityType: "company" | "building";
+  amountDue: string;
+  dueDay: string;
+  periodMonth: string;
+  periodYear: string;
+  status: "pending" | "paid" | "overdue";
+  paymentReference: string;
+  notes: string;
+};
+
 const MONTH_LABELS_SHORT = [
   "Ene",
   "Feb",
@@ -141,6 +171,14 @@ function getTodayDateOnlyKey() {
   return `${year}-${month}-${day}`;
 }
 
+function getDefaultMonth() {
+  return String(new Date().getMonth() + 1);
+}
+
+function getDefaultYear() {
+  return String(new Date().getFullYear());
+}
+
 function parseDateOnly(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, (month || 1) - 1, day || 1);
@@ -150,7 +188,6 @@ function formatDate(dateKey: string) {
   if (!dateKey) return "Sin fecha";
 
   const date = parseDateOnly(dateKey);
-
   return `${date.getDate()} ${MONTH_LABELS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
 }
 
@@ -218,11 +255,21 @@ function getStatusColors(status: PaymentRow["status"]) {
   };
 }
 
+function getDueDateFromPeriod(periodYear: number, periodMonth: number, dueDay: number) {
+  const lastDayOfMonth = new Date(periodYear, periodMonth, 0).getDate();
+  const safeDay = Math.min(dueDay, lastDayOfMonth);
+  const month = String(periodMonth).padStart(2, "0");
+  const day = String(safeDay).padStart(2, "0");
+  return `${periodYear}-${month}-${day}`;
+}
+
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
 
   const [loadingPage, setLoadingPage] = useState(true);
+  const [savingPayment, setSavingPayment] = useState(false);
   const [message, setMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -231,6 +278,23 @@ export default function PaymentsPage() {
 
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<PaymentStatusFilter>("all");
+
+  const [form, setForm] = useState<CreatePaymentForm>({
+    buildingId: "",
+    appliesTo: "building",
+    unitId: "",
+    expenseType: "electricity",
+    title: "",
+    vendorName: "",
+    responsibilityType: "company",
+    amountDue: "",
+    dueDay: "",
+    periodMonth: getDefaultMonth(),
+    periodYear: getDefaultYear(),
+    status: "pending",
+    paymentReference: "",
+    notes: "",
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -299,12 +363,24 @@ export default function PaymentsPage() {
       return;
     }
 
-    setBuildings((buildingsRes.data as Building[]) || []);
+    const nextBuildings = (buildingsRes.data as Building[]) || [];
+    setBuildings(nextBuildings);
     setUnits((unitsRes.data as Unit[]) || []);
     setExpenseSchedules((schedulesRes.data as ExpenseSchedule[]) || []);
     setExpensePayments((paymentsRes.data as ExpensePayment[]) || []);
+
+    setForm((prev) => ({
+      ...prev,
+      buildingId: prev.buildingId || nextBuildings[0]?.id || "",
+    }));
+
     setLoadingPage(false);
   }
+
+  const unitsForSelectedBuilding = useMemo(() => {
+    if (!form.buildingId) return [];
+    return units.filter((unit) => unit.building_id === form.buildingId);
+  }, [units, form.buildingId]);
 
   const paymentRows = useMemo<PaymentRow[]>(() => {
     const buildingMap = new Map<string, Building>();
@@ -395,6 +471,139 @@ export default function PaymentsPage() {
     return `${nextPending.title} · ${nextPending.dueDateLabel}`;
   }, [filteredRows, todayKey]);
 
+  function updateForm<K extends keyof CreatePaymentForm>(key: K, value: CreatePaymentForm[K]) {
+    setForm((prev) => ({
+      ...prev,
+      [key]: value,
+    }));
+  }
+
+  async function handleCreatePayment() {
+    if (!user?.company_id) return;
+
+    setMessage("");
+    setSuccessMessage("");
+
+    if (!form.buildingId) {
+      setMessage("Selecciona un edificio.");
+      return;
+    }
+
+    if (form.appliesTo === "unit" && !form.unitId) {
+      setMessage("Selecciona una unidad cuando el pago aplique a una unidad.");
+      return;
+    }
+
+    if (!form.title.trim()) {
+      setMessage("Escribe un título para el pago.");
+      return;
+    }
+
+    if (!form.amountDue || Number(form.amountDue) <= 0) {
+      setMessage("Escribe un monto válido.");
+      return;
+    }
+
+    if (!form.dueDay || Number(form.dueDay) < 1 || Number(form.dueDay) > 31) {
+      setMessage("Escribe un día de vencimiento válido entre 1 y 31.");
+      return;
+    }
+
+    if (!form.periodMonth || Number(form.periodMonth) < 1 || Number(form.periodMonth) > 12) {
+      setMessage("Selecciona un mes válido.");
+      return;
+    }
+
+    if (!form.periodYear || Number(form.periodYear) < 2000) {
+      setMessage("Selecciona un año válido.");
+      return;
+    }
+
+    const amountDue = Number(form.amountDue);
+    const dueDay = Number(form.dueDay);
+    const periodMonth = Number(form.periodMonth);
+    const periodYear = Number(form.periodYear);
+    const dueDate = getDueDateFromPeriod(periodYear, periodMonth, dueDay);
+    const paidAtValue = form.status === "paid" ? new Date().toISOString() : null;
+
+    setSavingPayment(true);
+
+    try {
+      const { data: scheduleData, error: scheduleError } = await supabase
+        .from("expense_schedules")
+        .insert({
+          company_id: user.company_id,
+          building_id: form.buildingId,
+          unit_id: form.appliesTo === "unit" ? form.unitId : null,
+          expense_type: form.expenseType,
+          title: form.title.trim(),
+          vendor_name: form.vendorName.trim() || null,
+          responsibility_type: form.responsibilityType,
+          applies_to: form.appliesTo,
+          amount_estimated: amountDue,
+          due_day: dueDay,
+          active: true,
+          notes: form.notes.trim() || null,
+        })
+        .select("id")
+        .single();
+
+      if (scheduleError || !scheduleData) {
+        throw new Error(scheduleError?.message || "No se pudo crear la configuración del pago.");
+      }
+
+      const { error: paymentError } = await supabase
+        .from("expense_payments")
+        .insert({
+          expense_schedule_id: scheduleData.id,
+          company_id: user.company_id,
+          building_id: form.buildingId,
+          unit_id: form.appliesTo === "unit" ? form.unitId : null,
+          period_year: periodYear,
+          period_month: periodMonth,
+          due_date: dueDate,
+          amount_due: amountDue,
+          status: form.status,
+          paid_at: paidAtValue,
+          payment_reference: form.paymentReference.trim() || null,
+          notes: form.notes.trim() || null,
+        });
+
+      if (paymentError) {
+        throw new Error(paymentError.message || "No se pudo crear el registro del pago.");
+      }
+
+      setSuccessMessage("Pago administrativo creado correctamente.");
+      setForm((prev) => ({
+        ...prev,
+        appliesTo: "building",
+        unitId: "",
+        expenseType: "electricity",
+        title: "",
+        vendorName: "",
+        responsibilityType: "company",
+        amountDue: "",
+        dueDay: "",
+        periodMonth: getDefaultMonth(),
+        periodYear: getDefaultYear(),
+        status: "pending",
+        paymentReference: "",
+        notes: "",
+      }));
+
+      await loadPaymentsData();
+    } catch (error) {
+      console.error("Error creando pago administrativo:", error);
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error creando el pago administrativo."
+      );
+    } finally {
+      setSavingPayment(false);
+    }
+  }
+
   if (loading || loadingPage) {
     return (
       <PageContainer>
@@ -430,6 +639,366 @@ export default function PaymentsPage() {
           {message}
         </div>
       ) : null}
+
+      {successMessage ? (
+        <div
+          style={{
+            marginBottom: 16,
+            padding: "12px 14px",
+            borderRadius: 12,
+            background: "#ECFDF5",
+            color: "#166534",
+            fontSize: 14,
+            fontWeight: 600,
+            border: "1px solid #A7F3D0",
+          }}
+        >
+          {successMessage}
+        </div>
+      ) : null}
+
+      <SectionCard
+        title="Nuevo pago administrativo"
+        subtitle="Crea un pago real para que aparezca en este módulo y también en el calendario global."
+        icon={<Plus size={18} />}
+      >
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gap: 16,
+          }}
+        >
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Edificio
+                </span>
+                <AppSelect
+                  value={form.buildingId}
+                  onChange={(event) => {
+                    const nextBuildingId = event.target.value;
+                    setForm((prev) => ({
+                      ...prev,
+                      buildingId: nextBuildingId,
+                      unitId: "",
+                    }));
+                  }}
+                >
+                  <option value="">Selecciona un edificio</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Aplica a
+                </span>
+                <AppSelect
+                  value={form.appliesTo}
+                  onChange={(event) =>
+                    setForm((prev) => ({
+                      ...prev,
+                      appliesTo: event.target.value as "building" | "unit",
+                      unitId: event.target.value === "building" ? "" : prev.unitId,
+                    }))
+                  }
+                >
+                  <option value="building">Edificio</option>
+                  <option value="unit">Unidad</option>
+                </AppSelect>
+              </label>
+
+              {form.appliesTo === "unit" ? (
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                    Unidad
+                  </span>
+                  <AppSelect
+                    value={form.unitId}
+                    onChange={(event) => updateForm("unitId", event.target.value)}
+                  >
+                    <option value="">Selecciona una unidad</option>
+                    {unitsForSelectedBuilding.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.display_code || unit.unit_number || "Unidad"}
+                      </option>
+                    ))}
+                  </AppSelect>
+                </label>
+              ) : null}
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Tipo de gasto
+                </span>
+                <AppSelect
+                  value={form.expenseType}
+                  onChange={(event) =>
+                    updateForm(
+                      "expenseType",
+                      event.target.value as CreatePaymentForm["expenseType"]
+                    )
+                  }
+                >
+                  <option value="electricity">Electricidad</option>
+                  <option value="water">Agua</option>
+                  <option value="gas">Gas</option>
+                  <option value="internet">Internet</option>
+                  <option value="phone">Telefonía</option>
+                  <option value="maintenance_service">Servicio de mantenimiento</option>
+                  <option value="security">Seguridad</option>
+                  <option value="cleaning_service">Servicio de limpieza</option>
+                  <option value="other">Otro</option>
+                </AppSelect>
+              </label>
+            </div>
+          </AppCard>
+
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Título
+                </span>
+                <input
+                  value={form.title}
+                  onChange={(event) => updateForm("title", event.target.value)}
+                  placeholder="Ej. Luz CFE Torre Norte"
+                  style={{
+                    width: "100%",
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    paddingInline: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Proveedor
+                </span>
+                <input
+                  value={form.vendorName}
+                  onChange={(event) => updateForm("vendorName", event.target.value)}
+                  placeholder="Ej. CFE, Telmex, Agua y Drenaje"
+                  style={{
+                    width: "100%",
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    paddingInline: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Quién paga
+                </span>
+                <AppSelect
+                  value={form.responsibilityType}
+                  onChange={(event) =>
+                    updateForm(
+                      "responsibilityType",
+                      event.target.value as "company" | "building"
+                    )
+                  }
+                >
+                  <option value="company">Empresa</option>
+                  <option value="building">Edificio</option>
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Monto
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={form.amountDue}
+                  onChange={(event) => updateForm("amountDue", event.target.value)}
+                  placeholder="0.00"
+                  style={{
+                    width: "100%",
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    paddingInline: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </label>
+            </div>
+          </AppCard>
+
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Día de vencimiento
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={form.dueDay}
+                  onChange={(event) => updateForm("dueDay", event.target.value)}
+                  placeholder="Ej. 10"
+                  style={{
+                    width: "100%",
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    paddingInline: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Mes del periodo
+                </span>
+                <AppSelect
+                  value={form.periodMonth}
+                  onChange={(event) => updateForm("periodMonth", event.target.value)}
+                >
+                  {MONTH_LABELS_SHORT.map((month, index) => (
+                    <option key={month} value={String(index + 1)}>
+                      {month}
+                    </option>
+                  ))}
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Año del periodo
+                </span>
+                <input
+                  type="number"
+                  min="2000"
+                  value={form.periodYear}
+                  onChange={(event) => updateForm("periodYear", event.target.value)}
+                  style={{
+                    width: "100%",
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    paddingInline: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Estado inicial
+                </span>
+                <AppSelect
+                  value={form.status}
+                  onChange={(event) =>
+                    updateForm(
+                      "status",
+                      event.target.value as "pending" | "paid" | "overdue"
+                    )
+                  }
+                >
+                  <option value="pending">Pendiente</option>
+                  <option value="paid">Pagado</option>
+                  <option value="overdue">Vencido</option>
+                </AppSelect>
+              </label>
+            </div>
+          </AppCard>
+
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Referencia de pago
+                </span>
+                <input
+                  value={form.paymentReference}
+                  onChange={(event) => updateForm("paymentReference", event.target.value)}
+                  placeholder="Opcional"
+                  style={{
+                    width: "100%",
+                    height: 42,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    paddingInline: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                  }}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
+                  Notas
+                </span>
+                <textarea
+                  value={form.notes}
+                  onChange={(event) => updateForm("notes", event.target.value)}
+                  placeholder="Notas administrativas"
+                  rows={5}
+                  style={{
+                    width: "100%",
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: "#FFFFFF",
+                    padding: 12,
+                    fontSize: 14,
+                    color: "#111827",
+                    outline: "none",
+                    resize: "vertical",
+                  }}
+                />
+              </label>
+
+              <div style={{ paddingTop: 8 }}>
+                <UiButton
+                  onClick={handleCreatePayment}
+                  icon={savingPayment ? <Save size={16} /> : <Plus size={16} />}
+                >
+                  {savingPayment ? "Guardando..." : "Crear pago administrativo"}
+                </UiButton>
+              </div>
+            </div>
+          </AppCard>
+        </div>
+      </SectionCard>
+
+      <div style={{ height: 16 }} />
 
       <AppGrid minWidth={220}>
         <MetricCard
