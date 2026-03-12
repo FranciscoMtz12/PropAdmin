@@ -26,17 +26,17 @@ export const metadata: Metadata = {
 /*
   RootLayout global de la aplicación.
 
-  Aquí mantenemos fijo el shell visual del sistema:
-  - sidebar siempre visible en desktop
-  - breadcrumb global
-  - área principal centrada
-  - provider global de usuario
-  - provider global de toasts flotantes
+  Aquí mantenemos:
+  - sidebar global
+  - breadcrumbs globales
+  - provider de usuario
+  - provider de toasts
+  - contenedor principal centrado con ancho máximo consistente
 
   Importante:
-  Los mensajes de éxito / error ya no deben vivir dentro del layout
-  normal de cada página porque eso provoca "brincos" visuales.
-  Por eso AppToastProvider se monta aquí y queda disponible en toda la app.
+  El contenido principal vuelve a estar centrado con maxWidth
+  para mantener la estética SaaS limpia y evitar que las páginas
+  se vean demasiado estiradas horizontalmente.
 */
 
 export default function RootLayout({
@@ -71,14 +71,25 @@ export default function RootLayout({
                 {/* Breadcrumb global superior */}
                 <GlobalBreadcrumbs />
 
-                {/* Contenido principal de cada módulo */}
+                {/* Contenido principal con contenedor centrado global */}
                 <main
                   style={{
                     flex: 1,
                     minWidth: 0,
+                    display: "flex",
+                    justifyContent: "center",
                   }}
                 >
-                  {children}
+                  <div
+                    style={{
+                      width: "100%",
+                      maxWidth: 1280,
+                      padding: "24px 32px 40px",
+                      boxSizing: "border-box",
+                    }}
+                  >
+                    {children}
+                  </div>
                 </main>
               </div>
             </div>
