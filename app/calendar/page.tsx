@@ -3,8 +3,11 @@
 /*
   Calendario global del sistema.
 
-  Esta versión mantiene lo que ya funcionaba para limpieza y mantenimiento,
-  y agrega filtros por módulo para controlar qué se ve en el calendario.
+  Esta versión integra:
+  - Limpieza
+  - Mantenimiento
+  - Pagos administrativos
+  - Cobranza
 
   Reglas que respeta:
   - UI en español
@@ -49,6 +52,13 @@ type Unit = {
   display_code: string | null;
 };
 
+type Lease = {
+  id: string;
+  unit_id: string | null;
+  tenant_name: string | null;
+  tenant_email: string | null;
+};
+
 type CleaningBuildingSchedule = {
   id: string;
   building_id: string;
@@ -80,6 +90,86 @@ type MaintenanceLog = {
   building_id: string | null;
   unit_id: string | null;
   asset_id: string | null;
+};
+
+type ExpenseSchedule = {
+  id: string;
+  building_id: string;
+  unit_id: string | null;
+  expense_type:
+    | "electricity"
+    | "water"
+    | "gas"
+    | "internet"
+    | "phone"
+    | "maintenance_service"
+    | "security"
+    | "cleaning_service"
+    | "other";
+  title: string;
+  vendor_name: string | null;
+  responsibility_type: "company" | "building" | "tenant";
+  applies_to: "building" | "unit";
+  amount_estimated: number | null;
+  due_day: number;
+  active: boolean;
+  notes: string | null;
+};
+
+type ExpensePayment = {
+  id: string;
+  expense_schedule_id: string;
+  company_id: string;
+  building_id: string;
+  unit_id: string | null;
+  period_year: number;
+  period_month: number;
+  due_date: string;
+  amount_due: number;
+  status: "pending" | "paid" | "overdue";
+  paid_at: string | null;
+  payment_reference: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+type CollectionSchedule = {
+  id: string;
+  building_id: string;
+  unit_id: string;
+  lease_id: string | null;
+  charge_type:
+    | "rent"
+    | "maintenance_fee"
+    | "services"
+    | "parking"
+    | "penalty"
+    | "other";
+  title: string;
+  responsibility_type: "tenant" | "owner" | "other";
+  amount_expected: number;
+  due_day: number;
+  active: boolean;
+  notes: string | null;
+};
+
+type CollectionRecord = {
+  id: string;
+  collection_schedule_id: string;
+  company_id: string;
+  building_id: string;
+  unit_id: string;
+  lease_id: string | null;
+  period_year: number;
+  period_month: number;
+  due_date: string;
+  amount_due: number;
+  amount_collected: number | null;
+  status: "pending" | "collected" | "overdue";
+  collected_at: string | null;
+  payment_method: string | null;
+  notes: string | null;
+  created_at: string;
 };
 
 type CalendarEvent = {
@@ -212,18 +302,11 @@ function formatYearLabel(date: Date) {
   return `${date.getFullYear()}`;
 }
 
-/*
-  Extrae solo YYYY-MM-DD.
-  Esto evita que la zona horaria cambie el día visual.
-*/
 function getDateOnlyKey(dateValue: string | null) {
   if (!dateValue) return "";
   return dateValue.slice(0, 10);
 }
 
-/*
-  Convierte YYYY-MM-DD a Date local sin depender de UTC.
-*/
 function parseDateOnly(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return new Date(year, month - 1, day);
@@ -264,6 +347,39 @@ function formatDuration(duration: number | null) {
   return `${duration} h`;
 }
 
+function formatCurrency(amount: number) {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
+}
+
+function formatPeriod(periodYear: number, periodMonth: number) {
+  return `${MONTH_LABELS[periodMonth - 1] || "Mes"} ${periodYear}`;
+}
+
+function getExpenseTypeLabel(type: ExpenseSchedule["expense_type"]) {
+  if (type === "electricity") return "Electricidad";
+  if (type === "water") return "Agua";
+  if (type === "gas") return "Gas";
+  if (type === "internet") return "Internet";
+  if (type === "phone") return "Telefonía";
+  if (type === "maintenance_service") return "Servicio de mantenimiento";
+  if (type === "security") return "Seguridad";
+  if (type === "cleaning_service") return "Servicio de limpieza";
+  return "Otro";
+}
+
+function getChargeTypeLabel(type: CollectionSchedule["charge_type"]) {
+  if (type === "rent") return "Renta";
+  if (type === "maintenance_fee") return "Mantenimiento";
+  if (type === "services") return "Servicios";
+  if (type === "parking") return "Estacionamiento";
+  if (type === "penalty") return "Penalización";
+  return "Otro";
+}
+
 function renderViewTab(
   label: string,
   active: boolean,
@@ -293,8 +409,7 @@ function renderModuleToggle(
   label: string,
   active: boolean,
   onClick: () => void,
-  colors: { background: string; border: string; text: string },
-  dimmed?: boolean
+  colors: { background: string; border: string; text: string }
 ) {
   return (
     <button
@@ -309,7 +424,6 @@ function renderModuleToggle(
         fontSize: 13,
         fontWeight: 700,
         cursor: "pointer",
-        opacity: dimmed ? 0.7 : 1,
         display: "inline-flex",
         alignItems: "center",
         gap: 8,
@@ -335,9 +449,15 @@ export default function CalendarPage() {
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [leases, setLeases] = useState<Lease[]>([]);
   const [buildingSchedules, setBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
   const [unitSchedules, setUnitSchedules] = useState<CleaningUnitSchedule[]>([]);
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
+  const [expenseSchedules, setExpenseSchedules] = useState<ExpenseSchedule[]>([]);
+  const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
+  const [collectionSchedules, setCollectionSchedules] = useState<CollectionSchedule[]>([]);
+  const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
+
   const [loadingPage, setLoadingPage] = useState(true);
   const [msg, setMsg] = useState("");
 
@@ -349,10 +469,6 @@ export default function CalendarPage() {
     return today;
   });
 
-  /*
-    Filtros visuales por módulo.
-    Esto deja el calendario global listo para seguir creciendo.
-  */
   const [showCleaning, setShowCleaning] = useState(true);
   const [showMaintenance, setShowMaintenance] = useState(true);
   const [showPayments, setShowPayments] = useState(true);
@@ -373,9 +489,14 @@ export default function CalendarPage() {
     const [
       buildingsRes,
       unitsRes,
+      leasesRes,
       buildingSchedulesRes,
       unitSchedulesRes,
       maintenanceLogsRes,
+      expenseSchedulesRes,
+      expensePaymentsRes,
+      collectionSchedulesRes,
+      collectionRecordsRes,
     ] = await Promise.all([
       supabase
         .from("buildings")
@@ -386,6 +507,11 @@ export default function CalendarPage() {
       supabase
         .from("units")
         .select("id, building_id, unit_number, display_code")
+        .eq("company_id", user.company_id),
+
+      supabase
+        .from("leases")
+        .select("id, unit_id, tenant_name, tenant_email")
         .eq("company_id", user.company_id),
 
       supabase
@@ -406,6 +532,39 @@ export default function CalendarPage() {
         )
         .eq("company_id", user.company_id)
         .order("created_at", { ascending: false }),
+
+      supabase
+        .from("expense_schedules")
+        .select(
+          "id, building_id, unit_id, expense_type, title, vendor_name, responsibility_type, applies_to, amount_estimated, due_day, active, notes"
+        )
+        .eq("company_id", user.company_id)
+        .eq("active", true)
+        .in("responsibility_type", ["company", "building"]),
+
+      supabase
+        .from("expense_payments")
+        .select(
+          "id, expense_schedule_id, company_id, building_id, unit_id, period_year, period_month, due_date, amount_due, status, paid_at, payment_reference, notes, created_at"
+        )
+        .eq("company_id", user.company_id)
+        .order("due_date", { ascending: true }),
+
+      supabase
+        .from("collection_schedules")
+        .select(
+          "id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes"
+        )
+        .eq("company_id", user.company_id)
+        .eq("active", true),
+
+      supabase
+        .from("collection_records")
+        .select(
+          "id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at"
+        )
+        .eq("company_id", user.company_id)
+        .order("due_date", { ascending: true }),
     ]);
 
     if (buildingsRes.error) {
@@ -416,6 +575,12 @@ export default function CalendarPage() {
 
     if (unitsRes.error) {
       setMsg("No se pudieron cargar las unidades.");
+      setLoadingPage(false);
+      return;
+    }
+
+    if (leasesRes.error) {
+      setMsg("No se pudieron cargar los contratos.");
       setLoadingPage(false);
       return;
     }
@@ -438,11 +603,40 @@ export default function CalendarPage() {
       return;
     }
 
+    if (expenseSchedulesRes.error) {
+      setMsg("No se pudieron cargar las configuraciones de pagos.");
+      setLoadingPage(false);
+      return;
+    }
+
+    if (expensePaymentsRes.error) {
+      setMsg("No se pudieron cargar los registros de pagos.");
+      setLoadingPage(false);
+      return;
+    }
+
+    if (collectionSchedulesRes.error) {
+      setMsg("No se pudieron cargar las configuraciones de cobranza.");
+      setLoadingPage(false);
+      return;
+    }
+
+    if (collectionRecordsRes.error) {
+      setMsg("No se pudieron cargar los registros de cobranza.");
+      setLoadingPage(false);
+      return;
+    }
+
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
+    setLeases((leasesRes.data as Lease[]) || []);
     setBuildingSchedules((buildingSchedulesRes.data as CleaningBuildingSchedule[]) || []);
     setUnitSchedules((unitSchedulesRes.data as CleaningUnitSchedule[]) || []);
     setMaintenanceLogs((maintenanceLogsRes.data as MaintenanceLog[]) || []);
+    setExpenseSchedules((expenseSchedulesRes.data as ExpenseSchedule[]) || []);
+    setExpensePayments((expensePaymentsRes.data as ExpensePayment[]) || []);
+    setCollectionSchedules((collectionSchedulesRes.data as CollectionSchedule[]) || []);
+    setCollectionRecords((collectionRecordsRes.data as CollectionRecord[]) || []);
     setLoadingPage(false);
   }
 
@@ -464,9 +658,15 @@ export default function CalendarPage() {
   const allEvents = useMemo<CalendarEvent[]>(() => {
     const buildingMap = new Map<string, Building>();
     const unitMap = new Map<string, Unit>();
+    const leaseMap = new Map<string, Lease>();
+    const expenseScheduleMap = new Map<string, ExpenseSchedule>();
+    const collectionScheduleMap = new Map<string, CollectionSchedule>();
 
     buildings.forEach((building) => buildingMap.set(building.id, building));
     units.forEach((unit) => unitMap.set(unit.id, unit));
+    leases.forEach((lease) => leaseMap.set(lease.id, lease));
+    expenseSchedules.forEach((schedule) => expenseScheduleMap.set(schedule.id, schedule));
+    collectionSchedules.forEach((schedule) => collectionScheduleMap.set(schedule.id, schedule));
 
     const filteredBuildingSchedules =
       selectedBuildingId === "all"
@@ -482,6 +682,16 @@ export default function CalendarPage() {
       selectedBuildingId === "all"
         ? maintenanceLogs
         : maintenanceLogs.filter((item) => item.building_id === selectedBuildingId);
+
+    const filteredExpensePayments =
+      selectedBuildingId === "all"
+        ? expensePayments
+        : expensePayments.filter((item) => item.building_id === selectedBuildingId);
+
+    const filteredCollectionRecords =
+      selectedBuildingId === "all"
+        ? collectionRecords
+        : collectionRecords.filter((item) => item.building_id === selectedBuildingId);
 
     const buildingEvents: CalendarEvent[] = filteredBuildingSchedules
       .filter((schedule) => schedule.day_of_week !== "sunday")
@@ -591,23 +801,108 @@ export default function CalendarPage() {
       }
     });
 
-    return [...buildingEvents, ...unitEvents, ...maintenanceEvents].sort((a, b) => {
+    const paymentEvents: CalendarEvent[] = [];
+
+    filteredExpensePayments.forEach((payment) => {
+      const schedule = expenseScheduleMap.get(payment.expense_schedule_id);
+      if (!schedule) return;
+      if (schedule.responsibility_type === "tenant") return;
+
+      const dueDateKey = getDateOnlyKey(payment.due_date);
+      const dueDayKey = getDayKeyFromDateValue(dueDateKey);
+      if (!dueDateKey || dueDayKey === "sunday") return;
+
+      const building = buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
+      const unit =
+        (payment.unit_id ? unitMap.get(payment.unit_id) : null) ||
+        (schedule.unit_id ? unitMap.get(schedule.unit_id) : null);
+
+      const buildingName = building?.name || "Edificio";
+      const unitLabel = unit?.display_code || unit?.unit_number || "General";
+      const scopeLabel = schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
+      const amountLabel = formatCurrency(payment.amount_due);
+
+      let statusLabel = "Pendiente";
+      if (payment.status === "paid") statusLabel = "Pagado";
+      if (payment.status === "overdue") statusLabel = "Vencido";
+
+      paymentEvents.push({
+        id: `payment-${payment.id}`,
+        module: "payments",
+        recurrence: "dated",
+        dayKey: dueDayKey,
+        isoDate: dueDateKey,
+        title: `${schedule.title} · ${statusLabel}`,
+        subtitle: `${buildingName} · ${scopeLabel} · ${amountLabel}`,
+        colorBackground: PAYMENTS_COLORS.background,
+        colorBorder: PAYMENTS_COLORS.border,
+        colorText: PAYMENTS_COLORS.text,
+      });
+    });
+
+    const collectionEvents: CalendarEvent[] = [];
+
+    filteredCollectionRecords.forEach((record) => {
+      const schedule = collectionScheduleMap.get(record.collection_schedule_id);
+      if (!schedule) return;
+
+      const dueDateKey = getDateOnlyKey(record.due_date);
+      const dueDayKey = getDayKeyFromDateValue(dueDateKey);
+      if (!dueDateKey || dueDayKey === "sunday") return;
+
+      const building = buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
+      const unit = unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
+      const lease =
+        (record.lease_id ? leaseMap.get(record.lease_id) : null) ||
+        (schedule.lease_id ? leaseMap.get(schedule.lease_id) : null);
+
+      const buildingName = building?.name || "Edificio";
+      const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
+      const tenantLabel = lease?.tenant_name || lease?.tenant_email || "Sin inquilino";
+      const amountLabel = formatCurrency(record.amount_due);
+
+      let statusLabel = "Pendiente";
+      if (record.status === "collected") statusLabel = "Cobrado";
+      if (record.status === "overdue") statusLabel = "Vencido";
+
+      collectionEvents.push({
+        id: `collection-${record.id}`,
+        module: "collections",
+        recurrence: "dated",
+        dayKey: dueDayKey,
+        isoDate: dueDateKey,
+        title: `${schedule.title} · ${statusLabel}`,
+        subtitle: `${buildingName} · Unidad ${unitLabel} · ${tenantLabel} · ${amountLabel}`,
+        colorBackground: COLLECTIONS_COLORS.background,
+        colorBorder: COLLECTIONS_COLORS.border,
+        colorText: COLLECTIONS_COLORS.text,
+      });
+    });
+
+    return [
+      ...buildingEvents,
+      ...unitEvents,
+      ...maintenanceEvents,
+      ...paymentEvents,
+      ...collectionEvents,
+    ].sort((a, b) => {
       if (a.module !== b.module) return a.module.localeCompare(b.module);
       return a.title.localeCompare(b.title);
     });
   }, [
     buildings,
     units,
+    leases,
     buildingSchedules,
     unitSchedules,
     maintenanceLogs,
+    expenseSchedules,
+    expensePayments,
+    collectionSchedules,
+    collectionRecords,
     selectedBuildingId,
   ]);
 
-  /*
-    Aplicamos los filtros visuales aquí.
-    Así afectan métricas, semana, mes y año de forma consistente.
-  */
   const events = useMemo(() => {
     return allEvents.filter((event) => {
       if (event.module === "cleaning" && !showCleaning) return false;
@@ -624,13 +919,6 @@ export default function CalendarPage() {
     showCollections,
   ]);
 
-  /*
-    Helper central:
-    devuelve lo que debe verse en una fecha concreta.
-
-    - eventos recurrentes: limpieza por día de semana
-    - eventos fechados: mantenimiento por fecha exacta
-  */
   const getEventsForDate = useMemo(() => {
     return (isoDate: string) => {
       const dayKey = getDayKeyFromDateValue(isoDate);
@@ -856,13 +1144,13 @@ export default function CalendarPage() {
         <MetricCard
           label="Pagos"
           value={String(totalPaymentsEvents)}
-          helper="Pendiente de integración"
+          helper={selectedBuildingName}
           icon={<CreditCard size={18} />}
         />
         <MetricCard
           label="Cobranza"
           value={String(totalCollectionsEvents)}
-          helper="Pendiente de integración"
+          helper={selectedBuildingName}
           icon={<Wallet size={18} />}
         />
       </AppGrid>
@@ -871,7 +1159,7 @@ export default function CalendarPage() {
 
       <SectionCard
         title="Calendario general"
-        subtitle="Vista general de limpieza y mantenimiento con seguimiento semanal, mensual y anual."
+        subtitle="Vista general de limpieza, mantenimiento, pagos y cobranza con seguimiento semanal, mensual y anual."
         icon={<CalendarDays size={18} />}
       >
         <AppCard>
@@ -997,16 +1285,14 @@ export default function CalendarPage() {
                 "Pagos",
                 showPayments,
                 () => setShowPayments((prev) => !prev),
-                PAYMENTS_COLORS,
-                true
+                PAYMENTS_COLORS
               )}
 
               {renderModuleToggle(
                 "Cobranza",
                 showCollections,
                 () => setShowCollections((prev) => !prev),
-                COLLECTIONS_COLORS,
-                true
+                COLLECTIONS_COLORS
               )}
             </div>
 
@@ -1371,7 +1657,7 @@ export default function CalendarPage() {
         </AppCard>
 
         <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
                 width: 14,
@@ -1388,7 +1674,7 @@ export default function CalendarPage() {
         </AppCard>
 
         <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, opacity: 0.7 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <div
               style={{
                 width: 14,
