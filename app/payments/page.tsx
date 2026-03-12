@@ -3,40 +3,50 @@
 /*
   Módulo de Pagos administrativos.
 
-  Esta versión soporta:
-  - creación de plantillas recurrentes
-  - frecuencia mensual / bimestral
-  - generación automática del pago pendiente del periodo actual
-  - edición de pagos ya creados
-  - captura posterior de datos reales del recibo
-  - cambio rápido de estado desde la tabla
-  - eliminación de pagos recurrentes con confirmación
-
-  Ajustes UX aplicados:
-  - los mensajes de éxito / error ahora usan toast flotante global
-  - ya no se muestran barras inline que empujen el layout
-  - "Nuevo pago recurrente" inicia cerrado/compacto
-  - la sección de creación aparece debajo de métricas y filtros
-  - la tabla muestra solo edificio, no alcance
-  - el placeholder de monto se muestra como "Pendiente"
+  Objetivos de esta versión:
+  - mantener creación de pagos recurrentes
+  - mantener edición de pagos reales y configuración recurrente
+  - permitir cambio rápido de estado desde la tabla
+  - simplificar la tabla principal
+  - mover información extendida a un panel de "Detalles"
+  - abrir edición en modal flotante
+  - abrir eliminación en modal flotante estilizado
+  - agregar iconos visuales por tipo de servicio
+  - mantener toasts globales para evitar brincos del layout
 */
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
 import {
   AlertCircle,
+  AlertTriangle,
   Building2,
   CalendarClock,
   CheckCircle2,
   Clock3,
   CreditCard,
+  Droplet,
   Edit3,
   Filter,
+  Flame,
+  Globe,
+  Package,
+  Phone,
   Plus,
   ReceiptText,
   RotateCw,
   Save,
+  Shield,
+  Sparkles,
   Trash2,
+  Wrench,
   X,
+  Zap,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -52,6 +62,7 @@ import AppGrid from "@/components/AppGrid";
 import AppTable from "@/components/AppTable";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
+import Modal from "@/components/Modal";
 
 type Building = {
   id: string;
@@ -133,6 +144,7 @@ type PaymentRow = {
   unitLabel: string;
   title: string;
   vendorName: string;
+  expenseType: ExpenseSchedule["expense_type"];
   expenseTypeLabel: string;
   responsibilityLabel: string;
   appliesToLabel: string;
@@ -394,6 +406,94 @@ function getInitialCreateForm(buildingId = ""): CreatePaymentForm {
   };
 }
 
+function getServiceVisual(type: ExpenseSchedule["expense_type"]) {
+  if (type === "electricity") {
+    return {
+      icon: <Zap size={16} />,
+      background: "#FEF3C7",
+      color: "#CA8A04",
+    };
+  }
+
+  if (type === "water") {
+    return {
+      icon: <Droplet size={16} />,
+      background: "#DBEAFE",
+      color: "#2563EB",
+    };
+  }
+
+  if (type === "gas") {
+    return {
+      icon: <Flame size={16} />,
+      background: "#FFEDD5",
+      color: "#EA580C",
+    };
+  }
+
+  if (type === "internet") {
+    return {
+      icon: <Globe size={16} />,
+      background: "#E0F2FE",
+      color: "#0284C7",
+    };
+  }
+
+  if (type === "phone") {
+    return {
+      icon: <Phone size={16} />,
+      background: "#F3E8FF",
+      color: "#7C3AED",
+    };
+  }
+
+  if (type === "maintenance_service") {
+    return {
+      icon: <Wrench size={16} />,
+      background: "#FFEDD5",
+      color: "#C2410C",
+    };
+  }
+
+  if (type === "security") {
+    return {
+      icon: <Shield size={16} />,
+      background: "#FEE2E2",
+      color: "#DC2626",
+    };
+  }
+
+  if (type === "cleaning_service") {
+    return {
+      icon: <Sparkles size={16} />,
+      background: "#DCFCE7",
+      color: "#16A34A",
+    };
+  }
+
+  return {
+    icon: <Package size={16} />,
+    background: "#E5E7EB",
+    color: "#4B5563",
+  };
+}
+
+function getConceptLabel(row: PaymentRow) {
+  const preferred = row.vendorName && row.vendorName !== "Sin proveedor" ? row.vendorName : row.title;
+  return preferred.trim() || "Pago";
+}
+
+function getMetricIconBoxStyle(background: string): CSSProperties {
+  return {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    background,
+    display: "grid",
+    placeItems: "center",
+  };
+}
+
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
@@ -413,14 +513,20 @@ export default function PaymentsPage() {
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState<CreatePaymentForm>(getInitialCreateForm());
+
   const [editingPayment, setEditingPayment] = useState<EditPaymentForm | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+
+  const [detailsPaymentId, setDetailsPaymentId] = useState<string | null>(null);
+  const [deleteTargetRow, setDeleteTargetRow] = useState<PaymentRow | null>(null);
+
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
-    loadPaymentsData();
+    void loadPaymentsData();
   }, [loading, user?.company_id]);
 
   async function loadPaymentsData(showLoader = true) {
@@ -616,7 +722,6 @@ export default function PaymentsPage() {
       const { error } = await supabase.from("expense_payments").insert(rowsToInsert);
 
       if (error) {
-        console.error("Error generando pagos del periodo actual:", error);
         const errorText =
           "No se pudieron generar automáticamente algunos pagos del periodo actual.";
         setMessage(errorText);
@@ -689,7 +794,8 @@ export default function PaymentsPage() {
         if (schedule.responsibility_type === "tenant") return null;
 
         const building =
-          buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
+          buildingMap.get(payment.building_id) ||
+          buildingMap.get(schedule.building_id);
 
         const unit =
           (payment.unit_id ? unitMap.get(payment.unit_id) : null) ||
@@ -706,6 +812,7 @@ export default function PaymentsPage() {
             schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio",
           title: schedule.title,
           vendorName: schedule.vendor_name || "Sin proveedor",
+          expenseType: schedule.expense_type,
           expenseTypeLabel: getExpenseTypeLabel(schedule.expense_type),
           responsibilityLabel: getResponsibilityLabel(schedule.responsibility_type),
           appliesToLabel: getAppliesToLabel(schedule.applies_to),
@@ -739,6 +846,10 @@ export default function PaymentsPage() {
     });
   }, [paymentRows, selectedBuildingId, selectedStatus]);
 
+  const detailsRow = useMemo(() => {
+    return filteredRows.find((row) => row.id === detailsPaymentId) || null;
+  }, [filteredRows, detailsPaymentId]);
+
   const selectedBuildingLabel =
     selectedBuildingId === "all"
       ? "Todos los edificios"
@@ -761,7 +872,7 @@ export default function PaymentsPage() {
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
     if (!nextPending) return "Sin próximos pagos";
-    return `${nextPending.title} · ${nextPending.dueDateLabel}`;
+    return `${getConceptLabel(nextPending)} · ${nextPending.dueDateLabel}`;
   }, [filteredRows, todayKey]);
 
   function updateForm<K extends keyof CreatePaymentForm>(key: K, value: CreatePaymentForm[K]) {
@@ -801,7 +912,7 @@ export default function PaymentsPage() {
     }
 
     if (!form.title.trim()) {
-      const errorText = "Escribe un título para el pago.";
+      const errorText = "Escribe un nombre corto para el concepto.";
       setMessage(errorText);
       showToast({ type: "warning", message: errorText });
       return;
@@ -903,7 +1014,6 @@ export default function PaymentsPage() {
 
       await loadPaymentsData(false);
     } catch (error) {
-      console.error("Error creando pago administrativo:", error);
       const errorText =
         error instanceof Error
           ? error.message
@@ -965,6 +1075,7 @@ export default function PaymentsPage() {
       notes: payment.notes || schedule.notes || "",
     });
 
+    setIsEditModalOpen(true);
     setMessage("");
   }
 
@@ -984,7 +1095,7 @@ export default function PaymentsPage() {
       }
 
       if (!editingPayment.title.trim()) {
-        throw new Error("Escribe un título para el pago.");
+        throw new Error("Escribe un nombre corto para el concepto.");
       }
 
       if (!editingPayment.dueDay || Number(editingPayment.dueDay) < 1 || Number(editingPayment.dueDay) > 31) {
@@ -1063,6 +1174,7 @@ export default function PaymentsPage() {
         throw new Error(paymentError.message || "No se pudo actualizar el pago.");
       }
 
+      setIsEditModalOpen(false);
       setEditingPayment(null);
 
       showToast({
@@ -1072,7 +1184,6 @@ export default function PaymentsPage() {
 
       await loadPaymentsData(false);
     } catch (error) {
-      console.error("Error actualizando pago:", error);
       const errorText =
         error instanceof Error ? error.message : "Ocurrió un error actualizando el pago.";
       setMessage(errorText);
@@ -1121,7 +1232,6 @@ export default function PaymentsPage() {
         message: `Estado actualizado a ${getStatusLabel(nextStatus).toLowerCase()}.`,
       });
     } catch (error) {
-      console.error("Error actualizando estado del pago:", error);
       const errorText =
         error instanceof Error
           ? error.message
@@ -1133,23 +1243,21 @@ export default function PaymentsPage() {
     }
   }
 
-  async function handleDeletePayment(row: PaymentRow) {
-    if (statusUpdatingId || deletingScheduleId) return;
+  function openDeleteModal(row: PaymentRow) {
+    setDeleteTargetRow(row);
+  }
 
-    const confirmed = window.confirm(
-      "¿Seguro que quieres eliminar este pago? También se eliminará su configuración recurrente y los periodos asociados."
-    );
-
-    if (!confirmed) return;
+  async function handleDeletePaymentConfirmed() {
+    if (!deleteTargetRow || statusUpdatingId || deletingScheduleId) return;
 
     setMessage("");
-    setDeletingScheduleId(row.scheduleId);
+    setDeletingScheduleId(deleteTargetRow.scheduleId);
 
     try {
       const { error: paymentsError } = await supabase
         .from("expense_payments")
         .delete()
-        .eq("expense_schedule_id", row.scheduleId);
+        .eq("expense_schedule_id", deleteTargetRow.scheduleId);
 
       if (paymentsError) {
         throw new Error(paymentsError.message || "No se pudieron eliminar los periodos del pago.");
@@ -1158,15 +1266,22 @@ export default function PaymentsPage() {
       const { error: scheduleError } = await supabase
         .from("expense_schedules")
         .delete()
-        .eq("id", row.scheduleId);
+        .eq("id", deleteTargetRow.scheduleId);
 
       if (scheduleError) {
         throw new Error(scheduleError.message || "No se pudo eliminar la configuración recurrente.");
       }
 
-      if (editingPayment?.scheduleId === row.scheduleId) {
+      if (editingPayment?.scheduleId === deleteTargetRow.scheduleId) {
         setEditingPayment(null);
+        setIsEditModalOpen(false);
       }
+
+      if (detailsPaymentId === deleteTargetRow.id) {
+        setDetailsPaymentId(null);
+      }
+
+      setDeleteTargetRow(null);
 
       showToast({
         type: "success",
@@ -1175,7 +1290,6 @@ export default function PaymentsPage() {
 
       await loadPaymentsData(false);
     } catch (error) {
-      console.error("Error eliminando pago:", error);
       const errorText =
         error instanceof Error ? error.message : "Ocurrió un error eliminando el pago.";
       setMessage(errorText);
@@ -1199,7 +1313,7 @@ export default function PaymentsPage() {
 
   return (
     <PageContainer>
-      {/* Encabezado principal del módulo de pagos administrativos. */}
+      {/* Encabezado principal del módulo. */}
       <PageHeader title="Pagos administrativos" titleIcon={<ReceiptText size={18} />} />
 
       {message ? (
@@ -1223,7 +1337,11 @@ export default function PaymentsPage() {
           label="Registros"
           value={String(totalRecords)}
           helper={selectedBuildingLabel}
-          icon={<ReceiptText size={18} />}
+          icon={
+            <div style={getMetricIconBoxStyle("#E0F2FE")}>
+              <ReceiptText size={18} color="#0284C7" />
+            </div>
+          }
         />
 
         <MetricCard
@@ -1231,7 +1349,7 @@ export default function PaymentsPage() {
           value={String(paidCount)}
           helper="Pagos realizados"
           icon={
-            <div style={statusIconBoxGreen}>
+            <div style={getMetricIconBoxStyle("#DCFCE7")}>
               <CheckCircle2 size={18} color="#16A34A" />
             </div>
           }
@@ -1242,8 +1360,8 @@ export default function PaymentsPage() {
           value={String(pendingCount)}
           helper={nextPendingLabel}
           icon={
-            <div style={statusIconBoxYellow}>
-              <Clock3 size={18} color="#EAB308" />
+            <div style={getMetricIconBoxStyle("#FEF3C7")}>
+              <Clock3 size={18} color="#D97706" />
             </div>
           }
         />
@@ -1253,7 +1371,7 @@ export default function PaymentsPage() {
           value={String(overdueCount)}
           helper="Requieren atención"
           icon={
-            <div style={statusIconBoxRed}>
+            <div style={getMetricIconBoxStyle("#FEE2E2")}>
               <AlertCircle size={18} color="#DC2626" />
             </div>
           }
@@ -1263,7 +1381,11 @@ export default function PaymentsPage() {
           label="Monto pendiente"
           value={formatCurrency(pendingAmount)}
           helper="Pendiente + vencido"
-          icon={<CreditCard size={18} />}
+          icon={
+            <div style={getMetricIconBoxStyle("#DBEAFE")}>
+              <CreditCard size={18} color="#2563EB" />
+            </div>
+          }
         />
       </AppGrid>
 
@@ -1352,7 +1474,7 @@ export default function PaymentsPage() {
         <>
           <div style={{ height: 16 }} />
 
-          {/* Formulario para crear una nueva configuración de pago recurrente y su primer periodo. */}
+          {/* Formulario para crear una nueva configuración recurrente y su primer periodo. */}
           <SectionCard
             title="Nuevo pago recurrente"
             icon={<Plus size={18} />}
@@ -1456,11 +1578,11 @@ export default function PaymentsPage() {
                   </label>
 
                   <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Concepto</span>
+                    <span style={fieldLabelStyle}>Concepto corto</span>
                     <input
                       value={form.title}
                       onChange={(event) => updateForm("title", event.target.value)}
-                      placeholder="Ej. Luz CFE Torre Norte"
+                      placeholder="Ej. CFE, Agua y Drenaje, Telmex"
                       style={inputStyle}
                     />
                   </label>
@@ -1474,7 +1596,7 @@ export default function PaymentsPage() {
                     <input
                       value={form.vendorName}
                       onChange={(event) => updateForm("vendorName", event.target.value)}
-                      placeholder="Ej. CFE, Telmex"
+                      placeholder="Opcional"
                       style={inputStyle}
                     />
                   </label>
@@ -1738,387 +1860,9 @@ export default function PaymentsPage() {
         </>
       ) : null}
 
-      {editingPayment ? (
-        <>
-          <div style={{ height: 16 }} />
-
-          <SectionCard title="Editar pago" icon={<Edit3 size={18} />}>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 16,
-              }}
-            >
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Edificio</span>
-                    <AppSelect
-                      value={editingPayment.buildingId}
-                      onChange={(event) => {
-                        const nextBuildingId = event.target.value;
-                        setEditingPayment((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                buildingId: nextBuildingId,
-                                unitId: "",
-                              }
-                            : prev
-                        );
-                      }}
-                    >
-                      <option value="">Selecciona un edificio</option>
-                      {buildings.map((building) => (
-                        <option key={building.id} value={building.id}>
-                          {building.name}
-                        </option>
-                      ))}
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Aplica a</span>
-                    <AppSelect
-                      value={editingPayment.appliesTo}
-                      onChange={(event) =>
-                        updateEditingForm("appliesTo", event.target.value as ExpenseAppliesToType)
-                      }
-                    >
-                      <option value="building">Edificio</option>
-                      <option value="unit">Unidad</option>
-                    </AppSelect>
-                  </label>
-
-                  {editingPayment.appliesTo === "unit" ? (
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={fieldLabelStyle}>Unidad</span>
-                      <AppSelect
-                        value={editingPayment.unitId}
-                        onChange={(event) => updateEditingForm("unitId", event.target.value)}
-                      >
-                        <option value="">Selecciona una unidad</option>
-                        {unitsForEditingBuilding.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.display_code || unit.unit_number || "Unidad"}
-                          </option>
-                        ))}
-                      </AppSelect>
-                    </label>
-                  ) : null}
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Tipo de gasto</span>
-                    <AppSelect
-                      value={editingPayment.expenseType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "expenseType",
-                          event.target.value as EditPaymentForm["expenseType"]
-                        )
-                      }
-                    >
-                      <option value="electricity">Electricidad</option>
-                      <option value="water">Agua</option>
-                      <option value="gas">Gas</option>
-                      <option value="internet">Internet</option>
-                      <option value="phone">Telefonía</option>
-                      <option value="maintenance_service">Servicio de mantenimiento</option>
-                      <option value="security">Seguridad</option>
-                      <option value="cleaning_service">Servicio de limpieza</option>
-                      <option value="other">Otro</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Concepto</span>
-                    <input
-                      value={editingPayment.title}
-                      onChange={(event) => updateEditingForm("title", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Proveedor</span>
-                    <input
-                      value={editingPayment.vendorName}
-                      onChange={(event) => updateEditingForm("vendorName", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Quién paga</span>
-                    <AppSelect
-                      value={editingPayment.responsibilityType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "responsibilityType",
-                          event.target.value as "company" | "building"
-                        )
-                      }
-                    >
-                      <option value="company">Empresa</option>
-                      <option value="building">Edificio</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Frecuencia</span>
-                    <AppSelect
-                      value={editingPayment.frequencyType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "frequencyType",
-                          event.target.value as ExpenseFrequencyType
-                        )
-                      }
-                    >
-                      <option value="monthly">Mensual</option>
-                      <option value="bimonthly">Bimestral</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de inicio</span>
-                    <input
-                      type="date"
-                      value={editingPayment.startsOn}
-                      onChange={(event) => updateEditingForm("startsOn", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha fin</span>
-                    <input
-                      type="date"
-                      value={editingPayment.endsOn}
-                      onChange={(event) => updateEditingForm("endsOn", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Día esperado de recibido</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={editingPayment.expectedIssueDay}
-                      onChange={(event) =>
-                        updateEditingForm("expectedIssueDay", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Día esperado de corte</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={editingPayment.expectedCutoffDay}
-                      onChange={(event) =>
-                        updateEditingForm("expectedCutoffDay", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input
-                      type="checkbox"
-                      checked={editingPayment.autoGenerate}
-                      onChange={(event) =>
-                        updateEditingForm("autoGenerate", event.target.checked)
-                      }
-                    />
-                    <span style={fieldLabelStyle}>Generación automática</span>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Monto estimado</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editingPayment.amountEstimated}
-                      onChange={(event) =>
-                        updateEditingForm("amountEstimated", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Día límite de pago</span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={editingPayment.dueDay}
-                      onChange={(event) => updateEditingForm("dueDay", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Periodo</span>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 10,
-                      }}
-                    >
-                      <AppSelect
-                        value={editingPayment.periodMonth}
-                        onChange={(event) =>
-                          updateEditingForm("periodMonth", event.target.value)
-                        }
-                      >
-                        {MONTH_LABELS_SHORT.map((month, index) => (
-                          <option key={month} value={String(index + 1)}>
-                            {month}
-                          </option>
-                        ))}
-                      </AppSelect>
-
-                      <input
-                        type="number"
-                        min="2000"
-                        value={editingPayment.periodYear}
-                        onChange={(event) =>
-                          updateEditingForm("periodYear", event.target.value)
-                        }
-                        style={inputStyle}
-                      />
-                    </div>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha límite real</span>
-                    <input
-                      type="date"
-                      value={editingPayment.dueDate}
-                      onChange={(event) => updateEditingForm("dueDate", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de recibido</span>
-                    <input
-                      type="date"
-                      value={editingPayment.invoiceReceivedAt}
-                      onChange={(event) =>
-                        updateEditingForm("invoiceReceivedAt", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Fecha de corte</span>
-                    <input
-                      type="date"
-                      value={editingPayment.cutoffDate}
-                      onChange={(event) => updateEditingForm("cutoffDate", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Monto real</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editingPayment.amountDue}
-                      onChange={(event) => updateEditingForm("amountDue", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Estado</span>
-                    <AppSelect
-                      value={editingPayment.status}
-                      onChange={(event) =>
-                        updateEditingForm("status", event.target.value as ExpensePaymentStatus)
-                      }
-                    >
-                      <option value="pending">Pendiente</option>
-                      <option value="paid">Pagado</option>
-                      <option value="overdue">Vencido</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Referencia</span>
-                    <input
-                      value={editingPayment.paymentReference}
-                      onChange={(event) =>
-                        updateEditingForm("paymentReference", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={fieldLabelStyle}>Notas</span>
-                    <textarea
-                      value={editingPayment.notes}
-                      onChange={(event) => updateEditingForm("notes", event.target.value)}
-                      rows={4}
-                      style={textareaStyle}
-                    />
-                  </label>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <UiButton onClick={handleSaveEditedPayment} icon={<Save size={16} />}>
-                      {savingPayment ? "Guardando..." : "Guardar cambios"}
-                    </UiButton>
-
-                    <button
-                      type="button"
-                      onClick={() => setEditingPayment(null)}
-                      style={ghostButtonStyle}
-                    >
-                      <X size={16} />
-                      Cancelar edición
-                    </button>
-                  </div>
-                </div>
-              </AppCard>
-            </div>
-          </SectionCard>
-        </>
-      ) : null}
-
       <div style={{ height: 16 }} />
 
-      {/* Tabla principal de pagos administrativos con acciones rápidas. */}
+      {/* Tabla principal simplificada. */}
       <SectionCard
         title="Listado de pagos"
         icon={<ReceiptText size={18} />}
@@ -2152,17 +1896,38 @@ export default function PaymentsPage() {
             {
               key: "concept",
               header: "Concepto",
-              render: (row: PaymentRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
-                    {row.title}
-                  </span>
+              render: (row: PaymentRow) => {
+                const serviceVisual = getServiceVisual(row.expenseType);
 
-                  {row.vendorName && row.vendorName !== "Sin proveedor" ? (
-                    <span style={{ fontSize: 12, color: "#6B7280" }}>{row.vendorName}</span>
-                  ) : null}
-                </div>
-              ),
+                return (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div
+                      style={{
+                        width: 34,
+                        height: 34,
+                        borderRadius: 10,
+                        background: serviceVisual.background,
+                        color: serviceVisual.color,
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {serviceVisual.icon}
+                    </div>
+
+                    <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
+                        {getConceptLabel(row)}
+                      </span>
+
+                      <span style={{ fontSize: 12, color: "#6B7280" }}>
+                        {row.expenseTypeLabel}
+                      </span>
+                    </div>
+                  </div>
+                );
+              },
             },
             {
               key: "building",
@@ -2258,61 +2023,684 @@ export default function PaymentsPage() {
               },
             },
             {
-              key: "reference",
-              header: "Referencia / notas",
-              render: (row: PaymentRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 12, color: "#374151" }}>{row.paymentReference}</span>
-
-                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>{row.notes}</span>
-                </div>
-              ),
-            },
-            {
               key: "actions",
               header: "Acciones",
-              render: (row: PaymentRow) => (
-                <div
-                  style={{
-                    display: "flex",
-                    gap: 8,
-                    flexWrap: "wrap",
-                    justifyContent: "flex-end",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => startEditingPayment(row)}
-                    style={tableActionButtonStyle}
-                  >
-                    <Edit3 size={14} />
-                    Editar
-                  </button>
+              render: (row: PaymentRow) => {
+                const isOpen = detailsPaymentId === row.id;
 
-                  <button
-                    type="button"
-                    onClick={() => handleDeletePayment(row)}
-                    disabled={deletingScheduleId === row.scheduleId}
-                    style={{
-                      ...tableDangerButtonStyle,
-                      opacity: deletingScheduleId === row.scheduleId ? 0.65 : 1,
-                      cursor: deletingScheduleId === row.scheduleId ? "wait" : "pointer",
-                    }}
-                  >
-                    <Trash2 size={14} />
-                    {deletingScheduleId === row.scheduleId ? "Eliminando..." : "Eliminar"}
-                  </button>
-                </div>
-              ),
+                return (
+                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setDetailsPaymentId((prev) => (prev === row.id ? null : row.id))
+                      }
+                      style={tableActionButtonStyle}
+                    >
+                      {isOpen ? "Ocultar detalles" : "Detalles"}
+                    </button>
+                  </div>
+                );
+              },
             },
           ]}
         />
       </SectionCard>
+
+      {detailsRow ? (
+        <>
+          <div style={{ height: 16 }} />
+
+          {/* Panel inferior con detalles resumidos del pago seleccionado. */}
+          <SectionCard
+            title="Detalles del pago"
+            icon={<ReceiptText size={18} />}
+            action={
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => startEditingPayment(detailsRow)}
+                  style={tableActionButtonStyle}
+                >
+                  <Edit3 size={14} />
+                  Editar
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => openDeleteModal(detailsRow)}
+                  style={tableDangerButtonStyle}
+                >
+                  <Trash2 size={14} />
+                  Eliminar
+                </button>
+              </div>
+            }
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <AppCard>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: 12,
+                        background: getServiceVisual(detailsRow.expenseType).background,
+                        color: getServiceVisual(detailsRow.expenseType).color,
+                        display: "grid",
+                        placeItems: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      {getServiceVisual(detailsRow.expenseType).icon}
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 800, color: "#111827" }}>
+                        {getConceptLabel(detailsRow)}
+                      </div>
+                      <div style={{ fontSize: 12, color: "#6B7280", marginTop: 2 }}>
+                        {detailsRow.expenseTypeLabel}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Concepto interno</span>
+                    <span style={detailValueStyle}>{detailsRow.title}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Proveedor</span>
+                    <span style={detailValueStyle}>{detailsRow.vendorName}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Edificio</span>
+                    <span style={detailValueStyle}>{detailsRow.buildingName}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Aplica a</span>
+                    <span style={detailValueStyle}>
+                      {detailsRow.appliesToLabel === "Unidad"
+                        ? detailsRow.unitLabel
+                        : detailsRow.appliesToLabel}
+                    </span>
+                  </div>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Periodo</span>
+                    <span style={detailValueStyle}>{detailsRow.periodLabel}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Frecuencia</span>
+                    <span style={detailValueStyle}>{detailsRow.frequencyLabel}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Vencimiento</span>
+                    <span style={detailValueStyle}>{detailsRow.dueDateLabel}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Monto</span>
+                    <span style={detailValueStyle}>
+                      {detailsRow.isGeneratedPlaceholder ? "Pendiente" : detailsRow.amountDueLabel}
+                    </span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Estado</span>
+                    <span
+                      style={{
+                        ...statusChipStyle,
+                        background: getStatusColors(detailsRow.status).background,
+                        color: getStatusColors(detailsRow.status).text,
+                        borderColor: getStatusColors(detailsRow.status).border,
+                      }}
+                    >
+                      {detailsRow.statusLabel}
+                    </span>
+                  </div>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 14 }}>
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Recibo recibido</span>
+                    <span style={detailValueStyle}>
+                      {detailsRow.invoiceReceivedAt
+                        ? formatDate(detailsRow.invoiceReceivedAt)
+                        : "Sin fecha"}
+                    </span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Fecha de corte</span>
+                    <span style={detailValueStyle}>
+                      {detailsRow.cutoffDate ? formatDate(detailsRow.cutoffDate) : "Sin fecha"}
+                    </span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Referencia</span>
+                    <span style={detailValueStyle}>{detailsRow.paymentReference}</span>
+                  </div>
+
+                  <div style={detailItemStyle}>
+                    <span style={detailLabelStyle}>Quién paga</span>
+                    <span style={detailValueStyle}>{detailsRow.responsibilityLabel}</span>
+                  </div>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div style={detailLabelStyle}>Notas / comentarios</div>
+
+                  <div
+                    style={{
+                      borderRadius: 12,
+                      border: "1px solid #E5E7EB",
+                      background: "#F9FAFB",
+                      padding: 14,
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      color: "#374151",
+                      minHeight: 120,
+                    }}
+                  >
+                    {detailsRow.notes && detailsRow.notes !== "—"
+                      ? detailsRow.notes
+                      : "No hay notas registradas para este pago."}
+                  </div>
+                </div>
+              </AppCard>
+            </div>
+          </SectionCard>
+        </>
+      ) : null}
+
+      {/* Modal flotante para editar el pago sin expandir toda la página. */}
+      <Modal
+        open={isEditModalOpen}
+        title="Editar pago"
+        subtitle="Actualiza los datos reales del periodo y la configuración recurrente."
+        onClose={() => {
+          if (!savingPayment) {
+            setIsEditModalOpen(false);
+            setEditingPayment(null);
+          }
+        }}
+      >
+        {editingPayment ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Edificio</span>
+                <AppSelect
+                  value={editingPayment.buildingId}
+                  onChange={(event) => {
+                    const nextBuildingId = event.target.value;
+                    setEditingPayment((prev) =>
+                      prev
+                        ? {
+                            ...prev,
+                            buildingId: nextBuildingId,
+                            unitId: "",
+                          }
+                        : prev
+                    );
+                  }}
+                >
+                  <option value="">Selecciona un edificio</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Aplica a</span>
+                <AppSelect
+                  value={editingPayment.appliesTo}
+                  onChange={(event) =>
+                    updateEditingForm("appliesTo", event.target.value as ExpenseAppliesToType)
+                  }
+                >
+                  <option value="building">Edificio</option>
+                  <option value="unit">Unidad</option>
+                </AppSelect>
+              </label>
+
+              {editingPayment.appliesTo === "unit" ? (
+                <label style={{ display: "grid", gap: 6 }}>
+                  <span style={fieldLabelStyle}>Unidad</span>
+                  <AppSelect
+                    value={editingPayment.unitId}
+                    onChange={(event) => updateEditingForm("unitId", event.target.value)}
+                  >
+                    <option value="">Selecciona una unidad</option>
+                    {unitsForEditingBuilding.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.display_code || unit.unit_number || "Unidad"}
+                      </option>
+                    ))}
+                  </AppSelect>
+                </label>
+              ) : null}
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Tipo de gasto</span>
+                <AppSelect
+                  value={editingPayment.expenseType}
+                  onChange={(event) =>
+                    updateEditingForm(
+                      "expenseType",
+                      event.target.value as EditPaymentForm["expenseType"]
+                    )
+                  }
+                >
+                  <option value="electricity">Electricidad</option>
+                  <option value="water">Agua</option>
+                  <option value="gas">Gas</option>
+                  <option value="internet">Internet</option>
+                  <option value="phone">Telefonía</option>
+                  <option value="maintenance_service">Servicio de mantenimiento</option>
+                  <option value="security">Seguridad</option>
+                  <option value="cleaning_service">Servicio de limpieza</option>
+                  <option value="other">Otro</option>
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Concepto corto</span>
+                <input
+                  value={editingPayment.title}
+                  onChange={(event) => updateEditingForm("title", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Proveedor</span>
+                <input
+                  value={editingPayment.vendorName}
+                  onChange={(event) => updateEditingForm("vendorName", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Quién paga</span>
+                <AppSelect
+                  value={editingPayment.responsibilityType}
+                  onChange={(event) =>
+                    updateEditingForm(
+                      "responsibilityType",
+                      event.target.value as "company" | "building"
+                    )
+                  }
+                >
+                  <option value="company">Empresa</option>
+                  <option value="building">Edificio</option>
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Frecuencia</span>
+                <AppSelect
+                  value={editingPayment.frequencyType}
+                  onChange={(event) =>
+                    updateEditingForm("frequencyType", event.target.value as ExpenseFrequencyType)
+                  }
+                >
+                  <option value="monthly">Mensual</option>
+                  <option value="bimonthly">Bimestral</option>
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Fecha de inicio</span>
+                <input
+                  type="date"
+                  value={editingPayment.startsOn}
+                  onChange={(event) => updateEditingForm("startsOn", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Fecha fin</span>
+                <input
+                  type="date"
+                  value={editingPayment.endsOn}
+                  onChange={(event) => updateEditingForm("endsOn", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Día esperado de recibido</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={editingPayment.expectedIssueDay}
+                  onChange={(event) => updateEditingForm("expectedIssueDay", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Día esperado de corte</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={editingPayment.expectedCutoffDay}
+                  onChange={(event) => updateEditingForm("expectedCutoffDay", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  type="checkbox"
+                  checked={editingPayment.autoGenerate}
+                  onChange={(event) => updateEditingForm("autoGenerate", event.target.checked)}
+                />
+                <span style={fieldLabelStyle}>Generación automática</span>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Monto estimado</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingPayment.amountEstimated}
+                  onChange={(event) => updateEditingForm("amountEstimated", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Día límite de pago</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="31"
+                  value={editingPayment.dueDay}
+                  onChange={(event) => updateEditingForm("dueDay", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Mes del periodo</span>
+                <AppSelect
+                  value={editingPayment.periodMonth}
+                  onChange={(event) => updateEditingForm("periodMonth", event.target.value)}
+                >
+                  {MONTH_LABELS_SHORT.map((month, index) => (
+                    <option key={month} value={String(index + 1)}>
+                      {month}
+                    </option>
+                  ))}
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Año del periodo</span>
+                <input
+                  type="number"
+                  min="2000"
+                  value={editingPayment.periodYear}
+                  onChange={(event) => updateEditingForm("periodYear", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Fecha límite real</span>
+                <input
+                  type="date"
+                  value={editingPayment.dueDate}
+                  onChange={(event) => updateEditingForm("dueDate", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Monto real</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingPayment.amountDue}
+                  onChange={(event) => updateEditingForm("amountDue", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Estado</span>
+                <AppSelect
+                  value={editingPayment.status}
+                  onChange={(event) =>
+                    updateEditingForm("status", event.target.value as ExpensePaymentStatus)
+                  }
+                >
+                  <option value="pending">Pendiente</option>
+                  <option value="paid">Pagado</option>
+                  <option value="overdue">Vencido</option>
+                </AppSelect>
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Fecha de recibido</span>
+                <input
+                  type="date"
+                  value={editingPayment.invoiceReceivedAt}
+                  onChange={(event) =>
+                    updateEditingForm("invoiceReceivedAt", event.target.value)
+                  }
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Fecha de corte</span>
+                <input
+                  type="date"
+                  value={editingPayment.cutoffDate}
+                  onChange={(event) => updateEditingForm("cutoffDate", event.target.value)}
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={{ display: "grid", gap: 6 }}>
+                <span style={fieldLabelStyle}>Referencia</span>
+                <input
+                  value={editingPayment.paymentReference}
+                  onChange={(event) =>
+                    updateEditingForm("paymentReference", event.target.value)
+                  }
+                  style={inputStyle}
+                />
+              </label>
+            </div>
+
+            <label style={{ display: "grid", gap: 6 }}>
+              <span style={fieldLabelStyle}>Notas</span>
+              <textarea
+                value={editingPayment.notes}
+                onChange={(event) => updateEditingForm("notes", event.target.value)}
+                rows={4}
+                style={textareaStyle}
+              />
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!savingPayment) {
+                    setIsEditModalOpen(false);
+                    setEditingPayment(null);
+                  }
+                }}
+                style={ghostButtonStyle}
+              >
+                Cancelar
+              </button>
+
+              <UiButton onClick={handleSaveEditedPayment} icon={<Save size={16} />}>
+                {savingPayment ? "Guardando..." : "Guardar cambios"}
+              </UiButton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* Modal de eliminación estilizado, alineado al patrón usado en assets. */}
+      <Modal
+        open={Boolean(deleteTargetRow)}
+        title="Eliminar pago"
+        subtitle="Esta acción eliminará la configuración recurrente y sus periodos asociados."
+        onClose={() => {
+          if (!deletingScheduleId) {
+            setDeleteTargetRow(null);
+          }
+        }}
+      >
+        {deleteTargetRow ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div
+              style={{
+                display: "flex",
+                gap: 12,
+                alignItems: "flex-start",
+                padding: 14,
+                borderRadius: 12,
+                background: "#FEF2F2",
+                border: "1px solid #FECACA",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#FEE2E2",
+                  color: "#B91C1C",
+                  display: "grid",
+                  placeItems: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <AlertTriangle size={18} />
+              </div>
+
+              <div>
+                <p style={{ margin: 0, fontWeight: 700, color: "#991B1B" }}>
+                  ¿Seguro que quieres eliminar este pago?
+                </p>
+
+                <p style={{ margin: "6px 0 0", color: "#7F1D1D", lineHeight: 1.5 }}>
+                  El pago <strong>{getConceptLabel(deleteTargetRow)}</strong> dejará de aparecer
+                  en el módulo de pagos y también se eliminarán sus periodos relacionados.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                borderRadius: 12,
+                border: "1px solid #E5E7EB",
+                background: "#F9FAFB",
+                padding: 14,
+                display: "grid",
+                gap: 8,
+              }}
+            >
+              <div style={detailItemStyle}>
+                <span style={detailLabelStyle}>Edificio</span>
+                <span style={detailValueStyle}>{deleteTargetRow.buildingName}</span>
+              </div>
+
+              <div style={detailItemStyle}>
+                <span style={detailLabelStyle}>Periodo</span>
+                <span style={detailValueStyle}>{deleteTargetRow.periodLabel}</span>
+              </div>
+
+              <div style={detailItemStyle}>
+                <span style={detailLabelStyle}>Estado</span>
+                <span style={detailValueStyle}>{deleteTargetRow.statusLabel}</span>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!deletingScheduleId) {
+                    setDeleteTargetRow(null);
+                  }
+                }}
+                style={ghostButtonStyle}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDeletePaymentConfirmed}
+                disabled={deletingScheduleId === deleteTargetRow.scheduleId}
+                style={{
+                  ...dangerPrimaryButtonStyle,
+                  opacity: deletingScheduleId === deleteTargetRow.scheduleId ? 0.7 : 1,
+                  cursor:
+                    deletingScheduleId === deleteTargetRow.scheduleId ? "wait" : "pointer",
+                }}
+              >
+                <Trash2 size={16} />
+                {deletingScheduleId === deleteTargetRow.scheduleId
+                  ? "Eliminando..."
+                  : "Eliminar pago"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </PageContainer>
   );
 }
 
-const inputStyle: React.CSSProperties = {
+const inputStyle: CSSProperties = {
   width: "100%",
   height: 42,
   borderRadius: 12,
@@ -2324,7 +2712,7 @@ const inputStyle: React.CSSProperties = {
   outline: "none",
 };
 
-const textareaStyle: React.CSSProperties = {
+const textareaStyle: CSSProperties = {
   width: "100%",
   borderRadius: 12,
   border: "1px solid #D1D5DB",
@@ -2336,13 +2724,13 @@ const textareaStyle: React.CSSProperties = {
   resize: "vertical",
 };
 
-const fieldLabelStyle: React.CSSProperties = {
+const fieldLabelStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 700,
   color: "#374151",
 };
 
-const filterLabelStyle: React.CSSProperties = {
+const filterLabelStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
@@ -2353,48 +2741,22 @@ const filterLabelStyle: React.CSSProperties = {
   letterSpacing: "0.04em",
 };
 
-const statusIconBoxGreen: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 10,
-  background: "#DCFCE7",
-  display: "grid",
-  placeItems: "center",
-};
-
-const statusIconBoxYellow: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 10,
-  background: "#FEF9C3",
-  display: "grid",
-  placeItems: "center",
-};
-
-const statusIconBoxRed: React.CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 10,
-  background: "#FEE2E2",
-  display: "grid",
-  placeItems: "center",
-};
-
-const ghostButtonStyle: React.CSSProperties = {
+const ghostButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: 8,
   borderRadius: 10,
   border: "1px solid #D1D5DB",
   background: "#FFFFFF",
-  padding: "8px 12px",
+  padding: "10px 14px",
   fontSize: 13,
   fontWeight: 700,
   color: "#111827",
   cursor: "pointer",
 };
 
-const iconOnlyButtonStyle: React.CSSProperties = {
+const iconOnlyButtonStyle: CSSProperties = {
   width: 36,
   height: 36,
   display: "inline-flex",
@@ -2407,7 +2769,7 @@ const iconOnlyButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const tableActionButtonStyle: React.CSSProperties = {
+const tableActionButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
@@ -2421,7 +2783,7 @@ const tableActionButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
-const tableDangerButtonStyle: React.CSSProperties = {
+const tableDangerButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
@@ -2433,4 +2795,50 @@ const tableDangerButtonStyle: React.CSSProperties = {
   fontWeight: 700,
   color: "#B91C1C",
   cursor: "pointer",
+};
+
+const dangerPrimaryButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  padding: "10px 14px",
+  borderRadius: 10,
+  border: "1px solid #DC2626",
+  background: "#DC2626",
+  color: "#FFFFFF",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const detailItemStyle: CSSProperties = {
+  display: "grid",
+  gap: 4,
+};
+
+const detailLabelStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#6B7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const detailValueStyle: CSSProperties = {
+  fontSize: 14,
+  color: "#111827",
+  fontWeight: 600,
+};
+
+const statusChipStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: "fit-content",
+  padding: "6px 10px",
+  borderRadius: 999,
+  borderWidth: 1,
+  borderStyle: "solid",
+  fontSize: 12,
+  fontWeight: 800,
 };
