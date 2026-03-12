@@ -9,11 +9,16 @@
   - generación automática del pago pendiente del periodo actual
   - edición de pagos ya creados
   - captura posterior de datos reales del recibo
+  - cambio rápido de estado desde la tabla
+  - eliminación de pagos recurrentes con confirmación
 
-  Ajustes UX aplicados en esta versión:
+  Ajustes UX aplicados:
+  - los mensajes de éxito / error ahora usan toast flotante global
+  - ya no se muestran barras inline que empujen el layout
   - "Nuevo pago recurrente" inicia cerrado/compacto
-  - esa sección ahora aparece debajo de métricas y filtros
-  - la edición sigue siendo visible cuando se selecciona un pago
+  - la sección de creación aparece debajo de métricas y filtros
+  - la tabla muestra solo edificio, no alcance
+  - el placeholder de monto se muestra como "Pendiente"
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -36,6 +41,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useAppToast } from "@/components/AppToastProvider";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -390,12 +396,12 @@ function getInitialCreateForm(buildingId = ""): CreatePaymentForm {
 
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
+  const { showToast } = useAppToast();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
   const [syncingCurrentPeriod, setSyncingCurrentPeriod] = useState(false);
   const [message, setMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -490,25 +496,33 @@ export default function PaymentsPage() {
     ]);
 
     if (buildingsRes.error) {
-      setMessage("No se pudieron cargar los edificios.");
+      const errorText = "No se pudieron cargar los edificios.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
       if (showLoader) setLoadingPage(false);
       return;
     }
 
     if (unitsRes.error) {
-      setMessage("No se pudieron cargar las unidades.");
+      const errorText = "No se pudieron cargar las unidades.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
       if (showLoader) setLoadingPage(false);
       return;
     }
 
     if (schedulesRes.error) {
-      setMessage("No se pudieron cargar las configuraciones de pagos.");
+      const errorText = "No se pudieron cargar las configuraciones de pagos.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
       if (showLoader) setLoadingPage(false);
       return;
     }
 
     if (paymentsRes.error) {
-      setMessage("No se pudieron cargar los registros de pagos.");
+      const errorText = "No se pudieron cargar los registros de pagos.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
       if (showLoader) setLoadingPage(false);
       return;
     }
@@ -563,18 +577,20 @@ export default function PaymentsPage() {
       return true;
     });
 
-    if (schedulesToGenerate.length === 0) return;
+    if (schedulesToGenerate.length === 0) {
+      showToast({
+        type: "info",
+        message: "No había pagos nuevos por generar para el periodo actual.",
+      });
+      return;
+    }
 
     setSyncingCurrentPeriod(true);
 
     try {
       const rowsToInsert = schedulesToGenerate.map((schedule) => {
         const amountValue = schedule.amount_estimated ?? 0;
-        const dueDate = getDueDateFromPeriod(
-          currentYear,
-          currentMonth,
-          schedule.due_day
-        );
+        const dueDate = getDueDateFromPeriod(currentYear, currentMonth, schedule.due_day);
 
         return {
           expense_schedule_id: schedule.id,
@@ -601,7 +617,10 @@ export default function PaymentsPage() {
 
       if (error) {
         console.error("Error generando pagos del periodo actual:", error);
-        setMessage("No se pudieron generar automáticamente algunos pagos del periodo actual.");
+        const errorText =
+          "No se pudieron generar automáticamente algunos pagos del periodo actual.";
+        setMessage(errorText);
+        showToast({ type: "error", message: errorText });
         return;
       }
 
@@ -634,6 +653,11 @@ export default function PaymentsPage() {
       if (!refreshError) {
         setExpensePayments((refreshedPayments as ExpensePayment[]) || []);
       }
+
+      showToast({
+        type: "success",
+        message: "Periodo generado correctamente.",
+      });
     } finally {
       setSyncingCurrentPeriod(false);
     }
@@ -665,8 +689,7 @@ export default function PaymentsPage() {
         if (schedule.responsibility_type === "tenant") return null;
 
         const building =
-          buildingMap.get(payment.building_id) ||
-          buildingMap.get(schedule.building_id);
+          buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
 
         const unit =
           (payment.unit_id ? unitMap.get(payment.unit_id) : null) ||
@@ -762,35 +785,46 @@ export default function PaymentsPage() {
     if (!user?.company_id) return;
 
     setMessage("");
-    setSuccessMessage("");
 
     if (!form.buildingId) {
-      setMessage("Selecciona un edificio.");
+      const errorText = "Selecciona un edificio.";
+      setMessage(errorText);
+      showToast({ type: "warning", message: errorText });
       return;
     }
 
     if (form.appliesTo === "unit" && !form.unitId) {
-      setMessage("Selecciona una unidad cuando el pago aplique a una unidad.");
+      const errorText = "Selecciona una unidad cuando el pago aplique a una unidad.";
+      setMessage(errorText);
+      showToast({ type: "warning", message: errorText });
       return;
     }
 
     if (!form.title.trim()) {
-      setMessage("Escribe un título para el pago.");
+      const errorText = "Escribe un título para el pago.";
+      setMessage(errorText);
+      showToast({ type: "warning", message: errorText });
       return;
     }
 
     if (!form.dueDay || Number(form.dueDay) < 1 || Number(form.dueDay) > 31) {
-      setMessage("Escribe un día de vencimiento válido entre 1 y 31.");
+      const errorText = "Escribe un día de vencimiento válido entre 1 y 31.";
+      setMessage(errorText);
+      showToast({ type: "warning", message: errorText });
       return;
     }
 
     if (!form.periodMonth || Number(form.periodMonth) < 1 || Number(form.periodMonth) > 12) {
-      setMessage("Selecciona un mes válido.");
+      const errorText = "Selecciona un mes válido.";
+      setMessage(errorText);
+      showToast({ type: "warning", message: errorText });
       return;
     }
 
     if (!form.periodYear || Number(form.periodYear) < 2000) {
-      setMessage("Selecciona un año válido.");
+      const errorText = "Selecciona un año válido.";
+      setMessage(errorText);
+      showToast({ type: "warning", message: errorText });
       return;
     }
 
@@ -800,10 +834,7 @@ export default function PaymentsPage() {
     const periodMonth = Number(form.periodMonth);
     const periodYear = Number(form.periodYear);
 
-    const dueDate =
-      form.dueDate.trim() ||
-      getDueDateFromPeriod(periodYear, periodMonth, dueDay);
-
+    const dueDate = form.dueDate.trim() || getDueDateFromPeriod(periodYear, periodMonth, dueDay);
     const paidAtValue = form.status === "paid" ? new Date().toISOString() : null;
 
     setSavingPayment(true);
@@ -862,18 +893,23 @@ export default function PaymentsPage() {
         throw new Error(paymentError.message || "No se pudo crear el registro del pago.");
       }
 
-      setSuccessMessage("Pago administrativo creado correctamente.");
       setForm(getInitialCreateForm(form.buildingId));
       setShowCreateForm(false);
+
+      showToast({
+        type: "success",
+        message: "Pago administrativo creado correctamente.",
+      });
 
       await loadPaymentsData(false);
     } catch (error) {
       console.error("Error creando pago administrativo:", error);
-      setMessage(
+      const errorText =
         error instanceof Error
           ? error.message
-          : "Ocurrió un error creando el pago administrativo."
-      );
+          : "Ocurrió un error creando el pago administrativo.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
     } finally {
       setSavingPayment(false);
     }
@@ -884,7 +920,9 @@ export default function PaymentsPage() {
     const schedule = expenseSchedules.find((item) => item.id === row.scheduleId);
 
     if (!payment || !schedule) {
-      setMessage("No se pudo abrir la edición del pago seleccionado.");
+      const errorText = "No se pudo abrir la edición del pago seleccionado.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
       return;
     }
 
@@ -927,7 +965,6 @@ export default function PaymentsPage() {
       notes: payment.notes || schedule.notes || "",
     });
 
-    setSuccessMessage("");
     setMessage("");
   }
 
@@ -935,7 +972,6 @@ export default function PaymentsPage() {
     if (!user?.company_id || !editingPayment) return;
 
     setMessage("");
-    setSuccessMessage("");
     setSavingPayment(true);
 
     try {
@@ -970,11 +1006,9 @@ export default function PaymentsPage() {
       const amountEstimated = parseOptionalNumber(editingPayment.amountEstimated);
       const amountDue = parseOptionalNumber(editingPayment.amountDue) ?? 0;
       const dueDate =
-        editingPayment.dueDate.trim() ||
-        getDueDateFromPeriod(periodYear, periodMonth, dueDay);
+        editingPayment.dueDate.trim() || getDueDateFromPeriod(periodYear, periodMonth, dueDay);
 
-      const paidAtValue =
-        editingPayment.status === "paid" ? new Date().toISOString() : null;
+      const paidAtValue = editingPayment.status === "paid" ? new Date().toISOString() : null;
 
       const { error: scheduleError } = await supabase
         .from("expense_schedules")
@@ -1030,15 +1064,19 @@ export default function PaymentsPage() {
       }
 
       setEditingPayment(null);
-      setSuccessMessage("Pago actualizado correctamente.");
+
+      showToast({
+        type: "success",
+        message: "Pago actualizado correctamente.",
+      });
+
       await loadPaymentsData(false);
     } catch (error) {
       console.error("Error actualizando pago:", error);
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error actualizando el pago."
-      );
+      const errorText =
+        error instanceof Error ? error.message : "Ocurrió un error actualizando el pago.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
     } finally {
       setSavingPayment(false);
     }
@@ -1048,7 +1086,6 @@ export default function PaymentsPage() {
     if (statusUpdatingId || deletingScheduleId) return;
 
     setMessage("");
-    setSuccessMessage("");
     setStatusUpdatingId(row.id);
 
     try {
@@ -1079,14 +1116,18 @@ export default function PaymentsPage() {
         )
       );
 
-      setSuccessMessage(`Estado actualizado a ${getStatusLabel(nextStatus).toLowerCase()}.`);
+      showToast({
+        type: "success",
+        message: `Estado actualizado a ${getStatusLabel(nextStatus).toLowerCase()}.`,
+      });
     } catch (error) {
       console.error("Error actualizando estado del pago:", error);
-      setMessage(
+      const errorText =
         error instanceof Error
           ? error.message
-          : "Ocurrió un error actualizando el estado del pago."
-      );
+          : "Ocurrió un error actualizando el estado del pago.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
     } finally {
       setStatusUpdatingId(null);
     }
@@ -1102,7 +1143,6 @@ export default function PaymentsPage() {
     if (!confirmed) return;
 
     setMessage("");
-    setSuccessMessage("");
     setDeletingScheduleId(row.scheduleId);
 
     try {
@@ -1128,15 +1168,18 @@ export default function PaymentsPage() {
         setEditingPayment(null);
       }
 
-      setSuccessMessage("Pago eliminado correctamente.");
+      showToast({
+        type: "success",
+        message: "Pago eliminado correctamente.",
+      });
+
       await loadPaymentsData(false);
     } catch (error) {
       console.error("Error eliminando pago:", error);
-      setMessage(
-        error instanceof Error
-          ? error.message
-          : "Ocurrió un error eliminando el pago."
-      );
+      const errorText =
+        error instanceof Error ? error.message : "Ocurrió un error eliminando el pago.";
+      setMessage(errorText);
+      showToast({ type: "error", message: errorText });
     } finally {
       setDeletingScheduleId(null);
     }
@@ -1157,10 +1200,7 @@ export default function PaymentsPage() {
   return (
     <PageContainer>
       {/* Encabezado principal del módulo de pagos administrativos. */}
-      <PageHeader
-        title="Pagos administrativos"
-        titleIcon={<ReceiptText size={18} />}
-      />
+      <PageHeader title="Pagos administrativos" titleIcon={<ReceiptText size={18} />} />
 
       {message ? (
         <div
@@ -1175,23 +1215,6 @@ export default function PaymentsPage() {
           }}
         >
           {message}
-        </div>
-      ) : null}
-
-      {successMessage ? (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "12px 14px",
-            borderRadius: 12,
-            background: "#ECFDF5",
-            color: "#166534",
-            fontSize: 14,
-            fontWeight: 600,
-            border: "1px solid #A7F3D0",
-          }}
-        >
-          {successMessage}
         </div>
       ) : null}
 
@@ -1246,10 +1269,7 @@ export default function PaymentsPage() {
 
       <div style={{ height: 16 }} />
 
-      <SectionCard
-        title="Filtros"
-        icon={<Filter size={18} />}
-      >
+      <SectionCard title="Filtros" icon={<Filter size={18} />}>
         <div
           style={{
             display: "grid",
@@ -1480,10 +1500,7 @@ export default function PaymentsPage() {
                     <AppSelect
                       value={form.frequencyType}
                       onChange={(event) =>
-                        updateForm(
-                          "frequencyType",
-                          event.target.value as ExpenseFrequencyType
-                        )
+                        updateForm("frequencyType", event.target.value as ExpenseFrequencyType)
                       }
                     >
                       <option value="monthly">Mensual</option>
@@ -1710,10 +1727,7 @@ export default function PaymentsPage() {
                       {savingPayment ? "Guardando..." : "Crear pago"}
                     </UiButton>
 
-                    <UiButton
-                      onClick={() => ensureCurrentPeriodPayments()}
-                      icon={<RotateCw size={16} />}
-                    >
+                    <UiButton onClick={() => ensureCurrentPeriodPayments()} icon={<RotateCw size={16} />}>
                       {syncingCurrentPeriod ? "Generando..." : "Generar periodo actual"}
                     </UiButton>
                   </div>
@@ -1728,10 +1742,7 @@ export default function PaymentsPage() {
         <>
           <div style={{ height: 16 }} />
 
-          <SectionCard
-            title="Editar pago"
-            icon={<Edit3 size={18} />}
-          >
+          <SectionCard title="Editar pago" icon={<Edit3 size={18} />}>
             <div
               style={{
                 display: "grid",
@@ -1772,10 +1783,7 @@ export default function PaymentsPage() {
                     <AppSelect
                       value={editingPayment.appliesTo}
                       onChange={(event) =>
-                        updateEditingForm(
-                          "appliesTo",
-                          event.target.value as ExpenseAppliesToType
-                        )
+                        updateEditingForm("appliesTo", event.target.value as ExpenseAppliesToType)
                       }
                     >
                       <option value="building">Edificio</option>
@@ -1882,9 +1890,7 @@ export default function PaymentsPage() {
                     <input
                       type="date"
                       value={editingPayment.startsOn}
-                      onChange={(event) =>
-                        updateEditingForm("startsOn", event.target.value)
-                      }
+                      onChange={(event) => updateEditingForm("startsOn", event.target.value)}
                       style={inputStyle}
                     />
                   </label>
@@ -1894,9 +1900,7 @@ export default function PaymentsPage() {
                     <input
                       type="date"
                       value={editingPayment.endsOn}
-                      onChange={(event) =>
-                        updateEditingForm("endsOn", event.target.value)
-                      }
+                      onChange={(event) => updateEditingForm("endsOn", event.target.value)}
                       style={inputStyle}
                     />
                   </label>
@@ -1965,9 +1969,7 @@ export default function PaymentsPage() {
                       min="1"
                       max="31"
                       value={editingPayment.dueDay}
-                      onChange={(event) =>
-                        updateEditingForm("dueDay", event.target.value)
-                      }
+                      onChange={(event) => updateEditingForm("dueDay", event.target.value)}
                       style={inputStyle}
                     />
                   </label>
@@ -2037,9 +2039,7 @@ export default function PaymentsPage() {
                     <input
                       type="date"
                       value={editingPayment.cutoffDate}
-                      onChange={(event) =>
-                        updateEditingForm("cutoffDate", event.target.value)
-                      }
+                      onChange={(event) => updateEditingForm("cutoffDate", event.target.value)}
                       style={inputStyle}
                     />
                   </label>
@@ -2055,9 +2055,7 @@ export default function PaymentsPage() {
                       min="0"
                       step="0.01"
                       value={editingPayment.amountDue}
-                      onChange={(event) =>
-                        updateEditingForm("amountDue", event.target.value)
-                      }
+                      onChange={(event) => updateEditingForm("amountDue", event.target.value)}
                       style={inputStyle}
                     />
                   </label>
@@ -2067,10 +2065,7 @@ export default function PaymentsPage() {
                     <AppSelect
                       value={editingPayment.status}
                       onChange={(event) =>
-                        updateEditingForm(
-                          "status",
-                          event.target.value as ExpensePaymentStatus
-                        )
+                        updateEditingForm("status", event.target.value as ExpensePaymentStatus)
                       }
                     >
                       <option value="pending">Pendiente</option>
@@ -2101,10 +2096,7 @@ export default function PaymentsPage() {
                   </label>
 
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <UiButton
-                      onClick={handleSaveEditedPayment}
-                      icon={<Save size={16} />}
-                    >
+                    <UiButton onClick={handleSaveEditedPayment} icon={<Save size={16} />}>
                       {savingPayment ? "Guardando..." : "Guardar cambios"}
                     </UiButton>
 
@@ -2167,9 +2159,7 @@ export default function PaymentsPage() {
                   </span>
 
                   {row.vendorName && row.vendorName !== "Sin proveedor" ? (
-                    <span style={{ fontSize: 12, color: "#6B7280" }}>
-                      {row.vendorName}
-                    </span>
+                    <span style={{ fontSize: 12, color: "#6B7280" }}>{row.vendorName}</span>
                   ) : null}
                 </div>
               ),
@@ -2192,9 +2182,7 @@ export default function PaymentsPage() {
                     {row.periodLabel}
                   </span>
 
-                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                    {row.frequencyLabel}
-                  </span>
+                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>{row.frequencyLabel}</span>
                 </div>
               ),
             },
@@ -2203,9 +2191,7 @@ export default function PaymentsPage() {
               header: "Vencimiento",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 13, color: "#374151" }}>
-                    {row.dueDateLabel}
-                  </span>
+                  <span style={{ fontSize: 13, color: "#374151" }}>{row.dueDateLabel}</span>
 
                   <span style={{ fontSize: 12, color: "#9CA3AF" }}>
                     {row.invoiceReceivedAt
@@ -2233,9 +2219,7 @@ export default function PaymentsPage() {
                   </span>
 
                   {row.isGeneratedPlaceholder ? (
-                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>
-                      Monto pendiente
-                    </span>
+                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>Monto pendiente</span>
                   ) : null}
                 </div>
               ),
@@ -2278,13 +2262,9 @@ export default function PaymentsPage() {
               header: "Referencia / notas",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={{ fontSize: 12, color: "#374151" }}>
-                    {row.paymentReference}
-                  </span>
+                  <span style={{ fontSize: 12, color: "#374151" }}>{row.paymentReference}</span>
 
-                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>
-                    {row.notes}
-                  </span>
+                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>{row.notes}</span>
                 </div>
               ),
             },
@@ -2292,7 +2272,14 @@ export default function PaymentsPage() {
               key: "actions",
               header: "Acciones",
               render: (row: PaymentRow) => (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    justifyContent: "flex-end",
+                  }}
+                >
                   <button
                     type="button"
                     onClick={() => startEditingPayment(row)}
