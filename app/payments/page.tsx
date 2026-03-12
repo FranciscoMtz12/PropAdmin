@@ -3,23 +3,17 @@
 /*
   Módulo de Pagos administrativos.
 
-  Esta versión ya soporta:
+  Esta versión soporta:
   - creación de plantillas recurrentes
   - frecuencia mensual / bimestral
   - generación automática del pago pendiente del periodo actual
   - edición de pagos ya creados
   - captura posterior de datos reales del recibo
 
-  Idea de operación:
-  1) Se crea la plantilla recurrente en expense_schedules
-  2) La pantalla se asegura de que exista el pago del periodo actual
-  3) Si aún no llega el recibo, el pago puede existir como placeholder
-  4) Cuando llega el recibo, se edita el registro mensual real
-
-  Nota importante:
-  - amount_due en expense_payments es NOT NULL en la base actual
-  - por eso, cuando aún no se conoce el monto real, guardamos 0
-    y marcamos is_generated_placeholder = true
+  Ajustes UX aplicados en esta versión:
+  - "Nuevo pago recurrente" inicia cerrado/compacto
+  - esa sección ahora aparece debajo de métricas y filtros
+  - la edición sigue siendo visible cuando se selecciona un pago
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -28,6 +22,8 @@ import {
   Building2,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   CreditCard,
   Edit3,
@@ -92,8 +88,6 @@ type ExpenseSchedule = {
   due_day: number;
   active: boolean;
   notes: string | null;
-
-  // Nuevos campos de recurrencia
   frequency_type: ExpenseFrequencyType | null;
   starts_on: string | null;
   ends_on: string | null;
@@ -117,8 +111,6 @@ type ExpensePayment = {
   payment_reference: string | null;
   notes: string | null;
   created_at: string;
-
-  // Nuevos campos del registro mensual
   invoice_received_at: string | null;
   cutoff_date: string | null;
   billing_period_label: string | null;
@@ -162,25 +154,20 @@ type CreatePaymentForm = {
   title: string;
   vendorName: string;
   responsibilityType: "company" | "building";
-
   frequencyType: ExpenseFrequencyType;
   startsOn: string;
   endsOn: string;
   autoGenerate: boolean;
   expectedIssueDay: string;
   expectedCutoffDay: string;
-
   amountEstimated: string;
   dueDay: string;
-
   periodMonth: string;
   periodYear: string;
-
   amountDue: string;
   dueDate: string;
   invoiceReceivedAt: string;
   cutoffDate: string;
-
   status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
@@ -189,7 +176,6 @@ type CreatePaymentForm = {
 type EditPaymentForm = {
   paymentId: string;
   scheduleId: string;
-
   buildingId: string;
   appliesTo: ExpenseAppliesToType;
   unitId: string;
@@ -197,7 +183,6 @@ type EditPaymentForm = {
   vendorName: string;
   expenseType: ExpenseSchedule["expense_type"];
   responsibilityType: "company" | "building";
-
   frequencyType: ExpenseFrequencyType;
   startsOn: string;
   endsOn: string;
@@ -206,14 +191,12 @@ type EditPaymentForm = {
   expectedCutoffDay: string;
   amountEstimated: string;
   dueDay: string;
-
   periodMonth: string;
   periodYear: string;
   amountDue: string;
   dueDate: string;
   invoiceReceivedAt: string;
   cutoffDate: string;
-
   status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
@@ -248,12 +231,6 @@ function getDefaultMonth() {
 
 function getDefaultYear() {
   return String(new Date().getFullYear());
-}
-
-function getDefaultDateForCurrentMonth(dayValue: number) {
-  const year = Number(getDefaultYear());
-  const month = Number(getDefaultMonth());
-  return getDueDateFromPeriod(year, month, dayValue);
 }
 
 function parseDateOnly(dateKey: string) {
@@ -350,7 +327,11 @@ function parseOptionalNumber(value: string) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function isScheduleActiveForCurrentPeriod(schedule: ExpenseSchedule, currentYear: number, currentMonth: number) {
+function isScheduleActiveForCurrentPeriod(
+  schedule: ExpenseSchedule,
+  currentYear: number,
+  currentMonth: number
+) {
   const startsOn = schedule.starts_on ? parseDateOnly(schedule.starts_on) : null;
   const endsOn = schedule.ends_on ? parseDateOnly(schedule.ends_on) : null;
   const currentDate = new Date(currentYear, currentMonth - 1, 1);
@@ -366,10 +347,6 @@ function isScheduleActiveForCurrentPeriod(schedule: ExpenseSchedule, currentYear
   const frequency = schedule.frequency_type || "monthly";
   if (frequency === "monthly") return true;
 
-  /*
-    Lógica bimestral:
-    usamos starts_on como ancla. Si no existe, usamos el mes actual como compatible.
-  */
   if (!startsOn) return true;
 
   const startIndex = startsOn.getFullYear() * 12 + startsOn.getMonth();
@@ -386,24 +363,20 @@ function getInitialCreateForm(buildingId = ""): CreatePaymentForm {
     title: "",
     vendorName: "",
     responsibilityType: "company",
-
     frequencyType: "monthly",
     startsOn: getTodayDateOnlyKey(),
     endsOn: "",
     autoGenerate: true,
     expectedIssueDay: "",
     expectedCutoffDay: "",
-
     amountEstimated: "",
     dueDay: "",
     periodMonth: getDefaultMonth(),
     periodYear: getDefaultYear(),
-
     amountDue: "",
     dueDate: "",
     invoiceReceivedAt: "",
     cutoffDate: "",
-
     status: "pending",
     paymentReference: "",
     notes: "",
@@ -427,6 +400,7 @@ export default function PaymentsPage() {
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<PaymentStatusFilter>("all");
 
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState<CreatePaymentForm>(getInitialCreateForm());
   const [editingPayment, setEditingPayment] = useState<EditPaymentForm | null>(null);
 
@@ -456,8 +430,7 @@ export default function PaymentsPage() {
 
       supabase
         .from("expense_schedules")
-        .select(
-          `
+        .select(`
           id,
           company_id,
           building_id,
@@ -477,16 +450,14 @@ export default function PaymentsPage() {
           auto_generate,
           expected_issue_day,
           expected_cutoff_day
-        `
-        )
+        `)
         .eq("company_id", user.company_id)
         .eq("active", true)
         .in("responsibility_type", ["company", "building"]),
 
       supabase
         .from("expense_payments")
-        .select(
-          `
+        .select(`
           id,
           expense_schedule_id,
           company_id,
@@ -506,8 +477,7 @@ export default function PaymentsPage() {
           billing_period_label,
           is_generated_placeholder,
           amount_estimated_snapshot
-        `
-        )
+        `)
         .eq("company_id", user.company_id)
         .order("due_date", { ascending: true }),
     ]);
@@ -546,13 +516,10 @@ export default function PaymentsPage() {
     setExpenseSchedules(nextSchedules);
     setExpensePayments(nextPayments);
 
-    setForm((prev) => {
-      const fallbackBuildingId = prev.buildingId || nextBuildings[0]?.id || "";
-      return {
-        ...prev,
-        buildingId: fallbackBuildingId,
-      };
-    });
+    setForm((prev) => ({
+      ...prev,
+      buildingId: prev.buildingId || nextBuildings[0]?.id || "",
+    }));
 
     if (showLoader) setLoadingPage(false);
 
@@ -589,9 +556,7 @@ export default function PaymentsPage() {
       return true;
     });
 
-    if (schedulesToGenerate.length === 0) {
-      return;
-    }
+    if (schedulesToGenerate.length === 0) return;
 
     setSyncingCurrentPeriod(true);
 
@@ -635,8 +600,7 @@ export default function PaymentsPage() {
 
       const { data: refreshedPayments, error: refreshError } = await supabase
         .from("expense_payments")
-        .select(
-          `
+        .select(`
           id,
           expense_schedule_id,
           company_id,
@@ -656,8 +620,7 @@ export default function PaymentsPage() {
           billing_period_label,
           is_generated_placeholder,
           amount_estimated_snapshot
-        `
-        )
+        `)
         .eq("company_id", user.company_id)
         .order("due_date", { ascending: true });
 
@@ -691,7 +654,6 @@ export default function PaymentsPage() {
     return expensePayments
       .map((payment) => {
         const schedule = scheduleMap.get(payment.expense_schedule_id);
-
         if (!schedule) return null;
         if (schedule.responsibility_type === "tenant") return null;
 
@@ -740,11 +702,9 @@ export default function PaymentsPage() {
       if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) {
         return false;
       }
-
       if (selectedStatus !== "all" && row.status !== selectedStatus) {
         return false;
       }
-
       return true;
     });
   }, [paymentRows, selectedBuildingId, selectedStatus]);
@@ -857,7 +817,6 @@ export default function PaymentsPage() {
           due_day: dueDay,
           active: true,
           notes: form.notes.trim() || null,
-
           frequency_type: form.frequencyType,
           starts_on: form.startsOn || null,
           ends_on: form.endsOn || null,
@@ -885,7 +844,6 @@ export default function PaymentsPage() {
         paid_at: paidAtValue,
         payment_reference: form.paymentReference.trim() || null,
         notes: form.notes.trim() || null,
-
         billing_period_label: formatPeriod(periodYear, periodMonth),
         is_generated_placeholder: !form.amountDue.trim(),
         amount_estimated_snapshot: amountEstimated,
@@ -899,6 +857,7 @@ export default function PaymentsPage() {
 
       setSuccessMessage("Pago administrativo creado correctamente.");
       setForm(getInitialCreateForm(form.buildingId));
+      setShowCreateForm(false);
 
       await loadPaymentsData(false);
     } catch (error) {
@@ -925,7 +884,6 @@ export default function PaymentsPage() {
     setEditingPayment({
       paymentId: payment.id,
       scheduleId: schedule.id,
-
       buildingId: schedule.building_id,
       appliesTo: schedule.applies_to,
       unitId: schedule.unit_id || "",
@@ -934,7 +892,6 @@ export default function PaymentsPage() {
       expenseType: schedule.expense_type,
       responsibilityType:
         schedule.responsibility_type === "tenant" ? "company" : schedule.responsibility_type,
-
       frequencyType: schedule.frequency_type || "monthly",
       startsOn: schedule.starts_on || "",
       endsOn: schedule.ends_on || "",
@@ -952,14 +909,12 @@ export default function PaymentsPage() {
           ? String(schedule.amount_estimated)
           : "",
       dueDay: String(schedule.due_day),
-
       periodMonth: String(payment.period_month),
       periodYear: String(payment.period_year),
       amountDue: String(payment.amount_due),
       dueDate: payment.due_date,
       invoiceReceivedAt: payment.invoice_received_at || "",
       cutoffDate: payment.cutoff_date || "",
-
       status: payment.status,
       paymentReference: payment.payment_reference || "",
       notes: payment.notes || schedule.notes || "",
@@ -1027,7 +982,6 @@ export default function PaymentsPage() {
           amount_estimated: amountEstimated,
           due_day: dueDay,
           notes: editingPayment.notes.trim() || null,
-
           frequency_type: editingPayment.frequencyType,
           starts_on: editingPayment.startsOn || null,
           ends_on: editingPayment.endsOn || null,
@@ -1055,7 +1009,6 @@ export default function PaymentsPage() {
           paid_at: paidAtValue,
           payment_reference: editingPayment.paymentReference.trim() || null,
           notes: editingPayment.notes.trim() || null,
-
           invoice_received_at: editingPayment.invoiceReceivedAt || null,
           cutoff_date: editingPayment.cutoffDate || null,
           billing_period_label: formatPeriod(periodYear, periodMonth),
@@ -1137,882 +1090,6 @@ export default function PaymentsPage() {
         </div>
       ) : null}
 
-      <SectionCard
-        title="Nuevo pago recurrente"
-        subtitle="Crea la plantilla del servicio y también el registro del periodo actual."
-        icon={<Plus size={18} />}
-      >
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Edificio
-                </span>
-                <AppSelect
-                  value={form.buildingId}
-                  onChange={(event) => {
-                    const nextBuildingId = event.target.value;
-                    setForm((prev) => ({
-                      ...prev,
-                      buildingId: nextBuildingId,
-                      unitId: "",
-                    }));
-                  }}
-                >
-                  <option value="">Selecciona un edificio</option>
-                  {buildings.map((building) => (
-                    <option key={building.id} value={building.id}>
-                      {building.name}
-                    </option>
-                  ))}
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Aplica a
-                </span>
-                <AppSelect
-                  value={form.appliesTo}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      appliesTo: event.target.value as ExpenseAppliesToType,
-                      unitId: event.target.value === "building" ? "" : prev.unitId,
-                    }))
-                  }
-                >
-                  <option value="building">Edificio</option>
-                  <option value="unit">Unidad</option>
-                </AppSelect>
-              </label>
-
-              {form.appliesTo === "unit" ? (
-                <label style={{ display: "grid", gap: 6 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                    Unidad
-                  </span>
-                  <AppSelect
-                    value={form.unitId}
-                    onChange={(event) => updateForm("unitId", event.target.value)}
-                  >
-                    <option value="">Selecciona una unidad</option>
-                    {unitsForSelectedBuilding.map((unit) => (
-                      <option key={unit.id} value={unit.id}>
-                        {unit.display_code || unit.unit_number || "Unidad"}
-                      </option>
-                    ))}
-                  </AppSelect>
-                </label>
-              ) : null}
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Tipo de gasto
-                </span>
-                <AppSelect
-                  value={form.expenseType}
-                  onChange={(event) =>
-                    updateForm(
-                      "expenseType",
-                      event.target.value as CreatePaymentForm["expenseType"]
-                    )
-                  }
-                >
-                  <option value="electricity">Electricidad</option>
-                  <option value="water">Agua</option>
-                  <option value="gas">Gas</option>
-                  <option value="internet">Internet</option>
-                  <option value="phone">Telefonía</option>
-                  <option value="maintenance_service">Servicio de mantenimiento</option>
-                  <option value="security">Seguridad</option>
-                  <option value="cleaning_service">Servicio de limpieza</option>
-                  <option value="other">Otro</option>
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Título
-                </span>
-                <input
-                  value={form.title}
-                  onChange={(event) => updateForm("title", event.target.value)}
-                  placeholder="Ej. Luz CFE Torre Norte"
-                  style={inputStyle}
-                />
-              </label>
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Proveedor
-                </span>
-                <input
-                  value={form.vendorName}
-                  onChange={(event) => updateForm("vendorName", event.target.value)}
-                  placeholder="Ej. CFE, Telmex"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Quién paga
-                </span>
-                <AppSelect
-                  value={form.responsibilityType}
-                  onChange={(event) =>
-                    updateForm(
-                      "responsibilityType",
-                      event.target.value as "company" | "building"
-                    )
-                  }
-                >
-                  <option value="company">Empresa</option>
-                  <option value="building">Edificio</option>
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Frecuencia
-                </span>
-                <AppSelect
-                  value={form.frequencyType}
-                  onChange={(event) =>
-                    updateForm(
-                      "frequencyType",
-                      event.target.value as ExpenseFrequencyType
-                    )
-                  }
-                >
-                  <option value="monthly">Mensual</option>
-                  <option value="bimonthly">Bimestral</option>
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Fecha de inicio de recurrencia
-                </span>
-                <input
-                  type="date"
-                  value={form.startsOn}
-                  onChange={(event) => updateForm("startsOn", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Fecha fin de recurrencia
-                </span>
-                <input
-                  type="date"
-                  value={form.endsOn}
-                  onChange={(event) => updateForm("endsOn", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Día esperado de recibido
-                </span>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={form.expectedIssueDay}
-                  onChange={(event) => updateForm("expectedIssueDay", event.target.value)}
-                  placeholder="Opcional"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Día esperado de corte
-                </span>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={form.expectedCutoffDay}
-                  onChange={(event) => updateForm("expectedCutoffDay", event.target.value)}
-                  placeholder="Opcional"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={form.autoGenerate}
-                  onChange={(event) => updateForm("autoGenerate", event.target.checked)}
-                />
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Generar automáticamente el periodo actual si falta
-                </span>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Monto estimado
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.amountEstimated}
-                  onChange={(event) => updateForm("amountEstimated", event.target.value)}
-                  placeholder="Opcional"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Día límite de pago
-                </span>
-                <input
-                  type="number"
-                  min="1"
-                  max="31"
-                  value={form.dueDay}
-                  onChange={(event) => {
-                    const nextValue = event.target.value;
-                    updateForm("dueDay", nextValue);
-
-                    const parsed = Number(nextValue);
-                    if (parsed >= 1 && parsed <= 31) {
-                      updateForm(
-                        "dueDate",
-                        getDueDateFromPeriod(
-                          Number(form.periodYear),
-                          Number(form.periodMonth),
-                          parsed
-                        )
-                      );
-                    }
-                  }}
-                  placeholder="Ej. 10"
-                  style={inputStyle}
-                />
-              </label>
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Mes del periodo
-                </span>
-                <AppSelect
-                  value={form.periodMonth}
-                  onChange={(event) => updateForm("periodMonth", event.target.value)}
-                >
-                  {MONTH_LABELS_SHORT.map((month, index) => (
-                    <option key={month} value={String(index + 1)}>
-                      {month}
-                    </option>
-                  ))}
-                </AppSelect>
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Año del periodo
-                </span>
-                <input
-                  type="number"
-                  min="2000"
-                  value={form.periodYear}
-                  onChange={(event) => updateForm("periodYear", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Fecha límite real de pago
-                </span>
-                <input
-                  type="date"
-                  value={form.dueDate}
-                  onChange={(event) => updateForm("dueDate", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Monto real del periodo
-                </span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={form.amountDue}
-                  onChange={(event) => updateForm("amountDue", event.target.value)}
-                  placeholder="Opcional, puede quedar en 0"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Estado inicial
-                </span>
-                <AppSelect
-                  value={form.status}
-                  onChange={(event) =>
-                    updateForm(
-                      "status",
-                      event.target.value as ExpensePaymentStatus
-                    )
-                  }
-                >
-                  <option value="pending">Pendiente</option>
-                  <option value="paid">Pagado</option>
-                  <option value="overdue">Vencido</option>
-                </AppSelect>
-              </label>
-            </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Fecha de recibido del recibo
-                </span>
-                <input
-                  type="date"
-                  value={form.invoiceReceivedAt}
-                  onChange={(event) => updateForm("invoiceReceivedAt", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Fecha de corte
-                </span>
-                <input
-                  type="date"
-                  value={form.cutoffDate}
-                  onChange={(event) => updateForm("cutoffDate", event.target.value)}
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Referencia de pago
-                </span>
-                <input
-                  value={form.paymentReference}
-                  onChange={(event) => updateForm("paymentReference", event.target.value)}
-                  placeholder="Opcional"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={{ display: "grid", gap: 6 }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                  Notas
-                </span>
-                <textarea
-                  value={form.notes}
-                  onChange={(event) => updateForm("notes", event.target.value)}
-                  placeholder="Notas administrativas"
-                  rows={4}
-                  style={textareaStyle}
-                />
-              </label>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <UiButton
-                  onClick={handleCreatePayment}
-                  icon={savingPayment ? <Save size={16} /> : <Plus size={16} />}
-                >
-                  {savingPayment ? "Guardando..." : "Crear pago"}
-                </UiButton>
-
-                <UiButton
-                  variant="secondary"
-                  onClick={() => ensureCurrentPeriodPayments()}
-                  icon={<RotateCw size={16} />}
-                >
-                  {syncingCurrentPeriod ? "Generando..." : "Generar periodo actual"}
-                </UiButton>
-              </div>
-            </div>
-          </AppCard>
-        </div>
-      </SectionCard>
-
-      {editingPayment ? (
-        <>
-          <div style={{ height: 16 }} />
-
-          <SectionCard
-            title="Editar pago seleccionado"
-            subtitle="Aquí puedes actualizar el registro mensual real y también la configuración recurrente."
-            icon={<Edit3 size={18} />}
-          >
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                gap: 16,
-              }}
-            >
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Edificio
-                    </span>
-                    <AppSelect
-                      value={editingPayment.buildingId}
-                      onChange={(event) => {
-                        const nextBuildingId = event.target.value;
-                        setEditingPayment((prev) =>
-                          prev
-                            ? {
-                                ...prev,
-                                buildingId: nextBuildingId,
-                                unitId: "",
-                              }
-                            : prev
-                        );
-                      }}
-                    >
-                      <option value="">Selecciona un edificio</option>
-                      {buildings.map((building) => (
-                        <option key={building.id} value={building.id}>
-                          {building.name}
-                        </option>
-                      ))}
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Aplica a
-                    </span>
-                    <AppSelect
-                      value={editingPayment.appliesTo}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "appliesTo",
-                          event.target.value as ExpenseAppliesToType
-                        )
-                      }
-                    >
-                      <option value="building">Edificio</option>
-                      <option value="unit">Unidad</option>
-                    </AppSelect>
-                  </label>
-
-                  {editingPayment.appliesTo === "unit" ? (
-                    <label style={{ display: "grid", gap: 6 }}>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                        Unidad
-                      </span>
-                      <AppSelect
-                        value={editingPayment.unitId}
-                        onChange={(event) => updateEditingForm("unitId", event.target.value)}
-                      >
-                        <option value="">Selecciona una unidad</option>
-                        {unitsForEditingBuilding.map((unit) => (
-                          <option key={unit.id} value={unit.id}>
-                            {unit.display_code || unit.unit_number || "Unidad"}
-                          </option>
-                        ))}
-                      </AppSelect>
-                    </label>
-                  ) : null}
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Título
-                    </span>
-                    <input
-                      value={editingPayment.title}
-                      onChange={(event) => updateEditingForm("title", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Proveedor
-                    </span>
-                    <input
-                      value={editingPayment.vendorName}
-                      onChange={(event) => updateEditingForm("vendorName", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Tipo de gasto
-                    </span>
-                    <AppSelect
-                      value={editingPayment.expenseType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "expenseType",
-                          event.target.value as ExpenseSchedule["expense_type"]
-                        )
-                      }
-                    >
-                      <option value="electricity">Electricidad</option>
-                      <option value="water">Agua</option>
-                      <option value="gas">Gas</option>
-                      <option value="internet">Internet</option>
-                      <option value="phone">Telefonía</option>
-                      <option value="maintenance_service">Servicio de mantenimiento</option>
-                      <option value="security">Seguridad</option>
-                      <option value="cleaning_service">Servicio de limpieza</option>
-                      <option value="other">Otro</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Quién paga
-                    </span>
-                    <AppSelect
-                      value={editingPayment.responsibilityType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "responsibilityType",
-                          event.target.value as "company" | "building"
-                        )
-                      }
-                    >
-                      <option value="company">Empresa</option>
-                      <option value="building">Edificio</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Frecuencia
-                    </span>
-                    <AppSelect
-                      value={editingPayment.frequencyType}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "frequencyType",
-                          event.target.value as ExpenseFrequencyType
-                        )
-                      }
-                    >
-                      <option value="monthly">Mensual</option>
-                      <option value="bimonthly">Bimestral</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <input
-                      type="checkbox"
-                      checked={editingPayment.autoGenerate}
-                      onChange={(event) =>
-                        updateEditingForm("autoGenerate", event.target.checked)
-                      }
-                    />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Autogenerar periodo actual
-                    </span>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Inicio recurrencia
-                    </span>
-                    <input
-                      type="date"
-                      value={editingPayment.startsOn}
-                      onChange={(event) => updateEditingForm("startsOn", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Fin recurrencia
-                    </span>
-                    <input
-                      type="date"
-                      value={editingPayment.endsOn}
-                      onChange={(event) => updateEditingForm("endsOn", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Día esperado de recibido
-                    </span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={editingPayment.expectedIssueDay}
-                      onChange={(event) =>
-                        updateEditingForm("expectedIssueDay", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Día esperado de corte
-                    </span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={editingPayment.expectedCutoffDay}
-                      onChange={(event) =>
-                        updateEditingForm("expectedCutoffDay", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Monto estimado
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editingPayment.amountEstimated}
-                      onChange={(event) =>
-                        updateEditingForm("amountEstimated", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Día límite de pago
-                    </span>
-                    <input
-                      type="number"
-                      min="1"
-                      max="31"
-                      value={editingPayment.dueDay}
-                      onChange={(event) =>
-                        updateEditingForm("dueDay", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Periodo
-                    </span>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "1fr 1fr",
-                        gap: 10,
-                      }}
-                    >
-                      <AppSelect
-                        value={editingPayment.periodMonth}
-                        onChange={(event) =>
-                          updateEditingForm("periodMonth", event.target.value)
-                        }
-                      >
-                        {MONTH_LABELS_SHORT.map((month, index) => (
-                          <option key={month} value={String(index + 1)}>
-                            {month}
-                          </option>
-                        ))}
-                      </AppSelect>
-
-                      <input
-                        type="number"
-                        min="2000"
-                        value={editingPayment.periodYear}
-                        onChange={(event) =>
-                          updateEditingForm("periodYear", event.target.value)
-                        }
-                        style={inputStyle}
-                      />
-                    </div>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Fecha límite real
-                    </span>
-                    <input
-                      type="date"
-                      value={editingPayment.dueDate}
-                      onChange={(event) => updateEditingForm("dueDate", event.target.value)}
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Fecha de recibido
-                    </span>
-                    <input
-                      type="date"
-                      value={editingPayment.invoiceReceivedAt}
-                      onChange={(event) =>
-                        updateEditingForm("invoiceReceivedAt", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Fecha de corte
-                    </span>
-                    <input
-                      type="date"
-                      value={editingPayment.cutoffDate}
-                      onChange={(event) =>
-                        updateEditingForm("cutoffDate", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-                </div>
-              </AppCard>
-
-              <AppCard>
-                <div style={{ display: "grid", gap: 10 }}>
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Monto real
-                    </span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={editingPayment.amountDue}
-                      onChange={(event) =>
-                        updateEditingForm("amountDue", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Estado
-                    </span>
-                    <AppSelect
-                      value={editingPayment.status}
-                      onChange={(event) =>
-                        updateEditingForm(
-                          "status",
-                          event.target.value as ExpensePaymentStatus
-                        )
-                      }
-                    >
-                      <option value="pending">Pendiente</option>
-                      <option value="paid">Pagado</option>
-                      <option value="overdue">Vencido</option>
-                    </AppSelect>
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Referencia
-                    </span>
-                    <input
-                      value={editingPayment.paymentReference}
-                      onChange={(event) =>
-                        updateEditingForm("paymentReference", event.target.value)
-                      }
-                      style={inputStyle}
-                    />
-                  </label>
-
-                  <label style={{ display: "grid", gap: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "#374151" }}>
-                      Notas
-                    </span>
-                    <textarea
-                      value={editingPayment.notes}
-                      onChange={(event) => updateEditingForm("notes", event.target.value)}
-                      rows={4}
-                      style={textareaStyle}
-                    />
-                  </label>
-
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <UiButton
-                      onClick={handleSaveEditedPayment}
-                      icon={<Save size={16} />}
-                    >
-                      {savingPayment ? "Guardando..." : "Guardar cambios"}
-                    </UiButton>
-
-                    <UiButton
-                      variant="secondary"
-                      onClick={() => setEditingPayment(null)}
-                      icon={<X size={16} />}
-                    >
-                      Cancelar edición
-                    </UiButton>
-                  </div>
-                </div>
-              </AppCard>
-            </div>
-          </SectionCard>
-        </>
-      ) : null}
-
-      <div style={{ height: 16 }} />
-
       <AppGrid minWidth={220}>
         <MetricCard
           label="Registros"
@@ -2026,16 +1103,7 @@ export default function PaymentsPage() {
           value={String(paidCount)}
           helper="Pagos realizados"
           icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "#DCFCE7",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
+            <div style={statusIconBoxGreen}>
               <CheckCircle2 size={18} color="#16A34A" />
             </div>
           }
@@ -2046,16 +1114,7 @@ export default function PaymentsPage() {
           value={String(pendingCount)}
           helper={nextPendingLabel}
           icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "#FEF9C3",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
+            <div style={statusIconBoxYellow}>
               <Clock3 size={18} color="#EAB308" />
             </div>
           }
@@ -2066,16 +1125,7 @@ export default function PaymentsPage() {
           value={String(overdueCount)}
           helper="Requieren atención"
           icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "#FEE2E2",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
+            <div style={statusIconBoxRed}>
               <AlertCircle size={18} color="#DC2626" />
             </div>
           }
@@ -2175,6 +1225,876 @@ export default function PaymentsPage() {
       <div style={{ height: 16 }} />
 
       <SectionCard
+        title="Nuevo pago recurrente"
+        subtitle="Empieza compacto para no ocupar espacio, y se expande cuando lo necesitas."
+        icon={<Plus size={18} />}
+      >
+        {!showCreateForm ? (
+          <AppCard>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 16,
+                flexWrap: "wrap",
+              }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <span
+                  style={{
+                    fontSize: 15,
+                    fontWeight: 800,
+                    color: "#111827",
+                  }}
+                >
+                  Crear nuevo pago recurrente
+                </span>
+                <span
+                  style={{
+                    fontSize: 13,
+                    color: "#6B7280",
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Da de alta luz, agua, internet, Telmex u otros servicios para que
+                  se generen como pendientes del periodo.
+                </span>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <UiButton
+                  onClick={() => setShowCreateForm(true)}
+                  icon={<ChevronDown size={16} />}
+                >
+                  Abrir formulario
+                </UiButton>
+
+                <UiButton
+                  onClick={() => ensureCurrentPeriodPayments()}
+                  icon={<RotateCw size={16} />}
+                >
+                  {syncingCurrentPeriod ? "Generando..." : "Generar periodo actual"}
+                </UiButton>
+              </div>
+            </div>
+          </AppCard>
+        ) : (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                gap: 12,
+                flexWrap: "wrap",
+              }}
+            >
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#374151",
+                }}
+              >
+                Completa la plantilla recurrente y el periodo actual
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setShowCreateForm(false)}
+                style={ghostButtonStyle}
+              >
+                <ChevronUp size={16} />
+                Cerrar
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Edificio</span>
+                    <AppSelect
+                      value={form.buildingId}
+                      onChange={(event) => {
+                        const nextBuildingId = event.target.value;
+                        setForm((prev) => ({
+                          ...prev,
+                          buildingId: nextBuildingId,
+                          unitId: "",
+                        }));
+                      }}
+                    >
+                      <option value="">Selecciona un edificio</option>
+                      {buildings.map((building) => (
+                        <option key={building.id} value={building.id}>
+                          {building.name}
+                        </option>
+                      ))}
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Aplica a</span>
+                    <AppSelect
+                      value={form.appliesTo}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          appliesTo: event.target.value as ExpenseAppliesToType,
+                          unitId: event.target.value === "building" ? "" : prev.unitId,
+                        }))
+                      }
+                    >
+                      <option value="building">Edificio</option>
+                      <option value="unit">Unidad</option>
+                    </AppSelect>
+                  </label>
+
+                  {form.appliesTo === "unit" ? (
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={fieldLabelStyle}>Unidad</span>
+                      <AppSelect
+                        value={form.unitId}
+                        onChange={(event) => updateForm("unitId", event.target.value)}
+                      >
+                        <option value="">Selecciona una unidad</option>
+                        {unitsForSelectedBuilding.map((unit) => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.display_code || unit.unit_number || "Unidad"}
+                          </option>
+                        ))}
+                      </AppSelect>
+                    </label>
+                  ) : null}
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Tipo de gasto</span>
+                    <AppSelect
+                      value={form.expenseType}
+                      onChange={(event) =>
+                        updateForm(
+                          "expenseType",
+                          event.target.value as CreatePaymentForm["expenseType"]
+                        )
+                      }
+                    >
+                      <option value="electricity">Electricidad</option>
+                      <option value="water">Agua</option>
+                      <option value="gas">Gas</option>
+                      <option value="internet">Internet</option>
+                      <option value="phone">Telefonía</option>
+                      <option value="maintenance_service">Servicio de mantenimiento</option>
+                      <option value="security">Seguridad</option>
+                      <option value="cleaning_service">Servicio de limpieza</option>
+                      <option value="other">Otro</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Título</span>
+                    <input
+                      value={form.title}
+                      onChange={(event) => updateForm("title", event.target.value)}
+                      placeholder="Ej. Luz CFE Torre Norte"
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Proveedor</span>
+                    <input
+                      value={form.vendorName}
+                      onChange={(event) => updateForm("vendorName", event.target.value)}
+                      placeholder="Ej. CFE, Telmex"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Quién paga</span>
+                    <AppSelect
+                      value={form.responsibilityType}
+                      onChange={(event) =>
+                        updateForm(
+                          "responsibilityType",
+                          event.target.value as "company" | "building"
+                        )
+                      }
+                    >
+                      <option value="company">Empresa</option>
+                      <option value="building">Edificio</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Frecuencia</span>
+                    <AppSelect
+                      value={form.frequencyType}
+                      onChange={(event) =>
+                        updateForm(
+                          "frequencyType",
+                          event.target.value as ExpenseFrequencyType
+                        )
+                      }
+                    >
+                      <option value="monthly">Mensual</option>
+                      <option value="bimonthly">Bimestral</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha de inicio de recurrencia</span>
+                    <input
+                      type="date"
+                      value={form.startsOn}
+                      onChange={(event) => updateForm("startsOn", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha fin de recurrencia</span>
+                    <input
+                      type="date"
+                      value={form.endsOn}
+                      onChange={(event) => updateForm("endsOn", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Día esperado de recibido</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={form.expectedIssueDay}
+                      onChange={(event) => updateForm("expectedIssueDay", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Día esperado de corte</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={form.expectedCutoffDay}
+                      onChange={(event) => updateForm("expectedCutoffDay", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={form.autoGenerate}
+                      onChange={(event) => updateForm("autoGenerate", event.target.checked)}
+                    />
+                    <span style={fieldLabelStyle}>
+                      Generar automáticamente el periodo actual si falta
+                    </span>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Monto estimado</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.amountEstimated}
+                      onChange={(event) => updateForm("amountEstimated", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Día límite de pago</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={form.dueDay}
+                      onChange={(event) => {
+                        const nextValue = event.target.value;
+                        updateForm("dueDay", nextValue);
+
+                        const parsed = Number(nextValue);
+                        if (parsed >= 1 && parsed <= 31) {
+                          updateForm(
+                            "dueDate",
+                            getDueDateFromPeriod(
+                              Number(form.periodYear),
+                              Number(form.periodMonth),
+                              parsed
+                            )
+                          );
+                        }
+                      }}
+                      placeholder="Ej. 10"
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Mes del periodo</span>
+                    <AppSelect
+                      value={form.periodMonth}
+                      onChange={(event) => updateForm("periodMonth", event.target.value)}
+                    >
+                      {MONTH_LABELS_SHORT.map((month, index) => (
+                        <option key={month} value={String(index + 1)}>
+                          {month}
+                        </option>
+                      ))}
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Año del periodo</span>
+                    <input
+                      type="number"
+                      min="2000"
+                      value={form.periodYear}
+                      onChange={(event) => updateForm("periodYear", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha límite real de pago</span>
+                    <input
+                      type="date"
+                      value={form.dueDate}
+                      onChange={(event) => updateForm("dueDate", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Monto real del periodo</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={form.amountDue}
+                      onChange={(event) => updateForm("amountDue", event.target.value)}
+                      placeholder="Opcional, puede quedar en 0"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Estado inicial</span>
+                    <AppSelect
+                      value={form.status}
+                      onChange={(event) =>
+                        updateForm("status", event.target.value as ExpensePaymentStatus)
+                      }
+                    >
+                      <option value="pending">Pendiente</option>
+                      <option value="paid">Pagado</option>
+                      <option value="overdue">Vencido</option>
+                    </AppSelect>
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha de recibido del recibo</span>
+                    <input
+                      type="date"
+                      value={form.invoiceReceivedAt}
+                      onChange={(event) => updateForm("invoiceReceivedAt", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha de corte</span>
+                    <input
+                      type="date"
+                      value={form.cutoffDate}
+                      onChange={(event) => updateForm("cutoffDate", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Referencia de pago</span>
+                    <input
+                      value={form.paymentReference}
+                      onChange={(event) => updateForm("paymentReference", event.target.value)}
+                      placeholder="Opcional"
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Notas</span>
+                    <textarea
+                      value={form.notes}
+                      onChange={(event) => updateForm("notes", event.target.value)}
+                      placeholder="Notas administrativas"
+                      rows={4}
+                      style={textareaStyle}
+                    />
+                  </label>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <UiButton
+                      onClick={handleCreatePayment}
+                      icon={savingPayment ? <Save size={16} /> : <Plus size={16} />}
+                    >
+                      {savingPayment ? "Guardando..." : "Crear pago"}
+                    </UiButton>
+
+                    <UiButton
+                      onClick={() => ensureCurrentPeriodPayments()}
+                      icon={<RotateCw size={16} />}
+                    >
+                      {syncingCurrentPeriod ? "Generando..." : "Generar periodo actual"}
+                    </UiButton>
+                  </div>
+                </div>
+              </AppCard>
+            </div>
+          </div>
+        )}
+      </SectionCard>
+
+      {editingPayment ? (
+        <>
+          <div style={{ height: 16 }} />
+
+          <SectionCard
+            title="Editar pago seleccionado"
+            subtitle="Aquí puedes actualizar el registro mensual real y también la configuración recurrente."
+            icon={<Edit3 size={18} />}
+          >
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                gap: 16,
+              }}
+            >
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Edificio</span>
+                    <AppSelect
+                      value={editingPayment.buildingId}
+                      onChange={(event) => {
+                        const nextBuildingId = event.target.value;
+                        setEditingPayment((prev) =>
+                          prev
+                            ? {
+                                ...prev,
+                                buildingId: nextBuildingId,
+                                unitId: "",
+                              }
+                            : prev
+                        );
+                      }}
+                    >
+                      <option value="">Selecciona un edificio</option>
+                      {buildings.map((building) => (
+                        <option key={building.id} value={building.id}>
+                          {building.name}
+                        </option>
+                      ))}
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Aplica a</span>
+                    <AppSelect
+                      value={editingPayment.appliesTo}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "appliesTo",
+                          event.target.value as ExpenseAppliesToType
+                        )
+                      }
+                    >
+                      <option value="building">Edificio</option>
+                      <option value="unit">Unidad</option>
+                    </AppSelect>
+                  </label>
+
+                  {editingPayment.appliesTo === "unit" ? (
+                    <label style={{ display: "grid", gap: 6 }}>
+                      <span style={fieldLabelStyle}>Unidad</span>
+                      <AppSelect
+                        value={editingPayment.unitId}
+                        onChange={(event) => updateEditingForm("unitId", event.target.value)}
+                      >
+                        <option value="">Selecciona una unidad</option>
+                        {unitsForEditingBuilding.map((unit) => (
+                          <option key={unit.id} value={unit.id}>
+                            {unit.display_code || unit.unit_number || "Unidad"}
+                          </option>
+                        ))}
+                      </AppSelect>
+                    </label>
+                  ) : null}
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Título</span>
+                    <input
+                      value={editingPayment.title}
+                      onChange={(event) => updateEditingForm("title", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Proveedor</span>
+                    <input
+                      value={editingPayment.vendorName}
+                      onChange={(event) => updateEditingForm("vendorName", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Tipo de gasto</span>
+                    <AppSelect
+                      value={editingPayment.expenseType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "expenseType",
+                          event.target.value as ExpenseSchedule["expense_type"]
+                        )
+                      }
+                    >
+                      <option value="electricity">Electricidad</option>
+                      <option value="water">Agua</option>
+                      <option value="gas">Gas</option>
+                      <option value="internet">Internet</option>
+                      <option value="phone">Telefonía</option>
+                      <option value="maintenance_service">Servicio de mantenimiento</option>
+                      <option value="security">Seguridad</option>
+                      <option value="cleaning_service">Servicio de limpieza</option>
+                      <option value="other">Otro</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Quién paga</span>
+                    <AppSelect
+                      value={editingPayment.responsibilityType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "responsibilityType",
+                          event.target.value as "company" | "building"
+                        )
+                      }
+                    >
+                      <option value="company">Empresa</option>
+                      <option value="building">Edificio</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Frecuencia</span>
+                    <AppSelect
+                      value={editingPayment.frequencyType}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "frequencyType",
+                          event.target.value as ExpenseFrequencyType
+                        )
+                      }
+                    >
+                      <option value="monthly">Mensual</option>
+                      <option value="bimonthly">Bimestral</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <input
+                      type="checkbox"
+                      checked={editingPayment.autoGenerate}
+                      onChange={(event) =>
+                        updateEditingForm("autoGenerate", event.target.checked)
+                      }
+                    />
+                    <span style={fieldLabelStyle}>Autogenerar periodo actual</span>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Inicio recurrencia</span>
+                    <input
+                      type="date"
+                      value={editingPayment.startsOn}
+                      onChange={(event) => updateEditingForm("startsOn", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fin recurrencia</span>
+                    <input
+                      type="date"
+                      value={editingPayment.endsOn}
+                      onChange={(event) => updateEditingForm("endsOn", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Día esperado de recibido</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editingPayment.expectedIssueDay}
+                      onChange={(event) =>
+                        updateEditingForm("expectedIssueDay", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Día esperado de corte</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editingPayment.expectedCutoffDay}
+                      onChange={(event) =>
+                        updateEditingForm("expectedCutoffDay", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Monto estimado</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingPayment.amountEstimated}
+                      onChange={(event) =>
+                        updateEditingForm("amountEstimated", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Día límite de pago</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      value={editingPayment.dueDay}
+                      onChange={(event) =>
+                        updateEditingForm("dueDay", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Periodo</span>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr",
+                        gap: 10,
+                      }}
+                    >
+                      <AppSelect
+                        value={editingPayment.periodMonth}
+                        onChange={(event) =>
+                          updateEditingForm("periodMonth", event.target.value)
+                        }
+                      >
+                        {MONTH_LABELS_SHORT.map((month, index) => (
+                          <option key={month} value={String(index + 1)}>
+                            {month}
+                          </option>
+                        ))}
+                      </AppSelect>
+
+                      <input
+                        type="number"
+                        min="2000"
+                        value={editingPayment.periodYear}
+                        onChange={(event) =>
+                          updateEditingForm("periodYear", event.target.value)
+                        }
+                        style={inputStyle}
+                      />
+                    </div>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha límite real</span>
+                    <input
+                      type="date"
+                      value={editingPayment.dueDate}
+                      onChange={(event) => updateEditingForm("dueDate", event.target.value)}
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha de recibido</span>
+                    <input
+                      type="date"
+                      value={editingPayment.invoiceReceivedAt}
+                      onChange={(event) =>
+                        updateEditingForm("invoiceReceivedAt", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Fecha de corte</span>
+                    <input
+                      type="date"
+                      value={editingPayment.cutoffDate}
+                      onChange={(event) =>
+                        updateEditingForm("cutoffDate", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
+              </AppCard>
+
+              <AppCard>
+                <div style={{ display: "grid", gap: 10 }}>
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Monto real</span>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={editingPayment.amountDue}
+                      onChange={(event) =>
+                        updateEditingForm("amountDue", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Estado</span>
+                    <AppSelect
+                      value={editingPayment.status}
+                      onChange={(event) =>
+                        updateEditingForm(
+                          "status",
+                          event.target.value as ExpensePaymentStatus
+                        )
+                      }
+                    >
+                      <option value="pending">Pendiente</option>
+                      <option value="paid">Pagado</option>
+                      <option value="overdue">Vencido</option>
+                    </AppSelect>
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Referencia</span>
+                    <input
+                      value={editingPayment.paymentReference}
+                      onChange={(event) =>
+                        updateEditingForm("paymentReference", event.target.value)
+                      }
+                      style={inputStyle}
+                    />
+                  </label>
+
+                  <label style={{ display: "grid", gap: 6 }}>
+                    <span style={fieldLabelStyle}>Notas</span>
+                    <textarea
+                      value={editingPayment.notes}
+                      onChange={(event) => updateEditingForm("notes", event.target.value)}
+                      rows={4}
+                      style={textareaStyle}
+                    />
+                  </label>
+
+                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                    <UiButton
+                      onClick={handleSaveEditedPayment}
+                      icon={<Save size={16} />}
+                    >
+                      {savingPayment ? "Guardando..." : "Guardar cambios"}
+                    </UiButton>
+
+                    <button
+                      type="button"
+                      onClick={() => setEditingPayment(null)}
+                      style={ghostButtonStyle}
+                    >
+                      <X size={16} />
+                      Cancelar edición
+                    </button>
+                  </div>
+                </div>
+              </AppCard>
+            </div>
+          </SectionCard>
+        </>
+      ) : null}
+
+      <div style={{ height: 16 }} />
+
+      <SectionCard
         title="Listado de pagos administrativos"
         subtitle="Puedes editar cualquier registro para completar el recibo real cuando llegue."
         icon={<ReceiptText size={18} />}
@@ -2188,22 +2108,11 @@ export default function PaymentsPage() {
               header: "Concepto",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: "#111827",
-                    }}
-                  >
+                  <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
                     {row.title}
                   </span>
 
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#6B7280",
-                    }}
-                  >
+                  <span style={{ fontSize: 12, color: "#6B7280" }}>
                     {row.expenseTypeLabel} · {row.vendorName}
                   </span>
                 </div>
@@ -2214,22 +2123,11 @@ export default function PaymentsPage() {
               header: "Edificio / alcance",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#111827",
-                    }}
-                  >
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
                     {row.buildingName}
                   </span>
 
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#6B7280",
-                    }}
-                  >
+                  <span style={{ fontSize: 12, color: "#6B7280" }}>
                     {row.unitLabel} · {row.appliesToLabel}
                   </span>
                 </div>
@@ -2240,22 +2138,11 @@ export default function PaymentsPage() {
               header: "Periodo / frecuencia",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "#374151",
-                      fontWeight: 600,
-                    }}
-                  >
+                  <span style={{ fontSize: 13, color: "#374151", fontWeight: 600 }}>
                     {row.periodLabel}
                   </span>
 
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#9CA3AF",
-                    }}
-                  >
+                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>
                     {row.frequencyLabel}
                   </span>
                 </div>
@@ -2266,22 +2153,14 @@ export default function PaymentsPage() {
               header: "Vencimiento",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      color: "#374151",
-                    }}
-                  >
+                  <span style={{ fontSize: 13, color: "#374151" }}>
                     {row.dueDateLabel}
                   </span>
 
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#9CA3AF",
-                    }}
-                  >
-                    {row.invoiceReceivedAt ? `Recibido: ${formatDate(row.invoiceReceivedAt)}` : "Sin recibido"}
+                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>
+                    {row.invoiceReceivedAt
+                      ? `Recibido: ${formatDate(row.invoiceReceivedAt)}`
+                      : "Sin recibido"}
                   </span>
                 </div>
               ),
@@ -2291,24 +2170,20 @@ export default function PaymentsPage() {
               header: "Monto",
               align: "right",
               render: (row: PaymentRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, alignItems: "flex-end" }}>
-                  <span
-                    style={{
-                      fontSize: 13,
-                      fontWeight: 800,
-                      color: "#111827",
-                    }}
-                  >
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 4,
+                    alignItems: "flex-end",
+                  }}
+                >
+                  <span style={{ fontSize: 13, fontWeight: 800, color: "#111827" }}>
                     {row.amountDueLabel}
                   </span>
 
                   {row.isGeneratedPlaceholder ? (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        color: "#9CA3AF",
-                      }}
-                    >
+                    <span style={{ fontSize: 11, color: "#9CA3AF" }}>
                       Placeholder
                     </span>
                   ) : null}
@@ -2347,21 +2222,11 @@ export default function PaymentsPage() {
               header: "Referencia / notas",
               render: (row: PaymentRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#374151",
-                    }}
-                  >
+                  <span style={{ fontSize: 12, color: "#374151" }}>
                     {row.paymentReference}
                   </span>
 
-                  <span
-                    style={{
-                      fontSize: 12,
-                      color: "#9CA3AF",
-                    }}
-                  >
+                  <span style={{ fontSize: 12, color: "#9CA3AF" }}>
                     {row.notes}
                   </span>
                 </div>
@@ -2374,19 +2239,7 @@ export default function PaymentsPage() {
                 <button
                   type="button"
                   onClick={() => startEditingPayment(row)}
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    borderRadius: 10,
-                    border: "1px solid #D1D5DB",
-                    background: "#FFFFFF",
-                    padding: "8px 10px",
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#111827",
-                    cursor: "pointer",
-                  }}
+                  style={tableActionButtonStyle}
                 >
                   <Edit3 size={14} />
                   Editar
@@ -2424,6 +2277,12 @@ const textareaStyle: React.CSSProperties = {
   resize: "vertical",
 };
 
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#374151",
+};
+
 const filterLabelStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -2433,4 +2292,59 @@ const filterLabelStyle: React.CSSProperties = {
   color: "#6B7280",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
+};
+
+const statusIconBoxGreen: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: "#DCFCE7",
+  display: "grid",
+  placeItems: "center",
+};
+
+const statusIconBoxYellow: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: "#FEF9C3",
+  display: "grid",
+  placeItems: "center",
+};
+
+const statusIconBoxRed: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: "#FEE2E2",
+  display: "grid",
+  placeItems: "center",
+};
+
+const ghostButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  borderRadius: 10,
+  border: "1px solid #D1D5DB",
+  background: "#FFFFFF",
+  padding: "8px 12px",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "#111827",
+  cursor: "pointer",
+};
+
+const tableActionButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  borderRadius: 10,
+  border: "1px solid #D1D5DB",
+  background: "#FFFFFF",
+  padding: "8px 10px",
+  fontSize: 12,
+  fontWeight: 700,
+  color: "#111827",
+  cursor: "pointer",
 };

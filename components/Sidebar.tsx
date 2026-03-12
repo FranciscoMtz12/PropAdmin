@@ -9,28 +9,26 @@ import {
   LogOut,
   ReceiptText,
   Sparkles,
-  Wrench,
   Wallet,
+  Wrench,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
 /*
-Sidebar global del sistema.
+  Sidebar global del sistema.
 
-Cambios aplicados:
-- "Pagos" usa ReceiptText (pagos administrativos)
-- Se agrega módulo "Cobranza"
+  Ajuste aplicado:
+  - se mantiene fijo visualmente con el scroll del contenido
+  - "Pagos" usa ReceiptText
+  - "Cobranza" está visible en navegación
 */
-
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Calendario", href: "/calendar", icon: CalendarDays },
-
   { label: "Pagos", href: "/payments", icon: ReceiptText },
   { label: "Cobranza", href: "/collections", icon: Wallet },
-
   { label: "Edificios", href: "/buildings", icon: Building2 },
   { label: "Limpieza", href: "/cleaning", icon: Sparkles },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench },
@@ -53,9 +51,13 @@ export default function Sidebar() {
       style={{
         width: 280,
         minWidth: 280,
+        height: "100vh",
+        position: "sticky",
+        top: 0,
+        alignSelf: "flex-start",
+        overflowY: "auto",
         background: "#0F172A",
         color: "#FFFFFF",
-        minHeight: "100vh",
         padding: 20,
         display: "flex",
         flexDirection: "column",
@@ -64,7 +66,6 @@ export default function Sidebar() {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {/* LOGO / APP NAME */}
         <div>
           <div
             style={{
@@ -87,7 +88,6 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* NAVIGATION */}
         <nav
           style={{
             display: "flex",
@@ -97,10 +97,8 @@ export default function Sidebar() {
         >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-
             const active =
-              pathname === item.href ||
-              pathname.startsWith(`${item.href}/`);
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
               <Link
@@ -114,9 +112,7 @@ export default function Sidebar() {
                   borderRadius: 14,
                   textDecoration: "none",
                   color: "#FFFFFF",
-                  background: active
-                    ? "rgba(255,255,255,0.14)"
-                    : "transparent",
+                  background: active ? "rgba(255,255,255,0.14)" : "transparent",
                   border: active
                     ? "1px solid rgba(255,255,255,0.16)"
                     : "1px solid transparent",
@@ -133,7 +129,6 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* USER SECTION */}
       <div
         style={{
           display: "flex",
