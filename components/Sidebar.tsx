@@ -5,9 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import {
   Building2,
   CalendarDays,
-  CreditCard,
   Home,
   LogOut,
+  ReceiptText,
   Sparkles,
   Wrench,
 } from "lucide-react";
@@ -15,10 +15,17 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
+/*
+  Sidebar global del sistema.
+
+  Cambio aplicado:
+  - "Pagos" ahora usa ReceiptText en lugar de CreditCard,
+    porque representa mejor el listado de pagos administrativos.
+*/
 const NAV_ITEMS = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Calendario", href: "/calendar", icon: CalendarDays },
-  { label: "Pagos", href: "/payments", icon: CreditCard },
+  { label: "Pagos", href: "/payments", icon: ReceiptText },
   { label: "Edificios", href: "/buildings", icon: Building2 },
   { label: "Limpieza", href: "/cleaning", icon: Sparkles },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench },
@@ -40,24 +47,23 @@ export default function Sidebar() {
     <aside
       style={{
         width: 280,
+        minWidth: 280,
+        background: "#0F172A",
+        color: "#FFFFFF",
         minHeight: "100vh",
-        background: "#FFFFFF",
-        borderRight: "1px solid #E5E7EB",
+        padding: 20,
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
-        padding: 20,
-        position: "sticky",
-        top: 0,
+        borderRight: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div>
           <div
             style={{
-              fontSize: 22,
+              fontSize: 20,
               fontWeight: 800,
-              color: "#111827",
               letterSpacing: "-0.02em",
             }}
           >
@@ -66,16 +72,22 @@ export default function Sidebar() {
 
           <div
             style={{
+              marginTop: 4,
               fontSize: 13,
-              color: "#6B7280",
-              marginTop: 6,
+              color: "rgba(255,255,255,0.7)",
             }}
           >
             Gestión de Propiedades
           </div>
         </div>
 
-        <nav style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <nav
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+          }}
+        >
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active =
@@ -92,8 +104,14 @@ export default function Sidebar() {
                   padding: "12px 14px",
                   borderRadius: 14,
                   textDecoration: "none",
-                  background: active ? "#EEF2FF" : "transparent",
-                  color: active ? "#4338CA" : "#374151",
+                  color: "#FFFFFF",
+                  background: active
+                    ? "rgba(255,255,255,0.14)"
+                    : "transparent",
+                  border: active
+                    ? "1px solid rgba(255,255,255,0.16)"
+                    : "1px solid transparent",
+                  fontSize: 14,
                   fontWeight: active ? 700 : 600,
                   transition: "all 0.2s ease",
                 }}
@@ -108,21 +126,27 @@ export default function Sidebar() {
 
       <div
         style={{
-          borderTop: "1px solid #E5E7EB",
-          paddingTop: 16,
           display: "flex",
           flexDirection: "column",
-          gap: 12,
+          gap: 14,
+          paddingTop: 20,
+          borderTop: "1px solid rgba(255,255,255,0.08)",
         }}
       >
-        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
           <span
             style={{
               fontSize: 12,
-              fontWeight: 700,
+              color: "rgba(255,255,255,0.6)",
               textTransform: "uppercase",
               letterSpacing: "0.04em",
-              color: "#6B7280",
+              fontWeight: 700,
             }}
           >
             Usuario actual
@@ -131,9 +155,8 @@ export default function Sidebar() {
           <span
             style={{
               fontSize: 14,
-              fontWeight: 600,
-              color: "#111827",
-              lineHeight: 1.5,
+              fontWeight: 700,
+              color: "#FFFFFF",
             }}
           >
             {user?.full_name || user?.email || "Sin usuario"}
@@ -143,8 +166,7 @@ export default function Sidebar() {
             <span
               style={{
                 fontSize: 12,
-                color: "#059669",
-                fontWeight: 600,
+                color: "rgba(255,255,255,0.65)",
               }}
             >
               Empresa activa configurada
@@ -153,17 +175,19 @@ export default function Sidebar() {
         </div>
 
         <button
+          type="button"
           onClick={handleLogout}
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 10,
-            padding: "12px 14px",
+            gap: 8,
+            width: "100%",
             borderRadius: 14,
-            border: "1px solid #E5E7EB",
-            background: "#FFFFFF",
-            color: "#374151",
+            border: "1px solid rgba(255,255,255,0.14)",
+            background: "rgba(255,255,255,0.06)",
+            color: "#FFFFFF",
+            padding: "12px 14px",
             fontSize: 14,
             fontWeight: 700,
             cursor: "pointer",
