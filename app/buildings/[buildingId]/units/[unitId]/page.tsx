@@ -14,8 +14,7 @@
     .is("deleted_at", null)
 
   Cambio importante de leases:
-  - ya no depende de una relación antigua tipo tenants(...)
-  - ahora usa app_users para resolver:
+  - ahora usa tenants para resolver:
     - tenant_id
     - responsible_payer_id
 
@@ -86,12 +85,19 @@ type UnitDetail = {
   unit_types: { name: string } | null;
 };
 
-type AppUser = {
+type Tenant = {
   id: string;
   company_id: string;
-  full_name: string | null;
+  full_name: string;
   email: string | null;
   phone: string | null;
+  tax_id: string | null;
+  billing_name: string | null;
+  billing_email: string | null;
+  status: "ACTIVE" | "INACTIVE";
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type LeaseRow = {
@@ -136,16 +142,6 @@ const inputStyle: CSSProperties = {
   border: "1px solid #E5E7EB",
   background: "#FFFFFF",
   outline: "none",
-};
-
-const textareaStyle: CSSProperties = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: "12px",
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
-  outline: "none",
-  resize: "vertical",
 };
 
 const labelStyle: CSSProperties = {
@@ -326,9 +322,9 @@ function InfoStatCard({
   );
 }
 
-function getUserDisplayName(user: AppUser | null | undefined) {
-  if (!user) return "Sin usuario";
-  return user.full_name || user.email || "Sin usuario";
+function getTenantDisplayName(tenant: Tenant | null | undefined) {
+  if (!tenant) return "Sin inquilino";
+  return tenant.full_name || tenant.email || "Sin inquilino";
 }
 
 function emptyLeaseForm(): LeaseFormState {
@@ -357,7 +353,7 @@ export default function UnitDetailPage() {
   const [building, setBuilding] = useState<Building | null>(null);
   const [unit, setUnit] = useState<UnitDetail | null>(null);
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
-  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [leaseHistory, setLeaseHistory] = useState<LeaseRow[]>([]);
   const [assets, setAssets] = useState<AssetMiniRow[]>([]);
 
@@ -448,7 +444,7 @@ export default function UnitDetailPage() {
 
     const [
       { data: unitTypeData, error: unitTypeError },
-      { data: appUsersData, error: appUsersError },
+      { data: tenantsData, error: tenantsError },
       { data: leaseData, error: leaseError },
       { data: assetData, error: assetError },
     ] = await Promise.all([
@@ -459,9 +455,12 @@ export default function UnitDetailPage() {
         .order("created_at", { ascending: false }),
 
       supabase
-        .from("app_users")
-        .select("id, company_id, full_name, email, phone")
+        .from("tenants")
+        .select(
+          "id, company_id, full_name, email, phone, tax_id, billing_name, billing_email, status, notes, created_at, updated_at"
+        )
         .eq("company_id", user.company_id)
+        .eq("status", "ACTIVE")
         .order("full_name", { ascending: true }),
 
       supabase
@@ -488,8 +487,8 @@ export default function UnitDetailPage() {
       return;
     }
 
-    if (appUsersError) {
-      setMsg("No se pudieron cargar los usuarios.");
+    if (tenantsError) {
+      setMsg("No se pudieron cargar los inquilinos.");
       setLoadingData(false);
       return;
     }
@@ -507,7 +506,7 @@ export default function UnitDetailPage() {
     }
 
     setUnitTypes((unitTypeData as UnitType[]) || []);
-    setAppUsers((appUsersData as AppUser[]) || []);
+    setTenants((tenantsData as Tenant[]) || []);
     setLeaseHistory((leaseData as LeaseRow[]) || []);
     setAssets((assetData as AssetMiniRow[]) || []);
     setLoadingData(false);
@@ -600,9 +599,9 @@ export default function UnitDetailPage() {
     [leaseHistory]
   );
 
-  const appUsersMap = useMemo(() => {
-    return new Map(appUsers.map((appUser) => [appUser.id, appUser]));
-  }, [appUsers]);
+  const tenantsMap = useMemo(() => {
+    return new Map(tenants.map((tenant) => [tenant.id, tenant]));
+  }, [tenants]);
 
   const assetStatusSegments = useMemo(() => {
     const grouped = assets.reduce<Record<string, number>>((acc, asset) => {
@@ -782,7 +781,11 @@ export default function UnitDetailPage() {
     setShowLeaseModal(false);
     setEditingLeaseId(null);
     setLeaseForm(emptyLeaseForm());
-    setMsg(editingLeaseId ? "Lease actualizado correctamente." : "Lease creado correctamente.");
+    setMsg(
+      editingLeaseId
+        ? "Lease actualizado correctamente."
+        : "Lease creado correctamente."
+    );
     await loadPageData();
   }
 
@@ -1034,7 +1037,7 @@ export default function UnitDetailPage() {
           <SectionCard
             title="Lease actual"
             icon={<Users size={18} />}
-            actions={
+            action={
               <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
                 {activeLease ? (
                   <>
@@ -1067,9 +1070,9 @@ export default function UnitDetailPage() {
                   <div style={{ display: "grid", gap: "8px" }}>
                     <div style={miniLabelStyle}>Inquilino</div>
                     <div style={miniValueStyle}>
-                      {getUserDisplayName(
+                      {getTenantDisplayName(
                         activeLease.tenant_id
-                          ? appUsersMap.get(activeLease.tenant_id)
+                          ? tenantsMap.get(activeLease.tenant_id)
                           : null
                       )}
                     </div>
@@ -1081,8 +1084,8 @@ export default function UnitDetailPage() {
                     <div style={miniLabelStyle}>Responsable de pago</div>
                     <div style={miniValueStyle}>
                       {activeLease.responsible_payer_id
-                        ? getUserDisplayName(
-                            appUsersMap.get(activeLease.responsible_payer_id) || null
+                        ? getTenantDisplayName(
+                            tenantsMap.get(activeLease.responsible_payer_id) || null
                           )
                         : activeLease.billing_name ||
                           activeLease.billing_email ||
@@ -1244,12 +1247,12 @@ export default function UnitDetailPage() {
             ) : (
               <div style={{ display: "grid", gap: "12px" }}>
                 {leaseHistory.map((lease) => {
-                  const tenantUser = lease.tenant_id
-                    ? appUsersMap.get(lease.tenant_id)
+                  const tenant = lease.tenant_id
+                    ? tenantsMap.get(lease.tenant_id)
                     : null;
 
-                  const responsiblePayerUser = lease.responsible_payer_id
-                    ? appUsersMap.get(lease.responsible_payer_id)
+                  const responsiblePayer = lease.responsible_payer_id
+                    ? tenantsMap.get(lease.responsible_payer_id)
                     : null;
 
                   return (
@@ -1271,7 +1274,7 @@ export default function UnitDetailPage() {
                               color: "#111827",
                             }}
                           >
-                            {getUserDisplayName(tenantUser)}
+                            {getTenantDisplayName(tenant)}
                           </div>
 
                           <LeaseStatusPill status={lease.status} />
@@ -1279,8 +1282,8 @@ export default function UnitDetailPage() {
 
                         <div style={historyMetaTextStyle}>
                           Responsable de pago:{" "}
-                          {responsiblePayerUser
-                            ? getUserDisplayName(responsiblePayerUser)
+                          {responsiblePayer
+                            ? getTenantDisplayName(responsiblePayer)
                             : lease.billing_name ||
                               lease.billing_email ||
                               "Mismo inquilino"}
@@ -1432,9 +1435,9 @@ export default function UnitDetailPage() {
                   }
                 >
                   <option value="">Selecciona un inquilino</option>
-                  {appUsers.map((appUser) => (
-                    <option key={appUser.id} value={appUser.id}>
-                      {appUser.full_name || appUser.email || appUser.id}
+                  {tenants.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.full_name}
                     </option>
                   ))}
                 </AppSelect>
@@ -1452,9 +1455,9 @@ export default function UnitDetailPage() {
                   }
                 >
                   <option value="">Mismo inquilino</option>
-                  {appUsers.map((appUser) => (
-                    <option key={appUser.id} value={appUser.id}>
-                      {appUser.full_name || appUser.email || appUser.id}
+                  {tenants.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {tenant.full_name}
                     </option>
                   ))}
                 </AppSelect>
