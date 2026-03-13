@@ -58,7 +58,8 @@ type Unit = {
 type ExpenseFrequencyType = "monthly" | "bimonthly";
 type ExpenseResponsibilityType = "company" | "building" | "tenant";
 type ExpenseAppliesToType = "building" | "unit";
-type ExpensePaymentStatus = "pending" | "paid" | "overdue";
+type ExpenseStoredStatus = "pending" | "paid" | "overdue";
+type ExpenseDisplayStatus = "pending" | "paid" | "overdue" | "due_today";
 
 type ExpenseType =
   | "electricity"
@@ -104,7 +105,7 @@ type ExpensePayment = {
   period_month: number;
   due_date: string;
   amount_due: number;
-  status: ExpensePaymentStatus;
+  status: ExpenseStoredStatus;
   paid_at: string | null;
   payment_reference: string | null;
   notes: string | null;
@@ -119,7 +120,7 @@ type ExpensePayment = {
   billed_month_label: string | null;
 };
 
-type PaymentStatusFilter = "all" | "pending" | "paid" | "overdue";
+type PaymentStatusFilter = "all" | "pending" | "paid" | "overdue" | "due_today";
 
 type PaymentRow = {
   id: string;
@@ -137,7 +138,8 @@ type PaymentRow = {
   dueDateLabel: string;
   amountDue: number;
   amountDueLabel: string;
-  status: ExpensePaymentStatus;
+  storedStatus: ExpenseStoredStatus;
+  displayStatus: ExpenseDisplayStatus;
   statusLabel: string;
   paymentReference: string;
   notes: string;
@@ -167,7 +169,6 @@ type CreatePaymentForm = {
   consumptionPeriodLabel: string;
   billedMonthLabel: string;
   amountDue: string;
-  status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
 };
@@ -191,7 +192,6 @@ type EditPaymentForm = {
   consumptionPeriodLabel: string;
   billedMonthLabel: string;
   amountDue: string;
-  status: ExpensePaymentStatus;
   paymentReference: string;
   notes: string;
 };
@@ -246,28 +246,58 @@ function getFrequencyLabel(type: ExpenseFrequencyType | null) {
   return type === "bimonthly" ? "Bimestral" : "Mensual";
 }
 
-function getStatusLabel(status: ExpensePaymentStatus) {
-  if (status === "pending") return "Pendiente";
+function getStoredStatusLabel(status: ExpenseStoredStatus) {
   if (status === "paid") return "Pagado";
-  return "Vencido";
+  if (status === "overdue") return "Vencido";
+  return "Pendiente";
 }
 
-function getStatusColors(status: ExpensePaymentStatus) {
+function getDisplayStatusLabel(status: ExpenseDisplayStatus) {
+  if (status === "paid") return "Pagado";
+  if (status === "overdue") return "Vencido";
+  if (status === "due_today") return "Vence hoy";
+  return "Pendiente";
+}
+
+function getStatusColors(status: ExpenseDisplayStatus) {
   if (status === "paid") {
-    return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
+    return {
+      background: "#ECFDF5",
+      border: "#A7F3D0",
+      text: "#166534",
+    };
+  }
+
+  if (status === "due_today") {
+    return {
+      background: "#FFF7ED",
+      border: "#FDBA74",
+      text: "#C2410C",
+    };
   }
 
   if (status === "pending") {
-    return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
+    return {
+      background: "#FEFCE8",
+      border: "#FDE68A",
+      text: "#A16207",
+    };
   }
 
-  return { background: "#FEF2F2", border: "#FECACA", text: "#B91C1C" };
+  return {
+    background: "#FEF2F2",
+    border: "#FECACA",
+    text: "#B91C1C",
+  };
 }
 
-function getNextPaymentStatus(currentStatus: ExpensePaymentStatus): ExpensePaymentStatus {
-  if (currentStatus === "pending") return "paid";
+function getNextStoredStatusFromDisplayStatus(
+  currentStatus: ExpenseDisplayStatus
+): ExpenseStoredStatus {
   if (currentStatus === "paid") return "overdue";
-  return "pending";
+  if (currentStatus === "overdue") return "pending";
+  if (currentStatus === "due_today") return "paid";
+  return "paid";
 }
 
 function parseOptionalNumber(value: string) {
@@ -343,6 +373,17 @@ function getStartsOnFromDueDate(dueDate: string) {
   return `${year}-${month}-01`;
 }
 
+function getDisplayStatusFromPayment(
+  payment: ExpensePayment,
+  todayKey: string
+): ExpenseDisplayStatus {
+  if (payment.status === "paid") return "paid";
+  if (!payment.due_date) return payment.status === "overdue" ? "overdue" : "pending";
+  if (payment.due_date < todayKey) return "overdue";
+  if (payment.due_date === todayKey) return "due_today";
+  return "pending";
+}
+
 function getDefaultCreateForm(buildingId = ""): CreatePaymentForm {
   return {
     buildingId,
@@ -361,7 +402,6 @@ function getDefaultCreateForm(buildingId = ""): CreatePaymentForm {
     consumptionPeriodLabel: "",
     billedMonthLabel: "",
     amountDue: "",
-    status: "pending",
     paymentReference: "",
     notes: "",
   };
@@ -412,6 +452,7 @@ export default function PaymentsPage() {
   const [loadingPage, setLoadingPage] = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
   const [syncingCurrentPeriod, setSyncingCurrentPeriod] = useState(false);
+  const [syncingStatuses, setSyncingStatuses] = useState(false);
   const [message, setMessage] = useState("");
 
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -434,11 +475,18 @@ export default function PaymentsPage() {
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
 
+  const todayKey = getTodayDateOnlyKey();
+
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
     void loadPaymentsData();
   }, [loading, user?.company_id]);
+
+  useEffect(() => {
+    if (!expensePayments.length || !user?.company_id || syncingStatuses) return;
+    void syncAutomaticOverdueStatuses();
+  }, [expensePayments, user?.company_id]);
 
   async function loadPaymentsData(showLoader = true) {
     if (!user?.company_id) return;
@@ -568,6 +616,44 @@ export default function PaymentsPage() {
     await ensureCurrentPeriodPayments(nextSchedules, nextPayments);
   }
 
+  async function syncAutomaticOverdueStatuses() {
+    const rowsToOverdue = expensePayments.filter(
+      (payment) =>
+        payment.status !== "paid" &&
+        Boolean(payment.due_date) &&
+        payment.due_date < todayKey &&
+        payment.status !== "overdue"
+    );
+
+    if (!rowsToOverdue.length) return;
+
+    setSyncingStatuses(true);
+
+    try {
+      const updates = rowsToOverdue.map((payment) =>
+        supabase
+          .from("expense_payments")
+          .update({
+            status: "overdue",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", payment.id)
+      );
+
+      await Promise.all(updates);
+
+      setExpensePayments((prev) =>
+        prev.map((payment) =>
+          rowsToOverdue.some((item) => item.id === payment.id)
+            ? { ...payment, status: "overdue" }
+            : payment
+        )
+      );
+    } finally {
+      setSyncingStatuses(false);
+    }
+  }
+
   async function ensureCurrentPeriodPayments(
     schedulesInput?: ExpenseSchedule[],
     paymentsInput?: ExpensePayment[]
@@ -606,7 +692,11 @@ export default function PaymentsPage() {
       const rowsToInsert = schedulesToGenerate.map((schedule) => {
         const amountValue = schedule.amount_estimated ?? 0;
         const dueDay = Math.max(1, Math.min(31, schedule.due_day));
-        const dueDate = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(dueDay).padStart(2, "0")}`;
+        const dueDate = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${String(
+          dueDay
+        ).padStart(2, "0")}`;
+
+        const storedStatus: ExpenseStoredStatus = dueDate < todayKey ? "overdue" : "pending";
 
         return {
           expense_schedule_id: schedule.id,
@@ -617,7 +707,7 @@ export default function PaymentsPage() {
           period_month: currentMonth,
           due_date: dueDate,
           amount_due: amountValue,
-          status: "pending" as ExpensePaymentStatus,
+          status: storedStatus,
           paid_at: null,
           payment_reference: null,
           notes: schedule.notes || null,
@@ -702,14 +792,13 @@ export default function PaymentsPage() {
         if (!schedule) return null;
 
         const building =
-          buildingMap.get(payment.building_id) ||
-          buildingMap.get(schedule.building_id);
+          buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
 
         const unit =
           (payment.unit_id ? unitMap.get(payment.unit_id) : null) ||
           (schedule.unit_id ? unitMap.get(schedule.unit_id) : null);
 
-        const unitLabel = unit?.display_code || unit?.unit_number || "General";
+        const displayStatus = getDisplayStatusFromPayment(payment, todayKey);
 
         return {
           id: payment.id,
@@ -717,7 +806,7 @@ export default function PaymentsPage() {
           buildingId: payment.building_id,
           buildingName: building?.name || "Edificio",
           buildingAddress: building?.address || "Sin dirección",
-          unitLabel,
+          unitLabel: unit?.display_code || unit?.unit_number || "General",
           title: schedule.title,
           vendorName: schedule.vendor_name || "",
           expenseType: schedule.expense_type,
@@ -727,8 +816,9 @@ export default function PaymentsPage() {
           dueDateLabel: formatDate(payment.due_date),
           amountDue: payment.amount_due,
           amountDueLabel: formatCurrency(payment.amount_due),
-          status: payment.status,
-          statusLabel: getStatusLabel(payment.status),
+          storedStatus: payment.status,
+          displayStatus,
+          statusLabel: getDisplayStatusLabel(displayStatus),
           paymentReference: payment.payment_reference || "—",
           notes: payment.notes || schedule.notes || "—",
           isGeneratedPlaceholder: Boolean(payment.is_generated_placeholder),
@@ -741,22 +831,24 @@ export default function PaymentsPage() {
         };
       })
       .filter((row): row is PaymentRow => Boolean(row));
-  }, [buildings, units, expenseSchedules, expensePayments]);
+  }, [buildings, units, expenseSchedules, expensePayments, todayKey]);
 
   const filteredRows = useMemo(() => {
     return paymentRows.filter((row) => {
       if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) return false;
-      if (selectedStatus !== "all" && row.status !== selectedStatus) return false;
+      if (selectedStatus !== "all" && row.displayStatus !== selectedStatus) return false;
       return true;
     });
   }, [paymentRows, selectedBuildingId, selectedStatus]);
 
   const totalRecords = filteredRows.length;
-  const paidCount = filteredRows.filter((row) => row.status === "paid").length;
-  const pendingCount = filteredRows.filter((row) => row.status === "pending").length;
-  const overdueCount = filteredRows.filter((row) => row.status === "overdue").length;
+  const paidCount = filteredRows.filter((row) => row.displayStatus === "paid").length;
+  const pendingCount = filteredRows.filter((row) => row.displayStatus === "pending").length;
+  const dueTodayCount = filteredRows.filter((row) => row.displayStatus === "due_today").length;
+  const overdueCount = filteredRows.filter((row) => row.displayStatus === "overdue").length;
+
   const pendingAmount = filteredRows
-    .filter((row) => row.status === "pending" || row.status === "overdue")
+    .filter((row) => row.displayStatus !== "paid")
     .reduce((sum, row) => sum + row.amountDue, 0);
 
   const selectedBuildingLabel =
@@ -766,7 +858,7 @@ export default function PaymentsPage() {
 
   const nextPendingLabel = useMemo(() => {
     const nextPending = filteredRows
-      .filter((row) => row.status === "pending")
+      .filter((row) => row.displayStatus === "pending" || row.displayStatus === "due_today")
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
     if (!nextPending) return "Sin próximos pagos";
@@ -835,7 +927,8 @@ export default function PaymentsPage() {
     const amountDue = parseOptionalNumber(createForm.amountDue) ?? amountEstimated ?? 0;
     const cutoffDate = getCutoffDateFromDueDate(createForm.dueDate);
     const startsOn = getStartsOnFromDueDate(createForm.dueDate);
-    const paidAtValue = createForm.status === "paid" ? new Date().toISOString() : null;
+    const storedStatus: ExpenseStoredStatus =
+      createForm.dueDate < todayKey ? "overdue" : "pending";
 
     setSavingPayment(true);
 
@@ -879,8 +972,8 @@ export default function PaymentsPage() {
         period_month: periodMonth,
         due_date: createForm.dueDate,
         amount_due: amountDue,
-        status: createForm.status,
-        paid_at: paidAtValue,
+        status: storedStatus,
+        paid_at: null,
         payment_reference: createForm.paymentReference.trim() || null,
         notes: createForm.notes.trim() || null,
         billing_period_label: formatPeriod(periodYear, periodMonth),
@@ -945,7 +1038,6 @@ export default function PaymentsPage() {
       consumptionPeriodLabel: payment.consumption_period_label || "",
       billedMonthLabel: payment.billed_month_label || "",
       amountDue: String(payment.amount_due),
-      status: payment.status,
       paymentReference: payment.payment_reference || "",
       notes: payment.notes || schedule.notes || "",
     });
@@ -982,7 +1074,8 @@ export default function PaymentsPage() {
       const amountDue = parseOptionalNumber(editingPayment.amountDue) ?? 0;
       const cutoffDate = getCutoffDateFromDueDate(editingPayment.dueDate);
       const startsOn = getStartsOnFromDueDate(editingPayment.dueDate);
-      const paidAtValue = editingPayment.status === "paid" ? new Date().toISOString() : null;
+      const storedStatus: ExpenseStoredStatus =
+        editingPayment.dueDate < todayKey ? "overdue" : "pending";
 
       const { error: scheduleError } = await supabase
         .from("expense_schedules")
@@ -1018,8 +1111,8 @@ export default function PaymentsPage() {
           period_month: periodMonth,
           due_date: editingPayment.dueDate,
           amount_due: amountDue,
-          status: editingPayment.status,
-          paid_at: paidAtValue,
+          status: storedStatus,
+          paid_at: null,
           payment_reference: editingPayment.paymentReference.trim() || null,
           notes: editingPayment.notes.trim() || null,
           billing_period_label: formatPeriod(periodYear, periodMonth),
@@ -1059,13 +1152,13 @@ export default function PaymentsPage() {
     setStatusUpdatingId(row.id);
 
     try {
-      const nextStatus = getNextPaymentStatus(row.status);
+      const nextStoredStatus = getNextStoredStatusFromDisplayStatus(row.displayStatus);
 
       const { error } = await supabase
         .from("expense_payments")
         .update({
-          status: nextStatus,
-          paid_at: nextStatus === "paid" ? new Date().toISOString() : null,
+          status: nextStoredStatus,
+          paid_at: nextStoredStatus === "paid" ? new Date().toISOString() : null,
           updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
@@ -1079,8 +1172,8 @@ export default function PaymentsPage() {
           payment.id === row.id
             ? {
                 ...payment,
-                status: nextStatus,
-                paid_at: nextStatus === "paid" ? new Date().toISOString() : null,
+                status: nextStoredStatus,
+                paid_at: nextStoredStatus === "paid" ? new Date().toISOString() : null,
               }
             : payment
         )
@@ -1088,7 +1181,7 @@ export default function PaymentsPage() {
 
       showToast({
         type: "success",
-        message: `Estado actualizado a ${getStatusLabel(nextStatus).toLowerCase()}.`,
+        message: `Estado actualizado a ${getStoredStatusLabel(nextStoredStatus).toLowerCase()}.`,
       });
     } catch (error) {
       const errorText =
@@ -1198,6 +1291,17 @@ export default function PaymentsPage() {
         />
 
         <MetricCard
+          label="Vence hoy"
+          value={String(dueTodayCount)}
+          helper="Revisión inmediata"
+          icon={
+            <div style={getMetricIconBoxStyle("#FFEDD5")}>
+              <AlertCircle size={18} color="#EA580C" />
+            </div>
+          }
+        />
+
+        <MetricCard
           label="Vencidos"
           value={String(overdueCount)}
           helper="Requieren atención"
@@ -1211,7 +1315,7 @@ export default function PaymentsPage() {
         <MetricCard
           label="Monto pendiente"
           value={formatCurrency(pendingAmount)}
-          helper="Pendiente + vencido"
+          helper="No pagado"
           icon={
             <div style={getMetricIconBoxStyle("#DBEAFE")}>
               <CreditCard size={18} color="#2563EB" />
@@ -1258,6 +1362,7 @@ export default function PaymentsPage() {
               >
                 <option value="all">Todos los estados</option>
                 <option value="pending">Pendiente</option>
+                <option value="due_today">Vence hoy</option>
                 <option value="paid">Pagado</option>
                 <option value="overdue">Vencido</option>
               </AppSelect>
@@ -1452,7 +1557,9 @@ export default function PaymentsPage() {
                   <div style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Fecha de corte</span>
                     <div style={readonlyFieldStyle}>
-                      {createForm.dueDate ? formatDate(getCutoffDateFromDueDate(createForm.dueDate)) : "Sin fecha"}
+                      {createForm.dueDate
+                        ? formatDate(getCutoffDateFromDueDate(createForm.dueDate))
+                        : "Sin fecha"}
                     </div>
                   </div>
 
@@ -1521,20 +1628,6 @@ export default function PaymentsPage() {
                       onChange={(event) => updateCreateForm("autoGenerate", event.target.checked)}
                     />
                     <span style={fieldLabelStyle}>Generar automáticamente próximos periodos</span>
-                  </label>
-
-                  <label style={fieldWrapStyle}>
-                    <span style={fieldLabelStyle}>Estado inicial</span>
-                    <AppSelect
-                      value={createForm.status}
-                      onChange={(event) =>
-                        updateCreateForm("status", event.target.value as ExpensePaymentStatus)
-                      }
-                    >
-                      <option value="pending">Pendiente</option>
-                      <option value="paid">Pagado</option>
-                      <option value="overdue">Vencido</option>
-                    </AppSelect>
                   </label>
 
                   <label style={fieldWrapStyle}>
@@ -1611,15 +1704,23 @@ export default function PaymentsPage() {
         ) : (
           <div style={tableShellStyle}>
             <table style={tableStyle}>
+              <colgroup>
+                <col style={{ width: "24%" }} />
+                <col style={{ width: "20%" }} />
+                <col style={{ width: "19%" }} />
+                <col style={{ width: "14%" }} />
+                <col style={{ width: "11%" }} />
+                <col style={{ width: "12%" }} />
+              </colgroup>
+
               <thead>
                 <tr>
-                  <th style={{ ...thStyle, width: "32%" }}>Concepto</th>
+                  <th style={thStyle}>Concepto</th>
                   <th style={thStyle}>Edificio</th>
                   <th style={thStyle}>Periodo / frecuencia</th>
                   <th style={thStyle}>Vencimiento</th>
                   <th style={{ ...thStyle, textAlign: "right" }}>Monto</th>
                   <th style={thStyle}>Estado</th>
-                  <th style={{ ...thStyle, textAlign: "right" }}>Acciones</th>
                 </tr>
               </thead>
 
@@ -1628,6 +1729,7 @@ export default function PaymentsPage() {
                   const serviceVisual = getServiceVisual(row.expenseType);
                   const isOpen = openDetailPaymentId === row.id;
                   const isUpdating = statusUpdatingId === row.id;
+                  const colors = getStatusColors(row.displayStatus);
 
                   return (
                     <FragmentLike key={row.id}>
@@ -1680,22 +1782,9 @@ export default function PaymentsPage() {
                         </td>
 
                         <td style={{ ...tdStyle, textAlign: "right" }}>
-                          <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 4,
-                              alignItems: "flex-end",
-                            }}
-                          >
-                            <span style={cellPrimaryTextStyle}>
-                              {row.isGeneratedPlaceholder ? "Pendiente" : row.amountDueLabel}
-                            </span>
-
-                            {row.isGeneratedPlaceholder ? (
-                              <span style={cellSecondaryTextStyle}>Monto pendiente</span>
-                            ) : null}
-                          </div>
+                          <span style={cellPrimaryTextStyle}>
+                            {row.isGeneratedPlaceholder ? "Pendiente" : row.amountDueLabel}
+                          </span>
                         </td>
 
                         <td style={tdStyle}>
@@ -1706,32 +1795,20 @@ export default function PaymentsPage() {
                             title="Haz clic para cambiar el estado"
                             style={{
                               ...statusButtonStyle,
-                              background: getStatusColors(row.status).background,
-                              color: getStatusColors(row.status).text,
-                              border: `1px solid ${getStatusColors(row.status).border}`,
+                              background: colors.background,
+                              color: colors.text,
+                              border: `1px solid ${colors.border}`,
                               cursor: isUpdating ? "wait" : "pointer",
                             }}
                           >
                             {isUpdating ? "Actualizando..." : row.statusLabel}
                           </button>
                         </td>
-
-                        <td style={{ ...tdStyle, textAlign: "right" }}>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setOpenDetailPaymentId((prev) => (prev === row.id ? null : row.id))
-                            }
-                            style={tableActionButtonStyle}
-                          >
-                            {isOpen ? "Ocultar" : "Detalles"}
-                          </button>
-                        </td>
                       </tr>
 
                       {isOpen ? (
                         <tr>
-                          <td colSpan={7} style={{ ...tdStyle, paddingTop: 0 }}>
+                          <td colSpan={6} style={{ ...tdStyle, paddingTop: 0 }}>
                             <div style={inlineDetailsCardStyle}>
                               <div style={inlineDetailsGridStyle}>
                                 <div style={detailBlockStyle}>
@@ -1742,6 +1819,18 @@ export default function PaymentsPage() {
                                 <div style={detailBlockStyle}>
                                   <div style={detailLabelStyle}>{row.serviceIdentifierLabel}</div>
                                   <div style={detailValueStyle}>{row.serviceIdentifier}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Fecha límite</div>
+                                  <div style={detailValueStyle}>{row.dueDateLabel}</div>
+                                </div>
+
+                                <div style={detailBlockStyle}>
+                                  <div style={detailLabelStyle}>Fecha de corte</div>
+                                  <div style={detailValueStyle}>
+                                    {row.cutoffDate ? formatDate(row.cutoffDate) : "Sin fecha"}
+                                  </div>
                                 </div>
 
                                 <div style={detailBlockStyle}>
@@ -1757,13 +1846,6 @@ export default function PaymentsPage() {
                                 <div style={detailBlockStyle}>
                                   <div style={detailLabelStyle}>Mes facturado</div>
                                   <div style={detailValueStyle}>{row.billedMonthLabel}</div>
-                                </div>
-
-                                <div style={detailBlockStyle}>
-                                  <div style={detailLabelStyle}>Fecha de corte</div>
-                                  <div style={detailValueStyle}>
-                                    {row.cutoffDate ? formatDate(row.cutoffDate) : "Sin fecha"}
-                                  </div>
                                 </div>
                               </div>
 
@@ -2030,20 +2112,6 @@ export default function PaymentsPage() {
               </label>
 
               <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Estado</span>
-                <AppSelect
-                  value={editingPayment.status}
-                  onChange={(event) =>
-                    updateEditingForm("status", event.target.value as ExpensePaymentStatus)
-                  }
-                >
-                  <option value="pending">Pendiente</option>
-                  <option value="paid">Pagado</option>
-                  <option value="overdue">Vencido</option>
-                </AppSelect>
-              </label>
-
-              <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Referencia de pago</span>
                 <input
                   value={editingPayment.paymentReference}
@@ -2149,7 +2217,9 @@ export default function PaymentsPage() {
                 }}
               >
                 <Trash2 size={16} />
-                {deletingScheduleId === deleteTargetRow.scheduleId ? "Eliminando..." : "Eliminar pago"}
+                {deletingScheduleId === deleteTargetRow.scheduleId
+                  ? "Eliminando..."
+                  : "Eliminar pago"}
               </button>
             </div>
           </div>
