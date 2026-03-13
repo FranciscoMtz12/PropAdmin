@@ -13,6 +13,12 @@
   - La consulta a leases ahora es tolerante con el esquema real.
   - Ya no depende de columnas fijas como tenant_name o tenant_email.
   - Esto evita que se rompa toda la carga del calendario si leases cambia.
+
+  Mejora aplicada:
+  - El calendario ahora muestra pagos reales desde expense_payments.
+  - También muestra pagos proyectados desde expense_schedules cuando todavía
+    no existe un registro real para ese periodo.
+  - Los pagos proyectados usan un estilo visual más ligero para distinguirse.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -85,6 +91,8 @@ type MaintenanceLog = {
   asset_id: string | null;
 };
 
+type ExpenseFrequencyType = "monthly" | "bimonthly";
+
 type ExpenseSchedule = {
   id: string;
   building_id: string;
@@ -107,6 +115,10 @@ type ExpenseSchedule = {
   due_day: number;
   active: boolean;
   notes: string | null;
+  frequency_type: ExpenseFrequencyType | null;
+  starts_on: string | null;
+  ends_on: string | null;
+  auto_generate: boolean | null;
 };
 
 type ExpensePayment = {
@@ -237,6 +249,12 @@ const PAYMENTS_COLORS = {
   background: "#EFF6FF",
   border: "#93C5FD",
   text: "#1D4ED8",
+};
+
+const PAYMENTS_PROJECTED_COLORS = {
+  background: "#F8FBFF",
+  border: "#DBEAFE",
+  text: "#3B82F6",
 };
 
 const COLLECTIONS_COLORS = {
@@ -389,6 +407,86 @@ function getLeaseDisplayLabel(row: LeaseRow) {
   if (email) return email;
 
   return "Sin inquilino";
+}
+
+function getVisibleRange(referenceDate: Date, viewMode: ViewMode) {
+  if (viewMode === "week") {
+    const start = getStartOfWeek(referenceDate);
+    const end = addDays(start, 5);
+    return { start, end };
+  }
+
+  if (viewMode === "month") {
+    return {
+      start: getStartOfMonth(referenceDate),
+      end: getEndOfMonth(referenceDate),
+    };
+  }
+
+  return {
+    start: new Date(referenceDate.getFullYear(), 0, 1),
+    end: new Date(referenceDate.getFullYear(), 11, 31),
+  };
+}
+
+function getLastDayOfMonth(year: number, monthOneBased: number) {
+  return new Date(year, monthOneBased, 0).getDate();
+}
+
+function buildDueDateKey(year: number, monthOneBased: number, dueDay: number) {
+  const safeDueDay = Math.max(1, Math.min(dueDay, getLastDayOfMonth(year, monthOneBased)));
+  return `${year}-${String(monthOneBased).padStart(2, "0")}-${String(safeDueDay).padStart(2, "0")}`;
+}
+
+function getMonthListWithinRange(start: Date, end: Date) {
+  const months: { year: number; month: number }[] = [];
+  const cursor = new Date(start.getFullYear(), start.getMonth(), 1);
+  const endCursor = new Date(end.getFullYear(), end.getMonth(), 1);
+
+  while (cursor <= endCursor) {
+    months.push({
+      year: cursor.getFullYear(),
+      month: cursor.getMonth() + 1,
+    });
+
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  return months;
+}
+
+function isExpenseScheduleActiveForPeriod(
+  schedule: ExpenseSchedule,
+  currentYear: number,
+  currentMonth: number
+) {
+  const startsOn = schedule.starts_on ? parseDateOnly(schedule.starts_on) : null;
+  const endsOn = schedule.ends_on ? parseDateOnly(schedule.ends_on) : null;
+  const currentDate = new Date(currentYear, currentMonth - 1, 1);
+
+  if (startsOn && currentDate < new Date(startsOn.getFullYear(), startsOn.getMonth(), 1)) {
+    return false;
+  }
+
+  if (endsOn && currentDate > new Date(endsOn.getFullYear(), endsOn.getMonth(), 1)) {
+    return false;
+  }
+
+  const frequency = schedule.frequency_type || "monthly";
+  if (frequency === "monthly") return true;
+
+  if (!startsOn) return true;
+
+  const startIndex = startsOn.getFullYear() * 12 + startsOn.getMonth();
+  const currentIndex = currentYear * 12 + (currentMonth - 1);
+
+  return (currentIndex - startIndex) % 2 === 0;
+}
+
+function getPaymentStatusLabel(status: ExpensePayment["status"]) {
+  if (status === "paid") return "Pagado";
+  if (status === "overdue") return "Vencido";
+  return "Pendiente";
 }
 
 function renderViewTab(
@@ -552,7 +650,7 @@ export default function CalendarPage() {
       supabase
         .from("expense_schedules")
         .select(
-          "id, building_id, unit_id, expense_type, title, vendor_name, responsibility_type, applies_to, amount_estimated, due_day, active, notes"
+          "id, building_id, unit_id, expense_type, title, vendor_name, responsibility_type, applies_to, amount_estimated, due_day, active, notes, frequency_type, starts_on, ends_on, auto_generate"
         )
         .eq("company_id", user.company_id)
         .eq("active", true)
@@ -702,6 +800,11 @@ export default function CalendarPage() {
         ? maintenanceLogs
         : maintenanceLogs.filter((item) => item.building_id === selectedBuildingId);
 
+    const filteredExpenseSchedules =
+      selectedBuildingId === "all"
+        ? expenseSchedules
+        : expenseSchedules.filter((item) => item.building_id === selectedBuildingId);
+
     const filteredExpensePayments =
       selectedBuildingId === "all"
         ? expensePayments
@@ -822,6 +925,7 @@ export default function CalendarPage() {
 
     const paymentEvents: CalendarEvent[] = [];
 
+    // Pagos reales
     filteredExpensePayments.forEach((payment) => {
       const schedule = expenseScheduleMap.get(payment.expense_schedule_id);
       if (!schedule) return;
@@ -842,10 +946,7 @@ export default function CalendarPage() {
       const scopeLabel =
         schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
       const amountLabel = formatCurrency(payment.amount_due);
-
-      let statusLabel = "Pendiente";
-      if (payment.status === "paid") statusLabel = "Pagado";
-      if (payment.status === "overdue") statusLabel = "Vencido";
+      const statusLabel = getPaymentStatusLabel(payment.status);
 
       paymentEvents.push({
         id: `payment-${payment.id}`,
@@ -858,6 +959,66 @@ export default function CalendarPage() {
         colorBackground: PAYMENTS_COLORS.background,
         colorBorder: PAYMENTS_COLORS.border,
         colorText: PAYMENTS_COLORS.text,
+      });
+    });
+
+    // Pagos proyectados
+    const visibleRange = getVisibleRange(referenceDate, viewMode);
+    const visibleMonths = getMonthListWithinRange(visibleRange.start, visibleRange.end);
+
+    const existingRealPaymentKeys = new Set(
+      filteredExpensePayments.map(
+        (payment) => `${payment.expense_schedule_id}-${payment.period_year}-${payment.period_month}`
+      )
+    );
+
+    filteredExpenseSchedules.forEach((schedule) => {
+      if (!schedule.active) return;
+      if (schedule.responsibility_type === "tenant") return;
+
+      const building = buildingMap.get(schedule.building_id);
+      const unit = schedule.unit_id ? unitMap.get(schedule.unit_id) : null;
+
+      const buildingName = building?.name || "Edificio";
+      const unitLabel = unit?.display_code || unit?.unit_number || "General";
+      const scopeLabel =
+        schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
+
+      visibleMonths.forEach(({ year, month }) => {
+        if (!isExpenseScheduleActiveForPeriod(schedule, year, month)) return;
+
+        const realKey = `${schedule.id}-${year}-${month}`;
+        if (existingRealPaymentKeys.has(realKey)) return;
+
+        const projectedDueDate = buildDueDateKey(year, month, schedule.due_day);
+
+        if (
+          projectedDueDate < dateToIsoKey(visibleRange.start) ||
+          projectedDueDate > dateToIsoKey(visibleRange.end)
+        ) {
+          return;
+        }
+
+        const dueDayKey = getDayKeyFromDateValue(projectedDueDate);
+        if (!projectedDueDate || dueDayKey === "sunday") return;
+
+        const amountLabel =
+          schedule.amount_estimated !== null
+            ? formatCurrency(schedule.amount_estimated)
+            : "Sin monto estimado";
+
+        paymentEvents.push({
+          id: `projected-payment-${schedule.id}-${year}-${month}`,
+          module: "payments",
+          recurrence: "dated",
+          dayKey: dueDayKey,
+          isoDate: projectedDueDate,
+          title: `${schedule.title} · Proyectado`,
+          subtitle: `${buildingName} · ${scopeLabel} · ${amountLabel}`,
+          colorBackground: PAYMENTS_PROJECTED_COLORS.background,
+          colorBorder: PAYMENTS_PROJECTED_COLORS.border,
+          colorText: PAYMENTS_PROJECTED_COLORS.text,
+        });
       });
     });
 
@@ -910,6 +1071,7 @@ export default function CalendarPage() {
       ...paymentEvents,
       ...collectionEvents,
     ].sort((a, b) => {
+      if (a.isoDate !== b.isoDate) return a.isoDate.localeCompare(b.isoDate);
       if (a.module !== b.module) return a.module.localeCompare(b.module);
       return a.title.localeCompare(b.title);
     });
@@ -925,6 +1087,8 @@ export default function CalendarPage() {
     collectionSchedules,
     collectionRecords,
     selectedBuildingId,
+    referenceDate,
+    viewMode,
   ]);
 
   const events = useMemo(() => {
@@ -1692,7 +1856,24 @@ export default function CalendarPage() {
               }}
             />
             <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-              Pagos
+              Pagos reales
+            </span>
+          </div>
+        </AppCard>
+
+        <AppCard>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 999,
+                background: "#93C5FD",
+                flexShrink: 0,
+              }}
+            />
+            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+              Pagos proyectados
             </span>
           </div>
         </AppCard>
