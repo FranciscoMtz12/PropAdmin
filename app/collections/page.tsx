@@ -36,7 +36,6 @@ import {
   CheckCircle2,
   Clock3,
   Eye,
-  FileText,
   Filter,
   Landmark,
   Plus,
@@ -71,15 +70,27 @@ type Unit = {
   display_code: string | null;
 };
 
+type AppUser = {
+  id: string;
+  company_id: string;
+  full_name: string | null;
+  email: string | null;
+  is_superadmin: boolean | null;
+  created_at: string;
+};
+
 type Lease = {
   id: string;
   unit_id: string | null;
-  tenant_name: string | null;
-  tenant_email: string | null;
+  tenant_id: string | null;
+  responsible_payer_id: string | null;
   billing_name: string | null;
   billing_email: string | null;
-  responsible_payer_id: string | null;
   due_day: number | null;
+  rent_amount: number | null;
+  status: string | null;
+  start_date: string | null;
+  end_date: string | null;
 };
 
 type CollectionChargeType =
@@ -253,7 +264,8 @@ function parseDateOnly(dateKey: string) {
 function formatDate(dateKey: string | null) {
   if (!dateKey) return "Sin fecha";
 
-  const date = parseDateOnly(dateKey.slice(0, 10));
+  const safeDate = dateKey.length >= 10 ? dateKey.slice(0, 10) : dateKey;
+  const date = parseDateOnly(safeDate);
 
   return `${date.getDate()} ${MONTH_LABELS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -292,9 +304,7 @@ function formatDecimalInput(value: string) {
 
   return (
     sanitized.slice(0, firstDot + 1) +
-    sanitized
-      .slice(firstDot + 1)
-      .replace(/\./g, "")
+    sanitized.slice(firstDot + 1).replace(/\./g, "")
   );
 }
 
@@ -352,6 +362,11 @@ function parsePositiveNumber(value: string) {
   return parsed;
 }
 
+function getUserDisplayLabel(user: AppUser | null | undefined) {
+  if (!user) return null;
+  return user.full_name || user.email || null;
+}
+
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
@@ -361,6 +376,7 @@ export default function CollectionsPage() {
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
   const [leases, setLeases] = useState<Lease[]>([]);
   const [collectionSchedules, setCollectionSchedules] = useState<CollectionSchedule[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
@@ -400,6 +416,7 @@ export default function CollectionsPage() {
     const [
       buildingsRes,
       unitsRes,
+      appUsersRes,
       leasesRes,
       schedulesRes,
       recordsRes,
@@ -418,9 +435,14 @@ export default function CollectionsPage() {
         .eq("company_id", user.company_id),
 
       supabase
+        .from("app_users")
+        .select("id, company_id, full_name, email, is_superadmin, created_at")
+        .eq("company_id", user.company_id),
+
+      supabase
         .from("leases")
         .select(
-          "id, unit_id, tenant_name, tenant_email, billing_name, billing_email, responsible_payer_id, due_day"
+          "id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, status, start_date, end_date"
         )
         .eq("company_id", user.company_id),
 
@@ -470,6 +492,12 @@ export default function CollectionsPage() {
       return;
     }
 
+    if (appUsersRes.error) {
+      setMessage("No se pudieron cargar los usuarios.");
+      setLoadingPage(false);
+      return;
+    }
+
     if (leasesRes.error) {
       setMessage("No se pudieron cargar los contratos.");
       setLoadingPage(false);
@@ -502,6 +530,7 @@ export default function CollectionsPage() {
 
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
+    setAppUsers((appUsersRes.data as AppUser[]) || []);
     setLeases((leasesRes.data as Lease[]) || []);
     setCollectionSchedules((schedulesRes.data as CollectionSchedule[]) || []);
     setCollectionRecords((recordsRes.data as CollectionRecord[]) || []);
@@ -513,6 +542,7 @@ export default function CollectionsPage() {
   const collectionRows = useMemo<CollectionRow[]>(() => {
     const buildingMap = new Map<string, Building>();
     const unitMap = new Map<string, Unit>();
+    const userMap = new Map<string, AppUser>();
     const leaseMap = new Map<string, Lease>();
     const scheduleMap = new Map<string, CollectionSchedule>();
     const paymentsByRecordId = new Map<string, CollectionPayment[]>();
@@ -520,6 +550,7 @@ export default function CollectionsPage() {
 
     buildings.forEach((building) => buildingMap.set(building.id, building));
     units.forEach((unit) => unitMap.set(unit.id, unit));
+    appUsers.forEach((appUser) => userMap.set(appUser.id, appUser));
     leases.forEach((lease) => leaseMap.set(lease.id, lease));
     collectionSchedules.forEach((schedule) => scheduleMap.set(schedule.id, schedule));
 
@@ -541,21 +572,31 @@ export default function CollectionsPage() {
         const schedule = scheduleMap.get(record.collection_schedule_id);
         if (!schedule) return null;
 
-        const building = buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
+        const building =
+          buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
         const unit = unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
         const lease =
           (record.lease_id ? leaseMap.get(record.lease_id) : null) ||
           (schedule.lease_id ? leaseMap.get(schedule.lease_id) : null);
 
-        const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
-        const tenantLabel =
-          lease?.tenant_name || lease?.tenant_email || "Sin inquilino asignado";
+        const tenantUser = lease?.tenant_id ? userMap.get(lease.tenant_id) : null;
+        const responsiblePayerUser = lease?.responsible_payer_id
+          ? userMap.get(lease.responsible_payer_id)
+          : null;
 
-        const responsiblePayerLabel =
+        const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
+
+        const tenantLabel =
+          getUserDisplayLabel(tenantUser) ||
           lease?.billing_name ||
           lease?.billing_email ||
-          lease?.tenant_name ||
-          lease?.tenant_email ||
+          "Sin inquilino asignado";
+
+        const responsiblePayerLabel =
+          getUserDisplayLabel(responsiblePayerUser) ||
+          lease?.billing_name ||
+          lease?.billing_email ||
+          getUserDisplayLabel(tenantUser) ||
           "Sin responsable definido";
 
         const paidAmount =
@@ -598,6 +639,7 @@ export default function CollectionsPage() {
   }, [
     buildings,
     units,
+    appUsers,
     leases,
     collectionSchedules,
     collectionRecords,
@@ -626,7 +668,8 @@ export default function CollectionsPage() {
   const selectedBuildingLabel =
     selectedBuildingId === "all"
       ? "Todos los edificios"
-      : buildings.find((building) => building.id === selectedBuildingId)?.name || "Edificio";
+      : buildings.find((building) => building.id === selectedBuildingId)?.name ||
+        "Edificio";
 
   const totalRecords = filteredRows.length;
   const collectedCount = filteredRows.filter((row) => row.status === "collected").length;
@@ -644,7 +687,8 @@ export default function CollectionsPage() {
     const nextPending = filteredRows
       .filter(
         (row) =>
-          (row.status === "pending" || row.status === "partial") && row.dueDate >= todayKey
+          (row.status === "pending" || row.status === "partial") &&
+          row.dueDate >= todayKey
       )
       .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
 
