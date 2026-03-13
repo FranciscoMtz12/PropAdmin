@@ -4,26 +4,25 @@
   Calendario global del sistema.
 
   Esta versión integra:
-  - Limpieza
+  - Limpieza interior de unidades / departamentos
   - Mantenimiento
   - Pagos administrativos
   - Cobranza
 
-  Corrección aplicada:
-  - La consulta a leases ahora es tolerante con el esquema real.
-  - Ya no depende de columnas fijas como tenant_name o tenant_email.
-  - Esto evita que se rompa toda la carga del calendario si leases cambia.
+  Decisión funcional aplicada:
+  - En el calendario global YA NO se muestran limpiezas de edificio
+    como exterior o áreas comunes.
+  - Aquí solo se muestran limpiezas internas de unidad / departamento
+    para mantener la vista más concisa y enfocada en pendientes cambiantes.
+  - Las limpiezas de edificio se siguen reservando para el módulo propio
+    de Limpieza, donde sí tiene sentido verlas con más detalle.
 
-  Mejora aplicada:
-  - El calendario ahora muestra pagos reales desde expense_payments.
-  - También muestra pagos proyectados desde expense_schedules cuando todavía
-    no existe un registro real para ese periodo.
-  - Los pagos proyectados usan un estilo visual más ligero para distinguirse.
-
-  Mejora visual aplicada:
-  - Vista semanal y mensual con eventos compactos de una sola línea.
-  - Hover para mostrar tooltip rápido con el detalle principal.
-  - Click para abrir un modal con el detalle completo del evento.
+  Otras mejoras activas:
+  - Consulta de leases tolerante al esquema real.
+  - Pagos reales + pagos proyectados.
+  - Vista semanal y mensual con eventos compactos.
+  - Hover tooltip.
+  - Click para abrir modal de detalle.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -810,11 +809,8 @@ export default function CalendarPage() {
     expenseSchedules.forEach((schedule) => expenseScheduleMap.set(schedule.id, schedule));
     collectionSchedules.forEach((schedule) => collectionScheduleMap.set(schedule.id, schedule));
 
-    const filteredBuildingSchedules =
-      selectedBuildingId === "all"
-        ? buildingSchedules
-        : buildingSchedules.filter((item) => item.building_id === selectedBuildingId);
-
+    // Aunque cargamos buildingSchedules por compatibilidad y continuidad del módulo,
+    // en el calendario global ya NO los usamos para generar eventos.
     const filteredUnitSchedules =
       selectedBuildingId === "all"
         ? unitSchedules
@@ -840,38 +836,7 @@ export default function CalendarPage() {
         ? collectionRecords
         : collectionRecords.filter((item) => item.building_id === selectedBuildingId);
 
-    const buildingEvents: CalendarEvent[] = filteredBuildingSchedules
-      .filter((schedule) => schedule.day_of_week !== "sunday")
-      .map((schedule) => {
-        const building = buildingMap.get(schedule.building_id);
-        const buildingName = building?.name || "Edificio";
-        const typeLabel =
-          schedule.cleaning_type === "exterior" ? "Exterior" : "Áreas comunes";
-        const blockLabel =
-          schedule.time_block === "morning" ? "Mañana" : "Tarde";
-
-        return {
-          id: `building-${schedule.id}`,
-          module: "cleaning",
-          recurrence: "recurring",
-          dayKey: schedule.day_of_week,
-          isoDate: "",
-          title: `${buildingName} · ${typeLabel}`,
-          compactLabel: `${typeLabel}`,
-          subtitle: blockLabel,
-          colorBackground: CLEANING_COLORS.background,
-          colorBorder: CLEANING_COLORS.border,
-          colorText: CLEANING_COLORS.text,
-          detailItems: [
-            { label: "Módulo", value: "Limpieza" },
-            { label: "Edificio", value: buildingName },
-            { label: "Tipo", value: typeLabel },
-            { label: "Bloque", value: blockLabel },
-            { label: "Frecuencia", value: `${DAY_LABELS[schedule.day_of_week]}` },
-          ],
-        };
-      });
-
+    // Solo limpieza interior de unidad / departamento
     const unitEvents: CalendarEvent[] = filteredUnitSchedules
       .filter((schedule) => schedule.day_of_week !== "sunday")
       .map((schedule) => {
@@ -897,6 +862,7 @@ export default function CalendarPage() {
           colorText: CLEANING_COLORS.text,
           detailItems: [
             { label: "Módulo", value: "Limpieza" },
+            { label: "Tipo", value: "Limpieza interior" },
             { label: "Edificio", value: buildingName },
             { label: "Unidad", value: unitLabel },
             { label: "Hora", value: hourLabel },
@@ -1177,7 +1143,6 @@ export default function CalendarPage() {
     });
 
     return [
-      ...buildingEvents,
       ...unitEvents,
       ...maintenanceEvents,
       ...paymentEvents,
@@ -1372,10 +1337,13 @@ export default function CalendarPage() {
     target: HTMLButtonElement
   ) {
     const rect = target.getBoundingClientRect();
+    const maxLeft =
+      typeof window !== "undefined" ? Math.max(12, window.innerWidth - 320) : rect.left;
+
     setHoveredEvent({
       event,
       top: rect.bottom + 8,
-      left: rect.left,
+      left: Math.min(rect.left, maxLeft),
     });
   }
 
@@ -1977,7 +1945,7 @@ export default function CalendarPage() {
               }}
             />
             <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
-              Limpieza
+              Limpieza interior de unidad
             </span>
           </div>
         </AppCard>
@@ -2056,7 +2024,7 @@ export default function CalendarPage() {
           style={{
             position: "fixed",
             top: hoveredEvent.top,
-            left: Math.min(hoveredEvent.left, window.innerWidth - 320),
+            left: hoveredEvent.left,
             width: 300,
             zIndex: 2000,
             pointerEvents: "none",
