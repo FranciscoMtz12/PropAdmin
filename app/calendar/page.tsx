@@ -23,10 +23,14 @@
   - Vista semanal y mensual con eventos compactos.
   - Hover tooltip.
   - Click para abrir modal de detalle.
-
-  Mejora visual aplicada en esta versión:
-  - El modal de detalle ahora respeta colores por estado en pagos y cobranza.
+  - El modal de detalle respeta colores por estado en pagos y cobranza.
   - El día actual en vista mensual se resalta visualmente.
+
+  Mejora aplicada en esta versión:
+  - En vista mensual, cuando hay más eventos de los visibles,
+    el texto "+ X más" abre un popup por día.
+  - Ese popup muestra todos los eventos del día con scroll.
+  - Desde ese popup se puede abrir el detalle individual de cada evento.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -221,6 +225,12 @@ type HoveredEventState = {
   left: number;
 };
 
+type DayEventsModalState = {
+  isoDate: string;
+  label: string;
+  events: CalendarEvent[];
+};
+
 const DAY_ORDER = [
   "monday",
   "tuesday",
@@ -386,6 +396,12 @@ function formatCurrency(amount: number) {
     currency: "MXN",
     maximumFractionDigits: 2,
   }).format(amount || 0);
+}
+
+function formatFullDate(dateKey: string) {
+  if (!dateKey) return "Sin fecha";
+  const date = parseDateOnly(dateKey);
+  return `${date.getDate()} ${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
 }
 
 function pickFirstString(row: LeaseRow, keys: string[]) {
@@ -648,11 +664,12 @@ export default function CalendarPage() {
 
   const [hoveredEvent, setHoveredEvent] = useState<HoveredEventState | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [dayEventsModal, setDayEventsModal] = useState<DayEventsModalState | null>(null);
 
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
-    loadCalendarData();
+    void loadCalendarData();
   }, [loading, user?.company_id]);
 
   async function loadCalendarData() {
@@ -1383,6 +1400,15 @@ export default function CalendarPage() {
     setHoveredEvent(null);
   }
 
+  function openDayEventsModal(isoDate: string, dayLabel: string, dayEvents: CalendarEvent[]) {
+    setHoveredEvent(null);
+    setDayEventsModal({
+      isoDate,
+      label: dayLabel,
+      events: dayEvents,
+    });
+  }
+
   const currentLabel =
     viewMode === "week"
       ? formatWeekRange(weekStart)
@@ -1868,15 +1894,28 @@ export default function CalendarPage() {
                           ))}
 
                           {dayEvents.length > 5 ? (
-                            <span
+                            <button
+                              type="button"
+                              onClick={() =>
+                                openDayEventsModal(
+                                  day.isoDate,
+                                  `${day.dayNumber} · ${day.label}`,
+                                  dayEvents
+                                )
+                              }
                               style={{
+                                border: "none",
+                                background: "transparent",
+                                padding: 0,
+                                textAlign: "left",
                                 fontSize: 10.5,
                                 fontWeight: 700,
                                 color: "#6B7280",
+                                cursor: "pointer",
                               }}
                             >
                               + {dayEvents.length - 5} más
-                            </span>
+                            </button>
                           ) : null}
                         </div>
                       )}
@@ -2154,6 +2193,141 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : null}
+
+      <Modal
+        open={Boolean(dayEventsModal)}
+        title={
+          dayEventsModal
+            ? `Eventos del día · ${dayEventsModal.label}`
+            : "Eventos del día"
+        }
+        onClose={() => setDayEventsModal(null)}
+      >
+        {dayEventsModal ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div
+              style={{
+                borderRadius: 14,
+                border: "1px solid #E5E7EB",
+                background: "#F9FAFB",
+                padding: 14,
+                display: "grid",
+                gap: 6,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 14,
+                  fontWeight: 800,
+                  color: "#111827",
+                }}
+              >
+                {formatFullDate(dayEventsModal.isoDate)}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#6B7280",
+                }}
+              >
+                {dayEventsModal.events.length} evento
+                {dayEventsModal.events.length === 1 ? "" : "s"}
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "grid",
+                gap: 10,
+                maxHeight: 420,
+                overflowY: "auto",
+                paddingRight: 4,
+              }}
+            >
+              {dayEventsModal.events.map((event) => (
+                <button
+                  key={`${event.id}-day-modal`}
+                  type="button"
+                  onClick={() => {
+                    setDayEventsModal(null);
+                    setSelectedEvent(event);
+                  }}
+                  style={{
+                    borderRadius: 12,
+                    border: `1px solid ${event.colorBorder}`,
+                    background: event.colorBackground,
+                    padding: 12,
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    width: "100%",
+                    textAlign: "left",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 30,
+                      height: 30,
+                      borderRadius: 9,
+                      display: "grid",
+                      placeItems: "center",
+                      background: "#FFFFFF",
+                      color: event.colorText,
+                      border: `1px solid ${event.colorBorder}`,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {getEventIcon(event)}
+                  </div>
+
+                  <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
+                    <div
+                      style={{
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: event.colorText,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {event.title}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: event.colorText,
+                        opacity: 0.9,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {event.subtitle}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#6B7280",
+                        marginTop: 2,
+                      }}
+                    >
+                      {getModuleLabel(event.module)}
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <UiButton onClick={() => setDayEventsModal(null)}>Cerrar</UiButton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
 
       <Modal
         open={Boolean(selectedEvent)}
