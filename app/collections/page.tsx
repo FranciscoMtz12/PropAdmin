@@ -737,17 +737,17 @@ export default function CollectionsPage() {
     const amount = parsePositiveNumber(paymentForm.amount);
 
     if (!amount) {
-      showToast("Ingresa un monto válido para el abono.", "error");
+      showToast({ type: "error", message: "Ingresa un monto válido para el abono." });
       return;
     }
 
     if (amount > row.balance) {
-      showToast("El abono no puede ser mayor al saldo pendiente.", "error");
+      showToast({ type: "error", message: "El abono no puede ser mayor al saldo pendiente." });
       return;
     }
 
     if (!paymentForm.paidAt) {
-      showToast("Selecciona la fecha del abono.", "error");
+      showToast({ type: "error", message: "Selecciona la fecha del abono." });
       return;
     }
 
@@ -767,7 +767,7 @@ export default function CollectionsPage() {
     });
 
     if (insertRes.error) {
-      showToast("No se pudo registrar el abono.", "error");
+      showToast({ type: "error", message: "No se pudo registrar el abono." });
       setSavingPayment(false);
       return;
     }
@@ -777,7 +777,7 @@ export default function CollectionsPage() {
     setSavingPayment(false);
     setPaymentRecordId(null);
 
-    showToast("Abono registrado correctamente.", "success");
+    showToast({ type: "success", message: "Abono registrado correctamente." });
   }
 
   const paymentRow = paymentRecordId

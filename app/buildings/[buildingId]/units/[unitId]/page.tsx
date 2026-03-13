@@ -7,12 +7,21 @@
   - AppTabs para separar resumen / lease / assets / historial
   - AppStatBar para visualizar el estado de los assets del departamento
   - cards y accesos rápidos con el mismo design system de PropAdmin
+  - CRUD básico de lease dentro del detalle de la unidad
 
   Cambio importante:
-  - La consulta de assets ahora excluye registros con soft delete:
+  - La consulta de assets excluye soft delete:
     .is("deleted_at", null)
 
-  Así esta página ya no cuenta ni muestra assets eliminados lógicamente.
+  Cambio importante de leases:
+  - ya no depende de una relación antigua tipo tenants(...)
+  - ahora usa app_users para resolver:
+    - tenant_id
+    - responsible_payer_id
+
+  Objetivo actual:
+  - poder crear, editar y finalizar leases directamente desde la unidad
+  - dejar lista la base para después conectar cobranza automáticamente
 */
 
 import {
@@ -30,7 +39,10 @@ import {
   Home,
   Layers3,
   Package,
+  Pencil,
+  Plus,
   Users,
+  XCircle,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -46,6 +58,7 @@ import AppTabs from "@/components/AppTabs";
 import AppStatBar from "@/components/AppStatBar";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
+import AppSelect from "@/components/AppSelect";
 
 type Building = {
   id: string;
@@ -73,17 +86,28 @@ type UnitDetail = {
   unit_types: { name: string } | null;
 };
 
+type AppUser = {
+  id: string;
+  company_id: string;
+  full_name: string | null;
+  email: string | null;
+  phone: string | null;
+};
+
 type LeaseRow = {
   id: string;
-  status: string;
-  start_date: string;
+  company_id: string;
+  unit_id: string | null;
+  tenant_id: string | null;
+  responsible_payer_id: string | null;
+  billing_name: string | null;
+  billing_email: string | null;
+  due_day: number | null;
+  rent_amount: number | null;
+  status: string | null;
+  start_date: string | null;
   end_date: string | null;
-  rent_amount: number;
-  tenants: {
-    full_name: string;
-    email: string | null;
-    phone: string | null;
-  } | null;
+  created_at: string;
 };
 
 type AssetMiniRow = {
@@ -93,6 +117,18 @@ type AssetMiniRow = {
   asset_type: string;
 };
 
+type LeaseFormState = {
+  tenantId: string;
+  responsiblePayerId: string;
+  billingName: string;
+  billingEmail: string;
+  rentAmount: string;
+  dueDay: string;
+  startDate: string;
+  endDate: string;
+  status: "ACTIVE" | "ENDED";
+};
+
 const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
@@ -100,6 +136,16 @@ const inputStyle: CSSProperties = {
   border: "1px solid #E5E7EB",
   background: "#FFFFFF",
   outline: "none",
+};
+
+const textareaStyle: CSSProperties = {
+  width: "100%",
+  padding: "12px 14px",
+  borderRadius: "12px",
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+  outline: "none",
+  resize: "vertical",
 };
 
 const labelStyle: CSSProperties = {
@@ -122,6 +168,22 @@ function formatDate(dateValue: string | null) {
   } catch {
     return dateValue;
   }
+}
+
+function formatCurrency(amount: number | null) {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+    maximumFractionDigits: 2,
+  }).format(amount || 0);
+}
+
+function getTodayDateInput() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 }
 
 function getUnitStatusLabel(status: string) {
@@ -161,6 +223,24 @@ function getAssetStatusColor(status: string) {
   return "#CBD5E1";
 }
 
+function getLeaseStatusLabel(status: string | null) {
+  if (status === "ACTIVE") return "Activo";
+  if (status === "ENDED") return "Finalizado";
+  return status || "Sin estatus";
+}
+
+function getLeaseStatusColors(status: string | null) {
+  if (status === "ACTIVE") {
+    return { background: "#DBEAFE", color: "#1D4ED8" };
+  }
+
+  if (status === "ENDED") {
+    return { background: "#F3F4F6", color: "#374151" };
+  }
+
+  return { background: "#F3F4F6", color: "#374151" };
+}
+
 function StatusPill({ status }: { status: string }) {
   const colors = getUnitStatusColors(status);
 
@@ -178,6 +258,27 @@ function StatusPill({ status }: { status: string }) {
       }}
     >
       {getUnitStatusLabel(status)}
+    </span>
+  );
+}
+
+function LeaseStatusPill({ status }: { status: string | null }) {
+  const colors = getLeaseStatusColors(status);
+
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        borderRadius: "999px",
+        padding: "6px 10px",
+        fontSize: "12px",
+        fontWeight: 700,
+        background: colors.background,
+        color: colors.color,
+      }}
+    >
+      {getLeaseStatusLabel(status)}
     </span>
   );
 }
@@ -225,6 +326,25 @@ function InfoStatCard({
   );
 }
 
+function getUserDisplayName(user: AppUser | null | undefined) {
+  if (!user) return "Sin usuario";
+  return user.full_name || user.email || "Sin usuario";
+}
+
+function emptyLeaseForm(): LeaseFormState {
+  return {
+    tenantId: "",
+    responsiblePayerId: "",
+    billingName: "",
+    billingEmail: "",
+    rentAmount: "",
+    dueDay: "",
+    startDate: getTodayDateInput(),
+    endDate: "",
+    status: "ACTIVE",
+  };
+}
+
 export default function UnitDetailPage() {
   const router = useRouter();
   const params = useParams();
@@ -237,6 +357,7 @@ export default function UnitDetailPage() {
   const [building, setBuilding] = useState<Building | null>(null);
   const [unit, setUnit] = useState<UnitDetail | null>(null);
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
+  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
   const [leaseHistory, setLeaseHistory] = useState<LeaseRow[]>([]);
   const [assets, setAssets] = useState<AssetMiniRow[]>([]);
 
@@ -247,6 +368,11 @@ export default function UnitDetailPage() {
 
   const [activeTab, setActiveTab] = useState("summary");
   const [showEditForm, setShowEditForm] = useState(false);
+
+  const [showLeaseModal, setShowLeaseModal] = useState(false);
+  const [editingLeaseId, setEditingLeaseId] = useState<string | null>(null);
+  const [leaseForm, setLeaseForm] = useState<LeaseFormState>(emptyLeaseForm());
+
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -322,6 +448,7 @@ export default function UnitDetailPage() {
 
     const [
       { data: unitTypeData, error: unitTypeError },
+      { data: appUsersData, error: appUsersError },
       { data: leaseData, error: leaseError },
       { data: assetData, error: assetError },
     ] = await Promise.all([
@@ -332,16 +459,18 @@ export default function UnitDetailPage() {
         .order("created_at", { ascending: false }),
 
       supabase
+        .from("app_users")
+        .select("id, company_id, full_name, email, phone")
+        .eq("company_id", user.company_id)
+        .order("full_name", { ascending: true }),
+
+      supabase
         .from("leases")
-        .select(`
-          id,
-          status,
-          start_date,
-          end_date,
-          rent_amount,
-          tenants(full_name, email, phone)
-        `)
+        .select(
+          "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, status, start_date, end_date, created_at"
+        )
         .eq("unit_id", unitId)
+        .eq("company_id", user.company_id)
         .order("created_at", { ascending: false }),
 
       supabase
@@ -359,6 +488,12 @@ export default function UnitDetailPage() {
       return;
     }
 
+    if (appUsersError) {
+      setMsg("No se pudieron cargar los usuarios.");
+      setLoadingData(false);
+      return;
+    }
+
     if (leaseError) {
       setMsg("No se pudo cargar el historial del departamento.");
       setLoadingData(false);
@@ -372,7 +507,8 @@ export default function UnitDetailPage() {
     }
 
     setUnitTypes((unitTypeData as UnitType[]) || []);
-    setLeaseHistory((leaseData as unknown as LeaseRow[]) || []);
+    setAppUsers((appUsersData as AppUser[]) || []);
+    setLeaseHistory((leaseData as LeaseRow[]) || []);
     setAssets((assetData as AssetMiniRow[]) || []);
     setLoadingData(false);
   }
@@ -464,6 +600,10 @@ export default function UnitDetailPage() {
     [leaseHistory]
   );
 
+  const appUsersMap = useMemo(() => {
+    return new Map(appUsers.map((appUser) => [appUser.id, appUser]));
+  }, [appUsers]);
+
   const assetStatusSegments = useMemo(() => {
     const grouped = assets.reduce<Record<string, number>>((acc, asset) => {
       const key = asset.status || "UNKNOWN";
@@ -477,6 +617,208 @@ export default function UnitDetailPage() {
       color: getAssetStatusColor(segmentStatus),
     }));
   }, [assets]);
+
+  function openCreateLease() {
+    if (activeLease) {
+      setMsg("Primero debes finalizar el lease activo antes de crear uno nuevo.");
+      return;
+    }
+
+    setEditingLeaseId(null);
+    setLeaseForm(emptyLeaseForm());
+    setShowLeaseModal(true);
+    setMsg("");
+  }
+
+  function openEditLease(lease: LeaseRow) {
+    setEditingLeaseId(lease.id);
+    setLeaseForm({
+      tenantId: lease.tenant_id || "",
+      responsiblePayerId: lease.responsible_payer_id || "",
+      billingName: lease.billing_name || "",
+      billingEmail: lease.billing_email || "",
+      rentAmount:
+        lease.rent_amount !== null && lease.rent_amount !== undefined
+          ? String(lease.rent_amount)
+          : "",
+      dueDay:
+        lease.due_day !== null && lease.due_day !== undefined
+          ? String(lease.due_day)
+          : "",
+      startDate: lease.start_date || getTodayDateInput(),
+      endDate: lease.end_date || "",
+      status: lease.status === "ENDED" ? "ENDED" : "ACTIVE",
+    });
+    setShowLeaseModal(true);
+    setMsg("");
+  }
+
+  function closeLeaseModal() {
+    if (saving) return;
+    setShowLeaseModal(false);
+    setEditingLeaseId(null);
+    setLeaseForm(emptyLeaseForm());
+  }
+
+  async function handleSaveLease(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg("");
+
+    if (!user?.company_id || !unit) {
+      setMsg("No se encontró el contexto necesario para guardar el lease.");
+      return;
+    }
+
+    if (!leaseForm.tenantId) {
+      setMsg("Debes seleccionar un inquilino.");
+      return;
+    }
+
+    const rentAmountNumber = Number(leaseForm.rentAmount);
+    if (!Number.isFinite(rentAmountNumber) || rentAmountNumber <= 0) {
+      setMsg("La renta debe ser un monto válido mayor a cero.");
+      return;
+    }
+
+    if (!leaseForm.startDate) {
+      setMsg("Debes seleccionar una fecha de inicio.");
+      return;
+    }
+
+    if (leaseForm.endDate && leaseForm.endDate < leaseForm.startDate) {
+      setMsg("La fecha de fin no puede ser menor a la fecha de inicio.");
+      return;
+    }
+
+    const dueDayNumber = leaseForm.dueDay ? Number(leaseForm.dueDay) : null;
+
+    if (
+      dueDayNumber !== null &&
+      (!Number.isInteger(dueDayNumber) || dueDayNumber < 1 || dueDayNumber > 31)
+    ) {
+      setMsg("El día de vencimiento debe estar entre 1 y 31.");
+      return;
+    }
+
+    if (
+      leaseForm.status === "ACTIVE" &&
+      activeLease &&
+      activeLease.id !== editingLeaseId
+    ) {
+      setMsg("Ya existe un lease activo en esta unidad. Finalízalo antes de crear otro.");
+      return;
+    }
+
+    setSaving(true);
+
+    if (editingLeaseId) {
+      const { error: updateLeaseError } = await supabase
+        .from("leases")
+        .update({
+          tenant_id: leaseForm.tenantId,
+          responsible_payer_id: leaseForm.responsiblePayerId || null,
+          billing_name: leaseForm.billingName.trim() || null,
+          billing_email: leaseForm.billingEmail.trim() || null,
+          due_day: dueDayNumber,
+          rent_amount: rentAmountNumber,
+          start_date: leaseForm.startDate,
+          end_date: leaseForm.endDate || null,
+          status: leaseForm.status,
+        })
+        .eq("id", editingLeaseId)
+        .eq("company_id", user.company_id);
+
+      if (updateLeaseError) {
+        setSaving(false);
+        setMsg(updateLeaseError.message);
+        return;
+      }
+    } else {
+      const { error: insertLeaseError } = await supabase.from("leases").insert({
+        company_id: user.company_id,
+        unit_id: unit.id,
+        tenant_id: leaseForm.tenantId,
+        responsible_payer_id: leaseForm.responsiblePayerId || null,
+        billing_name: leaseForm.billingName.trim() || null,
+        billing_email: leaseForm.billingEmail.trim() || null,
+        due_day: dueDayNumber,
+        rent_amount: rentAmountNumber,
+        start_date: leaseForm.startDate,
+        end_date: leaseForm.endDate || null,
+        status: leaseForm.status,
+      });
+
+      if (insertLeaseError) {
+        setSaving(false);
+        setMsg(insertLeaseError.message);
+        return;
+      }
+    }
+
+    if (leaseForm.status === "ACTIVE") {
+      await supabase
+        .from("units")
+        .update({ status: "RENTED" })
+        .eq("id", unit.id)
+        .eq("company_id", user.company_id);
+    }
+
+    if (leaseForm.status === "ENDED") {
+      const hasAnotherActive =
+        leaseHistory.some(
+          (lease) => lease.id !== editingLeaseId && lease.status === "ACTIVE"
+        ) || false;
+
+      if (!hasAnotherActive) {
+        await supabase
+          .from("units")
+          .update({ status: "VACANT" })
+          .eq("id", unit.id)
+          .eq("company_id", user.company_id);
+      }
+    }
+
+    setSaving(false);
+    setShowLeaseModal(false);
+    setEditingLeaseId(null);
+    setLeaseForm(emptyLeaseForm());
+    setMsg(editingLeaseId ? "Lease actualizado correctamente." : "Lease creado correctamente.");
+    await loadPageData();
+  }
+
+  async function handleFinishActiveLease() {
+    if (!user?.company_id || !activeLease || !unit) return;
+
+    setSaving(true);
+    setMsg("");
+
+    const today = getTodayDateInput();
+
+    const { error } = await supabase
+      .from("leases")
+      .update({
+        status: "ENDED",
+        end_date: activeLease.end_date || today,
+      })
+      .eq("id", activeLease.id)
+      .eq("company_id", user.company_id);
+
+    if (error) {
+      setSaving(false);
+      setMsg(error.message);
+      return;
+    }
+
+    await supabase
+      .from("units")
+      .update({ status: "VACANT" })
+      .eq("id", unit.id)
+      .eq("company_id", user.company_id);
+
+    setSaving(false);
+    setMsg("Lease finalizado correctamente.");
+    await loadPageData();
+  }
 
   if (loading || loadingData) {
     return (
@@ -523,7 +865,6 @@ export default function UnitDetailPage() {
     <PageContainer>
       <PageHeader
         title={`Departamento ${unit.display_code || unit.unit_number}`}
-        subtitle={`Detalle operativo del departamento dentro de ${building.name}.`}
         actions={
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <UiButton onClick={() => router.push(`/buildings/${buildingId}/units`)}>
@@ -541,7 +882,7 @@ export default function UnitDetailPage() {
         }
       />
 
-      {msg && !showEditForm ? (
+      {msg && !showEditForm && !showLeaseModal ? (
         <AppCard>
           <div style={{ color: "#1D4ED8", fontWeight: 600 }}>{msg}</div>
         </AppCard>
@@ -603,10 +944,7 @@ export default function UnitDetailPage() {
 
       {activeTab === "summary" ? (
         <div style={{ display: "grid", gap: "18px", marginTop: "18px" }}>
-          <SectionCard
-            title="Resumen del departamento"
-            subtitle="Vista general del estado actual y datos base."
-          >
+          <SectionCard title="Resumen del departamento">
             <div style={{ display: "grid", gap: "18px" }}>
               <AppStatBar
                 title="Distribución de assets por estatus"
@@ -620,32 +958,22 @@ export default function UnitDetailPage() {
               <AppGrid minWidth={240}>
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Número
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {unit.unit_number}
-                    </div>
+                    <div style={miniLabelStyle}>Número</div>
+                    <div style={miniValueStyle}>{unit.unit_number}</div>
                   </div>
                 </AppCard>
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Código visible
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {unit.display_code || "Sin código"}
-                    </div>
+                    <div style={miniLabelStyle}>Código visible</div>
+                    <div style={miniValueStyle}>{unit.display_code || "Sin código"}</div>
                   </div>
                 </AppCard>
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Tipología
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
+                    <div style={miniLabelStyle}>Tipología</div>
+                    <div style={miniValueStyle}>
                       {unit.unit_types?.name || "Sin tipología"}
                     </div>
                   </div>
@@ -653,12 +981,8 @@ export default function UnitDetailPage() {
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Piso
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {unit.floor ?? "Sin piso"}
-                    </div>
+                    <div style={miniLabelStyle}>Piso</div>
+                    <div style={miniValueStyle}>{unit.floor ?? "Sin piso"}</div>
                   </div>
                 </AppCard>
               </AppGrid>
@@ -684,23 +1008,8 @@ export default function UnitDetailPage() {
                     }}
                   >
                     <div>
-                      <div
-                        style={{
-                          fontSize: "14px",
-                          fontWeight: 700,
-                          color: "#111827",
-                        }}
-                      >
-                        Assets del departamento
-                      </div>
-                      <div
-                        style={{
-                          marginTop: "4px",
-                          fontSize: "13px",
-                          color: "#6B7280",
-                          fontWeight: 500,
-                        }}
-                      >
+                      <div style={summaryCardTitleStyle}>Assets del departamento</div>
+                      <div style={summaryCardTextStyle}>
                         Consulta los equipos instalados y su estado actual.
                       </div>
                     </div>
@@ -724,80 +1033,140 @@ export default function UnitDetailPage() {
         <div style={{ marginTop: "18px" }}>
           <SectionCard
             title="Lease actual"
-            subtitle="Información del arrendamiento activo del departamento."
+            icon={<Users size={18} />}
+            actions={
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+                {activeLease ? (
+                  <>
+                    <UiButton
+                      onClick={() => openEditLease(activeLease)}
+                      icon={<Pencil size={16} />}
+                    >
+                      Editar lease
+                    </UiButton>
+
+                    <UiButton
+                      variant="secondary"
+                      onClick={handleFinishActiveLease}
+                      icon={<XCircle size={16} />}
+                    >
+                      Finalizar lease
+                    </UiButton>
+                  </>
+                ) : (
+                  <UiButton onClick={openCreateLease} icon={<Plus size={16} />}>
+                    Crear lease
+                  </UiButton>
+                )}
+              </div>
+            }
           >
-            {activeLease?.tenants ? (
+            {activeLease ? (
               <AppGrid minWidth={240}>
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Nombre
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {activeLease.tenants.full_name}
-                    </div>
-                  </div>
-                </AppCard>
-
-                <AppCard>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Email
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {activeLease.tenants.email || "Sin email"}
+                    <div style={miniLabelStyle}>Inquilino</div>
+                    <div style={miniValueStyle}>
+                      {getUserDisplayName(
+                        activeLease.tenant_id
+                          ? appUsersMap.get(activeLease.tenant_id)
+                          : null
+                      )}
                     </div>
                   </div>
                 </AppCard>
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Teléfono
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {activeLease.tenants.phone || "Sin teléfono"}
-                    </div>
-                  </div>
-                </AppCard>
-
-                <AppCard>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Renta
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      ${activeLease.rent_amount}
+                    <div style={miniLabelStyle}>Responsable de pago</div>
+                    <div style={miniValueStyle}>
+                      {activeLease.responsible_payer_id
+                        ? getUserDisplayName(
+                            appUsersMap.get(activeLease.responsible_payer_id) || null
+                          )
+                        : activeLease.billing_name ||
+                          activeLease.billing_email ||
+                          "Mismo inquilino"}
                     </div>
                   </div>
                 </AppCard>
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Inicio
-                    </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {formatDate(activeLease.start_date)}
+                    <div style={miniLabelStyle}>Renta</div>
+                    <div style={miniValueStyle}>
+                      {formatCurrency(activeLease.rent_amount)}
                     </div>
                   </div>
                 </AppCard>
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={{ fontSize: "13px", color: "#6B7280", fontWeight: 600 }}>
-                      Fin
+                    <div style={miniLabelStyle}>Día de vencimiento</div>
+                    <div style={miniValueStyle}>
+                      {activeLease.due_day || "Sin definir"}
                     </div>
-                    <div style={{ fontSize: "16px", fontWeight: 700, color: "#111827" }}>
-                      {formatDate(activeLease.end_date)}
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={miniLabelStyle}>Inicio</div>
+                    <div style={miniValueStyle}>{formatDate(activeLease.start_date)}</div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={miniLabelStyle}>Fin</div>
+                    <div style={miniValueStyle}>{formatDate(activeLease.end_date)}</div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={miniLabelStyle}>Nombre de facturación</div>
+                    <div style={miniValueStyle}>
+                      {activeLease.billing_name || "Sin definir"}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={miniLabelStyle}>Email de facturación</div>
+                    <div style={miniValueStyle}>
+                      {activeLease.billing_email || "Sin definir"}
+                    </div>
+                  </div>
+                </AppCard>
+
+                <AppCard>
+                  <div style={{ display: "grid", gap: "8px" }}>
+                    <div style={miniLabelStyle}>Estatus del lease</div>
+                    <div>
+                      <LeaseStatusPill status={activeLease.status} />
                     </div>
                   </div>
                 </AppCard>
               </AppGrid>
             ) : (
               <AppCard>
-                <div style={{ color: "#6B7280", fontWeight: 500 }}>
-                  No hay lease activo para este departamento.
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "12px",
+                  }}
+                >
+                  <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                    No hay lease activo para este departamento.
+                  </div>
+
+                  <div>
+                    <UiButton onClick={openCreateLease} icon={<Plus size={16} />}>
+                      Crear lease
+                    </UiButton>
+                  </div>
                 </div>
               </AppCard>
             )}
@@ -874,37 +1243,77 @@ export default function UnitDetailPage() {
               </AppCard>
             ) : (
               <div style={{ display: "grid", gap: "12px" }}>
-                {leaseHistory.map((lease) => (
-                  <AppCard key={lease.id}>
-                    <div style={{ display: "grid", gap: "8px" }}>
-                      <div
-                        style={{
-                          fontSize: "16px",
-                          fontWeight: 700,
-                          color: "#111827",
-                        }}
-                      >
-                        {lease.tenants?.full_name || "Sin inquilino"}
-                      </div>
+                {leaseHistory.map((lease) => {
+                  const tenantUser = lease.tenant_id
+                    ? appUsersMap.get(lease.tenant_id)
+                    : null;
 
-                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
-                        Inicio: {formatDate(lease.start_date)}
-                      </div>
+                  const responsiblePayerUser = lease.responsible_payer_id
+                    ? appUsersMap.get(lease.responsible_payer_id)
+                    : null;
 
-                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
-                        Fin: {formatDate(lease.end_date)}
-                      </div>
+                  return (
+                    <AppCard key={lease.id}>
+                      <div style={{ display: "grid", gap: "10px" }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            gap: "12px",
+                            flexWrap: "wrap",
+                            alignItems: "center",
+                          }}
+                        >
+                          <div
+                            style={{
+                              fontSize: "16px",
+                              fontWeight: 700,
+                              color: "#111827",
+                            }}
+                          >
+                            {getUserDisplayName(tenantUser)}
+                          </div>
 
-                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
-                        Renta: ${lease.rent_amount}
-                      </div>
+                          <LeaseStatusPill status={lease.status} />
+                        </div>
 
-                      <div style={{ fontSize: "14px", color: "#4B5563" }}>
-                        Estatus del lease: {lease.status}
+                        <div style={historyMetaTextStyle}>
+                          Responsable de pago:{" "}
+                          {responsiblePayerUser
+                            ? getUserDisplayName(responsiblePayerUser)
+                            : lease.billing_name ||
+                              lease.billing_email ||
+                              "Mismo inquilino"}
+                        </div>
+
+                        <div style={historyMetaTextStyle}>
+                          Inicio: {formatDate(lease.start_date)}
+                        </div>
+
+                        <div style={historyMetaTextStyle}>
+                          Fin: {formatDate(lease.end_date)}
+                        </div>
+
+                        <div style={historyMetaTextStyle}>
+                          Renta: {formatCurrency(lease.rent_amount)}
+                        </div>
+
+                        <div style={historyMetaTextStyle}>
+                          Día de vencimiento: {lease.due_day || "Sin definir"}
+                        </div>
+
+                        <div style={historyMetaTextStyle}>
+                          Facturación:{" "}
+                          {lease.billing_name || lease.billing_email
+                            ? `${lease.billing_name || "Sin nombre"} · ${
+                                lease.billing_email || "Sin email"
+                              }`
+                            : "Sin datos de facturación"}
+                        </div>
                       </div>
-                    </div>
-                  </AppCard>
-                ))}
+                    </AppCard>
+                  );
+                })}
               </div>
             )}
           </SectionCard>
@@ -930,10 +1339,9 @@ export default function UnitDetailPage() {
 
             <div>
               <label style={labelStyle}>Tipología</label>
-              <select
+              <AppSelect
                 value={selectedUnitTypeId}
                 onChange={(e) => setSelectedUnitTypeId(e.target.value)}
-                style={inputStyle}
               >
                 <option value="">Selecciona una tipología</option>
                 {unitTypes.map((unitType) => (
@@ -941,7 +1349,7 @@ export default function UnitDetailPage() {
                     {unitType.name}
                   </option>
                 ))}
-              </select>
+              </AppSelect>
             </div>
 
             <div>
@@ -955,15 +1363,11 @@ export default function UnitDetailPage() {
 
             <div>
               <label style={labelStyle}>Estatus</label>
-              <select
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-                style={inputStyle}
-              >
+              <AppSelect value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option value="VACANT">VACANT</option>
                 <option value="RENTED">RENTED</option>
                 <option value="MAINTENANCE">MAINTENANCE</option>
-              </select>
+              </AppSelect>
             </div>
 
             {building.code && unitNumber.trim() ? (
@@ -978,13 +1382,9 @@ export default function UnitDetailPage() {
                   fontWeight: 500,
                 }}
               >
-                Display code que se generará:{" "}
+                Código visible sugerido:{" "}
                 <strong>{generateDisplayCode(building.code, unitNumber)}</strong>
               </div>
-            ) : null}
-
-            {msg ? (
-              <div style={{ color: "#1D4ED8", fontWeight: 600 }}>{msg}</div>
             ) : null}
 
             <div
@@ -992,13 +1392,211 @@ export default function UnitDetailPage() {
                 display: "flex",
                 justifyContent: "flex-end",
                 gap: "10px",
-                marginTop: "6px",
+                flexWrap: "wrap",
+                marginTop: "8px",
               }}
             >
-              <UiButton onClick={handleCancelEdit}>Cancelar</UiButton>
+              <UiButton type="button" variant="secondary" onClick={handleCancelEdit}>
+                Cancelar
+              </UiButton>
 
-              <UiButton type="submit" variant="primary" disabled={saving}>
+              <UiButton type="submit" disabled={saving}>
                 {saving ? "Guardando..." : "Guardar cambios"}
+              </UiButton>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={showLeaseModal}
+        onClose={closeLeaseModal}
+        title={editingLeaseId ? "Editar lease" : "Crear lease"}
+        subtitle="Asigna el arrendamiento activo o registra uno histórico para esta unidad."
+      >
+        <form onSubmit={handleSaveLease}>
+          <div style={{ display: "grid", gap: "16px" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "16px",
+              }}
+            >
+              <div>
+                <label style={labelStyle}>Inquilino</label>
+                <AppSelect
+                  value={leaseForm.tenantId}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({ ...prev, tenantId: e.target.value }))
+                  }
+                >
+                  <option value="">Selecciona un inquilino</option>
+                  {appUsers.map((appUser) => (
+                    <option key={appUser.id} value={appUser.id}>
+                      {appUser.full_name || appUser.email || appUser.id}
+                    </option>
+                  ))}
+                </AppSelect>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Responsable de pago</label>
+                <AppSelect
+                  value={leaseForm.responsiblePayerId}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({
+                      ...prev,
+                      responsiblePayerId: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Mismo inquilino</option>
+                  {appUsers.map((appUser) => (
+                    <option key={appUser.id} value={appUser.id}>
+                      {appUser.full_name || appUser.email || appUser.id}
+                    </option>
+                  ))}
+                </AppSelect>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Renta mensual</label>
+                <input
+                  value={leaseForm.rentAmount}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({
+                      ...prev,
+                      rentAmount: e.target.value.replace(/[^\d.]/g, ""),
+                    }))
+                  }
+                  style={inputStyle}
+                  inputMode="decimal"
+                  placeholder="0.00"
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Día de vencimiento</label>
+                <input
+                  value={leaseForm.dueDay}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({
+                      ...prev,
+                      dueDay: e.target.value.replace(/[^\d]/g, ""),
+                    }))
+                  }
+                  style={inputStyle}
+                  inputMode="numeric"
+                  placeholder="Ej. 5"
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Fecha de inicio</label>
+                <input
+                  type="date"
+                  value={leaseForm.startDate}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({ ...prev, startDate: e.target.value }))
+                  }
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Fecha de fin</label>
+                <input
+                  type="date"
+                  value={leaseForm.endDate}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({ ...prev, endDate: e.target.value }))
+                  }
+                  style={inputStyle}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Nombre de facturación</label>
+                <input
+                  value={leaseForm.billingName}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({
+                      ...prev,
+                      billingName: e.target.value,
+                    }))
+                  }
+                  style={inputStyle}
+                  placeholder="Nombre fiscal si aplica"
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Email de facturación</label>
+                <input
+                  value={leaseForm.billingEmail}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({
+                      ...prev,
+                      billingEmail: e.target.value,
+                    }))
+                  }
+                  style={inputStyle}
+                  placeholder="correo@ejemplo.com"
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Estatus del lease</label>
+                <AppSelect
+                  value={leaseForm.status}
+                  onChange={(e) =>
+                    setLeaseForm((prev) => ({
+                      ...prev,
+                      status: e.target.value as "ACTIVE" | "ENDED",
+                    }))
+                  }
+                >
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="ENDED">ENDED</option>
+                </AppSelect>
+              </div>
+            </div>
+
+            {msg && showLeaseModal ? (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: "12px",
+                  background: "#FEF2F2",
+                  color: "#B91C1C",
+                  fontSize: "14px",
+                  fontWeight: 600,
+                }}
+              >
+                {msg}
+              </div>
+            ) : null}
+
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: "10px",
+                flexWrap: "wrap",
+                marginTop: "8px",
+              }}
+            >
+              <UiButton type="button" variant="secondary" onClick={closeLeaseModal}>
+                Cancelar
+              </UiButton>
+
+              <UiButton type="submit" disabled={saving}>
+                {saving
+                  ? "Guardando..."
+                  : editingLeaseId
+                  ? "Guardar lease"
+                  : "Crear lease"}
               </UiButton>
             </div>
           </div>
@@ -1007,3 +1605,33 @@ export default function UnitDetailPage() {
     </PageContainer>
   );
 }
+
+const miniLabelStyle: CSSProperties = {
+  fontSize: "13px",
+  color: "#6B7280",
+  fontWeight: 600,
+};
+
+const miniValueStyle: CSSProperties = {
+  fontSize: "16px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const summaryCardTitleStyle: CSSProperties = {
+  fontSize: "14px",
+  fontWeight: 700,
+  color: "#111827",
+};
+
+const summaryCardTextStyle: CSSProperties = {
+  marginTop: "4px",
+  fontSize: "13px",
+  color: "#6B7280",
+  fontWeight: 500,
+};
+
+const historyMetaTextStyle: CSSProperties = {
+  fontSize: "14px",
+  color: "#4B5563",
+};
