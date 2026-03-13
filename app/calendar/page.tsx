@@ -19,6 +19,11 @@
   - También muestra pagos proyectados desde expense_schedules cuando todavía
     no existe un registro real para ese periodo.
   - Los pagos proyectados usan un estilo visual más ligero para distinguirse.
+
+  Mejora visual aplicada:
+  - Vista semanal y mensual con eventos compactos de una sola línea.
+  - Hover para mostrar tooltip rápido con el detalle principal.
+  - Click para abrir un modal con el detalle completo del evento.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -43,6 +48,7 @@ import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import UiButton from "@/components/UiButton";
+import Modal from "@/components/Modal";
 
 type Building = {
   id: string;
@@ -177,6 +183,11 @@ type CollectionRecord = {
   created_at: string;
 };
 
+type EventDetailItem = {
+  label: string;
+  value: string;
+};
+
 type CalendarEvent = {
   id: string;
   module: "cleaning" | "maintenance" | "payments" | "collections";
@@ -184,10 +195,12 @@ type CalendarEvent = {
   dayKey: string;
   isoDate: string;
   title: string;
+  compactLabel: string;
   subtitle: string;
   colorBackground: string;
   colorBorder: string;
   colorText: string;
+  detailItems: EventDetailItem[];
 };
 
 type WeekDayColumn = {
@@ -198,6 +211,12 @@ type WeekDayColumn = {
 };
 
 type ViewMode = "week" | "month" | "year";
+
+type HoveredEventState = {
+  event: CalendarEvent;
+  top: number;
+  left: number;
+};
 
 const DAY_ORDER = [
   "monday",
@@ -381,11 +400,6 @@ function getLeaseId(row: LeaseRow) {
   return typeof value === "string" ? value : "";
 }
 
-function getLeaseUnitId(row: LeaseRow) {
-  const value = row["unit_id"];
-  return typeof value === "string" ? value : "";
-}
-
 function getLeaseDisplayLabel(row: LeaseRow) {
   const name = pickFirstString(row, [
     "tenant_name",
@@ -398,11 +412,7 @@ function getLeaseDisplayLabel(row: LeaseRow) {
 
   if (name) return name;
 
-  const email = pickFirstString(row, [
-    "tenant_email",
-    "resident_email",
-    "email",
-  ]);
+  const email = pickFirstString(row, ["tenant_email", "resident_email", "email"]);
 
   if (email) return email;
 
@@ -487,6 +497,26 @@ function getPaymentStatusLabel(status: ExpensePayment["status"]) {
   if (status === "paid") return "Pagado";
   if (status === "overdue") return "Vencido";
   return "Pendiente";
+}
+
+function getCollectionStatusLabel(status: CollectionRecord["status"]) {
+  if (status === "collected") return "Cobrado";
+  if (status === "overdue") return "Vencido";
+  return "Pendiente";
+}
+
+function getEventIcon(event: CalendarEvent) {
+  if (event.module === "cleaning") return <Sparkles size={11} />;
+  if (event.module === "maintenance") return <Wrench size={11} />;
+  if (event.module === "payments") return <CreditCard size={11} />;
+  return <Wallet size={11} />;
+}
+
+function getModuleLabel(module: CalendarEvent["module"]) {
+  if (module === "cleaning") return "Limpieza";
+  if (module === "maintenance") return "Mantenimiento";
+  if (module === "payments") return "Pagos";
+  return "Cobranza";
 }
 
 function renderViewTab(
@@ -583,6 +613,9 @@ export default function CalendarPage() {
   const [showPayments, setShowPayments] = useState(true);
   const [showCollections, setShowCollections] = useState(true);
 
+  const [hoveredEvent, setHoveredEvent] = useState<HoveredEventState | null>(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
@@ -618,15 +651,7 @@ export default function CalendarPage() {
         .select("id, building_id, unit_number, display_code")
         .eq("company_id", user.company_id),
 
-      /*
-        Consulta tolerante:
-        leases puede no tener tenant_name / tenant_email exactos.
-        Por eso usamos select("*") y luego inferimos.
-      */
-      supabase
-        .from("leases")
-        .select("*")
-        .eq("company_id", user.company_id),
+      supabase.from("leases").select("*").eq("company_id", user.company_id),
 
       supabase
         .from("cleaning_building_schedules")
@@ -832,10 +857,18 @@ export default function CalendarPage() {
           dayKey: schedule.day_of_week,
           isoDate: "",
           title: `${buildingName} · ${typeLabel}`,
+          compactLabel: `${typeLabel}`,
           subtitle: blockLabel,
           colorBackground: CLEANING_COLORS.background,
           colorBorder: CLEANING_COLORS.border,
           colorText: CLEANING_COLORS.text,
+          detailItems: [
+            { label: "Módulo", value: "Limpieza" },
+            { label: "Edificio", value: buildingName },
+            { label: "Tipo", value: typeLabel },
+            { label: "Bloque", value: blockLabel },
+            { label: "Frecuencia", value: `${DAY_LABELS[schedule.day_of_week]}` },
+          ],
         };
       });
 
@@ -847,6 +880,8 @@ export default function CalendarPage() {
 
         const buildingName = building?.name || "Edificio";
         const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
+        const hourLabel = formatTime(schedule.start_time);
+        const durationLabel = formatDuration(schedule.duration_hours);
 
         return {
           id: `unit-${schedule.id}`,
@@ -855,10 +890,19 @@ export default function CalendarPage() {
           dayKey: schedule.day_of_week,
           isoDate: "",
           title: `${buildingName} · Unidad ${unitLabel}`,
-          subtitle: `${formatTime(schedule.start_time)} · ${formatDuration(schedule.duration_hours)}`,
+          compactLabel: `Unidad ${unitLabel}`,
+          subtitle: `${hourLabel} · ${durationLabel}`,
           colorBackground: CLEANING_COLORS.background,
           colorBorder: CLEANING_COLORS.border,
           colorText: CLEANING_COLORS.text,
+          detailItems: [
+            { label: "Módulo", value: "Limpieza" },
+            { label: "Edificio", value: buildingName },
+            { label: "Unidad", value: unitLabel },
+            { label: "Hora", value: hourLabel },
+            { label: "Duración", value: durationLabel },
+            { label: "Frecuencia", value: `${DAY_LABELS[schedule.day_of_week]}` },
+          ],
         };
       });
 
@@ -894,10 +938,28 @@ export default function CalendarPage() {
             dayKey: performedDayKey,
             isoDate: performedDateKey,
             title: `${baseTitle} · Realizado`,
+            compactLabel: baseTitle,
             subtitle: subtitleParts.join(" · "),
             colorBackground: MAINTENANCE_COLORS.background,
             colorBorder: MAINTENANCE_COLORS.border,
             colorText: MAINTENANCE_COLORS.text,
+            detailItems: [
+              { label: "Módulo", value: "Mantenimiento" },
+              { label: "Evento", value: "Realizado" },
+              { label: "Edificio", value: buildingName },
+              { label: "Unidad", value: unitLabel },
+              { label: "Título", value: baseTitle },
+              { label: "Fecha", value: performedDateKey },
+              {
+                label: "Categoría",
+                value:
+                  log.category_name_snapshot ||
+                  log.asset_type_snapshot ||
+                  log.log_type ||
+                  "Sin categoría",
+              },
+              { label: "Estado", value: log.status || "Sin estado" },
+            ],
           });
         }
       }
@@ -914,10 +976,28 @@ export default function CalendarPage() {
             dayKey: nextDueDayKey,
             isoDate: nextDueDateKey,
             title: `${baseTitle} · Programado`,
+            compactLabel: `${baseTitle} · Prog.`,
             subtitle: subtitleParts.join(" · "),
             colorBackground: MAINTENANCE_COLORS.background,
             colorBorder: MAINTENANCE_COLORS.border,
             colorText: MAINTENANCE_COLORS.text,
+            detailItems: [
+              { label: "Módulo", value: "Mantenimiento" },
+              { label: "Evento", value: "Programado" },
+              { label: "Edificio", value: buildingName },
+              { label: "Unidad", value: unitLabel },
+              { label: "Título", value: baseTitle },
+              { label: "Fecha", value: nextDueDateKey },
+              {
+                label: "Categoría",
+                value:
+                  log.category_name_snapshot ||
+                  log.asset_type_snapshot ||
+                  log.log_type ||
+                  "Sin categoría",
+              },
+              { label: "Estado", value: log.status || "Sin estado" },
+            ],
           });
         }
       }
@@ -925,7 +1005,6 @@ export default function CalendarPage() {
 
     const paymentEvents: CalendarEvent[] = [];
 
-    // Pagos reales
     filteredExpensePayments.forEach((payment) => {
       const schedule = expenseScheduleMap.get(payment.expense_schedule_id);
       if (!schedule) return;
@@ -955,14 +1034,25 @@ export default function CalendarPage() {
         dayKey: dueDayKey,
         isoDate: dueDateKey,
         title: `${schedule.title} · ${statusLabel}`,
+        compactLabel: schedule.title,
         subtitle: `${buildingName} · ${scopeLabel} · ${amountLabel}`,
         colorBackground: PAYMENTS_COLORS.background,
         colorBorder: PAYMENTS_COLORS.border,
         colorText: PAYMENTS_COLORS.text,
+        detailItems: [
+          { label: "Módulo", value: "Pagos" },
+          { label: "Tipo", value: "Registro real" },
+          { label: "Edificio", value: buildingName },
+          { label: "Alcance", value: scopeLabel },
+          { label: "Concepto", value: schedule.title },
+          { label: "Fecha límite", value: dueDateKey },
+          { label: "Monto", value: amountLabel },
+          { label: "Estado", value: statusLabel },
+          { label: "Proveedor", value: schedule.vendor_name || "Sin proveedor" },
+        ],
       });
     });
 
-    // Pagos proyectados
     const visibleRange = getVisibleRange(referenceDate, viewMode);
     const visibleMonths = getMonthListWithinRange(visibleRange.start, visibleRange.end);
 
@@ -1014,10 +1104,25 @@ export default function CalendarPage() {
           dayKey: dueDayKey,
           isoDate: projectedDueDate,
           title: `${schedule.title} · Proyectado`,
+          compactLabel: `${schedule.title} · Proy.`,
           subtitle: `${buildingName} · ${scopeLabel} · ${amountLabel}`,
           colorBackground: PAYMENTS_PROJECTED_COLORS.background,
           colorBorder: PAYMENTS_PROJECTED_COLORS.border,
           colorText: PAYMENTS_PROJECTED_COLORS.text,
+          detailItems: [
+            { label: "Módulo", value: "Pagos" },
+            { label: "Tipo", value: "Proyección" },
+            { label: "Edificio", value: buildingName },
+            { label: "Alcance", value: scopeLabel },
+            { label: "Concepto", value: schedule.title },
+            { label: "Fecha límite", value: projectedDueDate },
+            { label: "Monto estimado", value: amountLabel },
+            {
+              label: "Frecuencia",
+              value: schedule.frequency_type === "bimonthly" ? "Bimestral" : "Mensual",
+            },
+            { label: "Proveedor", value: schedule.vendor_name || "Sin proveedor" },
+          ],
         });
       });
     });
@@ -1034,8 +1139,7 @@ export default function CalendarPage() {
 
       const building =
         buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
-      const unit =
-        unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
+      const unit = unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
 
       const lease =
         (record.lease_id ? leaseMap.get(record.lease_id) : null) ||
@@ -1045,10 +1149,7 @@ export default function CalendarPage() {
       const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
       const tenantLabel = lease ? getLeaseDisplayLabel(lease) : "Sin inquilino";
       const amountLabel = formatCurrency(record.amount_due);
-
-      let statusLabel = "Pendiente";
-      if (record.status === "collected") statusLabel = "Cobrado";
-      if (record.status === "overdue") statusLabel = "Vencido";
+      const statusLabel = getCollectionStatusLabel(record.status);
 
       collectionEvents.push({
         id: `collection-${record.id}`,
@@ -1057,10 +1158,21 @@ export default function CalendarPage() {
         dayKey: dueDayKey,
         isoDate: dueDateKey,
         title: `${schedule.title} · ${statusLabel}`,
+        compactLabel: schedule.title,
         subtitle: `${buildingName} · Unidad ${unitLabel} · ${tenantLabel} · ${amountLabel}`,
         colorBackground: COLLECTIONS_COLORS.background,
         colorBorder: COLLECTIONS_COLORS.border,
         colorText: COLLECTIONS_COLORS.text,
+        detailItems: [
+          { label: "Módulo", value: "Cobranza" },
+          { label: "Edificio", value: buildingName },
+          { label: "Unidad", value: unitLabel },
+          { label: "Inquilino", value: tenantLabel },
+          { label: "Concepto", value: schedule.title },
+          { label: "Fecha límite", value: dueDateKey },
+          { label: "Monto", value: amountLabel },
+          { label: "Estado", value: statusLabel },
+        ],
       });
     });
 
@@ -1099,13 +1211,7 @@ export default function CalendarPage() {
       if (event.module === "collections" && !showCollections) return false;
       return true;
     });
-  }, [
-    allEvents,
-    showCleaning,
-    showMaintenance,
-    showPayments,
-    showCollections,
-  ]);
+  }, [allEvents, showCleaning, showMaintenance, showPayments, showCollections]);
 
   const getEventsForDate = useMemo(() => {
     return (isoDate: string) => {
@@ -1259,6 +1365,22 @@ export default function CalendarPage() {
     }
 
     setReferenceDate((prev) => new Date(prev.getFullYear() + 1, 0, 1));
+  }
+
+  function handleEventMouseEnter(
+    event: CalendarEvent,
+    target: HTMLButtonElement
+  ) {
+    const rect = target.getBoundingClientRect();
+    setHoveredEvent({
+      event,
+      top: rect.bottom + 8,
+      left: rect.left,
+    });
+  }
+
+  function handleEventMouseLeave() {
+    setHoveredEvent(null);
   }
 
   const currentLabel =
@@ -1546,43 +1668,59 @@ export default function CalendarPage() {
                           Sin eventos
                         </div>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                           {dayEvents.map((event) => (
-                            <div
+                            <button
                               key={`${event.id}-${day.isoDate}`}
+                              type="button"
+                              onMouseEnter={(e) =>
+                                handleEventMouseEnter(event, e.currentTarget)
+                              }
+                              onMouseLeave={handleEventMouseLeave}
+                              onClick={() => {
+                                setHoveredEvent(null);
+                                setSelectedEvent(event);
+                              }}
                               style={{
-                                borderRadius: 12,
-                                padding: "10px 10px",
+                                borderRadius: 10,
+                                padding: "7px 8px",
                                 background: event.colorBackground,
                                 border: `1px solid ${event.colorBorder}`,
                                 display: "flex",
-                                flexDirection: "column",
-                                gap: 4,
+                                alignItems: "center",
+                                gap: 7,
+                                width: "100%",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                minHeight: 34,
                               }}
                             >
+                              <span
+                                style={{
+                                  color: event.colorText,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {getEventIcon(event)}
+                              </span>
+
                               <span
                                 style={{
                                   fontSize: 11,
                                   fontWeight: 800,
                                   color: event.colorText,
-                                  lineHeight: 1.35,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
                                 }}
                               >
-                                {event.title}
+                                {event.compactLabel}
                               </span>
-
-                              <span
-                                style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 700,
-                                  color: event.colorText,
-                                  opacity: 0.9,
-                                  lineHeight: 1.35,
-                                }}
-                              >
-                                {event.subtitle}
-                              </span>
-                            </div>
+                            </button>
                           ))}
                         </div>
                       )}
@@ -1602,7 +1740,7 @@ export default function CalendarPage() {
               >
                 {monthDays.map((day) => {
                   const dayEvents = monthEventsByDate.get(day.isoDate) || [];
-                  const visibleEvents = dayEvents.slice(0, 3);
+                  const visibleEvents = dayEvents.slice(0, 5);
 
                   return (
                     <div
@@ -1643,45 +1781,62 @@ export default function CalendarPage() {
                           Sin eventos
                         </div>
                       ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {visibleEvents.map((event) => (
-                            <div
+                            <button
                               key={`${event.id}-${day.isoDate}`}
+                              type="button"
+                              onMouseEnter={(e) =>
+                                handleEventMouseEnter(event, e.currentTarget)
+                              }
+                              onMouseLeave={handleEventMouseLeave}
+                              onClick={() => {
+                                setHoveredEvent(null);
+                                setSelectedEvent(event);
+                              }}
                               style={{
                                 borderRadius: 10,
-                                padding: "8px 8px",
+                                padding: "6px 7px",
                                 background: event.colorBackground,
                                 border: `1px solid ${event.colorBorder}`,
                                 display: "flex",
-                                flexDirection: "column",
-                                gap: 3,
+                                alignItems: "center",
+                                gap: 6,
+                                width: "100%",
+                                cursor: "pointer",
+                                textAlign: "left",
+                                minHeight: 30,
                               }}
                             >
+                              <span
+                                style={{
+                                  color: event.colorText,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {getEventIcon(event)}
+                              </span>
+
                               <span
                                 style={{
                                   fontSize: 10.5,
                                   fontWeight: 800,
                                   color: event.colorText,
-                                  lineHeight: 1.3,
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  whiteSpace: "nowrap",
+                                  flex: 1,
                                 }}
                               >
-                                {event.title}
+                                {event.compactLabel}
                               </span>
-                              <span
-                                style={{
-                                  fontSize: 10,
-                                  fontWeight: 700,
-                                  color: event.colorText,
-                                  opacity: 0.9,
-                                  lineHeight: 1.3,
-                                }}
-                              >
-                                {event.subtitle}
-                              </span>
-                            </div>
+                            </button>
                           ))}
 
-                          {dayEvents.length > 3 ? (
+                          {dayEvents.length > 5 ? (
                             <span
                               style={{
                                 fontSize: 10.5,
@@ -1689,7 +1844,7 @@ export default function CalendarPage() {
                                 color: "#6B7280",
                               }}
                             >
-                              + {dayEvents.length - 3} más
+                              + {dayEvents.length - 5} más
                             </span>
                           ) : null}
                         </div>
@@ -1895,6 +2050,187 @@ export default function CalendarPage() {
           </div>
         </AppCard>
       </div>
+
+      {hoveredEvent ? (
+        <div
+          style={{
+            position: "fixed",
+            top: hoveredEvent.top,
+            left: Math.min(hoveredEvent.left, window.innerWidth - 320),
+            width: 300,
+            zIndex: 2000,
+            pointerEvents: "none",
+            borderRadius: 14,
+            border: "1px solid #E5E7EB",
+            background: "#FFFFFF",
+            boxShadow: "0 20px 40px rgba(15, 23, 42, 0.14)",
+            padding: 12,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: 800,
+              color: hoveredEvent.event.colorText,
+              marginBottom: 6,
+            }}
+          >
+            {hoveredEvent.event.title}
+          </div>
+
+          <div
+            style={{
+              fontSize: 11,
+              fontWeight: 700,
+              color: "#6B7280",
+              marginBottom: 8,
+            }}
+          >
+            {getModuleLabel(hoveredEvent.event.module)}
+          </div>
+
+          <div style={{ display: "grid", gap: 6 }}>
+            {hoveredEvent.event.detailItems.slice(0, 4).map((item) => (
+              <div
+                key={`${hoveredEvent.event.id}-${item.label}`}
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "110px 1fr",
+                  gap: 8,
+                  alignItems: "start",
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#6B7280",
+                  }}
+                >
+                  {item.label}
+                </span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#111827",
+                  }}
+                >
+                  {item.value}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <Modal
+        open={Boolean(selectedEvent)}
+        title={selectedEvent?.title || "Detalle del evento"}
+        onClose={() => setSelectedEvent(null)}
+      >
+        {selectedEvent ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div
+              style={{
+                borderRadius: 14,
+                border: `1px solid ${selectedEvent.colorBorder}`,
+                background: selectedEvent.colorBackground,
+                padding: 14,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+              }}
+            >
+              <div
+                style={{
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  display: "grid",
+                  placeItems: "center",
+                  background: "#FFFFFF",
+                  color: selectedEvent.colorText,
+                  border: `1px solid ${selectedEvent.colorBorder}`,
+                  flexShrink: 0,
+                }}
+              >
+                {getEventIcon(selectedEvent)}
+              </div>
+
+              <div style={{ display: "grid", gap: 2 }}>
+                <div
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 800,
+                    color: selectedEvent.colorText,
+                  }}
+                >
+                  {selectedEvent.title}
+                </div>
+                <div
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: selectedEvent.colorText,
+                    opacity: 0.9,
+                  }}
+                >
+                  {getModuleLabel(selectedEvent.module)}
+                </div>
+              </div>
+            </div>
+
+            <div
+              style={{
+                borderRadius: 14,
+                border: "1px solid #E5E7EB",
+                background: "#FFFFFF",
+                overflow: "hidden",
+              }}
+            >
+              {selectedEvent.detailItems.map((item, index) => (
+                <div
+                  key={`${selectedEvent.id}-${item.label}`}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "170px 1fr",
+                    gap: 12,
+                    padding: "12px 14px",
+                    borderTop: index === 0 ? "none" : "1px solid #F3F4F6",
+                  }}
+                >
+                  <div
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#6B7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    {item.label}
+                  </div>
+
+                  <div
+                    style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#111827",
+                    }}
+                  >
+                    {item.value}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end" }}>
+              <UiButton onClick={() => setSelectedEvent(null)}>Cerrar</UiButton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </PageContainer>
   );
 }
