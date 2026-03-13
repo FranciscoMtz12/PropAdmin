@@ -443,11 +443,15 @@ function getMetricIconBoxStyle(background: string): CSSProperties {
     width: 36,
     height: 36,
     borderRadius: 10,
+
+    // Dejamos el fondo limpio y sin borde visible para evitar
+    // que se vea un contorno gris distinto al color del fondo.
     background,
-    display: "grid",
-    placeItems: "center",
     border: "none",
     boxShadow: "none",
+
+    display: "grid",
+    placeItems: "center",
   };
 }
 
@@ -1291,7 +1295,6 @@ export default function PaymentsPage() {
 
       {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
-      {/* Primera fila de métricas: solo resumen principal */}
       <AppGrid minWidth={280}>
         <MetricCard
           label="Registros"
@@ -1318,7 +1321,6 @@ export default function PaymentsPage() {
 
       <div style={{ height: 12 }} />
 
-      {/* Segunda fila de métricas: estados */}
       <AppGrid minWidth={220}>
         <MetricCard
           label="Pagados"
@@ -1746,12 +1748,12 @@ export default function PaymentsPage() {
           <div style={tableShellStyle}>
             <table style={tableStyle}>
               <colgroup>
-                <col style={{ width: "24%" }} />
-                <col style={{ width: "20%" }} />
+                <col style={{ width: "22%" }} />
                 <col style={{ width: "19%" }} />
-                <col style={{ width: "14%" }} />
-                <col style={{ width: "11%" }} />
+                <col style={{ width: "18%" }} />
+                <col style={{ width: "16%" }} />
                 <col style={{ width: "12%" }} />
+                <col style={{ width: "13%" }} />
               </colgroup>
 
               <thead>
@@ -1759,7 +1761,7 @@ export default function PaymentsPage() {
                   <th style={thStyle}>Concepto</th>
                   <th style={thStyle}>Edificio</th>
                   <th style={thStyle}>Periodo / frecuencia</th>
-                  <th style={thStyle}>Vencimiento</th>
+                  <th style={thStyle}>Fecha límite</th>
                   <th style={{ ...thStyle, textAlign: "right" }}>Monto</th>
                   <th style={thStyle}>Estado</th>
                 </tr>
@@ -1787,6 +1789,8 @@ export default function PaymentsPage() {
                                 display: "grid",
                                 placeItems: "center",
                                 flexShrink: 0,
+                                border: "none",
+                                boxShadow: "none",
                               }}
                             >
                               {serviceVisual.icon}
@@ -1849,7 +1853,7 @@ export default function PaymentsPage() {
 
                       {isOpen ? (
                         <tr>
-                          <td colSpan={6} style={{ ...tdStyle, paddingTop: 0 }}>
+                          <td colSpan={6} style={{ ...tdStyle, paddingTop: 0, verticalAlign: "top" }}>
                             <div style={inlineDetailsCardStyle}>
                               <div style={inlineDetailsGridStyle}>
                                 <div style={detailBlockStyle}>
@@ -2430,7 +2434,7 @@ const tableStyle: CSSProperties = {
 };
 
 const thStyle: CSSProperties = {
-  padding: "12px 14px",
+  padding: "14px 14px",
   textAlign: "left",
   fontSize: 12,
   fontWeight: 800,
@@ -2448,9 +2452,9 @@ const rowStyle: CSSProperties = {
 };
 
 const tdStyle: CSSProperties = {
-  padding: "14px",
+  padding: "16px 14px",
   borderBottom: "1px solid #F3F4F6",
-  verticalAlign: "top",
+  verticalAlign: "middle",
 };
 
 const conceptDropdownButtonStyle: CSSProperties = {
