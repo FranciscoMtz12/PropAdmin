@@ -23,6 +23,10 @@
   - Vista semanal y mensual con eventos compactos.
   - Hover tooltip.
   - Click para abrir modal de detalle.
+
+  Mejora visual aplicada en esta versión:
+  - El modal de detalle ahora respeta colores por estado en pagos y cobranza.
+  - El día actual en vista mensual se resalta visualmente.
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -518,6 +522,36 @@ function getModuleLabel(module: CalendarEvent["module"]) {
   return "Cobranza";
 }
 
+function getStatusBadgeColors(module: CalendarEvent["module"], label: string, value: string) {
+  if (module === "payments") {
+    if (label === "Estado") {
+      if (value === "Pagado") {
+        return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
+      }
+      if (value === "Vencido") {
+        return { background: "#FEF2F2", border: "#FECACA", text: "#B91C1C" };
+      }
+      return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
+    }
+
+    if (label === "Tipo" && value === "Proyección") {
+      return { background: "#EFF6FF", border: "#DBEAFE", text: "#2563EB" };
+    }
+  }
+
+  if (module === "collections" && label === "Estado") {
+    if (value === "Cobrado") {
+      return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
+    }
+    if (value === "Vencido") {
+      return { background: "#FEF2F2", border: "#FECACA", text: "#B91C1C" };
+    }
+    return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
+  }
+
+  return null;
+}
+
 function renderViewTab(
   label: string,
   active: boolean,
@@ -779,6 +813,7 @@ export default function CalendarPage() {
   }
 
   const weekStart = useMemo(() => getStartOfWeek(referenceDate), [referenceDate]);
+  const todayIsoKey = useMemo(() => dateToIsoKey(new Date()), []);
 
   const weekDays = useMemo<WeekDayColumn[]>(() => {
     return DAY_ORDER.map((dayKey, index) => {
@@ -809,8 +844,6 @@ export default function CalendarPage() {
     expenseSchedules.forEach((schedule) => expenseScheduleMap.set(schedule.id, schedule));
     collectionSchedules.forEach((schedule) => collectionScheduleMap.set(schedule.id, schedule));
 
-    // Aunque cargamos buildingSchedules por compatibilidad y continuidad del módulo,
-    // en el calendario global ya NO los usamos para generar eventos.
     const filteredUnitSchedules =
       selectedBuildingId === "all"
         ? unitSchedules
@@ -836,7 +869,6 @@ export default function CalendarPage() {
         ? collectionRecords
         : collectionRecords.filter((item) => item.building_id === selectedBuildingId);
 
-    // Solo limpieza interior de unidad / departamento
     const unitEvents: CalendarEvent[] = filteredUnitSchedules
       .filter((schedule) => schedule.day_of_week !== "sunday")
       .map((schedule) => {
@@ -1709,29 +1741,60 @@ export default function CalendarPage() {
                 {monthDays.map((day) => {
                   const dayEvents = monthEventsByDate.get(day.isoDate) || [];
                   const visibleEvents = dayEvents.slice(0, 5);
+                  const isToday = day.isoDate === todayIsoKey;
 
                   return (
                     <div
                       key={day.isoDate}
                       style={{
-                        border: "1px solid #E5E7EB",
+                        border: isToday ? "2px solid #2563EB" : "1px solid #E5E7EB",
                         borderRadius: 16,
                         padding: 12,
-                        background: "#FFFFFF",
+                        background: isToday ? "#F8FBFF" : "#FFFFFF",
                         display: "flex",
                         flexDirection: "column",
                         gap: 10,
                         minHeight: 170,
+                        boxShadow: isToday ? "0 0 0 3px rgba(37, 99, 235, 0.08)" : "none",
                       }}
                     >
                       <div
                         style={{
-                          fontSize: 13,
-                          fontWeight: 800,
-                          color: "#111827",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          gap: 8,
                         }}
                       >
-                        {day.dayNumber} · {day.label}
+                        <div
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 800,
+                            color: isToday ? "#1D4ED8" : "#111827",
+                          }}
+                        >
+                          {day.dayNumber} · {day.label}
+                        </div>
+
+                        {isToday ? (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                              padding: "4px 8px",
+                              borderRadius: 999,
+                              background: "#DBEAFE",
+                              border: "1px solid #93C5FD",
+                              color: "#1D4ED8",
+                              fontSize: 10,
+                              fontWeight: 800,
+                              whiteSpace: "nowrap",
+                            }}
+                          >
+                            Hoy
+                          </span>
+                        ) : null}
                       </div>
 
                       {dayEvents.length === 0 ? (
@@ -2157,40 +2220,68 @@ export default function CalendarPage() {
                 overflow: "hidden",
               }}
             >
-              {selectedEvent.detailItems.map((item, index) => (
-                <div
-                  key={`${selectedEvent.id}-${item.label}`}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "170px 1fr",
-                    gap: 12,
-                    padding: "12px 14px",
-                    borderTop: index === 0 ? "none" : "1px solid #F3F4F6",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: "#6B7280",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.04em",
-                    }}
-                  >
-                    {item.label}
-                  </div>
+              {selectedEvent.detailItems.map((item, index) => {
+                const badgeColors = getStatusBadgeColors(
+                  selectedEvent.module,
+                  item.label,
+                  item.value
+                );
 
+                return (
                   <div
+                    key={`${selectedEvent.id}-${item.label}`}
                     style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: "#111827",
+                      display: "grid",
+                      gridTemplateColumns: "170px 1fr",
+                      gap: 12,
+                      padding: "12px 14px",
+                      borderTop: index === 0 ? "none" : "1px solid #F3F4F6",
                     }}
                   >
-                    {item.value}
+                    <div
+                      style={{
+                        fontSize: 12,
+                        fontWeight: 700,
+                        color: "#6B7280",
+                        textTransform: "uppercase",
+                        letterSpacing: "0.04em",
+                      }}
+                    >
+                      {item.label}
+                    </div>
+
+                    <div
+                      style={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: "#111827",
+                      }}
+                    >
+                      {badgeColors ? (
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            padding: "6px 10px",
+                            borderRadius: 999,
+                            background: badgeColors.background,
+                            border: `1px solid ${badgeColors.border}`,
+                            color: badgeColors.text,
+                            fontSize: 12,
+                            fontWeight: 800,
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {item.value}
+                        </span>
+                      ) : (
+                        item.value
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
