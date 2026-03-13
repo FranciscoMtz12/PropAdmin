@@ -291,15 +291,6 @@ function getStatusColors(status: ExpenseDisplayStatus) {
   };
 }
 
-function getNextStoredStatusFromDisplayStatus(
-  currentStatus: ExpenseDisplayStatus
-): ExpenseStoredStatus {
-  if (currentStatus === "paid") return "overdue";
-  if (currentStatus === "overdue") return "pending";
-  if (currentStatus === "due_today") return "paid";
-  return "paid";
-}
-
 function parseOptionalNumber(value: string) {
   if (!value.trim()) return null;
   const parsed = Number(value);
@@ -384,6 +375,19 @@ function getDisplayStatusFromPayment(
   return "pending";
 }
 
+/**
+ * Esta función deriva el estado almacenado correcto cuando se desmarca un pago pagado.
+ * - Si ya venció, vuelve a overdue
+ * - Si vence hoy o después, vuelve a pending
+ *
+ * El estado "due_today" solo existe visualmente en frontend.
+ */
+function getStoredStatusFromDueDate(dueDate: string, todayKey: string): ExpenseStoredStatus {
+  if (!dueDate) return "pending";
+  if (dueDate < todayKey) return "overdue";
+  return "pending";
+}
+
 function getDefaultCreateForm(buildingId = ""): CreatePaymentForm {
   return {
     buildingId,
@@ -442,6 +446,8 @@ function getMetricIconBoxStyle(background: string): CSSProperties {
     background,
     display: "grid",
     placeItems: "center",
+    border: "none",
+    boxShadow: "none",
   };
 }
 
@@ -1074,8 +1080,22 @@ export default function PaymentsPage() {
       const amountDue = parseOptionalNumber(editingPayment.amountDue) ?? 0;
       const cutoffDate = getCutoffDateFromDueDate(editingPayment.dueDate);
       const startsOn = getStartsOnFromDueDate(editingPayment.dueDate);
-      const storedStatus: ExpenseStoredStatus =
-        editingPayment.dueDate < todayKey ? "overdue" : "pending";
+
+      /**
+       * Si el pago ya estaba pagado antes de editarlo, conservamos "paid".
+       * Si no estaba pagado, recalculamos su estado real por fecha.
+       */
+      const currentlyPaid = expensePayments.find(
+        (payment) => payment.id === editingPayment.paymentId
+      )?.status === "paid";
+
+      const storedStatus: ExpenseStoredStatus = currentlyPaid
+        ? "paid"
+        : getStoredStatusFromDueDate(editingPayment.dueDate, todayKey);
+
+      const nextPaidAt = currentlyPaid
+        ? expensePayments.find((payment) => payment.id === editingPayment.paymentId)?.paid_at || null
+        : null;
 
       const { error: scheduleError } = await supabase
         .from("expense_schedules")
@@ -1112,7 +1132,7 @@ export default function PaymentsPage() {
           due_date: editingPayment.dueDate,
           amount_due: amountDue,
           status: storedStatus,
-          paid_at: null,
+          paid_at: nextPaidAt,
           payment_reference: editingPayment.paymentReference.trim() || null,
           notes: editingPayment.notes.trim() || null,
           billing_period_label: formatPeriod(periodYear, periodMonth),
@@ -1152,13 +1172,26 @@ export default function PaymentsPage() {
     setStatusUpdatingId(row.id);
 
     try {
-      const nextStoredStatus = getNextStoredStatusFromDisplayStatus(row.displayStatus);
+      /**
+       * Regla de negocio deseada:
+       * - pending    -> paid
+       * - due_today  -> paid
+       * - overdue    -> paid
+       * - paid       -> regresar al estado real según la fecha
+       */
+      const isCurrentlyPaid = row.displayStatus === "paid";
+
+      const nextStoredStatus: ExpenseStoredStatus = isCurrentlyPaid
+        ? getStoredStatusFromDueDate(row.dueDate, todayKey)
+        : "paid";
+
+      const nextPaidAt = isCurrentlyPaid ? null : new Date().toISOString();
 
       const { error } = await supabase
         .from("expense_payments")
         .update({
           status: nextStoredStatus,
-          paid_at: nextStoredStatus === "paid" ? new Date().toISOString() : null,
+          paid_at: nextPaidAt,
           updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
@@ -1173,7 +1206,7 @@ export default function PaymentsPage() {
             ? {
                 ...payment,
                 status: nextStoredStatus,
-                paid_at: nextStoredStatus === "paid" ? new Date().toISOString() : null,
+                paid_at: nextPaidAt,
               }
             : payment
         )
@@ -1181,7 +1214,9 @@ export default function PaymentsPage() {
 
       showToast({
         type: "success",
-        message: `Estado actualizado a ${getStoredStatusLabel(nextStoredStatus).toLowerCase()}.`,
+        message: !isCurrentlyPaid
+          ? "Pago marcado como pagado."
+          : "El pago volvió a su estado real según la fecha.",
       });
     } catch (error) {
       const errorText =
@@ -1256,7 +1291,8 @@ export default function PaymentsPage() {
 
       {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
-      <AppGrid minWidth={220}>
+      {/* Primera fila de métricas: solo resumen principal */}
+      <AppGrid minWidth={280}>
         <MetricCard
           label="Registros"
           value={String(totalRecords)}
@@ -1268,6 +1304,22 @@ export default function PaymentsPage() {
           }
         />
 
+        <MetricCard
+          label="Monto pendiente"
+          value={formatCurrency(pendingAmount)}
+          helper="No pagado"
+          icon={
+            <div style={getMetricIconBoxStyle("#DBEAFE")}>
+              <CreditCard size={18} color="#2563EB" />
+            </div>
+          }
+        />
+      </AppGrid>
+
+      <div style={{ height: 12 }} />
+
+      {/* Segunda fila de métricas: estados */}
+      <AppGrid minWidth={220}>
         <MetricCard
           label="Pagados"
           value={String(paidCount)}
@@ -1308,17 +1360,6 @@ export default function PaymentsPage() {
           icon={
             <div style={getMetricIconBoxStyle("#FEE2E2")}>
               <AlertCircle size={18} color="#DC2626" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Monto pendiente"
-          value={formatCurrency(pendingAmount)}
-          helper="No pagado"
-          icon={
-            <div style={getMetricIconBoxStyle("#DBEAFE")}>
-              <CreditCard size={18} color="#2563EB" />
             </div>
           }
         />
