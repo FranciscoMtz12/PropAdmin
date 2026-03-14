@@ -1,7 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { Building2, Home, Plus, Search, User2 } from "lucide-react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from "react";
+import {
+  Building2,
+  ChevronDown,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Trash2,
+  User2,
+} from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -41,6 +55,7 @@ type Lease = {
   billing_email: string | null;
   due_day: number | null;
   rent_amount: number | null;
+  room_number?: number | null;
   status: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -82,9 +97,12 @@ type TenantRow = {
   statusLabel: string;
   notes: string;
   createdAtLabel: string;
+  currentBuildingId: string | null;
   currentBuildingLabel: string;
   currentUnitLabel: string;
   hasActiveLease: boolean;
+  relatedLeaseCount: number;
+  canDelete: boolean;
 };
 
 function emptyForm(): TenantFormState {
@@ -174,11 +192,18 @@ export default function TenantsPage() {
   const [statusFilter, setStatusFilter] = useState<"all" | "ACTIVE" | "INACTIVE">(
     "all"
   );
+  const [buildingFilter, setBuildingFilter] = useState<string>("all");
 
   const [showModal, setShowModal] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState<TenantFormState>(emptyForm());
+
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [tenantToDelete, setTenantToDelete] = useState<TenantRow | null>(null);
+
+  const [openActionsTenantId, setOpenActionsTenantId] = useState<string | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (loading) return;
@@ -186,6 +211,22 @@ export default function TenantsPage() {
 
     void loadTenantsPage();
   }, [loading, user?.company_id]);
+
+  useEffect(() => {
+    function handleOutsideClick(event: MouseEvent) {
+      if (
+        actionsMenuRef.current &&
+        !actionsMenuRef.current.contains(event.target as Node)
+      ) {
+        setOpenActionsTenantId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => {
+      document.removeEventListener("mousedown", handleOutsideClick);
+    };
+  }, []);
 
   async function loadTenantsPage() {
     if (!user?.company_id) return;
@@ -205,7 +246,7 @@ export default function TenantsPage() {
       supabase
         .from("leases")
         .select(
-          "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, status, start_date, end_date, created_at"
+          "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, room_number, status, start_date, end_date, created_at"
         )
         .eq("company_id", user.company_id)
         .order("created_at", { ascending: false }),
@@ -274,6 +315,7 @@ export default function TenantsPage() {
     });
     setShowModal(true);
     setMessage("");
+    setOpenActionsTenantId(null);
   }
 
   function closeModal() {
@@ -281,6 +323,20 @@ export default function TenantsPage() {
     setShowModal(false);
     setEditingTenantId(null);
     setForm(emptyForm());
+  }
+
+  function openDeleteModal(row: TenantRow) {
+    if (saving) return;
+    setTenantToDelete(row);
+    setShowDeleteModal(true);
+    setMessage("");
+    setOpenActionsTenantId(null);
+  }
+
+  function closeDeleteModal() {
+    if (saving) return;
+    setShowDeleteModal(false);
+    setTenantToDelete(null);
   }
 
   async function handleSaveTenant(e: React.FormEvent) {
@@ -357,21 +413,33 @@ export default function TenantsPage() {
     const buildingMap = new Map(buildings.map((building) => [building.id, building]));
 
     const activeLeaseByTenantId = new Map<string, Lease>();
+    const relatedLeaseCountByTenantId = new Map<string, number>();
 
     leases.forEach((lease) => {
-      if (lease.status !== "ACTIVE") return;
-      if (!lease.tenant_id) return;
+      if (lease.tenant_id) {
+        relatedLeaseCountByTenantId.set(
+          lease.tenant_id,
+          (relatedLeaseCountByTenantId.get(lease.tenant_id) || 0) + 1
+        );
 
-      if (!activeLeaseByTenantId.has(lease.tenant_id)) {
-        activeLeaseByTenantId.set(lease.tenant_id, lease);
+        if (lease.status === "ACTIVE" && !activeLeaseByTenantId.has(lease.tenant_id)) {
+          activeLeaseByTenantId.set(lease.tenant_id, lease);
+        }
+      }
+
+      if (lease.responsible_payer_id) {
+        relatedLeaseCountByTenantId.set(
+          lease.responsible_payer_id,
+          (relatedLeaseCountByTenantId.get(lease.responsible_payer_id) || 0) + 1
+        );
       }
     });
 
     return tenants.map((tenant) => {
       const activeLease = activeLeaseByTenantId.get(tenant.id) || null;
       const unit = activeLease?.unit_id ? unitMap.get(activeLease.unit_id) : null;
-      const building =
-        unit?.building_id ? buildingMap.get(unit.building_id) : null;
+      const building = unit?.building_id ? buildingMap.get(unit.building_id) : null;
+      const relatedLeaseCount = relatedLeaseCountByTenantId.get(tenant.id) || 0;
 
       return {
         id: tenant.id,
@@ -385,10 +453,12 @@ export default function TenantsPage() {
         statusLabel: getStatusLabel(tenant.status),
         notes: tenant.notes || "—",
         createdAtLabel: formatDate(tenant.created_at),
+        currentBuildingId: building?.id || null,
         currentBuildingLabel: building?.name || "Sin lease activo",
-        currentUnitLabel:
-          unit?.display_code || unit?.unit_number || "Sin lease activo",
+        currentUnitLabel: unit?.display_code || unit?.unit_number || "Sin lease activo",
         hasActiveLease: Boolean(activeLease),
+        relatedLeaseCount,
+        canDelete: relatedLeaseCount === 0,
       };
     });
   }, [tenants, leases, units, buildings]);
@@ -396,6 +466,18 @@ export default function TenantsPage() {
   const filteredRows = useMemo(() => {
     return tenantRows.filter((row) => {
       if (statusFilter !== "all" && row.status !== statusFilter) {
+        return false;
+      }
+
+      if (buildingFilter === "no_lease" && row.currentBuildingId !== null) {
+        return false;
+      }
+
+      if (
+        buildingFilter !== "all" &&
+        buildingFilter !== "no_lease" &&
+        row.currentBuildingId !== buildingFilter
+      ) {
         return false;
       }
 
@@ -422,11 +504,51 @@ export default function TenantsPage() {
 
       return true;
     });
-  }, [tenantRows, statusFilter, search]);
+  }, [tenantRows, statusFilter, buildingFilter, search]);
 
   const activeCount = tenantRows.filter((row) => row.status === "ACTIVE").length;
   const inactiveCount = tenantRows.filter((row) => row.status === "INACTIVE").length;
   const withLeaseCount = tenantRows.filter((row) => row.hasActiveLease).length;
+
+  async function handleDeleteTenantConfirmed() {
+    if (!user?.company_id || !tenantToDelete) return;
+
+    if (!tenantToDelete.canDelete) {
+      setMessage(
+        "No se puede eliminar este inquilino porque tiene leases relacionados. Primero hay que finalizar o limpiar esos registros."
+      );
+      setShowDeleteModal(false);
+      setTenantToDelete(null);
+      return;
+    }
+
+    setSaving(true);
+    setMessage("");
+
+    const { error } = await supabase
+      .from("tenants")
+      .delete()
+      .eq("id", tenantToDelete.id)
+      .eq("company_id", user.company_id);
+
+    if (error) {
+      setSaving(false);
+      setMessage(error.message);
+      return;
+    }
+
+    if (editingTenantId === tenantToDelete.id) {
+      setShowModal(false);
+      setEditingTenantId(null);
+      setForm(emptyForm());
+    }
+
+    setSaving(false);
+    setShowDeleteModal(false);
+    setTenantToDelete(null);
+    setMessage("Inquilino eliminado correctamente.");
+    await loadTenantsPage();
+  }
 
   if (loading || loadingPage) {
     return (
@@ -501,7 +623,8 @@ export default function TenantsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "minmax(260px, 1.2fr) minmax(220px, 0.8fr)",
+            gridTemplateColumns:
+              "minmax(260px, 1.2fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr)",
             gap: 16,
           }}
         >
@@ -524,7 +647,7 @@ export default function TenantsPage() {
           <AppCard>
             <div style={{ display: "grid", gap: 10 }}>
               <div style={filterLabelStyle}>
-                <Building2 size={14} />
+                <User2 size={14} />
                 Estatus
               </div>
 
@@ -537,6 +660,28 @@ export default function TenantsPage() {
                 <option value="all">Todos</option>
                 <option value="ACTIVE">Activos</option>
                 <option value="INACTIVE">Inactivos</option>
+              </AppSelect>
+            </div>
+          </AppCard>
+
+          <AppCard>
+            <div style={{ display: "grid", gap: 10 }}>
+              <div style={filterLabelStyle}>
+                <Building2 size={14} />
+                Edificio
+              </div>
+
+              <AppSelect
+                value={buildingFilter}
+                onChange={(e) => setBuildingFilter(e.target.value)}
+              >
+                <option value="all">Todos</option>
+                <option value="no_lease">Sin lease activo</option>
+                {buildings.map((building) => (
+                  <option key={building.id} value={building.id}>
+                    {building.name}
+                  </option>
+                ))}
               </AppSelect>
             </div>
           </AppCard>
@@ -634,18 +779,54 @@ export default function TenantsPage() {
             {
               key: "actions",
               header: "Acciones",
-              render: (row: TenantRow) => (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const tenant = tenants.find((item) => item.id === row.id);
-                    if (tenant) openEditModal(tenant);
-                  }}
-                  style={actionButtonStyle}
-                >
-                  Editar
-                </button>
-              ),
+              render: (row: TenantRow) => {
+                const tenant = tenants.find((item) => item.id === row.id);
+                const isOpen = openActionsTenantId === row.id;
+
+                return (
+                  <div
+                    style={{ position: "relative", display: "inline-block" }}
+                    ref={isOpen ? actionsMenuRef : null}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenActionsTenantId((prev) =>
+                          prev === row.id ? null : row.id
+                        )
+                      }
+                      style={dropdownTriggerStyle}
+                    >
+                      <MoreHorizontal size={14} />
+                      Acciones
+                      <ChevronDown size={14} />
+                    </button>
+
+                    {isOpen ? (
+                      <div style={dropdownMenuStyle}>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (tenant) openEditModal(tenant);
+                          }}
+                          style={dropdownItemStyle}
+                        >
+                          Editar
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => openDeleteModal(row)}
+                          style={dropdownDeleteItemStyle}
+                        >
+                          <Trash2 size={14} />
+                          Eliminar
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              },
             },
           ]}
         />
@@ -655,7 +836,6 @@ export default function TenantsPage() {
         open={showModal}
         onClose={closeModal}
         title={editingTenantId ? "Editar inquilino" : "Nuevo inquilino"}
-        subtitle="Centraliza aquí la información base para después usarla en leases, cobranza y facturación."
       >
         <form onSubmit={handleSaveTenant}>
           <div style={{ display: "grid", gap: 16 }}>
@@ -807,6 +987,75 @@ export default function TenantsPage() {
           </div>
         </form>
       </Modal>
+
+      <Modal
+        open={showDeleteModal}
+        onClose={closeDeleteModal}
+        title="Eliminar inquilino"
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 14,
+              background: tenantToDelete?.canDelete ? "#FEF2F2" : "#FFF7ED",
+              border: tenantToDelete?.canDelete
+                ? "1px solid #FECACA"
+                : "1px solid #FED7AA",
+              color: tenantToDelete?.canDelete ? "#991B1B" : "#9A3412",
+              fontSize: 14,
+              fontWeight: 600,
+              lineHeight: 1.5,
+            }}
+          >
+            {tenantToDelete ? (
+              tenantToDelete.canDelete ? (
+                <>
+                  ¿Seguro que quieres eliminar a <strong>{tenantToDelete.fullName}</strong>?
+                  Esta acción no se puede deshacer.
+                </>
+              ) : (
+                <>
+                  No se puede eliminar a <strong>{tenantToDelete.fullName}</strong> porque
+                  tiene <strong> {tenantToDelete.relatedLeaseCount} </strong>
+                  lease(s) relacionado(s). Primero hay que finalizar o limpiar esos
+                  registros.
+                </>
+              )
+            ) : (
+              "¿Seguro que quieres eliminar este inquilino?"
+            )}
+          </div>
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <UiButton
+              type="button"
+              variant="secondary"
+              onClick={closeDeleteModal}
+              disabled={saving}
+            >
+              Cerrar
+            </UiButton>
+
+            {tenantToDelete?.canDelete ? (
+              <UiButton
+                type="button"
+                onClick={handleDeleteTenantConfirmed}
+                disabled={saving}
+              >
+                {saving ? "Eliminando..." : "Eliminar"}
+              </UiButton>
+            ) : null}
+          </div>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }
@@ -845,16 +1094,63 @@ const cellSecondaryStyle: CSSProperties = {
   color: "#6B7280",
 };
 
-const actionButtonStyle: CSSProperties = {
+const dropdownTriggerStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  justifyContent: "center",
+  gap: 8,
   padding: "8px 10px",
   borderRadius: 10,
   border: "1px solid #D1D5DB",
   background: "#FFFFFF",
   color: "#374151",
   fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const dropdownMenuStyle: CSSProperties = {
+  position: "absolute",
+  top: "calc(100% + 8px)",
+  right: 0,
+  minWidth: 170,
+  background: "#FFFFFF",
+  border: "1px solid #E5E7EB",
+  borderRadius: 12,
+  boxShadow: "0 12px 30px rgba(15, 23, 42, 0.12)",
+  padding: 8,
+  display: "grid",
+  gap: 6,
+  zIndex: 50,
+};
+
+const dropdownItemStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 8,
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "none",
+  background: "#FFFFFF",
+  color: "#374151",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const dropdownDeleteItemStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 8,
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "none",
+  background: "#FFF1F2",
+  color: "#B91C1C",
+  fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
 };
