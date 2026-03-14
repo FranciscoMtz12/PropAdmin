@@ -10,8 +10,6 @@
   - Máximo de leases activos según bedroom_count del unit_type
   - Datos de facturación automáticos desde tenants
   - Corrección de fechas sin desfase por zona horaria
-  - Eliminación de leases
-  - Refuerzo de carga de tenants para que el selector no quede vacío
 
   Reglas activas:
   - bedroom_count define cuántos leases activos máximos puede tener la unidad
@@ -58,6 +56,7 @@ import AppStatBar from "@/components/AppStatBar";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 import AppSelect from "@/components/AppSelect";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 type Building = {
   id: string;
@@ -391,6 +390,54 @@ export default function UnitDetailPage() {
   const [showLeaseModal, setShowLeaseModal] = useState(false);
   const [editingLeaseId, setEditingLeaseId] = useState<string | null>(null);
   const [leaseForm, setLeaseForm] = useState<LeaseFormState>(emptyLeaseForm());
+  const [showDeleteLeaseModal, setShowDeleteLeaseModal] = useState(false);
+  const [leaseToDelete, setLeaseToDelete] = useState<LeaseRow | null>(null);
+
+
+  function openDeleteLeaseModal(lease: LeaseRow) {
+    setLeaseToDelete(lease);
+    setShowDeleteLeaseModal(true);
+    setMsg("");
+  }
+
+  function closeDeleteLeaseModal() {
+    if (saving) return;
+    setShowDeleteLeaseModal(false);
+    setLeaseToDelete(null);
+  }
+
+  async function handleDeleteLeaseConfirmed() {
+    if (!user?.company_id || !unit || !leaseToDelete) return;
+
+    setSaving(true);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("leases")
+      .delete()
+      .eq("id", leaseToDelete.id)
+      .eq("company_id", user.company_id);
+
+    if (error) {
+      setSaving(false);
+      setMsg(error.message);
+      return;
+    }
+
+    const remainingActive = activeLeases.filter((lease) => lease.id !== leaseToDelete.id);
+
+    await supabase
+      .from("units")
+      .update({ status: remainingActive.length > 0 ? "RENTED" : "VACANT" })
+      .eq("id", unit.id)
+      .eq("company_id", user.company_id);
+
+    setShowDeleteLeaseModal(false);
+    setLeaseToDelete(null);
+    setSaving(false);
+    setMsg("Lease eliminado correctamente.");
+    await loadPageData();
+  }
 
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
@@ -403,9 +450,10 @@ export default function UnitDetailPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (!user?.company_id || !buildingId || !unitId) return;
-    void loadPageData();
-  }, [user?.company_id, buildingId, unitId]);
+    if (user?.company_id && buildingId && unitId) {
+      void loadPageData();
+    }
+  }, [user, buildingId, unitId]);
 
   async function loadPageData() {
     if (!user?.company_id || !buildingId || !unitId) return;
@@ -681,18 +729,7 @@ export default function UnitDetailPage() {
     }));
   }, [assets]);
 
-  async function openCreateLease() {
-    setMsg("");
-
-    if (!user?.company_id) {
-      setMsg("No se encontró la empresa del usuario.");
-      return;
-    }
-
-    if (tenants.length === 0) {
-      await loadPageData();
-    }
-
+  function openCreateLease() {
     if (activeLeases.length >= bedroomCount) {
       setMsg(
         `Esta unidad ya alcanzó su capacidad máxima de ${bedroomCount} lease(s) activo(s).`
@@ -706,6 +743,7 @@ export default function UnitDetailPage() {
       roomNumber: availableRoomNumbers[0] ? String(availableRoomNumbers[0]) : "",
     });
     setShowLeaseModal(true);
+    setMsg("");
   }
 
   function openEditLease(lease: LeaseRow) {
@@ -842,9 +880,7 @@ export default function UnitDetailPage() {
 
     const shouldBeRented =
       leaseForm.status === "ACTIVE" ||
-      activeLeases.some(
-        (lease) => lease.id !== editingLeaseId && lease.status === "ACTIVE"
-      );
+      activeLeases.some((lease) => lease.id !== editingLeaseId && lease.status === "ACTIVE");
 
     await supabase
       .from("units")
@@ -897,56 +933,6 @@ export default function UnitDetailPage() {
 
     setSaving(false);
     setMsg("Lease finalizado correctamente.");
-    await loadPageData();
-  }
-
-  async function handleDeleteLease(leaseId: string) {
-    if (!user?.company_id || !unit) return;
-
-    const confirmed = window.confirm(
-      "¿Seguro que quieres eliminar este lease? Esta acción no se puede deshacer."
-    );
-
-    if (!confirmed) return;
-
-    setSaving(true);
-    setMsg("");
-
-    const leaseToDelete = leaseHistory.find((lease) => lease.id === leaseId) || null;
-
-    const { error } = await supabase
-      .from("leases")
-      .delete()
-      .eq("id", leaseId)
-      .eq("company_id", user.company_id);
-
-    if (error) {
-      setSaving(false);
-      setMsg(error.message);
-      return;
-    }
-
-    if (editingLeaseId === leaseId) {
-      setShowLeaseModal(false);
-      setEditingLeaseId(null);
-      setLeaseForm(emptyLeaseForm());
-    }
-
-    const remainingActive = activeLeases.filter((lease) => lease.id !== leaseId);
-    const nextUnitStatus =
-      remainingActive.length > 0 ||
-      (leaseToDelete?.status !== "ACTIVE" && activeLeases.length > 0)
-        ? "RENTED"
-        : "VACANT";
-
-    await supabase
-      .from("units")
-      .update({ status: nextUnitStatus })
-      .eq("id", unit.id)
-      .eq("company_id", user.company_id);
-
-    setSaving(false);
-    setMsg("Lease eliminado correctamente.");
     await loadPageData();
   }
 
@@ -1217,31 +1203,6 @@ export default function UnitDetailPage() {
                   </div>
                 </div>
               </AppCard>
-
-              <AppCard>
-                <div
-                  style={{
-                    display: "flex",
-                    gap: "18px",
-                    flexWrap: "wrap",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div style={summaryCardTextStyle}>
-                    Inquilinos disponibles en catálogo: <strong>{tenants.length}</strong>
-                  </div>
-
-                  <div style={summaryCardTextStyle}>
-                    Cuartos habilitados para asignación:{" "}
-                    <strong>
-                      {availableRoomNumbers.length > 0
-                        ? availableRoomNumbers.join(", ")
-                        : "Ninguno"}
-                    </strong>
-                  </div>
-                </div>
-              </AppCard>
             </div>
 
             {activeLeases.length > 0 ? (
@@ -1342,14 +1303,6 @@ export default function UnitDetailPage() {
                           >
                             Finalizar lease
                           </UiButton>
-
-                          <UiButton
-                            variant="secondary"
-                            onClick={() => handleDeleteLease(lease.id)}
-                            icon={<Trash2 size={16} />}
-                          >
-                            Eliminar lease
-                          </UiButton>
                         </div>
                       </div>
                     </AppCard>
@@ -1377,7 +1330,10 @@ export default function UnitDetailPage() {
 
       {activeTab === "assets" ? (
         <div style={{ marginTop: "18px" }}>
-          <SectionCard title="Assets del departamento">
+          <SectionCard
+            title="Assets del departamento"
+            subtitle="Resumen rápido de los equipos actualmente visibles en la unidad."
+          >
             {assets.length === 0 ? (
               <AppCard>
                 <div style={{ color: "#6B7280", fontWeight: 500 }}>
@@ -1429,7 +1385,10 @@ export default function UnitDetailPage() {
 
       {activeTab === "history" ? (
         <div style={{ marginTop: "18px" }}>
-          <SectionCard title="Historial de leases">
+          <SectionCard
+            title="Historial de leases"
+            subtitle="Registro histórico de arrendamientos de la unidad."
+          >
             {leaseHistory.length === 0 ? (
               <AppCard>
                 <div style={{ color: "#6B7280", fontWeight: 500 }}>
@@ -1496,16 +1455,6 @@ export default function UnitDetailPage() {
                               }`
                             : "Sin datos de facturación"}
                         </div>
-
-                        <div style={{ marginTop: "4px" }}>
-                          <UiButton
-                            variant="secondary"
-                            onClick={() => handleDeleteLease(lease.id)}
-                            icon={<Trash2 size={16} />}
-                          >
-                            Eliminar lease
-                          </UiButton>
-                        </div>
                       </div>
                     </AppCard>
                   );
@@ -1520,6 +1469,7 @@ export default function UnitDetailPage() {
         open={showEditForm}
         onClose={handleCancelEdit}
         title="Editar departamento"
+        subtitle="Actualiza los datos base del departamento sin salir de la vista de detalle."
       >
         <form onSubmit={handleUpdateUnit}>
           <div style={{ display: "grid", gap: "16px" }}>
@@ -1607,6 +1557,7 @@ export default function UnitDetailPage() {
         open={showLeaseModal}
         onClose={closeLeaseModal}
         title={editingLeaseId ? "Editar lease" : "Crear lease"}
+        subtitle="Asigna el arrendamiento de un cuarto específico dentro de esta unidad."
       >
         <form onSubmit={handleSaveLease}>
           <div style={{ display: "grid", gap: "16px" }}>
@@ -1621,26 +1572,18 @@ export default function UnitDetailPage() {
                 <label style={labelStyle}>Inquilino</label>
                 <AppSelect
                   value={leaseForm.tenantId}
-                  onChange={(e) => {
-                    const nextTenantId = e.target.value;
-
+                  onChange={(e) =>
                     setLeaseForm((prev) => ({
                       ...prev,
-                      tenantId: nextTenantId,
+                      tenantId: e.target.value,
                       responsiblePayerId:
-                        prev.responsiblePayerId &&
-                        prev.responsiblePayerId !== nextTenantId
+                        prev.responsiblePayerId && prev.responsiblePayerId !== prev.tenantId
                           ? prev.responsiblePayerId
                           : "",
-                    }));
-                  }}
-                  disabled={tenants.length === 0}
+                    }))
+                  }
                 >
-                  <option value="">
-                    {tenants.length === 0
-                      ? "No hay inquilinos disponibles"
-                      : "Selecciona un inquilino"}
-                  </option>
+                  <option value="">Selecciona un inquilino</option>
                   {tenants.map((tenant) => (
                     <option key={tenant.id} value={tenant.id}>
                       {tenant.full_name}
@@ -1659,7 +1602,6 @@ export default function UnitDetailPage() {
                       responsiblePayerId: e.target.value,
                     }))
                   }
-                  disabled={tenants.length === 0}
                 >
                   <option value="">Mismo inquilino</option>
                   {tenants.map((tenant) => (
@@ -1759,8 +1701,8 @@ export default function UnitDetailPage() {
                     }))
                   }
                 >
-                  <option value="ACTIVE">Activo</option>
-                  <option value="ENDED">Finalizado</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="ENDED">ENDED</option>
                 </AppSelect>
               </div>
             </div>
@@ -1802,7 +1744,7 @@ export default function UnitDetailPage() {
                 Cancelar
               </UiButton>
 
-              <UiButton type="submit" disabled={saving || tenants.length === 0}>
+              <UiButton type="submit" disabled={saving}>
                 {saving
                   ? "Guardando..."
                   : editingLeaseId
@@ -1813,6 +1755,22 @@ export default function UnitDetailPage() {
           </div>
         </form>
       </Modal>
+
+      <DeleteConfirmModal
+        open={showDeleteLeaseModal}
+        title="Eliminar lease"
+        description={
+          leaseToDelete
+            ? `¿Seguro que quieres eliminar el lease de ${getTenantDisplayName(
+                leaseToDelete.tenant_id ? tenantsMap.get(leaseToDelete.tenant_id) : null
+              )} del cuarto ${leaseToDelete.room_number || "—"}? Esta acción no se puede deshacer.`
+            : "¿Seguro que quieres eliminar este lease? Esta acción no se puede deshacer."
+        }
+        confirmText={saving ? "Eliminando..." : "Eliminar"}
+        cancelText="Cancelar"
+        onCancel={closeDeleteLeaseModal}
+        onConfirm={handleDeleteLeaseConfirmed}
+      />
     </PageContainer>
   );
 }
