@@ -1,13 +1,5 @@
 "use client";
 
-/*
-  Breadcrumb global y automático para toda la app.
-
-  Esta versión se adaptó al nuevo layout centrado del sistema.
-  El breadcrumb ya no vive en una caja muy pesada; ahora se ve más limpio,
-  discreto y consistente con la UI que queremos mantener en PropAdmin.
-*/
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -34,6 +26,7 @@ function humanizeSegment(segment: string) {
     calendar: "Calendario",
     "work-orders": "Órdenes de trabajo",
     login: "Login",
+    portal: "Portal",
   };
 
   return map[segment] || segment;
@@ -65,11 +58,14 @@ function buildCrumbs(pathname: string): Crumb[] {
     if (segment === "dashboard") return;
 
     const previousSegment = rawSegments[index - 1];
-    const isDynamic = isUuidLike(segment) || segment.startsWith("[") || /Id$/i.test(segment);
+    const isDynamic =
+      isUuidLike(segment) || segment.startsWith("[") || /Id$/i.test(segment);
 
     crumbs.push({
       href: hrefAccumulator,
-      label: isDynamic ? labelForDynamicSegment(previousSegment) : humanizeSegment(segment),
+      label: isDynamic
+        ? labelForDynamicSegment(previousSegment)
+        : humanizeSegment(segment),
     });
   });
 
@@ -79,24 +75,53 @@ function buildCrumbs(pathname: string): Crumb[] {
 export default function GlobalBreadcrumbs() {
   const pathname = usePathname();
 
-  if (!pathname || pathname === "/" || pathname === "/login") {
+  if (
+    !pathname ||
+    pathname === "/" ||
+    pathname === "/login" ||
+    pathname === "/portal/login"
+  ) {
     return null;
   }
 
   const crumbs = buildCrumbs(pathname);
 
   return (
-    <div style={{ width: "100%", maxWidth: "1320px", margin: "0 auto", padding: "18px 32px 0 32px" }}>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", alignItems: "center", fontSize: "13px", color: "#6B7280" }}>
+    <div
+      style={{
+        width: "100%",
+        maxWidth: "1320px",
+        margin: "0 auto",
+        padding: "18px 32px 0 32px",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+          alignItems: "center",
+          fontSize: "13px",
+          color: "#6B7280",
+        }}
+      >
         {crumbs.map((crumb, index) => {
           const isLast = index === crumbs.length - 1;
 
           return (
-            <div key={`${crumb.href}-${index}`} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <div
+              key={`${crumb.href}-${index}`}
+              style={{ display: "flex", alignItems: "center", gap: "8px" }}
+            >
               {isLast ? (
-                <span style={{ fontWeight: 600, color: "#111827" }}>{crumb.label}</span>
+                <span style={{ fontWeight: 600, color: "#111827" }}>
+                  {crumb.label}
+                </span>
               ) : (
-                <Link href={crumb.href} style={{ color: "#6B7280", textDecoration: "none" }}>
+                <Link
+                  href={crumb.href}
+                  style={{ color: "#6B7280", textDecoration: "none" }}
+                >
                   {crumb.label}
                 </Link>
               )}

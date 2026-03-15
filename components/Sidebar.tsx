@@ -25,22 +25,6 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
-/*
-  Sidebar global del sistema.
-
-  Ajuste aplicado:
-  - se divide temporalmente en dos bloques:
-    1) Administración
-    2) Inquilinos
-  - sirve como mapa visual del proyecto
-  - muestra estado simple de avance por módulo:
-      verde = ya existe / bastante avanzado
-      amarillo = parcial / en construcción
-      rojo = pendiente / placeholder
-  - por ahora algunos módulos del bloque de inquilinos funcionan
-    solo como referencia visual del roadmap
-*/
-
 type NavStatus = "done" | "partial" | "pending";
 
 type SidebarItem = {
@@ -245,7 +229,7 @@ export default function Sidebar() {
   const router = useRouter();
   const { user } = useCurrentUser();
 
-  if (pathname === "/login") return null;
+  if (pathname === "/login" || pathname === "/portal/login") return null;
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -340,7 +324,7 @@ export default function Sidebar() {
               fontWeight: 700,
             }}
           >
-            Usuario actual
+            Sesión actual
           </span>
 
           <span
@@ -350,36 +334,33 @@ export default function Sidebar() {
               color: "#FFFFFF",
             }}
           >
-            {user?.full_name || user?.email || "Sin usuario"}
+            {user?.full_name || user?.email || "Sin sesión"}
           </span>
 
-          {user?.company_id ? (
-            <span
-              style={{
-                fontSize: 12,
-                color: "rgba(255,255,255,0.65)",
-              }}
-            >
-              Vista global / empresa activa configurada
-            </span>
-          ) : null}
+          <span
+            style={{
+              fontSize: 13,
+              color: "rgba(255,255,255,0.68)",
+            }}
+          >
+            {user?.email || "No autenticado"}
+          </span>
         </div>
 
         <button
           type="button"
           onClick={handleLogout}
           style={{
-            display: "flex",
+            display: "inline-flex",
             alignItems: "center",
             justifyContent: "center",
-            gap: 8,
+            gap: 10,
             width: "100%",
+            padding: "12px 14px",
             borderRadius: 14,
             border: "1px solid rgba(255,255,255,0.14)",
             background: "rgba(255,255,255,0.06)",
             color: "#FFFFFF",
-            padding: "12px 14px",
-            fontSize: 14,
             fontWeight: 700,
             cursor: "pointer",
           }}
