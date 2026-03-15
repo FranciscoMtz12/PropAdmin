@@ -7,13 +7,18 @@ import { useCurrentUser } from "@/contexts/UserContext";
 /*
   RouteGuard cliente para separar experiencia admin vs tenant.
 
-  IMPORTANTE:
-  Esto sí bloquea navegación dentro de la app y evita que un tenant use
-  rutas administrativas por URL manual.
-  Pero todavía NO sustituye seguridad server-side real.
+  REGLAS ACTUALES:
+  - tenant solo puede usar /portal/*
+  - admin normal solo puede usar rutas administrativas
+  - superadmin puede usar ambas zonas:
+      /dashboard y /portal/*
+  - sin sesión:
+      rutas admin -> /login
+      rutas portal -> /portal/login
 
-  Más adelante, para blindaje completo, conviene migrar auth a cookies SSR
-  y luego agregar middleware de Next con validación de sesión del lado servidor.
+  IMPORTANTE:
+  Esto sigue siendo protección cliente.
+  Más adelante conviene reforzar con auth SSR + middleware.
 */
 
 const ADMIN_PUBLIC_ROUTES = ["/login"];
@@ -48,10 +53,8 @@ export default function RouteGuard() {
     const portalPublic = isPortalPublicPath(pathname);
     const publicHome = isPublicHome(pathname);
 
-    // Home raíz: no forzamos nada aquí.
     if (publicHome) return;
 
-    // Sin sesión
     if (!user) {
       if (portalPath && !portalPublic) {
         router.replace("/portal/login");
@@ -66,15 +69,20 @@ export default function RouteGuard() {
       return;
     }
 
-    // Usuario tenant
+    // Superadmin: acceso total al sistema.
+    if (user.role === "admin" && user.is_superadmin) {
+      if (adminPublic || portalPublic) {
+        router.replace("/dashboard");
+      }
+      return;
+    }
+
     if (user.role === "tenant") {
-      // Tenant no debe ver rutas admin
       if (!portalPath) {
         router.replace("/portal/dashboard");
         return;
       }
 
-      // Tenant autenticado no necesita volver a /portal/login
       if (portalPublic) {
         router.replace("/portal/dashboard");
         return;
@@ -83,15 +91,12 @@ export default function RouteGuard() {
       return;
     }
 
-    // Usuario admin
     if (user.role === "admin") {
-      // Admin no debe navegar dentro del portal tenant
       if (portalPath) {
         router.replace("/dashboard");
         return;
       }
 
-      // Admin autenticado no necesita volver a /login
       if (adminPublic) {
         router.replace("/dashboard");
         return;

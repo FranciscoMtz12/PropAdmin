@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
   BadgeCheck,
@@ -106,14 +106,24 @@ function getStatusVisual(status: NavStatus) {
   };
 }
 
+function appendTenantPreviewToHref(href: string, tenantId?: string | null) {
+  if (!tenantId) return href;
+  if (!href.startsWith("/portal")) return href;
+
+  const separator = href.includes("?") ? "&" : "?";
+  return `${href}${separator}tenantId=${encodeURIComponent(tenantId)}`;
+}
+
 function SidebarSection({
   title,
   items,
   pathname,
+  previewTenantId,
 }: {
   title: string;
   items: SidebarItem[];
   pathname: string;
+  previewTenantId?: string | null;
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -135,6 +145,11 @@ function SidebarSection({
           const Icon = item.icon;
           const statusVisual = getStatusVisual(item.status);
           const StatusIcon = statusVisual.icon;
+          const resolvedHref =
+            item.href && !item.disabled
+              ? appendTenantPreviewToHref(item.href, previewTenantId)
+              : undefined;
+
           const active =
             Boolean(item.href) &&
             (pathname === item.href || pathname.startsWith(`${item.href}/`));
@@ -197,11 +212,11 @@ function SidebarSection({
             </div>
           );
 
-          if (item.href && !item.disabled) {
+          if (resolvedHref) {
             return (
               <Link
                 key={`${title}-${item.label}`}
-                href={item.href}
+                href={resolvedHref}
                 style={commonStyle}
               >
                 {leftBlock}
@@ -232,11 +247,15 @@ function SidebarSection({
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useCurrentUser();
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
   const isHiddenRoute =
     pathname === "/login" || pathname === "/portal/login" || pathname === "/";
+
+  const previewTenantId = searchParams.get("tenantId");
+  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
 
   if (isHiddenRoute) return null;
 
@@ -245,9 +264,13 @@ export default function Sidebar() {
     router.push(isPortalPath ? "/portal/login" : "/login");
   }
 
-  const sidebarTitle = isPortalPath ? "Portal del inquilino" : "Gestión de Propiedades";
+  const sidebarTitle = isPortalPath
+    ? "Portal del inquilino"
+    : "Gestión de Propiedades";
+
   const sessionName =
     user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
+
   const sessionEmail = user?.email || "No autenticado";
 
   return (
@@ -294,9 +317,10 @@ export default function Sidebar() {
 
         {isPortalPath ? (
           <SidebarSection
-            title="Mi portal"
+            title="Portal"
             items={TENANT_ITEMS}
             pathname={pathname}
+            previewTenantId={previewTenantId}
           />
         ) : (
           <>
@@ -306,21 +330,52 @@ export default function Sidebar() {
               pathname={pathname}
             />
 
-            <div
-              style={{
-                height: 1,
-                background: "rgba(255,255,255,0.08)",
-                margin: "2px 0 2px",
-              }}
-            />
+            {isSuperAdmin ? (
+              <>
+                <div
+                  style={{
+                    height: 1,
+                    background: "rgba(255,255,255,0.08)",
+                    margin: "2px 0 2px",
+                  }}
+                />
 
-            <SidebarSection
-              title="Inquilinos"
-              items={TENANT_ITEMS}
-              pathname={pathname}
-            />
+                <SidebarSection
+                  title="Vista portal"
+                  items={TENANT_ITEMS}
+                  pathname={pathname}
+                  previewTenantId={previewTenantId}
+                />
+              </>
+            ) : null}
           </>
         )}
+
+        {isSuperAdmin && previewTenantId ? (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 14,
+              background: "rgba(255,255,255,0.06)",
+              border: "1px solid rgba(255,255,255,0.10)",
+              fontSize: 13,
+              color: "rgba(255,255,255,0.82)",
+              lineHeight: 1.5,
+            }}
+          >
+            Vista previa activa del tenant:
+            <div
+              style={{
+                marginTop: 6,
+                fontWeight: 700,
+                color: "#FFFFFF",
+                wordBreak: "break-word",
+              }}
+            >
+              {previewTenantId}
+            </div>
+          </div>
+        ) : null}
       </div>
 
       <div
@@ -379,12 +434,12 @@ export default function Sidebar() {
             alignItems: "center",
             justifyContent: "center",
             gap: 10,
-            border: "1px solid rgba(255,255,255,0.14)",
-            borderRadius: 14,
+            width: "100%",
             padding: "12px 14px",
+            borderRadius: 14,
+            border: "1px solid rgba(255,255,255,0.14)",
             background: "rgba(255,255,255,0.06)",
             color: "#FFFFFF",
-            fontSize: 14,
             fontWeight: 700,
             cursor: "pointer",
           }}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
   Building2,
@@ -12,6 +13,8 @@ import {
   FileText,
   Home,
   Info,
+  Search,
+  User2,
   Wallet,
 } from "lucide-react";
 
@@ -44,6 +47,13 @@ type TenantLeaseRecord = {
   } | null;
 };
 
+type TenantOption = {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  company_id: string | null;
+};
+
 type CollectionStoredStatus = "pending" | "partial" | "collected" | "overdue" | string;
 
 type CollectionRecord = {
@@ -53,7 +63,7 @@ type CollectionRecord = {
   building_id: string | null;
   unit_id: string | null;
   lease_id: string | null;
-  year: number;
+  period_year: number;
   period_month: number;
   due_date: string;
   amount_due: number;
@@ -189,8 +199,8 @@ function formatLeaseStatus(status?: string | null) {
   return status;
 }
 
-function formatPeriod(year: number, periodMonth: number) {
-  return `${MONTH_LABELS_SHORT[periodMonth - 1] || "Mes"} ${year}`;
+function formatPeriod(periodYear: number, periodMonth: number) {
+  return `${MONTH_LABELS_SHORT[periodMonth - 1] || "Mes"} ${periodYear}`;
 }
 
 function getDisplayStatus(record: CollectionRecord): DisplayStatus {
@@ -330,6 +340,8 @@ function DetailRow({
 
 export default function PortalInvoicesPage() {
   const { user, loading: userLoading } = useCurrentUser();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [leases, setLeases] = useState<TenantLeaseRecord[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
@@ -338,11 +350,66 @@ export default function PortalInvoicesPage() {
   const [pageError, setPageError] = useState("");
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
 
+  const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
+  const [tenantOptionsLoading, setTenantOptionsLoading] = useState(false);
+  const [tenantSelectorValue, setTenantSelectorValue] = useState("");
+
+  const previewTenantId = searchParams.get("tenantId");
+  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const effectiveTenantId =
+    user?.role === "tenant" ? user.tenant_id : previewTenantId;
+
+  useEffect(() => {
+    async function loadTenantOptions() {
+      if (userLoading) return;
+
+      if (!isSuperAdmin) {
+        setTenantOptions([]);
+        return;
+      }
+
+      setTenantOptionsLoading(true);
+
+      const { data, error } = await supabase
+        .from("tenants")
+        .select("id, full_name, email, company_id")
+        .order("full_name", { ascending: true });
+
+      if (error) {
+        console.error("Error cargando tenants para preview del portal:", error);
+        setTenantOptions([]);
+        setTenantOptionsLoading(false);
+        return;
+      }
+
+      const resolvedTenantOptions: TenantOption[] = Array.isArray(data)
+        ? (data as TenantOption[])
+        : [];
+
+      setTenantOptions(resolvedTenantOptions);
+      setTenantOptionsLoading(false);
+    }
+
+    void loadTenantOptions();
+  }, [isSuperAdmin, userLoading]);
+
+  useEffect(() => {
+    setTenantSelectorValue(previewTenantId || "");
+  }, [previewTenantId]);
+
   useEffect(() => {
     async function loadInvoicesData() {
       if (userLoading) return;
 
-      if (!user || user.role !== "tenant") {
+      if (!user) {
+        setLeases([]);
+        setCollectionRecords([]);
+        setReportedPayments([]);
+        setPageLoading(false);
+        return;
+      }
+
+      if (!effectiveTenantId) {
         setLeases([]);
         setCollectionRecords([]);
         setReportedPayments([]);
@@ -374,7 +441,7 @@ export default function PortalInvoicesPage() {
             )
           )
         `)
-        .eq("tenant_id", user.tenant_id)
+        .eq("tenant_id", effectiveTenantId)
         .order("start_date", { ascending: false });
 
       if (leaseError) {
@@ -410,7 +477,7 @@ export default function PortalInvoicesPage() {
           building_id,
           unit_id,
           lease_id,
-          year,
+          period_year,
           period_month,
           due_date,
           amount_due,
@@ -422,12 +489,17 @@ export default function PortalInvoicesPage() {
           created_at,
           updated_at
         `)
-        .eq("company_id", user.company_id)
         .in("lease_id", leaseIds)
         .order("due_date", { ascending: true });
 
       if (recordError) {
-        console.error("Error cargando collection_records del portal:", recordError);
+        console.error("Error cargando collection_records del portal:");
+        console.error("message:", recordError.message);
+        console.error("details:", recordError.details);
+        console.error("hint:", recordError.hint);
+        console.error("code:", recordError.code);
+        console.error("full error:", JSON.stringify(recordError, null, 2));
+
         setPageError("No se pudieron cargar tus adeudos.");
         setPageLoading(false);
         return;
@@ -459,7 +531,7 @@ export default function PortalInvoicesPage() {
           payment_date,
           created_at
         `)
-        .eq("tenant_id", user.tenant_id)
+        .eq("tenant_id", effectiveTenantId)
         .in("collection_record_id", recordIds)
         .order("created_at", { ascending: false });
 
@@ -478,7 +550,20 @@ export default function PortalInvoicesPage() {
     }
 
     void loadInvoicesData();
-  }, [user, userLoading]);
+  }, [effectiveTenantId, user, userLoading]);
+
+  const selectedTenant = useMemo(() => {
+    if (user?.role === "tenant") {
+      return {
+        id: user.tenant_id,
+        full_name: user.full_name,
+        email: user.email,
+        company_id: user.company_id,
+      };
+    }
+
+    return tenantOptions.find((tenant) => tenant.id === effectiveTenantId) || null;
+  }, [effectiveTenantId, tenantOptions, user]);
 
   const leaseMap = useMemo(() => {
     return new Map(leases.map((lease) => [lease.id, lease]));
@@ -518,7 +603,7 @@ export default function PortalInvoicesPage() {
       return {
         id: record.id,
         leaseId: record.lease_id,
-        periodLabel: formatPeriod(record.year, record.period_month),
+        periodLabel: formatPeriod(record.period_year, record.period_month),
         dueDate: record.due_date,
         dueDateLabel: formatDate(record.due_date),
         amountDue,
@@ -534,7 +619,9 @@ export default function PortalInvoicesPage() {
         leaseStatusLabel: formatLeaseStatus(lease?.status || null),
         notes: record.notes || "Sin notas registradas.",
         paymentMethodLabel: getPaymentMethodLabel(record.payment_method),
-        collectedAtLabel: formatDate(record.collected_at ? record.collected_at.slice(0, 10) : null),
+        collectedAtLabel: formatDate(
+          record.collected_at ? record.collected_at.slice(0, 10) : null
+        ),
         pendingReviewCount,
         latestReportedPaymentLabel: latestReportedPayment
           ? `${formatCurrency(latestReportedPayment.amount_reported)} reportado el ${formatDate(
@@ -592,16 +679,102 @@ export default function PortalInvoicesPage() {
     );
   }, [invoiceRows]);
 
+  function handleTenantSelection(nextTenantId: string) {
+    if (!nextTenantId) {
+      router.replace("/portal/invoices");
+      return;
+    }
+
+    router.replace(`/portal/invoices?tenantId=${encodeURIComponent(nextTenantId)}`);
+  }
+
   const tenantName =
-    user?.role === "tenant" ? user.full_name || user.email : "Inquilino";
+    selectedTenant?.full_name || selectedTenant?.email || "Inquilino";
 
   return (
     <PageContainer>
       <PageHeader
         title="Mis facturas y adeudos"
-        subtitle={`Hola, ${tenantName}. Aquí puedes revisar tus cargos reales por periodo, cuánto llevas pagado y qué adeudos siguen pendientes o vencidos.`}
+        subtitle={
+          isSuperAdmin
+            ? "Vista previa de los adeudos reales del tenant seleccionado. Aquí puedes validar exactamente lo que verá dentro de su portal."
+            : `Hola, ${tenantName}. Aquí puedes revisar tus cargos reales por periodo, cuánto llevas pagado y qué adeudos siguen pendientes o vencidos.`
+        }
         titleIcon={<FileText size={20} />}
       />
+
+      {isSuperAdmin ? (
+        <AppCard style={{ marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={iconBoxStyle}>
+              <Search size={18} />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div style={sectionTitleStyle}>Vista previa de tenant</div>
+              <div style={{ marginTop: 6, ...mutedTextStyle }}>
+                Selecciona el inquilino cuya cobranza deseas revisar sin cerrar sesión de superadmin.
+              </div>
+
+              <div style={{ marginTop: 14 }}>
+                <select
+                  value={tenantSelectorValue}
+                  onChange={(event) => {
+                    const nextTenantId = event.target.value;
+                    setTenantSelectorValue(nextTenantId);
+                    handleTenantSelection(nextTenantId);
+                  }}
+                  disabled={tenantOptionsLoading}
+                  style={{
+                    width: "100%",
+                    minHeight: 48,
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    padding: "0 14px",
+                    background: "#FFFFFF",
+                    color: "#111827",
+                    fontSize: 14,
+                    fontWeight: 600,
+                    outline: "none",
+                  }}
+                >
+                  <option value="">
+                    {tenantOptionsLoading
+                      ? "Cargando inquilinos..."
+                      : "Selecciona un inquilino para vista previa"}
+                  </option>
+
+                  {tenantOptions.map((tenant) => (
+                    <option key={tenant.id} value={tenant.id}>
+                      {(tenant.full_name || "Sin nombre") +
+                        (tenant.email ? ` — ${tenant.email}` : "")}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedTenant ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "#F8FAFC",
+                    border: "1px solid #E5E7EB",
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                    Tenant seleccionado: {selectedTenant.full_name || "Sin nombre"}
+                  </div>
+                  <div style={{ marginTop: 6, ...mutedTextStyle }}>
+                    {selectedTenant.email || "Sin correo registrado"}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </AppCard>
+      ) : null}
 
       {pageError ? (
         <AppCard
@@ -623,8 +796,25 @@ export default function PortalInvoicesPage() {
             </div>
 
             <div>
-              <div style={sectionTitleStyle}>No pudimos cargar tus adeudos</div>
+              <div style={sectionTitleStyle}>No pudimos cargar los adeudos</div>
               <div style={mutedTextStyle}>{pageError}</div>
+            </div>
+          </div>
+        </AppCard>
+      ) : null}
+
+      {isSuperAdmin && !effectiveTenantId ? (
+        <AppCard style={{ marginBottom: 18 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div style={iconBoxStyle}>
+              <Info size={18} />
+            </div>
+
+            <div>
+              <div style={sectionTitleStyle}>Selecciona un inquilino para continuar</div>
+              <div style={mutedTextStyle}>
+                Primero elige un tenant desde el selector superior para abrir sus facturas y adeudos en modo vista previa.
+              </div>
             </div>
           </div>
         </AppCard>
@@ -632,10 +822,17 @@ export default function PortalInvoicesPage() {
 
       <AppGrid minWidth={240}>
         <InfoCard
+          icon={<User2 size={18} />}
+          title="Inquilino"
+          value={pageLoading ? "Cargando..." : tenantName}
+          subtitle="Perfil actualmente visible en esta pantalla."
+        />
+
+        <InfoCard
           icon={<Wallet size={18} />}
           title="Saldo pendiente"
           value={pageLoading ? "Cargando..." : formatCurrency(summary.totalPending)}
-          subtitle="Monto que todavía falta por cubrir en tus adeudos."
+          subtitle="Monto que todavía falta por cubrir en los adeudos."
         />
 
         <InfoCard
@@ -649,14 +846,14 @@ export default function PortalInvoicesPage() {
           icon={<CheckCircle2 size={18} />}
           title="Monto pagado"
           value={pageLoading ? "Cargando..." : formatCurrency(summary.totalCollected)}
-          subtitle="Suma de lo que ya aparece cobrado en tus registros."
+          subtitle="Suma de lo que ya aparece cobrado en los registros."
         />
 
         <InfoCard
           icon={<CalendarDays size={18} />}
           title="Periodos registrados"
           value={pageLoading ? "Cargando..." : String(invoiceRows.length)}
-          subtitle="Cantidad total de cargos encontrados en tu historial."
+          subtitle="Cantidad total de cargos encontrados en el historial."
         />
       </AppGrid>
 
@@ -671,7 +868,7 @@ export default function PortalInvoicesPage() {
               <div>
                 <div style={sectionTitleStyle}>Cargando adeudos</div>
                 <div style={mutedTextStyle}>
-                  Estamos reuniendo la información real de tus cobros.
+                  Estamos reuniendo la información real de cobranza ligada al lease.
                 </div>
               </div>
             </div>
@@ -686,7 +883,7 @@ export default function PortalInvoicesPage() {
               <div>
                 <div style={sectionTitleStyle}>No hay adeudos registrados</div>
                 <div style={mutedTextStyle}>
-                  Por ahora no encontramos registros en cobranza ligados a tu contrato.
+                  Por ahora no encontramos registros de cobranza ligados al contrato seleccionado.
                 </div>
               </div>
             </div>
@@ -829,7 +1026,7 @@ export default function PortalInvoicesPage() {
                           setDetailRecordId((current) => (current === row.id ? null : row.id))
                         }
                       >
-                        {detailRecordId === row.id ? "Ocultar detalle" : "Ver detalle"}
+                        {expanded ? "Ocultar detalle" : "Ver detalle"}
                       </UiButton>
 
                       <UiButton
@@ -841,7 +1038,7 @@ export default function PortalInvoicesPage() {
                       </UiButton>
                     </div>
 
-                    {detailRecordId === row.id ? (
+                    {expanded ? (
                       <div
                         style={{
                           borderTop: "1px solid #E5E7EB",
