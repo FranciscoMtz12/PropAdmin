@@ -44,9 +44,13 @@ function labelForDynamicSegment(previousSegment: string | undefined) {
 
 function buildCrumbs(pathname: string): Crumb[] {
   const rawSegments = pathname.split("/").filter(Boolean);
-  const crumbs: Crumb[] = [{ href: "/dashboard", label: "Dashboard" }];
 
-  if (pathname === "/dashboard") {
+  const isPortalPath = pathname.startsWith("/portal");
+  const crumbs: Crumb[] = isPortalPath
+    ? [{ href: "/portal/dashboard", label: "Portal" }]
+    : [{ href: "/dashboard", label: "Dashboard" }];
+
+  if (pathname === "/dashboard" || pathname === "/portal/dashboard") {
     return crumbs;
   }
 
@@ -56,6 +60,7 @@ function buildCrumbs(pathname: string): Crumb[] {
     hrefAccumulator += `/${segment}`;
 
     if (segment === "dashboard") return;
+    if (segment === "portal" && isPortalPath) return;
 
     const previousSegment = rawSegments[index - 1];
     const isDynamic =
@@ -79,7 +84,8 @@ export default function GlobalBreadcrumbs() {
     !pathname ||
     pathname === "/" ||
     pathname === "/login" ||
-    pathname === "/portal/login"
+    pathname === "/portal/login" ||
+    pathname.startsWith("/portal")
   ) {
     return null;
   }

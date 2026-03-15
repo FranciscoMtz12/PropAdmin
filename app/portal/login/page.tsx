@@ -2,8 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { KeyRound, LogIn, Mail, ShieldCheck, UserRound } from "lucide-react";
-
+import { LogIn, Mail, ShieldCheck, UserRound } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 type PortalTab = "login" | "activate";
@@ -131,11 +130,20 @@ export default function PortalLoginPage() {
         }),
       });
 
-      const payload = await response.json();
+      const rawText = await response.text();
+
+      let payload: any = null;
+
+      try {
+        payload = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        payload = null;
+      }
 
       if (!response.ok) {
         setActivateMessage(
-          payload?.error || "No se pudo activar la cuenta."
+          payload?.error ||
+            "El servidor devolvió un error inesperado. Revisa la terminal de Next para ver el detalle."
         );
         setActivateLoading(false);
         return;
@@ -166,8 +174,7 @@ export default function PortalLoginPage() {
     <div
       style={{
         minHeight: "100vh",
-        background:
-          "linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 100%)",
+        background: "linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 100%)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -416,7 +423,11 @@ export default function PortalLoginPage() {
                 padding: 14,
               }}
             >
-              <Mail size={16} color="#6B7280" style={{ flexShrink: 0, marginTop: 2 }} />
+              <Mail
+                size={16}
+                color="#6B7280"
+                style={{ flexShrink: 0, marginTop: 2 }}
+              />
               <div
                 style={{
                   fontSize: 13,

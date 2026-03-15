@@ -1,16 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-/*
-  Activación de cuenta para inquilinos.
-
-  Regla de negocio:
-  - NO existe registro libre
-  - solo puede activarse un email que ya exista en public.tenants
-  - si el tenant ya tiene auth_user_id, ya fue activado
-  - al crear el usuario en auth, se guarda el vínculo en tenants.auth_user_id
-*/
-
 type ActivateBody = {
   email?: string;
   password?: string;
@@ -47,7 +37,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 1) Buscar tenant por email
     const { data: tenant, error: tenantError } = await supabaseAdmin
       .from("tenants")
       .select("id, full_name, email, auth_user_id, status")
@@ -82,7 +71,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2) Validar que no exista ya un auth user con ese correo
     const { data: existingAuthUsers, error: listUsersError } =
       await supabaseAdmin.auth.admin.listUsers();
 
@@ -108,7 +96,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3) Crear usuario en Supabase Auth
     const { data: createdAuthUser, error: createUserError } =
       await supabaseAdmin.auth.admin.createUser({
         email,
@@ -129,7 +116,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 4) Guardar auth_user_id en tenants
     const { error: updateTenantError } = await supabaseAdmin
       .from("tenants")
       .update({
@@ -140,7 +126,6 @@ export async function POST(request: Request) {
     if (updateTenantError) {
       console.error("Error vinculando tenant con auth:", updateTenantError);
 
-      // rollback simple: si ya se creó auth pero no se pudo vincular, borramos el auth user
       await supabaseAdmin.auth.admin.deleteUser(createdAuthUser.user.id);
 
       return NextResponse.json(

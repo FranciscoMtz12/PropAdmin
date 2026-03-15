@@ -48,7 +48,7 @@ const ADMIN_ITEMS: SidebarItem[] = [
 
 const TENANT_ITEMS: SidebarItem[] = [
   {
-    label: "Dashboard inquilino",
+    label: "Dashboard",
     href: "/portal/dashboard",
     icon: User2,
     status: "partial",
@@ -69,12 +69,14 @@ const TENANT_ITEMS: SidebarItem[] = [
   },
   {
     label: "Reportar pago",
+    href: "/portal/report-payment",
     icon: CreditCard,
     status: "pending",
     disabled: true,
   },
   {
     label: "Renovación de contrato",
+    href: "/portal/renewal",
     icon: BadgeCheck,
     status: "pending",
     disabled: true,
@@ -198,7 +200,11 @@ function SidebarSection({
 
           if (item.href && !item.disabled) {
             return (
-              <Link key={`${title}-${item.label}`} href={item.href} style={commonStyle}>
+              <Link
+                key={`${title}-${item.label}`}
+                href={item.href}
+                style={commonStyle}
+              >
                 {leftBlock}
                 {rightBlock}
               </Link>
@@ -229,12 +235,21 @@ export default function Sidebar() {
   const router = useRouter();
   const { user } = useCurrentUser();
 
-  if (pathname === "/login" || pathname === "/portal/login") return null;
+  const isPortalPath = pathname?.startsWith("/portal") ?? false;
+  const isHiddenRoute =
+    pathname === "/login" || pathname === "/portal/login" || pathname === "/";
+
+  if (isHiddenRoute) return null;
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push(isPortalPath ? "/portal/login" : "/login");
   }
+
+  const sidebarTitle = isPortalPath ? "Portal del inquilino" : "Gestión de Propiedades";
+  const sessionName =
+    user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
+  const sessionEmail = user?.email || "No autenticado";
 
   return (
     <aside
@@ -274,29 +289,39 @@ export default function Sidebar() {
               color: "rgba(255,255,255,0.7)",
             }}
           >
-            Gestión de Propiedades
+            {sidebarTitle}
           </div>
         </div>
 
-        <SidebarSection
-          title="Administración"
-          items={ADMIN_ITEMS}
-          pathname={pathname}
-        />
+        {isPortalPath ? (
+          <SidebarSection
+            title="Mi portal"
+            items={TENANT_ITEMS}
+            pathname={pathname}
+          />
+        ) : (
+          <>
+            <SidebarSection
+              title="Administración"
+              items={ADMIN_ITEMS}
+              pathname={pathname}
+            />
 
-        <div
-          style={{
-            height: 1,
-            background: "rgba(255,255,255,0.08)",
-            margin: "2px 0 2px",
-          }}
-        />
+            <div
+              style={{
+                height: 1,
+                background: "rgba(255,255,255,0.08)",
+                margin: "2px 0 2px",
+              }}
+            />
 
-        <SidebarSection
-          title="Inquilinos"
-          items={TENANT_ITEMS}
-          pathname={pathname}
-        />
+            <SidebarSection
+              title="Inquilinos"
+              items={TENANT_ITEMS}
+              pathname={pathname}
+            />
+          </>
+        )}
       </div>
 
       <div
@@ -334,7 +359,7 @@ export default function Sidebar() {
               color: "#FFFFFF",
             }}
           >
-            {user?.full_name || user?.email || "Sin sesión"}
+            {sessionName}
           </span>
 
           <span
@@ -343,7 +368,7 @@ export default function Sidebar() {
               color: "rgba(255,255,255,0.68)",
             }}
           >
-            {user?.email || "No autenticado"}
+            {sessionEmail}
           </span>
         </div>
 
