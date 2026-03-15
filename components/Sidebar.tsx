@@ -114,6 +114,11 @@ function appendTenantPreviewToHref(href: string, tenantId?: string | null) {
   return `${href}${separator}tenantId=${encodeURIComponent(tenantId)}`;
 }
 
+function isItemActive(pathname: string, itemHref?: string) {
+  if (!itemHref) return false;
+  return pathname === itemHref || pathname.startsWith(`${itemHref}/`);
+}
+
 function SidebarSection({
   title,
   items,
@@ -145,14 +150,13 @@ function SidebarSection({
           const Icon = item.icon;
           const statusVisual = getStatusVisual(item.status);
           const StatusIcon = statusVisual.icon;
+
           const resolvedHref =
             item.href && !item.disabled
               ? appendTenantPreviewToHref(item.href, previewTenantId)
               : undefined;
 
-          const active =
-            Boolean(item.href) &&
-            (pathname === item.href || pathname.startsWith(`${item.href}/`));
+          const active = isItemActive(pathname, item.href);
 
           const commonStyle: CSSProperties = {
             display: "flex",
@@ -264,12 +268,15 @@ export default function Sidebar() {
     router.push(isPortalPath ? "/portal/login" : "/login");
   }
 
-  const sidebarTitle = isPortalPath
-    ? "Portal del inquilino"
-    : "Gestión de Propiedades";
+  const sidebarTitle = isSuperAdmin
+    ? "Control total del sistema"
+    : isPortalPath
+      ? "Portal del inquilino"
+      : "Gestión de Propiedades";
 
   const sessionName =
-    user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
+    user?.full_name ||
+    (isPortalPath ? "Inquilino" : "Sin sesión");
 
   const sessionEmail = user?.email || "No autenticado";
 
@@ -315,14 +322,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {isPortalPath ? (
-          <SidebarSection
-            title="Portal"
-            items={TENANT_ITEMS}
-            pathname={pathname}
-            previewTenantId={previewTenantId}
-          />
-        ) : (
+        {isSuperAdmin ? (
           <>
             <SidebarSection
               title="Administración"
@@ -330,52 +330,76 @@ export default function Sidebar() {
               pathname={pathname}
             />
 
-            {isSuperAdmin ? (
-              <>
-                <div
-                  style={{
-                    height: 1,
-                    background: "rgba(255,255,255,0.08)",
-                    margin: "2px 0 2px",
-                  }}
-                />
-
-                <SidebarSection
-                  title="Vista portal"
-                  items={TENANT_ITEMS}
-                  pathname={pathname}
-                  previewTenantId={previewTenantId}
-                />
-              </>
-            ) : null}
-          </>
-        )}
-
-        {isSuperAdmin && previewTenantId ? (
-          <div
-            style={{
-              padding: 12,
-              borderRadius: 14,
-              background: "rgba(255,255,255,0.06)",
-              border: "1px solid rgba(255,255,255,0.10)",
-              fontSize: 13,
-              color: "rgba(255,255,255,0.82)",
-              lineHeight: 1.5,
-            }}
-          >
-            Vista previa activa del tenant:
             <div
               style={{
-                marginTop: 6,
-                fontWeight: 700,
-                color: "#FFFFFF",
-                wordBreak: "break-word",
+                height: 1,
+                background: "rgba(255,255,255,0.08)",
+                margin: "2px 0 2px",
               }}
-            >
-              {previewTenantId}
-            </div>
-          </div>
-        ) : null}
+            />
+
+            <SidebarSection
+              title="Vista portal"
+              items={TENANT_ITEMS}
+              pathname={pathname}
+              previewTenantId={previewTenantId}
+            />
+
+            {previewTenantId ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.82)",
+                  lineHeight: 1.5,
+                }}
+              >
+                Vista previa activa del tenant:
+                <div
+                  style={{
+                    marginTop: 6,
+                    fontWeight: 700,
+                    color: "#FFFFFF",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {previewTenantId}
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 14,
+                  background: "rgba(255,255,255,0.06)",
+                  border: "1px solid rgba(255,255,255,0.10)",
+                  fontSize: 13,
+                  color: "rgba(255,255,255,0.82)",
+                  lineHeight: 1.5,
+                }}
+              >
+                Puedes entrar al portal y luego elegir un tenant para vista previa
+                sin perder el acceso al resto del sistema.
+              </div>
+            )}
+          </>
+        ) : isPortalPath ? (
+          <SidebarSection
+            title="Portal"
+            items={TENANT_ITEMS}
+            pathname={pathname}
+            previewTenantId={previewTenantId}
+          />
+        ) : (
+          <SidebarSection
+            title="Administración"
+            items={ADMIN_ITEMS}
+            pathname={pathname}
+          />
+        )}
       </div>
 
       <div
@@ -424,6 +448,26 @@ export default function Sidebar() {
           >
             {sessionEmail}
           </span>
+
+          {isSuperAdmin ? (
+            <span
+              style={{
+                marginTop: 6,
+                display: "inline-flex",
+                alignSelf: "flex-start",
+                padding: "6px 10px",
+                borderRadius: 999,
+                background: "rgba(34,197,94,0.14)",
+                border: "1px solid rgba(34,197,94,0.25)",
+                color: "#86EFAC",
+                fontSize: 12,
+                fontWeight: 800,
+                letterSpacing: "0.02em",
+              }}
+            >
+              SUPERADMIN
+            </span>
+          ) : null}
         </div>
 
         <button
