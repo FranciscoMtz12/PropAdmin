@@ -12,6 +12,7 @@ import {
   Building2,
   ChevronDown,
   ExternalLink,
+  FileText,
   MoreHorizontal,
   Plus,
   Search,
@@ -344,9 +345,14 @@ export default function TenantsPage() {
     setTenantToDelete(null);
   }
 
-  function handleOpenTenantPortal(tenantId: string) {
+  function handleOpenTenantPortalDashboard(tenantId: string) {
     setOpenActionsTenantId(null);
     router.push(`/portal/dashboard?tenantId=${encodeURIComponent(tenantId)}`);
+  }
+
+  function handleOpenTenantPortalInvoices(tenantId: string) {
+    setOpenActionsTenantId(null);
+    router.push(`/portal/invoices?tenantId=${encodeURIComponent(tenantId)}`);
   }
 
   async function handleSaveTenant(e: React.FormEvent) {
@@ -635,8 +641,9 @@ export default function TenantsPage() {
                   color: "#6B7280",
                 }}
               >
-                Desde la columna de acciones puedes abrir el portal del tenant
-                seleccionado sin cerrar sesión y sin perder acceso al resto del sistema.
+                Desde la columna de acciones puedes abrir directamente el dashboard
+                portal o los adeudos del tenant seleccionado sin cerrar sesión y sin
+                perder acceso al resto del sistema.
               </div>
             </div>
           </div>
@@ -861,14 +868,25 @@ export default function TenantsPage() {
                     {isOpen ? (
                       <div style={dropdownMenuStyle}>
                         {isSuperAdmin ? (
-                          <button
-                            type="button"
-                            onClick={() => handleOpenTenantPortal(row.id)}
-                            style={dropdownPortalItemStyle}
-                          >
-                            <ExternalLink size={14} />
-                            Ver portal
-                          </button>
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTenantPortalDashboard(row.id)}
+                              style={dropdownPortalItemStyle}
+                            >
+                              <ExternalLink size={14} />
+                              Ver dashboard portal
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenTenantPortalInvoices(row.id)}
+                              style={dropdownPortalSecondaryItemStyle}
+                            >
+                              <FileText size={14} />
+                              Ver adeudos
+                            </button>
+                          </>
                         ) : null}
 
                         <button
@@ -1047,8 +1065,8 @@ export default function TenantsPage() {
                 {saving
                   ? "Guardando..."
                   : editingTenantId
-                  ? "Guardar inquilino"
-                  : "Crear inquilino"}
+                    ? "Guardar inquilino"
+                    : "Crear inquilino"}
               </UiButton>
             </div>
           </div>
@@ -1179,7 +1197,7 @@ const dropdownMenuStyle: CSSProperties = {
   position: "absolute",
   top: "calc(100% + 8px)",
   right: 0,
-  minWidth: 170,
+  minWidth: 220,
   background: "#FFFFFF",
   border: "1px solid #E5E7EB",
   borderRadius: 12,
@@ -1217,6 +1235,22 @@ const dropdownPortalItemStyle: CSSProperties = {
   border: "none",
   background: "#EEF2FF",
   color: "#3730A3",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const dropdownPortalSecondaryItemStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 8,
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "none",
+  background: "#F5F3FF",
+  color: "#5B21B6",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowLeft,
   Building2,
   CalendarDays,
   CheckCircle2,
@@ -688,6 +689,19 @@ export default function PortalInvoicesPage() {
     router.replace(`/portal/invoices?tenantId=${encodeURIComponent(nextTenantId)}`);
   }
 
+  function goToDashboard() {
+    if (effectiveTenantId && isSuperAdmin) {
+      router.push(`/portal/dashboard?tenantId=${encodeURIComponent(effectiveTenantId)}`);
+      return;
+    }
+
+    router.push("/portal/dashboard");
+  }
+
+  function goBackToTenants() {
+    router.push("/tenants");
+  }
+
   const tenantName =
     selectedTenant?.full_name || selectedTenant?.email || "Inquilino";
 
@@ -716,7 +730,7 @@ export default function PortalInvoicesPage() {
                 Selecciona el inquilino cuya cobranza deseas revisar sin cerrar sesión de superadmin.
               </div>
 
-              <div style={{ marginTop: 14 }}>
+              <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
                 <select
                   value={tenantSelectorValue}
                   onChange={(event) => {
@@ -751,6 +765,81 @@ export default function PortalInvoicesPage() {
                     </option>
                   ))}
                 </select>
+
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={goBackToTenants}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: "1px solid #D1D5DB",
+                      background: "#FFFFFF",
+                      color: "#111827",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <ArrowLeft size={16} />
+                    Volver a inquilinos
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={goToDashboard}
+                    disabled={!effectiveTenantId}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: "none",
+                      background: "#111827",
+                      color: "#FFFFFF",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      opacity: effectiveTenantId ? 1 : 0.6,
+                    }}
+                  >
+                    <Home size={16} />
+                    Dashboard portal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/portal/invoices${isSuperAdmin && effectiveTenantId ? `?tenantId=${encodeURIComponent(effectiveTenantId)}` : ""}`)}
+                    disabled={!effectiveTenantId}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: "none",
+                      background: "#4F46E5",
+                      color: "#FFFFFF",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      opacity: effectiveTenantId ? 1 : 0.6,
+                    }}
+                  >
+                    <FileText size={16} />
+                    Ver adeudos
+                  </button>
+                </div>
               </div>
 
               {selectedTenant ? (
@@ -1085,11 +1174,87 @@ export default function PortalInvoicesPage() {
             </div>
 
             <div>
-              <div style={sectionTitleStyle}>Siguiente paso recomendado</div>
+              <div style={sectionTitleStyle}>Navegación rápida del portal</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                El siguiente módulo será <strong>Reportar pago</strong>, conectado a
-                <strong> tenant_reported_payments</strong>, con monto, fecha, notas y
-                comprobante para revisión administrativa antes de afectar cobranza.
+                Ya puedes moverte fácilmente entre el dashboard del tenant, sus adeudos y regresar al listado administrativo de inquilinos sin perder la vista previa.
+              </div>
+
+              <div
+                style={{
+                  marginTop: 14,
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={goToDashboard}
+                  disabled={!effectiveTenantId}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "#111827",
+                    color: "#FFFFFF",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    opacity: effectiveTenantId ? 1 : 0.6,
+                  }}
+                >
+                  <Home size={16} />
+                  Dashboard portal
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => router.push(`/portal/invoices${isSuperAdmin && effectiveTenantId ? `?tenantId=${encodeURIComponent(effectiveTenantId)}` : ""}`)}
+                  disabled={!effectiveTenantId}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "12px 16px",
+                    borderRadius: 12,
+                    border: "none",
+                    background: "#4F46E5",
+                    color: "#FFFFFF",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    opacity: effectiveTenantId ? 1 : 0.6,
+                  }}
+                >
+                  <FileText size={16} />
+                  Ver adeudos
+                </button>
+
+                {isSuperAdmin ? (
+                  <button
+                    type="button"
+                    onClick={goBackToTenants}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "12px 16px",
+                      borderRadius: 12,
+                      border: "1px solid #D1D5DB",
+                      background: "#FFFFFF",
+                      color: "#111827",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    <ArrowLeft size={16} />
+                    Volver a inquilinos
+                  </button>
+                ) : null}
               </div>
             </div>
           </div>

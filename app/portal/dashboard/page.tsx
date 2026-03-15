@@ -4,10 +4,12 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
+  ArrowLeft,
   Building2,
   CalendarDays,
   CheckCircle2,
   ChevronRight,
+  FileText,
   Home,
   Info,
   KeyRound,
@@ -503,8 +505,11 @@ export default function PortalDashboardPage() {
     router.push("/portal/invoices");
   }
 
-  const showTenantSelectorCard =
-    isSuperAdmin && !effectiveTenantId;
+  function goBackToTenants() {
+    router.push("/tenants");
+  }
+
+  const showTenantSelectorCard = isSuperAdmin && !effectiveTenantId;
 
   return (
     <PageContainer>
@@ -535,9 +540,8 @@ export default function PortalDashboardPage() {
                 style={{
                   marginTop: 14,
                   display: "grid",
-                  gridTemplateColumns: "minmax(0, 1fr) auto",
+                  gridTemplateColumns: "minmax(0, 1fr)",
                   gap: 12,
-                  alignItems: "center",
                 }}
               >
                 <select
@@ -575,10 +579,34 @@ export default function PortalDashboardPage() {
                   ))}
                 </select>
 
-                {effectiveTenantId ? (
+                <div
+                  style={{
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                  }}
+                >
                   <button
                     type="button"
-                    onClick={() => goToInvoices()}
+                    onClick={goBackToTenants}
+                    style={{
+                      ...actionButtonStyle,
+                      background: "#FFFFFF",
+                      color: "#111827",
+                      border: "1px solid #D1D5DB",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                    }}
+                  >
+                    <ArrowLeft size={16} />
+                    Volver a inquilinos
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/portal/dashboard?tenantId=${encodeURIComponent(effectiveTenantId || "")}`)}
+                    disabled={!effectiveTenantId}
                     style={{
                       ...actionButtonStyle,
                       background: "#111827",
@@ -586,12 +614,31 @@ export default function PortalDashboardPage() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
+                      opacity: effectiveTenantId ? 1 : 0.6,
                     }}
                   >
-                    Ver adeudos
-                    <ChevronRight size={16} />
+                    <Home size={16} />
+                    Dashboard portal
                   </button>
-                ) : null}
+
+                  <button
+                    type="button"
+                    onClick={goToInvoices}
+                    disabled={!effectiveTenantId}
+                    style={{
+                      ...actionButtonStyle,
+                      background: "#4F46E5",
+                      color: "#FFFFFF",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      opacity: effectiveTenantId ? 1 : 0.6,
+                    }}
+                  >
+                    <FileText size={16} />
+                    Ver adeudos
+                  </button>
+                </div>
               </div>
 
               {selectedTenant ? (
@@ -894,29 +941,74 @@ export default function PortalDashboardPage() {
               </div>
 
               <div style={{ flex: 1 }}>
-                <div style={sectionTitleStyle}>Siguiente módulo del portal</div>
+                <div style={sectionTitleStyle}>Navegación rápida del portal</div>
                 <div style={{ marginTop: 8, ...mutedTextStyle }}>
-                  Desde aquí el siguiente paso natural es revisar los adeudos reales ligados al lease y después habilitar el flujo de reportar pago.
+                  Desde aquí puedes moverte rápido entre la vista general del contrato, los adeudos y regresar al listado administrativo de inquilinos.
                 </div>
 
-                <button
-                  type="button"
-                  onClick={goToInvoices}
-                  disabled={!effectiveTenantId}
+                <div
                   style={{
-                    ...actionButtonStyle,
                     marginTop: 16,
-                    background: "#111827",
-                    color: "#FFFFFF",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 8,
-                    opacity: effectiveTenantId ? 1 : 0.6,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
                   }}
                 >
-                  Ver mis facturas y adeudos
-                  <ChevronRight size={16} />
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => router.push(`/portal/dashboard${isSuperAdmin && effectiveTenantId ? `?tenantId=${encodeURIComponent(effectiveTenantId)}` : ""}`)}
+                    disabled={!effectiveTenantId}
+                    style={{
+                      ...actionButtonStyle,
+                      background: "#111827",
+                      color: "#FFFFFF",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      opacity: effectiveTenantId ? 1 : 0.6,
+                    }}
+                  >
+                    <Home size={16} />
+                    Dashboard portal
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={goToInvoices}
+                    disabled={!effectiveTenantId}
+                    style={{
+                      ...actionButtonStyle,
+                      background: "#4F46E5",
+                      color: "#FFFFFF",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      opacity: effectiveTenantId ? 1 : 0.6,
+                    }}
+                  >
+                    <FileText size={16} />
+                    Ver adeudos
+                  </button>
+
+                  {isSuperAdmin ? (
+                    <button
+                      type="button"
+                      onClick={goBackToTenants}
+                      style={{
+                        ...actionButtonStyle,
+                        background: "#FFFFFF",
+                        color: "#111827",
+                        border: "1px solid #D1D5DB",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 8,
+                      }}
+                    >
+                      <ArrowLeft size={16} />
+                      Volver a inquilinos
+                    </button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </AppCard>
