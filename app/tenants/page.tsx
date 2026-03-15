@@ -7,9 +7,11 @@ import {
   useState,
   type CSSProperties,
 } from "react";
+import { useRouter } from "next/navigation";
 import {
   Building2,
   ChevronDown,
+  ExternalLink,
   MoreHorizontal,
   Plus,
   Search,
@@ -179,6 +181,7 @@ const labelStyle: CSSProperties = {
 
 export default function TenantsPage() {
   const { user, loading } = useCurrentUser();
+  const router = useRouter();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [message, setMessage] = useState("");
@@ -204,6 +207,8 @@ export default function TenantsPage() {
 
   const [openActionsTenantId, setOpenActionsTenantId] = useState<string | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
 
   useEffect(() => {
     if (loading) return;
@@ -337,6 +342,11 @@ export default function TenantsPage() {
     if (saving) return;
     setShowDeleteModal(false);
     setTenantToDelete(null);
+  }
+
+  function handleOpenTenantPortal(tenantId: string) {
+    setOpenActionsTenantId(null);
+    router.push(`/portal/dashboard?tenantId=${encodeURIComponent(tenantId)}`);
   }
 
   async function handleSaveTenant(e: React.FormEvent) {
@@ -587,6 +597,52 @@ export default function TenantsPage() {
         </AppCard>
       ) : null}
 
+      {isSuperAdmin ? (
+        <AppCard style={{ marginTop: 16 }}>
+          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+            <div
+              style={{
+                width: 44,
+                height: 44,
+                borderRadius: 14,
+                background: "#EEF2FF",
+                color: "#4338CA",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <ExternalLink size={18} />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <div
+                style={{
+                  fontSize: 16,
+                  fontWeight: 700,
+                  color: "#111827",
+                }}
+              >
+                Vista portal desde superadmin
+              </div>
+
+              <div
+                style={{
+                  marginTop: 6,
+                  fontSize: 14,
+                  lineHeight: 1.6,
+                  color: "#6B7280",
+                }}
+              >
+                Desde la columna de acciones puedes abrir el portal del tenant
+                seleccionado sin cerrar sesión y sin perder acceso al resto del sistema.
+              </div>
+            </div>
+          </div>
+        </AppCard>
+      ) : null}
+
       <AppGrid minWidth={220}>
         <AppCard>
           <div style={{ display: "grid", gap: 8 }}>
@@ -804,6 +860,17 @@ export default function TenantsPage() {
 
                     {isOpen ? (
                       <div style={dropdownMenuStyle}>
+                        {isSuperAdmin ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenTenantPortal(row.id)}
+                            style={dropdownPortalItemStyle}
+                          >
+                            <ExternalLink size={14} />
+                            Ver portal
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
                           onClick={() => {
@@ -1134,6 +1201,22 @@ const dropdownItemStyle: CSSProperties = {
   border: "none",
   background: "#FFFFFF",
   color: "#374151",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const dropdownPortalItemStyle: CSSProperties = {
+  width: "100%",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "flex-start",
+  gap: 8,
+  padding: "10px 12px",
+  borderRadius: 10,
+  border: "none",
+  background: "#EEF2FF",
+  color: "#3730A3",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
