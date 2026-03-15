@@ -6,6 +6,7 @@ import "./globals.css";
 import { UserProvider } from "@/contexts/UserContext";
 import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import Sidebar from "@/components/Sidebar";
+import RouteGuard from "@/components/RouteGuard";
 import { AppToastProvider } from "@/components/AppToastProvider";
 
 const geistSans = Geist({
@@ -31,12 +32,8 @@ export const metadata: Metadata = {
   - breadcrumbs globales
   - provider de usuario
   - provider de toasts
+  - route guard cliente para separar admin vs tenant
   - contenedor principal centrado con ancho máximo consistente
-
-  Importante:
-  El contenido principal vuelve a estar centrado con maxWidth
-  para mantener la estética SaaS limpia y evitar que las páginas
-  se vean demasiado estiradas horizontalmente.
 */
 
 export default function RootLayout({
@@ -49,6 +46,9 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <UserProvider>
           <AppToastProvider>
+            {/* Guard de navegación cliente */}
+            <RouteGuard />
+
             <div
               style={{
                 minHeight: "100vh",
@@ -56,7 +56,7 @@ export default function RootLayout({
                 background: "#F5F7FB",
               }}
             >
-              {/* Sidebar global fijo del sistema */}
+              {/* Sidebar global del sistema */}
               <Sidebar />
 
               {/* Área principal del sistema */}
