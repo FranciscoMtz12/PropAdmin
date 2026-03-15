@@ -5,10 +5,12 @@ import {
   AlertTriangle,
   Building2,
   CalendarDays,
+  CheckCircle2,
   FileText,
   Home,
   KeyRound,
   Wallet,
+  XCircle,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -33,12 +35,18 @@ type PortalLeaseRecord = {
     unit_number: string | null;
     display_code: string | null;
     buildings?: {
-      id: string;
+      id: string | null;
       name: string | null;
       code: string | null;
       address: string | null;
     } | null;
   } | null;
+};
+
+type RenewalResponseRecord = {
+  id: string;
+  response: "yes" | "no" | string;
+  created_at?: string | null;
 };
 
 const iconBoxStyle: React.CSSProperties = {
@@ -71,6 +79,15 @@ const valueStyle: React.CSSProperties = {
   color: "#111827",
 };
 
+const actionButtonStyle: React.CSSProperties = {
+  border: "none",
+  borderRadius: 12,
+  padding: "12px 16px",
+  fontSize: 14,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
 export default function PortalDashboardPage() {
   const { user, loading: userLoading } = useCurrentUser();
 
@@ -78,8 +95,13 @@ export default function PortalDashboardPage() {
   const [leaseLoading, setLeaseLoading] = useState(true);
   const [leaseError, setLeaseError] = useState("");
 
+  const [renewalResponse, setRenewalResponse] = useState<RenewalResponseRecord | null>(null);
+  const [renewalLoading, setRenewalLoading] = useState(false);
+  const [renewalMessage, setRenewalMessage] = useState("");
+  const [renewalError, setRenewalError] = useState("");
+
   useEffect(() => {
-    async function loadLease() {
+    async function loadPortalData() {
       if (userLoading) return;
 
       if (!user || user.role !== "tenant") {
@@ -91,7 +113,7 @@ export default function PortalDashboardPage() {
       setLeaseLoading(true);
       setLeaseError("");
 
-      const { data, error } = await supabase
+      const { data: leaseData, error: leaseQueryError } = await supabase
         .from("leases")
         .select(`
           id,
@@ -120,54 +142,164 @@ export default function PortalDashboardPage() {
         .limit(1)
         .maybeSingle();
 
-      if (error) {
-        console.error("Error cargando lease del portal:", error);
-        setLeaseError(
-          "No se pudo cargar la información del contrato del inquilino."
-        );
+      if (leaseQueryError) {
+        console.error("Error cargando lease del portal:", leaseQueryError);
+        setLeaseError("No se pudo cargar la información del contrato.");
         setLease(null);
         setLeaseLoading(false);
         return;
       }
 
-      setLease((data as PortalLeaseRecord | null) ?? null);
+      const resolvedLease = (leaseData as PortalLeaseRecord | null) ?? null;
+      setLease(resolvedLease);
+
+      if (resolvedLease?.id) {
+        const { data: responseData, error: responseError } = await supabase
+          .from("lease_renewal_responses")
+          .select("id, response, created_at")
+          .eq("lease_id", resolvedLease.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (!responseError && responseData) {
+          setRenewalResponse(responseData as RenewalResponseRecord);
+        } else {
+          setRenewalResponse(null);
+        }
+      } else {
+        setRenewalResponse(null);
+      }
+
       setLeaseLoading(false);
     }
 
-    loadLease();
+    loadPortalData();
   }, [user, userLoading]);
+
+  const tenantName =
+    user?.role === "tenant" ? user.full_name || user.email : "Inquilino";
 
   const contractStatusLabel = useMemo(() => {
     return formatLeaseStatus(lease?.status || null);
   }, [lease?.status]);
 
-  const renewalMessage = useMemo(() => {
-    if (!lease?.end_date) return null;
+  const renewalWindowInfo = useMemo(() => {
+    if (!lease?.end_date) {
+      return {
+        showCard: false,
+        text: "",
+        diffDays: null as number | null,
+      };
+    }
 
-    const endDate = new Date(lease.end_date);
-    if (Number.isNaN(endDate.getTime())) return null;
+    const endDate = new Date(`${lease.end_date}T00:00:00`);
+    if (Number.isNaN(endDate.getTime())) {
+      return {
+        showCard: false,
+        text: "",
+        diffDays: null,
+      };
+    }
 
     const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     const diffMs = endDate.getTime() - today.getTime();
     const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
+    if (diffDays > 90) {
+      return {
+        showCard: false,
+        text: "",
+        diffDays,
+      };
+    }
+
     if (diffDays <= 0) {
-      return "Tu contrato ya alcanzó su fecha final. Administración podrá indicarte el siguiente paso.";
+      return {
+        showCard: true,
+        text: "Tu contrato ya alcanzó su fecha final. Administración podrá indicarte el siguiente paso.",
+        diffDays,
+      };
     }
 
     if (diffDays <= 30) {
-      return "Tu contrato vence pronto. Muy pronto aquí aparecerá el flujo de renovación.";
+      return {
+        showCard: true,
+        text: "Tu contrato vence pronto. Por favor indica si te interesa renovarlo.",
+        diffDays,
+      };
     }
 
-    if (diffDays <= 90) {
-      return "Tu contrato ya está dentro de la ventana de renovación. Aquí mostraremos la respuesta de renovación en la siguiente fase.";
-    }
-
-    return null;
+    return {
+      showCard: true,
+      text: "Tu contrato ya está dentro de la ventana de renovación. Indícanos si te interesa renovarlo.",
+      diffDays,
+    };
   }, [lease?.end_date]);
 
-  const tenantName =
-    user?.role === "tenant" ? user.full_name || user.email : "Inquilino";
+  async function handleRenewalAnswer(answer: "yes" | "no") {
+    if (!lease?.id) return;
+
+    setRenewalLoading(true);
+    setRenewalMessage("");
+    setRenewalError("");
+
+    try {
+      const response = await fetch("/api/portal/renewal-response", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          leaseId: lease.id,
+          response: answer,
+        }),
+      });
+
+      const rawText = await response.text();
+
+      let payload: any = null;
+      try {
+        payload = rawText ? JSON.parse(rawText) : null;
+      } catch {
+        payload = null;
+      }
+
+      if (!response.ok) {
+        setRenewalError(
+          payload?.error || "No se pudo guardar tu respuesta de renovación."
+        );
+        setRenewalLoading(false);
+        return;
+      }
+
+      setRenewalResponse({
+        id: crypto.randomUUID(),
+        response: answer,
+        created_at: new Date().toISOString(),
+      });
+
+      setLease((current) =>
+        current
+          ? {
+              ...current,
+              renewal_status: answer,
+            }
+          : current
+      );
+
+      setRenewalMessage(
+        payload?.message || "Tu respuesta quedó registrada correctamente."
+      );
+    } catch (error) {
+      console.error("Error enviando respuesta de renovación:", error);
+      setRenewalError("Ocurrió un error inesperado al guardar tu respuesta.");
+    }
+
+    setRenewalLoading(false);
+  }
 
   return (
     <PageContainer>
@@ -204,7 +336,7 @@ export default function PortalDashboardPage() {
         </AppCard>
       ) : null}
 
-      {renewalMessage ? (
+      {renewalWindowInfo.showCard ? (
         <AppCard
           style={{
             marginBottom: 18,
@@ -223,9 +355,113 @@ export default function PortalDashboardPage() {
               <CalendarDays size={18} />
             </div>
 
-            <div>
-              <div style={sectionTitleStyle}>Seguimiento de renovación</div>
-              <div style={mutedTextStyle}>{renewalMessage}</div>
+            <div style={{ flex: 1 }}>
+              <div style={sectionTitleStyle}>Renovación de contrato</div>
+              <div style={{ marginTop: 6, ...mutedTextStyle }}>
+                {renewalWindowInfo.text}
+              </div>
+
+              <div style={{ marginTop: 10, ...mutedTextStyle }}>
+                Fecha fin de contrato: <strong>{formatDate(lease?.end_date)}</strong>
+              </div>
+
+              {renewalResponse ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "#FFFFFF",
+                    border: "1px solid #E5E7EB",
+                  }}
+                >
+                  {renewalResponse.response === "yes" ? (
+                    <CheckCircle2 size={18} color="#15803D" />
+                  ) : (
+                    <XCircle size={18} color="#B91C1C" />
+                  )}
+
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+                    {renewalResponse.response === "yes"
+                      ? "Ya registraste que sí te interesa renovar."
+                      : "Ya registraste que no deseas renovar."}
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 16,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: 10,
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => handleRenewalAnswer("yes")}
+                    disabled={renewalLoading}
+                    style={{
+                      ...actionButtonStyle,
+                      background: "#166534",
+                      color: "#FFFFFF",
+                      opacity: renewalLoading ? 0.7 : 1,
+                    }}
+                  >
+                    Sí, me interesa renovar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => handleRenewalAnswer("no")}
+                    disabled={renewalLoading}
+                    style={{
+                      ...actionButtonStyle,
+                      background: "#B91C1C",
+                      color: "#FFFFFF",
+                      opacity: renewalLoading ? 0.7 : 1,
+                    }}
+                  >
+                    No, no me interesa renovar
+                  </button>
+                </div>
+              )}
+
+              {renewalMessage ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "#ECFDF5",
+                    border: "1px solid #A7F3D0",
+                    color: "#065F46",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  {renewalMessage}
+                </div>
+              ) : null}
+
+              {renewalError ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    background: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    color: "#B91C1C",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  {renewalError}
+                </div>
+              ) : null}
             </div>
           </div>
         </AppCard>
@@ -243,14 +479,14 @@ export default function PortalDashboardPage() {
           icon={<CalendarDays size={18} />}
           title="Inicio del contrato"
           value={leaseLoading ? "Cargando..." : formatDate(lease?.start_date)}
-          subtitle="Fecha inicial registrada en tu lease."
+          subtitle="Fecha inicial registrada en tu contrato."
         />
 
         <InfoCard
           icon={<CalendarDays size={18} />}
           title="Fin del contrato"
           value={leaseLoading ? "Cargando..." : formatDate(lease?.end_date)}
-          subtitle="Fecha final registrada en tu lease."
+          subtitle="Fecha final registrada en tu contrato."
         />
 
         <InfoCard
@@ -339,7 +575,9 @@ export default function PortalDashboardPage() {
                     value={
                       leaseLoading
                         ? "Cargando..."
-                        : formatRenewalStatus(lease?.renewal_status || null)
+                        : formatRenewalStatus(
+                            renewalResponse?.response || lease?.renewal_status || null
+                          )
                     }
                   />
                   <DetailRow
@@ -374,7 +612,7 @@ export default function PortalDashboardPage() {
           <PlaceholderCard
             icon={<CalendarDays size={18} />}
             title="Renovación"
-            text="Aquí aparecerá el flujo formal de renovación cuando el contrato entre en su ventana correspondiente."
+            text="Esta sección ya quedó conectada a tu respuesta de renovación y después la enlazaremos con tareas y seguimiento administrativo."
           />
         </AppGrid>
       </div>
@@ -521,7 +759,7 @@ function formatRenewalStatus(value?: string | null) {
   const normalized = value.toLowerCase();
 
   if (normalized === "pending") return "Pendiente";
-  if (normalized === "yes") return "Acepta renovar";
+  if (normalized === "yes") return "Sí desea renovar";
   if (normalized === "no") return "No desea renovar";
   if (normalized === "expired") return "Vencido";
 
