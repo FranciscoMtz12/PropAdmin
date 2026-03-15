@@ -65,18 +65,20 @@ const ADMIN_ITEMS: SidebarItem[] = [
 const TENANT_ITEMS: SidebarItem[] = [
   {
     label: "Dashboard inquilino",
+    href: "/portal/dashboard",
     icon: User2,
-    status: "pending",
-    disabled: true,
+    status: "partial",
   },
   {
     label: "Mi contrato",
+    href: "/portal/contract",
     icon: KeyRound,
     status: "pending",
     disabled: true,
   },
   {
     label: "Mis facturas / adeudos",
+    href: "/portal/invoices",
     icon: FileText,
     status: "pending",
     disabled: true,

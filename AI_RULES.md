@@ -163,7 +163,7 @@ When querying the database:
 - Never assume fields without checking schema first.
 
 If an entity uses soft delete, filter using:
-
+deleted_at IS NULL
 Never display soft deleted records.
 
 ---
