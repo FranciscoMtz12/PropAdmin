@@ -12,14 +12,18 @@
   - componentes reutilizables para evitar código repetido
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  AlertTriangle,
   Building2,
+  Edit3,
   Filter,
   MapPin,
   Plus,
   Tags,
+  MoreHorizontal,
+  Trash2,
   Warehouse,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -59,6 +63,81 @@ function getCategoryStats(buildings: Building[]) {
   };
 }
 
+const dropdownTriggerStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  borderRadius: 10,
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+  color: "#111827",
+  padding: "10px 12px",
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const dropdownMenuStyle: React.CSSProperties = {
+  position: "absolute",
+  right: 0,
+  top: "calc(100% + 8px)",
+  minWidth: 180,
+  borderRadius: 12,
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+  boxShadow: "0 10px 28px rgba(15, 23, 42, 0.12)",
+  padding: 6,
+  display: "grid",
+  gap: 4,
+  zIndex: 30,
+};
+
+const dropdownItemLinkStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  textDecoration: "none",
+  color: "#111827",
+  borderRadius: 8,
+  padding: "9px 10px",
+  fontSize: 13,
+  fontWeight: 600,
+};
+
+const dropdownActionButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  border: "none",
+  background: "transparent",
+  color: "#111827",
+  borderRadius: 8,
+  padding: "9px 10px",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
+const dropdownDeleteItemStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  width: "100%",
+  border: "none",
+  background: "#FEF2F2",
+  color: "#B42318",
+  borderRadius: 8,
+  padding: "9px 10px",
+  fontSize: 13,
+  fontWeight: 600,
+  cursor: "pointer",
+};
+
 const INPUT_STYLE: React.CSSProperties = {
   width: "100%",
   padding: 12,
@@ -73,6 +152,8 @@ export default function BuildingsPage() {
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [buildingEditingId, setBuildingEditingId] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [address, setAddress] = useState("");
@@ -82,6 +163,11 @@ export default function BuildingsPage() {
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingBuildings, setLoadingBuildings] = useState(true);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [buildingToDelete, setBuildingToDelete] = useState<Building | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [openActionsBuildingId, setOpenActionsBuildingId] = useState<string | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -89,17 +175,10 @@ export default function BuildingsPage() {
     }
   }, [loading, user, router]);
 
-  useEffect(() => {
-    if (user?.company_id) {
-      loadBuildings();
-    }
-  }, [user]);
-
-  async function loadBuildings() {
+  const loadBuildings = useCallback(async () => {
     if (!user?.company_id) return;
 
     setLoadingBuildings(true);
-    setMsg("");
 
     const { data, error } = await supabase
       .from("buildings")
@@ -117,7 +196,19 @@ export default function BuildingsPage() {
 
     setBuildings((data as Building[]) || []);
     setLoadingBuildings(false);
-  }
+  }, [user]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!actionsMenuRef.current) return;
+      if (!actionsMenuRef.current.contains(event.target as Node)) {
+        setOpenActionsBuildingId(null);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   function resetForm() {
     setName("");
@@ -130,6 +221,37 @@ export default function BuildingsPage() {
   function closeCreateModal() {
     setIsCreateModalOpen(false);
     resetForm();
+  }
+
+  function openEditModal(building: Building) {
+    setBuildingEditingId(building.id);
+    setName(building.name || "");
+    setCode(building.code || "");
+    setAddress(building.address || "");
+    setBuildingCategory(building.building_category || "residential");
+    setBuildingSubcategory(building.building_subcategory || "");
+    setIsEditModalOpen(true);
+    setOpenActionsBuildingId(null);
+    setMsg("");
+  }
+
+  function closeEditModal() {
+    if (saving) return;
+    setIsEditModalOpen(false);
+    setBuildingEditingId(null);
+    resetForm();
+  }
+
+  function openDeleteModal(building: Building) {
+    setBuildingToDelete(building);
+    setIsDeleteModalOpen(true);
+    setOpenActionsBuildingId(null);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setIsDeleteModalOpen(false);
+    setBuildingToDelete(null);
   }
 
   async function handleSubmitBuilding(e: React.FormEvent) {
@@ -175,6 +297,93 @@ export default function BuildingsPage() {
     await loadBuildings();
   }
 
+  async function handleUpdateBuilding(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!user?.company_id || !buildingEditingId) {
+      setMsg("No se encontró el edificio a editar.");
+      return;
+    }
+
+    if (!name.trim()) {
+      setMsg("El nombre del edificio es obligatorio.");
+      return;
+    }
+
+    if (buildingCategory === "mixed_use" && !buildingSubcategory) {
+      setMsg("Debes seleccionar el tipo de uso mixto.");
+      return;
+    }
+
+    setSaving(true);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("buildings")
+      .update({
+        name: name.trim(),
+        code: code.trim() || null,
+        address: address.trim() || null,
+        building_category: buildingCategory,
+        building_subcategory:
+          buildingCategory === "mixed_use" ? buildingSubcategory || null : null,
+      })
+      .eq("id", buildingEditingId)
+      .eq("company_id", user.company_id);
+
+    setSaving(false);
+
+    if (error) {
+      setMsg(`No se pudo actualizar el edificio. ${error.message}`);
+      return;
+    }
+
+    closeEditModal();
+    await loadBuildings();
+    setMsg("Edificio actualizado correctamente.");
+  }
+
+  async function handleDeleteBuilding() {
+    if (!user?.company_id || !buildingToDelete) return;
+
+    setDeleting(true);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("buildings")
+      .delete()
+      .eq("id", buildingToDelete.id)
+      .eq("company_id", user.company_id);
+
+    if (error) {
+      const hasRelationsError =
+        error.code === "23503" ||
+        error.message.toLowerCase().includes("foreign key") ||
+        error.message.toLowerCase().includes("constraint");
+
+      setMsg(
+        hasRelationsError
+          ? "No se puede eliminar el edificio porque tiene registros relacionados."
+          : `No se pudo eliminar el edificio. ${error.message}`
+      );
+      setDeleting(false);
+      return;
+    }
+
+    setIsDeleteModalOpen(false);
+    setBuildingToDelete(null);
+    setDeleting(false);
+    setMsg("Edificio eliminado correctamente.");
+    await loadBuildings();
+  }
+
+  useEffect(() => {
+    if (user?.company_id) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      void loadBuildings();
+    }
+  }, [loadBuildings, user?.company_id]);
+
   const filteredBuildings = useMemo(() => {
     return buildings.filter((building) => {
       return selectedCategory === "ALL" || building.building_category === selectedCategory;
@@ -191,7 +400,6 @@ export default function BuildingsPage() {
       <PageHeader
         title="Edificios"
         titleIcon={<Building2 size={20} />}
-        subtitle="Administra el portafolio de propiedades usando cards, iconos y el mismo patrón visual del resto de PropAdmin."
         actions={
           <>
             <UiButton href="/dashboard">Ir al dashboard</UiButton>
@@ -244,7 +452,6 @@ export default function BuildingsPage() {
 
       <SectionCard
         title="Portafolio"
-        subtitle="Filtra y navega por los edificios con una vista más visual y consistente."
         icon={<Filter size={18} />}
         action={
           <div style={{ minWidth: 220 }}>
@@ -358,11 +565,49 @@ export default function BuildingsPage() {
                   </p>
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <UiButton href={`/buildings/${building.id}`}>Ver edificio</UiButton>
-                  <UiButton href={`/buildings/${building.id}/units`}>
-                    Departamentos
-                  </UiButton>
+                <div
+                  style={{ position: "relative", display: "inline-block" }}
+                  ref={openActionsBuildingId === building.id ? actionsMenuRef : null}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOpenActionsBuildingId((prev) =>
+                        prev === building.id ? null : building.id
+                      )
+                    }
+                    style={dropdownTriggerStyle}
+                  >
+                    <MoreHorizontal size={14} />
+                    Acciones
+                  </button>
+
+                  {openActionsBuildingId === building.id ? (
+                    <div style={dropdownMenuStyle}>
+                      <a href={`/buildings/${building.id}`} style={dropdownItemLinkStyle}>
+                        Ver edificio
+                      </a>
+                      <a href={`/buildings/${building.id}/units`} style={dropdownItemLinkStyle}>
+                        Departamentos
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => openEditModal(building)}
+                        style={dropdownActionButtonStyle}
+                      >
+                        <Edit3 size={14} />
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => openDeleteModal(building)}
+                        style={dropdownDeleteItemStyle}
+                      >
+                        <Trash2 size={14} />
+                        Eliminar
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               </AppCard>
             ))}
@@ -371,10 +616,149 @@ export default function BuildingsPage() {
       </SectionCard>
 
       <Modal
+        open={isEditModalOpen}
+        onClose={closeEditModal}
+        title="Editar edificio"
+      >
+        <form onSubmit={handleUpdateBuilding}>
+          <AppFormField label="Nombre del edificio" required>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Ej. Torre Central"
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: 16,
+              marginBottom: 16,
+            }}
+          >
+            <AppFormField label="Código">
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="Ej. TC-001"
+                style={INPUT_STYLE}
+              />
+            </AppFormField>
+
+            <AppFormField label="Categoría" required>
+              <AppSelect
+                value={buildingCategory}
+                onChange={(e) => {
+                  setBuildingCategory(e.target.value);
+                  if (e.target.value !== "mixed_use") setBuildingSubcategory("");
+                }}
+              >
+                {BUILDING_CATEGORIES.map((item, index) => (
+                  <option key={`${item.key}-${index}`} value={item.key}>
+                    {item.label}
+                  </option>
+                ))}
+              </AppSelect>
+            </AppFormField>
+          </div>
+
+          {buildingCategory === "mixed_use" ? (
+            <AppFormField label="Subcategoría de uso mixto" required>
+              <AppSelect
+                value={buildingSubcategory}
+                onChange={(e) => setBuildingSubcategory(e.target.value)}
+              >
+                <option value="">Selecciona una subcategoría</option>
+                {MIXED_USE_SUBCATEGORIES.map((item, index) => (
+                  <option key={`${item.value}-${index}`} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </AppSelect>
+            </AppFormField>
+          ) : null}
+
+          <AppFormField label="Dirección">
+            <input
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Ej. Av. Principal 123"
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <UiButton type="submit" disabled={saving} variant="primary">
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </UiButton>
+            <UiButton type="button" onClick={closeEditModal}>
+              Cancelar
+            </UiButton>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal
+        open={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Eliminar edificio"
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "flex-start",
+              padding: 14,
+              borderRadius: 12,
+              background: "#FEF2F2",
+              border: "1px solid #FECACA",
+            }}
+          >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#FEE2E2",
+                color: "#B91C1C",
+                display: "grid",
+                placeItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <AlertTriangle size={18} />
+            </div>
+
+            <div>
+              <p style={{ margin: 0, fontWeight: 700, color: "#991B1B" }}>
+                ¿Seguro que quieres eliminar este edificio?
+              </p>
+              <p style={{ margin: "6px 0 0", color: "#7F1D1D" }}>
+                Se eliminará <strong>{buildingToDelete?.name || "este edificio"}</strong> del
+                portafolio. Esta acción no se puede deshacer.
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <UiButton onClick={closeDeleteModal} disabled={deleting}>
+              Cancelar
+            </UiButton>
+            <UiButton onClick={() => void handleDeleteBuilding()} disabled={deleting}>
+              <Trash2 size={16} />
+              {deleting ? "Eliminando..." : "Sí, eliminar edificio"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal
         open={isCreateModalOpen}
         onClose={closeCreateModal}
         title="Crear edificio"
-        subtitle="El formulario aparece solo cuando lo necesitas para mantener la lista principal limpia."
       >
         <form onSubmit={handleSubmitBuilding}>
           <AppFormField label="Nombre del edificio" required>
@@ -449,7 +833,7 @@ export default function BuildingsPage() {
             <UiButton type="submit" disabled={saving} variant="primary">
               {saving ? "Guardando..." : "Guardar edificio"}
             </UiButton>
-            <UiButton onClick={closeCreateModal}>Cancelar</UiButton>
+            <UiButton type="button" onClick={closeCreateModal}>Cancelar</UiButton>
           </div>
         </form>
       </Modal>

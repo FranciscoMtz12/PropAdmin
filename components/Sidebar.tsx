@@ -2,13 +2,22 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { CSSProperties } from "react";
 import {
+  BadgeCheck,
   Building2,
   CalendarDays,
+  CircleAlert,
+  CircleX,
+  CreditCard,
+  FileText,
   Home,
+  KeyRound,
   LogOut,
   ReceiptText,
   Sparkles,
+  User2,
+  Users,
   Wallet,
   Wrench,
 } from "lucide-react";
@@ -20,19 +29,214 @@ import { useCurrentUser } from "@/contexts/UserContext";
   Sidebar global del sistema.
 
   Ajuste aplicado:
-  - se mantiene fijo visualmente con el scroll del contenido
-  - "Pagos" usa ReceiptText
-  - "Cobranza" está visible en navegación
+  - se divide temporalmente en dos bloques:
+    1) Administración
+    2) Inquilinos
+  - sirve como mapa visual del proyecto
+  - muestra estado simple de avance por módulo:
+      verde = ya existe / bastante avanzado
+      amarillo = parcial / en construcción
+      rojo = pendiente / placeholder
+  - por ahora algunos módulos del bloque de inquilinos funcionan
+    solo como referencia visual del roadmap
 */
-const NAV_ITEMS = [
-  { label: "Dashboard", href: "/dashboard", icon: Home },
-  { label: "Calendario", href: "/calendar", icon: CalendarDays },
-  { label: "Pagos", href: "/payments", icon: ReceiptText },
-  { label: "Cobranza", href: "/collections", icon: Wallet },
-  { label: "Edificios", href: "/buildings", icon: Building2 },
-  { label: "Limpieza", href: "/cleaning", icon: Sparkles },
-  { label: "Mantenimiento", href: "/maintenance", icon: Wrench },
+
+type NavStatus = "done" | "partial" | "pending";
+
+type SidebarItem = {
+  label: string;
+  href?: string;
+  icon: React.ComponentType<any>;
+  status: NavStatus;
+  disabled?: boolean;
+};
+
+const ADMIN_ITEMS: SidebarItem[] = [
+  { label: "Dashboard", href: "/dashboard", icon: Home, status: "done" },
+  { label: "Calendario", href: "/calendar", icon: CalendarDays, status: "done" },
+  { label: "Pagos", href: "/payments", icon: ReceiptText, status: "done" },
+  { label: "Cobranza", href: "/collections", icon: Wallet, status: "partial" },
+  { label: "Edificios", href: "/buildings", icon: Building2, status: "done" },
+  { label: "Inquilinos", href: "/tenants", icon: Users, status: "done" },
+  { label: "Limpieza", href: "/cleaning", icon: Sparkles, status: "partial" },
+  { label: "Mantenimiento", href: "/maintenance", icon: Wrench, status: "done" },
 ];
+
+const TENANT_ITEMS: SidebarItem[] = [
+  {
+    label: "Dashboard inquilino",
+    icon: User2,
+    status: "pending",
+    disabled: true,
+  },
+  {
+    label: "Mi contrato",
+    icon: KeyRound,
+    status: "pending",
+    disabled: true,
+  },
+  {
+    label: "Mis facturas / adeudos",
+    icon: FileText,
+    status: "pending",
+    disabled: true,
+  },
+  {
+    label: "Reportar pago",
+    icon: CreditCard,
+    status: "pending",
+    disabled: true,
+  },
+  {
+    label: "Renovación de contrato",
+    icon: BadgeCheck,
+    status: "pending",
+    disabled: true,
+  },
+];
+
+function getStatusVisual(status: NavStatus) {
+  if (status === "done") {
+    return {
+      icon: BadgeCheck,
+      color: "#22C55E",
+      label: "Listo",
+    };
+  }
+
+  if (status === "partial") {
+    return {
+      icon: CircleAlert,
+      color: "#F59E0B",
+      label: "Parcial",
+    };
+  }
+
+  return {
+    icon: CircleX,
+    color: "#F87171",
+    label: "Pendiente",
+  };
+}
+
+function SidebarSection({
+  title,
+  items,
+  pathname,
+}: {
+  title: string;
+  items: SidebarItem[];
+  pathname: string;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div
+        style={{
+          fontSize: 12,
+          color: "rgba(255,255,255,0.62)",
+          textTransform: "uppercase",
+          letterSpacing: "0.06em",
+          fontWeight: 800,
+          padding: "0 4px",
+        }}
+      >
+        {title}
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {items.map((item) => {
+          const Icon = item.icon;
+          const statusVisual = getStatusVisual(item.status);
+          const StatusIcon = statusVisual.icon;
+          const active =
+            Boolean(item.href) &&
+            (pathname === item.href || pathname.startsWith(`${item.href}/`));
+
+          const commonStyle: CSSProperties = {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            padding: "12px 14px",
+            borderRadius: 14,
+            textDecoration: "none",
+            background: active ? "rgba(255,255,255,0.14)" : "transparent",
+            border: active
+              ? "1px solid rgba(255,255,255,0.16)"
+              : "1px solid transparent",
+            transition: "all 0.2s ease",
+          };
+
+          const leftBlock = (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 12,
+                minWidth: 0,
+                flex: 1,
+              }}
+            >
+              <Icon
+                size={18}
+                color={item.disabled ? "rgba(255,255,255,0.45)" : "#FFFFFF"}
+              />
+              <span
+                style={{
+                  color: item.disabled ? "rgba(255,255,255,0.55)" : "#FFFFFF",
+                  fontSize: 14,
+                  fontWeight: active ? 700 : 600,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {item.label}
+              </span>
+            </div>
+          );
+
+          const rightBlock = (
+            <div
+              title={statusVisual.label}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <StatusIcon size={16} color={statusVisual.color} />
+            </div>
+          );
+
+          if (item.href && !item.disabled) {
+            return (
+              <Link key={`${title}-${item.label}`} href={item.href} style={commonStyle}>
+                {leftBlock}
+                {rightBlock}
+              </Link>
+            );
+          }
+
+          return (
+            <div
+              key={`${title}-${item.label}`}
+              style={{
+                ...commonStyle,
+                opacity: 0.82,
+                cursor: "default",
+              }}
+            >
+              {leftBlock}
+              {rightBlock}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -49,8 +253,8 @@ export default function Sidebar() {
   return (
     <aside
       style={{
-        width: 280,
-        minWidth: 280,
+        width: 300,
+        minWidth: 300,
         height: "100vh",
         position: "sticky",
         top: 0,
@@ -65,7 +269,7 @@ export default function Sidebar() {
         borderRight: "1px solid rgba(255,255,255,0.08)",
       }}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
         <div>
           <div
             style={{
@@ -88,45 +292,25 @@ export default function Sidebar() {
           </div>
         </div>
 
-        <nav
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
-          }}
-        >
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+        <SidebarSection
+          title="Administración"
+          items={ADMIN_ITEMS}
+          pathname={pathname}
+        />
 
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "12px 14px",
-                  borderRadius: 14,
-                  textDecoration: "none",
-                  color: "#FFFFFF",
-                  background: active ? "rgba(255,255,255,0.14)" : "transparent",
-                  border: active
-                    ? "1px solid rgba(255,255,255,0.16)"
-                    : "1px solid transparent",
-                  fontSize: 14,
-                  fontWeight: active ? 700 : 600,
-                  transition: "all 0.2s ease",
-                }}
-              >
-                <Icon size={18} />
-                <span>{item.label}</span>
-              </Link>
-            );
-          })}
-        </nav>
+        <div
+          style={{
+            height: 1,
+            background: "rgba(255,255,255,0.08)",
+            margin: "2px 0 2px",
+          }}
+        />
+
+        <SidebarSection
+          title="Inquilinos"
+          items={TENANT_ITEMS}
+          pathname={pathname}
+        />
       </div>
 
       <div
@@ -174,7 +358,7 @@ export default function Sidebar() {
                 color: "rgba(255,255,255,0.65)",
               }}
             >
-              Empresa activa configurada
+              Vista global / empresa activa configurada
             </span>
           ) : null}
         </div>
