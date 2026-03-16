@@ -11,6 +11,7 @@ import {
   Home,
   Info,
   Search,
+  Upload,
   User2,
   Wallet,
 } from "lucide-react";
@@ -22,6 +23,12 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import UiButton from "@/components/UiButton";
+
+/*
+========================================================
+TIPOS
+========================================================
+*/
 
 type TenantOption = {
   id: string;
@@ -64,74 +71,47 @@ type SelectableDebt = {
   dueDateLabel: string;
   buildingLabel: string;
   unitLabel: string;
+  leaseId: string | null;
 };
+
+/*
+========================================================
+UTILIDADES
+========================================================
+*/
 
 const MONTH_LABELS_SHORT = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
+  "Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"
 ];
 
-const iconBoxStyle: React.CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
-  background: "#EEF2FF",
-  color: "#4338CA",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
+function formatCurrency(value?: number | null) {
+  return new Intl.NumberFormat("es-MX", {
+    style: "currency",
+    currency: "MXN",
+  }).format(value || 0);
+}
 
-const mutedTextStyle: React.CSSProperties = {
-  fontSize: 14,
-  lineHeight: 1.6,
-  color: "#6B7280",
-};
+function formatDate(dateKey?: string | null) {
+  if (!dateKey) return "Sin fecha";
+  const date = new Date(`${dateKey.slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return "Sin fecha";
 
-const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 16,
-  fontWeight: 700,
-  color: "#111827",
-};
+  return date.toLocaleDateString("es-MX", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
+}
 
-const valueStyle: React.CSSProperties = {
-  fontSize: 18,
-  fontWeight: 700,
-  color: "#111827",
-};
+function formatPeriod(year: number, month: number) {
+  return `${MONTH_LABELS_SHORT[month - 1]} ${year}`;
+}
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  minHeight: 48,
-  borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  padding: "0 14px",
-  background: "#FFFFFF",
-  color: "#111827",
-  fontSize: 14,
-  fontWeight: 600,
-  outline: "none",
-};
-
-const actionButtonStyle: React.CSSProperties = {
-  border: "none",
-  borderRadius: 12,
-  padding: "12px 16px",
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
-};
+/*
+========================================================
+NORMALIZADORES
+========================================================
+*/
 
 function normalizeTenantOption(raw: any): TenantOption {
   return {
@@ -177,153 +157,117 @@ function normalizeCollectionRecord(raw: any): CollectionRecord {
   };
 }
 
-function formatDate(dateKey?: string | null) {
-  if (!dateKey) return "Sin fecha";
-
-  const date = new Date(`${dateKey.slice(0, 10)}T00:00:00`);
-  if (Number.isNaN(date.getTime())) return "Sin fecha";
-
-  return date.toLocaleDateString("es-MX", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  });
-}
-
-function formatCurrency(value?: number | null) {
-  return new Intl.NumberFormat("es-MX", {
-    style: "currency",
-    currency: "MXN",
-    maximumFractionDigits: 2,
-  }).format(value || 0);
-}
-
-function formatPeriod(periodYear: number, periodMonth: number) {
-  return `${MONTH_LABELS_SHORT[periodMonth - 1] || "Mes"} ${periodYear}`;
-}
+/*
+========================================================
+PAGE
+========================================================
+*/
 
 export default function PortalReportPaymentPage() {
+
   const { user, loading: userLoading } = useCurrentUser();
   const router = useRouter();
   const searchParams = useSearchParams();
 
+  const previewTenantId = searchParams.get("tenantId");
+
+  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+
+  const effectiveTenantId =
+    user?.role === "tenant"
+      ? user.tenant_id
+      : previewTenantId;
+
+  /*
+  =====================================
+  STATE
+  =====================================
+  */
+
   const [tenantOptions, setTenantOptions] = useState<TenantOption[]>([]);
-  const [tenantOptionsLoading, setTenantOptionsLoading] = useState(false);
   const [tenantSelectorValue, setTenantSelectorValue] = useState("");
 
   const [leases, setLeases] = useState<LeaseRecord[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
-  const [pageLoading, setPageLoading] = useState(true);
-  const [pageError, setPageError] = useState("");
 
   const [collectionRecordId, setCollectionRecordId] = useState("");
+
   const [amountReported, setAmountReported] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
-  const [formError, setFormError] = useState("");
-  const [formMessage, setFormMessage] = useState("");
+
+  const [notes, setNotes] = useState("");
+  const [proofFile, setProofFile] = useState<File | null>(null);
+
   const [saving, setSaving] = useState(false);
 
-  const previewTenantId = searchParams.get("tenantId");
-  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
-  const effectiveTenantId =
-    user?.role === "tenant" ? user.tenant_id : previewTenantId;
+  const [formError, setFormError] = useState("");
+  const [formMessage, setFormMessage] = useState("");
+
+  const [pageLoading, setPageLoading] = useState(true);
+
+  /*
+  =====================================
+  CARGA DE TENANTS (preview superadmin)
+  =====================================
+  */
 
   useEffect(() => {
-    async function loadTenantOptions() {
-      if (userLoading) return;
-      if (!isSuperAdmin) {
-        setTenantOptions([]);
-        return;
-      }
+    async function loadTenants() {
 
-      setTenantOptionsLoading(true);
+      if (!isSuperAdmin) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from("tenants")
         .select("id, full_name, email, company_id")
-        .order("full_name", { ascending: true });
+        .order("full_name");
 
-      if (error) {
-        console.error("Error cargando tenants para preview de reportar pago:", error);
-        setTenantOptions([]);
-        setTenantOptionsLoading(false);
-        return;
+      if (data) {
+        setTenantOptions(data.map(normalizeTenantOption));
       }
-
-      const resolvedTenantOptions = Array.isArray(data)
-        ? data.map((item) => normalizeTenantOption(item))
-        : [];
-
-      setTenantOptions(resolvedTenantOptions);
-      setTenantOptionsLoading(false);
     }
 
-    void loadTenantOptions();
-  }, [isSuperAdmin, userLoading]);
+    loadTenants();
+
+  }, [isSuperAdmin]);
+
+  /*
+  =====================================
+  CARGA DE LEASES
+  =====================================
+  */
 
   useEffect(() => {
-    setTenantSelectorValue(previewTenantId || "");
-  }, [previewTenantId]);
 
-  useEffect(() => {
-    async function loadPaymentFormData() {
-      if (userLoading) return;
+    async function loadData() {
 
-      if (!user) {
-        setLeases([]);
-        setCollectionRecords([]);
-        setPageLoading(false);
-        return;
-      }
-
-      if (!effectiveTenantId) {
-        setLeases([]);
-        setCollectionRecords([]);
-        setPageLoading(false);
-        return;
-      }
+      if (!effectiveTenantId) return;
 
       setPageLoading(true);
-      setPageError("");
-      setFormError("");
-      setFormMessage("");
 
-      const { data: leaseData, error: leaseError } = await supabase
+      const { data: leaseData } = await supabase
         .from("leases")
         .select(`
           id,
           start_date,
           end_date,
           status,
-          units:unit_id (
+          units:unit_id(
             id,
             unit_number,
             display_code,
-            buildings:building_id (
+            buildings:building_id(
               id,
               name
             )
           )
         `)
-        .eq("tenant_id", effectiveTenantId)
-        .order("start_date", { ascending: false });
+        .eq("tenant_id", effectiveTenantId);
 
-      if (leaseError) {
-        console.error("Error cargando leases para reportar pago:", leaseError);
-        setPageError("No se pudieron cargar los adeudos del tenant.");
-        setPageLoading(false);
-        return;
-      }
+      const leasesNormalized = leaseData?.map(normalizeLeaseRecord) ?? [];
 
-      const resolvedLeases = Array.isArray(leaseData)
-        ? leaseData.map((item) => normalizeLeaseRecord(item))
-        : [];
+      setLeases(leasesNormalized);
 
-      setLeases(resolvedLeases);
-
-      const leaseIds = resolvedLeases
-        .map((lease) => lease.id)
-        .filter((id): id is string => Boolean(id));
+      const leaseIds = leasesNormalized.map((l) => l.id);
 
       if (!leaseIds.length) {
         setCollectionRecords([]);
@@ -331,7 +275,7 @@ export default function PortalReportPaymentPage() {
         return;
       }
 
-      const { data: collectionData, error: collectionError } = await supabase
+      const { data: collections } = await supabase
         .from("collection_records")
         .select(`
           id,
@@ -344,129 +288,102 @@ export default function PortalReportPaymentPage() {
           status
         `)
         .in("lease_id", leaseIds)
-        .order("due_date", { ascending: true });
+        .order("due_date");
 
-      if (collectionError) {
-        console.error("Error cargando collection_records para reportar pago:", collectionError);
-        setPageError("No se pudieron cargar los adeudos del tenant.");
-        setPageLoading(false);
-        return;
-      }
+      setCollectionRecords(
+        collections?.map(normalizeCollectionRecord) ?? []
+      );
 
-      const resolvedCollections = Array.isArray(collectionData)
-        ? collectionData.map((item) => normalizeCollectionRecord(item))
-        : [];
-
-      setCollectionRecords(resolvedCollections);
       setPageLoading(false);
     }
 
-    void loadPaymentFormData();
-  }, [effectiveTenantId, user, userLoading]);
+    loadData();
 
-  const selectedTenant = useMemo(() => {
-    if (user?.role === "tenant") {
-      return {
-        id: user.tenant_id,
-        full_name: user.full_name,
-        email: user.email,
-        company_id: user.company_id,
-      };
-    }
+  }, [effectiveTenantId]);
 
-    return tenantOptions.find((tenant) => tenant.id === effectiveTenantId) || null;
-  }, [effectiveTenantId, tenantOptions, user]);
+  /*
+  =====================================
+  DEUDAS DISPONIBLES
+  =====================================
+  */
 
   const selectableDebts = useMemo<SelectableDebt[]>(() => {
-    const leaseMap = new Map(leases.map((lease) => [lease.id, lease]));
+
+    const leaseMap = new Map(leases.map((l) => [l.id, l]));
 
     return collectionRecords
       .map((record) => {
-        const amountDue = Number(record.amount_due || 0);
-        const amountCollected = Number(record.amount_collected || 0);
-        const pendingAmount = Math.max(amountDue - amountCollected, 0);
 
-        if (pendingAmount <= 0) return null;
+        const due = Number(record.amount_due);
+        const paid = Number(record.amount_collected || 0);
 
-        const lease = record.lease_id ? leaseMap.get(record.lease_id) || null : null;
-        const buildingLabel = lease?.units?.buildings?.name || "Sin edificio";
+        const pending = Math.max(due - paid, 0);
+
+        if (pending <= 0) return null;
+
+        const lease = record.lease_id
+          ? leaseMap.get(record.lease_id)
+          : null;
+
+        const buildingLabel =
+          lease?.units?.buildings?.name || "Sin edificio";
+
         const unitLabel =
-          lease?.units?.display_code || lease?.units?.unit_number || "Sin unidad";
+          lease?.units?.display_code ||
+          lease?.units?.unit_number ||
+          "Unidad";
 
         return {
           id: record.id,
-          label: `${formatPeriod(record.period_year, record.period_month)} · ${buildingLabel} · ${unitLabel}`,
-          pendingAmount,
+          label: `${formatPeriod(record.period_year,record.period_month)} · ${buildingLabel} · ${unitLabel}`,
+          pendingAmount: pending,
           dueDateLabel: formatDate(record.due_date),
           buildingLabel,
           unitLabel,
+          leaseId: record.lease_id,
         };
+
       })
-      .filter((item): item is SelectableDebt => Boolean(item));
+      .filter((x): x is SelectableDebt => Boolean(x));
+
   }, [collectionRecords, leases]);
 
-  const selectedDebt = selectableDebts.find((item) => item.id === collectionRecordId) || null;
+  const selectedDebt = selectableDebts.find(
+    (d) => d.id === collectionRecordId
+  );
 
-  const totalPending = selectableDebts.reduce((sum, item) => sum + item.pendingAmount, 0);
+  /*
+  =====================================
+  SUBMIT
+  =====================================
+  */
 
-  function handleTenantSelection(nextTenantId: string) {
-    if (!nextTenantId) {
-      router.replace("/portal/report-payment");
-      return;
-    }
+  async function handleSubmit(e: React.FormEvent) {
 
-    router.replace(`/portal/report-payment?tenantId=${encodeURIComponent(nextTenantId)}`);
-  }
-
-  function goToDashboard() {
-    if (effectiveTenantId && isSuperAdmin) {
-      router.push(`/portal/dashboard?tenantId=${encodeURIComponent(effectiveTenantId)}`);
-      return;
-    }
-
-    router.push("/portal/dashboard");
-  }
-
-  function goToInvoices() {
-    if (effectiveTenantId && isSuperAdmin) {
-      router.push(`/portal/invoices?tenantId=${encodeURIComponent(effectiveTenantId)}`);
-      return;
-    }
-
-    router.push("/portal/invoices");
-  }
-
-  function goBackToTenants() {
-    router.push("/tenants");
-  }
-
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
+    e.preventDefault();
 
     if (isSuperAdmin) {
-      setFormError("La vista superadmin es solo de revisión. El reporte lo envía el inquilino.");
+      setFormError("La vista superadmin es solo preview.");
       return;
     }
 
     if (!effectiveTenantId) {
-      setFormError("No se encontró el tenant actual.");
+      setFormError("No se encontró el tenant.");
       return;
     }
 
     if (!collectionRecordId) {
-      setFormError("Selecciona primero el adeudo que deseas reportar.");
+      setFormError("Selecciona un adeudo.");
       return;
     }
 
-    const parsedAmount = Number(amountReported);
-
-    if (!parsedAmount || parsedAmount <= 0) {
-      setFormError("Ingresa un monto válido mayor a cero.");
+    if (!amountReported) {
+      setFormError("Ingresa el monto.");
       return;
     }
 
     if (!paymentDate) {
-      setFormError("Selecciona la fecha del pago.");
+      setFormError("Selecciona la fecha.");
       return;
     }
 
@@ -474,412 +391,203 @@ export default function PortalReportPaymentPage() {
     setFormError("");
     setFormMessage("");
 
-    const payload = {
-      tenant_id: effectiveTenantId,
-      collection_record_id: collectionRecordId,
-      amount_reported: parsedAmount,
-      payment_date: paymentDate,
-      review_status: "pending_review",
-    };
+    try {
 
-    const { error } = await supabase.from("tenant_reported_payments").insert(payload);
+      /*
+      ==============================
+      SUBIR ARCHIVO
+      ==============================
+      */
 
-    if (error) {
-      console.error("Error creando tenant_reported_payments:", error);
-      setFormError(error.message || "No se pudo registrar el reporte de pago.");
-      setSaving(false);
-      return;
+      let proofPath: string | null = null;
+      let proofUrl: string | null = null;
+      let proofName: string | null = null;
+      let proofType: string | null = null;
+
+      if (proofFile) {
+
+        const ext = proofFile.name.split(".").pop();
+
+        const path = `tenant/${effectiveTenantId}/${Date.now()}.${ext}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("payment-proofs")
+          .upload(path, proofFile);
+
+        if (uploadError) throw uploadError;
+
+        const { data } = supabase.storage
+          .from("payment-proofs")
+          .getPublicUrl(path);
+
+        proofPath = path;
+        proofUrl = data.publicUrl;
+        proofName = proofFile.name;
+        proofType = proofFile.type;
+      }
+
+      /*
+      ==============================
+      INSERT DB
+      ==============================
+      */
+
+      const { error } = await supabase
+        .from("tenant_reported_payments")
+        .insert({
+
+          tenant_id: effectiveTenantId,
+
+          lease_id: selectedDebt?.leaseId,
+
+          collection_record_id: collectionRecordId,
+
+          amount_reported: Number(amountReported),
+
+          payment_date: paymentDate,
+
+          notes,
+
+          proof_file_url: proofUrl,
+
+          proof_file_path: proofPath,
+
+          proof_file_name: proofName,
+
+          proof_file_type: proofType,
+
+          review_status: "pending_review",
+
+        });
+
+      if (error) throw error;
+
+      setFormMessage("Pago reportado correctamente para revisión.");
+
+      setCollectionRecordId("");
+      setAmountReported("");
+      setPaymentDate("");
+      setNotes("");
+      setProofFile(null);
+
+    } catch (err: any) {
+
+      console.error(err);
+      setFormError(err.message || "Error reportando pago.");
+
     }
 
-    setFormMessage("Tu reporte de pago quedó enviado para revisión administrativa.");
-    setCollectionRecordId("");
-    setAmountReported("");
-    setPaymentDate("");
     setSaving(false);
   }
 
-  const tenantName = selectedTenant?.full_name || selectedTenant?.email || "Inquilino";
+  /*
+  =====================================
+  UI
+  =====================================
+  */
 
   return (
     <PageContainer>
+
       <PageHeader
         title="Reportar pago"
-        subtitle={
-          isSuperAdmin
-            ? "Vista previa del formulario que usará el tenant para reportar un pago."
-            : `Hola, ${tenantName}. Aquí puedes reportar un pago para que administración lo revise antes de aplicarlo a cobranza.`
-        }
+        subtitle="Envía el comprobante para revisión administrativa"
         titleIcon={<CreditCard size={20} />}
       />
 
-      {isSuperAdmin ? (
-        <AppCard style={{ marginBottom: 18 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={iconBoxStyle}>
-              <Search size={18} />
-            </div>
+      <AppGrid minWidth={260}>
 
-            <div style={{ flex: 1 }}>
-              <div style={sectionTitleStyle}>Vista previa de tenant</div>
-              <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                Selecciona un inquilino para revisar el formulario de reporte de pago.
-              </div>
+        <AppCard>
 
-              <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
-                <select
-                  value={tenantSelectorValue}
-                  onChange={(event) => {
-                    const nextTenantId = event.target.value;
-                    setTenantSelectorValue(nextTenantId);
-                    handleTenantSelection(nextTenantId);
-                  }}
-                  disabled={tenantOptionsLoading}
-                  style={inputStyle}
-                >
-                  <option value="">
-                    {tenantOptionsLoading
-                      ? "Cargando inquilinos..."
-                      : "Selecciona un inquilino para vista previa"}
-                  </option>
+          <form onSubmit={handleSubmit} style={{ display:"grid", gap:16 }}>
 
-                  {tenantOptions.map((tenant) => (
-                    <option key={tenant.id} value={tenant.id}>
-                      {(tenant.full_name || "Sin nombre") +
-                        (tenant.email ? ` — ${tenant.email}` : "")}
-                    </option>
-                  ))}
-                </select>
+            <label>Adeudo</label>
 
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                  <button
-                    type="button"
-                    onClick={goBackToTenants}
-                    style={{
-                      ...actionButtonStyle,
-                      background: "#FFFFFF",
-                      color: "#111827",
-                      border: "1px solid #D1D5DB",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                    }}
-                  >
-                    <ArrowLeft size={16} />
-                    Volver a inquilinos
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={goToDashboard}
-                    disabled={!effectiveTenantId}
-                    style={{
-                      ...actionButtonStyle,
-                      background: "#111827",
-                      color: "#FFFFFF",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      opacity: effectiveTenantId ? 1 : 0.6,
-                    }}
-                  >
-                    <Home size={16} />
-                    Dashboard portal
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={goToInvoices}
-                    disabled={!effectiveTenantId}
-                    style={{
-                      ...actionButtonStyle,
-                      background: "#4F46E5",
-                      color: "#FFFFFF",
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 8,
-                      opacity: effectiveTenantId ? 1 : 0.6,
-                    }}
-                  >
-                    <FileText size={16} />
-                    Ver adeudos
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </AppCard>
-      ) : null}
-
-      {pageError ? (
-        <AppCard
-          style={{
-            marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
-          }}
-        >
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div
-              style={{
-                ...iconBoxStyle,
-                background: "#FEE2E2",
-                color: "#B91C1C",
-              }}
+            <select
+              value={collectionRecordId}
+              onChange={(e)=>setCollectionRecordId(e.target.value)}
             >
-              <AlertTriangle size={18} />
-            </div>
+              <option value="">Selecciona adeudo</option>
 
-            <div>
-              <div style={sectionTitleStyle}>No pudimos cargar el formulario</div>
-              <div style={mutedTextStyle}>{pageError}</div>
-            </div>
-          </div>
+              {selectableDebts.map(d => (
+                <option key={d.id} value={d.id}>
+                  {d.label} · {formatCurrency(d.pendingAmount)}
+                </option>
+              ))}
+            </select>
+
+            {selectedDebt && (
+              <div>
+
+                <strong>{selectedDebt.label}</strong>
+
+                <div>
+                  Vence: {selectedDebt.dueDateLabel}
+                </div>
+
+                <div>
+                  Pendiente: {formatCurrency(selectedDebt.pendingAmount)}
+                </div>
+
+              </div>
+            )}
+
+            <label>Monto</label>
+
+            <input
+              type="number"
+              value={amountReported}
+              onChange={(e)=>setAmountReported(e.target.value)}
+            />
+
+            <label>Fecha pago</label>
+
+            <input
+              type="date"
+              value={paymentDate}
+              onChange={(e)=>setPaymentDate(e.target.value)}
+            />
+
+            <label>Notas</label>
+
+            <textarea
+              value={notes}
+              onChange={(e)=>setNotes(e.target.value)}
+            />
+
+            <label>Comprobante</label>
+
+            <input
+              type="file"
+              accept="image/*,.pdf"
+              onChange={(e)=>setProofFile(e.target.files?.[0] || null)}
+            />
+
+            {formError && (
+              <div style={{color:"red"}}>
+                {formError}
+              </div>
+            )}
+
+            {formMessage && (
+              <div style={{color:"green"}}>
+                {formMessage}
+              </div>
+            )}
+
+            <UiButton
+              type="submit"
+              disabled={saving || isSuperAdmin}
+            >
+              {saving ? "Enviando..." : "Enviar reporte"}
+            </UiButton>
+
+          </form>
+
         </AppCard>
-      ) : null}
 
-      {isSuperAdmin && !effectiveTenantId ? (
-        <AppCard style={{ marginBottom: 18 }}>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={iconBoxStyle}>
-              <Info size={18} />
-            </div>
-
-            <div>
-              <div style={sectionTitleStyle}>Selecciona un inquilino para continuar</div>
-              <div style={mutedTextStyle}>
-                Elige un tenant desde el selector superior para abrir su formulario en modo vista previa.
-              </div>
-            </div>
-          </div>
-        </AppCard>
-      ) : null}
-
-      <AppGrid minWidth={240}>
-        <AppCard>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={iconBoxStyle}>
-              <User2 size={18} />
-            </div>
-
-            <div>
-              <div style={sectionTitleStyle}>Inquilino</div>
-              <div style={{ marginTop: 8, ...valueStyle }}>
-                {pageLoading ? "Cargando..." : tenantName}
-              </div>
-              <div style={{ marginTop: 8, ...mutedTextStyle }}>
-                Perfil actualmente mostrado.
-              </div>
-            </div>
-          </div>
-        </AppCard>
-
-        <AppCard>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={iconBoxStyle}>
-              <Wallet size={18} />
-            </div>
-
-            <div>
-              <div style={sectionTitleStyle}>Saldo pendiente total</div>
-              <div style={{ marginTop: 8, ...valueStyle }}>
-                {pageLoading ? "Cargando..." : formatCurrency(totalPending)}
-              </div>
-              <div style={{ marginTop: 8, ...mutedTextStyle }}>
-                Suma de todos los adeudos con saldo pendiente.
-              </div>
-            </div>
-          </div>
-        </AppCard>
-
-        <AppCard>
-          <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-            <div style={iconBoxStyle}>
-              <FileText size={18} />
-            </div>
-
-            <div>
-              <div style={sectionTitleStyle}>Adeudos disponibles</div>
-              <div style={{ marginTop: 8, ...valueStyle }}>
-                {pageLoading ? "Cargando..." : String(selectableDebts.length)}
-              </div>
-              <div style={{ marginTop: 8, ...mutedTextStyle }}>
-                Registros que todavía aceptan reporte de pago.
-              </div>
-            </div>
-          </div>
-        </AppCard>
       </AppGrid>
 
-      <div style={{ marginTop: 18 }}>
-        <AppCard>
-          <div style={{ display: "grid", gap: 16 }}>
-            <div>
-              <div style={sectionTitleStyle}>Formulario de reporte</div>
-              <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                Selecciona el adeudo correspondiente y captura el monto que pagaste.
-                La revisión administrativa ocurre antes de afectar la cobranza real.
-              </div>
-            </div>
-
-            <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
-              <div style={{ display: "grid", gap: 8 }}>
-                <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
-                  Adeudo a reportar
-                </label>
-
-                <select
-                  value={collectionRecordId}
-                  onChange={(event) => setCollectionRecordId(event.target.value)}
-                  style={inputStyle}
-                  disabled={pageLoading || !selectableDebts.length}
-                >
-                  <option value="">
-                    {pageLoading
-                      ? "Cargando adeudos..."
-                      : selectableDebts.length
-                      ? "Selecciona un adeudo"
-                      : "No hay adeudos pendientes"}
-                  </option>
-
-                  {selectableDebts.map((debt) => (
-                    <option key={debt.id} value={debt.id}>
-                      {debt.label} · Pendiente {formatCurrency(debt.pendingAmount)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {selectedDebt ? (
-                <div
-                  style={{
-                    padding: 14,
-                    borderRadius: 12,
-                    background: "#F8FAFC",
-                    border: "1px solid #E5E7EB",
-                    display: "grid",
-                    gap: 8,
-                  }}
-                >
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
-                    {selectedDebt.label}
-                  </div>
-                  <div style={mutedTextStyle}>
-                    Vence: <strong>{selectedDebt.dueDateLabel}</strong>
-                  </div>
-                  <div style={mutedTextStyle}>
-                    Saldo pendiente: <strong>{formatCurrency(selectedDebt.pendingAmount)}</strong>
-                  </div>
-                </div>
-              ) : null}
-
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-                  gap: 16,
-                }}
-              >
-                <div style={{ display: "grid", gap: 8 }}>
-                  <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
-                    Monto reportado
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={amountReported}
-                    onChange={(event) => setAmountReported(event.target.value)}
-                    style={inputStyle}
-                    placeholder="0.00"
-                    disabled={isSuperAdmin}
-                  />
-                </div>
-
-                <div style={{ display: "grid", gap: 8 }}>
-                  <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
-                    Fecha del pago
-                  </label>
-                  <input
-                    type="date"
-                    value={paymentDate}
-                    onChange={(event) => setPaymentDate(event.target.value)}
-                    style={inputStyle}
-                    disabled={isSuperAdmin}
-                  />
-                </div>
-              </div>
-
-              <div
-                style={{
-                  padding: 14,
-                  borderRadius: 12,
-                  background: "#FFFBEB",
-                  border: "1px solid #FDE68A",
-                  color: "#92400E",
-                  fontSize: 14,
-                  fontWeight: 600,
-                  lineHeight: 1.5,
-                }}
-              >
-                En este bloque queda listo el flujo base de reporte. El siguiente paso recomendado es agregar comprobante, referencia y storage para evidencia.
-              </div>
-
-              {formError ? (
-                <div
-                  style={{
-                    padding: 12,
-                    borderRadius: 12,
-                    background: "#FEF2F2",
-                    border: "1px solid #FECACA",
-                    color: "#B91C1C",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  }}
-                >
-                  {formError}
-                </div>
-              ) : null}
-
-              {formMessage ? (
-                <div
-                  style={{
-                    padding: 12,
-                    borderRadius: 12,
-                    background: "#ECFDF5",
-                    border: "1px solid #A7F3D0",
-                    color: "#065F46",
-                    fontSize: 14,
-                    fontWeight: 600,
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                  }}
-                >
-                  <CheckCircle2 size={18} />
-                  {formMessage}
-                </div>
-              ) : null}
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                <UiButton
-                  type="button"
-                  variant="secondary"
-                  onClick={goToInvoices}
-                >
-                  Ver adeudos
-                </UiButton>
-
-                <UiButton
-                  type="submit"
-                  disabled={saving || isSuperAdmin || !selectableDebts.length}
-                >
-                  {saving ? "Enviando..." : "Enviar reporte"}
-                </UiButton>
-              </div>
-            </form>
-          </div>
-        </AppCard>
-      </div>
     </PageContainer>
   );
 }
