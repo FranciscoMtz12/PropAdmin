@@ -22,23 +22,41 @@ export default function DeleteConfirmModal({
   onConfirm,
   onCancel,
 }: Props) {
-  if (!open) return null;
-
   return (
-    <Modal onClose={onCancel}>
-      <div className="space-y-4">
-        <h3 className="text-lg font-semibold text-red-600">{title}</h3>
+    <Modal
+      open={open}
+      title={title}
+      subtitle="Esta acción elimina el registro y no se puede deshacer desde la interfaz."
+      onClose={onCancel}
+    >
+      <div style={{ display: "grid", gap: 18 }}>
+        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "#475467" }}>
+          {description}
+        </p>
 
-        <p className="text-sm text-gray-600">{description}</p>
-
-        <div className="flex justify-end gap-3 pt-2">
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
           <UiButton variant="secondary" onClick={onCancel}>
             {cancelText}
           </UiButton>
 
-          <UiButton variant="danger" onClick={onConfirm}>
+          <button
+            type="button"
+            onClick={onConfirm}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: "1px solid #DC2626",
+              borderRadius: 12,
+              padding: "11px 16px",
+              background: "#DC2626",
+              color: "white",
+              fontWeight: 700,
+              cursor: "pointer",
+            }}
+          >
             {confirmText}
-          </UiButton>
+          </button>
         </div>
       </div>
     </Modal>
