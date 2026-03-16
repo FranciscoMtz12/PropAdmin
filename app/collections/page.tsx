@@ -48,7 +48,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { type ParsedCfdiData, parseCfdiXml } from "@/lib/cfdiXmlParser";
-import { uploadInvoiceFiles } from "@/lib/invoiceStorage";
+import { removeInvoiceFile, uploadInvoiceFiles } from "@/lib/invoiceStorage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useAppToast } from "@/components/AppToastProvider";
 
@@ -1240,6 +1240,8 @@ export default function CollectionsPage() {
 
     setImportingInvoice(true);
 
+    let uploadedFilesForCleanup: { pdfPath: string | null; xmlPath: string | null } | null = null;
+
     try {
       let schedule = collectionSchedules.find(
         (item) =>
@@ -1312,6 +1314,24 @@ export default function CollectionsPage() {
         record = createdRecord.data as CollectionRecord;
       }
 
+      const uploadedFiles = await uploadInvoiceFiles({
+        companyId: user.company_id,
+        buildingId: unit.building_id,
+        leaseId: lease.id,
+        invoiceUuid: importPreview.uuid,
+        pdfFile: importPdfFile,
+        xmlFile: importXmlFile,
+      });
+
+      uploadedFilesForCleanup = {
+        pdfPath: uploadedFiles.pdfPath,
+        xmlPath: uploadedFiles.xmlPath,
+      };
+
+      if (!uploadedFiles.pdfPath || !uploadedFiles.xmlPath) {
+        throw new Error("No pude guardar correctamente los archivos de la factura importada.");
+      }
+
       const invoiceInsert = await supabase
         .from("collection_invoices")
         .insert({
@@ -1334,6 +1354,10 @@ export default function CollectionsPage() {
           subtotal: importPreview.subtotal ? Number(importPreview.subtotal) : null,
           tax: importPreview.tax ? Number(importPreview.tax) : null,
           total: importPreview.total ? Number(importPreview.total) : amountDue,
+          pdf_path: uploadedFiles.pdfPath,
+          xml_path: uploadedFiles.xmlPath,
+          original_pdf_filename: uploadedFiles.originalPdfFilename,
+          original_xml_filename: uploadedFiles.originalXmlFilename,
           match_confidence: selectedImportCandidate?.score || 0,
           match_notes: selectedImportCandidate?.reasons.join(" | ") || importStatusMessage || null,
           created_by: user.id,
@@ -1343,30 +1367,6 @@ export default function CollectionsPage() {
 
       if (invoiceInsert.error || !invoiceInsert.data?.id) {
         throw new Error(invoiceInsert.error?.message || "No pude crear la factura importada dentro de Cobranza.");
-      }
-
-      const uploadedFiles = await uploadInvoiceFiles({
-        companyId: user.company_id,
-        buildingId: unit.building_id,
-        leaseId: lease.id,
-        invoiceUuid: importPreview.uuid,
-        invoiceId: invoiceInsert.data.id,
-        pdfFile: importPdfFile,
-        xmlFile: importXmlFile,
-      });
-
-      const fileUpdate = await supabase
-        .from("collection_invoices")
-        .update({
-          pdf_path: uploadedFiles.pdfPath,
-          xml_path: uploadedFiles.xmlPath,
-          original_pdf_filename: uploadedFiles.originalPdfFilename,
-          original_xml_filename: uploadedFiles.originalXmlFilename,
-        })
-        .eq("id", invoiceInsert.data.id);
-
-      if (fileUpdate.error) {
-        throw new Error(fileUpdate.error.message || "La factura se creó, pero no pude guardar los archivos.");
       }
 
       await loadCollectionsData();
@@ -1383,6 +1383,18 @@ export default function CollectionsPage() {
       router.refresh();
     } catch (error) {
       console.error(error);
+
+      if (uploadedFilesForCleanup?.pdfPath || uploadedFilesForCleanup?.xmlPath) {
+        try {
+          await Promise.all([
+            removeInvoiceFile(uploadedFilesForCleanup.pdfPath),
+            removeInvoiceFile(uploadedFilesForCleanup.xmlPath),
+          ]);
+        } catch (cleanupError) {
+          console.error("No pude limpiar los archivos subidos tras fallar la importación.", cleanupError);
+        }
+      }
+
       setImportingInvoice(false);
       showToast({
         type: "error",
