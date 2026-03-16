@@ -57,6 +57,7 @@ type InvoiceFormProps = {
   mode: InvoiceFormMode;
   invoiceId?: string;
   initialData?: ExistingInvoiceData | null;
+  presetCollectionRecordId?: string | null;
 };
 
 type FormState = {
@@ -143,6 +144,7 @@ export default function InvoiceForm({
   mode,
   invoiceId,
   initialData = null,
+  presetCollectionRecordId = null,
 }: InvoiceFormProps) {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
@@ -194,6 +196,16 @@ export default function InvoiceForm({
     setExistingPdfFilename(initialData.originalPdfFilename || "");
     setExistingXmlFilename(initialData.originalXmlFilename || "");
   }, [initialData]);
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    if (!presetCollectionRecordId) return;
+
+    setForm((prev) => ({
+      ...prev,
+      collectionRecordId: prev.collectionRecordId || presetCollectionRecordId,
+    }));
+  }, [mode, presetCollectionRecordId]);
 
   useEffect(() => {
     if (loading || !user || user.role !== "admin") return;
