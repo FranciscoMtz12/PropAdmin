@@ -41,6 +41,7 @@ import {
   Landmark,
   Plus,
   Receipt,
+  Trash2,
   Upload,
   Wallet,
   WandSparkles,
@@ -309,6 +310,21 @@ const MONTH_LABELS_SHORT = [
   "Dic",
 ];
 
+const MONTH_LABELS_LONG = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+];
+
 function getTodayDateOnlyKey() {
   const now = new Date();
   const year = now.getFullYear();
@@ -506,6 +522,44 @@ function buildImportedChargeTitle(parsed: ParsedCfdiData | null, category: Colle
   return "Cobro importado desde XML";
 }
 
+
+function formatCollectionTitleForRow({
+  chargeType,
+  periodMonth,
+  fallbackTitle,
+}: {
+  chargeType: CollectionChargeType;
+  periodMonth: number;
+  fallbackTitle: string | null | undefined;
+}) {
+  const monthLabel = MONTH_LABELS_LONG[periodMonth - 1] || "Mes";
+
+  if (chargeType === "rent") return `Renta ${monthLabel}`;
+  if (chargeType === "maintenance_fee") return `Mantenimiento ${monthLabel}`;
+  if (chargeType === "services") return `Servicios ${monthLabel}`;
+  if (chargeType === "parking") return `Estacionamiento ${monthLabel}`;
+  if (chargeType === "penalty") return `Penalización ${monthLabel}`;
+
+  const normalizedFallback = String(fallbackTitle || "").trim();
+  if (!normalizedFallback) return `Cobro ${monthLabel}`;
+  if (normalizedFallback.length <= 42) return normalizedFallback;
+  return `${normalizedFallback.slice(0, 39).trim()}...`;
+}
+
+function formatUnitLabel(unit: Unit | null | undefined) {
+  const unitNumber = String(unit?.unit_number || "").trim();
+  const displayCode = String(unit?.display_code || "").trim();
+  const rawValue = unitNumber || displayCode;
+
+  if (!rawValue) return "Departamento sin número";
+
+  const normalized = normalizeComparableText(`${displayCode} ${unitNumber}`);
+  const usesCommercialLabel = normalized.includes("local") || normalized.includes("comercial");
+  const prefix = usesCommercialLabel ? "Unidad" : "Departamento";
+
+  return `${prefix} ${rawValue}`;
+}
+
 function createDefaultChargeForm(): ChargeForm {
   const todayKey = getTodayDateOnlyKey();
   const today = parseDateOnly(todayKey);
@@ -561,6 +615,8 @@ export default function CollectionsPage() {
   const [creatingCharge, setCreatingCharge] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
   const [importingInvoice, setImportingInvoice] = useState(false);
+  const [deleteRecordId, setDeleteRecordId] = useState<string | null>(null);
+  const [deletingRecord, setDeletingRecord] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     recordId: "",
@@ -789,7 +845,7 @@ export default function CollectionsPage() {
           ? userMap.get(lease.responsible_payer_id)
           : null;
 
-        const unitLabel = unit?.display_code || unit?.unit_number || "Unidad";
+        const unitLabel = formatUnitLabel(unit);
 
         const tenantLabel =
           getUserDisplayLabel(tenantUser) ||
@@ -818,10 +874,14 @@ export default function CollectionsPage() {
           buildingId: record.building_id,
           buildingName: building?.name || "Edificio",
           unitId: record.unit_id,
-          unitLabel: `Unidad ${unitLabel}`,
+          unitLabel,
           tenantLabel,
           responsiblePayerLabel,
-          title: schedule.title,
+          title: formatCollectionTitleForRow({
+            chargeType: schedule.charge_type,
+            periodMonth: record.period_month,
+            fallbackTitle: schedule.title,
+          }),
           chargeTypeLabel: getChargeTypeLabel(schedule.charge_type),
           periodLabel: formatPeriod(record.period_year, record.period_month),
           dueDate: record.due_date,
@@ -1070,6 +1130,102 @@ export default function CollectionsPage() {
         return bDate.localeCompare(aDate);
       });
   }, [collectionInvoices, detailRecordId]);
+
+  const deleteRecordRow = deleteRecordId
+    ? collectionRowsById.get(deleteRecordId) || null
+    : null;
+
+  async function handleDeleteCollectionRecord() {
+    if (!deleteRecordId || !user?.company_id) return;
+
+    const record = collectionRecords.find((item) => item.id === deleteRecordId);
+    if (!record) {
+      showToast({ type: "warning", message: "Ese cobro ya no existe o ya fue eliminado." });
+      setDeleteRecordId(null);
+      return;
+    }
+
+    const linkedInvoices = collectionInvoices.filter((invoice) => invoice.collection_record_id === deleteRecordId);
+    const linkedPayments = collectionPayments.filter((payment) => payment.collection_record_id === deleteRecordId);
+    const otherRecordsForSchedule = collectionRecords.filter((item) => item.collection_schedule_id === record.collection_schedule_id && item.id !== record.id);
+    const schedule = collectionSchedules.find((item) => item.id === record.collection_schedule_id) || null;
+
+    setDeletingRecord(true);
+
+    try {
+      for (const invoice of linkedInvoices) {
+        if (invoice.pdf_path) {
+          try {
+            await removeInvoiceFile(invoice.pdf_path);
+          } catch (storageError) {
+            console.warn("No pude borrar el PDF de la factura ligada.", storageError);
+          }
+        }
+
+        if (invoice.xml_path) {
+          try {
+            await removeInvoiceFile(invoice.xml_path);
+          } catch (storageError) {
+            console.warn("No pude borrar el XML de la factura ligada.", storageError);
+          }
+        }
+      }
+
+      if (linkedInvoices.length > 0) {
+        const deleteInvoices = await supabase
+          .from("collection_invoices")
+          .delete()
+          .in("id", linkedInvoices.map((invoice) => invoice.id));
+
+        if (deleteInvoices.error) {
+          throw new Error(deleteInvoices.error.message || "No pude eliminar las facturas ligadas a este cobro.");
+        }
+      }
+
+      if (linkedPayments.length > 0) {
+        const deletePayments = await supabase
+          .from("collection_payments")
+          .delete()
+          .in("id", linkedPayments.map((payment) => payment.id));
+
+        if (deletePayments.error) {
+          throw new Error(deletePayments.error.message || "No pude eliminar los abonos ligados a este cobro.");
+        }
+      }
+
+      const deleteRecord = await supabase
+        .from("collection_records")
+        .delete()
+        .eq("id", deleteRecordId)
+        .eq("company_id", user.company_id);
+
+      if (deleteRecord.error) {
+        throw new Error(deleteRecord.error.message || "No pude eliminar el cobro.");
+      }
+
+      if (schedule && !schedule.active && otherRecordsForSchedule.length === 0) {
+        const deleteSchedule = await supabase
+          .from("collection_schedules")
+          .delete()
+          .eq("id", schedule.id)
+          .eq("company_id", user.company_id);
+
+        if (deleteSchedule.error) {
+          console.warn("No pude eliminar la configuración huérfana del cobro.", deleteSchedule.error.message);
+        }
+      }
+
+      await loadCollectionsData();
+      setDetailRecordId((current) => (current === deleteRecordId ? null : current));
+      setDeleteRecordId(null);
+      showToast({ type: "success", message: "Cobro eliminado correctamente." });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "No pude eliminar el cobro.";
+      showToast({ type: "error", message: errorMessage });
+    } finally {
+      setDeletingRecord(false);
+    }
+  }
 
   function openPaymentModal(row: CollectionRow) {
     setPaymentRecordId(row.id);
@@ -1807,16 +1963,18 @@ export default function CollectionsPage() {
             {
               key: "concept",
               header: "Concepto",
+              width: "16%",
               render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={cellPrimaryStrongStyle}>{row.title}</span>
+                <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 180 }}>
+                  <span style={{ ...cellPrimaryStrongStyle, lineHeight: 1.25 }}>{row.title}</span>
                   <span style={cellSecondaryStyle}>{row.chargeTypeLabel}</span>
                 </div>
               ),
             },
             {
               key: "building",
-              header: "Edificio / unidad",
+              header: "Edificio / departamento",
+              width: "16%",
               render: (row: CollectionRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={cellPrimaryStyle}>{row.buildingName}</span>
@@ -1827,6 +1985,7 @@ export default function CollectionsPage() {
             {
               key: "tenant",
               header: "Inquilino",
+              width: "15%",
               render: (row: CollectionRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={cellPrimaryStyle}>{row.tenantLabel}</span>
@@ -1837,6 +1996,7 @@ export default function CollectionsPage() {
             {
               key: "period",
               header: "Periodo",
+              width: 90,
               render: (row: CollectionRow) => (
                 <span style={cellPrimaryStyle}>{row.periodLabel}</span>
               ),
@@ -1844,6 +2004,7 @@ export default function CollectionsPage() {
             {
               key: "dueDate",
               header: "Vencimiento",
+              width: 110,
               render: (row: CollectionRow) => (
                 <span style={cellPrimaryStyle}>{row.dueDateLabel}</span>
               ),
@@ -1851,6 +2012,7 @@ export default function CollectionsPage() {
             {
               key: "amount",
               header: "Monto / cobrado",
+              width: 120,
               render: (row: CollectionRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={cellPrimaryStrongStyle}>{row.amountDueLabel}</span>
@@ -1861,6 +2023,7 @@ export default function CollectionsPage() {
             {
               key: "balance",
               header: "Saldo",
+              width: 100,
               render: (row: CollectionRow) => (
                 <span
                   style={{
@@ -1875,6 +2038,7 @@ export default function CollectionsPage() {
             {
               key: "status",
               header: "Estado",
+              width: 100,
               render: (row: CollectionRow) => {
                 const colors = getStatusColors(row.status);
 
@@ -1902,6 +2066,7 @@ export default function CollectionsPage() {
             {
               key: "activity",
               header: "Actividad",
+              width: 96,
               render: (row: CollectionRow) => (
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   <span style={cellSecondaryStyle}>
@@ -1916,15 +2081,16 @@ export default function CollectionsPage() {
             {
               key: "actions",
               header: "Acciones",
+              width: 132,
               render: (row: CollectionRow) => (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "grid", gap: 8 }}>
                   <button
                     type="button"
                     onClick={() => setDetailRecordId(row.id)}
                     style={tableActionButtonStyle}
                   >
                     <Eye size={14} />
-                    Ver detalle
+                    Detalle
                   </button>
 
                   <button
@@ -1938,7 +2104,7 @@ export default function CollectionsPage() {
                     }}
                   >
                     <Plus size={14} />
-                    Registrar abono
+                    Abono
                   </button>
                 </div>
               ),
@@ -2021,15 +2187,25 @@ export default function CollectionsPage() {
               <div style={detailSectionHeaderStyle}>
                 <div style={detailSectionTitleStyle}>Historial de abonos</div>
 
-                <UiButton
-                  onClick={() => {
-                    setDetailRecordId(null);
-                    openPaymentModal(detailRow);
-                  }}
-                  icon={<Plus size={16} />}
-                >
-                  Registrar abono
-                </UiButton>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <UiButton
+                    onClick={() => {
+                      setDetailRecordId(null);
+                      openPaymentModal(detailRow);
+                    }}
+                    icon={<Plus size={16} />}
+                  >
+                    Registrar abono
+                  </UiButton>
+
+                  <UiButton
+                    variant="secondary"
+                    onClick={() => setDeleteRecordId(detailRow.id)}
+                    icon={<Trash2 size={16} />}
+                  >
+                    Eliminar cobro
+                  </UiButton>
+                </div>
               </div>
 
               {detailPayments.length === 0 ? (
@@ -2103,6 +2279,72 @@ export default function CollectionsPage() {
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      <Modal
+        open={Boolean(deleteRecordRow)}
+        title="Eliminar cobro"
+        onClose={() => {
+          if (!deletingRecord) {
+            setDeleteRecordId(null);
+          }
+        }}
+      >
+        {deleteRecordRow ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={dangerBoxStyle}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={detailSectionTitleStyle}>Confirmación requerida</div>
+                <div style={quickSectionTextStyle}>
+                  Vas a eliminar este cobro, sus abonos ligados y también las facturas importadas con sus archivos XML/PDF.
+                  Esta acción no se puede deshacer.
+                </div>
+              </div>
+            </div>
+
+            <div style={detailTopGridStyle}>
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Concepto</div>
+                <div style={detailValueStyle}>{deleteRecordRow.title}</div>
+              </div>
+
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Ubicación</div>
+                <div style={detailValueStyle}>
+                  {deleteRecordRow.buildingName} · {deleteRecordRow.unitLabel}
+                </div>
+              </div>
+
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Periodo</div>
+                <div style={detailValueStyle}>{deleteRecordRow.periodLabel}</div>
+              </div>
+
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Saldo</div>
+                <div style={detailValueStyle}>{deleteRecordRow.balanceLabel}</div>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+              <UiButton
+                variant="secondary"
+                onClick={() => setDeleteRecordId(null)}
+                disabled={deletingRecord}
+              >
+                Cancelar
+              </UiButton>
+
+              <UiButton
+                onClick={handleDeleteCollectionRecord}
+                disabled={deletingRecord}
+                icon={<Trash2 size={16} />}
+              >
+                {deletingRecord ? "Eliminando..." : "Confirmar eliminación"}
+              </UiButton>
             </div>
           </div>
         ) : null}
@@ -2865,6 +3107,7 @@ const cellSecondaryStyle: CSSProperties = {
 const tableActionButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: 6,
   padding: "8px 10px",
   borderRadius: 10,
@@ -2879,6 +3122,7 @@ const tableActionButtonStyle: CSSProperties = {
 const tablePrimaryButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
+  justifyContent: "center",
   gap: 6,
   padding: "8px 10px",
   borderRadius: 10,
