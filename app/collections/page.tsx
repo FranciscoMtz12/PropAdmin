@@ -8,6 +8,7 @@
   - collection_records
   - collection_payments
   - collection_invoices
+  - acceso rápido a pagos reportados por tenants
 
   Objetivo:
   - mostrar cobros administrativos a inquilinos
@@ -17,24 +18,23 @@
   - registrar abonos parciales
   - visualizar historial de pagos
   - visualizar facturas ligadas al cobro
+  - revisar pagos reportados por tenants
 
   Importante:
   - esta pantalla NO timbra facturas
   - esta pantalla NO es contabilidad
   - esta pantalla sigue siendo control administrativo interno de cobranza
-
-  Decisión actual:
-  - la carga inteligente XML + PDF vendrá después
-  - aquí ya dejamos la base visual y operativa para soportarla
 */
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   Building2,
   CalendarDays,
   CheckCircle2,
   Clock3,
+  CreditCard,
   Eye,
   Filter,
   Landmark,
@@ -180,6 +180,12 @@ type CollectionInvoice = {
   replaced_by_invoice_id: string | null;
   created_by: string | null;
   created_at: string;
+};
+
+type TenantReportedPayment = {
+  id: string;
+  company_id: string | null;
+  review_status: string | null;
 };
 
 type CollectionStatusFilter =
@@ -370,6 +376,7 @@ function getUserDisplayLabel(user: AppUser | null | undefined) {
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
+  const router = useRouter();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [message, setMessage] = useState("");
@@ -382,6 +389,7 @@ export default function CollectionsPage() {
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [collectionPayments, setCollectionPayments] = useState<CollectionPayment[]>([]);
   const [collectionInvoices, setCollectionInvoices] = useState<CollectionInvoice[]>([]);
+  const [reportedPayments, setReportedPayments] = useState<TenantReportedPayment[]>([]);
 
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedStatus, setSelectedStatus] =
@@ -422,6 +430,7 @@ export default function CollectionsPage() {
       recordsRes,
       paymentsRes,
       invoicesRes,
+      reportedPaymentsRes,
     ] = await Promise.all([
       supabase
         .from("buildings")
@@ -478,6 +487,13 @@ export default function CollectionsPage() {
         .eq("company_id", user.company_id)
         .is("replaced_at", null)
         .order("issued_at", { ascending: false }),
+
+      supabase
+        .from("tenant_reported_payments")
+        .select("id, company_id, review_status")
+        .eq("company_id", user.company_id)
+        .eq("review_status", "pending_review")
+        .order("created_at", { ascending: false }),
     ]);
 
     if (buildingsRes.error) {
@@ -528,6 +544,12 @@ export default function CollectionsPage() {
       return;
     }
 
+    if (reportedPaymentsRes.error) {
+      setMessage("No se pudieron cargar los pagos reportados pendientes.");
+      setLoadingPage(false);
+      return;
+    }
+
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
     setAppUsers((appUsersRes.data as AppUser[]) || []);
@@ -536,6 +558,7 @@ export default function CollectionsPage() {
     setCollectionRecords((recordsRes.data as CollectionRecord[]) || []);
     setCollectionPayments((paymentsRes.data as CollectionPayment[]) || []);
     setCollectionInvoices((invoicesRes.data as CollectionInvoice[]) || []);
+    setReportedPayments((reportedPaymentsRes.data as TenantReportedPayment[]) || []);
     setLoadingPage(false);
   }
 
@@ -676,6 +699,7 @@ export default function CollectionsPage() {
   const partialCount = filteredRows.filter((row) => row.status === "partial").length;
   const pendingCount = filteredRows.filter((row) => row.status === "pending").length;
   const overdueCount = filteredRows.filter((row) => row.status === "overdue").length;
+  const reportedPendingCount = reportedPayments.length;
 
   const totalOutstandingAmount = filteredRows
     .filter((row) => row.status !== "collected")
@@ -905,12 +929,80 @@ export default function CollectionsPage() {
         />
 
         <MetricCard
+          label="Pagos reportados"
+          value={String(reportedPendingCount)}
+          helper="Pendientes de revisión"
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#EEF2FF",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <CreditCard size={18} color="#4338CA" />
+            </div>
+          }
+        />
+
+        <MetricCard
           label="Saldo pendiente"
           value={formatCurrency(totalOutstandingAmount)}
           helper="Pendiente + parcial + vencido"
           icon={<CalendarDays size={18} />}
         />
       </AppGrid>
+
+      <div style={{ height: 16 }} />
+
+      <SectionCard title="Centro de revisión" icon={<CreditCard size={18} />}>
+        <AppGrid minWidth={280}>
+          <AppCard>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={quickSectionTitleStyle}>Pagos reportados por inquilinos</div>
+                <div style={quickSectionTextStyle}>
+                  Revisa comprobantes enviados desde el portal antes de afectar la
+                  cobranza real. Aquí podrás aprobar o rechazar cada reporte.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  alignSelf: "flex-start",
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  background: reportedPendingCount > 0 ? "#FEF3C7" : "#ECFDF5",
+                  border: `1px solid ${reportedPendingCount > 0 ? "#FDE68A" : "#A7F3D0"}`,
+                  color: reportedPendingCount > 0 ? "#92400E" : "#166534",
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                <CreditCard size={15} />
+                {reportedPendingCount > 0
+                  ? `${reportedPendingCount} pendiente${reportedPendingCount === 1 ? "" : "s"}`
+                  : "Sin pendientes"}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <UiButton
+                  onClick={() => router.push("/collections/reported-payments")}
+                  icon={<Eye size={16} />}
+                >
+                  Abrir revisión
+                </UiButton>
+              </div>
+            </div>
+          </AppCard>
+        </AppGrid>
+      </SectionCard>
 
       <div style={{ height: 16 }} />
 
@@ -1418,6 +1510,18 @@ export default function CollectionsPage() {
     </PageContainer>
   );
 }
+
+const quickSectionTitleStyle: CSSProperties = {
+  fontSize: 16,
+  fontWeight: 800,
+  color: "#111827",
+};
+
+const quickSectionTextStyle: CSSProperties = {
+  fontSize: 14,
+  lineHeight: 1.6,
+  color: "#6B7280",
+};
 
 const filterLabelStyle: CSSProperties = {
   display: "inline-flex",
