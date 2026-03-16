@@ -149,8 +149,6 @@ export default function InvoiceForm({
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
 
-  const preselectedRecordId = searchParams.get("recordId") || "";
-
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [saving, setSaving] = useState(false);
   const [records, setRecords] = useState<CollectionRecordOption[]>([]);
@@ -170,7 +168,9 @@ export default function InvoiceForm({
     initialData?.originalXmlFilename || ""
   );
   const [xmlAutofillStatus, setXmlAutofillStatus] = useState("");
-  const [queryRecordPrefillApplied, setQueryRecordPrefillApplied] = useState(false);
+  const [recordPrefillNotice, setRecordPrefillNotice] = useState("");
+
+  const sourceRecordId = searchParams.get("recordId") || "";
 
   useEffect(() => {
     if (!initialData) return;
@@ -270,44 +270,28 @@ export default function InvoiceForm({
 
   useEffect(() => {
     if (mode !== "create") return;
-    if (!preselectedRecordId) return;
+    if (!sourceRecordId) return;
     if (loadingRecords) return;
-    if (queryRecordPrefillApplied) return;
+    if (form.collectionRecordId) return;
 
-    const matchingRecord = records.find((record) => record.id === preselectedRecordId);
+    const matchedRecord = records.find((record) => record.id === sourceRecordId);
 
-    if (!matchingRecord) {
-      setQueryRecordPrefillApplied(true);
-      showToast({
-        type: "warning",
-        message:
-          "Abriste la factura desde cobranza, pero no encontré ese cobro disponible para tu usuario.",
-      });
+    if (!matchedRecord) {
+      setRecordPrefillNotice(
+        "Llegaste desde Cobranza, pero no encontré ese cobro entre los disponibles para facturar."
+      );
       return;
     }
 
-    setForm((prev) => {
-      if (prev.collectionRecordId === matchingRecord.id) return prev;
-      return {
-        ...prev,
-        collectionRecordId: matchingRecord.id,
-      };
-    });
+    setForm((prev) => ({
+      ...prev,
+      collectionRecordId: matchedRecord.id,
+    }));
 
-    setQueryRecordPrefillApplied(true);
-
-    showToast({
-      type: "info",
-      message: "Precargué el cobro relacionado para acelerar la captura de la factura.",
-    });
-  }, [
-    loadingRecords,
-    mode,
-    preselectedRecordId,
-    queryRecordPrefillApplied,
-    records,
-    showToast,
-  ]);
+    setRecordPrefillNotice(
+      `Factura iniciada desde Cobranza para ${matchedRecord.periodLabel} · ${matchedRecord.buildingName} · ${matchedRecord.unitLabel}.`
+    );
+  }, [mode, sourceRecordId, loadingRecords, records, form.collectionRecordId]);
 
   const selectedRecord = useMemo(() => {
     return records.find((record) => record.id === form.collectionRecordId) || null;
@@ -316,38 +300,21 @@ export default function InvoiceForm({
   useEffect(() => {
     if (!selectedRecord) return;
 
-    setForm((prev) => {
-      const inferredChargeCategory = inferChargeCategoryFromTitle(selectedRecord.title);
-      const recordAmount = selectedRecord.amountDue > 0 ? String(selectedRecord.amountDue) : "";
-
-      const shouldUseRecordAmountAsBase =
-        !prev.total || Number(prev.total || 0) === selectedRecord.amountDue;
-
-      const nextSubtotal =
-        prev.subtotal || (recordAmount && shouldUseRecordAmountAsBase ? recordAmount : "");
-
-      const nextTax =
-        prev.tax || (recordAmount && shouldUseRecordAmountAsBase ? "0" : "");
-
-      const nextTotal = prev.total || recordAmount;
-
-      return {
-        ...prev,
-        periodYear: prev.periodYear || String(selectedRecord.periodYear || ""),
-        periodMonth: prev.periodMonth || String(selectedRecord.periodMonth || ""),
-        chargeCategory:
-          prev.chargeCategory && prev.chargeCategory !== "other"
-            ? prev.chargeCategory
-            : inferredChargeCategory,
-        customerName:
-          prev.customerName || selectedRecord.customerName || selectedRecord.tenantName,
-        customerTaxId: prev.customerTaxId || selectedRecord.customerTaxId || "",
-        description: prev.description || selectedRecord.title,
-        subtotal: nextSubtotal,
-        tax: nextTax,
-        total: nextTotal,
-      };
-    });
+    setForm((prev) => ({
+      ...prev,
+      periodYear: prev.periodYear || String(selectedRecord.periodYear || ""),
+      periodMonth: prev.periodMonth || String(selectedRecord.periodMonth || ""),
+      chargeCategory:
+        prev.chargeCategory && prev.chargeCategory !== "other"
+          ? prev.chargeCategory
+          : inferChargeCategoryFromTitle(selectedRecord.title),
+      customerName: prev.customerName || selectedRecord.customerName || selectedRecord.tenantName,
+      customerTaxId: prev.customerTaxId || selectedRecord.customerTaxId || "",
+      description: prev.description || selectedRecord.title,
+      subtotal: prev.subtotal || String(selectedRecord.amountDue || ""),
+      tax: prev.tax || "0",
+      total: prev.total || String(selectedRecord.amountDue || ""),
+    }));
   }, [selectedRecord]);
 
   useEffect(() => {
@@ -619,9 +586,7 @@ export default function InvoiceForm({
         title={mode === "create" ? "Nueva factura" : "Editar factura"}
         subtitle={
           mode === "create"
-            ? preselectedRecordId
-              ? "Llegaste desde cobranza. Ya intenté precargar el cobro relacionado para que captures la factura más rápido."
-              : "Crea una factura administrativa, sube el PDF y XML, y déjala ligada al cobro correcto."
+            ? "Crea una factura administrativa, sube el PDF y XML, y déjala ligada al cobro correcto."
             : "Ajusta la metadata de la factura o reemplaza sus archivos sin salir del flujo administrativo."
         }
         titleIcon={<FileText size={22} />}
@@ -648,6 +613,32 @@ export default function InvoiceForm({
         </SectionCard>
 
         <div style={{ height: 16 }} />
+
+        {recordPrefillNotice ? (
+          <>
+            <SectionCard
+              title="Cobro precargado"
+              subtitle="Esta factura llegó desde el módulo de cobranza para que no tengas que volver a buscar el registro manualmente."
+              icon={<WandSparkles size={18} />}
+            >
+              <div
+                style={{
+                  padding: 14,
+                  borderRadius: 12,
+                  background: sourceRecordId ? "#F0FDF4" : "#FFF7ED",
+                  border: sourceRecordId ? "1px solid #BBF7D0" : "1px solid #FED7AA",
+                  color: sourceRecordId ? "#166534" : "#9A3412",
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                {recordPrefillNotice}
+              </div>
+            </SectionCard>
+
+            <div style={{ height: 16 }} />
+          </>
+        ) : null}
 
         <AppGrid minWidth={320}>
           <SectionCard
@@ -684,20 +675,6 @@ export default function InvoiceForm({
             {selectedRecord ? (
               <AppCard style={{ background: "#F8FAFC", borderStyle: "dashed" }}>
                 <div style={{ display: "grid", gap: 10 }}>
-                  {mode === "create" && preselectedRecordId === selectedRecord.id ? (
-                    <div
-                      style={{
-                        padding: "10px 12px",
-                        borderRadius: 10,
-                        background: "#EEF2FF",
-                        color: "#3730A3",
-                        fontSize: 13,
-                        fontWeight: 600,
-                      }}
-                    >
-                      Este cobro llegó precargado desde Collections.
-                    </div>
-                  ) : null}
                   <InfoRow label="Cobro" value={selectedRecord.title} />
                   <InfoRow label="Periodo" value={selectedRecord.periodLabel} />
                   <InfoRow

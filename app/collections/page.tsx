@@ -35,8 +35,8 @@ import {
   CheckCircle2,
   Clock3,
   CreditCard,
-  Download,
   Eye,
+  FileCode2,
   Filter,
   Landmark,
   Plus,
@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { createInvoiceSignedUrl } from "@/lib/invoiceStorage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useAppToast } from "@/components/AppToastProvider";
 
@@ -675,24 +676,36 @@ export default function CollectionsPage() {
     return new Map(collectionRows.map((row) => [row.id, row]));
   }, [collectionRows]);
 
-  const primaryInvoiceByRecordId = useMemo(() => {
-    const map = new Map<string, CollectionInvoice>();
+  const invoicesByRecordId = useMemo(() => {
+    const map = new Map<string, CollectionInvoice[]>();
 
-    const sortedInvoices = [...collectionInvoices].sort((a, b) => {
-      const aDate = a.issued_at || a.created_at;
-      const bDate = b.issued_at || b.created_at;
-      return bDate.localeCompare(aDate);
+    collectionInvoices.forEach((invoice) => {
+      if (!invoice.collection_record_id) return;
+      const current = map.get(invoice.collection_record_id) || [];
+      current.push(invoice);
+      map.set(invoice.collection_record_id, current);
     });
-
-    for (const invoice of sortedInvoices) {
-      if (!invoice.collection_record_id) continue;
-      if (!map.has(invoice.collection_record_id)) {
-        map.set(invoice.collection_record_id, invoice);
-      }
-    }
 
     return map;
   }, [collectionInvoices]);
+
+  const primaryInvoiceByRecordId = useMemo(() => {
+    const map = new Map<string, CollectionInvoice>();
+
+    invoicesByRecordId.forEach((invoiceList, recordId) => {
+      const sorted = [...invoiceList].sort((a, b) => {
+        const aDate = a.issued_at || a.created_at;
+        const bDate = b.issued_at || b.created_at;
+        return bDate.localeCompare(aDate);
+      });
+
+      if (sorted[0]) {
+        map.set(recordId, sorted[0]);
+      }
+    });
+
+    return map;
+  }, [invoicesByRecordId]);
 
   const filteredRows = useMemo(() => {
     return collectionRows.filter((row) => {
@@ -751,54 +764,41 @@ export default function CollectionsPage() {
 
   const detailInvoices = useMemo(() => {
     if (!detailRecordId) return [];
-    return collectionInvoices
-      .filter((invoice) => invoice.collection_record_id === detailRecordId)
-      .sort((a, b) => {
-        const aDate = a.issued_at || a.created_at;
-        const bDate = b.issued_at || b.created_at;
-        return bDate.localeCompare(aDate);
-      });
-  }, [collectionInvoices, detailRecordId]);
+    return invoicesByRecordId.get(detailRecordId) || [];
+  }, [detailRecordId, invoicesByRecordId]);
+
+  const detailPrimaryInvoice = detailInvoices[0] || null;
 
   async function openInvoiceFile(path?: string | null) {
     if (!path) {
-      showToast({
-        type: "warning",
-        message: "Este archivo todavía no está disponible.",
-      });
+      showToast({ type: "warning", message: "Este archivo todavía no está disponible." });
       return;
     }
 
     try {
-      const { data, error } = await supabase.storage.from("invoices").createSignedUrl(path, 60 * 10);
+      const signedUrl = await createInvoiceSignedUrl(path);
 
-      if (error || !data?.signedUrl) {
-        throw new Error(error?.message || "No fue posible abrir el archivo de la factura.");
+      if (!signedUrl) {
+        showToast({ type: "warning", message: "No encontré el archivo solicitado." });
+        return;
       }
 
-      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
     } catch (error) {
       console.error(error);
       showToast({
         type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "No fue posible abrir el archivo de la factura.",
+        message: "No fue posible abrir el archivo de la factura.",
       });
     }
   }
 
-  function goToCreateInvoice(recordId: string) {
-    router.push(`/collections/invoices/new?recordId=${recordId}`);
-  }
-
-  function goToInvoiceDetail(invoiceId: string) {
+  function openInvoiceDetail(invoiceId: string) {
     router.push(`/collections/invoices/${invoiceId}`);
   }
 
-  function openInvoiceEdit(invoiceId: string) {
-    router.push(`/collections/invoices/${invoiceId}/edit`);
+  function createInvoiceFromRecord(recordId: string) {
+    router.push(`/collections/invoices/new?recordId=${recordId}`);
   }
 
   function openPaymentModal(row: CollectionRow) {
@@ -1223,87 +1223,40 @@ export default function CollectionsPage() {
               },
             },
             {
-              key: "billing",
-              header: "Facturación",
+              key: "activity",
+              header: "Actividad",
               render: (row: CollectionRow) => {
                 const primaryInvoice = primaryInvoiceByRecordId.get(row.id);
 
-                if (!primaryInvoice) {
-                  return (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <span style={cellSecondaryStyle}>Sin factura ligada</span>
-                      <button
-                        type="button"
-                        onClick={() => goToCreateInvoice(row.id)}
-                        style={tablePrimaryButtonStyle}
-                      >
-                        <Plus size={14} />
-                        Crear factura
-                      </button>
-                    </div>
-                  );
-                }
-
                 return (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={cellPrimaryStrongStyle}>
-                      {primaryInvoice.invoice_series || "—"} {primaryInvoice.invoice_folio || ""}
+                    <span style={cellSecondaryStyle}>
+                      {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
                     </span>
-                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        onClick={() => goToInvoiceDetail(primaryInvoice.id)}
-                        style={tableActionButtonStyle}
-                      >
-                        <Receipt size={14} />
-                        Abrir factura
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openInvoiceFile(primaryInvoice.pdf_path)}
-                        disabled={!primaryInvoice.pdf_path}
-                        style={{
-                          ...tableActionButtonStyle,
-                          opacity: primaryInvoice.pdf_path ? 1 : 0.55,
-                          cursor: primaryInvoice.pdf_path ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        <Eye size={14} />
-                        Ver PDF
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => openInvoiceFile(primaryInvoice.xml_path)}
-                        disabled={!primaryInvoice.xml_path}
-                        style={{
-                          ...tableActionButtonStyle,
-                          opacity: primaryInvoice.xml_path ? 1 : 0.55,
-                          cursor: primaryInvoice.xml_path ? "pointer" : "not-allowed",
-                        }}
-                      >
-                        <Download size={14} />
-                        Ver XML
-                      </button>
-                    </div>
+                    <span style={cellSecondaryStyle}>
+                      {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
+                    </span>
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        width: "fit-content",
+                        padding: "4px 8px",
+                        borderRadius: 999,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        background: primaryInvoice ? "#ECFDF3" : "#FFF7ED",
+                        color: primaryInvoice ? "#047857" : "#C2410C",
+                        border: primaryInvoice
+                          ? "1px solid #A7F3D0"
+                          : "1px solid #FED7AA",
+                      }}
+                    >
+                      {primaryInvoice ? "Con factura" : "Sin factura"}
+                    </span>
                   </div>
                 );
               },
-            },
-            {
-              key: "activity",
-              header: "Actividad",
-              render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={cellSecondaryStyle}>
-                    {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
-                  </span>
-                  <span style={cellSecondaryStyle}>
-                    {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
-                  </span>
-                </div>
-              ),
             },
             {
               key: "actions",
@@ -1322,26 +1275,6 @@ export default function CollectionsPage() {
                       Ver detalle
                     </button>
 
-                    {primaryInvoice ? (
-                      <button
-                        type="button"
-                        onClick={() => goToInvoiceDetail(primaryInvoice.id)}
-                        style={tableActionButtonStyle}
-                      >
-                        <Receipt size={14} />
-                        Abrir factura
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => goToCreateInvoice(row.id)}
-                        style={tableActionButtonStyle}
-                      >
-                        <Plus size={14} />
-                        Crear factura
-                      </button>
-                    )}
-
                     <button
                       type="button"
                       onClick={() => openPaymentModal(row)}
@@ -1355,6 +1288,26 @@ export default function CollectionsPage() {
                       <Plus size={14} />
                       Registrar abono
                     </button>
+
+                    {primaryInvoice ? (
+                      <button
+                        type="button"
+                        onClick={() => openInvoiceDetail(primaryInvoice.id)}
+                        style={tableActionButtonStyle}
+                      >
+                        <Receipt size={14} />
+                        Abrir factura
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => createInvoiceFromRecord(row.id)}
+                        style={tableActionButtonStyle}
+                      >
+                        <Receipt size={14} />
+                        Crear factura
+                      </button>
+                    )}
                   </div>
                 );
               },
@@ -1484,37 +1437,44 @@ export default function CollectionsPage() {
               <div style={detailSectionHeaderStyle}>
                 <div style={detailSectionTitleStyle}>Facturas ligadas</div>
 
-                {detailInvoices.length === 0 ? (
+                {detailPrimaryInvoice ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <UiButton
+                      onClick={() => openInvoiceDetail(detailPrimaryInvoice.id)}
+                      icon={<Receipt size={16} />}
+                    >
+                      Abrir factura
+                    </UiButton>
+
+                    <UiButton
+                      onClick={() => openInvoiceFile(detailPrimaryInvoice.pdf_path)}
+                      icon={<Eye size={16} />}
+                      variant="secondary"
+                    >
+                      Ver PDF
+                    </UiButton>
+
+                    <UiButton
+                      onClick={() => openInvoiceFile(detailPrimaryInvoice.xml_path)}
+                      icon={<FileCode2 size={16} />}
+                      variant="secondary"
+                    >
+                      Ver XML
+                    </UiButton>
+                  </div>
+                ) : (
                   <UiButton
-                    onClick={() => {
-                      setDetailRecordId(null);
-                      goToCreateInvoice(detailRow.id);
-                    }}
+                    onClick={() => createInvoiceFromRecord(detailRow.id)}
                     icon={<Plus size={16} />}
                   >
                     Crear factura
                   </UiButton>
-                ) : null}
+                )}
               </div>
 
               {detailInvoices.length === 0 ? (
                 <div style={emptyInlineBoxStyle}>
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <div>Todavía no hay facturas ligadas a este cobro.</div>
-                    <div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDetailRecordId(null);
-                          goToCreateInvoice(detailRow.id);
-                        }}
-                        style={tablePrimaryButtonStyle}
-                      >
-                        <Plus size={14} />
-                        Crear factura para este cobro
-                      </button>
-                    </div>
-                  </div>
+                  Todavía no hay facturas ligadas a este cobro.
                 </div>
               ) : (
                 <div style={detailListWrapStyle}>
@@ -1530,75 +1490,46 @@ export default function CollectionsPage() {
                             {invoice.description || "Factura ligada"}
                           </span>
                           <span style={cellSecondaryStyle}>
-                            {invoice.customer_name || "Sin cliente"} ·{" "}
-                            {invoice.invoice_uuid || "Sin UUID"}
+                            {invoice.customer_name || "Sin cliente"} · {invoice.invoice_uuid || "Sin UUID"}
                           </span>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                            <button
+                              type="button"
+                              onClick={() => openInvoiceDetail(invoice.id)}
+                              style={tableActionButtonStyle}
+                            >
+                              <Receipt size={14} />
+                              Abrir factura
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openInvoiceFile(invoice.pdf_path)}
+                              style={tableActionButtonStyle}
+                            >
+                              <Eye size={14} />
+                              PDF
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() => openInvoiceFile(invoice.xml_path)}
+                              style={tableActionButtonStyle}
+                            >
+                              <FileCode2 size={14} />
+                              XML
+                            </button>
+                          </div>
                         </div>
                       </div>
 
-                      <div style={{ display: "grid", gap: 10, justifyItems: "end" }}>
-                        <div style={{ display: "grid", gap: 4, textAlign: "right" }}>
-                          <span style={cellPrimaryStyle}>
-                            {formatCurrency(invoice.total)}
-                          </span>
-                          <span style={cellSecondaryStyle}>
-                            {formatDate(invoice.issued_at)}
-                          </span>
-                        </div>
-
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDetailRecordId(null);
-                              goToInvoiceDetail(invoice.id);
-                            }}
-                            style={tableActionButtonStyle}
-                          >
-                            <Receipt size={14} />
-                            Abrir factura
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openInvoiceFile(invoice.pdf_path)}
-                            disabled={!invoice.pdf_path}
-                            style={{
-                              ...tableActionButtonStyle,
-                              opacity: invoice.pdf_path ? 1 : 0.55,
-                              cursor: invoice.pdf_path ? "pointer" : "not-allowed",
-                            }}
-                          >
-                            <Eye size={14} />
-                            Ver PDF
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => openInvoiceFile(invoice.xml_path)}
-                            disabled={!invoice.xml_path}
-                            style={{
-                              ...tableActionButtonStyle,
-                              opacity: invoice.xml_path ? 1 : 0.55,
-                              cursor: invoice.xml_path ? "pointer" : "not-allowed",
-                            }}
-                          >
-                            <Download size={14} />
-                            Ver XML
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setDetailRecordId(null);
-                              openInvoiceEdit(invoice.id);
-                            }}
-                            style={tableActionButtonStyle}
-                          >
-                            <Eye size={14} />
-                            Editar
-                          </button>
-                        </div>
+                      <div style={{ display: "grid", gap: 4, textAlign: "right" }}>
+                        <span style={cellPrimaryStyle}>
+                          {formatCurrency(invoice.total)}
+                        </span>
+                        <span style={cellSecondaryStyle}>
+                          {formatDate(invoice.issued_at)}
+                        </span>
                       </div>
                     </div>
                   ))}
