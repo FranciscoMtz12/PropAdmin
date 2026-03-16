@@ -57,6 +57,15 @@ type CollectionRecord = {
   status: string | null;
 };
 
+type SelectableDebt = {
+  id: string;
+  label: string;
+  pendingAmount: number;
+  dueDateLabel: string;
+  buildingLabel: string;
+  unitLabel: string;
+};
+
 const MONTH_LABELS_SHORT = [
   "Ene",
   "Feb",
@@ -124,6 +133,50 @@ const actionButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function normalizeTenantOption(raw: any): TenantOption {
+  return {
+    id: raw?.id ?? "",
+    full_name: raw?.full_name ?? null,
+    email: raw?.email ?? null,
+    company_id: raw?.company_id ?? null,
+  };
+}
+
+function normalizeLeaseRecord(raw: any): LeaseRecord {
+  return {
+    id: raw?.id ?? "",
+    start_date: raw?.start_date ?? null,
+    end_date: raw?.end_date ?? null,
+    status: raw?.status ?? null,
+    units: raw?.units
+      ? {
+          id: raw.units?.id ?? "",
+          unit_number: raw.units?.unit_number ?? null,
+          display_code: raw.units?.display_code ?? null,
+          buildings: raw.units?.buildings
+            ? {
+                id: raw.units.buildings?.id ?? null,
+                name: raw.units.buildings?.name ?? null,
+              }
+            : null,
+        }
+      : null,
+  };
+}
+
+function normalizeCollectionRecord(raw: any): CollectionRecord {
+  return {
+    id: raw?.id ?? "",
+    lease_id: raw?.lease_id ?? null,
+    period_year: raw?.period_year ?? 0,
+    period_month: raw?.period_month ?? 0,
+    due_date: raw?.due_date ?? "",
+    amount_due: raw?.amount_due ?? 0,
+    amount_collected: raw?.amount_collected ?? 0,
+    status: raw?.status ?? null,
+  };
+}
+
 function formatDate(dateKey?: string | null) {
   if (!dateKey) return "Sin fecha";
 
@@ -148,15 +201,6 @@ function formatCurrency(value?: number | null) {
 function formatPeriod(periodYear: number, periodMonth: number) {
   return `${MONTH_LABELS_SHORT[periodMonth - 1] || "Mes"} ${periodYear}`;
 }
-
-type SelectableDebt = {
-  id: string;
-  label: string;
-  pendingAmount: number;
-  dueDateLabel: string;
-  buildingLabel: string;
-  unitLabel: string;
-};
 
 export default function PortalReportPaymentPage() {
   const { user, loading: userLoading } = useCurrentUser();
@@ -206,7 +250,11 @@ export default function PortalReportPaymentPage() {
         return;
       }
 
-      setTenantOptions(Array.isArray(data) ? (data as TenantOption[]) : []);
+      const resolvedTenantOptions = Array.isArray(data)
+        ? data.map((item) => normalizeTenantOption(item))
+        : [];
+
+      setTenantOptions(resolvedTenantOptions);
       setTenantOptionsLoading(false);
     }
 
@@ -267,7 +315,10 @@ export default function PortalReportPaymentPage() {
         return;
       }
 
-      const resolvedLeases = Array.isArray(leaseData) ? (leaseData as LeaseRecord[]) : [];
+      const resolvedLeases = Array.isArray(leaseData)
+        ? leaseData.map((item) => normalizeLeaseRecord(item))
+        : [];
+
       setLeases(resolvedLeases);
 
       const leaseIds = resolvedLeases
@@ -303,7 +354,7 @@ export default function PortalReportPaymentPage() {
       }
 
       const resolvedCollections = Array.isArray(collectionData)
-        ? (collectionData as CollectionRecord[])
+        ? collectionData.map((item) => normalizeCollectionRecord(item))
         : [];
 
       setCollectionRecords(resolvedCollections);

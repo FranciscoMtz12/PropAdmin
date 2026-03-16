@@ -96,6 +96,47 @@ const actionButtonStyle: React.CSSProperties = {
   cursor: "pointer",
 };
 
+function normalizeTenantOption(raw: any): TenantOption {
+  return {
+    id: raw?.id ?? "",
+    full_name: raw?.full_name ?? null,
+    email: raw?.email ?? null,
+    company_id: raw?.company_id ?? null,
+  };
+}
+
+function normalizePortalLease(raw: any): PortalLeaseRecord {
+  return {
+    id: raw?.id ?? "",
+    start_date: raw?.start_date ?? null,
+    end_date: raw?.end_date ?? null,
+    status: raw?.status ?? null,
+    rent_amount: raw?.rent_amount ?? null,
+    due_day: raw?.due_day ?? null,
+    billing_name: raw?.billing_name ?? null,
+    billing_email: raw?.billing_email ?? null,
+    renewal_status: raw?.renewal_status ?? null,
+    renewal_due_date: raw?.renewal_due_date ?? null,
+    renewal_offered_at: raw?.renewal_offered_at ?? null,
+    room_number: raw?.room_number ?? null,
+    units: raw?.units
+      ? {
+          id: raw.units?.id ?? "",
+          unit_number: raw.units?.unit_number ?? null,
+          display_code: raw.units?.display_code ?? null,
+          buildings: raw.units?.buildings
+            ? {
+                id: raw.units.buildings?.id ?? null,
+                name: raw.units.buildings?.name ?? null,
+                code: raw.units.buildings?.code ?? null,
+                address: raw.units.buildings?.address ?? null,
+              }
+            : null,
+        }
+      : null,
+  };
+}
+
 function formatDate(dateKey?: string | null) {
   if (!dateKey) return "Sin fecha";
 
@@ -247,7 +288,11 @@ export default function PortalContractPage() {
         return;
       }
 
-      setTenantOptions(Array.isArray(data) ? (data as TenantOption[]) : []);
+      const resolvedTenantOptions = Array.isArray(data)
+        ? data.map((item) => normalizeTenantOption(item))
+        : [];
+
+      setTenantOptions(resolvedTenantOptions);
       setTenantOptionsLoading(false);
     }
 
@@ -317,7 +362,9 @@ export default function PortalContractPage() {
         return;
       }
 
-      setLease(data ? (data as PortalLeaseRecord) : null);
+      const resolvedLease = data ? normalizePortalLease(data) : null;
+
+      setLease(resolvedLease);
       setPageLoading(false);
     }
 

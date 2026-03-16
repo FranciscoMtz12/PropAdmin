@@ -178,7 +178,11 @@ export default function PortalRenewalPage() {
         return;
       }
 
-      setTenantOptions(Array.isArray(data) ? (data as TenantOption[]) : []);
+      const resolvedTenantOptions: TenantOption[] = Array.isArray(data)
+        ? (data as TenantOption[])
+        : [];
+
+      setTenantOptions(resolvedTenantOptions);
       setTenantOptionsLoading(false);
     }
 
@@ -237,7 +241,10 @@ export default function PortalRenewalPage() {
         return;
       }
 
-      const resolvedLease = leaseData ? (leaseData as PortalLeaseRecord) : null;
+      const resolvedLease: PortalLeaseRecord | null = leaseData
+        ? (leaseData as PortalLeaseRecord)
+        : null;
+
       setLease(resolvedLease);
 
       if (resolvedLease?.id) {
@@ -249,11 +256,12 @@ export default function PortalRenewalPage() {
           .limit(1)
           .maybeSingle();
 
-        if (!responseError && responseData) {
-          setRenewalResponse(responseData as RenewalResponseRecord);
-        } else {
-          setRenewalResponse(null);
-        }
+        const resolvedResponse: RenewalResponseRecord | null =
+          responseError || !responseData
+            ? null
+            : (responseData as RenewalResponseRecord);
+
+        setRenewalResponse(resolvedResponse);
       } else {
         setRenewalResponse(null);
       }
