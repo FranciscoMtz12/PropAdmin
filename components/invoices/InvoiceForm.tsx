@@ -2,10 +2,11 @@
 
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { FileText, Link2, Save, Upload } from "lucide-react";
+import { FileText, Link2, Save, Upload, WandSparkles } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { uploadInvoiceFiles, removeInvoiceFile } from "@/lib/invoiceStorage";
+import { parseCfdiXml } from "@/lib/cfdiXmlParser";
 import {
   type CollectionRecordOption,
   formatCurrency,
@@ -165,6 +166,7 @@ export default function InvoiceForm({
   const [existingXmlFilename, setExistingXmlFilename] = useState<string>(
     initialData?.originalXmlFilename || ""
   );
+  const [xmlAutofillStatus, setXmlAutofillStatus] = useState("");
 
   useEffect(() => {
     if (!initialData) return;
@@ -284,6 +286,66 @@ export default function InvoiceForm({
     }));
   }, [selectedRecord]);
 
+  useEffect(() => {
+    if (!selectedXmlFile) return;
+
+    const xmlFile = selectedXmlFile;
+    let cancelled = false;
+
+    async function autofillFromXml() {
+      try {
+        const xmlText = await xmlFile.text();
+        const parsed = parseCfdiXml(xmlText);
+
+        if (cancelled) return;
+
+        setForm((prev) => ({
+          ...prev,
+          invoiceSeries: parsed.series || prev.invoiceSeries,
+          invoiceFolio: parsed.folio || prev.invoiceFolio,
+          invoiceUuid: parsed.uuid || prev.invoiceUuid,
+          invoiceType:
+            parsed.invoiceType === "egress"
+              ? "egress"
+              : parsed.invoiceType === "payment"
+                ? "payment"
+                : prev.invoiceType === "credit_note"
+                  ? prev.invoiceType
+                  : "income",
+          issuedAt: parsed.issuedAt || prev.issuedAt,
+          subtotal: parsed.subtotal || prev.subtotal,
+          tax: parsed.tax || prev.tax,
+          total: parsed.total || prev.total,
+          customerName: parsed.customerName || prev.customerName,
+          customerTaxId: parsed.customerTaxId || prev.customerTaxId,
+          description: parsed.description || prev.description,
+        }));
+
+        setXmlAutofillStatus("XML leído correctamente. Se llenaron los campos detectados.");
+        showToast({
+          type: "success",
+          message: "Leí el XML y autocompleté la información principal de la factura.",
+        });
+      } catch (error) {
+        console.error(error);
+        setXmlAutofillStatus("No fue posible leer automáticamente este XML.");
+        showToast({
+          type: "warning",
+          message:
+            error instanceof Error
+              ? error.message
+              : "No pude interpretar el XML automáticamente.",
+        });
+      }
+    }
+
+    autofillFromXml();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedXmlFile, showToast]);
+
   const totalPreview = useMemo(() => {
     const subtotal = Number(form.subtotal || 0);
     const tax = Number(form.tax || 0);
@@ -340,7 +402,14 @@ export default function InvoiceForm({
         invoice_series: form.invoiceSeries.trim() || null,
         invoice_folio: form.invoiceFolio.trim() || null,
         invoice_uuid: form.invoiceUuid.trim(),
-        invoice_type: form.invoiceType,
+        invoice_type:
+          form.invoiceType === "credit_note"
+            ? "credit_note"
+            : form.invoiceType === "payment"
+              ? "payment"
+              : form.invoiceType === "egress"
+                ? "egress"
+                : "income",
         issued_at: form.issuedAt || null,
         period_year: form.periodYear ? Number(form.periodYear) : null,
         period_month: form.periodMonth ? Number(form.periodMonth) : null,
@@ -675,6 +744,24 @@ export default function InvoiceForm({
             subtitle="Aquí guardamos la metadata principal y los archivos originales que vas a probar desde la interfaz."
             icon={<Upload size={18} />}
           >
+            <AppCard style={{ background: "#F8FAFC", borderStyle: "dashed" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                <WandSparkles size={16} />
+                <div style={{ fontWeight: 700, color: "#111827" }}>
+                  Autollenado desde XML
+                </div>
+              </div>
+              <div style={{ fontSize: 13, color: "#667085", lineHeight: 1.6 }}>
+                Cuando selecciones un XML CFDI válido, intentaré leerlo para completar la
+                información principal automáticamente.
+              </div>
+              {xmlAutofillStatus ? (
+                <div style={{ marginTop: 10, fontSize: 13, color: "#475467" }}>
+                  {xmlAutofillStatus}
+                </div>
+              ) : null}
+            </AppCard>
+
             <AppFormField label="Nombre del cliente">
               <input
                 style={INPUT_STYLE}
