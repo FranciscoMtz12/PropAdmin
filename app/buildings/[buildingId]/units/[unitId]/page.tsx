@@ -8,7 +8,7 @@
   - Leases múltiples por unidad
   - Un lease por cuarto
   - Máximo de leases activos según bedroom_count del unit_type
-  - Datos de facturación automáticos desde tenants
+  - Toggle para usar los mismos datos del inquilino o capturar un responsable de pago distinto
   - Corrección de fechas sin desfase por zona horaria
   - Eliminación de leases con popup/modal del sistema
   - Refuerzo de carga de tenants para que el selector no quede vacío
@@ -17,8 +17,8 @@
   - bedroom_count define cuántos leases activos máximos puede tener la unidad
   - room_number identifica qué cuarto ocupa cada lease
   - due_day se guarda fijo como 31 por control interno (fin de mes)
-  - nombre/email de facturación se toman automáticamente del responsable de pago
-    o del inquilino si no hay responsable de pago distinto
+  - el lease guarda un snapshot de nombre/email/RFC de facturación
+  - se puede usar el mismo inquilino, otro inquilino registrado o captura manual
 */
 
 import {
@@ -109,6 +109,7 @@ type LeaseRow = {
   responsible_payer_id: string | null;
   billing_name: string | null;
   billing_email: string | null;
+  billing_tax_id: string | null;
   due_day: number | null;
   rent_amount: number | null;
   room_number: number | null;
@@ -127,7 +128,11 @@ type AssetMiniRow = {
 
 type LeaseFormState = {
   tenantId: string;
+  useTenantBilling: boolean;
   responsiblePayerId: string;
+  billingName: string;
+  billingEmail: string;
+  billingTaxId: string;
   rentAmount: string;
   roomNumber: string;
   startDate: string;
@@ -337,25 +342,81 @@ function getTenantDisplayName(tenant: Tenant | null | undefined) {
   return tenant.full_name || tenant.email || "Sin inquilino";
 }
 
+function getTenantBillingSnapshot(tenant: Tenant | null | undefined) {
+  return {
+    billingName: tenant?.billing_name || tenant?.full_name || "",
+    billingEmail: tenant?.billing_email || tenant?.email || "",
+    billingTaxId: tenant?.tax_id || "",
+  };
+}
+
+function normalizeCompareValue(value: string | null | undefined) {
+  return (value || "").trim().toLowerCase();
+}
+
+function inferUsesTenantBilling({
+  tenant,
+  lease,
+}: {
+  tenant: Tenant | null | undefined;
+  lease: LeaseRow;
+}) {
+  if (lease.responsible_payer_id) return false;
+
+  const tenantSnapshot = getTenantBillingSnapshot(tenant);
+
+  const leaseName = normalizeCompareValue(lease.billing_name);
+  const leaseEmail = normalizeCompareValue(lease.billing_email);
+  const leaseTaxId = normalizeCompareValue(lease.billing_tax_id);
+
+  const tenantName = normalizeCompareValue(tenantSnapshot.billingName);
+  const tenantEmail = normalizeCompareValue(tenantSnapshot.billingEmail);
+  const tenantTaxId = normalizeCompareValue(tenantSnapshot.billingTaxId);
+
+  const noBillingData = !leaseName && !leaseEmail && !leaseTaxId;
+
+  if (noBillingData) return true;
+
+  return leaseName === tenantName && leaseEmail === tenantEmail && leaseTaxId === tenantTaxId;
+}
+
 function resolveBillingSnapshot({
   tenant,
   responsiblePayer,
+  leaseForm,
 }: {
   tenant: Tenant | null | undefined;
   responsiblePayer: Tenant | null | undefined;
+  leaseForm: LeaseFormState;
 }) {
-  const source = responsiblePayer || tenant || null;
+  if (leaseForm.useTenantBilling) {
+    return getTenantBillingSnapshot(tenant);
+  }
+
+  if (responsiblePayer) {
+    return {
+      ...getTenantBillingSnapshot(responsiblePayer),
+      billingName: leaseForm.billingName || getTenantBillingSnapshot(responsiblePayer).billingName,
+      billingEmail: leaseForm.billingEmail || getTenantBillingSnapshot(responsiblePayer).billingEmail,
+      billingTaxId: leaseForm.billingTaxId || getTenantBillingSnapshot(responsiblePayer).billingTaxId,
+    };
+  }
 
   return {
-    billingName: source?.billing_name || source?.full_name || "",
-    billingEmail: source?.billing_email || source?.email || "",
+    billingName: leaseForm.billingName || "",
+    billingEmail: leaseForm.billingEmail || "",
+    billingTaxId: leaseForm.billingTaxId || "",
   };
 }
 
 function emptyLeaseForm(): LeaseFormState {
   return {
     tenantId: "",
+    useTenantBilling: true,
     responsiblePayerId: "",
+    billingName: "",
+    billingEmail: "",
+    billingTaxId: "",
     rentAmount: "",
     roomNumber: "",
     startDate: getTodayDateInput(),
@@ -491,7 +552,7 @@ export default function UnitDetailPage() {
       supabase
         .from("leases")
         .select(
-          "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, room_number, status, start_date, end_date, created_at"
+          "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, billing_tax_id, due_day, rent_amount, room_number, status, start_date, end_date, created_at"
         )
         .eq("unit_id", unitId)
         .eq("company_id", user.company_id)
@@ -670,8 +731,8 @@ export default function UnitDetailPage() {
       ? tenantsMap.get(leaseForm.responsiblePayerId)
       : null;
 
-    return resolveBillingSnapshot({ tenant, responsiblePayer });
-  }, [leaseForm.tenantId, leaseForm.responsiblePayerId, tenantsMap]);
+    return resolveBillingSnapshot({ tenant, responsiblePayer, leaseForm });
+  }, [leaseForm, tenantsMap]);
 
   const assetStatusSegments = useMemo(() => {
     const grouped = assets.reduce<Record<string, number>>((acc, asset) => {
@@ -715,10 +776,17 @@ export default function UnitDetailPage() {
   }
 
   function openEditLease(lease: LeaseRow) {
+    const tenant = lease.tenant_id ? tenantsMap.get(lease.tenant_id) : null;
+    const useTenantBilling = inferUsesTenantBilling({ tenant, lease });
+
     setEditingLeaseId(lease.id);
     setLeaseForm({
       tenantId: lease.tenant_id || "",
-      responsiblePayerId: lease.responsible_payer_id || "",
+      useTenantBilling,
+      responsiblePayerId: useTenantBilling ? "" : lease.responsible_payer_id || "",
+      billingName: useTenantBilling ? "" : lease.billing_name || "",
+      billingEmail: useTenantBilling ? "" : lease.billing_email || "",
+      billingTaxId: useTenantBilling ? "" : lease.billing_tax_id || "",
       rentAmount:
         lease.rent_amount !== null && lease.rent_amount !== undefined
           ? String(lease.rent_amount)
@@ -815,15 +883,22 @@ export default function UnitDetailPage() {
       ? tenantsMap.get(leaseForm.responsiblePayerId) || null
       : null;
 
-    const billingSnapshot = resolveBillingSnapshot({ tenant, responsiblePayer });
+    const billingSnapshot = resolveBillingSnapshot({ tenant, responsiblePayer, leaseForm });
+
+    if (!billingSnapshot.billingName.trim()) {
+      setMsg("Debes definir el nombre de facturación del lease.");
+      return;
+    }
 
     setSaving(true);
 
     const payload = {
       tenant_id: leaseForm.tenantId,
-      responsible_payer_id: leaseForm.responsiblePayerId || null,
+      responsible_payer_id:
+        leaseForm.useTenantBilling ? null : leaseForm.responsiblePayerId || null,
       billing_name: billingSnapshot.billingName || null,
       billing_email: billingSnapshot.billingEmail || null,
+      billing_tax_id: billingSnapshot.billingTaxId || null,
       due_day: 31,
       rent_amount: rentAmountNumber,
       room_number: roomNumber,
@@ -1333,6 +1408,13 @@ export default function UnitDetailPage() {
                           </div>
                         </div>
 
+                        <div style={miniGroupStyle}>
+                          <div style={miniLabelStyle}>RFC de facturación</div>
+                          <div style={miniValueStyle}>
+                            {lease.billing_tax_id || "Sin definir"}
+                          </div>
+                        </div>
+
                         <div
                           style={{
                             display: "flex",
@@ -1503,10 +1585,10 @@ export default function UnitDetailPage() {
 
                         <div style={historyMetaTextStyle}>
                           Facturación:{" "}
-                          {lease.billing_name || lease.billing_email
+                          {lease.billing_name || lease.billing_email || lease.billing_tax_id
                             ? `${lease.billing_name || "Sin nombre"} · ${
                                 lease.billing_email || "Sin email"
-                              }`
+                              }${lease.billing_tax_id ? ` · RFC ${lease.billing_tax_id}` : ""}`
                             : "Sin datos de facturación"}
                         </div>
 
@@ -1645,6 +1727,9 @@ export default function UnitDetailPage() {
                         prev.responsiblePayerId !== nextTenantId
                           ? prev.responsiblePayerId
                           : "",
+                      billingName: prev.useTenantBilling ? "" : prev.billingName,
+                      billingEmail: prev.useTenantBilling ? "" : prev.billingEmail,
+                      billingTaxId: prev.useTenantBilling ? "" : prev.billingTaxId,
                     }));
                   }}
                   disabled={tenants.length === 0}
@@ -1662,25 +1747,151 @@ export default function UnitDetailPage() {
                 </AppSelect>
               </div>
 
-              <div>
-                <label style={labelStyle}>Responsable de pago</label>
-                <AppSelect
-                  value={leaseForm.responsiblePayerId}
-                  onChange={(e) =>
-                    setLeaseForm((prev) => ({
-                      ...prev,
-                      responsiblePayerId: e.target.value,
-                    }))
-                  }
-                  disabled={tenants.length === 0}
+              <div
+                style={{
+                  gridColumn: "1 / -1",
+                  border: "1px solid #E5E7EB",
+                  borderRadius: "16px",
+                  padding: "16px",
+                  background: "#F9FAFB",
+                  display: "grid",
+                  gap: "12px",
+                }}
+              >
+                <div style={{ fontSize: "15px", fontWeight: 800, color: "#111827" }}>
+                  Facturación y cobranza
+                </div>
+
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "10px",
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    color: "#111827",
+                  }}
                 >
-                  <option value="">Mismo inquilino</option>
-                  {tenants.map((tenant) => (
-                    <option key={tenant.id} value={tenant.id}>
-                      {tenant.full_name}
-                    </option>
-                  ))}
-                </AppSelect>
+                  <input
+                    type="checkbox"
+                    checked={leaseForm.useTenantBilling}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setLeaseForm((prev) => ({
+                        ...prev,
+                        useTenantBilling: checked,
+                        responsiblePayerId: checked ? "" : prev.responsiblePayerId,
+                        billingName: checked ? "" : prev.billingName,
+                        billingEmail: checked ? "" : prev.billingEmail,
+                        billingTaxId: checked ? "" : prev.billingTaxId,
+                      }));
+                    }}
+                  />
+                  Usar los mismos datos del inquilino para facturación
+                </label>
+
+                {leaseForm.useTenantBilling ? (
+                  <div
+                    style={{
+                      fontSize: "13px",
+                      color: "#6B7280",
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    Este lease tomará automáticamente el nombre, email y RFC del inquilino seleccionado.
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gap: "16px",
+                    }}
+                  >
+                    <div>
+                      <label style={labelStyle}>Responsable de pago registrado</label>
+                      <AppSelect
+                        value={leaseForm.responsiblePayerId}
+                        onChange={(e) => {
+                          const nextResponsibleId = e.target.value;
+                          const nextResponsible = nextResponsibleId
+                            ? tenantsMap.get(nextResponsibleId) || null
+                            : null;
+                          const snapshot = getTenantBillingSnapshot(nextResponsible);
+
+                          setLeaseForm((prev) => ({
+                            ...prev,
+                            responsiblePayerId: nextResponsibleId,
+                            billingName: nextResponsibleId
+                              ? snapshot.billingName
+                              : prev.billingName,
+                            billingEmail: nextResponsibleId
+                              ? snapshot.billingEmail
+                              : prev.billingEmail,
+                            billingTaxId: nextResponsibleId
+                              ? snapshot.billingTaxId
+                              : prev.billingTaxId,
+                          }));
+                        }}
+                        disabled={tenants.length === 0}
+                      >
+                        <option value="">Captura manual / otro responsable</option>
+                        {tenants
+                          .filter((tenant) => tenant.id !== leaseForm.tenantId)
+                          .map((tenant) => (
+                            <option key={tenant.id} value={tenant.id}>
+                              {tenant.full_name}
+                            </option>
+                          ))}
+                      </AppSelect>
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Nombre o razón social de facturación</label>
+                      <input
+                        value={leaseForm.billingName}
+                        onChange={(e) =>
+                          setLeaseForm((prev) => ({
+                            ...prev,
+                            billingName: e.target.value,
+                          }))
+                        }
+                        style={inputStyle}
+                        placeholder="Ej. Juan Pérez o Empresa SA de CV"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>Email de facturación</label>
+                      <input
+                        value={leaseForm.billingEmail}
+                        onChange={(e) =>
+                          setLeaseForm((prev) => ({
+                            ...prev,
+                            billingEmail: e.target.value,
+                          }))
+                        }
+                        style={inputStyle}
+                        placeholder="correo@ejemplo.com"
+                      />
+                    </div>
+
+                    <div>
+                      <label style={labelStyle}>RFC de facturación</label>
+                      <input
+                        value={leaseForm.billingTaxId}
+                        onChange={(e) =>
+                          setLeaseForm((prev) => ({
+                            ...prev,
+                            billingTaxId: e.target.value.toUpperCase(),
+                          }))
+                        }
+                        style={inputStyle}
+                        placeholder="RFC para matching de XML"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1744,7 +1955,7 @@ export default function UnitDetailPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>Nombre de facturación</label>
+                <label style={labelStyle}>Nombre final de facturación</label>
                 <input
                   value={billingPreview.billingName}
                   style={readOnlyInputStyle}
@@ -1753,9 +1964,18 @@ export default function UnitDetailPage() {
               </div>
 
               <div>
-                <label style={labelStyle}>Email de facturación</label>
+                <label style={labelStyle}>Email final de facturación</label>
                 <input
                   value={billingPreview.billingEmail}
+                  style={readOnlyInputStyle}
+                  readOnly
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>RFC final de facturación</label>
+                <input
+                  value={billingPreview.billingTaxId}
                   style={readOnlyInputStyle}
                   readOnly
                 />
