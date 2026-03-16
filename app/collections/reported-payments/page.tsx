@@ -44,19 +44,19 @@ type ReportedPayment = {
 
 type ReviewTab = "pending_review" | "approved" | "rejected";
 
-const sectionTextStyle: React.CSSProperties = {
+const sectionTextStyle: CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
   color: "#6B7280",
 };
 
-const strongValueStyle: React.CSSProperties = {
+const strongValueStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
   color: "#111827",
 };
 
-const badgeStyleBase: React.CSSProperties = {
+const badgeStyleBase: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -159,6 +159,19 @@ function getTabLabel(tab: ReviewTab) {
   if (tab === "approved") return "Aprobados";
   if (tab === "rejected") return "Rechazados";
   return "Pendientes";
+}
+
+function getTodayDateOnlyKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function normalizeDateOnly(value?: string | null) {
+  if (!value) return "";
+  return value.slice(0, 10);
 }
 
 export default function ReportedPaymentsPage() {
@@ -268,7 +281,12 @@ export default function ReportedPaymentsPage() {
     try {
       const { data: record, error: recordError } = await supabase
         .from("collection_records")
-        .select("id, amount_collected")
+        .select(`
+          id,
+          amount_due,
+          amount_collected,
+          due_date
+        `)
         .eq("id", payment.collection_record_id)
         .single();
 
@@ -276,13 +294,33 @@ export default function ReportedPaymentsPage() {
         throw recordError;
       }
 
-      const newAmountCollected =
-        Number(record?.amount_collected || 0) + Number(payment.amount_reported || 0);
+      const amountDue = Number(record?.amount_due || 0);
+      const previousCollected = Number(record?.amount_collected || 0);
+      const reportedAmount = Number(payment.amount_reported || 0);
+
+      const newAmountCollected = previousCollected + reportedAmount;
+      const remainingBalance = amountDue - newAmountCollected;
+
+      const todayKey = getTodayDateOnlyKey();
+      const dueDateKey = normalizeDateOnly(record?.due_date);
+
+      let recalculatedStatus: "pending" | "partial" | "collected" | "overdue" = "pending";
+
+      if (remainingBalance <= 0) {
+        recalculatedStatus = "collected";
+      } else if (newAmountCollected > 0) {
+        recalculatedStatus = "partial";
+      } else if (dueDateKey && dueDateKey < todayKey) {
+        recalculatedStatus = "overdue";
+      } else {
+        recalculatedStatus = "pending";
+      }
 
       const { error: updateCollectionError } = await supabase
         .from("collection_records")
         .update({
           amount_collected: newAmountCollected,
+          status: recalculatedStatus,
         })
         .eq("id", payment.collection_record_id);
 
@@ -321,6 +359,7 @@ export default function ReportedPaymentsPage() {
   function openRejectModal(payment: ReportedPayment) {
     setRejectingPayment(payment);
     setRejectionReason(payment.rejection_reason || "");
+    setPageError("");
   }
 
   async function submitRejection() {
