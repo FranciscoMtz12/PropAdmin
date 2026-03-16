@@ -30,6 +30,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertCircle,
+  AlertTriangle,
   Building2,
   CalendarDays,
   CarFront,
@@ -40,21 +41,19 @@ import {
   CreditCard,
   Droplets,
   Eye,
+  FileText,
   FileUp,
   Filter,
-  Home,
   Landmark,
-  MoreHorizontal,
-  ParkingCircle,
+  Pencil,
   Plus,
   Receipt,
   Trash2,
-  TriangleAlert,
   Upload,
   Wallet,
   WandSparkles,
   Wrench,
-  Wifi,
+  Zap,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -277,6 +276,13 @@ type ChargeForm = {
   createFirstRecordNow: boolean;
 };
 
+type EditRecordForm = {
+  recordId: string;
+  title: string;
+  amountDue: string;
+  notes: string;
+};
+
 type CollectionRow = {
   id: string;
   buildingId: string;
@@ -460,6 +466,23 @@ function buildDateKey(year: number, month: number, day: number) {
 function deriveStatusFromDueDate(dueDate: string) {
   return dueDate < getTodayDateOnlyKey() ? "overdue" : "pending";
 }
+function getEndOfMonthDateKey(dateKey: string) {
+  const safeKey = dateKey || getTodayDateOnlyKey();
+  const date = parseDateOnly(safeKey);
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  return buildDateKey(year, month, getMonthLastDay(year, month));
+}
+
+function getCollectionTypeIcon(chargeType: CollectionChargeType) {
+  if (chargeType === "rent") return <Landmark size={18} color="#4F46E5" />;
+  if (chargeType === "maintenance_fee") return <Wrench size={18} color="#D97706" />;
+  if (chargeType === "services") return <Zap size={18} color="#2563EB" />;
+  if (chargeType === "parking") return <CarFront size={18} color="#0F766E" />;
+  if (chargeType === "penalty") return <AlertTriangle size={18} color="#DC2626" />;
+  return <Receipt size={18} color="#6D28D9" />;
+}
+
 
 function createDefaultImportForm(): InvoiceImportForm {
   return {
@@ -594,64 +617,6 @@ function getUserDisplayLabel(user: AppUser | null | undefined) {
   return user.full_name || user.email || null;
 }
 
-function getChargeTypeVisual(chargeTypeLabel: string) {
-  const normalized = normalizeComparableText(chargeTypeLabel);
-
-  if (normalized.includes("renta")) {
-    return {
-      icon: <Home size={16} />,
-      background: "#EEF2FF",
-      color: "#4338CA",
-    };
-  }
-
-  if (normalized.includes("mantenimiento")) {
-    return {
-      icon: <Wrench size={16} />,
-      background: "#ECFDF5",
-      color: "#047857",
-    };
-  }
-
-  if (normalized.includes("servicio")) {
-    return {
-      icon: <Wifi size={16} />,
-      background: "#EFF6FF",
-      color: "#1D4ED8",
-    };
-  }
-
-  if (normalized.includes("agua")) {
-    return {
-      icon: <Droplets size={16} />,
-      background: "#EFF6FF",
-      color: "#2563EB",
-    };
-  }
-
-  if (normalized.includes("estacionamiento")) {
-    return {
-      icon: <ParkingCircle size={16} />,
-      background: "#FEF3C7",
-      color: "#B45309",
-    };
-  }
-
-  if (normalized.includes("penal")) {
-    return {
-      icon: <TriangleAlert size={16} />,
-      background: "#FEF2F2",
-      color: "#DC2626",
-    };
-  }
-
-  return {
-    icon: <MoreHorizontal size={16} />,
-    background: "#F3F4F6",
-    color: "#6B7280",
-  };
-}
-
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
@@ -684,7 +649,8 @@ export default function CollectionsPage() {
   const [importingInvoice, setImportingInvoice] = useState(false);
   const [deleteRecordId, setDeleteRecordId] = useState<string | null>(null);
   const [deletingRecord, setDeletingRecord] = useState(false);
-  const [expandedRowIds, setExpandedRowIds] = useState<string[]>([]);
+  const [editRecordId, setEditRecordId] = useState<string | null>(null);
+  const [editingRecord, setEditingRecord] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     recordId: "",
@@ -700,6 +666,12 @@ export default function CollectionsPage() {
   const [importPdfFile, setImportPdfFile] = useState<File | null>(null);
   const [importPreview, setImportPreview] = useState<ParsedCfdiData | null>(null);
   const [importStatusMessage, setImportStatusMessage] = useState("");
+  const [editForm, setEditForm] = useState<EditRecordForm>({
+    recordId: "",
+    title: "",
+    amountDue: "",
+    notes: "",
+  });
 
   useEffect(() => {
     if (loading) return;
@@ -1123,7 +1095,7 @@ export default function CollectionsPage() {
       selectedLeaseId: prev.selectedLeaseId || importCandidates[0]?.leaseId || "",
       selectedChargeCategory: prev.selectedChargeCategory || inferredCategory,
       title: prev.title || suggestedTitle,
-      dueDate: importPreview.issuedAt || prev.dueDate || getTodayDateOnlyKey(),
+      dueDate: getEndOfMonthDateKey(importPreview.issuedAt || prev.dueDate || getTodayDateOnlyKey()),
     }));
 
     setImportStatusMessage(
@@ -1202,6 +1174,30 @@ export default function CollectionsPage() {
   const deleteRecordRow = deleteRecordId
     ? collectionRowsById.get(deleteRecordId) || null
     : null;
+  const editRecordRow = editRecordId
+    ? collectionRowsById.get(editRecordId) || null
+    : null;
+
+  const paymentsByRecordId = useMemo(() => {
+    const map = new Map<string, CollectionPayment[]>();
+    collectionPayments.forEach((payment) => {
+      const current = map.get(payment.collection_record_id) || [];
+      current.push(payment);
+      map.set(payment.collection_record_id, current);
+    });
+    return map;
+  }, [collectionPayments]);
+
+  const invoicesByRecordId = useMemo(() => {
+    const map = new Map<string, CollectionInvoice[]>();
+    collectionInvoices.forEach((invoice) => {
+      if (!invoice.collection_record_id) return;
+      const current = map.get(invoice.collection_record_id) || [];
+      current.push(invoice);
+      map.set(invoice.collection_record_id, current);
+    });
+    return map;
+  }, [collectionInvoices]);
 
   async function handleDeleteCollectionRecord() {
     if (!deleteRecordId || !user?.company_id) return;
@@ -1295,6 +1291,78 @@ export default function CollectionsPage() {
     }
   }
 
+  function openEditRecordModal(row: CollectionRow) {
+    setEditRecordId(row.id);
+    setEditForm({
+      recordId: row.id,
+      title: row.title,
+      amountDue: String(row.amountDue || ""),
+      notes: row.notes === "—" ? "" : row.notes,
+    });
+  }
+
+  async function handleSaveRecordEdits() {
+    if (!user?.company_id || !editRecordId) return;
+
+    const record = collectionRecords.find((item) => item.id === editRecordId);
+    if (!record) {
+      showToast({ type: "error", message: "No pude encontrar el cobro a editar." });
+      return;
+    }
+
+    const nextAmount = parsePositiveNumber(editForm.amountDue);
+    if (!nextAmount) {
+      showToast({ type: "error", message: "Ingresa un monto válido para este cobro." });
+      return;
+    }
+
+    setEditingRecord(true);
+
+    try {
+      const schedule = collectionSchedules.find((item) => item.id === record.collection_schedule_id) || null;
+
+      const updateRecord = await supabase
+        .from("collection_records")
+        .update({
+          amount_due: nextAmount,
+          notes: editForm.notes.trim() || null,
+        })
+        .eq("id", editRecordId)
+        .eq("company_id", user.company_id);
+
+      if (updateRecord.error) {
+        throw new Error(updateRecord.error.message || "No pude actualizar el cobro.");
+      }
+
+      if (schedule) {
+        const updateSchedule = await supabase
+          .from("collection_schedules")
+          .update({
+            title: editForm.title.trim() || schedule.title,
+            amount_expected: nextAmount,
+            notes: editForm.notes.trim() || null,
+          })
+          .eq("id", schedule.id)
+          .eq("company_id", user.company_id);
+
+        if (updateSchedule.error) {
+          throw new Error(updateSchedule.error.message || "No pude actualizar la configuración del cobro.");
+        }
+      }
+
+      await loadCollectionsData();
+      setEditRecordId(null);
+      showToast({ type: "success", message: "Cobro actualizado correctamente." });
+    } catch (error) {
+      showToast({
+        type: "error",
+        message: error instanceof Error ? error.message : "No pude actualizar el cobro.",
+      });
+    } finally {
+      setEditingRecord(false);
+    }
+  }
+
   function openPaymentModal(row: CollectionRow) {
     setPaymentRecordId(row.id);
     setPaymentForm({
@@ -1363,18 +1431,6 @@ export default function CollectionsPage() {
     ? collectionRowsById.get(paymentRecordId) || null
     : null;
 
-  function rowIsExpanded(rowId: string) {
-    return expandedRowIds.includes(rowId);
-  }
-
-  function toggleRowExpanded(rowId: string) {
-    setExpandedRowIds((current) =>
-      current.includes(rowId)
-        ? current.filter((item) => item !== rowId)
-        : [...current, rowId]
-    );
-  }
-
   function resetImportInvoiceState() {
     setImportForm(createDefaultImportForm());
     setImportXmlFile(null);
@@ -1407,7 +1463,7 @@ export default function CollectionsPage() {
         ...prev,
         selectedChargeCategory: inferredCategory,
         title: buildImportedChargeTitle(parsed, inferredCategory),
-        dueDate: parsed.issuedAt || prev.dueDate || getTodayDateOnlyKey(),
+        dueDate: getEndOfMonthDateKey(parsed.issuedAt || prev.dueDate || getTodayDateOnlyKey()),
       }));
       setImportStatusMessage("XML leído correctamente. Ahora revisa la coincidencia sugerida antes de confirmar.");
     } catch (error) {
@@ -1458,14 +1514,13 @@ export default function CollectionsPage() {
     if (duplicateInvoice) {
       showToast({
         type: "warning",
-        message: "Ese UUID ya existe en Cobranza. Revisa la factura actual para evitar duplicados.",
+        message: "Ese UUID ya existe en Cobranza. Ya puedes consultarlo desde el botón Ver facturas sin salir de esta pantalla.",
       });
-      router.push(`/collections/invoices/${duplicateInvoice.id}`);
       return;
     }
 
     const chargeCategory = importForm.selectedChargeCategory || inferChargeTypeFromDescription(importPreview.description);
-    const dueDate = importForm.dueDate || importPreview.issuedAt || getTodayDateOnlyKey();
+    const dueDate = getEndOfMonthDateKey(importPreview.issuedAt || importForm.dueDate || getTodayDateOnlyKey());
     const dueDateObject = parseDateOnly(dueDate);
     const amountDue = Number(importPreview.total || importPreview.subtotal || 0);
 
@@ -1500,7 +1555,7 @@ export default function CollectionsPage() {
             title: importForm.title.trim() || buildImportedChargeTitle(importPreview, chargeCategory),
             responsibility_type: "tenant",
             amount_expected: amountDue,
-            due_day: lease.due_day || dueDateObject.getDate(),
+            due_day: 31,
             active: ["rent", "maintenance_fee", "services", "parking"].includes(chargeCategory),
             notes: importForm.notes.trim() || "Configuración creada automáticamente desde importación de factura.",
           })
@@ -1520,6 +1575,17 @@ export default function CollectionsPage() {
           item.period_year === dueDateObject.getFullYear() &&
           item.period_month === dueDateObject.getMonth() + 1
       ) || null;
+
+      if (!record) {
+        record = collectionRecords.find((item) => {
+          if (item.unit_id !== unit.id) return false;
+          if ((item.lease_id || null) !== lease.id) return false;
+          if (item.period_year !== dueDateObject.getFullYear()) return false;
+          if (item.period_month !== dueDateObject.getMonth() + 1) return false;
+          const relatedSchedule = collectionSchedules.find((scheduleItem) => scheduleItem.id === item.collection_schedule_id);
+          return relatedSchedule?.charge_type === chargeCategory;
+        }) || null;
+      }
 
       if (!record) {
         const createdRecord = await supabase
@@ -1612,11 +1678,10 @@ export default function CollectionsPage() {
 
       showToast({
         type: "success",
-        message: "Factura importada correctamente. El cobro ya quedó clasificado y visible en Cobranza.",
+        message: "Factura importada correctamente. El cobro ya quedó clasificado y visible en Cobranza. Puedes revisar el documento cuando quieras desde Ver facturas.",
       });
 
-      router.push(`/collections/invoices/${invoiceInsert.data.id}`);
-      router.refresh();
+      setDetailRecordId(record.id);
     } catch (error) {
       console.error(error);
 
@@ -1790,6 +1855,13 @@ export default function CollectionsPage() {
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton onClick={openImportInvoiceModal} icon={<FileUp size={16} />}>
               Importar factura
+            </UiButton>
+            <UiButton
+              onClick={() => router.push("/collections/invoices")}
+              icon={<FileText size={16} />}
+              variant="secondary"
+            >
+              Ver facturas
             </UiButton>
             <UiButton onClick={openCreateChargeModal} icon={<Plus size={16} />} variant="secondary">
               Cargo manual
@@ -2036,51 +2108,64 @@ export default function CollectionsPage() {
       <div style={{ height: 16 }} />
 
       <SectionCard title="Listado de cobranza" icon={<Wallet size={18} />}>
-        {filteredRows.length === 0 ? (
-          <div style={emptyInlineBoxStyle}>
-            Todavía no hay registros de cobranza. Importa una factura o crea un cargo manual para empezar a operar este módulo.
-          </div>
-        ) : (
-          <div style={collectionListWrapStyle}>
-            <div style={collectionListHeaderStyle}>
-              <div>Concepto</div>
-              <div>Edificio / unidad</div>
-              <div>Inquilino</div>
-              <div>Periodo</div>
-              <div>Vencimiento</div>
-              <div>Monto</div>
-              <div>Estado</div>
-              <div>Actividad</div>
-              <div>Acciones</div>
+                <div style={{ display: "grid", gap: 14 }}>
+          <div style={collectionHeaderGridStyle}>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Concepto</span>
+              <span style={headerSecondaryTextStyle}>categoría</span>
             </div>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Edificio</span>
+              <span style={headerSecondaryTextStyle}>departamento / unidad</span>
+            </div>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Inquilino</span>
+              <span style={headerSecondaryTextStyle}>responsable de pago</span>
+            </div>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Periodo</span>
+              <span style={headerSecondaryTextStyle}>tipo de cobro</span>
+            </div>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Vencimiento</span>
+              <span style={headerSecondaryTextStyle}>fin de mes</span>
+            </div>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Monto</span>
+              <span style={headerSecondaryTextStyle}>cobrado</span>
+            </div>
+            <div style={headerCellWrapStyle}>
+              <span style={headerPrimaryTextStyle}>Estado</span>
+              <span style={headerSecondaryTextStyle}>saldo actual</span>
+            </div>
+          </div>
 
-            {filteredRows.map((row) => {
-              const colors = getStatusColors(row.status);
-              const chargeVisual = getChargeTypeVisual(row.chargeTypeLabel);
-              const isExpanded = rowIsExpanded(row.id);
+          {filteredRows.length === 0 ? (
+            <div style={emptyInlineBoxStyle}>
+              Todavía no hay registros de cobranza. Importa una factura o crea un cargo manual para empezar a operar este módulo.
+            </div>
+          ) : (
+            filteredRows.map((row) => {
+              const isExpanded = detailRecordId === row.id;
+              const rowPayments = (paymentsByRecordId.get(row.id) || []).slice().sort((a, b) => b.paid_at.localeCompare(a.paid_at));
+              const rowInvoices = (invoicesByRecordId.get(row.id) || []).slice().sort((a, b) => {
+                const aDate = a.issued_at || a.created_at;
+                const bDate = b.issued_at || b.created_at;
+                return bDate.localeCompare(aDate);
+              });
+              const statusColors = getStatusColors(row.status);
 
               return (
                 <div key={row.id} style={collectionRowCardStyle}>
-                  <div style={collectionRowTopStyle}>
-                    <div style={collectionCellConceptStyle}>
-                      <div
-                        style={{
-                          ...chargeTypeIconWrapStyle,
-                          background: chargeVisual.background,
-                          color: chargeVisual.color,
-                        }}
-                      >
-                        {chargeVisual.icon}
-                      </div>
-
+                  <div style={collectionBodyGridStyle}>
+                    <div style={conceptCellWrapStyle}>
+                      <div style={chargeIconWrapStyle}>{getCollectionTypeIcon(collectionSchedules.find((item) => item.id === collectionRecords.find((record) => record.id === row.id)?.collection_schedule_id)?.charge_type || "other")}</div>
                       <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                        <div style={{ ...cellPrimaryStrongStyle, fontSize: 20, lineHeight: 1.2 }}>
-                          {row.title}
-                        </div>
+                        <div style={{ ...rowTitleStyle, lineHeight: 1.1 }}>{row.title}</div>
                         <button
                           type="button"
-                          onClick={() => toggleRowExpanded(row.id)}
-                          style={inlineLinkButtonStyle}
+                          onClick={() => setDetailRecordId((current) => (current === row.id ? null : row.id))}
+                          style={detailToggleButtonStyle}
                         >
                           {isExpanded ? "Ocultar detalles" : "Ver detalles"}
                           {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
@@ -2088,31 +2173,31 @@ export default function CollectionsPage() {
                       </div>
                     </div>
 
-                    <div style={collectionCellStyle}>
-                      <div style={cellPrimaryStyle}>{row.buildingName}</div>
-                      <div style={cellSecondaryStyle}>{row.unitLabel}</div>
+                    <div style={rowTwoLineCellStyle}>
+                      <span style={rowPrimaryTextStyle}>{row.buildingName}</span>
+                      <span style={rowSecondaryTextStyle}>{row.unitLabel}</span>
                     </div>
 
-                    <div style={collectionCellStyle}>
-                      <div style={cellPrimaryStyle}>{row.tenantLabel}</div>
-                      <div style={cellSecondaryStyle}>{row.responsiblePayerLabel}</div>
+                    <div style={rowTwoLineCellStyle}>
+                      <span style={rowPrimaryTextStyle}>{row.tenantLabel}</span>
+                      <span style={rowSecondaryTextStyle}>{row.responsiblePayerLabel}</span>
                     </div>
 
-                    <div style={collectionCellStyle}>
-                      <div style={cellPrimaryStyle}>{row.periodLabel}</div>
-                      <div style={cellSecondaryStyle}>{row.chargeTypeLabel}</div>
+                    <div style={rowTwoLineCellStyle}>
+                      <span style={rowPrimaryTextStyle}>{row.periodLabel}</span>
+                      <span style={rowSecondaryTextStyle}>{row.chargeTypeLabel}</span>
                     </div>
 
-                    <div style={collectionCellStyle}>
-                      <div style={cellPrimaryStyle}>{row.dueDateLabel}</div>
+                    <div style={rowSingleCellStyle}>
+                      <span style={rowPrimaryTextStyle}>{row.dueDateLabel}</span>
                     </div>
 
-                    <div style={collectionCellStyle}>
-                      <div style={cellPrimaryStrongStyle}>{row.amountDueLabel}</div>
-                      <div style={cellSecondaryStyle}>{row.amountCollectedLabel} cobrados</div>
+                    <div style={rowTwoLineCellStyle}>
+                      <span style={rowMoneyPrimaryStyle}>{row.amountDueLabel}</span>
+                      <span style={rowSecondaryTextStyle}>{row.amountCollectedLabel} cobrados</span>
                     </div>
 
-                    <div style={collectionCellStyle}>
+                    <div style={rowTwoLineCellStyle}>
                       <span
                         style={{
                           display: "inline-flex",
@@ -2120,9 +2205,9 @@ export default function CollectionsPage() {
                           justifyContent: "center",
                           padding: "6px 10px",
                           borderRadius: 999,
-                          border: `1px solid ${colors.border}`,
-                          background: colors.background,
-                          color: colors.text,
+                          border: `1px solid ${statusColors.border}`,
+                          background: statusColors.background,
+                          color: statusColors.text,
                           fontSize: 12,
                           fontWeight: 800,
                           whiteSpace: "nowrap",
@@ -2131,279 +2216,110 @@ export default function CollectionsPage() {
                       >
                         {row.statusLabel}
                       </span>
-                    </div>
-
-                    <div style={collectionCellStyle}>
-                      <div style={cellSecondaryStyle}>
-                        {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
-                      </div>
-                      <div style={cellSecondaryStyle}>
-                        {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
-                      </div>
-                    </div>
-
-                    <div style={collectionActionsCellStyle}>
-                      <button
-                        type="button"
-                        onClick={() => openPaymentModal(row)}
-                        disabled={row.balance <= 0}
-                        style={{
-                          ...tablePrimaryButtonStyle,
-                          width: "100%",
-                          opacity: row.balance <= 0 ? 0.55 : 1,
-                          cursor: row.balance <= 0 ? "not-allowed" : "pointer",
-                        }}
-                      >
-                        <Plus size={14} />
-                        Abono
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setDeleteRecordId(row.id)}
-                        style={{
-                          ...tableDangerButtonStyle,
-                          width: "100%",
-                        }}
-                      >
-                        <Trash2 size={14} />
-                        Borrar
-                      </button>
+                      <span style={rowSecondaryTextStyle}>{row.balanceLabel} pendientes</span>
                     </div>
                   </div>
 
                   {isExpanded ? (
-                    <div style={collectionRowExpandedStyle}>
+                    <div style={expandedRowWrapStyle}>
                       <div style={detailTopGridStyle}>
                         <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Concepto completo</div>
-                          <div style={detailValueStyle}>{row.title}</div>
+                          <div style={detailLabelStyle}>Actividad</div>
+                          <div style={detailValueStyle}>{row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"} · {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}</div>
                         </div>
-
-                        <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Ubicación</div>
-                          <div style={detailValueStyle}>
-                            {row.buildingName} · {row.unitLabel}
-                          </div>
-                        </div>
-
-                        <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Inquilino</div>
-                          <div style={detailValueStyle}>{row.tenantLabel}</div>
-                        </div>
-
-                        <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Responsable de pago</div>
-                          <div style={detailValueStyle}>{row.responsiblePayerLabel}</div>
-                        </div>
-
                         <div style={detailBlockStyle}>
                           <div style={detailLabelStyle}>Saldo pendiente</div>
                           <div style={detailValueStyle}>{row.balanceLabel}</div>
                         </div>
-
                         <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Método</div>
+                          <div style={detailLabelStyle}>Método registrado</div>
                           <div style={detailValueStyle}>{row.paymentMethodLabel}</div>
                         </div>
                       </div>
 
-                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                        <UiButton
-                          variant="secondary"
-                          onClick={() => setDetailRecordId(row.id)}
-                          icon={<Eye size={16} />}
-                        >
-                          Ver detalle completo
-                        </UiButton>
-
-                        <UiButton
-                          onClick={() => openPaymentModal(row)}
-                          icon={<Plus size={16} />}
-                          disabled={row.balance <= 0}
-                        >
+                      <div style={inlineActionRowStyle}>
+                        <button type="button" onClick={() => openPaymentModal(row)} style={inlineGreenButtonStyle} disabled={row.balance <= 0}>
+                          <Plus size={15} />
                           Registrar abono
-                        </UiButton>
+                        </button>
+                        <button type="button" onClick={() => openEditRecordModal(row)} style={inlineBlueButtonStyle}>
+                          <Pencil size={15} />
+                          Editar
+                        </button>
+                        <button type="button" onClick={() => setDeleteRecordId(row.id)} style={inlineRedButtonStyle}>
+                          <Trash2 size={15} />
+                          Eliminar
+                        </button>
+                      </div>
+
+                      <div>
+                        <div style={detailSectionTitleStyle}>Notas</div>
+                        <div style={notesBoxStyle}>
+                          {row.notes && row.notes !== "—" ? row.notes : "No hay notas registradas para este cobro."}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div style={detailSectionTitleStyle}>Historial de abonos</div>
+                        {rowPayments.length === 0 ? (
+                          <div style={emptyInlineBoxStyle}>No hay abonos registrados para este cobro.</div>
+                        ) : (
+                          <div style={detailListWrapStyle}>
+                            {rowPayments.map((payment) => (
+                              <div key={payment.id} style={detailListItemStyle}>
+                                <div style={{ display: "grid", gap: 4 }}>
+                                  <span style={cellPrimaryStrongStyle}>{formatCurrency(payment.amount)}</span>
+                                  <span style={cellSecondaryStyle}>{payment.payment_method || "Sin método"} · {formatDateTime(payment.paid_at)}</span>
+                                </div>
+                                <div style={{ display: "grid", gap: 4, textAlign: "right" }}>
+                                  <span style={cellSecondaryStyle}>{payment.reference || "Sin referencia"}</span>
+                                  <span style={cellSecondaryStyle}>{payment.notes || "Sin notas"}</span>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div style={detailSectionTitleStyle}>Facturas ligadas</div>
+                        {rowInvoices.length === 0 ? (
+                          <div style={emptyInlineBoxStyle}>Todavía no hay facturas ligadas a este cobro.</div>
+                        ) : (
+                          <div style={detailListWrapStyle}>
+                            {rowInvoices.map((invoice) => (
+                              <div key={invoice.id} style={detailListItemStyle}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                  <div style={invoiceIconWrapStyle}>
+                                    <Receipt size={16} />
+                                  </div>
+                                  <div style={{ display: "grid", gap: 4 }}>
+                                    <span style={cellPrimaryStrongStyle}>{invoice.description || "Factura ligada"}</span>
+                                    <span style={cellSecondaryStyle}>{invoice.customer_name || "Sin cliente"} · {invoice.invoice_uuid || "Sin UUID"}</span>
+                                  </div>
+                                </div>
+                                <div style={{ display: "grid", gap: 8, textAlign: "right" }}>
+                                  <span style={cellPrimaryStyle}>{formatCurrency(invoice.total)}</span>
+                                  <span style={cellSecondaryStyle}>{formatDate(invoice.issued_at)}</span>
+                                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                                    <button type="button" onClick={() => router.push(`/collections/invoices/${invoice.id}`)} style={smallGhostButtonStyle}>Abrir factura</button>
+                                    {invoice.pdf_path ? <button type="button" onClick={async () => { const { data } = await supabase.storage.from("invoices").createSignedUrl(invoice.pdf_path, 60); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer"); }} style={smallGhostButtonStyle}>Ver PDF</button> : null}
+                                    {invoice.xml_path ? <button type="button" onClick={async () => { const { data } = await supabase.storage.from("invoices").createSignedUrl(invoice.xml_path, 60); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer"); }} style={smallGhostButtonStyle}>Ver XML</button> : null}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   ) : null}
                 </div>
               );
-            })}
-          </div>
-        )}
-      </SectionCard>
-
-      <Modal
-        open={Boolean(detailRow)}
-        title="Detalle de cobranza"
-        onClose={() => setDetailRecordId(null)}
-      >
-        {detailRow ? (
-          <div style={{ display: "grid", gap: 18 }}>
-            <div style={detailTopGridStyle}>
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Concepto</div>
-                <div style={detailValueStyle}>{detailRow.title}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Edificio / unidad</div>
-                <div style={detailValueStyle}>
-                  {detailRow.buildingName} · {detailRow.unitLabel}
-                </div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Inquilino</div>
-                <div style={detailValueStyle}>{detailRow.tenantLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Responsable de pago</div>
-                <div style={detailValueStyle}>{detailRow.responsiblePayerLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Periodo</div>
-                <div style={detailValueStyle}>{detailRow.periodLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Vencimiento</div>
-                <div style={detailValueStyle}>{detailRow.dueDateLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Monto</div>
-                <div style={detailValueStyle}>{detailRow.amountDueLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Cobrado</div>
-                <div style={detailValueStyle}>{detailRow.amountCollectedLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Saldo</div>
-                <div style={detailValueStyle}>{detailRow.balanceLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Estado</div>
-                <div style={detailValueStyle}>{detailRow.statusLabel}</div>
-              </div>
-            </div>
-
-            <div>
-              <div style={detailSectionTitleStyle}>Notas</div>
-              <div style={notesBoxStyle}>
-                {detailRow.notes && detailRow.notes !== "—"
-                  ? detailRow.notes
-                  : "No hay notas registradas para este cobro."}
-              </div>
-            </div>
-
-            <div>
-              <div style={detailSectionHeaderStyle}>
-                <div style={detailSectionTitleStyle}>Historial de abonos</div>
-
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <UiButton
-                    onClick={() => {
-                      setDetailRecordId(null);
-                      openPaymentModal(detailRow);
-                    }}
-                    icon={<Plus size={16} />}
-                  >
-                    Registrar abono
-                  </UiButton>
-
-                  <UiButton
-                    variant="secondary"
-                    onClick={() => setDeleteRecordId(detailRow.id)}
-                    icon={<Trash2 size={16} />}
-                  >
-                    Eliminar cobro
-                  </UiButton>
-                </div>
-              </div>
-
-              {detailPayments.length === 0 ? (
-                <div style={emptyInlineBoxStyle}>
-                  No hay abonos registrados para este cobro.
-                </div>
-              ) : (
-                <div style={detailListWrapStyle}>
-                  {detailPayments.map((payment) => (
-                    <div key={payment.id} style={detailListItemStyle}>
-                      <div style={{ display: "grid", gap: 4 }}>
-                        <span style={cellPrimaryStrongStyle}>
-                          {formatCurrency(payment.amount)}
-                        </span>
-                        <span style={cellSecondaryStyle}>
-                          {payment.payment_method || "Sin método"} ·{" "}
-                          {formatDateTime(payment.paid_at)}
-                        </span>
-                      </div>
-
-                      <div style={{ display: "grid", gap: 4, textAlign: "right" }}>
-                        <span style={cellSecondaryStyle}>
-                          {payment.reference || "Sin referencia"}
-                        </span>
-                        <span style={cellSecondaryStyle}>
-                          {payment.notes || "Sin notas"}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div>
-              <div style={detailSectionTitleStyle}>Facturas ligadas</div>
-
-              {detailInvoices.length === 0 ? (
-                <div style={emptyInlineBoxStyle}>
-                  Todavía no hay facturas ligadas a este cobro.
-                </div>
-              ) : (
-                <div style={detailListWrapStyle}>
-                  {detailInvoices.map((invoice) => (
-                    <div key={invoice.id} style={detailListItemStyle}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={invoiceIconWrapStyle}>
-                          <Receipt size={16} />
-                        </div>
-
-                        <div style={{ display: "grid", gap: 4 }}>
-                          <span style={cellPrimaryStrongStyle}>
-                            {invoice.description || "Factura ligada"}
-                          </span>
-                          <span style={cellSecondaryStyle}>
-                            {invoice.customer_name || "Sin cliente"} ·{" "}
-                            {invoice.invoice_uuid || "Sin UUID"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "grid", gap: 4, textAlign: "right" }}>
-                        <span style={cellPrimaryStyle}>
-                          {formatCurrency(invoice.total)}
-                        </span>
-                        <span style={cellSecondaryStyle}>
-                          {formatDate(invoice.issued_at)}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        ) : null}
-      </Modal>
+            })
+          )}
+        </div>
+</SectionCard>
 
       <Modal
         open={Boolean(deleteRecordRow)}
@@ -2624,14 +2540,10 @@ export default function CollectionsPage() {
                   <input
                     type="date"
                     value={importForm.dueDate}
-                    onChange={(event) =>
-                      setImportForm((prev) => ({
-                        ...prev,
-                        dueDate: event.target.value,
-                      }))
-                    }
-                    style={inputStyle}
+                    disabled
+                    style={{ ...inputStyle, background: "#F3F4F6", color: "#6B7280" }}
                   />
+                  <span style={fieldHelperStyle}>Se calcula automáticamente como el último día del mes correspondiente al CFDI.</span>
                 </label>
               </div>
 
@@ -3044,7 +2956,80 @@ export default function CollectionsPage() {
         </div>
       </Modal>
 
-      <Modal
+            <Modal
+        open={Boolean(editRecordRow)}
+        title="Editar cobro"
+        onClose={() => {
+          if (!editingRecord) setEditRecordId(null);
+        }}
+      >
+        {editRecordRow ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div style={paymentSummaryCardStyle}>
+              <div style={paymentSummaryGridStyle}>
+                <div>
+                  <div style={detailLabelStyle}>Ubicación</div>
+                  <div style={detailValueStyle}>{editRecordRow.buildingName} · {editRecordRow.unitLabel}</div>
+                </div>
+                <div>
+                  <div style={detailLabelStyle}>Periodo</div>
+                  <div style={detailValueStyle}>{editRecordRow.periodLabel}</div>
+                </div>
+                <div>
+                  <div style={detailLabelStyle}>Estado actual</div>
+                  <div style={detailValueStyle}>{editRecordRow.statusLabel}</div>
+                </div>
+              </div>
+            </div>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Concepto</span>
+              <input
+                value={editForm.title}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, title: event.target.value }))}
+                style={inputStyle}
+              />
+            </label>
+
+            <div style={simpleFormGridStyle}>
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Monto</span>
+                <input
+                  value={editForm.amountDue}
+                  onChange={(event) => setEditForm((prev) => ({ ...prev, amountDue: formatDecimalInput(event.target.value) }))}
+                  inputMode="decimal"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Vencimiento</span>
+                <input value={editRecordRow.dueDateLabel} disabled style={{ ...inputStyle, background: "#F3F4F6", color: "#6B7280" }} />
+              </label>
+            </div>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Notas</span>
+              <textarea
+                value={editForm.notes}
+                onChange={(event) => setEditForm((prev) => ({ ...prev, notes: event.target.value }))}
+                rows={4}
+                style={textareaStyle}
+              />
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button type="button" onClick={() => { if (!editingRecord) setEditRecordId(null); }} style={ghostButtonStyle}>Cancelar</button>
+              <button type="button" onClick={handleSaveRecordEdits} style={inlineBlueButtonStyle}>
+                <Pencil size={15} />
+                {editingRecord ? "Guardando..." : "Guardar cambios"}
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+<Modal
         open={Boolean(paymentRow)}
         title="Registrar abono"
         onClose={() => {
@@ -3254,107 +3239,204 @@ const tablePrimaryButtonStyle: CSSProperties = {
   fontWeight: 700,
 };
 
-const tableDangerButtonStyle: CSSProperties = {
-  display: "inline-flex",
+const collectionHeaderGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.92fr) minmax(0, 0.96fr) minmax(0, 0.92fr)",
+  gap: 12,
+  padding: "0 8px 2px",
+  width: "100%",
+};
+
+const collectionBodyGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.92fr) minmax(0, 0.96fr) minmax(0, 0.92fr)",
+  gap: 12,
   alignItems: "center",
-  justifyContent: "center",
-  gap: 6,
-  padding: "8px 10px",
-  borderRadius: 10,
-  border: "1px solid #FECACA",
-  background: "#FEF2F2",
-  color: "#B91C1C",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const collectionListWrapStyle: CSSProperties = {
-  display: "grid",
-  gap: 14,
-};
-
-const collectionListHeaderStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(240px, 2.1fr) minmax(140px, 1.2fr) minmax(150px, 1.35fr) minmax(90px, 0.8fr) minmax(110px, 0.95fr) minmax(120px, 1fr) minmax(96px, 0.8fr) minmax(90px, 0.75fr) minmax(120px, 1fr)",
-  gap: 14,
-  padding: "0 10px",
-  color: "#6B7280",
-  fontSize: 12,
-  fontWeight: 800,
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  width: "100%",
 };
 
 const collectionRowCardStyle: CSSProperties = {
-  borderRadius: 16,
+  display: "grid",
+  gap: 14,
+  padding: 12,
+  borderRadius: 20,
   border: "1px solid #E5E7EB",
   background: "#FFFFFF",
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
+  width: "100%",
   overflow: "hidden",
 };
 
-const collectionRowTopStyle: CSSProperties = {
+const headerCellWrapStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "minmax(240px, 2.1fr) minmax(140px, 1.2fr) minmax(150px, 1.35fr) minmax(90px, 0.8fr) minmax(110px, 0.95fr) minmax(120px, 1fr) minmax(96px, 0.8fr) minmax(90px, 0.75fr) minmax(120px, 1fr)",
-  gap: 14,
-  alignItems: "center",
-  padding: "18px 10px",
+  gap: 2,
 };
 
-const collectionCellConceptStyle: CSSProperties = {
+const headerPrimaryTextStyle: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 900,
+  color: "#6B7280",
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+  lineHeight: 1.1,
+};
+
+const headerSecondaryTextStyle: CSSProperties = {
+  fontSize: 9,
+  color: "#9CA3AF",
+  fontWeight: 700,
+  textTransform: "uppercase",
+  letterSpacing: "0.03em",
+  lineHeight: 1.1,
+};
+
+const conceptCellWrapStyle: CSSProperties = {
   display: "flex",
-  alignItems: "flex-start",
-  gap: 12,
+  alignItems: "center",
+  gap: 10,
   minWidth: 0,
 };
 
-const chargeTypeIconWrapStyle: CSSProperties = {
+const chargeIconWrapStyle: CSSProperties = {
   width: 40,
   height: 40,
-  borderRadius: 12,
+  borderRadius: 14,
+  background: "#EEF2FF",
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
 };
 
-const inlineLinkButtonStyle: CSSProperties = {
+const rowTitleStyle: CSSProperties = {
+  fontSize: 15,
+  fontWeight: 800,
+  color: "#111827",
+  lineHeight: 1.15,
+  wordBreak: "break-word",
+};
+
+const detailToggleButtonStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 6,
   border: "none",
   background: "transparent",
-  color: "#2563EB",
   padding: 0,
-  fontSize: 13,
-  fontWeight: 700,
+  color: "#2563EB",
+  fontSize: 12,
+  fontWeight: 800,
   cursor: "pointer",
   width: "fit-content",
 };
 
-const collectionCellStyle: CSSProperties = {
+const rowTwoLineCellStyle: CSSProperties = {
   display: "grid",
   gap: 4,
+  alignContent: "center",
   minWidth: 0,
 };
 
-const collectionActionsCellStyle: CSSProperties = {
+const rowSingleCellStyle: CSSProperties = {
   display: "grid",
-  gap: 8,
+  alignContent: "center",
+  minWidth: 0,
 };
 
-const collectionRowExpandedStyle: CSSProperties = {
+const rowPrimaryTextStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 800,
+  color: "#111827",
+  lineHeight: 1.25,
+  wordBreak: "break-word",
+};
+
+const rowSecondaryTextStyle: CSSProperties = {
+  fontSize: 11,
+  color: "#6B7280",
+  lineHeight: 1.25,
+  wordBreak: "break-word",
+};
+
+const rowMoneyPrimaryStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 900,
+  color: "#111827",
+  lineHeight: 1.2,
+};
+
+const expandedRowWrapStyle: CSSProperties = {
   display: "grid",
   gap: 16,
-  padding: "0 10px 18px 62px",
+  paddingTop: 16,
   borderTop: "1px solid #E5E7EB",
-  background: "#FCFCFD",
+};
+
+const inlineActionRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+};
+
+const actionBaseButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 8,
+  padding: "10px 14px",
+  borderRadius: 12,
+  border: "1px solid transparent",
+  fontSize: 14,
+  fontWeight: 800,
+  cursor: "pointer",
+};
+
+const inlineGreenButtonStyle: CSSProperties = {
+  ...actionBaseButtonStyle,
+  background: "#16A34A",
+  borderColor: "#15803D",
+  color: "#FFFFFF",
+};
+
+const inlineBlueButtonStyle: CSSProperties = {
+  ...actionBaseButtonStyle,
+  background: "#2563EB",
+  borderColor: "#1D4ED8",
+  color: "#FFFFFF",
+};
+
+const inlineRedButtonStyle: CSSProperties = {
+  ...actionBaseButtonStyle,
+  background: "#DC2626",
+  borderColor: "#B91C1C",
+  color: "#FFFFFF",
+};
+
+const smallGhostButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  padding: "7px 10px",
+  borderRadius: 10,
+  border: "1px solid #D1D5DB",
+  background: "#FFFFFF",
+  color: "#374151",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
 };
 
 const dangerBoxStyle: CSSProperties = {
+  padding: 14,
   borderRadius: 14,
   border: "1px solid #FECACA",
   background: "#FEF2F2",
-  padding: 14,
+};
+
+const fieldHelperStyle: CSSProperties = {
+  fontSize: 12,
+  color: "#6B7280",
+  lineHeight: 1.5,
 };
 
 const detailTopGridStyle: CSSProperties = {

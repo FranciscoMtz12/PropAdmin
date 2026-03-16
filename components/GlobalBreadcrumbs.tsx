@@ -14,19 +14,27 @@ function isUuidLike(segment: string) {
 
 function humanizeSegment(segment: string) {
   const map: Record<string, string> = {
-    dashboard: "Dashboard",
+    dashboard: "Inicio",
     buildings: "Edificios",
     maintenance: "Mantenimiento",
     payments: "Pagos",
+    collections: "Cobranza",
+    invoices: "Facturas",
+    tenants: "Inquilinos",
+    cleaning: "Limpieza",
+    calendar: "Calendario",
     agenda: "Agenda",
+    "reported-payments": "Pagos reportados",
     "unit-types": "Tipologías",
     units: "Departamentos",
-    assets: "Assets",
+    assets: "Activos",
     schedules: "Programaciones",
-    calendar: "Calendario",
     "work-orders": "Órdenes de trabajo",
-    login: "Login",
+    login: "Iniciar sesión",
     portal: "Portal",
+    contract: "Mi contrato",
+    renewal: "Renovación",
+    "report-payment": "Reportar pago",
   };
 
   return map[segment] || segment;
@@ -36,7 +44,7 @@ function labelForDynamicSegment(previousSegment: string | undefined) {
   if (previousSegment === "buildings") return "Detalle del edificio";
   if (previousSegment === "unit-types") return "Detalle de tipología";
   if (previousSegment === "units") return "Detalle del departamento";
-  if (previousSegment === "assets") return "Detalle del asset";
+  if (previousSegment === "assets") return "Detalle del activo";
   if (previousSegment === "schedules") return "Detalle de programación";
   if (previousSegment === "work-orders") return "Detalle de orden";
   return "Detalle";
@@ -48,7 +56,7 @@ function buildCrumbs(pathname: string): Crumb[] {
   const isPortalPath = pathname.startsWith("/portal");
   const crumbs: Crumb[] = isPortalPath
     ? [{ href: "/portal/dashboard", label: "Portal" }]
-    : [{ href: "/dashboard", label: "Dashboard" }];
+    : [{ href: "/dashboard", label: "Inicio" }];
 
   if (pathname === "/dashboard" || pathname === "/portal/dashboard") {
     return crumbs;
