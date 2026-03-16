@@ -36,6 +36,7 @@ export default function InvoiceDetailPage() {
   useEffect(() => {
     if (!invoiceId || loading || !user || user.role !== "admin") return;
 
+    const currentUser = user;
     let ignore = false;
 
     async function loadInvoice() {
@@ -83,10 +84,11 @@ export default function InvoiceDetailPage() {
         `)
         .eq("id", invoiceId);
 
-      const isCompanyAdmin = user.role === "admin" && !Boolean(user.is_superadmin);
+      const isCompanyAdmin =
+        currentUser.role === "admin" && !Boolean(currentUser.is_superadmin);
 
-      if (isCompanyAdmin && user.company_id) {
-        query = query.eq("company_id", user.company_id);
+      if (isCompanyAdmin && currentUser.company_id) {
+        query = query.eq("company_id", currentUser.company_id);
       }
 
       const { data, error } = await query.maybeSingle();

@@ -196,6 +196,7 @@ export default function InvoiceForm({
   useEffect(() => {
     if (loading || !user || user.role !== "admin") return;
 
+    const currentUser = user;
     let ignore = false;
 
     async function loadCollectionRecords() {
@@ -224,10 +225,11 @@ export default function InvoiceForm({
         `)
         .order("due_date", { ascending: false });
 
-      const isCompanyAdmin = user.role === "admin" && !Boolean(user.is_superadmin);
+      const isCompanyAdmin =
+        currentUser.role === "admin" && !Boolean(currentUser.is_superadmin);
 
-      if (isCompanyAdmin && user.company_id) {
-        query = query.eq("company_id", user.company_id);
+      if (isCompanyAdmin && currentUser.company_id) {
+        query = query.eq("company_id", currentUser.company_id);
       }
 
       const { data, error } = await query;
@@ -297,6 +299,8 @@ export default function InvoiceForm({
 
     if (!user || user.role !== "admin") return;
 
+    const currentUser = user;
+
     if (!form.collectionRecordId) {
       showToast({ type: "warning", message: "Primero selecciona el cobro relacionado." });
       return;
@@ -328,7 +332,7 @@ export default function InvoiceForm({
 
     try {
       const payloadBase = {
-        company_id: selectedRecord.companyId || initialData?.companyId || user.company_id,
+        company_id: selectedRecord.companyId || initialData?.companyId || currentUser.company_id,
         building_id: selectedRecord.buildingId || initialData?.buildingId || null,
         unit_id: selectedRecord.unitId || initialData?.unitId || null,
         lease_id: selectedRecord.leaseId || initialData?.leaseId || null,
@@ -354,7 +358,7 @@ export default function InvoiceForm({
           .from("collection_invoices")
           .insert({
             ...payloadBase,
-            created_by: user.id,
+            created_by: currentUser.id,
           })
           .select("id")
           .single();
@@ -364,7 +368,7 @@ export default function InvoiceForm({
         }
 
         const uploadedFiles = await uploadInvoiceFiles({
-          companyId: payloadBase.company_id || user.company_id,
+          companyId: payloadBase.company_id || currentUser.company_id,
           buildingId: payloadBase.building_id,
           leaseId: payloadBase.lease_id,
           invoiceUuid: payloadBase.invoice_uuid,
@@ -414,7 +418,7 @@ export default function InvoiceForm({
         }
 
         const uploadedPdf = await uploadInvoiceFiles({
-          companyId: payloadBase.company_id || user.company_id,
+          companyId: payloadBase.company_id || currentUser.company_id,
           buildingId: payloadBase.building_id,
           leaseId: payloadBase.lease_id,
           invoiceUuid: payloadBase.invoice_uuid,
@@ -432,7 +436,7 @@ export default function InvoiceForm({
         }
 
         const uploadedXml = await uploadInvoiceFiles({
-          companyId: payloadBase.company_id || user.company_id,
+          companyId: payloadBase.company_id || currentUser.company_id,
           buildingId: payloadBase.building_id,
           leaseId: payloadBase.lease_id,
           invoiceUuid: payloadBase.invoice_uuid,
@@ -494,7 +498,10 @@ export default function InvoiceForm({
       />
 
       <form onSubmit={handleSubmit}>
-        <SectionCard style={undefined} title="Acciones" subtitle="Guarda la factura cuando hayas terminado de revisar la información.">
+        <SectionCard
+          title="Acciones"
+          subtitle="Guarda la factura cuando hayas terminado de revisar la información."
+        >
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton onClick={() => router.push("/collections/invoices")}>
               Cancelar
