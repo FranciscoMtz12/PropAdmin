@@ -57,8 +57,7 @@ const TENANT_ITEMS: SidebarItem[] = [
     label: "Mi contrato",
     href: "/portal/contract",
     icon: KeyRound,
-    status: "pending",
-    disabled: true,
+    status: "partial",
   },
   {
     label: "Mis facturas / adeudos",
@@ -70,15 +69,13 @@ const TENANT_ITEMS: SidebarItem[] = [
     label: "Reportar pago",
     href: "/portal/report-payment",
     icon: CreditCard,
-    status: "pending",
-    disabled: true,
+    status: "partial",
   },
   {
     label: "Renovación de contrato",
     href: "/portal/renewal",
     icon: BadgeCheck,
-    status: "pending",
-    disabled: true,
+    status: "partial",
   },
 ];
 
