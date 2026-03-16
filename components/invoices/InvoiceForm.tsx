@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { FileText, Link2, Save, Upload } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { uploadInvoiceFiles, removeInvoiceFile } from "@/lib/invoiceStorage";
 import {
-  CollectionRecordOption,
+  type CollectionRecordOption,
   formatCurrency,
   normalizeCollectionRecordOption,
 } from "@/lib/normalizeInvoice";
@@ -76,7 +76,7 @@ type FormState = {
   chargeCategory: string;
 };
 
-const INPUT_STYLE: React.CSSProperties = {
+const INPUT_STYLE: CSSProperties = {
   width: "100%",
   padding: 12,
   border: "1px solid #D0D5DD",
@@ -86,7 +86,7 @@ const INPUT_STYLE: React.CSSProperties = {
   outline: "none",
 };
 
-const TEXTAREA_STYLE: React.CSSProperties = {
+const TEXTAREA_STYLE: CSSProperties = {
   ...INPUT_STYLE,
   minHeight: 120,
   resize: "vertical",
@@ -144,7 +144,7 @@ export default function InvoiceForm({
   initialData = null,
 }: InvoiceFormProps) {
   const router = useRouter();
-  const { user, loading: userLoading } = useCurrentUser();
+  const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
 
   const [loadingRecords, setLoadingRecords] = useState(true);
@@ -194,7 +194,7 @@ export default function InvoiceForm({
   }, [initialData]);
 
   useEffect(() => {
-    if (userLoading || !user) return;
+    if (loading || !user || user.role !== "admin") return;
 
     let ignore = false;
 
@@ -203,30 +203,30 @@ export default function InvoiceForm({
 
       let query = supabase
         .from("collection_records")
-        .select(
-          `
-            id,
-            company_id,
-            building_id,
-            unit_id,
-            lease_id,
-            due_date,
-            amount_due,
-            status,
-            period_year,
-            period_month,
-            buildings(name),
-            units(unit_number, display_code, buildings(name)),
-            leases(
-              billing_name,
-              tenants(full_name, tax_id)
-            ),
-            collection_schedules(title)
-          `
-        )
+        .select(`
+          id,
+          company_id,
+          building_id,
+          unit_id,
+          lease_id,
+          due_date,
+          amount_due,
+          status,
+          period_year,
+          period_month,
+          buildings(name),
+          units(unit_number, display_code, buildings(name)),
+          leases(
+            billing_name,
+            tenants(full_name, tax_id)
+          ),
+          collection_schedules(title)
+        `)
         .order("due_date", { ascending: false });
 
-      if (!user.is_superadmin) {
+      const isCompanyAdmin = user.role === "admin" && !Boolean(user.is_superadmin);
+
+      if (isCompanyAdmin && user.company_id) {
         query = query.eq("company_id", user.company_id);
       }
 
@@ -258,7 +258,7 @@ export default function InvoiceForm({
     return () => {
       ignore = true;
     };
-  }, [userLoading, user, showToast]);
+  }, [loading, user, showToast]);
 
   const selectedRecord = useMemo(() => {
     return records.find((record) => record.id === form.collectionRecordId) || null;
@@ -292,10 +292,10 @@ export default function InvoiceForm({
     return formatCurrency(0);
   }, [form.subtotal, form.tax, form.total]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user) return;
+    if (!user || user.role !== "admin") return;
 
     if (!form.collectionRecordId) {
       showToast({ type: "warning", message: "Primero selecciona el cobro relacionado." });
@@ -328,9 +328,7 @@ export default function InvoiceForm({
 
     try {
       const payloadBase = {
-        company_id: user.is_superadmin
-          ? selectedRecord.companyId || initialData?.companyId || user.company_id
-          : user.company_id,
+        company_id: selectedRecord.companyId || initialData?.companyId || user.company_id,
         building_id: selectedRecord.buildingId || initialData?.buildingId || null,
         unit_id: selectedRecord.unitId || initialData?.unitId || null,
         lease_id: selectedRecord.leaseId || initialData?.leaseId || null,
@@ -489,21 +487,26 @@ export default function InvoiceForm({
         }
         titleIcon={<FileText size={22} />}
         actions={
-          <>
-            <UiButton onClick={() => router.push("/collections/invoices")}>Cancelar</UiButton>
-            <UiButton
-              type="submit"
-              form="invoice-admin-form"
-              variant="primary"
-              icon={<Save size={16} />}
-            >
-              {saving ? "Guardando..." : mode === "create" ? "Crear factura" : "Guardar cambios"}
-            </UiButton>
-          </>
+          <UiButton onClick={() => router.push("/collections/invoices")}>
+            Cancelar
+          </UiButton>
         }
       />
 
-      <form id="invoice-admin-form" onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit}>
+        <SectionCard style={undefined} title="Acciones" subtitle="Guarda la factura cuando hayas terminado de revisar la información.">
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <UiButton onClick={() => router.push("/collections/invoices")}>
+              Cancelar
+            </UiButton>
+            <UiButton type="submit" variant="primary" icon={<Save size={16} />}>
+              {saving ? "Guardando..." : mode === "create" ? "Crear factura" : "Guardar cambios"}
+            </UiButton>
+          </div>
+        </SectionCard>
+
+        <div style={{ height: 16 }} />
+
         <AppGrid minWidth={320}>
           <SectionCard
             title="Datos principales"
@@ -524,7 +527,7 @@ export default function InvoiceForm({
                 onChange={(event) =>
                   setForm((prev) => ({ ...prev, collectionRecordId: event.target.value }))
                 }
-                disabled={loadingRecords || userLoading}
+                disabled={loadingRecords || loading}
               >
                 <option value="">Selecciona un cobro</option>
                 {records.map((record) => (
@@ -626,7 +629,9 @@ export default function InvoiceForm({
                   type="date"
                   style={INPUT_STYLE}
                   value={form.issuedAt}
-                  onChange={(event) => setForm((prev) => ({ ...prev, issuedAt: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, issuedAt: event.target.value }))
+                  }
                 />
               </AppFormField>
 
@@ -692,7 +697,9 @@ export default function InvoiceForm({
                   step="0.01"
                   style={INPUT_STYLE}
                   value={form.subtotal}
-                  onChange={(event) => setForm((prev) => ({ ...prev, subtotal: event.target.value }))}
+                  onChange={(event) =>
+                    setForm((prev) => ({ ...prev, subtotal: event.target.value }))
+                  }
                   placeholder="0.00"
                 />
               </AppFormField>

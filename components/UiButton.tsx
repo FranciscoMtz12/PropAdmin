@@ -7,9 +7,10 @@ import type { CSSProperties, ReactNode } from "react";
   - primary: fondo oscuro
   - secondary: blanco con borde
 
-  Mejora agregada:
+  Mejoras:
   - soporte opcional para icon
-  - mantiene compatibilidad con href, onClick y type
+  - soporte para href, onClick, type y form
+  - mantiene compatibilidad con el resto del proyecto
 */
 
 type UiButtonProps = {
@@ -17,6 +18,7 @@ type UiButtonProps = {
   href?: string;
   onClick?: () => void;
   type?: "button" | "submit" | "reset";
+  form?: string;
   variant?: "primary" | "secondary";
   disabled?: boolean;
   icon?: ReactNode;
@@ -27,6 +29,7 @@ export default function UiButton({
   href,
   onClick,
   type = "button",
+  form,
   variant = "secondary",
   disabled = false,
   icon,
@@ -76,7 +79,13 @@ export default function UiButton({
   }
 
   return (
-    <button type={type} onClick={onClick} style={style} disabled={disabled}>
+    <button
+      type={type}
+      form={form}
+      onClick={onClick}
+      style={style}
+      disabled={disabled}
+    >
       {content}
     </button>
   );

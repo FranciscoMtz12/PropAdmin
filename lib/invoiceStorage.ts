@@ -36,7 +36,7 @@ function getFileExtension(fileName: string) {
   return parts.length > 1 ? parts.pop()?.toLowerCase() || "bin" : "bin";
 }
 
-export function buildInvoiceStorageBasePath({
+function buildInvoiceStorageBasePath({
   companyId,
   buildingId,
   leaseId,

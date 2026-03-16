@@ -1,36 +1,3 @@
-export type InvoiceStoredType = {
-  id: string;
-  company_id: string | null;
-  building_id: string | null;
-  unit_id: string | null;
-  lease_id: string | null;
-  collection_record_id: string | null;
-  invoice_series: string | null;
-  invoice_folio: string | null;
-  invoice_uuid: string | null;
-  invoice_type: string | null;
-  issued_at: string | null;
-  period_year: number | null;
-  period_month: number | null;
-  subtotal: number | null;
-  tax: number | null;
-  total: number | null;
-  customer_name: string | null;
-  customer_tax_id: string | null;
-  description: string | null;
-  charge_category: string | null;
-  pdf_path: string | null;
-  xml_path: string | null;
-  original_pdf_filename: string | null;
-  original_xml_filename: string | null;
-  match_confidence: number | null;
-  match_notes: string | null;
-  replaced_at: string | null;
-  replaced_by_invoice_id: string | null;
-  created_by: string | null;
-  created_at: string | null;
-};
-
 export type CollectionRecordOption = {
   id: string;
   companyId: string | null;
@@ -86,9 +53,6 @@ export type InvoiceListRow = {
   xmlPath: string | null;
   originalPdfFilename: string;
   originalXmlFilename: string;
-  matchConfidence: number | null;
-  matchConfidenceLabel: string;
-  matchNotes: string;
   buildingName: string;
   unitLabel: string;
   tenantName: string;
@@ -128,7 +92,7 @@ export function formatCurrency(value?: number | null) {
 export function formatDate(dateKey?: string | null) {
   if (!dateKey) return "Sin fecha";
 
-  const safeDate = dateKey.length >= 10 ? dateKey.slice(0, 10) : dateKey;
+  const safeDate = String(dateKey).slice(0, 10);
   const [year, month, day] = safeDate.split("-").map(Number);
 
   if (!year || !month || !day) return safeDate;
@@ -166,7 +130,7 @@ export function formatInvoiceType(type?: string | null) {
 export function formatChargeCategory(category?: string | null) {
   if (!category) return "Sin categoría";
 
-  const normalized = category.toLowerCase();
+  const normalized = String(category).toLowerCase();
 
   if (normalized === "rent") return "Renta";
   if (normalized === "maintenance_fee") return "Mantenimiento";
@@ -175,7 +139,7 @@ export function formatChargeCategory(category?: string | null) {
   if (normalized === "penalty") return "Penalización";
   if (normalized === "other") return "Otro";
 
-  return category;
+  return String(category);
 }
 
 export function normalizeCollectionRecordOption(raw: any): CollectionRecordOption {
@@ -215,6 +179,7 @@ export function normalizeCollectionRecordOption(raw: any): CollectionRecordOptio
 
 export function normalizeInvoiceRow(raw: any): InvoiceListRow {
   const collectionRecord = raw?.collection_records || null;
+
   const unitNumber =
     raw?.units?.display_code ||
     raw?.units?.unit_number ||
@@ -236,8 +201,6 @@ export function normalizeInvoiceRow(raw: any): InvoiceListRow {
     "Sin inquilino";
 
   const collectionStatus = String(collectionRecord?.status || "pending");
-  const pdfPath = raw?.pdf_path ? String(raw.pdf_path) : null;
-  const xmlPath = raw?.xml_path ? String(raw.xml_path) : null;
 
   return {
     id: String(raw?.id || ""),
@@ -267,19 +230,10 @@ export function normalizeInvoiceRow(raw: any): InvoiceListRow {
     description: String(raw?.description || "Sin descripción"),
     chargeCategory: String(raw?.charge_category || "other"),
     chargeCategoryLabel: formatChargeCategory(raw?.charge_category),
-    pdfPath,
-    xmlPath,
+    pdfPath: raw?.pdf_path ? String(raw.pdf_path) : null,
+    xmlPath: raw?.xml_path ? String(raw.xml_path) : null,
     originalPdfFilename: String(raw?.original_pdf_filename || "PDF cargado"),
     originalXmlFilename: String(raw?.original_xml_filename || "XML cargado"),
-    matchConfidence:
-      raw?.match_confidence === null || raw?.match_confidence === undefined
-        ? null
-        : Number(raw.match_confidence),
-    matchConfidenceLabel:
-      raw?.match_confidence === null || raw?.match_confidence === undefined
-        ? "Sin score"
-        : `${Number(raw.match_confidence).toFixed(0)}%`,
-    matchNotes: String(raw?.match_notes || ""),
     buildingName,
     unitLabel: unitNumber,
     tenantName,

@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Download, Eye, FileCode2, FileText, Pencil, Trash2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { createInvoiceSignedUrl, removeInvoiceFile } from "@/lib/invoiceStorage";
-import { InvoiceListRow, normalizeInvoiceRow } from "@/lib/normalizeInvoice";
+import { type InvoiceListRow, normalizeInvoiceRow } from "@/lib/normalizeInvoice";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useAppToast } from "@/components/AppToastProvider";
 
@@ -21,12 +21,12 @@ import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
-  const { user, loading: userLoading } = useCurrentUser();
+  const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
 
   const invoiceId = String(params?.invoiceId || "");
 
-  const [loading, setLoading] = useState(true);
+  const [pageLoading, setPageLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [invoice, setInvoice] = useState<InvoiceListRow | null>(null);
@@ -34,65 +34,62 @@ export default function InvoiceDetailPage() {
   const [xmlSignedUrl, setXmlSignedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!invoiceId || userLoading || !user) return;
+    if (!invoiceId || loading || !user || user.role !== "admin") return;
 
     let ignore = false;
 
     async function loadInvoice() {
-      setLoading(true);
+      setPageLoading(true);
 
       let query = supabase
         .from("collection_invoices")
-        .select(
-          `
-            id,
-            company_id,
-            building_id,
-            unit_id,
-            lease_id,
-            collection_record_id,
-            invoice_series,
-            invoice_folio,
-            invoice_uuid,
-            invoice_type,
-            issued_at,
-            period_year,
-            period_month,
-            subtotal,
-            tax,
-            total,
-            customer_name,
-            customer_tax_id,
-            description,
-            charge_category,
-            pdf_path,
-            xml_path,
-            original_pdf_filename,
-            original_xml_filename,
-            match_confidence,
-            match_notes,
-            created_at,
-            buildings(name),
+        .select(`
+          id,
+          company_id,
+          building_id,
+          unit_id,
+          lease_id,
+          collection_record_id,
+          invoice_series,
+          invoice_folio,
+          invoice_uuid,
+          invoice_type,
+          issued_at,
+          period_year,
+          period_month,
+          subtotal,
+          tax,
+          total,
+          customer_name,
+          customer_tax_id,
+          description,
+          charge_category,
+          pdf_path,
+          xml_path,
+          original_pdf_filename,
+          original_xml_filename,
+          created_at,
+          buildings(name),
+          units(unit_number, display_code, buildings(name)),
+          leases(tenants(full_name)),
+          collection_records(
+            amount_due,
+            due_date,
+            status,
             units(unit_number, display_code, buildings(name)),
-            leases(tenants(full_name)),
-            collection_records(
-              amount_due,
-              due_date,
-              status,
-              units(unit_number, display_code, buildings(name)),
-              buildings(name),
-              leases(tenants(full_name))
-            )
-          `
-        )
-        .eq("id", invoiceId)
-        .maybeSingle();
+            buildings(name),
+            leases(tenants(full_name))
+          )
+        `)
+        .eq("id", invoiceId);
 
-      if (!user.is_superadmin) {
+      const isCompanyAdmin = user.role === "admin" && !Boolean(user.is_superadmin);
+
+      if (isCompanyAdmin && user.company_id) {
         query = query.eq("company_id", user.company_id);
       }
 
-      const { data, error } = await query;
+      const { data, error } = await query.maybeSingle();
 
       if (ignore) return;
 
@@ -100,7 +97,7 @@ export default function InvoiceDetailPage() {
         console.error(error);
         showToast({ type: "error", message: "No encontré la factura solicitada." });
         setInvoice(null);
-        setLoading(false);
+        setPageLoading(false);
         return;
       }
 
@@ -125,7 +122,7 @@ export default function InvoiceDetailPage() {
         });
       }
 
-      setLoading(false);
+      setPageLoading(false);
     }
 
     loadInvoice();
@@ -133,7 +130,7 @@ export default function InvoiceDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [invoiceId, userLoading, user, showToast]);
+  }, [invoiceId, loading, user, showToast]);
 
   async function handleDelete() {
     if (!invoice) return;
@@ -169,7 +166,7 @@ export default function InvoiceDetailPage() {
     <PageContainer>
       <PageHeader
         title={
-          loading
+          pageLoading
             ? "Detalle de factura"
             : invoice
               ? `Factura ${invoice.invoiceSeries !== "—" ? `${invoice.invoiceSeries}-` : ""}${invoice.invoiceFolio}`
@@ -194,7 +191,7 @@ export default function InvoiceDetailPage() {
         }
       />
 
-      {loading ? (
+      {pageLoading ? (
         <SectionCard title="Cargando" subtitle="Estoy recuperando la información de la factura seleccionada.">
           <div style={{ color: "#667085" }}>Un momento...</div>
         </SectionCard>
@@ -315,7 +312,7 @@ export default function InvoiceDetailPage() {
   );
 }
 
-function InfoGrid({ children }: { children: React.ReactNode }) {
+function InfoGrid({ children }: { children: ReactNode }) {
   return (
     <div
       style={{
