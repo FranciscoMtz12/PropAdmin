@@ -32,19 +32,29 @@ import {
   AlertCircle,
   Building2,
   CalendarDays,
+  CarFront,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   CreditCard,
+  Droplets,
   Eye,
   FileUp,
   Filter,
+  Home,
   Landmark,
+  MoreHorizontal,
+  ParkingCircle,
   Plus,
   Receipt,
   Trash2,
+  TriangleAlert,
   Upload,
   Wallet,
   WandSparkles,
+  Wrench,
+  Wifi,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -59,7 +69,6 @@ import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
-import AppTable from "@/components/AppTable";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
@@ -585,6 +594,64 @@ function getUserDisplayLabel(user: AppUser | null | undefined) {
   return user.full_name || user.email || null;
 }
 
+function getChargeTypeVisual(chargeTypeLabel: string) {
+  const normalized = normalizeComparableText(chargeTypeLabel);
+
+  if (normalized.includes("renta")) {
+    return {
+      icon: <Home size={16} />,
+      background: "#EEF2FF",
+      color: "#4338CA",
+    };
+  }
+
+  if (normalized.includes("mantenimiento")) {
+    return {
+      icon: <Wrench size={16} />,
+      background: "#ECFDF5",
+      color: "#047857",
+    };
+  }
+
+  if (normalized.includes("servicio")) {
+    return {
+      icon: <Wifi size={16} />,
+      background: "#EFF6FF",
+      color: "#1D4ED8",
+    };
+  }
+
+  if (normalized.includes("agua")) {
+    return {
+      icon: <Droplets size={16} />,
+      background: "#EFF6FF",
+      color: "#2563EB",
+    };
+  }
+
+  if (normalized.includes("estacionamiento")) {
+    return {
+      icon: <ParkingCircle size={16} />,
+      background: "#FEF3C7",
+      color: "#B45309",
+    };
+  }
+
+  if (normalized.includes("penal")) {
+    return {
+      icon: <TriangleAlert size={16} />,
+      background: "#FEF2F2",
+      color: "#DC2626",
+    };
+  }
+
+  return {
+    icon: <MoreHorizontal size={16} />,
+    background: "#F3F4F6",
+    color: "#6B7280",
+  };
+}
+
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
@@ -617,6 +684,7 @@ export default function CollectionsPage() {
   const [importingInvoice, setImportingInvoice] = useState(false);
   const [deleteRecordId, setDeleteRecordId] = useState<string | null>(null);
   const [deletingRecord, setDeletingRecord] = useState(false);
+  const [expandedRowIds, setExpandedRowIds] = useState<string[]>([]);
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     recordId: "",
@@ -1295,6 +1363,18 @@ export default function CollectionsPage() {
     ? collectionRowsById.get(paymentRecordId) || null
     : null;
 
+  function rowIsExpanded(rowId: string) {
+    return expandedRowIds.includes(rowId);
+  }
+
+  function toggleRowExpanded(rowId: string) {
+    setExpandedRowIds((current) =>
+      current.includes(rowId)
+        ? current.filter((item) => item !== rowId)
+        : [...current, rowId]
+    );
+  }
+
   function resetImportInvoiceState() {
     setImportForm(createDefaultImportForm());
     setImportXmlFile(null);
@@ -1956,161 +2036,202 @@ export default function CollectionsPage() {
       <div style={{ height: 16 }} />
 
       <SectionCard title="Listado de cobranza" icon={<Wallet size={18} />}>
-        <AppTable
-          rows={filteredRows}
-          emptyState="Todavía no hay registros de cobranza. Importa una factura o crea un cargo manual para empezar a operar este módulo."
-          columns={[
-            {
-              key: "concept",
-              header: "Concepto",
-              width: "16%",
-              render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4, maxWidth: 180 }}>
-                  <span style={{ ...cellPrimaryStrongStyle, lineHeight: 1.25 }}>{row.title}</span>
-                  <span style={cellSecondaryStyle}>{row.chargeTypeLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "building",
-              header: "Edificio / departamento",
-              width: "16%",
-              render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={cellPrimaryStyle}>{row.buildingName}</span>
-                  <span style={cellSecondaryStyle}>{row.unitLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "tenant",
-              header: "Inquilino",
-              width: "15%",
-              render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={cellPrimaryStyle}>{row.tenantLabel}</span>
-                  <span style={cellSecondaryStyle}>{row.responsiblePayerLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "period",
-              header: "Periodo",
-              width: 90,
-              render: (row: CollectionRow) => (
-                <span style={cellPrimaryStyle}>{row.periodLabel}</span>
-              ),
-            },
-            {
-              key: "dueDate",
-              header: "Vencimiento",
-              width: 110,
-              render: (row: CollectionRow) => (
-                <span style={cellPrimaryStyle}>{row.dueDateLabel}</span>
-              ),
-            },
-            {
-              key: "amount",
-              header: "Monto / cobrado",
-              width: 120,
-              render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={cellPrimaryStrongStyle}>{row.amountDueLabel}</span>
-                  <span style={cellSecondaryStyle}>{row.amountCollectedLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "balance",
-              header: "Saldo",
-              width: 100,
-              render: (row: CollectionRow) => (
-                <span
-                  style={{
-                    ...cellPrimaryStrongStyle,
-                    color: row.balance > 0 ? "#B91C1C" : "#166534",
-                  }}
-                >
-                  {row.balanceLabel}
-                </span>
-              ),
-            },
-            {
-              key: "status",
-              header: "Estado",
-              width: 100,
-              render: (row: CollectionRow) => {
-                const colors = getStatusColors(row.status);
+        {filteredRows.length === 0 ? (
+          <div style={emptyInlineBoxStyle}>
+            Todavía no hay registros de cobranza. Importa una factura o crea un cargo manual para empezar a operar este módulo.
+          </div>
+        ) : (
+          <div style={collectionListWrapStyle}>
+            <div style={collectionListHeaderStyle}>
+              <div>Concepto</div>
+              <div>Edificio / unidad</div>
+              <div>Inquilino</div>
+              <div>Periodo</div>
+              <div>Vencimiento</div>
+              <div>Monto</div>
+              <div>Estado</div>
+              <div>Actividad</div>
+              <div>Acciones</div>
+            </div>
 
-                return (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: `1px solid ${colors.border}`,
-                      background: colors.background,
-                      color: colors.text,
-                      fontSize: 12,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {row.statusLabel}
-                  </span>
-                );
-              },
-            },
-            {
-              key: "activity",
-              header: "Actividad",
-              width: 96,
-              render: (row: CollectionRow) => (
-                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <span style={cellSecondaryStyle}>
-                    {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
-                  </span>
-                  <span style={cellSecondaryStyle}>
-                    {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
-                  </span>
-                </div>
-              ),
-            },
-            {
-              key: "actions",
-              header: "Acciones",
-              width: 132,
-              render: (row: CollectionRow) => (
-                <div style={{ display: "grid", gap: 8 }}>
-                  <button
-                    type="button"
-                    onClick={() => setDetailRecordId(row.id)}
-                    style={tableActionButtonStyle}
-                  >
-                    <Eye size={14} />
-                    Detalle
-                  </button>
+            {filteredRows.map((row) => {
+              const colors = getStatusColors(row.status);
+              const chargeVisual = getChargeTypeVisual(row.chargeTypeLabel);
+              const isExpanded = rowIsExpanded(row.id);
 
-                  <button
-                    type="button"
-                    onClick={() => openPaymentModal(row)}
-                    disabled={row.balance <= 0}
-                    style={{
-                      ...tablePrimaryButtonStyle,
-                      opacity: row.balance <= 0 ? 0.55 : 1,
-                      cursor: row.balance <= 0 ? "not-allowed" : "pointer",
-                    }}
-                  >
-                    <Plus size={14} />
-                    Abono
-                  </button>
+              return (
+                <div key={row.id} style={collectionRowCardStyle}>
+                  <div style={collectionRowTopStyle}>
+                    <div style={collectionCellConceptStyle}>
+                      <div
+                        style={{
+                          ...chargeTypeIconWrapStyle,
+                          background: chargeVisual.background,
+                          color: chargeVisual.color,
+                        }}
+                      >
+                        {chargeVisual.icon}
+                      </div>
+
+                      <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                        <div style={{ ...cellPrimaryStrongStyle, fontSize: 20, lineHeight: 1.2 }}>
+                          {row.title}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => toggleRowExpanded(row.id)}
+                          style={inlineLinkButtonStyle}
+                        >
+                          {isExpanded ? "Ocultar detalles" : "Ver detalles"}
+                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <div style={cellPrimaryStyle}>{row.buildingName}</div>
+                      <div style={cellSecondaryStyle}>{row.unitLabel}</div>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <div style={cellPrimaryStyle}>{row.tenantLabel}</div>
+                      <div style={cellSecondaryStyle}>{row.responsiblePayerLabel}</div>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <div style={cellPrimaryStyle}>{row.periodLabel}</div>
+                      <div style={cellSecondaryStyle}>{row.chargeTypeLabel}</div>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <div style={cellPrimaryStyle}>{row.dueDateLabel}</div>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <div style={cellPrimaryStrongStyle}>{row.amountDueLabel}</div>
+                      <div style={cellSecondaryStyle}>{row.amountCollectedLabel} cobrados</div>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <span
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          padding: "6px 10px",
+                          borderRadius: 999,
+                          border: `1px solid ${colors.border}`,
+                          background: colors.background,
+                          color: colors.text,
+                          fontSize: 12,
+                          fontWeight: 800,
+                          whiteSpace: "nowrap",
+                          width: "fit-content",
+                        }}
+                      >
+                        {row.statusLabel}
+                      </span>
+                    </div>
+
+                    <div style={collectionCellStyle}>
+                      <div style={cellSecondaryStyle}>
+                        {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
+                      </div>
+                      <div style={cellSecondaryStyle}>
+                        {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
+                      </div>
+                    </div>
+
+                    <div style={collectionActionsCellStyle}>
+                      <button
+                        type="button"
+                        onClick={() => openPaymentModal(row)}
+                        disabled={row.balance <= 0}
+                        style={{
+                          ...tablePrimaryButtonStyle,
+                          width: "100%",
+                          opacity: row.balance <= 0 ? 0.55 : 1,
+                          cursor: row.balance <= 0 ? "not-allowed" : "pointer",
+                        }}
+                      >
+                        <Plus size={14} />
+                        Abono
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setDeleteRecordId(row.id)}
+                        style={{
+                          ...tableDangerButtonStyle,
+                          width: "100%",
+                        }}
+                      >
+                        <Trash2 size={14} />
+                        Borrar
+                      </button>
+                    </div>
+                  </div>
+
+                  {isExpanded ? (
+                    <div style={collectionRowExpandedStyle}>
+                      <div style={detailTopGridStyle}>
+                        <div style={detailBlockStyle}>
+                          <div style={detailLabelStyle}>Concepto completo</div>
+                          <div style={detailValueStyle}>{row.title}</div>
+                        </div>
+
+                        <div style={detailBlockStyle}>
+                          <div style={detailLabelStyle}>Ubicación</div>
+                          <div style={detailValueStyle}>
+                            {row.buildingName} · {row.unitLabel}
+                          </div>
+                        </div>
+
+                        <div style={detailBlockStyle}>
+                          <div style={detailLabelStyle}>Inquilino</div>
+                          <div style={detailValueStyle}>{row.tenantLabel}</div>
+                        </div>
+
+                        <div style={detailBlockStyle}>
+                          <div style={detailLabelStyle}>Responsable de pago</div>
+                          <div style={detailValueStyle}>{row.responsiblePayerLabel}</div>
+                        </div>
+
+                        <div style={detailBlockStyle}>
+                          <div style={detailLabelStyle}>Saldo pendiente</div>
+                          <div style={detailValueStyle}>{row.balanceLabel}</div>
+                        </div>
+
+                        <div style={detailBlockStyle}>
+                          <div style={detailLabelStyle}>Método</div>
+                          <div style={detailValueStyle}>{row.paymentMethodLabel}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                        <UiButton
+                          variant="secondary"
+                          onClick={() => setDetailRecordId(row.id)}
+                          icon={<Eye size={16} />}
+                        >
+                          Ver detalle completo
+                        </UiButton>
+
+                        <UiButton
+                          onClick={() => openPaymentModal(row)}
+                          icon={<Plus size={16} />}
+                          disabled={row.balance <= 0}
+                        >
+                          Registrar abono
+                        </UiButton>
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              ),
-            },
-          ]}
-        />
+              );
+            })}
+          </div>
+        )}
       </SectionCard>
 
       <Modal
@@ -3131,6 +3252,109 @@ const tablePrimaryButtonStyle: CSSProperties = {
   color: "#1D4ED8",
   fontSize: 12,
   fontWeight: 700,
+};
+
+const tableDangerButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: 6,
+  padding: "8px 10px",
+  borderRadius: 10,
+  border: "1px solid #FECACA",
+  background: "#FEF2F2",
+  color: "#B91C1C",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const collectionListWrapStyle: CSSProperties = {
+  display: "grid",
+  gap: 14,
+};
+
+const collectionListHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(240px, 2.1fr) minmax(140px, 1.2fr) minmax(150px, 1.35fr) minmax(90px, 0.8fr) minmax(110px, 0.95fr) minmax(120px, 1fr) minmax(96px, 0.8fr) minmax(90px, 0.75fr) minmax(120px, 1fr)",
+  gap: 14,
+  padding: "0 10px",
+  color: "#6B7280",
+  fontSize: 12,
+  fontWeight: 800,
+  textTransform: "uppercase",
+  letterSpacing: "0.04em",
+};
+
+const collectionRowCardStyle: CSSProperties = {
+  borderRadius: 16,
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+  overflow: "hidden",
+};
+
+const collectionRowTopStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(240px, 2.1fr) minmax(140px, 1.2fr) minmax(150px, 1.35fr) minmax(90px, 0.8fr) minmax(110px, 0.95fr) minmax(120px, 1fr) minmax(96px, 0.8fr) minmax(90px, 0.75fr) minmax(120px, 1fr)",
+  gap: 14,
+  alignItems: "center",
+  padding: "18px 10px",
+};
+
+const collectionCellConceptStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 12,
+  minWidth: 0,
+};
+
+const chargeTypeIconWrapStyle: CSSProperties = {
+  width: 40,
+  height: 40,
+  borderRadius: 12,
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
+const inlineLinkButtonStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 6,
+  border: "none",
+  background: "transparent",
+  color: "#2563EB",
+  padding: 0,
+  fontSize: 13,
+  fontWeight: 700,
+  cursor: "pointer",
+  width: "fit-content",
+};
+
+const collectionCellStyle: CSSProperties = {
+  display: "grid",
+  gap: 4,
+  minWidth: 0,
+};
+
+const collectionActionsCellStyle: CSSProperties = {
+  display: "grid",
+  gap: 8,
+};
+
+const collectionRowExpandedStyle: CSSProperties = {
+  display: "grid",
+  gap: 16,
+  padding: "0 10px 18px 62px",
+  borderTop: "1px solid #E5E7EB",
+  background: "#FCFCFD",
+};
+
+const dangerBoxStyle: CSSProperties = {
+  borderRadius: 14,
+  border: "1px solid #FECACA",
+  background: "#FEF2F2",
+  padding: 14,
 };
 
 const detailTopGridStyle: CSSProperties = {
