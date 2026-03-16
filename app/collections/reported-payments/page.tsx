@@ -1,11 +1,13 @@
-// app/collections/reported-payments/page.tsx
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
   AlertTriangle,
   CheckCircle,
+  Clock3,
+  CreditCard,
   Eye,
+  FileWarning,
   Wallet,
   XCircle,
 } from "lucide-react";
@@ -18,6 +20,8 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import UiButton from "@/components/UiButton";
+import Modal from "@/components/Modal";
+import MetricCard from "@/components/MetricCard";
 
 type ReportedPayment = {
   id: string;
@@ -28,12 +32,17 @@ type ReportedPayment = {
   payment_date: string;
   notes: string | null;
   proof_file_url: string | null;
+  proof_file_name: string | null;
   review_status: string;
+  rejection_reason: string | null;
+  reviewed_at: string | null;
   tenants?: {
     full_name: string | null;
     email: string | null;
   } | null;
 };
+
+type ReviewTab = "pending_review" | "approved" | "rejected";
 
 const sectionTextStyle: React.CSSProperties = {
   fontSize: 14,
@@ -54,7 +63,7 @@ const badgeStyleBase: React.CSSProperties = {
   padding: "6px 10px",
   borderRadius: 999,
   fontSize: 12,
-  fontWeight: 700,
+  fontWeight: 800,
 };
 
 function formatCurrency(value?: number | null) {
@@ -78,6 +87,21 @@ function formatDate(dateKey?: string | null) {
   });
 }
 
+function formatDateTime(dateKey?: string | null) {
+  if (!dateKey) return "Sin fecha";
+
+  const date = new Date(dateKey);
+  if (Number.isNaN(date.getTime())) return "Sin fecha";
+
+  return new Intl.DateTimeFormat("es-MX", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date);
+}
+
 function normalizeReportedPayment(raw: any): ReportedPayment {
   return {
     id: raw?.id ?? "",
@@ -88,7 +112,10 @@ function normalizeReportedPayment(raw: any): ReportedPayment {
     payment_date: raw?.payment_date ?? "",
     notes: raw?.notes ?? null,
     proof_file_url: raw?.proof_file_url ?? null,
+    proof_file_name: raw?.proof_file_name ?? null,
     review_status: raw?.review_status ?? "pending_review",
+    rejection_reason: raw?.rejection_reason ?? null,
+    reviewed_at: raw?.reviewed_at ?? null,
     tenants: raw?.tenants
       ? {
           full_name: raw.tenants?.full_name ?? null,
@@ -96,6 +123,42 @@ function normalizeReportedPayment(raw: any): ReportedPayment {
         }
       : null,
   };
+}
+
+function getStatusVisual(status: string) {
+  if (status === "approved") {
+    return {
+      label: "Aprobado",
+      background: "#ECFDF5",
+      border: "#A7F3D0",
+      color: "#166534",
+      icon: <CheckCircle size={14} />,
+    };
+  }
+
+  if (status === "rejected") {
+    return {
+      label: "Rechazado",
+      background: "#FEF2F2",
+      border: "#FECACA",
+      color: "#B91C1C",
+      icon: <XCircle size={14} />,
+    };
+  }
+
+  return {
+    label: "Pendiente de revisión",
+    background: "#FEF3C7",
+    border: "#FDE68A",
+    color: "#92400E",
+    icon: <Clock3 size={14} />,
+  };
+}
+
+function getTabLabel(tab: ReviewTab) {
+  if (tab === "approved") return "Aprobados";
+  if (tab === "rejected") return "Rechazados";
+  return "Pendientes";
 }
 
 export default function ReportedPaymentsPage() {
@@ -106,7 +169,12 @@ export default function ReportedPaymentsPage() {
   const [pageError, setPageError] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
 
-  const isSuperAdmin = user?.role === "admin" && Boolean(user?.is_superadmin);
+  const [activeTab, setActiveTab] = useState<ReviewTab>("pending_review");
+
+  const [rejectingPayment, setRejectingPayment] = useState<ReportedPayment | null>(null);
+  const [rejectionReason, setRejectionReason] = useState("");
+  const [savingRejection, setSavingRejection] = useState(false);
+
   const isCompanyAdmin = user?.role === "admin" && !Boolean(user?.is_superadmin);
 
   async function loadPayments() {
@@ -124,13 +192,15 @@ export default function ReportedPaymentsPage() {
         payment_date,
         notes,
         proof_file_url,
+        proof_file_name,
         review_status,
+        rejection_reason,
+        reviewed_at,
         tenants:tenant_id (
           full_name,
           email
         )
       `)
-      .eq("review_status", "pending_review")
       .order("created_at", { ascending: false });
 
     if (isCompanyAdmin && user?.company_id) {
@@ -158,7 +228,33 @@ export default function ReportedPaymentsPage() {
   useEffect(() => {
     if (!user) return;
     void loadPayments();
-  }, [user?.id, user?.company_id, isCompanyAdmin, isSuperAdmin]);
+  }, [user?.id, user?.company_id, isCompanyAdmin]);
+
+  const pendingPayments = useMemo(
+    () => payments.filter((item) => item.review_status === "pending_review"),
+    [payments]
+  );
+
+  const approvedPayments = useMemo(
+    () => payments.filter((item) => item.review_status === "approved"),
+    [payments]
+  );
+
+  const rejectedPayments = useMemo(
+    () => payments.filter((item) => item.review_status === "rejected"),
+    [payments]
+  );
+
+  const activePayments = useMemo(() => {
+    if (activeTab === "approved") return approvedPayments;
+    if (activeTab === "rejected") return rejectedPayments;
+    return pendingPayments;
+  }, [activeTab, pendingPayments, approvedPayments, rejectedPayments]);
+
+  const pendingTotalAmount = pendingPayments.reduce(
+    (sum, item) => sum + Number(item.amount_reported || 0),
+    0
+  );
 
   async function approvePayment(payment: ReportedPayment) {
     if (!payment.collection_record_id) {
@@ -196,13 +292,13 @@ export default function ReportedPaymentsPage() {
 
       const reviewPayload: Record<string, any> = {
         review_status: "approved",
+        rejection_reason: null,
+        reviewed_at: new Date().toISOString(),
       };
 
       if (user?.id) {
         reviewPayload.reviewed_by = user.id;
       }
-
-      reviewPayload.reviewed_at = new Date().toISOString();
 
       const { error: updateReportedError } = await supabase
         .from("tenant_reported_payments")
@@ -222,36 +318,52 @@ export default function ReportedPaymentsPage() {
     }
   }
 
-  async function rejectPayment(payment: ReportedPayment) {
-    setProcessingId(payment.id);
+  function openRejectModal(payment: ReportedPayment) {
+    setRejectingPayment(payment);
+    setRejectionReason(payment.rejection_reason || "");
+  }
+
+  async function submitRejection() {
+    if (!rejectingPayment) return;
+
+    const trimmedReason = rejectionReason.trim();
+
+    if (!trimmedReason) {
+      setPageError("Escribe el motivo del rechazo.");
+      return;
+    }
+
+    setSavingRejection(true);
     setPageError("");
 
     try {
       const reviewPayload: Record<string, any> = {
         review_status: "rejected",
+        rejection_reason: trimmedReason,
+        reviewed_at: new Date().toISOString(),
       };
 
       if (user?.id) {
         reviewPayload.reviewed_by = user.id;
       }
 
-      reviewPayload.reviewed_at = new Date().toISOString();
-
       const { error } = await supabase
         .from("tenant_reported_payments")
         .update(reviewPayload)
-        .eq("id", payment.id);
+        .eq("id", rejectingPayment.id);
 
       if (error) {
         throw error;
       }
 
       await loadPayments();
+      setRejectingPayment(null);
+      setRejectionReason("");
     } catch (error: any) {
       console.error("Error rechazando pago reportado:", error);
       setPageError(error?.message || "No se pudo rechazar el pago reportado.");
     } finally {
-      setProcessingId(null);
+      setSavingRejection(false);
     }
   }
 
@@ -262,6 +374,90 @@ export default function ReportedPaymentsPage() {
         subtitle="Revisión administrativa de pagos enviados por inquilinos."
         titleIcon={<Wallet size={20} />}
       />
+
+      <AppGrid minWidth={220}>
+        <MetricCard
+          label="Pendientes"
+          value={String(pendingPayments.length)}
+          helper="En espera de decisión"
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#FEF3C7",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <Clock3 size={18} color="#92400E" />
+            </div>
+          }
+        />
+
+        <MetricCard
+          label="Aprobados"
+          value={String(approvedPayments.length)}
+          helper="Ya aplicados"
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#DCFCE7",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <CheckCircle size={18} color="#166534" />
+            </div>
+          }
+        />
+
+        <MetricCard
+          label="Rechazados"
+          value={String(rejectedPayments.length)}
+          helper="Con motivo registrado"
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#FEE2E2",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <XCircle size={18} color="#B91C1C" />
+            </div>
+          }
+        />
+
+        <MetricCard
+          label="Monto pendiente"
+          value={formatCurrency(pendingTotalAmount)}
+          helper="Reportado por revisar"
+          icon={
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: 10,
+                background: "#EEF2FF",
+                display: "grid",
+                placeItems: "center",
+              }}
+            >
+              <CreditCard size={18} color="#4338CA" />
+            </div>
+          }
+        />
+      </AppGrid>
+
+      <div style={{ height: 16 }} />
 
       {pageError ? (
         <AppCard
@@ -304,13 +500,41 @@ export default function ReportedPaymentsPage() {
         </AppCard>
       ) : null}
 
+      <AppCard style={{ marginBottom: 16 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {(["pending_review", "approved", "rejected"] as ReviewTab[]).map((tab) => {
+            const isActive = activeTab === tab;
+
+            return (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => setActiveTab(tab)}
+                style={{
+                  border: isActive ? "1px solid #C7D2FE" : "1px solid #E5E7EB",
+                  background: isActive ? "#EEF2FF" : "#FFFFFF",
+                  color: isActive ? "#3730A3" : "#374151",
+                  borderRadius: 12,
+                  padding: "10px 14px",
+                  fontSize: 14,
+                  fontWeight: 800,
+                  cursor: "pointer",
+                }}
+              >
+                {getTabLabel(tab)}
+              </button>
+            );
+          })}
+        </div>
+      </AppCard>
+
       {loading ? (
         <AppCard>
           <div style={sectionTextStyle}>Cargando pagos reportados...</div>
         </AppCard>
       ) : null}
 
-      {!loading && !payments.length ? (
+      {!loading && !activePayments.length ? (
         <AppCard>
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <div
@@ -326,7 +550,7 @@ export default function ReportedPaymentsPage() {
                 flexShrink: 0,
               }}
             >
-              <AlertTriangle size={18} />
+              <FileWarning size={18} />
             </div>
 
             <div>
@@ -337,22 +561,24 @@ export default function ReportedPaymentsPage() {
                   color: "#111827",
                 }}
               >
-                No hay pagos pendientes
+                No hay registros en esta vista
               </div>
               <div style={sectionTextStyle}>
-                En este momento no existen pagos reportados pendientes de revisión.
+                No existen pagos reportados en la pestaña actual.
               </div>
             </div>
           </div>
         </AppCard>
       ) : null}
 
-      {!loading && payments.length ? (
+      {!loading && activePayments.length ? (
         <AppGrid minWidth={320}>
-          {payments.map((payment) => {
+          {activePayments.map((payment) => {
             const isProcessing = processingId === payment.id;
             const tenantLabel =
               payment.tenants?.full_name || payment.tenants?.email || "Inquilino sin nombre";
+
+            const statusVisual = getStatusVisual(payment.review_status);
 
             return (
               <AppCard key={payment.id}>
@@ -376,11 +602,14 @@ export default function ReportedPaymentsPage() {
                     <span
                       style={{
                         ...badgeStyleBase,
-                        background: "#FEF3C7",
-                        color: "#92400E",
+                        background: statusVisual.background,
+                        border: `1px solid ${statusVisual.border}`,
+                        color: statusVisual.color,
+                        gap: 6,
                       }}
                     >
-                      Pendiente de revisión
+                      {statusVisual.icon}
+                      {statusVisual.label}
                     </span>
                   </div>
 
@@ -427,6 +656,37 @@ export default function ReportedPaymentsPage() {
                     </div>
                   ) : null}
 
+                  {payment.review_status === "rejected" && payment.rejection_reason ? (
+                    <div
+                      style={{
+                        border: "1px solid #FECACA",
+                        background: "#FEF2F2",
+                        borderRadius: 12,
+                        padding: 12,
+                      }}
+                    >
+                      <div
+                        style={{
+                          fontSize: 14,
+                          fontWeight: 700,
+                          color: "#991B1B",
+                          marginBottom: 4,
+                        }}
+                      >
+                        Motivo del rechazo
+                      </div>
+                      <div style={{ ...sectionTextStyle, color: "#991B1B" }}>
+                        {payment.rejection_reason}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {payment.review_status !== "pending_review" && payment.reviewed_at ? (
+                    <div style={{ ...sectionTextStyle, fontWeight: 600 }}>
+                      Revisado: {formatDateTime(payment.reviewed_at)}
+                    </div>
+                  ) : null}
+
                   {payment.proof_file_url ? (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <a
@@ -450,7 +710,7 @@ export default function ReportedPaymentsPage() {
                         }}
                       >
                         <Eye size={15} />
-                        Se abre en una pestaña nueva
+                        {payment.proof_file_name || "Archivo adjunto"}
                       </div>
                     </div>
                   ) : (
@@ -469,53 +729,156 @@ export default function ReportedPaymentsPage() {
                     </div>
                   )}
 
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      flexWrap: "wrap",
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <UiButton
-                      onClick={() => void rejectPayment(payment)}
-                      variant="secondary"
-                      disabled={isProcessing}
+                  {payment.review_status === "pending_review" ? (
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 10,
+                        flexWrap: "wrap",
+                        justifyContent: "flex-end",
+                      }}
                     >
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
+                      <UiButton
+                        onClick={() => openRejectModal(payment)}
+                        variant="secondary"
+                        disabled={isProcessing}
                       >
-                        <XCircle size={16} />
-                        {isProcessing ? "Procesando..." : "Rechazar"}
-                      </span>
-                    </UiButton>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <XCircle size={16} />
+                          {isProcessing ? "Procesando..." : "Rechazar"}
+                        </span>
+                      </UiButton>
 
-                    <UiButton
-                      onClick={() => void approvePayment(payment)}
-                      disabled={isProcessing}
-                    >
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
+                      <UiButton
+                        onClick={() => void approvePayment(payment)}
+                        disabled={isProcessing}
                       >
-                        <CheckCircle size={16} />
-                        {isProcessing ? "Procesando..." : "Aprobar"}
-                      </span>
-                    </UiButton>
-                  </div>
+                        <span
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                          }}
+                        >
+                          <CheckCircle size={16} />
+                          {isProcessing ? "Procesando..." : "Aprobar"}
+                        </span>
+                      </UiButton>
+                    </div>
+                  ) : null}
                 </div>
               </AppCard>
             );
           })}
         </AppGrid>
       ) : null}
+
+      <Modal
+        open={Boolean(rejectingPayment)}
+        title="Rechazar pago reportado"
+        onClose={() => {
+          if (!savingRejection) {
+            setRejectingPayment(null);
+            setRejectionReason("");
+          }
+        }}
+      >
+        {rejectingPayment ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <div
+              style={{
+                borderRadius: 12,
+                border: "1px solid #E5E7EB",
+                background: "#F9FAFB",
+                padding: 12,
+              }}
+            >
+              <div style={{ ...sectionTextStyle, fontWeight: 700, color: "#111827" }}>
+                {rejectingPayment.tenants?.full_name ||
+                  rejectingPayment.tenants?.email ||
+                  "Inquilino"}
+              </div>
+              <div style={sectionTextStyle}>
+                Monto: {formatCurrency(rejectingPayment.amount_reported)}
+              </div>
+              <div style={sectionTextStyle}>
+                Fecha reportada: {formatDate(rejectingPayment.payment_date)}
+              </div>
+            </div>
+
+            <label style={{ display: "grid", gap: 8 }}>
+              <span
+                style={{
+                  fontSize: 13,
+                  fontWeight: 800,
+                  color: "#6B7280",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                }}
+              >
+                Motivo del rechazo
+              </span>
+
+              <textarea
+                value={rejectionReason}
+                onChange={(event) => setRejectionReason(event.target.value)}
+                rows={4}
+                placeholder="Escribe el motivo para que quede registrado."
+                style={{
+                  width: "100%",
+                  borderRadius: 12,
+                  border: "1px solid #D1D5DB",
+                  background: "#FFFFFF",
+                  padding: "10px 12px",
+                  fontSize: 14,
+                  color: "#111827",
+                  outline: "none",
+                  resize: "vertical",
+                }}
+              />
+            </label>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!savingRejection) {
+                    setRejectingPayment(null);
+                    setRejectionReason("");
+                  }
+                }}
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 8,
+                  minWidth: 110,
+                  padding: "10px 14px",
+                  borderRadius: 12,
+                  border: "1px solid #D1D5DB",
+                  background: "#FFFFFF",
+                  color: "#374151",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                }}
+              >
+                Cancelar
+              </button>
+
+              <UiButton onClick={() => void submitRejection()} disabled={savingRejection}>
+                {savingRejection ? "Guardando..." : "Confirmar rechazo"}
+              </UiButton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
     </PageContainer>
   );
 }
