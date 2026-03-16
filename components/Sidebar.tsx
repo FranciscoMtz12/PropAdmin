@@ -40,6 +40,12 @@ const ADMIN_ITEMS: SidebarItem[] = [
   { label: "Calendario", href: "/calendar", icon: CalendarDays, status: "done" },
   { label: "Pagos", href: "/payments", icon: ReceiptText, status: "done" },
   { label: "Cobranza", href: "/collections", icon: Wallet, status: "partial" },
+  {
+    label: "Pagos reportados",
+    href: "/collections/reported-payments",
+    icon: CreditCard,
+    status: "partial",
+  },
   { label: "Edificios", href: "/buildings", icon: Building2, status: "done" },
   { label: "Inquilinos", href: "/tenants", icon: Users, status: "done" },
   { label: "Limpieza", href: "/cleaning", icon: Sparkles, status: "partial" },
