@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FileText, Link2, Save, Upload, WandSparkles } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -57,7 +57,6 @@ type InvoiceFormProps = {
   mode: InvoiceFormMode;
   invoiceId?: string;
   initialData?: ExistingInvoiceData | null;
-  presetCollectionRecordId?: string | null;
 };
 
 type FormState = {
@@ -144,11 +143,13 @@ export default function InvoiceForm({
   mode,
   invoiceId,
   initialData = null,
-  presetCollectionRecordId = null,
 }: InvoiceFormProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
+
+  const preselectedRecordId = searchParams.get("recordId") || "";
 
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -169,6 +170,7 @@ export default function InvoiceForm({
     initialData?.originalXmlFilename || ""
   );
   const [xmlAutofillStatus, setXmlAutofillStatus] = useState("");
+  const [queryRecordPrefillApplied, setQueryRecordPrefillApplied] = useState(false);
 
   useEffect(() => {
     if (!initialData) return;
@@ -196,16 +198,6 @@ export default function InvoiceForm({
     setExistingPdfFilename(initialData.originalPdfFilename || "");
     setExistingXmlFilename(initialData.originalXmlFilename || "");
   }, [initialData]);
-
-  useEffect(() => {
-    if (mode !== "create") return;
-    if (!presetCollectionRecordId) return;
-
-    setForm((prev) => ({
-      ...prev,
-      collectionRecordId: prev.collectionRecordId || presetCollectionRecordId,
-    }));
-  }, [mode, presetCollectionRecordId]);
 
   useEffect(() => {
     if (loading || !user || user.role !== "admin") return;
@@ -276,6 +268,47 @@ export default function InvoiceForm({
     };
   }, [loading, user, showToast]);
 
+  useEffect(() => {
+    if (mode !== "create") return;
+    if (!preselectedRecordId) return;
+    if (loadingRecords) return;
+    if (queryRecordPrefillApplied) return;
+
+    const matchingRecord = records.find((record) => record.id === preselectedRecordId);
+
+    if (!matchingRecord) {
+      setQueryRecordPrefillApplied(true);
+      showToast({
+        type: "warning",
+        message:
+          "Abriste la factura desde cobranza, pero no encontré ese cobro disponible para tu usuario.",
+      });
+      return;
+    }
+
+    setForm((prev) => {
+      if (prev.collectionRecordId === matchingRecord.id) return prev;
+      return {
+        ...prev,
+        collectionRecordId: matchingRecord.id,
+      };
+    });
+
+    setQueryRecordPrefillApplied(true);
+
+    showToast({
+      type: "info",
+      message: "Precargué el cobro relacionado para acelerar la captura de la factura.",
+    });
+  }, [
+    loadingRecords,
+    mode,
+    preselectedRecordId,
+    queryRecordPrefillApplied,
+    records,
+    showToast,
+  ]);
+
   const selectedRecord = useMemo(() => {
     return records.find((record) => record.id === form.collectionRecordId) || null;
   }, [records, form.collectionRecordId]);
@@ -283,19 +316,38 @@ export default function InvoiceForm({
   useEffect(() => {
     if (!selectedRecord) return;
 
-    setForm((prev) => ({
-      ...prev,
-      periodYear: prev.periodYear || String(selectedRecord.periodYear || ""),
-      periodMonth: prev.periodMonth || String(selectedRecord.periodMonth || ""),
-      chargeCategory:
-        prev.chargeCategory && prev.chargeCategory !== "other"
-          ? prev.chargeCategory
-          : inferChargeCategoryFromTitle(selectedRecord.title),
-      customerName: prev.customerName || selectedRecord.customerName || selectedRecord.tenantName,
-      customerTaxId: prev.customerTaxId || selectedRecord.customerTaxId || "",
-      description: prev.description || selectedRecord.title,
-      total: prev.total || String(selectedRecord.amountDue || ""),
-    }));
+    setForm((prev) => {
+      const inferredChargeCategory = inferChargeCategoryFromTitle(selectedRecord.title);
+      const recordAmount = selectedRecord.amountDue > 0 ? String(selectedRecord.amountDue) : "";
+
+      const shouldUseRecordAmountAsBase =
+        !prev.total || Number(prev.total || 0) === selectedRecord.amountDue;
+
+      const nextSubtotal =
+        prev.subtotal || (recordAmount && shouldUseRecordAmountAsBase ? recordAmount : "");
+
+      const nextTax =
+        prev.tax || (recordAmount && shouldUseRecordAmountAsBase ? "0" : "");
+
+      const nextTotal = prev.total || recordAmount;
+
+      return {
+        ...prev,
+        periodYear: prev.periodYear || String(selectedRecord.periodYear || ""),
+        periodMonth: prev.periodMonth || String(selectedRecord.periodMonth || ""),
+        chargeCategory:
+          prev.chargeCategory && prev.chargeCategory !== "other"
+            ? prev.chargeCategory
+            : inferredChargeCategory,
+        customerName:
+          prev.customerName || selectedRecord.customerName || selectedRecord.tenantName,
+        customerTaxId: prev.customerTaxId || selectedRecord.customerTaxId || "",
+        description: prev.description || selectedRecord.title,
+        subtotal: nextSubtotal,
+        tax: nextTax,
+        total: nextTotal,
+      };
+    });
   }, [selectedRecord]);
 
   useEffect(() => {
@@ -567,7 +619,9 @@ export default function InvoiceForm({
         title={mode === "create" ? "Nueva factura" : "Editar factura"}
         subtitle={
           mode === "create"
-            ? "Crea una factura administrativa, sube el PDF y XML, y déjala ligada al cobro correcto."
+            ? preselectedRecordId
+              ? "Llegaste desde cobranza. Ya intenté precargar el cobro relacionado para que captures la factura más rápido."
+              : "Crea una factura administrativa, sube el PDF y XML, y déjala ligada al cobro correcto."
             : "Ajusta la metadata de la factura o reemplaza sus archivos sin salir del flujo administrativo."
         }
         titleIcon={<FileText size={22} />}
@@ -630,6 +684,20 @@ export default function InvoiceForm({
             {selectedRecord ? (
               <AppCard style={{ background: "#F8FAFC", borderStyle: "dashed" }}>
                 <div style={{ display: "grid", gap: 10 }}>
+                  {mode === "create" && preselectedRecordId === selectedRecord.id ? (
+                    <div
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: 10,
+                        background: "#EEF2FF",
+                        color: "#3730A3",
+                        fontSize: 13,
+                        fontWeight: 600,
+                      }}
+                    >
+                      Este cobro llegó precargado desde Collections.
+                    </div>
+                  ) : null}
                   <InfoRow label="Cobro" value={selectedRecord.title} />
                   <InfoRow label="Periodo" value={selectedRecord.periodLabel} />
                   <InfoRow
