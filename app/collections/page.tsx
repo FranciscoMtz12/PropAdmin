@@ -36,7 +36,6 @@ import {
   Clock3,
   CreditCard,
   Eye,
-  FileCode2,
   Filter,
   Landmark,
   Plus,
@@ -45,7 +44,6 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
-import { createInvoiceSignedUrl } from "@/lib/invoiceStorage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useAppToast } from "@/components/AppToastProvider";
 
@@ -79,6 +77,16 @@ type AppUser = {
   email: string | null;
   is_superadmin: boolean | null;
   created_at: string;
+};
+
+type Tenant = {
+  id: string;
+  company_id: string;
+  full_name: string;
+  email: string | null;
+  billing_name: string | null;
+  billing_email: string | null;
+  tax_id: string | null;
 };
 
 type Lease = {
@@ -212,6 +220,23 @@ type PaymentForm = {
   paymentMethod: PaymentMethod;
   reference: string;
   notes: string;
+};
+
+type ChargeMode = "recurring" | "one_time";
+
+type ChargeForm = {
+  chargeMode: ChargeMode;
+  buildingId: string;
+  unitId: string;
+  leaseId: string;
+  chargeType: CollectionChargeType;
+  title: string;
+  responsibilityType: "tenant" | "owner" | "other";
+  amountExpected: string;
+  dueDay: string;
+  initialDueDate: string;
+  notes: string;
+  createFirstRecordNow: boolean;
 };
 
 type CollectionRow = {
@@ -370,6 +395,39 @@ function parsePositiveNumber(value: string) {
   return parsed;
 }
 
+function getMonthLastDay(year: number, month: number) {
+  return new Date(year, month, 0).getDate();
+}
+
+function buildDateKey(year: number, month: number, day: number) {
+  const safeDay = Math.max(1, Math.min(day, getMonthLastDay(year, month)));
+  return `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
+}
+
+function deriveStatusFromDueDate(dueDate: string) {
+  return dueDate < getTodayDateOnlyKey() ? "overdue" : "pending";
+}
+
+function createDefaultChargeForm(): ChargeForm {
+  const todayKey = getTodayDateOnlyKey();
+  const today = parseDateOnly(todayKey);
+
+  return {
+    chargeMode: "recurring",
+    buildingId: "",
+    unitId: "",
+    leaseId: "",
+    chargeType: "rent",
+    title: "",
+    responsibilityType: "tenant",
+    amountExpected: "",
+    dueDay: String(today.getDate()),
+    initialDueDate: todayKey,
+    notes: "",
+    createFirstRecordNow: true,
+  };
+}
+
 function getUserDisplayLabel(user: AppUser | null | undefined) {
   if (!user) return null;
   return user.full_name || user.email || null;
@@ -386,6 +444,7 @@ export default function CollectionsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
   const [appUsers, setAppUsers] = useState<AppUser[]>([]);
+  const [tenants, setTenants] = useState<Tenant[]>([]);
   const [leases, setLeases] = useState<Lease[]>([]);
   const [collectionSchedules, setCollectionSchedules] = useState<CollectionSchedule[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
@@ -399,6 +458,8 @@ export default function CollectionsPage() {
 
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [paymentRecordId, setPaymentRecordId] = useState<string | null>(null);
+  const [createChargeOpen, setCreateChargeOpen] = useState(false);
+  const [creatingCharge, setCreatingCharge] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
@@ -409,6 +470,7 @@ export default function CollectionsPage() {
     reference: "",
     notes: "",
   });
+  const [chargeForm, setChargeForm] = useState<ChargeForm>(createDefaultChargeForm());
 
   useEffect(() => {
     if (loading) return;
@@ -427,6 +489,7 @@ export default function CollectionsPage() {
       buildingsRes,
       unitsRes,
       appUsersRes,
+      tenantsRes,
       leasesRes,
       schedulesRes,
       recordsRes,
@@ -448,6 +511,11 @@ export default function CollectionsPage() {
       supabase
         .from("app_users")
         .select("id, company_id, full_name, email, is_superadmin, created_at")
+        .eq("company_id", user.company_id),
+
+      supabase
+        .from("tenants")
+        .select("id, company_id, full_name, email, billing_name, billing_email, tax_id")
         .eq("company_id", user.company_id),
 
       supabase
@@ -516,6 +584,12 @@ export default function CollectionsPage() {
       return;
     }
 
+    if (tenantsRes.error) {
+      setMessage("No se pudieron cargar los inquilinos.");
+      setLoadingPage(false);
+      return;
+    }
+
     if (leasesRes.error) {
       setMessage("No se pudieron cargar los contratos.");
       setLoadingPage(false);
@@ -555,6 +629,7 @@ export default function CollectionsPage() {
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
     setAppUsers((appUsersRes.data as AppUser[]) || []);
+    setTenants((tenantsRes.data as Tenant[]) || []);
     setLeases((leasesRes.data as Lease[]) || []);
     setCollectionSchedules((schedulesRes.data as CollectionSchedule[]) || []);
     setCollectionRecords((recordsRes.data as CollectionRecord[]) || []);
@@ -676,36 +751,35 @@ export default function CollectionsPage() {
     return new Map(collectionRows.map((row) => [row.id, row]));
   }, [collectionRows]);
 
-  const invoicesByRecordId = useMemo(() => {
-    const map = new Map<string, CollectionInvoice[]>();
-
-    collectionInvoices.forEach((invoice) => {
-      if (!invoice.collection_record_id) return;
-      const current = map.get(invoice.collection_record_id) || [];
-      current.push(invoice);
-      map.set(invoice.collection_record_id, current);
-    });
-
-    return map;
-  }, [collectionInvoices]);
-
-  const primaryInvoiceByRecordId = useMemo(() => {
-    const map = new Map<string, CollectionInvoice>();
-
-    invoicesByRecordId.forEach((invoiceList, recordId) => {
-      const sorted = [...invoiceList].sort((a, b) => {
-        const aDate = a.issued_at || a.created_at;
-        const bDate = b.issued_at || b.created_at;
-        return bDate.localeCompare(aDate);
+  const unitsForSelectedBuilding = useMemo(() => {
+    if (!chargeForm.buildingId) return [];
+    return units
+      .filter((unit) => unit.building_id === chargeForm.buildingId)
+      .sort((a, b) => {
+        const aLabel = a.display_code || a.unit_number || "";
+        const bLabel = b.display_code || b.unit_number || "";
+        return aLabel.localeCompare(bLabel);
       });
+  }, [units, chargeForm.buildingId]);
 
-      if (sorted[0]) {
-        map.set(recordId, sorted[0]);
-      }
-    });
+  const leasesForSelectedUnit = useMemo(() => {
+    if (!chargeForm.unitId) return [];
+    return leases.filter((lease) => lease.unit_id === chargeForm.unitId);
+  }, [leases, chargeForm.unitId]);
 
-    return map;
-  }, [invoicesByRecordId]);
+  const tenantMap = useMemo(() => {
+    return new Map(tenants.map((tenant) => [tenant.id, tenant]));
+  }, [tenants]);
+
+  const selectedChargeLease = useMemo(() => {
+    if (!chargeForm.leaseId) return null;
+    return leases.find((lease) => lease.id === chargeForm.leaseId) || null;
+  }, [leases, chargeForm.leaseId]);
+
+  const selectedChargeTenant = useMemo(() => {
+    if (!selectedChargeLease?.tenant_id) return null;
+    return tenantMap.get(selectedChargeLease.tenant_id) || null;
+  }, [selectedChargeLease, tenantMap]);
 
   const filteredRows = useMemo(() => {
     return collectionRows.filter((row) => {
@@ -764,42 +838,14 @@ export default function CollectionsPage() {
 
   const detailInvoices = useMemo(() => {
     if (!detailRecordId) return [];
-    return invoicesByRecordId.get(detailRecordId) || [];
-  }, [detailRecordId, invoicesByRecordId]);
-
-  const detailPrimaryInvoice = detailInvoices[0] || null;
-
-  async function openInvoiceFile(path?: string | null) {
-    if (!path) {
-      showToast({ type: "warning", message: "Este archivo todavía no está disponible." });
-      return;
-    }
-
-    try {
-      const signedUrl = await createInvoiceSignedUrl(path);
-
-      if (!signedUrl) {
-        showToast({ type: "warning", message: "No encontré el archivo solicitado." });
-        return;
-      }
-
-      window.open(signedUrl, "_blank", "noopener,noreferrer");
-    } catch (error) {
-      console.error(error);
-      showToast({
-        type: "error",
-        message: "No fue posible abrir el archivo de la factura.",
+    return collectionInvoices
+      .filter((invoice) => invoice.collection_record_id === detailRecordId)
+      .sort((a, b) => {
+        const aDate = a.issued_at || a.created_at;
+        const bDate = b.issued_at || b.created_at;
+        return bDate.localeCompare(aDate);
       });
-    }
-  }
-
-  function openInvoiceDetail(invoiceId: string) {
-    router.push(`/collections/invoices/${invoiceId}`);
-  }
-
-  function createInvoiceFromRecord(recordId: string) {
-    router.push(`/collections/invoices/new?recordId=${recordId}`);
-  }
+  }, [collectionInvoices, detailRecordId]);
 
   function openPaymentModal(row: CollectionRow) {
     setPaymentRecordId(row.id);
@@ -869,6 +915,136 @@ export default function CollectionsPage() {
     ? collectionRowsById.get(paymentRecordId) || null
     : null;
 
+  function openCreateChargeModal() {
+    setChargeForm(createDefaultChargeForm());
+    setCreateChargeOpen(true);
+  }
+
+  async function handleCreateCharge() {
+    if (!user?.company_id) return;
+
+    if (!chargeForm.buildingId) {
+      showToast({ type: "error", message: "Selecciona un edificio para el cobro." });
+      return;
+    }
+
+    if (!chargeForm.unitId) {
+      showToast({ type: "error", message: "Selecciona una unidad para el cobro." });
+      return;
+    }
+
+    const amountExpected = parsePositiveNumber(chargeForm.amountExpected);
+    if (!amountExpected) {
+      showToast({ type: "error", message: "Ingresa un monto válido para el cobro." });
+      return;
+    }
+
+    if (!chargeForm.title.trim()) {
+      showToast({ type: "error", message: "Escribe el concepto o título del cobro." });
+      return;
+    }
+
+    if (!chargeForm.initialDueDate) {
+      showToast({ type: "error", message: "Selecciona la fecha inicial de vencimiento." });
+      return;
+    }
+
+    const dueDate = chargeForm.initialDueDate;
+    const dueDateObject = parseDateOnly(dueDate);
+    const derivedDueDay = chargeForm.chargeMode === "recurring"
+      ? Number(chargeForm.dueDay || dueDateObject.getDate())
+      : dueDateObject.getDate();
+
+    if (!Number.isFinite(derivedDueDay) || derivedDueDay < 1 || derivedDueDay > 31) {
+      showToast({ type: "error", message: "Selecciona un día de vencimiento válido." });
+      return;
+    }
+
+    setCreatingCharge(true);
+
+    const schedulePayload = {
+      company_id: user.company_id,
+      building_id: chargeForm.buildingId,
+      unit_id: chargeForm.unitId,
+      lease_id: chargeForm.leaseId || null,
+      charge_type: chargeForm.chargeType,
+      title: chargeForm.title.trim(),
+      responsibility_type: chargeForm.responsibilityType,
+      amount_expected: amountExpected,
+      due_day: derivedDueDay,
+      active: chargeForm.chargeMode === "recurring",
+      notes: chargeForm.notes.trim() || null,
+    };
+
+    const { data: insertedSchedule, error: scheduleError } = await supabase
+      .from("collection_schedules")
+      .insert(schedulePayload)
+      .select("id")
+      .single();
+
+    if (scheduleError || !insertedSchedule) {
+      console.error(scheduleError);
+      showToast({ type: "error", message: "No se pudo crear la configuración del cobro." });
+      setCreatingCharge(false);
+      return;
+    }
+
+    const shouldCreateRecord =
+      chargeForm.chargeMode === "one_time" || chargeForm.createFirstRecordNow;
+
+    if (shouldCreateRecord) {
+      const recordPayload = {
+        collection_schedule_id: insertedSchedule.id,
+        company_id: user.company_id,
+        building_id: chargeForm.buildingId,
+        unit_id: chargeForm.unitId,
+        lease_id: chargeForm.leaseId || null,
+        period_year: dueDateObject.getFullYear(),
+        period_month: dueDateObject.getMonth() + 1,
+        due_date: dueDate,
+        amount_due: amountExpected,
+        amount_collected: 0,
+        status: deriveStatusFromDueDate(dueDate),
+        collected_at: null,
+        payment_method: null,
+        notes: chargeForm.notes.trim() || null,
+      };
+
+      const { error: recordError } = await supabase
+        .from("collection_records")
+        .insert(recordPayload);
+
+      if (recordError) {
+        console.error(recordError);
+        await supabase.from("collection_schedules").delete().eq("id", insertedSchedule.id);
+        showToast({
+          type: "error",
+          message:
+            recordError.message.includes("unique")
+              ? "Ya existe un cobro para ese mismo periodo en esta configuración. Ajusta la fecha inicial."
+              : "No se pudo crear el primer cobro ligado a la configuración.",
+        });
+        setCreatingCharge(false);
+        return;
+      }
+    }
+
+    await loadCollectionsData();
+    setCreatingCharge(false);
+    setCreateChargeOpen(false);
+    setChargeForm(createDefaultChargeForm());
+
+    showToast({
+      type: "success",
+      message:
+        chargeForm.chargeMode === "recurring"
+          ? shouldCreateRecord
+            ? "Cobro recurrente creado y primer registro generado correctamente."
+            : "Cobro recurrente creado correctamente."
+          : "Cargo adicional creado correctamente.",
+    });
+  }
+
   if (loading || loadingPage) {
     return (
       <PageContainer>
@@ -883,7 +1059,15 @@ export default function CollectionsPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Cobranza" titleIcon={<Wallet size={18} />} />
+      <PageHeader
+        title="Cobranza"
+        titleIcon={<Wallet size={18} />}
+        actions={
+          <UiButton onClick={openCreateChargeModal} icon={<Plus size={16} />}>
+            Nuevo cobro
+          </UiButton>
+        }
+      />
 
       {message ? (
         <div
@@ -1125,7 +1309,7 @@ export default function CollectionsPage() {
       <SectionCard title="Listado de cobranza" icon={<Wallet size={18} />}>
         <AppTable
           rows={filteredRows}
-          emptyState="No hay registros de cobranza para mostrar con los filtros actuales."
+          emptyState="Todavía no hay registros de cobranza. Crea un nuevo cobro para empezar a operar este módulo."
           columns={[
             {
               key: "concept",
@@ -1225,92 +1409,46 @@ export default function CollectionsPage() {
             {
               key: "activity",
               header: "Actividad",
-              render: (row: CollectionRow) => {
-                const primaryInvoice = primaryInvoiceByRecordId.get(row.id);
-
-                return (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <span style={cellSecondaryStyle}>
-                      {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
-                    </span>
-                    <span style={cellSecondaryStyle}>
-                      {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
-                    </span>
-                    <span
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        width: "fit-content",
-                        padding: "4px 8px",
-                        borderRadius: 999,
-                        fontSize: 11,
-                        fontWeight: 800,
-                        background: primaryInvoice ? "#ECFDF3" : "#FFF7ED",
-                        color: primaryInvoice ? "#047857" : "#C2410C",
-                        border: primaryInvoice
-                          ? "1px solid #A7F3D0"
-                          : "1px solid #FED7AA",
-                      }}
-                    >
-                      {primaryInvoice ? "Con factura" : "Sin factura"}
-                    </span>
-                  </div>
-                );
-              },
+              render: (row: CollectionRow) => (
+                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                  <span style={cellSecondaryStyle}>
+                    {row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"}
+                  </span>
+                  <span style={cellSecondaryStyle}>
+                    {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}
+                  </span>
+                </div>
+              ),
             },
             {
               key: "actions",
               header: "Acciones",
-              render: (row: CollectionRow) => {
-                const primaryInvoice = primaryInvoiceByRecordId.get(row.id);
+              render: (row: CollectionRow) => (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => setDetailRecordId(row.id)}
+                    style={tableActionButtonStyle}
+                  >
+                    <Eye size={14} />
+                    Ver detalle
+                  </button>
 
-                return (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      type="button"
-                      onClick={() => setDetailRecordId(row.id)}
-                      style={tableActionButtonStyle}
-                    >
-                      <Eye size={14} />
-                      Ver detalle
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => openPaymentModal(row)}
-                      disabled={row.balance <= 0}
-                      style={{
-                        ...tablePrimaryButtonStyle,
-                        opacity: row.balance <= 0 ? 0.55 : 1,
-                        cursor: row.balance <= 0 ? "not-allowed" : "pointer",
-                      }}
-                    >
-                      <Plus size={14} />
-                      Registrar abono
-                    </button>
-
-                    {primaryInvoice ? (
-                      <button
-                        type="button"
-                        onClick={() => openInvoiceDetail(primaryInvoice.id)}
-                        style={tableActionButtonStyle}
-                      >
-                        <Receipt size={14} />
-                        Abrir factura
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => createInvoiceFromRecord(row.id)}
-                        style={tableActionButtonStyle}
-                      >
-                        <Receipt size={14} />
-                        Crear factura
-                      </button>
-                    )}
-                  </div>
-                );
-              },
+                  <button
+                    type="button"
+                    onClick={() => openPaymentModal(row)}
+                    disabled={row.balance <= 0}
+                    style={{
+                      ...tablePrimaryButtonStyle,
+                      opacity: row.balance <= 0 ? 0.55 : 1,
+                      cursor: row.balance <= 0 ? "not-allowed" : "pointer",
+                    }}
+                  >
+                    <Plus size={14} />
+                    Registrar abono
+                  </button>
+                </div>
+              ),
             },
           ]}
         />
@@ -1434,43 +1572,7 @@ export default function CollectionsPage() {
             </div>
 
             <div>
-              <div style={detailSectionHeaderStyle}>
-                <div style={detailSectionTitleStyle}>Facturas ligadas</div>
-
-                {detailPrimaryInvoice ? (
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <UiButton
-                      onClick={() => openInvoiceDetail(detailPrimaryInvoice.id)}
-                      icon={<Receipt size={16} />}
-                    >
-                      Abrir factura
-                    </UiButton>
-
-                    <UiButton
-                      onClick={() => openInvoiceFile(detailPrimaryInvoice.pdf_path)}
-                      icon={<Eye size={16} />}
-                      variant="secondary"
-                    >
-                      Ver PDF
-                    </UiButton>
-
-                    <UiButton
-                      onClick={() => openInvoiceFile(detailPrimaryInvoice.xml_path)}
-                      icon={<FileCode2 size={16} />}
-                      variant="secondary"
-                    >
-                      Ver XML
-                    </UiButton>
-                  </div>
-                ) : (
-                  <UiButton
-                    onClick={() => createInvoiceFromRecord(detailRow.id)}
-                    icon={<Plus size={16} />}
-                  >
-                    Crear factura
-                  </UiButton>
-                )}
-              </div>
+              <div style={detailSectionTitleStyle}>Facturas ligadas</div>
 
               {detailInvoices.length === 0 ? (
                 <div style={emptyInlineBoxStyle}>
@@ -1490,36 +1592,9 @@ export default function CollectionsPage() {
                             {invoice.description || "Factura ligada"}
                           </span>
                           <span style={cellSecondaryStyle}>
-                            {invoice.customer_name || "Sin cliente"} · {invoice.invoice_uuid || "Sin UUID"}
+                            {invoice.customer_name || "Sin cliente"} ·{" "}
+                            {invoice.invoice_uuid || "Sin UUID"}
                           </span>
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                            <button
-                              type="button"
-                              onClick={() => openInvoiceDetail(invoice.id)}
-                              style={tableActionButtonStyle}
-                            >
-                              <Receipt size={14} />
-                              Abrir factura
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => openInvoiceFile(invoice.pdf_path)}
-                              style={tableActionButtonStyle}
-                            >
-                              <Eye size={14} />
-                              PDF
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => openInvoiceFile(invoice.xml_path)}
-                              style={tableActionButtonStyle}
-                            >
-                              <FileCode2 size={14} />
-                              XML
-                            </button>
-                          </div>
                         </div>
                       </div>
 
@@ -1538,6 +1613,323 @@ export default function CollectionsPage() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        open={createChargeOpen}
+        title="Nuevo cobro"
+        onClose={() => {
+          if (!creatingCharge) {
+            setCreateChargeOpen(false);
+            setChargeForm(createDefaultChargeForm());
+          }
+        }}
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={paymentSummaryCardStyle}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={detailSectionTitleStyle}>Alta operativa de cobranza</div>
+              <div style={quickSectionTextStyle}>
+                Aquí podrás crear tanto cobros recurrentes como cargos adicionales. En los recurrentes,
+                el sistema puede generar de una vez el primer registro visible en este listado.
+              </div>
+            </div>
+          </div>
+
+          <div style={simpleFormGridStyle}>
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Tipo de cobro</span>
+              <AppSelect
+                value={chargeForm.chargeMode}
+                onChange={(event) => {
+                  const nextMode = event.target.value as ChargeMode;
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    chargeMode: nextMode,
+                    createFirstRecordNow: nextMode === "recurring",
+                  }));
+                }}
+              >
+                <option value="recurring">Recurrente</option>
+                <option value="one_time">Único / cargo adicional</option>
+              </AppSelect>
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Categoría</span>
+              <AppSelect
+                value={chargeForm.chargeType}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    chargeType: event.target.value as CollectionChargeType,
+                  }))
+                }
+              >
+                <option value="rent">Renta</option>
+                <option value="maintenance_fee">Mantenimiento</option>
+                <option value="services">Servicios</option>
+                <option value="parking">Estacionamiento</option>
+                <option value="penalty">Penalización</option>
+                <option value="other">Otro</option>
+              </AppSelect>
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Responsable</span>
+              <AppSelect
+                value={chargeForm.responsibilityType}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    responsibilityType: event.target.value as "tenant" | "owner" | "other",
+                  }))
+                }
+              >
+                <option value="tenant">Inquilino</option>
+                <option value="owner">Propietario</option>
+                <option value="other">Otro</option>
+              </AppSelect>
+            </label>
+          </div>
+
+          <div style={simpleFormGridStyle}>
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Edificio</span>
+              <AppSelect
+                value={chargeForm.buildingId}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    buildingId: event.target.value,
+                    unitId: "",
+                    leaseId: "",
+                  }))
+                }
+              >
+                <option value="">Selecciona un edificio</option>
+                {buildings.map((building) => (
+                  <option key={building.id} value={building.id}>
+                    {building.name}
+                  </option>
+                ))}
+              </AppSelect>
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Unidad</span>
+              <AppSelect
+                value={chargeForm.unitId}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    unitId: event.target.value,
+                    leaseId: "",
+                  }))
+                }
+                disabled={!chargeForm.buildingId}
+              >
+                <option value="">Selecciona una unidad</option>
+                {unitsForSelectedBuilding.map((unit) => {
+                  const label = unit.display_code || unit.unit_number || "Unidad";
+                  return (
+                    <option key={unit.id} value={unit.id}>
+                      {label}
+                    </option>
+                  );
+                })}
+              </AppSelect>
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Contrato / lease</span>
+              <AppSelect
+                value={chargeForm.leaseId}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    leaseId: event.target.value,
+                  }))
+                }
+                disabled={!chargeForm.unitId}
+              >
+                <option value="">Sin contrato específico</option>
+                {leasesForSelectedUnit.map((lease) => {
+                  const tenant = lease.tenant_id ? tenantMap.get(lease.tenant_id) : null;
+                  const tenantLabel =
+                    tenant?.full_name ||
+                    lease.billing_name ||
+                    lease.billing_email ||
+                    "Contrato sin inquilino visible";
+
+                  return (
+                    <option key={lease.id} value={lease.id}>
+                      {tenantLabel}
+                    </option>
+                  );
+                })}
+              </AppSelect>
+            </label>
+          </div>
+
+          {(selectedChargeLease || selectedChargeTenant) ? (
+            <div style={detailTopGridStyle}>
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Cliente sugerido</div>
+                <div style={detailValueStyle}>
+                  {selectedChargeTenant?.billing_name ||
+                    selectedChargeLease?.billing_name ||
+                    selectedChargeTenant?.full_name ||
+                    "Sin nombre de facturación"}
+                </div>
+              </div>
+
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>RFC sugerido</div>
+                <div style={detailValueStyle}>{selectedChargeTenant?.tax_id || "Sin RFC"}</div>
+              </div>
+
+              <div style={detailBlockStyle}>
+                <div style={detailLabelStyle}>Correo</div>
+                <div style={detailValueStyle}>
+                  {selectedChargeTenant?.billing_email ||
+                    selectedChargeTenant?.email ||
+                    selectedChargeLease?.billing_email ||
+                    "Sin correo"}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div style={simpleFormGridStyle}>
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Concepto</span>
+              <input
+                value={chargeForm.title}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({ ...prev, title: event.target.value }))
+                }
+                style={inputStyle}
+                placeholder="Ej. Renta marzo 302 o ajuste extraordinario"
+              />
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>Monto esperado</span>
+              <input
+                value={chargeForm.amountExpected}
+                onChange={(event) =>
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    amountExpected: formatDecimalInput(event.target.value),
+                  }))
+                }
+                inputMode="decimal"
+                style={inputStyle}
+                placeholder="0.00"
+              />
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>
+                {chargeForm.chargeMode === "recurring" ? "Primer vencimiento" : "Vencimiento"}
+              </span>
+              <input
+                type="date"
+                value={chargeForm.initialDueDate}
+                onChange={(event) => {
+                  const nextDate = event.target.value;
+                  const parsed = parseDateOnly(nextDate || getTodayDateOnlyKey());
+                  setChargeForm((prev) => ({
+                    ...prev,
+                    initialDueDate: nextDate,
+                    dueDay:
+                      prev.chargeMode === "recurring"
+                        ? String(parsed.getDate())
+                        : prev.dueDay,
+                  }));
+                }}
+                style={inputStyle}
+              />
+            </label>
+          </div>
+
+          {chargeForm.chargeMode === "recurring" ? (
+            <div style={simpleFormGridStyle}>
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Día de vencimiento mensual</span>
+                <AppSelect
+                  value={chargeForm.dueDay}
+                  onChange={(event) =>
+                    setChargeForm((prev) => ({ ...prev, dueDay: event.target.value }))
+                  }
+                >
+                  {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
+                    <option key={day} value={String(day)}>
+                      Día {day}
+                    </option>
+                  ))}
+                </AppSelect>
+              </label>
+
+              <div style={{ ...fieldWrapStyle, alignSelf: "end" }}>
+                <span style={fieldLabelStyle}>Generación inicial</span>
+                <label style={toggleCardStyle}>
+                  <input
+                    type="checkbox"
+                    checked={chargeForm.createFirstRecordNow}
+                    onChange={(event) =>
+                      setChargeForm((prev) => ({
+                        ...prev,
+                        createFirstRecordNow: event.target.checked,
+                      }))
+                    }
+                  />
+                  <span>
+                    Crear primer cobro ahora para que ya aparezca en este listado.
+                  </span>
+                </label>
+              </div>
+            </div>
+          ) : (
+            <div style={oneTimeInfoStyle}>
+              Este cargo adicional se guardará con una configuración interna no recurrente y generará
+              inmediatamente un solo registro de cobranza.
+            </div>
+          )}
+
+          <label style={fieldWrapStyle}>
+            <span style={fieldLabelStyle}>Notas</span>
+            <textarea
+              value={chargeForm.notes}
+              onChange={(event) =>
+                setChargeForm((prev) => ({ ...prev, notes: event.target.value }))
+              }
+              rows={4}
+              style={textareaStyle}
+              placeholder="Notas internas, detalle del cargo o instrucciones administrativas"
+            />
+          </label>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!creatingCharge) {
+                  setCreateChargeOpen(false);
+                  setChargeForm(createDefaultChargeForm());
+                }
+              }}
+              style={ghostButtonStyle}
+            >
+              Cancelar
+            </button>
+
+            <UiButton onClick={handleCreateCharge} icon={<Plus size={16} />}>
+              {creatingCharge ? "Guardando..." : "Guardar cobro"}
+            </UiButton>
+          </div>
+        </div>
       </Modal>
 
       <Modal
@@ -1891,6 +2283,30 @@ const textareaStyle: CSSProperties = {
   color: "#111827",
   outline: "none",
   resize: "vertical",
+};
+
+const toggleCardStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "flex-start",
+  gap: 10,
+  padding: 12,
+  borderRadius: 12,
+  border: "1px solid #D1D5DB",
+  background: "#F9FAFB",
+  fontSize: 13,
+  color: "#374151",
+  lineHeight: 1.5,
+};
+
+const oneTimeInfoStyle: CSSProperties = {
+  padding: 12,
+  borderRadius: 12,
+  border: "1px solid #BFDBFE",
+  background: "#EFF6FF",
+  color: "#1D4ED8",
+  fontSize: 13,
+  fontWeight: 600,
+  lineHeight: 1.6,
 };
 
 const ghostButtonStyle: CSSProperties = {
