@@ -36,14 +36,19 @@ import {
   Clock3,
   CreditCard,
   Eye,
+  FileUp,
   Filter,
   Landmark,
   Plus,
   Receipt,
+  Upload,
   Wallet,
+  WandSparkles,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { type ParsedCfdiData, parseCfdiXml } from "@/lib/cfdiXmlParser";
+import { uploadInvoiceFiles } from "@/lib/invoiceStorage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useAppToast } from "@/components/AppToastProvider";
 
@@ -96,6 +101,7 @@ type Lease = {
   responsible_payer_id: string | null;
   billing_name: string | null;
   billing_email: string | null;
+  billing_tax_id: string | null;
   due_day: number | null;
   rent_amount: number | null;
   status: string | null;
@@ -223,6 +229,28 @@ type PaymentForm = {
 };
 
 type ChargeMode = "recurring" | "one_time";
+
+type InvoiceImportForm = {
+  selectedLeaseId: string;
+  selectedChargeCategory: CollectionChargeType;
+  title: string;
+  dueDate: string;
+  notes: string;
+};
+
+type InvoiceImportCandidate = {
+  leaseId: string;
+  buildingId: string;
+  buildingName: string;
+  unitId: string;
+  unitLabel: string;
+  tenantLabel: string;
+  responsiblePayerLabel: string;
+  billingName: string;
+  billingTaxId: string;
+  score: number;
+  reasons: string[];
+};
 
 type ChargeForm = {
   chargeMode: ChargeMode;
@@ -408,6 +436,76 @@ function deriveStatusFromDueDate(dueDate: string) {
   return dueDate < getTodayDateOnlyKey() ? "overdue" : "pending";
 }
 
+function createDefaultImportForm(): InvoiceImportForm {
+  return {
+    selectedLeaseId: "",
+    selectedChargeCategory: "rent",
+    title: "",
+    dueDate: getTodayDateOnlyKey(),
+    notes: "",
+  };
+}
+
+function normalizeComparableText(value: string | null | undefined) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-zA-Z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function scoreExactOrContains(candidate: string | null | undefined, search: string | null | undefined) {
+  const normalizedCandidate = normalizeComparableText(candidate);
+  const normalizedSearch = normalizeComparableText(search);
+
+  if (!normalizedCandidate || !normalizedSearch) return 0;
+  if (normalizedCandidate === normalizedSearch) return 100;
+  if (normalizedCandidate.includes(normalizedSearch) || normalizedSearch.includes(normalizedCandidate)) {
+    return 65;
+  }
+
+  const candidateTokens = new Set(normalizedCandidate.split(" ").filter(Boolean));
+  const searchTokens = normalizedSearch.split(" ").filter(Boolean);
+  const overlap = searchTokens.filter((token) => candidateTokens.has(token)).length;
+
+  if (overlap >= 3) return 45;
+  if (overlap >= 2) return 25;
+  if (overlap >= 1) return 10;
+  return 0;
+}
+
+function inferChargeTypeFromDescription(description: string | null | undefined): CollectionChargeType {
+  const normalized = normalizeComparableText(description);
+
+  if (!normalized) return "other";
+  if (normalized.includes("renta") || normalized.includes("arrendamiento")) return "rent";
+  if (normalized.includes("mantenimiento") || normalized.includes("mtto")) return "maintenance_fee";
+  if (
+    normalized.includes("agua") ||
+    normalized.includes("luz") ||
+    normalized.includes("gas") ||
+    normalized.includes("internet") ||
+    normalized.includes("telmex") ||
+    normalized.includes("servicio")
+  ) return "services";
+  if (normalized.includes("parking") || normalized.includes("estacionamiento") || normalized.includes("cajon")) return "parking";
+  if (normalized.includes("penal") || normalized.includes("recargo") || normalized.includes("mora")) return "penalty";
+  return "other";
+}
+
+function buildImportedChargeTitle(parsed: ParsedCfdiData | null, category: CollectionChargeType) {
+  const fromXml = String(parsed?.description || "").trim();
+  if (fromXml) return fromXml;
+  if (category === "rent") return "Renta importada desde XML";
+  if (category === "maintenance_fee") return "Mantenimiento importado desde XML";
+  if (category === "services") return "Servicios importados desde XML";
+  if (category === "parking") return "Estacionamiento importado desde XML";
+  if (category === "penalty") return "Penalización importada desde XML";
+  return "Cobro importado desde XML";
+}
+
 function createDefaultChargeForm(): ChargeForm {
   const todayKey = getTodayDateOnlyKey();
   const today = parseDateOnly(todayKey);
@@ -459,8 +557,10 @@ export default function CollectionsPage() {
   const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
   const [paymentRecordId, setPaymentRecordId] = useState<string | null>(null);
   const [createChargeOpen, setCreateChargeOpen] = useState(false);
+  const [importInvoiceOpen, setImportInvoiceOpen] = useState(false);
   const [creatingCharge, setCreatingCharge] = useState(false);
   const [savingPayment, setSavingPayment] = useState(false);
+  const [importingInvoice, setImportingInvoice] = useState(false);
 
   const [paymentForm, setPaymentForm] = useState<PaymentForm>({
     recordId: "",
@@ -471,6 +571,11 @@ export default function CollectionsPage() {
     notes: "",
   });
   const [chargeForm, setChargeForm] = useState<ChargeForm>(createDefaultChargeForm());
+  const [importForm, setImportForm] = useState<InvoiceImportForm>(createDefaultImportForm());
+  const [importXmlFile, setImportXmlFile] = useState<File | null>(null);
+  const [importPdfFile, setImportPdfFile] = useState<File | null>(null);
+  const [importPreview, setImportPreview] = useState<ParsedCfdiData | null>(null);
+  const [importStatusMessage, setImportStatusMessage] = useState("");
 
   useEffect(() => {
     if (loading) return;
@@ -521,7 +626,7 @@ export default function CollectionsPage() {
       supabase
         .from("leases")
         .select(
-          "id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, status, start_date, end_date"
+          "id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, billing_tax_id, due_day, rent_amount, status, start_date, end_date"
         )
         .eq("company_id", user.company_id),
 
@@ -781,6 +886,125 @@ export default function CollectionsPage() {
     return tenantMap.get(selectedChargeLease.tenant_id) || null;
   }, [selectedChargeLease, tenantMap]);
 
+  const leaseLookupOptions = useMemo(() => {
+    return leases
+      .filter((lease) => Boolean(lease.unit_id))
+      .map((lease) => {
+        const unit = units.find((item) => item.id === lease.unit_id) || null;
+        const building = unit
+          ? buildings.find((item) => item.id === unit.building_id) || null
+          : null;
+        const tenant = lease.tenant_id ? tenantMap.get(lease.tenant_id) || null : null;
+
+        const label = `${lease.billing_name || tenant?.billing_name || tenant?.full_name || "Sin nombre"} · ${building?.name || "Edificio"} · Unidad ${unit?.display_code || unit?.unit_number || "Unidad"}`;
+
+        return {
+          id: lease.id,
+          label,
+        };
+      })
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }, [leases, units, buildings, tenantMap]);
+
+  const importCandidates = useMemo<InvoiceImportCandidate[]>(() => {
+    if (!importPreview) return [];
+
+    return leases
+      .filter((lease) => Boolean(lease.unit_id))
+      .map((lease) => {
+        const unit = units.find((item) => item.id === lease.unit_id) || null;
+        const building = unit ? buildings.find((item) => item.id === unit.building_id) || null : null;
+        const tenant = lease.tenant_id ? tenantMap.get(lease.tenant_id) || null : null;
+        const payer = lease.responsible_payer_id ? tenantMap.get(lease.responsible_payer_id) || null : null;
+        const reasons: string[] = [];
+        let score = 0;
+
+        const xmlTaxId = normalizeComparableText(importPreview.customerTaxId);
+        const xmlName = normalizeComparableText(importPreview.customerName);
+        const xmlDescription = normalizeComparableText(importPreview.description);
+
+        if (xmlTaxId && normalizeComparableText(lease.billing_tax_id) === xmlTaxId) {
+          score += 120;
+          reasons.push("RFC exacto contra facturación del contrato");
+        } else if (xmlTaxId && normalizeComparableText(payer?.tax_id) === xmlTaxId) {
+          score += 100;
+          reasons.push("RFC exacto contra responsable de pago");
+        } else if (xmlTaxId && normalizeComparableText(tenant?.tax_id) === xmlTaxId) {
+          score += 80;
+          reasons.push("RFC exacto contra inquilino");
+        }
+
+        const billingNameScore = scoreExactOrContains(lease.billing_name, xmlName);
+        if (billingNameScore > 0) {
+          score += billingNameScore;
+          reasons.push("Nombre parecido al de facturación del contrato");
+        }
+
+        const payerScore = scoreExactOrContains(payer?.billing_name || payer?.full_name, xmlName);
+        if (payerScore > 0) {
+          score += Math.min(payerScore, 45);
+          reasons.push("Nombre parecido al responsable de pago");
+        }
+
+        const tenantScore = scoreExactOrContains(tenant?.billing_name || tenant?.full_name, xmlName);
+        if (tenantScore > 0) {
+          score += Math.min(tenantScore, 35);
+          reasons.push("Nombre parecido al inquilino");
+        }
+
+        const unitTokens = normalizeComparableText(`${unit?.display_code || ""} ${unit?.unit_number || ""}`)
+          .split(" ")
+          .filter(Boolean);
+        if (xmlDescription && unitTokens.some((token) => token.length >= 2 && xmlDescription.includes(token))) {
+          score += 18;
+          reasons.push("La descripción menciona la unidad");
+        }
+
+        return {
+          leaseId: lease.id,
+          buildingId: building?.id || unit?.building_id || "",
+          buildingName: building?.name || "Edificio",
+          unitId: unit?.id || "",
+          unitLabel: unit?.display_code || unit?.unit_number || "Unidad",
+          tenantLabel: tenant?.full_name || tenant?.billing_name || "Sin inquilino",
+          responsiblePayerLabel: payer?.full_name || payer?.billing_name || lease.billing_name || tenant?.full_name || "Sin responsable",
+          billingName: lease.billing_name || tenant?.billing_name || tenant?.full_name || "",
+          billingTaxId: lease.billing_tax_id || payer?.tax_id || tenant?.tax_id || "",
+          score,
+          reasons,
+        };
+      })
+      .filter((candidate) => candidate.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8);
+  }, [importPreview, leases, units, buildings, tenantMap]);
+
+  const selectedImportCandidate = useMemo(() => {
+    if (!importForm.selectedLeaseId) return null;
+    return importCandidates.find((candidate) => candidate.leaseId === importForm.selectedLeaseId) || null;
+  }, [importCandidates, importForm.selectedLeaseId]);
+
+  useEffect(() => {
+    if (!importPreview) return;
+
+    const inferredCategory = inferChargeTypeFromDescription(importPreview.description);
+    const suggestedTitle = buildImportedChargeTitle(importPreview, inferredCategory);
+
+    setImportForm((prev) => ({
+      ...prev,
+      selectedLeaseId: prev.selectedLeaseId || importCandidates[0]?.leaseId || "",
+      selectedChargeCategory: prev.selectedChargeCategory || inferredCategory,
+      title: prev.title || suggestedTitle,
+      dueDate: importPreview.issuedAt || prev.dueDate || getTodayDateOnlyKey(),
+    }));
+
+    setImportStatusMessage(
+      importCandidates[0]
+        ? `Clasificación automática propuesta con ${importCandidates[0].score >= 100 ? "alta" : importCandidates[0].score >= 60 ? "media" : "baja"} confianza.`
+        : "No encontré una coincidencia automática fuerte. Revisa y selecciona manualmente el contrato correcto."
+    );
+  }, [importPreview, importCandidates]);
+
   const filteredRows = useMemo(() => {
     return collectionRows.filter((row) => {
       if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) {
@@ -914,6 +1138,258 @@ export default function CollectionsPage() {
   const paymentRow = paymentRecordId
     ? collectionRowsById.get(paymentRecordId) || null
     : null;
+
+  function resetImportInvoiceState() {
+    setImportForm(createDefaultImportForm());
+    setImportXmlFile(null);
+    setImportPdfFile(null);
+    setImportPreview(null);
+    setImportStatusMessage("");
+  }
+
+  function openImportInvoiceModal() {
+    resetImportInvoiceState();
+    setImportInvoiceOpen(true);
+  }
+
+  async function handleImportXmlSelected(file: File | null) {
+    setImportXmlFile(file);
+
+    if (!file) {
+      setImportPreview(null);
+      setImportStatusMessage("");
+      return;
+    }
+
+    try {
+      const xmlText = await file.text();
+      const parsed = parseCfdiXml(xmlText);
+      const inferredCategory = inferChargeTypeFromDescription(parsed.description);
+
+      setImportPreview(parsed);
+      setImportForm((prev) => ({
+        ...prev,
+        selectedChargeCategory: inferredCategory,
+        title: buildImportedChargeTitle(parsed, inferredCategory),
+        dueDate: parsed.issuedAt || prev.dueDate || getTodayDateOnlyKey(),
+      }));
+      setImportStatusMessage("XML leído correctamente. Ahora revisa la coincidencia sugerida antes de confirmar.");
+    } catch (error) {
+      console.error(error);
+      setImportPreview(null);
+      setImportStatusMessage(error instanceof Error ? error.message : "No fue posible leer este XML automáticamente.");
+      showToast({
+        type: "error",
+        message: error instanceof Error ? error.message : "No pude leer automáticamente el XML.",
+      });
+    }
+  }
+
+  async function handleConfirmImportedInvoice() {
+    if (!user?.company_id || !user.id) return;
+
+    if (!importPreview) {
+      showToast({ type: "warning", message: "Primero sube un XML válido para analizar la factura." });
+      return;
+    }
+
+    if (!importXmlFile || !importPdfFile) {
+      showToast({ type: "warning", message: "Necesito tanto el XML como el PDF para importar la factura." });
+      return;
+    }
+
+    if (!importForm.selectedLeaseId) {
+      showToast({ type: "warning", message: "Selecciona el contrato al que pertenece esta factura." });
+      return;
+    }
+
+    const lease = leases.find((item) => item.id === importForm.selectedLeaseId);
+    if (!lease || !lease.unit_id) {
+      showToast({ type: "error", message: "No pude ubicar el contrato seleccionado." });
+      return;
+    }
+
+    const unit = units.find((item) => item.id === lease.unit_id);
+    if (!unit) {
+      showToast({ type: "error", message: "No pude ubicar la unidad del contrato seleccionado." });
+      return;
+    }
+
+    const duplicateInvoice = collectionInvoices.find(
+      (invoice) => invoice.invoice_uuid && invoice.invoice_uuid === importPreview.uuid
+    );
+
+    if (duplicateInvoice) {
+      showToast({
+        type: "warning",
+        message: "Ese UUID ya existe en Cobranza. Revisa la factura actual para evitar duplicados.",
+      });
+      router.push(`/collections/invoices/${duplicateInvoice.id}`);
+      return;
+    }
+
+    const chargeCategory = importForm.selectedChargeCategory || inferChargeTypeFromDescription(importPreview.description);
+    const dueDate = importForm.dueDate || importPreview.issuedAt || getTodayDateOnlyKey();
+    const dueDateObject = parseDateOnly(dueDate);
+    const amountDue = Number(importPreview.total || importPreview.subtotal || 0);
+
+    if (!Number.isFinite(amountDue) || amountDue <= 0) {
+      showToast({ type: "warning", message: "No pude detectar un total válido en el XML." });
+      return;
+    }
+
+    setImportingInvoice(true);
+
+    try {
+      let schedule = collectionSchedules.find(
+        (item) =>
+          item.lease_id === lease.id &&
+          item.unit_id === unit.id &&
+          item.building_id === unit.building_id &&
+          item.charge_type === chargeCategory &&
+          item.active
+      ) || null;
+
+      if (!schedule) {
+        const createdSchedule = await supabase
+          .from("collection_schedules")
+          .insert({
+            company_id: user.company_id,
+            building_id: unit.building_id,
+            unit_id: unit.id,
+            lease_id: lease.id,
+            charge_type: chargeCategory,
+            title: importForm.title.trim() || buildImportedChargeTitle(importPreview, chargeCategory),
+            responsibility_type: "tenant",
+            amount_expected: amountDue,
+            due_day: lease.due_day || dueDateObject.getDate(),
+            active: ["rent", "maintenance_fee", "services", "parking"].includes(chargeCategory),
+            notes: importForm.notes.trim() || "Configuración creada automáticamente desde importación de factura.",
+          })
+          .select("id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes")
+          .single();
+
+        if (createdSchedule.error || !createdSchedule.data) {
+          throw new Error(createdSchedule.error?.message || "No pude crear la configuración base del cobro importado.");
+        }
+
+        schedule = createdSchedule.data as CollectionSchedule;
+      }
+
+      let record = collectionRecords.find(
+        (item) =>
+          item.collection_schedule_id === schedule.id &&
+          item.period_year === dueDateObject.getFullYear() &&
+          item.period_month === dueDateObject.getMonth() + 1
+      ) || null;
+
+      if (!record) {
+        const createdRecord = await supabase
+          .from("collection_records")
+          .insert({
+            collection_schedule_id: schedule.id,
+            company_id: user.company_id,
+            building_id: unit.building_id,
+            unit_id: unit.id,
+            lease_id: lease.id,
+            period_year: dueDateObject.getFullYear(),
+            period_month: dueDateObject.getMonth() + 1,
+            due_date: dueDate,
+            amount_due: amountDue,
+            amount_collected: 0,
+            status: deriveStatusFromDueDate(dueDate),
+            collected_at: null,
+            payment_method: null,
+            notes: importForm.notes.trim() || importPreview.description || "Cobro generado automáticamente desde factura importada.",
+          })
+          .select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at")
+          .single();
+
+        if (createdRecord.error || !createdRecord.data) {
+          throw new Error(createdRecord.error?.message || "No pude crear el registro de cobranza desde la factura importada.");
+        }
+
+        record = createdRecord.data as CollectionRecord;
+      }
+
+      const invoiceInsert = await supabase
+        .from("collection_invoices")
+        .insert({
+          company_id: user.company_id,
+          building_id: unit.building_id,
+          unit_id: unit.id,
+          lease_id: lease.id,
+          collection_record_id: record.id,
+          invoice_uuid: importPreview.uuid || null,
+          invoice_series: importPreview.series || null,
+          invoice_folio: importPreview.folio || null,
+          customer_name: importPreview.customerName || null,
+          customer_tax_id: importPreview.customerTaxId || null,
+          description: importPreview.description || importForm.title.trim() || null,
+          invoice_type: importPreview.invoiceType || "income",
+          charge_category: chargeCategory,
+          issued_at: importPreview.issuedAt || dueDate,
+          period_year: dueDateObject.getFullYear(),
+          period_month: dueDateObject.getMonth() + 1,
+          subtotal: importPreview.subtotal ? Number(importPreview.subtotal) : null,
+          tax: importPreview.tax ? Number(importPreview.tax) : null,
+          total: importPreview.total ? Number(importPreview.total) : amountDue,
+          match_confidence: selectedImportCandidate?.score || 0,
+          match_notes: selectedImportCandidate?.reasons.join(" | ") || importStatusMessage || null,
+          created_by: user.id,
+        })
+        .select("id")
+        .single();
+
+      if (invoiceInsert.error || !invoiceInsert.data?.id) {
+        throw new Error(invoiceInsert.error?.message || "No pude crear la factura importada dentro de Cobranza.");
+      }
+
+      const uploadedFiles = await uploadInvoiceFiles({
+        companyId: user.company_id,
+        buildingId: unit.building_id,
+        leaseId: lease.id,
+        invoiceUuid: importPreview.uuid,
+        invoiceId: invoiceInsert.data.id,
+        pdfFile: importPdfFile,
+        xmlFile: importXmlFile,
+      });
+
+      const fileUpdate = await supabase
+        .from("collection_invoices")
+        .update({
+          pdf_path: uploadedFiles.pdfPath,
+          xml_path: uploadedFiles.xmlPath,
+          original_pdf_filename: uploadedFiles.originalPdfFilename,
+          original_xml_filename: uploadedFiles.originalXmlFilename,
+        })
+        .eq("id", invoiceInsert.data.id);
+
+      if (fileUpdate.error) {
+        throw new Error(fileUpdate.error.message || "La factura se creó, pero no pude guardar los archivos.");
+      }
+
+      await loadCollectionsData();
+      setImportingInvoice(false);
+      setImportInvoiceOpen(false);
+      resetImportInvoiceState();
+
+      showToast({
+        type: "success",
+        message: "Factura importada correctamente. El cobro ya quedó clasificado y visible en Cobranza.",
+      });
+
+      router.push(`/collections/invoices/${invoiceInsert.data.id}`);
+      router.refresh();
+    } catch (error) {
+      console.error(error);
+      setImportingInvoice(false);
+      showToast({
+        type: "error",
+        message: error instanceof Error ? error.message : "No pude completar la importación de la factura.",
+      });
+    }
+  }
 
   function openCreateChargeModal() {
     setChargeForm(createDefaultChargeForm());
@@ -1063,9 +1539,14 @@ export default function CollectionsPage() {
         title="Cobranza"
         titleIcon={<Wallet size={18} />}
         actions={
-          <UiButton onClick={openCreateChargeModal} icon={<Plus size={16} />}>
-            Nuevo cobro
-          </UiButton>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <UiButton onClick={openImportInvoiceModal} icon={<FileUp size={16} />}>
+              Importar factura
+            </UiButton>
+            <UiButton onClick={openCreateChargeModal} icon={<Plus size={16} />} variant="secondary">
+              Cargo manual
+            </UiButton>
+          </div>
         }
       />
 
@@ -1309,7 +1790,7 @@ export default function CollectionsPage() {
       <SectionCard title="Listado de cobranza" icon={<Wallet size={18} />}>
         <AppTable
           rows={filteredRows}
-          emptyState="Todavía no hay registros de cobranza. Crea un nuevo cobro para empezar a operar este módulo."
+          emptyState="Todavía no hay registros de cobranza. Importa una factura o crea un cargo manual para empezar a operar este módulo."
           columns={[
             {
               key: "concept",
@@ -1613,6 +2094,262 @@ export default function CollectionsPage() {
             </div>
           </div>
         ) : null}
+      </Modal>
+
+      <Modal
+        open={importInvoiceOpen}
+        title="Importar factura"
+        onClose={() => {
+          if (!importingInvoice) {
+            setImportInvoiceOpen(false);
+            resetImportInvoiceState();
+          }
+        }}
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={paymentSummaryCardStyle}>
+            <div style={{ display: "grid", gap: 6 }}>
+              <div style={detailSectionTitleStyle}>Ingesta inteligente de XML + PDF</div>
+              <div style={quickSectionTextStyle}>
+                Este es ahora el flujo principal de Cobranza. Sube ambos archivos y el sistema intentará
+                clasificar la factura automáticamente para crear o ligar el cobro correspondiente.
+              </div>
+            </div>
+          </div>
+
+          <div style={simpleFormGridStyle}>
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>XML CFDI</span>
+              <input
+                type="file"
+                accept=".xml,text/xml,application/xml"
+                onChange={(event) => {
+                  const file = event.target.files?.[0] || null;
+                  void handleImportXmlSelected(file);
+                }}
+                style={inputStyle}
+              />
+            </label>
+
+            <label style={fieldWrapStyle}>
+              <span style={fieldLabelStyle}>PDF de la factura</span>
+              <input
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={(event) => setImportPdfFile(event.target.files?.[0] || null)}
+                style={inputStyle}
+              />
+            </label>
+          </div>
+
+          <div
+            style={{
+              ...paymentSummaryCardStyle,
+              border: `1px solid ${importPreview ? "#BFDBFE" : "#E5E7EB"}`,
+              background: importPreview ? "#EFF6FF" : "#F9FAFB",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+              <div style={invoiceIconWrapStyle}>
+                {importPreview ? <WandSparkles size={16} /> : <Upload size={16} />}
+              </div>
+              <div style={detailSectionTitleStyle}>
+                {importPreview ? "Vista previa detectada" : "Aún no se ha leído un XML"}
+              </div>
+            </div>
+
+            <div style={quickSectionTextStyle}>
+              {importStatusMessage || "Sube un XML para extraer UUID, cliente, RFC, fecha, importe y concepto."}
+            </div>
+          </div>
+
+          {importPreview ? (
+            <>
+              <div style={detailTopGridStyle}>
+                <div style={detailBlockStyle}>
+                  <div style={detailLabelStyle}>Cliente detectado</div>
+                  <div style={detailValueStyle}>{importPreview.customerName || "Sin nombre"}</div>
+                </div>
+                <div style={detailBlockStyle}>
+                  <div style={detailLabelStyle}>RFC detectado</div>
+                  <div style={detailValueStyle}>{importPreview.customerTaxId || "Sin RFC"}</div>
+                </div>
+                <div style={detailBlockStyle}>
+                  <div style={detailLabelStyle}>UUID</div>
+                  <div style={detailValueStyle}>{importPreview.uuid || "Sin UUID"}</div>
+                </div>
+                <div style={detailBlockStyle}>
+                  <div style={detailLabelStyle}>Fecha CFDI</div>
+                  <div style={detailValueStyle}>{formatDate(importPreview.issuedAt || null)}</div>
+                </div>
+                <div style={detailBlockStyle}>
+                  <div style={detailLabelStyle}>Total</div>
+                  <div style={detailValueStyle}>{formatCurrency(Number(importPreview.total || 0))}</div>
+                </div>
+                <div style={detailBlockStyle}>
+                  <div style={detailLabelStyle}>Concepto</div>
+                  <div style={detailValueStyle}>{importPreview.description || "Sin descripción"}</div>
+                </div>
+              </div>
+
+              <div style={simpleFormGridStyle}>
+                <label style={fieldWrapStyle}>
+                  <span style={fieldLabelStyle}>Contrato sugerido</span>
+                  <AppSelect
+                    value={importForm.selectedLeaseId}
+                    onChange={(event) =>
+                      setImportForm((prev) => ({
+                        ...prev,
+                        selectedLeaseId: event.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Selecciona un contrato</option>
+                    {importCandidates.length > 0 ? (
+                      <optgroup label="Coincidencias sugeridas">
+                        {importCandidates.map((candidate) => (
+                          <option key={`candidate-${candidate.leaseId}`} value={candidate.leaseId}>
+                            {candidate.tenantLabel} · {candidate.buildingName} · Unidad {candidate.unitLabel} · score {candidate.score}
+                          </option>
+                        ))}
+                      </optgroup>
+                    ) : null}
+                    <optgroup label="Todos los contratos disponibles">
+                      {leaseLookupOptions.map((option) => (
+                        <option key={option.id} value={option.id}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </optgroup>
+                  </AppSelect>
+                </label>
+
+                <label style={fieldWrapStyle}>
+                  <span style={fieldLabelStyle}>Categoría sugerida</span>
+                  <AppSelect
+                    value={importForm.selectedChargeCategory}
+                    onChange={(event) =>
+                      setImportForm((prev) => ({
+                        ...prev,
+                        selectedChargeCategory: event.target.value as CollectionChargeType,
+                      }))
+                    }
+                  >
+                    <option value="rent">Renta</option>
+                    <option value="maintenance_fee">Mantenimiento</option>
+                    <option value="services">Servicios</option>
+                    <option value="parking">Estacionamiento</option>
+                    <option value="penalty">Penalización</option>
+                    <option value="other">Otro</option>
+                  </AppSelect>
+                </label>
+
+                <label style={fieldWrapStyle}>
+                  <span style={fieldLabelStyle}>Vencimiento del cobro</span>
+                  <input
+                    type="date"
+                    value={importForm.dueDate}
+                    onChange={(event) =>
+                      setImportForm((prev) => ({
+                        ...prev,
+                        dueDate: event.target.value,
+                      }))
+                    }
+                    style={inputStyle}
+                  />
+                </label>
+              </div>
+
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Título del cobro</span>
+                <input
+                  type="text"
+                  value={importForm.title}
+                  onChange={(event) =>
+                    setImportForm((prev) => ({
+                      ...prev,
+                      title: event.target.value,
+                    }))
+                  }
+                  placeholder="Cómo quieres que aparezca este cobro en el listado"
+                  style={inputStyle}
+                />
+              </label>
+
+              <label style={fieldWrapStyle}>
+                <span style={fieldLabelStyle}>Notas internas</span>
+                <textarea
+                  value={importForm.notes}
+                  onChange={(event) =>
+                    setImportForm((prev) => ({
+                      ...prev,
+                      notes: event.target.value,
+                    }))
+                  }
+                  placeholder="Opcional: observaciones internas de esta importación"
+                  style={textareaStyle}
+                />
+              </label>
+
+              {selectedImportCandidate ? (
+                <div style={paymentSummaryCardStyle}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                    <div style={invoiceIconWrapStyle}>
+                      <Receipt size={16} />
+                    </div>
+                    <div style={detailSectionTitleStyle}>
+                      Coincidencia sugerida · score {selectedImportCandidate.score}
+                    </div>
+                  </div>
+                  <div style={detailTopGridStyle}>
+                    <div style={detailBlockStyle}>
+                      <div style={detailLabelStyle}>Contrato propuesto</div>
+                      <div style={detailValueStyle}>{selectedImportCandidate.tenantLabel} · {selectedImportCandidate.buildingName} · Unidad {selectedImportCandidate.unitLabel}</div>
+                    </div>
+                    <div style={detailBlockStyle}>
+                      <div style={detailLabelStyle}>Responsable sugerido</div>
+                      <div style={detailValueStyle}>{selectedImportCandidate.responsiblePayerLabel}</div>
+                    </div>
+                    <div style={detailBlockStyle}>
+                      <div style={detailLabelStyle}>Facturación esperada</div>
+                      <div style={detailValueStyle}>{selectedImportCandidate.billingName || "Sin nombre"}</div>
+                    </div>
+                    <div style={detailBlockStyle}>
+                      <div style={detailLabelStyle}>RFC esperado</div>
+                      <div style={detailValueStyle}>{selectedImportCandidate.billingTaxId || "Sin RFC"}</div>
+                    </div>
+                  </div>
+                  <div style={{ ...quickSectionTextStyle, marginTop: 10 }}>
+                    {selectedImportCandidate.reasons.join(" · ") || "Revisión manual"}
+                  </div>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <button
+              type="button"
+              onClick={() => {
+                if (!importingInvoice) {
+                  setImportInvoiceOpen(false);
+                  resetImportInvoiceState();
+                }
+              }}
+              style={ghostButtonStyle}
+            >
+              Cancelar
+            </button>
+
+            <UiButton
+              onClick={handleConfirmImportedInvoice}
+              icon={<FileUp size={16} />}
+              disabled={!importPreview || !importXmlFile || !importPdfFile || importingInvoice}
+            >
+              {importingInvoice ? "Importando..." : "Confirmar e importar"}
+            </UiButton>
+          </div>
+        </div>
       </Modal>
 
       <Modal
