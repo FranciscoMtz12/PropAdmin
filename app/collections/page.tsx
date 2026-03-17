@@ -2047,6 +2047,45 @@ export default function CollectionsPage() {
               </div>
             </div>
           </AppCard>
+
+          <AppCard>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={quickSectionTitleStyle}>Generación de facturas</div>
+                <div style={quickSectionTextStyle}>
+                  Lleva control administrativo de qué facturas deben generarse este mes por contrato vigente según la configuración de cada edificio.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  alignSelf: "flex-start",
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  background: "#EEF2FF",
+                  border: "1px solid #C7D2FE",
+                  color: "#3730A3",
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                <FileText size={15} />
+                Control mensual
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <UiButton
+                  onClick={() => router.push("/collections/invoice-generation")}
+                  icon={<Eye size={16} />}
+                >
+                  Abrir control
+                </UiButton>
+              </div>
+            </div>
+          </AppCard>
         </AppGrid>
       </SectionCard>
 

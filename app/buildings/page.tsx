@@ -13,12 +13,11 @@
 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle,
   Building2,
-  CreditCard,
-  Droplets,
   Edit3,
   Filter,
   MapPin,
@@ -27,7 +26,6 @@ import {
   MoreHorizontal,
   Trash2,
   Warehouse,
-  Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -57,147 +55,6 @@ type Building = {
   building_category: string | null;
   building_subcategory: string | null;
 };
-
-
-type BuildingBillingConceptCode = "rent" | "electricity" | "water";
-
-type BuildingBillingConceptRow = {
-  id: string;
-  building_id: string;
-  concept_code: BuildingBillingConceptCode;
-  is_active: boolean;
-};
-
-const BILLING_CONCEPT_OPTIONS: Array<{
-  code: BuildingBillingConceptCode;
-  label: string;
-  icon: React.ReactNode;
-}> = [
-  { code: "rent", label: "Renta", icon: <CreditCard size={14} /> },
-  { code: "electricity", label: "Electricidad", icon: <Zap size={14} /> },
-  { code: "water", label: "Agua", icon: <Droplets size={14} /> },
-];
-
-function BuildingBillingConceptsPanel({
-  buildingId,
-  companyId,
-}: {
-  buildingId: string;
-  companyId: string;
-}) {
-  const [rows, setRows] = useState<BuildingBillingConceptRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [savingCode, setSavingCode] = useState<BuildingBillingConceptCode | null>(null);
-
-  const loadRows = useCallback(async () => {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("building_billing_concepts")
-      .select("id, building_id, concept_code, is_active")
-      .eq("building_id", buildingId);
-
-    if (error) {
-      console.error("No se pudieron cargar los conceptos de facturación:", error);
-      setRows([]);
-      setLoading(false);
-      return;
-    }
-
-    setRows((data as BuildingBillingConceptRow[]) || []);
-    setLoading(false);
-  }, [buildingId]);
-
-  useEffect(() => {
-    void loadRows();
-  }, [loadRows]);
-
-  async function toggleConcept(conceptCode: BuildingBillingConceptCode) {
-    setSavingCode(conceptCode);
-
-    const existing = rows.find((item) => item.concept_code === conceptCode);
-
-    const { error } = await supabase
-      .from("building_billing_concepts")
-      .upsert(
-        {
-          company_id: companyId,
-          building_id: buildingId,
-          concept_code: conceptCode,
-          is_active: existing ? !existing.is_active : true,
-        },
-        { onConflict: "building_id,concept_code" }
-      );
-
-    if (error) {
-      console.error("No se pudo actualizar el concepto de facturación:", error);
-      setSavingCode(null);
-      return;
-    }
-
-    await loadRows();
-    setSavingCode(null);
-  }
-
-  return (
-    <div
-      style={{
-        borderTop: "1px solid #E5E7EB",
-        marginTop: 12,
-        paddingTop: 12,
-        display: "grid",
-        gap: 10,
-      }}
-    >
-      <div style={{ display: "grid", gap: 2 }}>
-        <strong style={{ fontSize: 14, color: "#111827" }}>Conceptos de facturación</strong>
-        <span style={{ fontSize: 12, color: "#667085" }}>
-          Define qué facturas se deben generar cada mes para este edificio.
-        </span>
-      </div>
-
-      {loading ? (
-        <span style={{ fontSize: 13, color: "#667085" }}>Cargando configuración...</span>
-      ) : (
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {BILLING_CONCEPT_OPTIONS.map((option) => {
-            const existing = rows.find((item) => item.concept_code === option.code);
-            const active = Boolean(existing?.is_active);
-            const isSaving = savingCode === option.code;
-
-            return (
-              <button
-                key={option.code}
-                type="button"
-                onClick={() => void toggleConcept(option.code)}
-                disabled={isSaving}
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  borderRadius: 999,
-                  border: active ? "1px solid #A7F3D0" : "1px solid #E5E7EB",
-                  background: active ? "#ECFDF5" : "#F9FAFB",
-                  color: active ? "#166534" : "#475467",
-                  padding: "8px 12px",
-                  fontSize: 12,
-                  fontWeight: 700,
-                  cursor: isSaving ? "wait" : "pointer",
-                  opacity: isSaving ? 0.72 : 1,
-                }}
-              >
-                {option.icon}
-                {isSaving
-                  ? "Guardando..."
-                  : `${option.label}${active ? " activa" : " inactiva"}`}
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function getCategoryStats(buildings: Building[]) {
   return {
@@ -653,15 +510,19 @@ export default function BuildingsPage() {
                     <Building2 size={18} />
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <strong
+                    <Link
+                      href={`/buildings/${building.id}`}
                       style={{
-                        display: "block",
+                        display: "inline-block",
                         fontSize: 18,
                         marginBottom: 4,
+                        fontWeight: 700,
+                        color: "#111827",
+                        textDecoration: "none",
                       }}
                     >
                       {building.name}
-                    </strong>
+                    </Link>
                     <p style={{ color: "#667085", margin: 0, fontSize: 14 }}>
                       {building.code || "Sin código"}
                     </p>
@@ -709,54 +570,49 @@ export default function BuildingsPage() {
                   </p>
                 </div>
 
-                <BuildingBillingConceptsPanel
-                  buildingId={building.id}
-                  companyId={building.company_id}
-                />
-
                 <div
-                  style={{ position: "relative", display: "inline-block" }}
-                  ref={openActionsBuildingId === building.id ? actionsMenuRef : null}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: 12,
+                    flexWrap: "wrap",
+                  }}
                 >
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setOpenActionsBuildingId((prev) =>
-                        prev === building.id ? null : building.id
-                      )
-                    }
-                    style={dropdownTriggerStyle}
+                  <Link
+                    href={`/buildings/${building.id}`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      color: "#4338CA",
+                      textDecoration: "none",
+                      fontSize: 14,
+                      fontWeight: 800,
+                    }}
                   >
-                    <MoreHorizontal size={14} />
-                    Acciones
-                  </button>
+                    Ver detalle del edificio
+                  </Link>
 
-                  {openActionsBuildingId === building.id ? (
-                    <div style={dropdownMenuStyle}>
-                      <a href={`/buildings/${building.id}`} style={dropdownItemLinkStyle}>
-                        Ver edificio
-                      </a>
-                      <a href={`/buildings/${building.id}/units`} style={dropdownItemLinkStyle}>
-                        Departamentos
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => openEditModal(building)}
-                        style={dropdownActionButtonStyle}
-                      >
-                        <Edit3 size={14} />
-                        Editar
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => openDeleteModal(building)}
-                        style={dropdownDeleteItemStyle}
-                      >
-                        <Trash2 size={14} />
-                        Eliminar
-                      </button>
-                    </div>
-                  ) : null}
+                  <Link
+                    href={`/buildings/${building.id}/units`}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 8,
+                      borderRadius: 10,
+                      border: "1px solid #E5E7EB",
+                      background: "#FFFFFF",
+                      color: "#111827",
+                      padding: "10px 12px",
+                      fontSize: 13,
+                      fontWeight: 700,
+                      textDecoration: "none",
+                    }}
+                  >
+                    Departamentos
+                  </Link>
                 </div>
               </AppCard>
             ))}

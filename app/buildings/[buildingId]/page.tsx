@@ -15,11 +15,12 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  Brush,
   Building2,
+  CreditCard,
+  Droplets,
   FileImage,
   FileText,
   FolderOpen,
@@ -27,7 +28,10 @@ import {
   ImageIcon,
   Layers3,
   MapPin,
+  Pencil,
   Tags,
+  Trash2,
+  Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -36,6 +40,10 @@ import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 import UiButton from "@/components/UiButton";
+import Modal from "@/components/Modal";
+import AppFormField from "@/components/AppFormField";
+import AppSelect from "@/components/AppSelect";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import BuildingCategoryBadge from "@/components/BuildingCategoryBadge";
 import AppTabs from "@/components/AppTabs";
 import AppStatBar from "@/components/AppStatBar";
@@ -43,6 +51,8 @@ import AppGrid from "@/components/AppGrid";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 import {
+  BUILDING_CATEGORIES,
+  MIXED_USE_SUBCATEGORIES,
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
@@ -81,6 +91,33 @@ type UnitStatusRow = {
 type UnitTypeRow = {
   id: string;
 };
+
+type BuildingBillingConceptCode = "rent" | "electricity" | "water";
+
+type BuildingBillingConcept = {
+  id: string;
+  building_id: string;
+  concept_code: BuildingBillingConceptCode;
+  is_active: boolean;
+};
+
+const INPUT_STYLE: CSSProperties = {
+  width: "100%",
+  padding: 12,
+  border: "1px solid #D0D5DD",
+  borderRadius: 10,
+  background: "white",
+};
+
+const BILLING_CONCEPT_OPTIONS: Array<{
+  code: BuildingBillingConceptCode;
+  label: string;
+  icon: ReactNode;
+}> = [
+  { code: "rent", label: "Renta", icon: <CreditCard size={14} /> },
+  { code: "electricity", label: "Electricidad", icon: <Zap size={14} /> },
+  { code: "water", label: "Agua", icon: <Droplets size={14} /> },
+];
 
 function formatFileSize(fileSizeBytes: number | null) {
   if (!fileSizeBytes || fileSizeBytes <= 0) return "Sin tamaño";
@@ -146,6 +183,17 @@ export default function BuildingDetailPage() {
   const [activeTab, setActiveTab] = useState("overview");
   const [msg, setMsg] = useState("");
   const [loadingBuilding, setLoadingBuilding] = useState(true);
+  const [billingConcepts, setBillingConcepts] = useState<BuildingBillingConcept[]>([]);
+  const [savingBillingConcept, setSavingBillingConcept] = useState<BuildingBillingConceptCode | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingBuilding, setDeletingBuilding] = useState(false);
+  const [name, setName] = useState("");
+  const [code, setCode] = useState("");
+  const [address, setAddress] = useState("");
+  const [buildingCategory, setBuildingCategory] = useState("residential");
+  const [buildingSubcategory, setBuildingSubcategory] = useState("");
 
   useEffect(() => {
     if (!loading && !user) {
@@ -180,35 +228,52 @@ export default function BuildingDetailPage() {
       return;
     }
 
-    setBuilding(data as Building);
+    const normalizedBuilding = data as Building;
+    setBuilding(normalizedBuilding);
+    setName(normalizedBuilding.name || "");
+    setCode(normalizedBuilding.code || "");
+    setAddress(normalizedBuilding.address || "");
+    setBuildingCategory(normalizedBuilding.building_category || "residential");
+    setBuildingSubcategory(normalizedBuilding.building_subcategory || "");
 
-    const [{ data: filesData }, { data: unitsData }, { data: unitTypesData }] =
-      await Promise.all([
-        supabase
-          .from("building_files")
-          .select(
-            "id, building_id, file_name, file_type, file_category, storage_path, public_url, mime_type, file_size_bytes, notes, sort_order, is_cover, created_at"
-          )
-          .eq("building_id", buildingId)
-          .order("is_cover", { ascending: false })
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: false }),
+    const [
+      { data: filesData },
+      { data: unitsData },
+      { data: unitTypesData },
+      { data: billingConceptsData },
+    ] = await Promise.all([
+      supabase
+        .from("building_files")
+        .select(
+          "id, building_id, file_name, file_type, file_category, storage_path, public_url, mime_type, file_size_bytes, notes, sort_order, is_cover, created_at"
+        )
+        .eq("building_id", buildingId)
+        .order("is_cover", { ascending: false })
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false }),
 
-        supabase
-          .from("units")
-          .select("id, status")
-          .eq("building_id", buildingId)
-          .eq("company_id", user.company_id),
+      supabase
+        .from("units")
+        .select("id, status")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id),
 
-        supabase
-          .from("unit_types")
-          .select("id")
-          .eq("building_id", buildingId),
-      ]);
+      supabase
+        .from("unit_types")
+        .select("id")
+        .eq("building_id", buildingId),
+
+      supabase
+        .from("building_billing_concepts")
+        .select("id, building_id, concept_code, is_active")
+        .eq("building_id", buildingId)
+        .order("created_at", { ascending: true }),
+    ]);
 
     setFiles((filesData as BuildingFile[]) || []);
     setUnitStatuses((unitsData as UnitStatusRow[]) || []);
     setUnitTypeCount((unitTypesData as UnitTypeRow[] | null)?.length || 0);
+    setBillingConcepts((billingConceptsData as BuildingBillingConcept[]) || []);
     setLoadingBuilding(false);
   }
 
@@ -243,6 +308,144 @@ export default function BuildingDetailPage() {
     return <PageContainer>Cargando edificio...</PageContainer>;
   }
 
+    function openEditModal() {
+    if (!building) return;
+    setName(building.name || "");
+    setCode(building.code || "");
+    setAddress(building.address || "");
+    setBuildingCategory(building.building_category || "residential");
+    setBuildingSubcategory(building.building_subcategory || "");
+    setIsEditModalOpen(true);
+    setMsg("");
+  }
+
+  async function handleUpdateBuilding(e: React.FormEvent) {
+    e.preventDefault();
+
+    if (!user?.company_id || !building) {
+      setMsg("No se encontró el edificio a editar.");
+      return;
+    }
+
+    if (!name.trim()) {
+      setMsg("El nombre del edificio es obligatorio.");
+      return;
+    }
+
+    if (buildingCategory === "mixed_use" && !buildingSubcategory) {
+      setMsg("Debes seleccionar el tipo de uso mixto.");
+      return;
+    }
+
+    setSavingEdit(true);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("buildings")
+      .update({
+        name: name.trim(),
+        code: code.trim() || null,
+        address: address.trim() || null,
+        building_category: buildingCategory,
+        building_subcategory:
+          buildingCategory === "mixed_use" ? buildingSubcategory || null : null,
+      })
+      .eq("id", building.id)
+      .eq("company_id", user.company_id);
+
+    setSavingEdit(false);
+
+    if (error) {
+      setMsg(`No se pudo actualizar el edificio. ${error.message}`);
+      return;
+    }
+
+    setIsEditModalOpen(false);
+    await loadBuilding();
+    setMsg("Edificio actualizado correctamente.");
+  }
+
+  async function handleDeleteBuilding() {
+    if (!user?.company_id || !building) return;
+
+    setDeletingBuilding(true);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("buildings")
+      .delete()
+      .eq("id", building.id)
+      .eq("company_id", user.company_id);
+
+    if (error) {
+      const hasRelationsError =
+        error.code === "23503" ||
+        error.message.toLowerCase().includes("foreign key") ||
+        error.message.toLowerCase().includes("constraint");
+
+      setMsg(
+        hasRelationsError
+          ? "No se puede eliminar el edificio porque tiene registros relacionados."
+          : `No se pudo eliminar el edificio. ${error.message}`
+      );
+      setDeletingBuilding(false);
+      return;
+    }
+
+    setDeletingBuilding(false);
+    setIsDeleteModalOpen(false);
+    router.push("/buildings");
+  }
+
+  async function toggleBillingConcept(conceptCode: BuildingBillingConceptCode) {
+    if (!building || !user?.company_id) return;
+
+    const existing = billingConcepts.find((item) => item.concept_code === conceptCode);
+    const nextIsActive = !(existing?.is_active ?? false);
+
+    setSavingBillingConcept(conceptCode);
+    setMsg("");
+
+    let errorMessage = "";
+
+    if (existing) {
+      const { error } = await supabase
+        .from("building_billing_concepts")
+        .update({ is_active: nextIsActive })
+        .eq("id", existing.id);
+
+      if (error) {
+        errorMessage = error.message;
+      }
+    } else {
+      const { error } = await supabase
+        .from("building_billing_concepts")
+        .insert({
+          company_id: user.company_id,
+          building_id: building.id,
+          concept_code: conceptCode,
+          is_active: true,
+        });
+
+      if (error) {
+        errorMessage = error.message;
+      }
+    }
+
+    setSavingBillingConcept(null);
+
+    if (errorMessage) {
+      setMsg(`No se pudo actualizar la configuración de facturación. ${errorMessage}`);
+      return;
+    }
+
+    await loadBuilding();
+  }
+
+  const activeBillingConceptCodes = billingConcepts
+    .filter((item) => item.is_active)
+    .map((item) => item.concept_code);
+
   if (!building) {
     return <PageContainer>{msg || "No se encontró el edificio."}</PageContainer>;
   }
@@ -260,11 +463,13 @@ export default function BuildingDetailPage() {
         actions={
           <>
             <UiButton href="/buildings">Volver a edificios</UiButton>
-            <UiButton href={`/buildings/${building.id}/unit-types`}>
-              Tipologías
+            <UiButton onClick={openEditModal}>
+              <Pencil size={16} />
+              Editar edificio
             </UiButton>
-            <UiButton href={`/buildings/${building.id}/cleaning`}>
-              Limpieza
+            <UiButton onClick={() => setIsDeleteModalOpen(true)}>
+              <Trash2 size={16} />
+              Eliminar edificio
             </UiButton>
             <UiButton href={`/buildings/${building.id}/units`} variant="primary">
               Departamentos
@@ -415,6 +620,53 @@ export default function BuildingDetailPage() {
                 </div>
               </SectionCard>
             </div>
+
+            <SectionCard
+              title="Configuración de facturación"
+              subtitle="Define qué conceptos deben aparecer en el control mensual de generación de facturas para este edificio."
+              icon={<CreditCard size={18} />}
+            >
+              <div style={{ display: "grid", gap: 14 }}>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {BILLING_CONCEPT_OPTIONS.map((option) => {
+                    const isActive = activeBillingConceptCodes.includes(option.code);
+                    const isSaving = savingBillingConcept === option.code;
+
+                    return (
+                      <button
+                        key={option.code}
+                        type="button"
+                        onClick={() => void toggleBillingConcept(option.code)}
+                        disabled={isSaving}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "10px 14px",
+                          borderRadius: 999,
+                          border: `1px solid ${isActive ? "#86EFAC" : "#D1D5DB"}`,
+                          background: isActive ? "#DCFCE7" : "#FFFFFF",
+                          color: isActive ? "#166534" : "#374151",
+                          fontWeight: 700,
+                          fontSize: 13,
+                          cursor: isSaving ? "wait" : "pointer",
+                          opacity: isSaving ? 0.75 : 1,
+                        }}
+                      >
+                        {option.icon}
+                        {isSaving ? "Guardando..." : option.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div style={{ color: "#667085", fontSize: 14, lineHeight: 1.6 }}>
+                  {activeBillingConceptCodes.length > 0
+                    ? `Actualmente este edificio participa en: ${BILLING_CONCEPT_OPTIONS.filter((option) => activeBillingConceptCodes.includes(option.code)).map((option) => option.label).join(", ")}.`
+                    : "Todavía no hay conceptos activos. Cuando actives alguno, aparecerá en el módulo de Generación de facturas para los contratos vigentes de este edificio."}
+                </div>
+              </div>
+            </SectionCard>
 
             <SectionCard
               title="Accesos rápidos"
@@ -634,6 +886,69 @@ export default function BuildingDetailPage() {
           )}
         </SectionCard>
       ) : null}
+
+      <Modal
+        open={isEditModalOpen}
+        onClose={() => {
+          if (!savingEdit) setIsEditModalOpen(false);
+        }}
+        title="Editar edificio"
+      >
+        <form onSubmit={handleUpdateBuilding}>
+          <AppFormField label="Nombre del edificio" required>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Torre Central" style={INPUT_STYLE} />
+          </AppFormField>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <AppFormField label="Código">
+              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej. TC-001" style={INPUT_STYLE} />
+            </AppFormField>
+
+            <AppFormField label="Categoría" required>
+              <AppSelect value={buildingCategory} onChange={(e) => setBuildingCategory(e.target.value)}>
+                {BUILDING_CATEGORIES.map((item) => (
+                  <option key={item.key} value={item.key}>{item.label}</option>
+                ))}
+              </AppSelect>
+            </AppFormField>
+          </div>
+
+          {buildingCategory === "mixed_use" ? (
+            <AppFormField label="Subcategoría de uso mixto" required>
+              <AppSelect value={buildingSubcategory} onChange={(e) => setBuildingSubcategory(e.target.value)}>
+                <option value="">Selecciona una subcategoría</option>
+                {MIXED_USE_SUBCATEGORIES.map((item) => (
+                  <option key={item.key} value={item.key}>{item.label}</option>
+                ))}
+              </AppSelect>
+            </AppFormField>
+          ) : null}
+
+          <AppFormField label="Dirección">
+            <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dirección del edificio" style={{ ...INPUT_STYLE, minHeight: 96, resize: "vertical" }} />
+          </AppFormField>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+            <UiButton type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)} disabled={savingEdit}>
+              Cancelar
+            </UiButton>
+            <UiButton type="submit" disabled={savingEdit}>
+              {savingEdit ? "Guardando..." : "Guardar cambios"}
+            </UiButton>
+          </div>
+        </form>
+      </Modal>
+
+      <DeleteConfirmModal
+        open={isDeleteModalOpen}
+        title="Eliminar edificio"
+        description={building ? `¿Seguro que quieres eliminar ${building.name}? Esta acción no se puede deshacer.` : "¿Seguro que quieres eliminar este edificio?"}
+        confirmText={deletingBuilding ? "Eliminando..." : "Eliminar edificio"}
+        onConfirm={() => void handleDeleteBuilding()}
+        onCancel={() => {
+          if (!deletingBuilding) setIsDeleteModalOpen(false);
+        }}
+      />
     </PageContainer>
   );
 }
