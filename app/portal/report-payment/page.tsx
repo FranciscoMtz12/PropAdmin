@@ -71,6 +71,8 @@ type SelectableDebt = {
   leaseId: string | null;
 };
 
+type AmountMode = "full" | "other";
+
 type TenantReportedPaymentRecord = {
   id: string;
   tenant_id: string;
@@ -270,6 +272,14 @@ function formatPeriod(periodYear: number, periodMonth: number) {
   return `${MONTH_LABELS_SHORT[periodMonth - 1] || "Mes"} ${periodYear}`;
 }
 
+function getTodayDateOnlyKey() {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
 function getStatusVisual(status?: string | null) {
   if (status === "approved") {
     return {
@@ -329,18 +339,19 @@ export default function PortalReportPaymentPage() {
   const [pageError, setPageError] = useState("");
 
   const [collectionRecordId, setCollectionRecordId] = useState("");
+  const [amountMode, setAmountMode] = useState<AmountMode>("full");
   const [amountReported, setAmountReported] = useState("");
-  const [paymentDate, setPaymentDate] = useState("");
+  const [paymentDate, setPaymentDate] = useState(getTodayDateOnlyKey());
   const [notes, setNotes] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
+  const [allowSuperadminSubmission, setAllowSuperadminSubmission] = useState(false);
 
   const [formError, setFormError] = useState("");
   const [formMessage, setFormMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [allowSuperAdminSubmit, setAllowSuperAdminSubmit] = useState(false);
 
   const previewTenantId = searchParams.get("tenantId");
-  const preselectedRecordId = searchParams.get("recordId");
+  const previewCollectionRecordId = searchParams.get("recordId");
   const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
 
   const effectiveTenantId =
@@ -563,19 +574,6 @@ export default function PortalReportPaymentPage() {
       .filter((item): item is SelectableDebt => Boolean(item));
   }, [collectionRecords, leases]);
 
-  useEffect(() => {
-    if (pageLoading) return;
-
-    if (preselectedRecordId && selectableDebts.some((item) => item.id === preselectedRecordId)) {
-      setCollectionRecordId((current) => (current ? current : preselectedRecordId));
-      return;
-    }
-
-    if (!preselectedRecordId && !collectionRecordId && selectableDebts.length === 1) {
-      setCollectionRecordId(selectableDebts[0].id);
-    }
-  }, [pageLoading, preselectedRecordId, selectableDebts, collectionRecordId]);
-
   const collectionMap = useMemo(() => {
     return new Map(collectionRecords.map((record) => [record.id, record]));
   }, [collectionRecords]);
@@ -598,6 +596,44 @@ export default function PortalReportPaymentPage() {
   const selectedDebt =
     selectableDebts.find((item) => item.id === collectionRecordId) || null;
 
+  useEffect(() => {
+    if (!selectableDebts.length) {
+      setCollectionRecordId("");
+      return;
+    }
+
+    if (previewCollectionRecordId) {
+      const preselectedDebt = selectableDebts.find((item) => item.id === previewCollectionRecordId);
+      if (preselectedDebt) {
+        setCollectionRecordId((current) => (current ? current : preselectedDebt.id));
+        return;
+      }
+    }
+
+    setCollectionRecordId((current) =>
+      current && selectableDebts.some((item) => item.id === current)
+        ? current
+        : selectableDebts[0]?.id || ""
+    );
+  }, [previewCollectionRecordId, selectableDebts]);
+
+  useEffect(() => {
+    if (!selectedDebt) {
+      if (amountMode === "full") {
+        setAmountReported("");
+      }
+      return;
+    }
+
+    if (amountMode === "full") {
+      setAmountReported(String(selectedDebt.pendingAmount));
+    }
+  }, [amountMode, selectedDebt]);
+
+  useEffect(() => {
+    setPaymentDate((current) => current || getTodayDateOnlyKey());
+  }, []);
+
   const totalPending = selectableDebts.reduce(
     (sum, item) => sum + item.pendingAmount,
     0
@@ -613,9 +649,9 @@ export default function PortalReportPaymentPage() {
       return;
     }
 
-    const params = new URLSearchParams();
-    params.set("tenantId", nextTenantId);
-    router.replace(`/portal/report-payment?${params.toString()}`);
+    router.replace(
+      `/portal/report-payment?tenantId=${encodeURIComponent(nextTenantId)}`
+    );
   }
 
   function goToDashboard() {
@@ -647,9 +683,9 @@ export default function PortalReportPaymentPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (isSuperAdmin && !allowSuperAdminSubmit) {
+    if (isSuperAdmin && !allowSuperadminSubmission) {
       setFormError(
-        "Activa el modo prueba para enviar este reporte como superadmin."
+        "Activa el modo de prueba para enviar este reporte como superadmin."
       );
       return;
     }
@@ -729,10 +765,9 @@ export default function PortalReportPaymentPage() {
         collection_invoice_id: null,
         amount_reported: parsedAmount,
         payment_date: paymentDate,
-        notes:
-          notes.trim() || (isSuperAdmin && allowSuperAdminSubmit
-            ? `Reporte enviado en modo prueba por superadmin para tenant ${effectiveTenantId}.`
-            : null),
+        notes: isSuperAdmin
+          ? `[SIMULACIÓN SUPERADMIN] ${notes.trim() || "Reporte enviado en modo prueba."}`
+          : notes.trim() || null,
         proof_file_url: proofFileUrl,
         proof_file_path: proofFilePath,
         proof_file_name: proofFileName,
@@ -749,45 +784,41 @@ export default function PortalReportPaymentPage() {
       }
 
       setFormMessage(
-        "Tu reporte de pago quedó enviado para revisión administrativa."
+        isSuperAdmin
+          ? "Reporte de pago enviado en modo prueba para revisión administrativa."
+          : "Tu reporte de pago quedó enviado para revisión administrativa."
       );
-      setCollectionRecordId("");
-      setAmountReported("");
-      setPaymentDate("");
+      setAmountMode("full");
+      setAmountReported(relatedDebt ? String(relatedDebt.pendingAmount) : "");
+      setPaymentDate(getTodayDateOnlyKey());
       setNotes("");
       setProofFile(null);
 
-      await Promise.all([
-        (async () => {
-          const { data: reportedData } = await supabase
-            .from("tenant_reported_payments")
-            .select(`
-              id,
-              tenant_id,
-              lease_id,
-              collection_record_id,
-              amount_reported,
-              payment_date,
-              notes,
-              proof_file_url,
-              proof_file_name,
-              review_status,
-              rejection_reason,
-              reviewed_at,
-              created_at
-            `)
-            .eq("tenant_id", effectiveTenantId)
-            .order("created_at", { ascending: false });
+      const { data: reportedData } = await supabase
+        .from("tenant_reported_payments")
+        .select(`
+          id,
+          tenant_id,
+          lease_id,
+          collection_record_id,
+          amount_reported,
+          payment_date,
+          notes,
+          proof_file_url,
+          proof_file_name,
+          review_status,
+          rejection_reason,
+          reviewed_at,
+          created_at
+        `)
+        .eq("tenant_id", effectiveTenantId)
+        .order("created_at", { ascending: false });
 
-          const resolvedReported = Array.isArray(reportedData)
-            ? reportedData.map((item) =>
-                normalizeTenantReportedPaymentRecord(item)
-              )
-            : [];
+      const resolvedReported = Array.isArray(reportedData)
+        ? reportedData.map((item) => normalizeTenantReportedPaymentRecord(item))
+        : [];
 
-          setReportedPayments(resolvedReported);
-        })(),
-      ]);
+      setReportedPayments(resolvedReported);
     } catch (error: any) {
       console.error("Error creando tenant_reported_payments:", error);
       setFormError(error?.message || "No se pudo registrar el reporte de pago.");
@@ -805,7 +836,7 @@ export default function PortalReportPaymentPage() {
         title="Reportar pago"
         subtitle={
           isSuperAdmin
-            ? "Modo simulación de inquilino. Puedes revisar el formulario y, si activas modo prueba, también enviar reportes desde esta misma vista."
+            ? "Modo simulación del formulario que usará el inquilino para reportar un pago."
             : `Hola, ${tenantName}. Aquí puedes reportar un pago para que administración lo revise antes de aplicarlo a cobranza.`
         }
         titleIcon={<CreditCard size={20} />}
@@ -821,7 +852,7 @@ export default function PortalReportPaymentPage() {
             <div style={{ flex: 1 }}>
               <div style={sectionTitleStyle}>Vista previa de tenant</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                Selecciona un inquilino para revisar el formulario de reporte de pago y su historial.
+                Selecciona un inquilino para simular su experiencia real dentro del portal y probar el flujo de reporte de pago.
               </div>
 
               <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
@@ -903,33 +934,6 @@ export default function PortalReportPaymentPage() {
                     Ver adeudos
                   </button>
                 </div>
-
-                {effectiveTenantId ? (
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 10,
-                      padding: 12,
-                      borderRadius: 12,
-                      border: "1px solid #D1D5DB",
-                      background: allowSuperAdminSubmit ? "#ECFDF5" : "#F9FAFB",
-                      color: "#374151",
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                      marginTop: 12,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={allowSuperAdminSubmit}
-                      onChange={(event) => setAllowSuperAdminSubmit(event.target.checked)}
-                    />
-                    <span>
-                      Permitir envío de prueba como superadmin para este inquilino. El reporte quedará marcado como simulación administrativa.
-                    </span>
-                  </label>
-                ) : null}
               </div>
             </div>
           </div>
@@ -973,7 +977,7 @@ export default function PortalReportPaymentPage() {
             <div>
               <div style={sectionTitleStyle}>Selecciona un inquilino para continuar</div>
               <div style={mutedTextStyle}>
-                Elige un tenant desde el selector superior para abrir su formulario en modo vista previa.
+                Elige un tenant desde el selector superior para abrir su formulario en modo simulación.
               </div>
             </div>
           </div>
@@ -1065,24 +1069,6 @@ export default function PortalReportPaymentPage() {
               </div>
             </div>
 
-            {isSuperAdmin ? (
-              <div
-                style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  background: allowSuperAdminSubmit ? "#ECFDF5" : "#FEF3C7",
-                  border: `1px solid ${allowSuperAdminSubmit ? "#A7F3D0" : "#FDE68A"}`,
-                  color: allowSuperAdminSubmit ? "#166534" : "#92400E",
-                  fontSize: 13,
-                  fontWeight: 600,
-                }}
-              >
-                {allowSuperAdminSubmit
-                  ? "Modo prueba activo: puedes enviar este reporte como superadmin actuando como el inquilino seleccionado."
-                  : "Modo vista previa: activa el modo prueba para habilitar el envío del reporte desde esta pantalla."}
-              </div>
-            ) : null}
-
             <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
               <div style={{ display: "grid", gap: 8 }}>
                 <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
@@ -1091,7 +1077,11 @@ export default function PortalReportPaymentPage() {
 
                 <select
                   value={collectionRecordId}
-                  onChange={(event) => setCollectionRecordId(event.target.value)}
+                  onChange={(event) => {
+                    setCollectionRecordId(event.target.value);
+                    setFormError("");
+                    setFormMessage("");
+                  }}
                   style={inputStyle}
                   disabled={pageLoading || !selectableDebts.length}
                 >
@@ -1119,21 +1109,100 @@ export default function PortalReportPaymentPage() {
                     background: "#F8FAFC",
                     border: "1px solid #E5E7EB",
                     display: "grid",
-                    gap: 8,
+                    gap: 12,
                   }}
                 >
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
                     {selectedDebt.label}
                   </div>
-                  <div style={mutedTextStyle}>
-                    Vence: <strong>{selectedDebt.dueDateLabel}</strong>
-                  </div>
-                  <div style={mutedTextStyle}>
-                    Saldo pendiente:{" "}
-                    <strong>{formatCurrency(selectedDebt.pendingAmount)}</strong>
+
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <div style={mutedTextStyle}>Edificio</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                        {selectedDebt.buildingLabel}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={mutedTextStyle}>Unidad</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                        {selectedDebt.unitLabel}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={mutedTextStyle}>Vencimiento</div>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                        {selectedDebt.dueDateLabel}
+                      </div>
+                    </div>
+                    <div>
+                      <div style={mutedTextStyle}>Saldo pendiente</div>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>
+                        {formatCurrency(selectedDebt.pendingAmount)}
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : null}
+
+              <div style={{ display: "grid", gap: 10 }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                  ¿Qué monto quieres reportar?
+                </label>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <label
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: amountMode === "full" ? "1px solid #86EFAC" : "1px solid #D1D5DB",
+                      background: amountMode === "full" ? "#F0FDF4" : "#FFFFFF",
+                      color: "#111827",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="amountMode"
+                      checked={amountMode === "full"}
+                      onChange={() => setAmountMode("full")}
+                    />
+                    Reportar saldo completo
+                  </label>
+
+                  <label
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "10px 12px",
+                      borderRadius: 12,
+                      border: amountMode === "other" ? "1px solid #93C5FD" : "1px solid #D1D5DB",
+                      background: amountMode === "other" ? "#EFF6FF" : "#FFFFFF",
+                      color: "#111827",
+                      fontSize: 14,
+                      fontWeight: 600,
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="amountMode"
+                      checked={amountMode === "other"}
+                      onChange={() => setAmountMode("other")}
+                    />
+                    Reportar otro monto
+                  </label>
+                </div>
+              </div>
 
               <div
                 style={{
@@ -1153,10 +1222,18 @@ export default function PortalReportPaymentPage() {
                     onChange={(event) =>
                       setAmountReported(formatDecimalInput(event.target.value))
                     }
-                    style={inputStyle}
+                    style={{
+                      ...inputStyle,
+                      background: amountMode === "full" ? "#F9FAFB" : "#FFFFFF",
+                    }}
                     placeholder="0.00"
-                    disabled={isSuperAdmin && !allowSuperAdminSubmit}
+                    disabled={(isSuperAdmin && !allowSuperadminSubmission) || amountMode === "full"}
                   />
+                  {selectedDebt ? (
+                    <div style={{ ...mutedTextStyle, fontSize: 13 }}>
+                      Máximo permitido para este adeudo: <strong>{formatCurrency(selectedDebt.pendingAmount)}</strong>
+                    </div>
+                  ) : null}
                 </div>
 
                 <div style={{ display: "grid", gap: 8 }}>
@@ -1168,8 +1245,11 @@ export default function PortalReportPaymentPage() {
                     value={paymentDate}
                     onChange={(event) => setPaymentDate(event.target.value)}
                     style={inputStyle}
-                    disabled={isSuperAdmin && !allowSuperAdminSubmit}
+                    disabled={isSuperAdmin && !allowSuperadminSubmission}
                   />
+                  <div style={{ ...mutedTextStyle, fontSize: 13 }}>
+                    La fecha se llena automáticamente con hoy, pero puedes ajustarla si el pago se hizo antes.
+                  </div>
                 </div>
               </div>
 
@@ -1182,7 +1262,7 @@ export default function PortalReportPaymentPage() {
                   onChange={(event) => setNotes(event.target.value)}
                   style={textareaStyle}
                   placeholder="Agrega un comentario opcional para administración."
-                  disabled={isSuperAdmin && !allowSuperAdminSubmit}
+                  disabled={isSuperAdmin && !allowSuperadminSubmission}
                 />
               </div>
 
@@ -1201,8 +1281,8 @@ export default function PortalReportPaymentPage() {
                     border: "1px dashed #C7D2FE",
                     background: "#F8FAFC",
                     padding: "0 14px",
-                    cursor: isSuperAdmin && !allowSuperAdminSubmit ? "not-allowed" : "pointer",
-                    opacity: isSuperAdmin && !allowSuperAdminSubmit ? 0.7 : 1,
+                    cursor: isSuperAdmin && !allowSuperadminSubmission ? "not-allowed" : "pointer",
+                    opacity: isSuperAdmin && !allowSuperadminSubmission ? 0.7 : 1,
                   }}
                 >
                   <Upload size={16} color="#4F46E5" />
@@ -1224,11 +1304,35 @@ export default function PortalReportPaymentPage() {
                     onChange={(event) =>
                       setProofFile(event.target.files?.[0] || null)
                     }
-                    disabled={isSuperAdmin && !allowSuperAdminSubmit}
+                    disabled={isSuperAdmin && !allowSuperadminSubmission}
                     style={{ display: "none" }}
                   />
                 </label>
               </div>
+
+              {isSuperAdmin ? (
+                <label
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 10,
+                    padding: "12px 14px",
+                    borderRadius: 12,
+                    border: "1px solid #D1D5DB",
+                    background: allowSuperadminSubmission ? "#EEF2FF" : "#F9FAFB",
+                    color: "#111827",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={allowSuperadminSubmission}
+                    onChange={(event) => setAllowSuperadminSubmission(event.target.checked)}
+                  />
+                  Permitir envío de prueba como superadmin para este inquilino
+                </label>
+              ) : null}
 
               {formError ? (
                 <div
@@ -1273,7 +1377,7 @@ export default function PortalReportPaymentPage() {
 
                 <UiButton
                   type="submit"
-                  disabled={saving || (isSuperAdmin && !allowSuperAdminSubmit) || !selectableDebts.length}
+                  disabled={saving || (isSuperAdmin && !allowSuperadminSubmission) || !selectableDebts.length || !collectionRecordId}
                 >
                   {saving ? "Enviando..." : "Enviar reporte"}
                 </UiButton>

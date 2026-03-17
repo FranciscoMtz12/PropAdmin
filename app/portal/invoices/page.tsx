@@ -1121,14 +1121,15 @@ export default function PortalInvoicesPage() {
                       <UiButton
                         variant="primary"
                         icon={<CreditCard size={16} />}
-                        onClick={() => {
-                          const params = new URLSearchParams();
-                          params.set("recordId", row.id);
-                          if (isSuperAdmin && effectiveTenantId) {
-                            params.set("tenantId", effectiveTenantId);
-                          }
-                          router.push(`/portal/report-payment?${params.toString()}`);
-                        }}
+                        onClick={() =>
+                          router.push(
+                            `/portal/report-payment?recordId=${encodeURIComponent(row.id)}${
+                              isSuperAdmin && effectiveTenantId
+                                ? `&tenantId=${encodeURIComponent(effectiveTenantId)}`
+                                : ""
+                            }`
+                          )
+                        }
                       >
                         Reportar pago
                       </UiButton>
