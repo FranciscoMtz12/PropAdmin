@@ -711,7 +711,7 @@ export default function PortalInvoicesPage() {
         title="Mis facturas y adeudos"
         subtitle={
           isSuperAdmin
-            ? "Vista previa de los adeudos reales del tenant seleccionado. Aquí puedes validar exactamente lo que verá dentro de su portal."
+            ? "Modo simulación de los adeudos reales del inquilino seleccionado. Aquí puedes validar exactamente lo que verá dentro de su portal."
             : `Hola, ${tenantName}. Aquí puedes revisar tus cargos reales por periodo, cuánto llevas pagado y qué adeudos siguen pendientes o vencidos.`
         }
         titleIcon={<FileText size={20} />}
@@ -725,9 +725,9 @@ export default function PortalInvoicesPage() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={sectionTitleStyle}>Vista previa de tenant</div>
+              <div style={sectionTitleStyle}>Actuar como inquilino</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                Selecciona el inquilino cuya cobranza deseas revisar sin cerrar sesión de superadmin.
+                Selecciona el inquilino cuya cobranza deseas navegar sin cerrar sesión de superadmin.
               </div>
 
               <div style={{ marginTop: 14, display: "grid", gap: 12 }}>

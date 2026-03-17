@@ -517,7 +517,7 @@ export default function PortalDashboardPage() {
         title="Portal del inquilino"
         subtitle={
           isSuperAdmin
-            ? "Vista previa del portal tenant desde tu sesión superadmin. Aquí puedes revisar exactamente lo que verá el inquilino sin cerrar sesión."
+            ? "Modo simulación del portal del inquilino desde tu sesión superadmin. Aquí puedes navegar como si fueras ese inquilino sin cerrar sesión."
             : `Hola, ${tenantName}. Aquí podrás consultar la información principal de tu contrato y, después, tus adeudos, facturas y pagos reportados.`
         }
         titleIcon={<Home size={20} />}
@@ -531,9 +531,9 @@ export default function PortalDashboardPage() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={sectionTitleStyle}>Vista previa de tenant</div>
+              <div style={sectionTitleStyle}>Actuar como inquilino</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                Selecciona un inquilino para revisar su portal completo desde tu sesión superadmin.
+                Selecciona un inquilino para navegar su portal completo desde tu sesión superadmin.
               </div>
 
               <div
@@ -674,7 +674,7 @@ export default function PortalDashboardPage() {
             <div>
               <div style={sectionTitleStyle}>Selecciona un inquilino para continuar</div>
               <div style={mutedTextStyle}>
-                Como superadmin, primero elige un tenant desde el selector superior para abrir su portal en modo vista previa.
+                Como superadmin, primero elige un inquilino desde el selector superior para abrir su portal en modo simulación.
               </div>
             </div>
           </div>
@@ -750,7 +750,7 @@ export default function PortalDashboardPage() {
                     fontWeight: 600,
                   }}
                 >
-                  Estás viendo esta sección en modo vista previa. La respuesta del inquilino no se puede enviar desde superadmin.
+                  Estás viendo esta sección en modo simulación. La respuesta del inquilino sigue protegida y no se envía desde superadmin.
                 </div>
               ) : renewalResponse ? (
                 <div

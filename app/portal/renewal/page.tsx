@@ -432,7 +432,7 @@ export default function PortalRenewalPage() {
         title="Renovación de contrato"
         subtitle={
           isSuperAdmin
-            ? "Vista previa de la renovación del tenant seleccionado."
+            ? "Modo simulación de la renovación del inquilino seleccionado."
             : `Hola, ${tenantName}. Aquí puedes responder si te interesa renovar tu contrato.`
         }
         titleIcon={<CalendarDays size={20} />}
@@ -446,7 +446,7 @@ export default function PortalRenewalPage() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={sectionTitleStyle}>Vista previa de tenant</div>
+              <div style={sectionTitleStyle}>Actuar como inquilino</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
                 Selecciona un inquilino para revisar su estatus de renovación.
               </div>
@@ -686,7 +686,7 @@ export default function PortalRenewalPage() {
                       fontWeight: 600,
                     }}
                   >
-                    Estás viendo esta sección en modo vista previa. El superadmin no envía la respuesta del inquilino desde aquí.
+                    Estás viendo esta sección en modo simulación. El superadmin no envía la respuesta del inquilino desde aquí.
                   </div>
                 ) : (
                   <div

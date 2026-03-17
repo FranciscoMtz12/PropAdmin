@@ -423,7 +423,7 @@ export default function PortalContractPage() {
         title="Mi contrato"
         subtitle={
           isSuperAdmin
-            ? "Vista previa del contrato del tenant seleccionado."
+            ? "Modo simulación del contrato del inquilino seleccionado."
             : `Hola, ${tenantName}. Aquí puedes revisar la información principal de tu contrato.`
         }
         titleIcon={<FileText size={20} />}
@@ -437,9 +437,9 @@ export default function PortalContractPage() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={sectionTitleStyle}>Vista previa de tenant</div>
+              <div style={sectionTitleStyle}>Actuar como inquilino</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
-                Selecciona un inquilino para revisar su contrato desde tu sesión superadmin.
+                Selecciona un inquilino para navegar su contrato desde tu sesión superadmin.
               </div>
 
               <div style={{ marginTop: 14, display: "grid", gap: 12 }}>
