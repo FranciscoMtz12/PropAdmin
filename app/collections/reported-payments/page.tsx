@@ -32,6 +32,7 @@ type ReportedPayment = {
   payment_date: string;
   notes: string | null;
   proof_file_url: string | null;
+  proof_file_path: string | null;
   proof_file_name: string | null;
   review_status: string;
   rejection_reason: string | null;
@@ -112,6 +113,7 @@ function normalizeReportedPayment(raw: any): ReportedPayment {
     payment_date: raw?.payment_date ?? "",
     notes: raw?.notes ?? null,
     proof_file_url: raw?.proof_file_url ?? null,
+    proof_file_path: raw?.proof_file_path ?? null,
     proof_file_name: raw?.proof_file_name ?? null,
     review_status: raw?.review_status ?? "pending_review",
     rejection_reason: raw?.rejection_reason ?? null,
@@ -181,6 +183,7 @@ export default function ReportedPaymentsPage() {
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [openingProofId, setOpeningProofId] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<ReviewTab>("pending_review");
 
@@ -205,6 +208,7 @@ export default function ReportedPaymentsPage() {
         payment_date,
         notes,
         proof_file_url,
+        proof_file_path,
         proof_file_name,
         review_status,
         rejection_reason,
@@ -268,6 +272,42 @@ export default function ReportedPaymentsPage() {
     (sum, item) => sum + Number(item.amount_reported || 0),
     0
   );
+
+  async function openProof(payment: ReportedPayment) {
+    const fallbackUrl = payment.proof_file_url;
+
+    if (!payment.proof_file_path && fallbackUrl) {
+      window.open(fallbackUrl, "_blank", "noopener,noreferrer");
+      return;
+    }
+
+    if (!payment.proof_file_path) {
+      setPageError("Este reporte no tiene un archivo de comprobante disponible.");
+      return;
+    }
+
+    setOpeningProofId(payment.id);
+    setPageError("");
+
+    try {
+      const { data } = supabase.storage
+        .from("payment-proofs")
+        .getPublicUrl(payment.proof_file_path);
+
+      if (!data?.publicUrl) {
+        throw new Error("No pude generar la URL del comprobante.");
+      }
+
+      window.open(data.publicUrl, "_blank", "noopener,noreferrer");
+    } catch (error: any) {
+      console.error("Error abriendo comprobante:", error);
+      setPageError(
+        error?.message || "No se pudo abrir el comprobante de este reporte."
+      );
+    } finally {
+      setOpeningProofId(null);
+    }
+  }
 
   async function approvePayment(payment: ReportedPayment) {
     if (!payment.collection_record_id) {
@@ -614,6 +654,7 @@ export default function ReportedPaymentsPage() {
         <AppGrid minWidth={320}>
           {activePayments.map((payment) => {
             const isProcessing = processingId === payment.id;
+            const isOpeningProof = openingProofId === payment.id;
             const tenantLabel =
               payment.tenants?.full_name || payment.tenants?.email || "Inquilino sin nombre";
 
@@ -726,18 +767,15 @@ export default function ReportedPaymentsPage() {
                     </div>
                   ) : null}
 
-                  {payment.proof_file_url ? (
+                  {payment.proof_file_path || payment.proof_file_url ? (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <a
-                        href={payment.proof_file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        style={{ textDecoration: "none" }}
+                      <UiButton
+                        variant="secondary"
+                        onClick={() => void openProof(payment)}
+                        disabled={isOpeningProof}
                       >
-                        <UiButton variant="secondary">
-                          Ver comprobante
-                        </UiButton>
-                      </a>
+                        {isOpeningProof ? "Abriendo..." : "Ver comprobante"}
+                      </UiButton>
 
                       <div
                         style={{
