@@ -337,16 +337,14 @@ export default function PortalReportPaymentPage() {
   const [formError, setFormError] = useState("");
   const [formMessage, setFormMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const [allowSuperAdminTestSubmit, setAllowSuperAdminTestSubmit] = useState(false);
+  const [allowSuperAdminSubmit, setAllowSuperAdminSubmit] = useState(false);
 
   const previewTenantId = searchParams.get("tenantId");
+  const preselectedRecordId = searchParams.get("recordId");
   const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
 
   const effectiveTenantId =
     user?.role === "tenant" ? user.tenant_id : previewTenantId;
-  const canSubmitAsPreview =
-    isSuperAdmin && allowSuperAdminTestSubmit && Boolean(effectiveTenantId);
-  const isReadOnlyPreview = isSuperAdmin && !canSubmitAsPreview;
 
   useEffect(() => {
     async function loadTenantOptions() {
@@ -565,6 +563,19 @@ export default function PortalReportPaymentPage() {
       .filter((item): item is SelectableDebt => Boolean(item));
   }, [collectionRecords, leases]);
 
+  useEffect(() => {
+    if (pageLoading) return;
+
+    if (preselectedRecordId && selectableDebts.some((item) => item.id === preselectedRecordId)) {
+      setCollectionRecordId((current) => (current ? current : preselectedRecordId));
+      return;
+    }
+
+    if (!preselectedRecordId && !collectionRecordId && selectableDebts.length === 1) {
+      setCollectionRecordId(selectableDebts[0].id);
+    }
+  }, [pageLoading, preselectedRecordId, selectableDebts, collectionRecordId]);
+
   const collectionMap = useMemo(() => {
     return new Map(collectionRecords.map((record) => [record.id, record]));
   }, [collectionRecords]);
@@ -602,9 +613,9 @@ export default function PortalReportPaymentPage() {
       return;
     }
 
-    router.replace(
-      `/portal/report-payment?tenantId=${encodeURIComponent(nextTenantId)}`
-    );
+    const params = new URLSearchParams();
+    params.set("tenantId", nextTenantId);
+    router.replace(`/portal/report-payment?${params.toString()}`);
   }
 
   function goToDashboard() {
@@ -636,9 +647,9 @@ export default function PortalReportPaymentPage() {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
 
-    if (isReadOnlyPreview) {
+    if (isSuperAdmin && !allowSuperAdminSubmit) {
       setFormError(
-        "Activa \"Permitir envío de prueba\" para enviar este reporte como superadmin o entra con el usuario tenant real."
+        "Activa el modo prueba para enviar este reporte como superadmin."
       );
       return;
     }
@@ -718,11 +729,10 @@ export default function PortalReportPaymentPage() {
         collection_invoice_id: null,
         amount_reported: parsedAmount,
         payment_date: paymentDate,
-        notes: canSubmitAsPreview
-          ? [notes.trim(), `(Reporte enviado por superadmin en modo prueba. Admin: ${user?.full_name || user?.email || "sin nombre"})`]
-              .filter(Boolean)
-              .join("\n\n")
-          : notes.trim() || null,
+        notes:
+          notes.trim() || (isSuperAdmin && allowSuperAdminSubmit
+            ? `Reporte enviado en modo prueba por superadmin para tenant ${effectiveTenantId}.`
+            : null),
         proof_file_url: proofFileUrl,
         proof_file_path: proofFilePath,
         proof_file_name: proofFileName,
@@ -739,9 +749,7 @@ export default function PortalReportPaymentPage() {
       }
 
       setFormMessage(
-        canSubmitAsPreview
-          ? "El reporte de pago de prueba quedó enviado para revisión administrativa."
-          : "Tu reporte de pago quedó enviado para revisión administrativa."
+        "Tu reporte de pago quedó enviado para revisión administrativa."
       );
       setCollectionRecordId("");
       setAmountReported("");
@@ -797,9 +805,7 @@ export default function PortalReportPaymentPage() {
         title="Reportar pago"
         subtitle={
           isSuperAdmin
-            ? canSubmitAsPreview
-              ? "Modo prueba activo. Estás enviando reportes como superadmin usando el tenant seleccionado."
-              : "Modo simulación del formulario que usará el inquilino para reportar un pago."
+            ? "Modo simulación de inquilino. Puedes revisar el formulario y, si activas modo prueba, también enviar reportes desde esta misma vista."
             : `Hola, ${tenantName}. Aquí puedes reportar un pago para que administración lo revise antes de aplicarlo a cobranza.`
         }
         titleIcon={<CreditCard size={20} />}
@@ -813,7 +819,7 @@ export default function PortalReportPaymentPage() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <div style={sectionTitleStyle}>Actuar como inquilino</div>
+              <div style={sectionTitleStyle}>Vista previa de tenant</div>
               <div style={{ marginTop: 6, ...mutedTextStyle }}>
                 Selecciona un inquilino para revisar el formulario de reporte de pago y su historial.
               </div>
@@ -842,46 +848,6 @@ export default function PortalReportPaymentPage() {
                     </option>
                   ))}
                 </select>
-
-                <div
-                  style={{
-                    padding: 14,
-                    borderRadius: 12,
-                    border: `1px solid ${canSubmitAsPreview ? "#A7F3D0" : "#FDE68A"}`,
-                    background: canSubmitAsPreview ? "#ECFDF5" : "#FFFBEB",
-                    display: "grid",
-                    gap: 10,
-                  }}
-                >
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
-                    {canSubmitAsPreview ? "Modo prueba habilitado" : "Vista previa bloqueada para envío"}
-                  </div>
-                  <div style={mutedTextStyle}>
-                    {canSubmitAsPreview
-                      ? "Ya puedes subir comprobante y enviar un reporte de pago usando el tenant seleccionado. Esto sirve para pruebas del flujo sin cambiar de usuario."
-                      : "Por seguridad, el envío real sigue siendo responsabilidad del tenant. Si quieres probar el flujo completo como superadmin, activa el modo de prueba."}
-                  </div>
-
-                  <label
-                    style={{
-                      display: "flex",
-                      alignItems: "flex-start",
-                      gap: 10,
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#374151",
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={allowSuperAdminTestSubmit}
-                      onChange={(event) => setAllowSuperAdminTestSubmit(event.target.checked)}
-                      disabled={!effectiveTenantId}
-                      style={{ marginTop: 3 }}
-                    />
-                    <span>Permitir envío de prueba como superadmin</span>
-                  </label>
-                </div>
 
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
                   <button
@@ -937,6 +903,33 @@ export default function PortalReportPaymentPage() {
                     Ver adeudos
                   </button>
                 </div>
+
+                {effectiveTenantId ? (
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 10,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: "1px solid #D1D5DB",
+                      background: allowSuperAdminSubmit ? "#ECFDF5" : "#F9FAFB",
+                      color: "#374151",
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                      marginTop: 12,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={allowSuperAdminSubmit}
+                      onChange={(event) => setAllowSuperAdminSubmit(event.target.checked)}
+                    />
+                    <span>
+                      Permitir envío de prueba como superadmin para este inquilino. El reporte quedará marcado como simulación administrativa.
+                    </span>
+                  </label>
+                ) : null}
               </div>
             </div>
           </div>
@@ -1072,6 +1065,24 @@ export default function PortalReportPaymentPage() {
               </div>
             </div>
 
+            {isSuperAdmin ? (
+              <div
+                style={{
+                  padding: 12,
+                  borderRadius: 12,
+                  background: allowSuperAdminSubmit ? "#ECFDF5" : "#FEF3C7",
+                  border: `1px solid ${allowSuperAdminSubmit ? "#A7F3D0" : "#FDE68A"}`,
+                  color: allowSuperAdminSubmit ? "#166534" : "#92400E",
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {allowSuperAdminSubmit
+                  ? "Modo prueba activo: puedes enviar este reporte como superadmin actuando como el inquilino seleccionado."
+                  : "Modo vista previa: activa el modo prueba para habilitar el envío del reporte desde esta pantalla."}
+              </div>
+            ) : null}
+
             <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
               <div style={{ display: "grid", gap: 8 }}>
                 <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
@@ -1144,7 +1155,7 @@ export default function PortalReportPaymentPage() {
                     }
                     style={inputStyle}
                     placeholder="0.00"
-                    disabled={isReadOnlyPreview}
+                    disabled={isSuperAdmin && !allowSuperAdminSubmit}
                   />
                 </div>
 
@@ -1157,7 +1168,7 @@ export default function PortalReportPaymentPage() {
                     value={paymentDate}
                     onChange={(event) => setPaymentDate(event.target.value)}
                     style={inputStyle}
-                    disabled={isReadOnlyPreview}
+                    disabled={isSuperAdmin && !allowSuperAdminSubmit}
                   />
                 </div>
               </div>
@@ -1171,7 +1182,7 @@ export default function PortalReportPaymentPage() {
                   onChange={(event) => setNotes(event.target.value)}
                   style={textareaStyle}
                   placeholder="Agrega un comentario opcional para administración."
-                  disabled={isReadOnlyPreview}
+                  disabled={isSuperAdmin && !allowSuperAdminSubmit}
                 />
               </div>
 
@@ -1190,8 +1201,8 @@ export default function PortalReportPaymentPage() {
                     border: "1px dashed #C7D2FE",
                     background: "#F8FAFC",
                     padding: "0 14px",
-                    cursor: isReadOnlyPreview ? "not-allowed" : "pointer",
-                    opacity: isReadOnlyPreview ? 0.7 : 1,
+                    cursor: isSuperAdmin && !allowSuperAdminSubmit ? "not-allowed" : "pointer",
+                    opacity: isSuperAdmin && !allowSuperAdminSubmit ? 0.7 : 1,
                   }}
                 >
                   <Upload size={16} color="#4F46E5" />
@@ -1213,7 +1224,7 @@ export default function PortalReportPaymentPage() {
                     onChange={(event) =>
                       setProofFile(event.target.files?.[0] || null)
                     }
-                    disabled={isReadOnlyPreview}
+                    disabled={isSuperAdmin && !allowSuperAdminSubmit}
                     style={{ display: "none" }}
                   />
                 </label>
@@ -1262,9 +1273,9 @@ export default function PortalReportPaymentPage() {
 
                 <UiButton
                   type="submit"
-                  disabled={saving || isReadOnlyPreview || !selectableDebts.length}
+                  disabled={saving || (isSuperAdmin && !allowSuperAdminSubmit) || !selectableDebts.length}
                 >
-                  {saving ? "Enviando..." : canSubmitAsPreview ? "Enviar reporte de prueba" : "Enviar reporte"}
+                  {saving ? "Enviando..." : "Enviar reporte"}
                 </UiButton>
               </div>
             </form>
