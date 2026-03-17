@@ -310,8 +310,13 @@ export default function ReportedPaymentsPage() {
   }
 
   async function approvePayment(payment: ReportedPayment) {
-    if (!payment.collection_record_id) {
-      setPageError("Este reporte no tiene collection_record_id relacionado.");
+    if (!user?.id) {
+      setPageError("No se encontró el usuario administrador actual.");
+      return;
+    }
+
+    if (payment.review_status !== "pending_review") {
+      setPageError("Este pago reportado ya fue procesado.");
       return;
     }
 
@@ -319,72 +324,13 @@ export default function ReportedPaymentsPage() {
     setPageError("");
 
     try {
-      const { data: record, error: recordError } = await supabase
-        .from("collection_records")
-        .select(`
-          id,
-          amount_due,
-          amount_collected,
-          due_date
-        `)
-        .eq("id", payment.collection_record_id)
-        .single();
+      const { error } = await supabase.rpc("approve_reported_payment", {
+        p_report_id: payment.id,
+        p_admin_id: user.id,
+      });
 
-      if (recordError) {
-        throw recordError;
-      }
-
-      const amountDue = Number(record?.amount_due || 0);
-      const previousCollected = Number(record?.amount_collected || 0);
-      const reportedAmount = Number(payment.amount_reported || 0);
-
-      const newAmountCollected = previousCollected + reportedAmount;
-      const remainingBalance = amountDue - newAmountCollected;
-
-      const todayKey = getTodayDateOnlyKey();
-      const dueDateKey = normalizeDateOnly(record?.due_date);
-
-      let recalculatedStatus: "pending" | "partial" | "collected" | "overdue" = "pending";
-
-      if (remainingBalance <= 0) {
-        recalculatedStatus = "collected";
-      } else if (newAmountCollected > 0) {
-        recalculatedStatus = "partial";
-      } else if (dueDateKey && dueDateKey < todayKey) {
-        recalculatedStatus = "overdue";
-      } else {
-        recalculatedStatus = "pending";
-      }
-
-      const { error: updateCollectionError } = await supabase
-        .from("collection_records")
-        .update({
-          amount_collected: newAmountCollected,
-          status: recalculatedStatus,
-        })
-        .eq("id", payment.collection_record_id);
-
-      if (updateCollectionError) {
-        throw updateCollectionError;
-      }
-
-      const reviewPayload: Record<string, any> = {
-        review_status: "approved",
-        rejection_reason: null,
-        reviewed_at: new Date().toISOString(),
-      };
-
-      if (user?.id) {
-        reviewPayload.reviewed_by = user.id;
-      }
-
-      const { error: updateReportedError } = await supabase
-        .from("tenant_reported_payments")
-        .update(reviewPayload)
-        .eq("id", payment.id);
-
-      if (updateReportedError) {
-        throw updateReportedError;
+      if (error) {
+        throw error;
       }
 
       await loadPayments();
@@ -405,6 +351,11 @@ export default function ReportedPaymentsPage() {
   async function submitRejection() {
     if (!rejectingPayment) return;
 
+    if (!user?.id) {
+      setPageError("No se encontró el usuario administrador actual.");
+      return;
+    }
+
     const trimmedReason = rejectionReason.trim();
 
     if (!trimmedReason) {
@@ -416,20 +367,10 @@ export default function ReportedPaymentsPage() {
     setPageError("");
 
     try {
-      const reviewPayload: Record<string, any> = {
-        review_status: "rejected",
-        rejection_reason: trimmedReason,
-        reviewed_at: new Date().toISOString(),
-      };
-
-      if (user?.id) {
-        reviewPayload.reviewed_by = user.id;
-      }
-
-      const { error } = await supabase
-        .from("tenant_reported_payments")
-        .update(reviewPayload)
-        .eq("id", rejectingPayment.id);
+      const { error } = await supabase.rpc("reject_reported_payment", {
+        p_report_id: rejectingPayment.id,
+        p_admin_id: user.id,
+      });
 
       if (error) {
         throw error;
