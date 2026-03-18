@@ -311,7 +311,7 @@ export default function InvoiceGenerationPage() {
   const [groups, setGroups] = useState<LeaseInvoiceGroup[]>([]);
   const [loading, setLoading] = useState(true);
   const [pageError, setPageError] = useState("");
-  const [expandedLeaseIds, setExpandedLeaseIds] = useState<string[]>([]);
+  const [expandedLeaseId, setExpandedLeaseId] = useState<string | null>(null);
   const [savingKey, setSavingKey] = useState<string | null>(null);
 
   const currentPeriod = useMemo(() => getCurrentPeriod(), []);
@@ -414,11 +414,7 @@ export default function InvoiceGenerationPage() {
   );
 
   function toggleExpanded(leaseId: string) {
-    setExpandedLeaseIds((current) =>
-      current.includes(leaseId)
-        ? current.filter((id) => id !== leaseId)
-        : [...current, leaseId]
-    );
+    setExpandedLeaseId((current) => (current === leaseId ? null : leaseId));
   }
 
   async function updateConceptStatus(
@@ -436,6 +432,23 @@ export default function InvoiceGenerationPage() {
     setPageError("");
 
     try {
+      const { data: existingPendingUpload, error: existingPendingUploadError } = await supabase
+        .from("invoice_pending_uploads")
+        .select("id, status, linked_collection_record_id")
+        .eq("lease_id", group.lease_id)
+        .eq("period_year", periodYear)
+        .eq("period_month", periodMonth)
+        .eq("concept_code", concept.concept_code)
+        .maybeSingle();
+
+      if (existingPendingUploadError) {
+        throw existingPendingUploadError;
+      }
+
+      if (nextStatus === "pending" && existingPendingUpload?.status === "completed") {
+        throw new Error("Este concepto ya quedó ligado a una factura real importada. Ya no puedes regresarlo a pendiente desde aquí.");
+      }
+
       const trackingPayload = {
         company_id: group.company_id,
         building_id: group.building_id,
@@ -464,32 +477,34 @@ export default function InvoiceGenerationPage() {
       }
 
       if (nextStatus === "generated") {
-        const { error: pendingError } = await supabase
-          .from("invoice_pending_uploads")
-          .upsert(
-            {
-              company_id: group.company_id,
-              building_id: group.building_id,
-              unit_id: group.unit_id,
-              lease_id: group.lease_id,
-              tenant_id: group.tenant_id,
-              period_year: periodYear,
-              period_month: periodMonth,
-              concept_code: concept.concept_code,
-              status: "pending_upload",
-              invoice_generation_tracking_id: trackingData?.id || null,
-              linked_collection_record_id: null,
-              completed_at: null,
-              completed_by: null,
-              notes: null,
-            },
-            {
-              onConflict: "lease_id,period_year,period_month,concept_code",
-            }
-          );
+        if (!existingPendingUpload || existingPendingUpload.status !== "completed") {
+          const { error: pendingError } = await supabase
+            .from("invoice_pending_uploads")
+            .upsert(
+              {
+                company_id: group.company_id,
+                building_id: group.building_id,
+                unit_id: group.unit_id,
+                lease_id: group.lease_id,
+                tenant_id: group.tenant_id,
+                period_year: periodYear,
+                period_month: periodMonth,
+                concept_code: concept.concept_code,
+                status: "pending_upload",
+                invoice_generation_tracking_id: trackingData?.id || null,
+                linked_collection_record_id: null,
+                completed_at: null,
+                completed_by: null,
+                notes: null,
+              },
+              {
+                onConflict: "lease_id,period_year,period_month,concept_code",
+              }
+            );
 
-        if (pendingError) {
-          throw pendingError;
+          if (pendingError) {
+            throw pendingError;
+          }
         }
       } else {
         const { error: pendingCleanupError } = await supabase
@@ -702,7 +717,7 @@ export default function InvoiceGenerationPage() {
       {!loading && groups.length > 0 ? (
         <div style={{ display: "grid", gap: 16 }}>
           {groups.map((group) => {
-            const isExpanded = expandedLeaseIds.includes(group.lease_id);
+            const isExpanded = expandedLeaseId === group.lease_id;
             const statusVisual = getGeneralStatusVisual(group.general_status);
 
             return (

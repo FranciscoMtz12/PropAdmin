@@ -1694,6 +1694,28 @@ export default function CollectionsPage() {
         throw new Error(invoiceInsert.error?.message || "No pude crear la factura importada dentro de Cobranza.");
       }
 
+      const { error: pendingUploadCompletionError } = await supabase
+        .from("invoice_pending_uploads")
+        .update({
+          status: "completed",
+          linked_collection_record_id: record.id,
+          completed_at: new Date().toISOString(),
+          completed_by: user.id,
+        })
+        .eq("company_id", user.company_id)
+        .eq("lease_id", lease.id)
+        .eq("period_year", dueDateObject.getFullYear())
+        .eq("period_month", dueDateObject.getMonth() + 1)
+        .eq("concept_code", chargeCategory)
+        .eq("status", "pending_upload");
+
+      if (pendingUploadCompletionError) {
+        throw new Error(
+          pendingUploadCompletionError.message ||
+            "La factura se importó, pero no pude completar el pendiente de carga relacionado."
+        );
+      }
+
       await loadCollectionsData();
       setImportingInvoice(false);
       setImportInvoiceOpen(false);
