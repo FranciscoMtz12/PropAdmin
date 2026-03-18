@@ -86,6 +86,13 @@ type Unit = {
   display_code: string | null;
 };
 
+
+
+type ImportPreviewData = ParsedCfdiData & {
+  emitterTaxId?: string | null;
+  xmlFileName?: string | null;
+};
+
 type AppUser = {
   id: string;
   company_id: string;
@@ -559,7 +566,23 @@ function inferChargeTypeFromDescription(description: string | null | undefined):
   return "other";
 }
 
-function isLikelyMatchingInvoicePair(xmlFile: File, pdfFile: File, parsed: ParsedCfdiData) {
+
+function extractCfdiFileIdentifiers(xmlText: string) {
+  const readAttr = (tagName: string, attrName: string) => {
+    const tagRegex = new RegExp(`<[^>]*(?:\w+:)?${tagName}\b[^>]*\b${attrName}="([^"]+)"`, "i");
+    const match = xmlText.match(tagRegex);
+    return match?.[1] || null;
+  };
+
+  return {
+    emitterTaxId: readAttr("Emisor", "Rfc"),
+    receiverTaxId: readAttr("Receptor", "Rfc"),
+    series: readAttr("Comprobante", "Serie"),
+    folio: readAttr("Comprobante", "Folio"),
+  };
+}
+
+function isLikelyMatchingInvoicePair(xmlFile: File, pdfFile: File, parsed: ImportPreviewData) {
   const normalizeFileName = (value: string) => normalizeComparableText(value).replace(/\s+/g, "");
   const pdfName = normalizeFileName(pdfFile.name);
   const xmlName = normalizeFileName(xmlFile.name);
@@ -731,7 +754,7 @@ export default function CollectionsPage() {
   const [importForm, setImportForm] = useState<InvoiceImportForm>(createDefaultImportForm());
   const [importXmlFile, setImportXmlFile] = useState<File | null>(null);
   const [importPdfFile, setImportPdfFile] = useState<File | null>(null);
-  const [importPreview, setImportPreview] = useState<ParsedCfdiData | null>(null);
+  const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
   const [importStatusMessage, setImportStatusMessage] = useState("");
   const [editForm, setEditForm] = useState<EditRecordForm>({
     recordId: "",
@@ -1539,14 +1562,23 @@ export default function CollectionsPage() {
     try {
       const xmlText = await file.text();
       const parsed = parseCfdiXml(xmlText);
-      const inferredCategory = inferChargeTypeFromDescription(parsed.description);
+      const extractedIdentifiers = extractCfdiFileIdentifiers(xmlText);
+      const preview: ImportPreviewData = {
+        ...parsed,
+        emitterTaxId: extractedIdentifiers.emitterTaxId || (parsed as any).emitterTaxId || null,
+        customerTaxId: parsed.customerTaxId || extractedIdentifiers.receiverTaxId || null,
+        series: parsed.series || extractedIdentifiers.series || null,
+        folio: parsed.folio || extractedIdentifiers.folio || null,
+        xmlFileName: file.name,
+      };
+      const inferredCategory = inferChargeTypeFromDescription(preview.description);
 
-      setImportPreview(parsed);
+      setImportPreview(preview);
       setImportForm((prev) => ({
         ...prev,
         selectedChargeCategory: inferredCategory,
-        title: buildImportedChargeTitle(parsed, inferredCategory),
-        dueDate: getEndOfMonthDateKey(parsed.issuedAt || prev.dueDate || getTodayDateOnlyKey()),
+        title: buildImportedChargeTitle(preview, inferredCategory),
+        dueDate: getEndOfMonthDateKey(preview.issuedAt || prev.dueDate || getTodayDateOnlyKey()),
       }));
       setImportStatusMessage("XML leído correctamente. Ahora revisa la coincidencia sugerida antes de confirmar.");
     } catch (error) {
