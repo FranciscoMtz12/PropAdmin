@@ -213,6 +213,12 @@ type TenantReportedPayment = {
   review_status: string | null;
 };
 
+type InvoicePendingUploadSummary = {
+  id: string;
+  company_id: string | null;
+  status: string | null;
+};
+
 type CollectionStatusFilter =
   | "all"
   | "pending"
@@ -635,6 +641,7 @@ export default function CollectionsPage() {
   const [collectionPayments, setCollectionPayments] = useState<CollectionPayment[]>([]);
   const [collectionInvoices, setCollectionInvoices] = useState<CollectionInvoice[]>([]);
   const [reportedPayments, setReportedPayments] = useState<TenantReportedPayment[]>([]);
+  const [invoicePendingUploads, setInvoicePendingUploads] = useState<InvoicePendingUploadSummary[]>([]);
 
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedStatus, setSelectedStatus] =
@@ -697,6 +704,7 @@ export default function CollectionsPage() {
       paymentsRes,
       invoicesRes,
       reportedPaymentsRes,
+      pendingUploadsRes,
     ] = await Promise.all([
       supabase
         .from("buildings")
@@ -765,6 +773,13 @@ export default function CollectionsPage() {
         .eq("company_id", user.company_id)
         .eq("review_status", "pending_review")
         .order("created_at", { ascending: false }),
+
+      supabase
+        .from("invoice_pending_uploads")
+        .select("id, company_id, status")
+        .eq("company_id", user.company_id)
+        .eq("status", "pending_upload")
+        .order("created_at", { ascending: false }),
     ]);
 
     if (buildingsRes.error) {
@@ -827,6 +842,12 @@ export default function CollectionsPage() {
       return;
     }
 
+    if (pendingUploadsRes.error) {
+      setMessage("No se pudieron cargar los pendientes de factura por cargar.");
+      setLoadingPage(false);
+      return;
+    }
+
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
     setAppUsers((appUsersRes.data as AppUser[]) || []);
@@ -837,6 +858,7 @@ export default function CollectionsPage() {
     setCollectionPayments((paymentsRes.data as CollectionPayment[]) || []);
     setCollectionInvoices((invoicesRes.data as CollectionInvoice[]) || []);
     setReportedPayments((reportedPaymentsRes.data as TenantReportedPayment[]) || []);
+    setInvoicePendingUploads((pendingUploadsRes.data as InvoicePendingUploadSummary[]) || []);
     setLoadingPage(false);
   }
 
@@ -1131,6 +1153,7 @@ export default function CollectionsPage() {
   const pendingCount = filteredRows.filter((row) => row.status === "pending").length;
   const overdueCount = filteredRows.filter((row) => row.status === "overdue").length;
   const reportedPendingCount = reportedPayments.length;
+  const pendingInvoiceUploadCount = invoicePendingUploads.length;
 
   const totalOutstandingAmount = filteredRows
     .filter((row) => row.status !== "collected")
@@ -1994,6 +2017,28 @@ export default function CollectionsPage() {
           }
         />
 
+        <div onClick={() => router.push("/collections/pending-invoice-uploads")} style={{ cursor: "pointer" }}>
+          <MetricCard
+            label="Falta cargar factura"
+            value={String(pendingInvoiceUploadCount)}
+            helper="Facturas generadas sin XML/PDF"
+            icon={
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: pendingInvoiceUploadCount > 0 ? "#FEF3C7" : "#F3F4F6",
+                  display: "grid",
+                  placeItems: "center",
+                }}
+              >
+                <Upload size={18} color={pendingInvoiceUploadCount > 0 ? "#D97706" : "#4B5563"} />
+              </div>
+            }
+          />
+        </div>
+
         <MetricCard
           label="Saldo pendiente"
           value={formatCurrency(totalOutstandingAmount)}
@@ -2082,6 +2127,48 @@ export default function CollectionsPage() {
                   icon={<Eye size={16} />}
                 >
                   Abrir control
+                </UiButton>
+              </div>
+            </div>
+          </AppCard>
+
+          <AppCard>
+            <div style={{ display: "grid", gap: 14 }}>
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={quickSectionTitleStyle}>Falta cargar factura</div>
+                <div style={quickSectionTextStyle}>
+                  Revisa las facturas ya generadas externamente que todavía no tienen XML/PDF cargado en el sistema.
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                  alignSelf: "flex-start",
+                  padding: "8px 12px",
+                  borderRadius: 999,
+                  background: pendingInvoiceUploadCount > 0 ? "#FEF3C7" : "#F3F4F6",
+                  border: `1px solid ${pendingInvoiceUploadCount > 0 ? "#FDE68A" : "#E5E7EB"}`,
+                  color: pendingInvoiceUploadCount > 0 ? "#92400E" : "#374151",
+                  fontSize: 13,
+                  fontWeight: 800,
+                }}
+              >
+                <Upload size={15} />
+                {pendingInvoiceUploadCount > 0
+                  ? `${pendingInvoiceUploadCount} pendiente${pendingInvoiceUploadCount === 1 ? "" : "s"}`
+                  : "Sin pendientes"}
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
+                <UiButton
+                  onClick={() => router.push("/collections/pending-invoice-uploads")}
+                  icon={<Eye size={16} />}
+                  variant="secondary"
+                >
+                  Abrir listado
                 </UiButton>
               </div>
             </div>

@@ -436,7 +436,7 @@ export default function InvoiceGenerationPage() {
     setPageError("");
 
     try {
-      const payload = {
+      const trackingPayload = {
         company_id: group.company_id,
         building_id: group.building_id,
         unit_id: group.unit_id,
@@ -451,14 +451,59 @@ export default function InvoiceGenerationPage() {
         notes: concept.notes || null,
       };
 
-      const { error } = await supabase
+      const { data: trackingData, error: trackingError } = await supabase
         .from("invoice_generation_tracking")
-        .upsert(payload, {
+        .upsert(trackingPayload, {
           onConflict: "lease_id,period_year,period_month,concept_code",
-        });
+        })
+        .select("id")
+        .single();
 
-      if (error) {
-        throw error;
+      if (trackingError) {
+        throw trackingError;
+      }
+
+      if (nextStatus === "generated") {
+        const { error: pendingError } = await supabase
+          .from("invoice_pending_uploads")
+          .upsert(
+            {
+              company_id: group.company_id,
+              building_id: group.building_id,
+              unit_id: group.unit_id,
+              lease_id: group.lease_id,
+              tenant_id: group.tenant_id,
+              period_year: periodYear,
+              period_month: periodMonth,
+              concept_code: concept.concept_code,
+              status: "pending_upload",
+              invoice_generation_tracking_id: trackingData?.id || null,
+              linked_collection_record_id: null,
+              completed_at: null,
+              completed_by: null,
+              notes: null,
+            },
+            {
+              onConflict: "lease_id,period_year,period_month,concept_code",
+            }
+          );
+
+        if (pendingError) {
+          throw pendingError;
+        }
+      } else {
+        const { error: pendingCleanupError } = await supabase
+          .from("invoice_pending_uploads")
+          .delete()
+          .eq("lease_id", group.lease_id)
+          .eq("period_year", periodYear)
+          .eq("period_month", periodMonth)
+          .eq("concept_code", concept.concept_code)
+          .eq("status", "pending_upload");
+
+        if (pendingCleanupError) {
+          throw pendingCleanupError;
+        }
       }
 
       await loadData();
