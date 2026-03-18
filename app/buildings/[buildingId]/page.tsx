@@ -21,6 +21,8 @@ import {
   Building2,
   CreditCard,
   Droplets,
+  Flame,
+  Gem,
   FileImage,
   FileText,
   FolderOpen,
@@ -92,7 +94,7 @@ type UnitTypeRow = {
   id: string;
 };
 
-type BuildingBillingConceptCode = "rent" | "electricity" | "water";
+type BuildingBillingConceptCode = "rent" | "electricity" | "water" | "gas" | "amenities";
 
 type BuildingBillingConcept = {
   id: string;
@@ -117,6 +119,8 @@ const BILLING_CONCEPT_OPTIONS: Array<{
   { code: "rent", label: "Renta", icon: <CreditCard size={14} /> },
   { code: "electricity", label: "Electricidad", icon: <Zap size={14} /> },
   { code: "water", label: "Agua", icon: <Droplets size={14} /> },
+  { code: "gas", label: "Gas", icon: <Flame size={14} /> },
+  { code: "amenities", label: "Amenidades", icon: <Gem size={14} /> },
 ];
 
 function formatFileSize(fileSizeBytes: number | null) {

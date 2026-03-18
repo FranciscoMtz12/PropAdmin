@@ -8,6 +8,8 @@ import {
   Droplets,
   Eye,
   FileUp,
+  Flame,
+  Gem,
   Home,
   Upload,
   Wallet,
@@ -35,7 +37,7 @@ type PendingUploadRow = {
   tenant_id: string;
   period_year: number;
   period_month: number;
-  concept_code: "rent" | "electricity" | "water";
+  concept_code: "rent" | "electricity" | "water" | "gas" | "amenities";
   status: "pending_upload" | "completed";
   invoice_generation_tracking_id: string | null;
   linked_collection_record_id: string | null;
@@ -80,13 +82,17 @@ const badgeBaseStyle: CSSProperties = {
 function getConceptLabel(concept: PendingUploadRow["concept_code"]) {
   if (concept === "rent") return "Renta";
   if (concept === "electricity") return "Electricidad";
-  return "Agua";
+  if (concept === "water") return "Agua";
+  if (concept === "gas") return "Gas";
+  return "Amenidades";
 }
 
 function getConceptIcon(concept: PendingUploadRow["concept_code"]) {
   if (concept === "rent") return <Home size={16} />;
   if (concept === "electricity") return <Zap size={16} />;
-  return <Droplets size={16} />;
+  if (concept === "water") return <Droplets size={16} />;
+  if (concept === "gas") return <Flame size={16} />;
+  return <Gem size={16} />;
 }
 
 function getMonthLabel(month: number) {
@@ -220,6 +226,8 @@ export default function PendingInvoiceUploadsPage() {
       rent: filteredRows.filter((row) => row.concept_code === "rent").length,
       electricity: filteredRows.filter((row) => row.concept_code === "electricity").length,
       water: filteredRows.filter((row) => row.concept_code === "water").length,
+      gas: filteredRows.filter((row) => row.concept_code === "gas").length,
+      amenities: filteredRows.filter((row) => row.concept_code === "amenities").length,
     };
   }, [filteredRows]);
 

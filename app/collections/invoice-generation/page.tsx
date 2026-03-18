@@ -10,6 +10,8 @@ import {
   ChevronUp,
   Droplets,
   FileText,
+  Flame,
+  Gem,
   Home,
   RefreshCcw,
   Wallet,
@@ -37,7 +39,7 @@ type ExpectedInvoiceItemRow = {
   tenant_email: string | null;
   unit_name: string | null;
   building_name: string | null;
-  concept_code: "rent" | "electricity" | "water";
+  concept_code: "rent" | "electricity" | "water" | "gas" | "amenities";
 };
 
 type TrackingRow = {
@@ -49,7 +51,7 @@ type TrackingRow = {
   tenant_id: string;
   period_year: number;
   period_month: number;
-  concept_code: "rent" | "electricity" | "water";
+  concept_code: "rent" | "electricity" | "water" | "gas" | "amenities";
   status: "pending" | "generated";
   marked_at: string | null;
   marked_by: string | null;
@@ -58,7 +60,7 @@ type TrackingRow = {
   updated_at: string;
 };
 
-type ConceptCode = "rent" | "electricity" | "water";
+type ConceptCode = "rent" | "electricity" | "water" | "gas" | "amenities";
 type GeneralStatus = "pending" | "partial" | "generated";
 
 type LeaseConceptItem = {
@@ -154,13 +156,17 @@ function formatDateTime(value?: string | null) {
 function getConceptLabel(concept: ConceptCode) {
   if (concept === "rent") return "Renta";
   if (concept === "electricity") return "Electricidad";
-  return "Agua";
+  if (concept === "water") return "Agua";
+  if (concept === "gas") return "Gas";
+  return "Amenidades";
 }
 
 function getConceptIcon(concept: ConceptCode) {
   if (concept === "rent") return <Home size={16} />;
   if (concept === "electricity") return <Bolt size={16} />;
-  return <Droplets size={16} />;
+  if (concept === "water") return <Droplets size={16} />;
+  if (concept === "gas") return <Flame size={16} />;
+  return <Gem size={16} />;
 }
 
 function getGeneralStatusFromConcepts(
@@ -281,6 +287,8 @@ function buildLeaseGroups(
       rent: 1,
       electricity: 2,
       water: 3,
+      gas: 4,
+      amenities: 5,
     };
 
     const sortedConcepts = [...group.concepts].sort(

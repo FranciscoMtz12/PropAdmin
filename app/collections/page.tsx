@@ -44,6 +44,8 @@ import {
   FileText,
   FileUp,
   Filter,
+  Flame,
+  Gem,
   Landmark,
   Pencil,
   Plus,
@@ -121,6 +123,10 @@ type Lease = {
 type CollectionChargeType =
   | "rent"
   | "maintenance_fee"
+  | "electricity"
+  | "water"
+  | "gas"
+  | "amenities"
   | "services"
   | "parking"
   | "penalty"
@@ -409,7 +415,11 @@ function formatDecimalInput(value: string) {
 function getChargeTypeLabel(type: CollectionChargeType) {
   if (type === "rent") return "Renta";
   if (type === "maintenance_fee") return "Mantenimiento";
-  if (type === "services") return "Servicios";
+  if (type === "electricity") return "Electricidad";
+  if (type === "water") return "Agua";
+  if (type === "gas") return "Gas";
+  if (type === "amenities") return "Amenidades";
+  if (type === "services") return "Servicios (legado)";
   if (type === "parking") return "Estacionamiento";
   if (type === "penalty") return "Penalización";
   return "Otro";
@@ -483,6 +493,10 @@ function getEndOfMonthDateKey(dateKey: string) {
 function getCollectionTypeIcon(chargeType: CollectionChargeType) {
   if (chargeType === "rent") return <Landmark size={18} color="#4F46E5" />;
   if (chargeType === "maintenance_fee") return <Wrench size={18} color="#D97706" />;
+  if (chargeType === "electricity") return <Zap size={18} color="#2563EB" />;
+  if (chargeType === "water") return <Droplets size={18} color="#0EA5E9" />;
+  if (chargeType === "gas") return <Flame size={18} color="#EA580C" />;
+  if (chargeType === "amenities") return <Gem size={18} color="#7C3AED" />;
   if (chargeType === "services") return <Zap size={18} color="#2563EB" />;
   if (chargeType === "parking") return <CarFront size={18} color="#0F766E" />;
   if (chargeType === "penalty") return <AlertTriangle size={18} color="#DC2626" />;
@@ -534,19 +548,34 @@ function inferChargeTypeFromDescription(description: string | null | undefined):
   const normalized = normalizeComparableText(description);
 
   if (!normalized) return "other";
-  if (normalized.includes("renta") || normalized.includes("arrendamiento")) return "rent";
+  if (normalized.includes("renta") || normalized.includes("arrendamiento") || normalized.includes("alquiler")) return "rent";
   if (normalized.includes("mantenimiento") || normalized.includes("mtto")) return "maintenance_fee";
-  if (
-    normalized.includes("agua") ||
-    normalized.includes("luz") ||
-    normalized.includes("gas") ||
-    normalized.includes("internet") ||
-    normalized.includes("telmex") ||
-    normalized.includes("servicio")
-  ) return "services";
+  if (normalized.includes("electric") || normalized.includes("electr") || normalized.includes("luz") || normalized.includes("energia")) return "electricity";
+  if (normalized.includes("agua")) return "water";
+  if (normalized.includes("gas")) return "gas";
+  if (normalized.includes("amenidad") || normalized.includes("amenidades") || normalized.includes("amenity") || normalized.includes("gym") || normalized.includes("gimnasio") || normalized.includes("alberca") || normalized.includes("pool") || normalized.includes("club")) return "amenities";
   if (normalized.includes("parking") || normalized.includes("estacionamiento") || normalized.includes("cajon")) return "parking";
   if (normalized.includes("penal") || normalized.includes("recargo") || normalized.includes("mora")) return "penalty";
   return "other";
+}
+
+function isLikelyMatchingInvoicePair(xmlFile: File, pdfFile: File, parsed: ParsedCfdiData) {
+  const normalizeFileName = (value: string) => normalizeComparableText(value).replace(/\s+/g, "");
+  const pdfName = normalizeFileName(pdfFile.name);
+  const xmlName = normalizeFileName(xmlFile.name);
+  const uuid = normalizeComparableText(parsed.uuid || "").replace(/\s+/g, "");
+  const seriesFolio = normalizeComparableText(`${parsed.series || ""}${parsed.folio || ""}`).replace(/\s+/g, "");
+  const receiverTaxId = normalizeComparableText(parsed.customerTaxId || "").replace(/\s+/g, "");
+
+  if (uuid && pdfName.includes(uuid)) return true;
+  if (seriesFolio && pdfName.includes(seriesFolio)) return true;
+  if (receiverTaxId && pdfName.includes(receiverTaxId)) return true;
+
+  const xmlStem = xmlName.replace(/xml$/g, "");
+  const pdfStem = pdfName.replace(/pdf$/g, "");
+  if (xmlStem && pdfStem && (xmlStem.includes(pdfStem) || pdfStem.includes(xmlStem))) return true;
+
+  return false;
 }
 
 function buildImportedChargeTitle(parsed: ParsedCfdiData | null, category: CollectionChargeType) {
@@ -554,6 +583,10 @@ function buildImportedChargeTitle(parsed: ParsedCfdiData | null, category: Colle
   if (fromXml) return fromXml;
   if (category === "rent") return "Renta importada desde XML";
   if (category === "maintenance_fee") return "Mantenimiento importado desde XML";
+  if (category === "electricity") return "Electricidad importada desde XML";
+  if (category === "water") return "Agua importada desde XML";
+  if (category === "gas") return "Gas importado desde XML";
+  if (category === "amenities") return "Amenidades importadas desde XML";
   if (category === "services") return "Servicios importados desde XML";
   if (category === "parking") return "Estacionamiento importado desde XML";
   if (category === "penalty") return "Penalización importada desde XML";
@@ -574,6 +607,10 @@ function formatCollectionTitleForRow({
 
   if (chargeType === "rent") return `Renta ${monthLabel}`;
   if (chargeType === "maintenance_fee") return `Mantenimiento ${monthLabel}`;
+  if (chargeType === "electricity") return `Electricidad ${monthLabel}`;
+  if (chargeType === "water") return `Agua ${monthLabel}`;
+  if (chargeType === "gas") return `Gas ${monthLabel}`;
+  if (chargeType === "amenities") return `Amenidades ${monthLabel}`;
   if (chargeType === "services") return `Servicios ${monthLabel}`;
   if (chargeType === "parking") return `Estacionamiento ${monthLabel}`;
   if (chargeType === "penalty") return `Penalización ${monthLabel}`;
@@ -1513,6 +1550,14 @@ export default function CollectionsPage() {
       return;
     }
 
+    if (!isLikelyMatchingInvoicePair(importXmlFile, importPdfFile, importPreview)) {
+      showToast({
+        type: "error",
+        message: "El XML y el PDF no parecen corresponder a la misma factura. Verifica UUID, serie/folio o renombra el PDF antes de importarlo.",
+      });
+      return;
+    }
+
     if (!importForm.selectedLeaseId) {
       showToast({ type: "warning", message: "Selecciona el contrato al que pertenece esta factura." });
       return;
@@ -1555,6 +1600,8 @@ export default function CollectionsPage() {
     setImportingInvoice(true);
 
     let uploadedFilesForCleanup: { pdfPath: string | null; xmlPath: string | null } | null = null;
+    let createdScheduleId: string | null = null;
+    let createdRecordId: string | null = null;
 
     try {
       let schedule = collectionSchedules.find(
@@ -1579,7 +1626,7 @@ export default function CollectionsPage() {
             responsibility_type: "tenant",
             amount_expected: amountDue,
             due_day: 31,
-            active: ["rent", "maintenance_fee", "services", "parking"].includes(chargeCategory),
+            active: ["rent", "maintenance_fee", "electricity", "water", "gas", "amenities", "parking"].includes(chargeCategory),
             notes: importForm.notes.trim() || "Configuración creada automáticamente desde importación de factura.",
           })
           .select("id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes")
@@ -1590,6 +1637,7 @@ export default function CollectionsPage() {
         }
 
         schedule = createdSchedule.data as CollectionSchedule;
+        createdScheduleId = schedule.id;
       }
 
       let record = collectionRecords.find(
@@ -1637,6 +1685,7 @@ export default function CollectionsPage() {
         }
 
         record = createdRecord.data as CollectionRecord;
+        createdRecordId = record.id;
       }
 
       const uploadedFiles = await uploadInvoiceFiles({
@@ -1738,6 +1787,22 @@ export default function CollectionsPage() {
           ]);
         } catch (cleanupError) {
           console.error("No pude limpiar los archivos subidos tras fallar la importación.", cleanupError);
+        }
+      }
+
+      if (createdRecordId) {
+        try {
+          await supabase.from("collection_records").delete().eq("id", createdRecordId);
+        } catch (cleanupError) {
+          console.error("No pude limpiar el record creado tras fallar la importación.", cleanupError);
+        }
+      }
+
+      if (createdScheduleId) {
+        try {
+          await supabase.from("collection_schedules").delete().eq("id", createdScheduleId);
+        } catch (cleanupError) {
+          console.error("No pude limpiar el schedule creado tras fallar la importación.", cleanupError);
         }
       }
 
@@ -2676,7 +2741,11 @@ export default function CollectionsPage() {
                   >
                     <option value="rent">Renta</option>
                     <option value="maintenance_fee">Mantenimiento</option>
-                    <option value="services">Servicios</option>
+                    <option value="electricity">Electricidad</option>
+                    <option value="water">Agua</option>
+                    <option value="gas">Gas</option>
+                    <option value="amenities">Amenidades</option>
+                    <option value="services">Servicios (legado)</option>
                     <option value="parking">Estacionamiento</option>
                     <option value="penalty">Penalización</option>
                     <option value="other">Otro</option>
@@ -2840,7 +2909,11 @@ export default function CollectionsPage() {
               >
                 <option value="rent">Renta</option>
                 <option value="maintenance_fee">Mantenimiento</option>
-                <option value="services">Servicios</option>
+                <option value="electricity">Electricidad</option>
+                    <option value="water">Agua</option>
+                    <option value="gas">Gas</option>
+                    <option value="amenities">Amenidades</option>
+                    <option value="services">Servicios (legado)</option>
                 <option value="parking">Estacionamiento</option>
                 <option value="penalty">Penalización</option>
                 <option value="other">Otro</option>
