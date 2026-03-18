@@ -563,13 +563,36 @@ function isLikelyMatchingInvoicePair(xmlFile: File, pdfFile: File, parsed: Parse
   const normalizeFileName = (value: string) => normalizeComparableText(value).replace(/\s+/g, "");
   const pdfName = normalizeFileName(pdfFile.name);
   const xmlName = normalizeFileName(xmlFile.name);
+  const parsedAny = parsed as any;
+
   const uuid = normalizeComparableText(parsed.uuid || "").replace(/\s+/g, "");
+  const series = normalizeComparableText(String(parsed.series || "")).replace(/\s+/g, "");
+  const folio = normalizeComparableText(String(parsed.folio || "")).replace(/\s+/g, "");
   const seriesFolio = normalizeComparableText(`${parsed.series || ""}${parsed.folio || ""}`).replace(/\s+/g, "");
   const receiverTaxId = normalizeComparableText(parsed.customerTaxId || "").replace(/\s+/g, "");
+  const emitterTaxId = normalizeComparableText(
+    String(
+      parsedAny.emitterTaxId ||
+      parsedAny.issuerTaxId ||
+      parsedAny.supplierTaxId ||
+      parsedAny.companyTaxId ||
+      ""
+    )
+  ).replace(/\s+/g, "");
 
-  if (uuid && pdfName.includes(uuid)) return true;
-  if (seriesFolio && pdfName.includes(seriesFolio)) return true;
-  if (receiverTaxId && pdfName.includes(receiverTaxId)) return true;
+  const matchesByUuid = Boolean(uuid && pdfName.includes(uuid));
+
+  const matchesByBusinessData = Boolean(
+    emitterTaxId &&
+      receiverTaxId &&
+      pdfName.includes(emitterTaxId) &&
+      pdfName.includes(receiverTaxId) &&
+      ((seriesFolio && pdfName.includes(seriesFolio)) ||
+        (folio && pdfName.includes(folio)) ||
+        (series && folio && pdfName.includes(`${series}${folio}`)))
+  );
+
+  if (matchesByUuid || matchesByBusinessData) return true;
 
   const xmlStem = xmlName.replace(/xml$/g, "");
   const pdfStem = pdfName.replace(/pdf$/g, "");
@@ -1553,7 +1576,7 @@ export default function CollectionsPage() {
     if (!isLikelyMatchingInvoicePair(importXmlFile, importPdfFile, importPreview)) {
       showToast({
         type: "error",
-        message: "El XML y el PDF no parecen corresponder a la misma factura. Verifica UUID, serie/folio o renombra el PDF antes de importarlo.",
+        message: "El XML y el PDF no parecen corresponder a la misma factura. Deben coincidir por UUID o por RFC emisor + RFC receptor + folio/serie-folio.",
       });
       return;
     }
