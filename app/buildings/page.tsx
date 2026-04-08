@@ -16,7 +16,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
-  AlertTriangle,
   Building2,
   Edit3,
   Filter,
@@ -94,21 +93,6 @@ const dropdownMenuStyle: React.CSSProperties = {
   zIndex: 30,
 };
 
-const dropdownItemLinkStyle: React.CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  gap: 8,
-  width: "100%",
-  border: "none",
-  background: "transparent",
-  textDecoration: "none",
-  color: "#111827",
-  borderRadius: 8,
-  padding: "9px 10px",
-  fontSize: 13,
-  fontWeight: 600,
-};
-
 const dropdownActionButtonStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -166,6 +150,11 @@ export default function BuildingsPage() {
   const [loadingBuildings, setLoadingBuildings] = useState(true);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [buildingToDelete, setBuildingToDelete] = useState<Building | null>(null);
+  const [buildingDeleteEligibility, setBuildingDeleteEligibility] = useState<{
+    canDelete: boolean;
+    unitCount: number;
+  } | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [openActionsBuildingId, setOpenActionsBuildingId] = useState<string | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
@@ -211,6 +200,35 @@ export default function BuildingsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Pre-verifica si el edificio tiene departamentos al abrir el modal de eliminación
+  useEffect(() => {
+    if (!buildingToDelete) {
+      setBuildingDeleteEligibility(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function checkEligibility() {
+      const { count } = await supabase
+        .from("units")
+        .select("id", { count: "exact", head: true })
+        .eq("building_id", buildingToDelete!.id);
+
+      if (!cancelled) {
+        setBuildingDeleteEligibility({
+          canDelete: (count ?? 0) === 0,
+          unitCount: count ?? 0,
+        });
+      }
+    }
+
+    void checkEligibility();
+    return () => {
+      cancelled = true;
+    };
+  }, [buildingToDelete]);
+
   function resetForm() {
     setName("");
     setCode("");
@@ -247,12 +265,17 @@ export default function BuildingsPage() {
     setBuildingToDelete(building);
     setIsDeleteModalOpen(true);
     setOpenActionsBuildingId(null);
+    setMsg("");
+    setDeleteError(null);
+    setBuildingDeleteEligibility(null);
   }
 
   function closeDeleteModal() {
     if (deleting) return;
     setIsDeleteModalOpen(false);
     setBuildingToDelete(null);
+    setDeleteError(null);
+    setBuildingDeleteEligibility(null);
   }
 
   async function handleSubmitBuilding(e: React.FormEvent) {
@@ -348,7 +371,7 @@ export default function BuildingsPage() {
     if (!user?.company_id || !buildingToDelete) return;
 
     setDeleting(true);
-    setMsg("");
+    setDeleteError(null);
 
     const { error } = await supabase
       .from("buildings")
@@ -362,9 +385,9 @@ export default function BuildingsPage() {
         error.message.toLowerCase().includes("foreign key") ||
         error.message.toLowerCase().includes("constraint");
 
-      setMsg(
+      setDeleteError(
         hasRelationsError
-          ? "No se puede eliminar el edificio porque tiene registros relacionados."
+          ? "No se puede eliminar el edificio porque tiene registros relacionados. Elimina primero los departamentos, tipos de unidad y otros registros vinculados."
           : `No se pudo eliminar el edificio. ${error.message}`
       );
       setDeleting(false);
@@ -373,6 +396,7 @@ export default function BuildingsPage() {
 
     setIsDeleteModalOpen(false);
     setBuildingToDelete(null);
+    setBuildingDeleteEligibility(null);
     setDeleting(false);
     setMsg("Edificio eliminado correctamente.");
     await loadBuildings();
@@ -594,25 +618,66 @@ export default function BuildingsPage() {
                     Ver detalle del edificio
                   </Link>
 
-                  <Link
-                    href={`/buildings/${building.id}/units`}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      borderRadius: 10,
-                      border: "1px solid #E5E7EB",
-                      background: "#FFFFFF",
-                      color: "#111827",
-                      padding: "10px 12px",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      textDecoration: "none",
-                    }}
-                  >
-                    Departamentos
-                  </Link>
+                  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                    <Link
+                      href={`/buildings/${building.id}/units`}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        borderRadius: 10,
+                        border: "1px solid #E5E7EB",
+                        background: "#FFFFFF",
+                        color: "#111827",
+                        padding: "10px 12px",
+                        fontSize: 13,
+                        fontWeight: 700,
+                        textDecoration: "none",
+                      }}
+                    >
+                      Departamentos
+                    </Link>
+
+                    <div
+                      style={{ position: "relative" }}
+                      ref={openActionsBuildingId === building.id ? actionsMenuRef : undefined}
+                    >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenActionsBuildingId(
+                            openActionsBuildingId === building.id ? null : building.id
+                          )
+                        }
+                        style={dropdownTriggerStyle}
+                        aria-label="Más acciones"
+                      >
+                        <MoreHorizontal size={16} />
+                      </button>
+
+                      {openActionsBuildingId === building.id && (
+                        <div style={dropdownMenuStyle}>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(building)}
+                            style={dropdownActionButtonStyle}
+                          >
+                            <Edit3 size={14} />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(building)}
+                            style={dropdownDeleteItemStyle}
+                          >
+                            <Trash2 size={14} />
+                            Eliminar
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </AppCard>
             ))}
@@ -620,6 +685,7 @@ export default function BuildingsPage() {
         )}
       </SectionCard>
 
+      {/* Modal de edición */}
       <Modal
         open={isEditModalOpen}
         onClose={closeEditModal}
@@ -705,61 +771,108 @@ export default function BuildingsPage() {
         </form>
       </Modal>
 
+      {/* Modal de eliminación */}
       <Modal
         open={isDeleteModalOpen}
         onClose={closeDeleteModal}
         title="Eliminar edificio"
+        maxWidth="480px"
       >
         <div style={{ display: "grid", gap: 16 }}>
           <div
             style={{
-              display: "flex",
-              gap: 12,
-              alignItems: "flex-start",
-              padding: 14,
-              borderRadius: 12,
-              background: "#FEF2F2",
-              border: "1px solid #FECACA",
+              padding: "14px 16px",
+              borderRadius: 14,
+              background:
+                buildingDeleteEligibility === null
+                  ? "#F9FAFB"
+                  : buildingDeleteEligibility.canDelete
+                    ? "#FEF2F2"
+                    : "#FFF7ED",
+              border:
+                buildingDeleteEligibility === null
+                  ? "1px solid #E5E7EB"
+                  : buildingDeleteEligibility.canDelete
+                    ? "1px solid #FECACA"
+                    : "1px solid #FED7AA",
+              color:
+                buildingDeleteEligibility === null
+                  ? "#6B7280"
+                  : buildingDeleteEligibility.canDelete
+                    ? "#991B1B"
+                    : "#9A3412",
+              fontSize: 14,
+              fontWeight: 600,
+              lineHeight: 1.5,
             }}
           >
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "#FEE2E2",
-                color: "#B91C1C",
-                display: "grid",
-                placeItems: "center",
-                flexShrink: 0,
-              }}
-            >
-              <AlertTriangle size={18} />
-            </div>
-
-            <div>
-              <p style={{ margin: 0, fontWeight: 700, color: "#991B1B" }}>
-                ¿Seguro que quieres eliminar este edificio?
-              </p>
-              <p style={{ margin: "6px 0 0", color: "#7F1D1D" }}>
-                Se eliminará <strong>{buildingToDelete?.name || "este edificio"}</strong> del
-                portafolio. Esta acción no se puede deshacer.
-              </p>
-            </div>
+            {buildingDeleteEligibility === null ? (
+              "Verificando si el edificio puede eliminarse..."
+            ) : buildingDeleteEligibility.canDelete ? (
+              <>
+                ¿Seguro que quieres eliminar el edificio{" "}
+                <strong>{buildingToDelete?.name}</strong>? Esta acción no se puede
+                deshacer.
+              </>
+            ) : (
+              <>
+                No se puede eliminar <strong>{buildingToDelete?.name}</strong> porque
+                tiene{" "}
+                <strong>{buildingDeleteEligibility.unitCount}</strong>{" "}
+                departamento(s) registrado(s). Elimina los departamentos primero.
+              </>
+            )}
           </div>
 
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <UiButton onClick={closeDeleteModal} disabled={deleting}>
-              Cancelar
+          {deleteError ? (
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 12,
+                background: "#FEF2F2",
+                border: "1px solid #FECACA",
+                color: "#B91C1C",
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.5,
+              }}
+            >
+              {deleteError}
+            </div>
+          ) : null}
+
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <UiButton
+              type="button"
+              variant="secondary"
+              onClick={closeDeleteModal}
+              disabled={deleting}
+            >
+              Cerrar
             </UiButton>
-            <UiButton onClick={() => void handleDeleteBuilding()} disabled={deleting}>
-              <Trash2 size={16} />
-              {deleting ? "Eliminando..." : "Sí, eliminar edificio"}
-            </UiButton>
+
+            {buildingDeleteEligibility?.canDelete ? (
+              <UiButton
+                type="button"
+                onClick={() => void handleDeleteBuilding()}
+                disabled={deleting}
+              >
+                <Trash2 size={16} />
+                {deleting ? "Eliminando..." : "Eliminar edificio"}
+              </UiButton>
+            ) : null}
           </div>
         </div>
       </Modal>
 
+      {/* Modal de creación */}
       <Modal
         open={isCreateModalOpen}
         onClose={closeCreateModal}

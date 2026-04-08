@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import { X } from "lucide-react";
 
 /*
@@ -16,12 +16,20 @@ export default function Modal({
   subtitle,
   onClose,
   children,
+  maxWidth = "760px",
+  maxHeight = "calc(100vh - 48px)",
+  contentStyle,
+  overlayStyle,
 }: {
   open: boolean;
   title: string;
   subtitle?: string;
   onClose: () => void;
   children: ReactNode;
+  maxWidth?: string | number;
+  maxHeight?: string | number;
+  contentStyle?: CSSProperties;
+  overlayStyle?: CSSProperties;
 }) {
   if (!open) return null;
 
@@ -37,20 +45,22 @@ export default function Modal({
         justifyContent: "center",
         padding: "24px",
         zIndex: 1000,
+        ...overlayStyle,
       }}
     >
       <div
         onClick={(event) => event.stopPropagation()}
         style={{
           width: "100%",
-          maxWidth: "760px",
-          maxHeight: "calc(100vh - 48px)",
+          maxWidth,
+          maxHeight,
           overflowY: "auto",
           background: "white",
           borderRadius: "22px",
           border: "1px solid #E5E7EB",
           boxShadow: "0 20px 60px rgba(15, 23, 42, 0.16)",
           padding: "24px",
+          ...contentStyle,
         }}
       >
         <div

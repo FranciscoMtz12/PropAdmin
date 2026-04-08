@@ -46,6 +46,7 @@ import {
   Filter,
   Flame,
   Gem,
+  House,
   Landmark,
   Pencil,
   Plus,
@@ -90,6 +91,9 @@ type Unit = {
 
 type ImportPreviewData = ParsedCfdiData & {
   emitterTaxId?: string | null;
+  customerTaxId?: string | null;
+  series?: string | null;
+  folio?: string | null;
   xmlFileName?: string | null;
 };
 
@@ -311,6 +315,7 @@ type CollectionRow = {
   tenantLabel: string;
   responsiblePayerLabel: string;
   title: string;
+  chargeType: CollectionChargeType;
   chargeTypeLabel: string;
   periodLabel: string;
   dueDate: string;
@@ -498,13 +503,13 @@ function getEndOfMonthDateKey(dateKey: string) {
 }
 
 function getCollectionTypeIcon(chargeType: CollectionChargeType) {
-  if (chargeType === "rent") return <Landmark size={18} color="#4F46E5" />;
+  if (chargeType === "rent") return <House size={18} color="#4F46E5" />;
   if (chargeType === "maintenance_fee") return <Wrench size={18} color="#D97706" />;
   if (chargeType === "electricity") return <Zap size={18} color="#2563EB" />;
   if (chargeType === "water") return <Droplets size={18} color="#0EA5E9" />;
   if (chargeType === "gas") return <Flame size={18} color="#EA580C" />;
   if (chargeType === "amenities") return <Gem size={18} color="#7C3AED" />;
-  if (chargeType === "services") return <Zap size={18} color="#2563EB" />;
+  if (chargeType === "services") return <Wrench size={18} color="#0891B2" />;
   if (chargeType === "parking") return <CarFront size={18} color="#0F766E" />;
   if (chargeType === "penalty") return <AlertTriangle size={18} color="#DC2626" />;
   return <Receipt size={18} color="#6D28D9" />;
@@ -569,9 +574,22 @@ function inferChargeTypeFromDescription(description: string | null | undefined):
 
 function extractCfdiFileIdentifiers(xmlText: string) {
   const readAttr = (tagName: string, attrName: string) => {
-    const tagRegex = new RegExp(`<[^>]*(?:\w+:)?${tagName}\b[^>]*\b${attrName}="([^"]+)"`, "i");
+    const tagRegex = new RegExp(
+      `<[^>]*(?:\\w+:)?${tagName}\\b[^>]*\\b${attrName}="([^"]+)"`,
+      "i"
+    );
     const match = xmlText.match(tagRegex);
-    return match?.[1] || null;
+
+    if (match?.[1]) {
+      return String(match[1]).trim();
+    }
+
+    const lowercaseAttrRegex = new RegExp(
+      `<[^>]*(?:\\w+:)?${tagName}\\b[^>]*\\b${attrName.toLowerCase()}="([^"]+)"`,
+      "i"
+    );
+    const lowercaseMatch = xmlText.match(lowercaseAttrRegex);
+    return lowercaseMatch?.[1] ? String(lowercaseMatch[1]).trim() : null;
   };
 
   return {
@@ -822,8 +840,7 @@ export default function CollectionsPage() {
         .select(
           "id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes"
         )
-        .eq("company_id", user.company_id)
-        .eq("active", true),
+        .eq("company_id", user.company_id),
 
       supabase
         .from("collection_records")
@@ -1027,6 +1044,7 @@ export default function CollectionsPage() {
             periodMonth: record.period_month,
             fallbackTitle: schedule.title,
           }),
+          chargeType: schedule.charge_type,
           chargeTypeLabel: getChargeTypeLabel(schedule.charge_type),
           periodLabel: formatPeriod(record.period_year, record.period_month),
           dueDate: record.due_date,
@@ -1563,14 +1581,28 @@ export default function CollectionsPage() {
       const xmlText = await file.text();
       const parsed = parseCfdiXml(xmlText);
       const extractedIdentifiers = extractCfdiFileIdentifiers(xmlText);
-      const preview: ImportPreviewData = {
-        ...parsed,
-        emitterTaxId: extractedIdentifiers.emitterTaxId || (parsed as any).emitterTaxId || null,
-        customerTaxId: parsed.customerTaxId || extractedIdentifiers.receiverTaxId || null,
-        series: parsed.series || extractedIdentifiers.series || null,
-        folio: parsed.folio || extractedIdentifiers.folio || null,
-        xmlFileName: file.name,
-      };
+      const parsedAny = parsed as any;
+
+const preview: ImportPreviewData = {
+  ...parsed,
+  emitterTaxId:
+    extractedIdentifiers.emitterTaxId ||
+    parsedAny.emitterTaxId ||
+    null,
+  customerTaxId:
+    parsedAny.customerTaxId ||
+    extractedIdentifiers.receiverTaxId ||
+    null,
+  series:
+    parsedAny.series ||
+    extractedIdentifiers.series ||
+    null,
+  folio:
+    parsedAny.folio ||
+    extractedIdentifiers.folio ||
+    null,
+  xmlFileName: file.name,
+};
       const inferredCategory = inferChargeTypeFromDescription(preview.description);
 
       setImportPreview(preview);
@@ -2191,185 +2223,131 @@ export default function CollectionsPage() {
 
       <div style={{ height: 16 }} />
 
-      <SectionCard title="Centro de revisión" icon={<CreditCard size={18} />}>
-        <AppGrid minWidth={280}>
-          <AppCard>
-            <div style={{ display: "grid", gap: 14 }}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={quickSectionTitleStyle}>Pagos reportados por inquilinos</div>
-                <div style={quickSectionTextStyle}>
-                  Revisa comprobantes enviados desde el portal antes de afectar la
-                  cobranza real. Aquí podrás aprobar o rechazar cada reporte.
+      <SectionCard title="Revisión" icon={<CreditCard size={18} />}>
+        <div style={reviewQuickGridStyle}>
+          <button
+            type="button"
+            onClick={() => router.push("/collections/reported-payments")}
+            style={reviewCardButtonStyle}
+          >
+            <div style={reviewCardTopRowStyle}>
+              <div style={reviewCardIconWrapStyle}>
+                <CreditCard size={18} />
+              </div>
+              <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
+                <div style={quickSectionTitleStyle}>Pagos reportados</div>
+                <div
+                  style={{
+                    ...reviewBadgeStyle,
+                    background: reportedPendingCount > 0 ? "#FEF3C7" : "#ECFDF5",
+                    border: `1px solid ${reportedPendingCount > 0 ? "#FDE68A" : "#A7F3D0"}`,
+                    color: reportedPendingCount > 0 ? "#92400E" : "#166534",
+                  }}
+                >
+                  {reportedPendingCount > 0
+                    ? `${reportedPendingCount} pendiente${reportedPendingCount === 1 ? "" : "s"}`
+                    : "Sin pendientes"}
                 </div>
               </div>
-
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  alignSelf: "flex-start",
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: reportedPendingCount > 0 ? "#FEF3C7" : "#ECFDF5",
-                  border: `1px solid ${reportedPendingCount > 0 ? "#FDE68A" : "#A7F3D0"}`,
-                  color: reportedPendingCount > 0 ? "#92400E" : "#166534",
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-              >
-                <CreditCard size={15} />
-                {reportedPendingCount > 0
-                  ? `${reportedPendingCount} pendiente${reportedPendingCount === 1 ? "" : "s"}`
-                  : "Sin pendientes"}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <UiButton
-                  onClick={() => router.push("/collections/reported-payments")}
-                  icon={<Eye size={16} />}
-                >
-                  Abrir revisión
-                </UiButton>
-              </div>
             </div>
-          </AppCard>
+          </button>
 
-          <AppCard>
-            <div style={{ display: "grid", gap: 14 }}>
-              <div style={{ display: "grid", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => router.push("/collections/invoice-generation")}
+            style={reviewCardButtonStyle}
+          >
+            <div style={reviewCardTopRowStyle}>
+              <div style={reviewCardIconWrapStyle}>
+                <FileText size={18} />
+              </div>
+              <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
                 <div style={quickSectionTitleStyle}>Generación de facturas</div>
-                <div style={quickSectionTextStyle}>
-                  Lleva control administrativo de qué facturas deben generarse este mes por contrato vigente según la configuración de cada edificio.
+                <div
+                  style={{
+                    ...reviewBadgeStyle,
+                    background: "#EEF2FF",
+                    border: "1px solid #C7D2FE",
+                    color: "#3730A3",
+                  }}
+                >
+                  Control mensual
                 </div>
               </div>
-
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  alignSelf: "flex-start",
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: "#EEF2FF",
-                  border: "1px solid #C7D2FE",
-                  color: "#3730A3",
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-              >
-                <FileText size={15} />
-                Control mensual
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <UiButton
-                  onClick={() => router.push("/collections/invoice-generation")}
-                  icon={<Eye size={16} />}
-                >
-                  Abrir control
-                </UiButton>
-              </div>
             </div>
-          </AppCard>
+          </button>
 
-          <AppCard>
-            <div style={{ display: "grid", gap: 14 }}>
-              <div style={{ display: "grid", gap: 6 }}>
+          <button
+            type="button"
+            onClick={() => router.push("/collections/pending-invoice-uploads")}
+            style={reviewCardButtonStyle}
+          >
+            <div style={reviewCardTopRowStyle}>
+              <div style={reviewCardIconWrapStyle}>
+                <Upload size={18} />
+              </div>
+              <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
                 <div style={quickSectionTitleStyle}>Falta cargar factura</div>
-                <div style={quickSectionTextStyle}>
-                  Revisa las facturas ya generadas externamente que todavía no tienen XML/PDF cargado en el sistema.
+                <div
+                  style={{
+                    ...reviewBadgeStyle,
+                    background: pendingInvoiceUploadCount > 0 ? "#FEF3C7" : "#F3F4F6",
+                    border: `1px solid ${pendingInvoiceUploadCount > 0 ? "#FDE68A" : "#E5E7EB"}`,
+                    color: pendingInvoiceUploadCount > 0 ? "#92400E" : "#374151",
+                  }}
+                >
+                  {pendingInvoiceUploadCount > 0
+                    ? `${pendingInvoiceUploadCount} pendiente${pendingInvoiceUploadCount === 1 ? "" : "s"}`
+                    : "Sin pendientes"}
                 </div>
               </div>
-
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  alignSelf: "flex-start",
-                  padding: "8px 12px",
-                  borderRadius: 999,
-                  background: pendingInvoiceUploadCount > 0 ? "#FEF3C7" : "#F3F4F6",
-                  border: `1px solid ${pendingInvoiceUploadCount > 0 ? "#FDE68A" : "#E5E7EB"}`,
-                  color: pendingInvoiceUploadCount > 0 ? "#92400E" : "#374151",
-                  fontSize: 13,
-                  fontWeight: 800,
-                }}
-              >
-                <Upload size={15} />
-                {pendingInvoiceUploadCount > 0
-                  ? `${pendingInvoiceUploadCount} pendiente${pendingInvoiceUploadCount === 1 ? "" : "s"}`
-                  : "Sin pendientes"}
-              </div>
-
-              <div style={{ display: "flex", justifyContent: "flex-end", flexWrap: "wrap" }}>
-                <UiButton
-                  onClick={() => router.push("/collections/pending-invoice-uploads")}
-                  icon={<Eye size={16} />}
-                  variant="secondary"
-                >
-                  Abrir listado
-                </UiButton>
-              </div>
             </div>
-          </AppCard>
-        </AppGrid>
+          </button>
+        </div>
       </SectionCard>
 
       <div style={{ height: 16 }} />
 
       <SectionCard title="Filtros" icon={<Filter size={18} />}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-            gap: 16,
-          }}
-        >
-          <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <Building2 size={14} />
-                Edificio
-              </div>
+        <div style={compactFiltersGridStyle}>
+          <label style={compactFilterFieldStyle}>
+            <span style={filterLabelStyle}>
+              <Building2 size={14} />
+              Edificio
+            </span>
 
-              <AppSelect
-                value={selectedBuildingId}
-                onChange={(event) => setSelectedBuildingId(event.target.value)}
-              >
-                <option value="all">Todos los edificios</option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
-                  </option>
-                ))}
-              </AppSelect>
-            </div>
-          </AppCard>
+            <AppSelect
+              value={selectedBuildingId}
+              onChange={(event) => setSelectedBuildingId(event.target.value)}
+            >
+              <option value="all">Todos los edificios</option>
+              {buildings.map((building) => (
+                <option key={building.id} value={building.id}>
+                  {building.name}
+                </option>
+              ))}
+            </AppSelect>
+          </label>
 
-          <AppCard>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <Filter size={14} />
-                Estado
-              </div>
+          <label style={compactFilterFieldStyle}>
+            <span style={filterLabelStyle}>
+              <Filter size={14} />
+              Estado
+            </span>
 
-              <AppSelect
-                value={selectedStatus}
-                onChange={(event) =>
-                  setSelectedStatus(event.target.value as CollectionStatusFilter)
-                }
-              >
-                <option value="all">Todos los estados</option>
-                <option value="pending">Pendiente</option>
-                <option value="partial">Parcial</option>
-                <option value="collected">Cobrado</option>
-                <option value="overdue">Vencido</option>
-              </AppSelect>
-            </div>
-          </AppCard>
+            <AppSelect
+              value={selectedStatus}
+              onChange={(event) =>
+                setSelectedStatus(event.target.value as CollectionStatusFilter)
+              }
+            >
+              <option value="all">Todos los estados</option>
+              <option value="pending">Pendiente</option>
+              <option value="partial">Parcial</option>
+              <option value="collected">Cobrado</option>
+              <option value="overdue">Vencido</option>
+            </AppSelect>
+          </label>
         </div>
       </SectionCard>
 
@@ -2427,9 +2405,10 @@ export default function CollectionsPage() {
                 <div key={row.id} style={collectionRowCardStyle}>
                   <div style={collectionBodyGridStyle}>
                     <div style={conceptCellWrapStyle}>
-                      <div style={chargeIconWrapStyle}>{getCollectionTypeIcon(collectionSchedules.find((item) => item.id === collectionRecords.find((record) => record.id === row.id)?.collection_schedule_id)?.charge_type || "other")}</div>
+                      <div style={chargeIconWrapStyle}>{getCollectionTypeIcon(row.chargeType)}</div>
                       <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
                         <div style={{ ...rowTitleStyle, lineHeight: 1.1 }}>{row.title}</div>
+                        <div style={rowSecondaryTextStyle}>{row.chargeTypeLabel}</div>
                         <button
                           type="button"
                           onClick={() => setDetailRecordId((current) => (current === row.id ? null : row.id))}
@@ -2658,6 +2637,9 @@ export default function CollectionsPage() {
       <Modal
         open={importInvoiceOpen}
         title="Importar factura"
+        maxWidth={1120}
+        maxHeight="calc(100vh - 24px)"
+        contentStyle={{ padding: 20 }}
         onClose={() => {
           if (!importingInvoice) {
             setImportInvoiceOpen(false);
@@ -2665,13 +2647,18 @@ export default function CollectionsPage() {
           }
         }}
       >
-        <div style={{ display: "grid", gap: 16 }}>
-          <div style={paymentSummaryCardStyle}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={detailSectionTitleStyle}>Ingesta inteligente de XML + PDF</div>
-              <div style={quickSectionTextStyle}>
-                Este es ahora el flujo principal de Cobranza. Sube ambos archivos y el sistema intentará
-                clasificar la factura automáticamente para crear o ligar el cobro correspondiente.
+
+        <div style={importModalBodyStyle}>
+          <div style={importIntroCardStyle}>
+            <div style={importIntroHeaderStyle}>
+              <div style={invoiceIconWrapStyle}>
+                <WandSparkles size={16} />
+              </div>
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ ...detailSectionTitleStyle, marginBottom: 0 }}>Ingesta inteligente de XML + PDF</div>
+                <div style={quickSectionTextStyle}>
+                  Sube ambos archivos y el sistema clasificará la factura para crear o ligar el cobro correspondiente.
+                </div>
               </div>
             </div>
           </div>
@@ -2703,51 +2690,63 @@ export default function CollectionsPage() {
 
           <div
             style={{
-              ...paymentSummaryCardStyle,
+              ...importPreviewBannerStyle,
               border: `1px solid ${importPreview ? "#BFDBFE" : "#E5E7EB"}`,
               background: importPreview ? "#EFF6FF" : "#F9FAFB",
             }}
           >
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={invoiceIconWrapStyle}>
                 {importPreview ? <WandSparkles size={16} /> : <Upload size={16} />}
               </div>
-              <div style={detailSectionTitleStyle}>
-                {importPreview ? "Vista previa detectada" : "Aún no se ha leído un XML"}
+              <div style={{ display: "grid", gap: 4 }}>
+                <div style={{ ...detailSectionTitleStyle, marginBottom: 0 }}>
+                  {importPreview ? "Vista previa detectada" : "Aún no se ha leído un XML"}
+                </div>
+                <div style={quickSectionTextStyle}>
+                  {importStatusMessage || "Sube un XML para extraer UUID, cliente, RFC, fecha, importe y concepto."}
+                </div>
               </div>
-            </div>
-
-            <div style={quickSectionTextStyle}>
-              {importStatusMessage || "Sube un XML para extraer UUID, cliente, RFC, fecha, importe y concepto."}
             </div>
           </div>
 
           {importPreview ? (
             <>
-              <div style={detailTopGridStyle}>
+              <div style={importPreviewMainGridStyle}>
                 <div style={detailBlockStyle}>
                   <div style={detailLabelStyle}>Cliente detectado</div>
                   <div style={detailValueStyle}>{importPreview.customerName || "Sin nombre"}</div>
                 </div>
+
                 <div style={detailBlockStyle}>
                   <div style={detailLabelStyle}>RFC detectado</div>
                   <div style={detailValueStyle}>{importPreview.customerTaxId || "Sin RFC"}</div>
                 </div>
+
                 <div style={detailBlockStyle}>
                   <div style={detailLabelStyle}>UUID</div>
-                  <div style={detailValueStyle}>{importPreview.uuid || "Sin UUID"}</div>
+                  <div style={{ ...detailValueStyle, fontSize: 13, wordBreak: "break-word" }}>
+                    {importPreview.uuid || "Sin UUID"}
+                  </div>
                 </div>
-                <div style={detailBlockStyle}>
-                  <div style={detailLabelStyle}>Fecha CFDI</div>
-                  <div style={detailValueStyle}>{formatDate(importPreview.issuedAt || null)}</div>
+
+                <div style={importPreviewMetaStackStyle}>
+                  <div style={detailBlockStyle}>
+                    <div style={detailLabelStyle}>Fecha CFDI</div>
+                    <div style={detailValueStyle}>{formatDate(importPreview.issuedAt || null)}</div>
+                  </div>
+
+                  <div style={detailBlockStyle}>
+                    <div style={detailLabelStyle}>Total</div>
+                    <div style={detailValueStyle}>{formatCurrency(Number(importPreview.total || 0))}</div>
+                  </div>
                 </div>
-                <div style={detailBlockStyle}>
-                  <div style={detailLabelStyle}>Total</div>
-                  <div style={detailValueStyle}>{formatCurrency(Number(importPreview.total || 0))}</div>
-                </div>
-                <div style={detailBlockStyle}>
+
+                <div style={{ ...detailBlockStyle, gridColumn: "span 2" }}>
                   <div style={detailLabelStyle}>Concepto</div>
-                  <div style={detailValueStyle}>{importPreview.description || "Sin descripción"}</div>
+                  <div style={importConceptPreviewTextStyle}>
+                    {importPreview.description || "Sin descripción"}
+                  </div>
                 </div>
               </div>
 
@@ -2815,99 +2814,107 @@ export default function CollectionsPage() {
                     disabled
                     style={{ ...inputStyle, background: "#F3F4F6", color: "#6B7280" }}
                   />
-                  <span style={fieldHelperStyle}>Se calcula automáticamente como el último día del mes correspondiente al CFDI.</span>
+                  <span style={fieldHelperStyle}>
+                    Se calcula automáticamente como el último día del mes correspondiente al CFDI.
+                  </span>
                 </label>
               </div>
 
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Título del cobro</span>
-                <input
-                  type="text"
-                  value={importForm.title}
-                  onChange={(event) =>
-                    setImportForm((prev) => ({
-                      ...prev,
-                      title: event.target.value,
-                    }))
-                  }
-                  placeholder="Cómo quieres que aparezca este cobro en el listado"
-                  style={inputStyle}
-                />
-              </label>
+              <div style={simpleFormGridStyle}>
+                <label style={{ ...fieldWrapStyle, gridColumn: "span 2" }}>
+                  <span style={fieldLabelStyle}>Título del cobro</span>
+                  <input
+                    type="text"
+                    value={importForm.title}
+                    onChange={(event) =>
+                      setImportForm((prev) => ({
+                        ...prev,
+                        title: event.target.value,
+                      }))
+                    }
+                    placeholder="Cómo quieres que aparezca este cobro en el listado"
+                    style={inputStyle}
+                  />
+                </label>
 
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Notas internas</span>
-                <textarea
-                  value={importForm.notes}
-                  onChange={(event) =>
-                    setImportForm((prev) => ({
-                      ...prev,
-                      notes: event.target.value,
-                    }))
-                  }
-                  placeholder="Opcional: observaciones internas de esta importación"
-                  style={textareaStyle}
-                />
-              </label>
+                <label style={fieldWrapStyle}>
+                  <span style={fieldLabelStyle}>Notas internas</span>
+                  <textarea
+                    value={importForm.notes}
+                    onChange={(event) =>
+                      setImportForm((prev) => ({
+                        ...prev,
+                        notes: event.target.value,
+                      }))
+                    }
+                    rows={2}
+                    placeholder="Opcional"
+                    style={textareaStyle}
+                  />
+                </label>
+              </div>
 
               {selectedImportCandidate ? (
                 <div style={paymentSummaryCardStyle}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
                     <div style={invoiceIconWrapStyle}>
                       <Receipt size={16} />
                     </div>
-                    <div style={detailSectionTitleStyle}>
+                    <div style={{ ...detailSectionTitleStyle, marginBottom: 0 }}>
                       Coincidencia sugerida · score {selectedImportCandidate.score}
                     </div>
                   </div>
+
                   <div style={detailTopGridStyle}>
                     <div style={detailBlockStyle}>
                       <div style={detailLabelStyle}>Contrato propuesto</div>
-                      <div style={detailValueStyle}>{selectedImportCandidate.tenantLabel} · {selectedImportCandidate.buildingName} · Unidad {selectedImportCandidate.unitLabel}</div>
+                      <div style={detailValueStyle}>
+                        {selectedImportCandidate.tenantLabel} · {selectedImportCandidate.buildingName} · Unidad {selectedImportCandidate.unitLabel}
+                      </div>
                     </div>
+
                     <div style={detailBlockStyle}>
                       <div style={detailLabelStyle}>Responsable sugerido</div>
                       <div style={detailValueStyle}>{selectedImportCandidate.responsiblePayerLabel}</div>
                     </div>
+
                     <div style={detailBlockStyle}>
                       <div style={detailLabelStyle}>Facturación esperada</div>
-                      <div style={detailValueStyle}>{selectedImportCandidate.billingName || "Sin nombre"}</div>
-                    </div>
-                    <div style={detailBlockStyle}>
-                      <div style={detailLabelStyle}>RFC esperado</div>
-                      <div style={detailValueStyle}>{selectedImportCandidate.billingTaxId || "Sin RFC"}</div>
+                      <div style={detailValueStyle}>{selectedImportCandidate.billingName || "Sin nombre fiscal"}</div>
                     </div>
                   </div>
-                  <div style={{ ...quickSectionTextStyle, marginTop: 10 }}>
+
+                  <div style={{ ...fieldHelperStyle, marginTop: 10 }}>
                     {selectedImportCandidate.reasons.join(" · ") || "Revisión manual"}
                   </div>
                 </div>
               ) : null}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!importingInvoice) {
+                      setImportInvoiceOpen(false);
+                      resetImportInvoiceState();
+                    }
+                  }}
+                  style={ghostButtonStyle}
+                  disabled={importingInvoice}
+                >
+                  Cancelar
+                </button>
+
+                <UiButton
+                  onClick={handleConfirmImportedInvoice}
+                  icon={<FileUp size={16} />}
+                  disabled={importingInvoice || !importPreview || !importPdfFile || !importForm.selectedLeaseId}
+                >
+                  {importingInvoice ? "Importando..." : "Confirmar importación"}
+                </UiButton>
+              </div>
             </>
           ) : null}
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (!importingInvoice) {
-                  setImportInvoiceOpen(false);
-                  resetImportInvoiceState();
-                }
-              }}
-              style={ghostButtonStyle}
-            >
-              Cancelar
-            </button>
-
-            <UiButton
-              onClick={handleConfirmImportedInvoice}
-              icon={<FileUp size={16} />}
-              disabled={!importPreview || !importXmlFile || !importPdfFile || importingInvoice}
-            >
-              {importingInvoice ? "Importando..." : "Confirmar e importar"}
-            </UiButton>
-          </div>
         </div>
       </Modal>
 
@@ -3458,6 +3465,70 @@ const quickSectionTextStyle: CSSProperties = {
   color: "#6B7280",
 };
 
+const reviewQuickGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
+  gap: 14,
+};
+
+const reviewCardButtonStyle: CSSProperties = {
+  display: "grid",
+  width: "100%",
+  textAlign: "left",
+  padding: 16,
+  borderRadius: 18,
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+  cursor: "pointer",
+  transition: "transform 0.15s ease, box-shadow 0.15s ease",
+  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
+};
+
+const reviewCardTopRowStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+
+const reviewCardIconWrapStyle: CSSProperties = {
+  width: 44,
+  height: 44,
+  borderRadius: 14,
+  background: "#EEF2FF",
+  color: "#4338CA",
+  display: "grid",
+  placeItems: "center",
+  flexShrink: 0,
+};
+
+const reviewBadgeStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 8,
+  alignSelf: "flex-start",
+  padding: "8px 12px",
+  borderRadius: 999,
+  fontSize: 13,
+  fontWeight: 800,
+  width: "fit-content",
+};
+
+const compactFiltersGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gap: 16,
+};
+
+const compactFilterFieldStyle: CSSProperties = {
+  display: "grid",
+  gap: 10,
+  padding: 14,
+  borderRadius: 16,
+  border: "1px solid #E5E7EB",
+  background: "#FFFFFF",
+};
+
+
 const filterLabelStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -3717,7 +3788,7 @@ const fieldHelperStyle: CSSProperties = {
 
 const detailTopGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
   gap: 12,
 };
 
@@ -3812,15 +3883,63 @@ const paymentSummaryCardStyle: CSSProperties = {
   padding: 14,
 };
 
+const importModalBodyStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+};
+
+const importIntroCardStyle: CSSProperties = {
+  borderRadius: 16,
+  border: "1px solid #E5E7EB",
+  background: "#F8FAFC",
+  padding: 14,
+};
+
+const importIntroHeaderStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 12,
+};
+
+const importPreviewBannerStyle: CSSProperties = {
+  borderRadius: 16,
+  padding: 14,
+};
+
+const importPreviewMainGridStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+  gap: 12,
+  alignItems: "stretch",
+};
+
+const importPreviewMetaStackStyle: CSSProperties = {
+  display: "grid",
+  gap: 12,
+};
+
+const importConceptPreviewTextStyle: CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: "#111827",
+  lineHeight: 1.45,
+  display: "-webkit-box",
+  WebkitLineClamp: 4,
+  WebkitBoxOrient: "vertical",
+  overflow: "hidden",
+  wordBreak: "break-word",
+};
+
+
 const paymentSummaryGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
   gap: 12,
 };
 
 const simpleFormGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
   gap: 14,
 };
 

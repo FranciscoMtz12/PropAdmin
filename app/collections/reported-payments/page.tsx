@@ -163,19 +163,6 @@ function getTabLabel(tab: ReviewTab) {
   return "Pendientes";
 }
 
-function getTodayDateOnlyKey() {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
-function normalizeDateOnly(value?: string | null) {
-  if (!value) return "";
-  return value.slice(0, 10);
-}
-
 export default function ReportedPaymentsPage() {
   const { user } = useCurrentUser();
 
@@ -187,11 +174,13 @@ export default function ReportedPaymentsPage() {
 
   const [activeTab, setActiveTab] = useState<ReviewTab>("pending_review");
 
-  const [rejectingPayment, setRejectingPayment] = useState<ReportedPayment | null>(null);
+  const [rejectingPayment, setRejectingPayment] =
+    useState<ReportedPayment | null>(null);
   const [rejectionReason, setRejectionReason] = useState("");
   const [savingRejection, setSavingRejection] = useState(false);
 
-  const isCompanyAdmin = user?.role === "admin" && !Boolean(user?.is_superadmin);
+  const isCompanyAdmin =
+    user?.role === "admin" && !Boolean(user?.is_superadmin);
 
   async function loadPayments() {
     setLoading(true);
@@ -282,7 +271,9 @@ export default function ReportedPaymentsPage() {
     }
 
     if (!payment.proof_file_path) {
-      setPageError("Este reporte no tiene un archivo de comprobante disponible.");
+      setPageError(
+        "Este reporte no tiene un archivo de comprobante disponible."
+      );
       return;
     }
 
@@ -356,6 +347,11 @@ export default function ReportedPaymentsPage() {
       return;
     }
 
+    if (rejectingPayment.review_status !== "pending_review") {
+      setPageError("Este pago reportado ya fue procesado.");
+      return;
+    }
+
     const trimmedReason = rejectionReason.trim();
 
     if (!trimmedReason) {
@@ -370,6 +366,7 @@ export default function ReportedPaymentsPage() {
       const { error } = await supabase.rpc("reject_reported_payment", {
         p_report_id: rejectingPayment.id,
         p_admin_id: user.id,
+        p_rejection_reason: trimmedReason,
       });
 
       if (error) {
@@ -522,29 +519,33 @@ export default function ReportedPaymentsPage() {
 
       <AppCard style={{ marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          {(["pending_review", "approved", "rejected"] as ReviewTab[]).map((tab) => {
-            const isActive = activeTab === tab;
+          {(["pending_review", "approved", "rejected"] as ReviewTab[]).map(
+            (tab) => {
+              const isActive = activeTab === tab;
 
-            return (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setActiveTab(tab)}
-                style={{
-                  border: isActive ? "1px solid #C7D2FE" : "1px solid #E5E7EB",
-                  background: isActive ? "#EEF2FF" : "#FFFFFF",
-                  color: isActive ? "#3730A3" : "#374151",
-                  borderRadius: 12,
-                  padding: "10px 14px",
-                  fontSize: 14,
-                  fontWeight: 800,
-                  cursor: "pointer",
-                }}
-              >
-                {getTabLabel(tab)}
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setActiveTab(tab)}
+                  style={{
+                    border: isActive
+                      ? "1px solid #C7D2FE"
+                      : "1px solid #E5E7EB",
+                    background: isActive ? "#EEF2FF" : "#FFFFFF",
+                    color: isActive ? "#3730A3" : "#374151",
+                    borderRadius: 12,
+                    padding: "10px 14px",
+                    fontSize: 14,
+                    fontWeight: 800,
+                    cursor: "pointer",
+                  }}
+                >
+                  {getTabLabel(tab)}
+                </button>
+              );
+            }
+          )}
         </div>
       </AppCard>
 
@@ -597,7 +598,9 @@ export default function ReportedPaymentsPage() {
             const isProcessing = processingId === payment.id;
             const isOpeningProof = openingProofId === payment.id;
             const tenantLabel =
-              payment.tenants?.full_name || payment.tenants?.email || "Inquilino sin nombre";
+              payment.tenants?.full_name ||
+              payment.tenants?.email ||
+              "Inquilino sin nombre";
 
             const statusVisual = getStatusVisual(payment.review_status);
 
@@ -637,7 +640,8 @@ export default function ReportedPaymentsPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                      gridTemplateColumns:
+                        "repeat(auto-fit, minmax(180px, 1fr))",
                       gap: 12,
                     }}
                   >
@@ -650,7 +654,9 @@ export default function ReportedPaymentsPage() {
 
                     <div>
                       <div style={sectionTextStyle}>Fecha de pago</div>
-                      <div style={strongValueStyle}>{formatDate(payment.payment_date)}</div>
+                      <div style={strongValueStyle}>
+                        {formatDate(payment.payment_date)}
+                      </div>
                     </div>
                   </div>
 
@@ -677,7 +683,8 @@ export default function ReportedPaymentsPage() {
                     </div>
                   ) : null}
 
-                  {payment.review_status === "rejected" && payment.rejection_reason ? (
+                  {payment.review_status === "rejected" &&
+                  payment.rejection_reason ? (
                     <div
                       style={{
                         border: "1px solid #FECACA",
@@ -702,7 +709,8 @@ export default function ReportedPaymentsPage() {
                     </div>
                   ) : null}
 
-                  {payment.review_status !== "pending_review" && payment.reviewed_at ? (
+                  {payment.review_status !== "pending_review" &&
+                  payment.reviewed_at ? (
                     <div style={{ ...sectionTextStyle, fontWeight: 600 }}>
                       Revisado: {formatDateTime(payment.reviewed_at)}
                     </div>
@@ -817,7 +825,13 @@ export default function ReportedPaymentsPage() {
                 padding: 12,
               }}
             >
-              <div style={{ ...sectionTextStyle, fontWeight: 700, color: "#111827" }}>
+              <div
+                style={{
+                  ...sectionTextStyle,
+                  fontWeight: 700,
+                  color: "#111827",
+                }}
+              >
                 {rejectingPayment.tenants?.full_name ||
                   rejectingPayment.tenants?.email ||
                   "Inquilino"}
@@ -862,7 +876,9 @@ export default function ReportedPaymentsPage() {
               />
             </label>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <div
+              style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}
+            >
               <button
                 type="button"
                 onClick={() => {
@@ -890,7 +906,10 @@ export default function ReportedPaymentsPage() {
                 Cancelar
               </button>
 
-              <UiButton onClick={() => void submitRejection()} disabled={savingRejection}>
+              <UiButton
+                onClick={() => void submitRejection()}
+                disabled={savingRejection}
+              >
                 {savingRejection ? "Guardando..." : "Confirmar rechazo"}
               </UiButton>
             </div>
