@@ -279,6 +279,7 @@ export default function PortalContractPage() {
       const { data, error } = await supabase
         .from("tenants")
         .select("id, full_name, email, company_id")
+        .is("deleted_at", null)
         .order("full_name", { ascending: true });
 
       if (error) {
@@ -350,6 +351,7 @@ export default function PortalContractPage() {
           )
         `)
         .eq("tenant_id", effectiveTenantId)
+        .is("deleted_at", null)
         .order("start_date", { ascending: false })
         .limit(1)
         .maybeSingle();

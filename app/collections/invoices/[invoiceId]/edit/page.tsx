@@ -84,7 +84,8 @@ export default function EditInvoicePage() {
           original_pdf_filename,
           original_xml_filename
         `)
-        .eq("id", invoiceId);
+        .eq("id", invoiceId)
+        .is("deleted_at", null);
 
       const isCompanyAdmin =
         currentUser.role === "admin" && !Boolean(currentUser.is_superadmin);

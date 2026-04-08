@@ -482,6 +482,7 @@ export default function UnitDetailPage() {
       .select("id, company_id, name, code, address")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (buildingError) {
@@ -538,6 +539,7 @@ export default function UnitDetailPage() {
         .from("unit_types")
         .select("id, building_id, name, bedroom_count")
         .eq("building_id", buildingId)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
       supabase
@@ -547,6 +549,7 @@ export default function UnitDetailPage() {
         )
         .eq("company_id", user.company_id)
         .eq("status", "ACTIVE")
+        .is("deleted_at", null)
         .order("full_name", { ascending: true }),
 
       supabase
@@ -556,6 +559,7 @@ export default function UnitDetailPage() {
         )
         .eq("unit_id", unitId)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
       supabase
@@ -1001,15 +1005,16 @@ export default function UnitDetailPage() {
 
     const wasActive = leaseToDelete.status === "ACTIVE";
 
+    // Soft delete: marca deleted_at en lugar de eliminar físicamente
     const { error } = await supabase
       .from("leases")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", leaseToDelete.id)
       .eq("company_id", user.company_id);
 
     if (error) {
       setSaving(false);
-      setMsg(error.message);
+      setMsg(`No se pudo archivar el lease. ${error.message}`);
       return;
     }
 
@@ -1034,7 +1039,7 @@ export default function UnitDetailPage() {
     setSaving(false);
     setShowDeleteLeaseModal(false);
     setLeaseToDelete(null);
-    setMsg("Lease eliminado correctamente.");
+    setMsg("Lease archivado correctamente.");
     await loadPageData();
   }
 
@@ -1443,7 +1448,7 @@ export default function UnitDetailPage() {
                             onClick={() => openDeleteLeaseModal(lease)}
                             icon={<Trash2 size={16} />}
                           >
-                            Eliminar lease
+                            Archivar lease
                           </UiButton>
                         </div>
                       </div>
@@ -1598,7 +1603,7 @@ export default function UnitDetailPage() {
                             onClick={() => openDeleteLeaseModal(lease)}
                             icon={<Trash2 size={16} />}
                           >
-                            Eliminar lease
+                            Archivar lease
                           </UiButton>
                         </div>
                       </div>
@@ -2050,28 +2055,28 @@ export default function UnitDetailPage() {
       <Modal
         open={showDeleteLeaseModal}
         onClose={closeDeleteLeaseModal}
-        title="Eliminar lease"
+        title="Archivar lease"
       >
         <div style={{ display: "grid", gap: "16px" }}>
           <div
             style={{
               padding: "14px 16px",
               borderRadius: "14px",
-              background: "#FEF2F2",
-              border: "1px solid #FECACA",
-              color: "#991B1B",
+              background: "#FFF7ED",
+              border: "1px solid #FED7AA",
+              color: "#9A3412",
               fontSize: "14px",
               fontWeight: 600,
               lineHeight: 1.5,
             }}
           >
             {leaseToDelete
-              ? `¿Seguro que quieres eliminar el lease de ${
+              ? `¿Archivar el lease de ${
                   leaseToDelete.tenant_id
                     ? getTenantDisplayName(tenantsMap.get(leaseToDelete.tenant_id))
                     : "este inquilino"
-                } del cuarto ${leaseToDelete.room_number || "—"}? Esta acción no se puede deshacer.`
-              : "¿Seguro que quieres eliminar este lease? Esta acción no se puede deshacer."}
+                } del cuarto ${leaseToDelete.room_number || "—"}? Esta acción lo ocultará del sistema pero conservará toda su información.`
+              : "¿Archivar este lease? Esta acción lo ocultará del sistema pero conservará toda su información."}
           </div>
 
           <div
@@ -2096,7 +2101,8 @@ export default function UnitDetailPage() {
               onClick={handleDeleteLeaseConfirmed}
               disabled={saving || !leaseToDelete}
             >
-              {saving ? "Eliminando..." : "Eliminar"}
+              <Trash2 size={16} />
+              {saving ? "Archivando..." : "Archivar lease"}
             </UiButton>
           </div>
         </div>

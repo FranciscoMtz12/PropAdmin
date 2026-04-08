@@ -169,6 +169,7 @@ export default function BuildingUnitTypesPage() {
       .select("id, company_id, name, code, address")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (buildingError) {
@@ -199,6 +200,7 @@ export default function BuildingUnitTypesPage() {
         stove_type
       `)
       .eq("building_id", buildingId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (unitTypeError) {
@@ -222,7 +224,8 @@ export default function BuildingUnitTypesPage() {
       const { data: assetTemplateRows, error: assetTemplateError } = await supabase
         .from("unit_type_assets")
         .select("unit_type_id")
-        .in("unit_type_id", unitTypeIds);
+        .in("unit_type_id", unitTypeIds)
+        .is("deleted_at", null);
 
       if (assetTemplateError) {
         setMsg("Se cargaron las tipologías, pero no se pudo obtener el conteo de equipos base.");

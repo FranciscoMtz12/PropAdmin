@@ -99,6 +99,7 @@ export default function UnitTypeAssetsPage() {
       .select("id, company_id, name")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (buildingError) {
@@ -128,6 +129,7 @@ export default function UnitTypeAssetsPage() {
       .from("unit_type_assets")
       .select("id, unit_type_id, asset_type, name, status, notes, sort_order")
       .eq("unit_type_id", unitTypeId)
+      .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 

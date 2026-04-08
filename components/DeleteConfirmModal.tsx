@@ -17,7 +17,7 @@ export default function DeleteConfirmModal({
   open,
   title,
   description,
-  confirmText = "Eliminar",
+  confirmText = "Archivar",
   cancelText = "Cancelar",
   onConfirm,
   onCancel,
@@ -26,7 +26,7 @@ export default function DeleteConfirmModal({
     <Modal
       open={open}
       title={title}
-      subtitle="Esta acción elimina el registro y no se puede deshacer desde la interfaz."
+      subtitle="Esta acción ocultará el registro del sistema pero conservará toda su información."
       onClose={onCancel}
     >
       <div style={{ display: "grid", gap: 18 }}>

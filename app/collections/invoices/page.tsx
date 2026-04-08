@@ -103,6 +103,7 @@ export default function AdminInvoicesPage() {
             leases(tenants(full_name))
           )
         `)
+        .is("deleted_at", null)
         .order("issued_at", { ascending: false })
         .order("created_at", { ascending: false });
 
@@ -207,7 +208,11 @@ export default function AdminInvoicesPage() {
         await removeInvoiceFile(deleteTarget.xmlPath);
       }
 
-      const { error } = await supabase.from("collection_invoices").delete().eq("id", deleteTarget.id);
+      // Soft delete: archiva la factura en lugar de eliminarla físicamente
+      const { error } = await supabase
+        .from("collection_invoices")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", deleteTarget.id);
 
       if (error) {
         throw new Error(error.message || "No fue posible eliminar la factura.");
@@ -425,13 +430,13 @@ export default function AdminInvoicesPage() {
 
       <DeleteConfirmModal
         open={Boolean(deleteTarget)}
-        title="Eliminar factura"
+        title="Archivar factura"
         description={
           deleteTarget
-            ? `Vas a eliminar la factura ${deleteTarget.label}. También se eliminarán sus archivos PDF y XML del bucket de invoices.`
+            ? `¿Archivar la factura ${deleteTarget.label}? Se archivarán también sus archivos PDF y XML. Esta acción conservará toda la información.`
             : ""
         }
-        confirmText={deleting ? "Eliminando..." : "Sí, eliminar"}
+        confirmText={deleting ? "Archivando..." : "Archivar factura"}
         onConfirm={handleDeleteInvoice}
         onCancel={() => {
           if (deleting) return;

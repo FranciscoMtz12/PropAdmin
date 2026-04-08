@@ -374,6 +374,7 @@ export default function PortalInvoicesPage() {
       const { data, error } = await supabase
         .from("tenants")
         .select("id, full_name, email, company_id")
+        .is("deleted_at", null)
         .order("full_name", { ascending: true });
 
       if (error) {
@@ -443,6 +444,7 @@ export default function PortalInvoicesPage() {
           )
         `)
         .eq("tenant_id", effectiveTenantId)
+        .is("deleted_at", null)
         .order("start_date", { ascending: false });
 
       if (leaseError) {
@@ -491,6 +493,7 @@ export default function PortalInvoicesPage() {
           updated_at
         `)
         .in("lease_id", leaseIds)
+        .is("deleted_at", null)
         .order("due_date", { ascending: true });
 
       if (recordError) {
@@ -534,6 +537,7 @@ export default function PortalInvoicesPage() {
         `)
         .eq("tenant_id", effectiveTenantId)
         .in("collection_record_id", recordIds)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false });
 
       if (reportedError) {

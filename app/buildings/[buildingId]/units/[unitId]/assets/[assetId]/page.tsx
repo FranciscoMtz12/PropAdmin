@@ -274,6 +274,7 @@ export default function AssetDetailPage() {
       .select("id, company_id, name, code")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (buildingError || !buildingData) {
@@ -292,6 +293,7 @@ export default function AssetDetailPage() {
       .eq("id", unitId)
       .eq("building_id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (unitError || !unitData) {

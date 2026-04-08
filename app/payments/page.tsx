@@ -509,12 +509,14 @@ export default function PaymentsPage() {
         .from("buildings")
         .select("id, name, address")
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("name", { ascending: true }),
 
       supabase
         .from("units")
         .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("expense_schedules")
@@ -542,6 +544,7 @@ export default function PaymentsPage() {
         `)
         .eq("company_id", user.company_id)
         .eq("active", true)
+        .is("deleted_at", null)
         .in("responsibility_type", ["company", "building"]),
 
       supabase
@@ -571,6 +574,7 @@ export default function PaymentsPage() {
           billed_month_label
         `)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("due_date", { ascending: true }),
     ]);
 
@@ -1241,22 +1245,26 @@ export default function PaymentsPage() {
     setDeletingScheduleId(deleteTargetRow.scheduleId);
 
     try {
+      const now = new Date().toISOString();
+
+      // Soft delete: archiva todos los periodos del schedule
       const { error: paymentsError } = await supabase
         .from("expense_payments")
-        .delete()
+        .update({ deleted_at: now })
         .eq("expense_schedule_id", deleteTargetRow.scheduleId);
 
       if (paymentsError) {
-        throw new Error(paymentsError.message || "No se pudieron eliminar los periodos.");
+        throw new Error(paymentsError.message || "No se pudieron archivar los periodos.");
       }
 
+      // Soft delete: archiva el schedule (configuración recurrente)
       const { error: scheduleError } = await supabase
         .from("expense_schedules")
-        .delete()
+        .update({ deleted_at: now })
         .eq("id", deleteTargetRow.scheduleId);
 
       if (scheduleError) {
-        throw new Error(scheduleError.message || "No se pudo eliminar la configuración.");
+        throw new Error(scheduleError.message || "No se pudo archivar la configuración.");
       }
 
       setDeleteTargetRow(null);
@@ -1266,7 +1274,7 @@ export default function PaymentsPage() {
         setIsEditModalOpen(false);
       }
 
-      showToast({ type: "success", message: "Pago eliminado correctamente." });
+      showToast({ type: "success", message: "Pago archivado correctamente." });
       await loadPaymentsData(false);
     } catch (error) {
       const errorText =
@@ -1919,7 +1927,7 @@ export default function PaymentsPage() {
                                   style={tableDangerButtonStyle}
                                 >
                                   <Trash2 size={14} />
-                                  Eliminar
+                                  Archivar
                                 </button>
                               </div>
                             </div>
@@ -2200,26 +2208,30 @@ export default function PaymentsPage() {
 
       <Modal
         open={Boolean(deleteTargetRow)}
-        title="Eliminar pago"
-        subtitle="Esta acción eliminará la configuración recurrente y sus periodos asociados."
+        title="Archivar pago"
+        subtitle="Esta acción archivará la configuración recurrente y sus periodos asociados."
         onClose={() => {
           if (!deletingScheduleId) setDeleteTargetRow(null);
         }}
       >
         {deleteTargetRow ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div style={deleteAlertBoxStyle}>
-              <div style={deleteAlertIconWrapStyle}>
-                <AlertTriangle size={18} />
-              </div>
-
-              <div>
-                <p style={deleteAlertTitleStyle}>¿Seguro que quieres eliminar este pago?</p>
-                <p style={deleteAlertTextStyle}>
-                  El pago <strong>{deleteTargetRow.title}</strong> dejará de aparecer en el módulo
-                  de pagos y también se eliminarán sus periodos relacionados.
-                </p>
-              </div>
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: 14,
+                background: "#FFF7ED",
+                border: "1px solid #FED7AA",
+                color: "#9A3412",
+                fontSize: 14,
+                fontWeight: 600,
+                lineHeight: 1.5,
+              }}
+            >
+              ¿Archivar el pago{" "}
+              <strong>{deleteTargetRow.title}</strong>? Dejará de aparecer en el
+              módulo de pagos y también se archivarán sus periodos relacionados.
+              Esta acción conservará toda su información.
             </div>
 
             <div style={deleteSummaryBoxStyle}>
@@ -2263,8 +2275,8 @@ export default function PaymentsPage() {
               >
                 <Trash2 size={16} />
                 {deletingScheduleId === deleteTargetRow.scheduleId
-                  ? "Eliminando..."
-                  : "Eliminar pago"}
+                  ? "Archivando..."
+                  : "Archivar pago"}
               </button>
             </div>
           </div>

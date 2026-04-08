@@ -224,6 +224,7 @@ export default function BuildingDetailPage() {
       )
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (error) {
@@ -252,6 +253,7 @@ export default function BuildingDetailPage() {
           "id, building_id, file_name, file_type, file_category, storage_path, public_url, mime_type, file_size_bytes, notes, sort_order, is_cover, created_at"
         )
         .eq("building_id", buildingId)
+        .is("deleted_at", null)
         .order("is_cover", { ascending: false })
         .order("sort_order", { ascending: true })
         .order("created_at", { ascending: false }),
@@ -260,12 +262,14 @@ export default function BuildingDetailPage() {
         .from("units")
         .select("id, status")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("unit_types")
         .select("id")
-        .eq("building_id", buildingId),
+        .eq("building_id", buildingId)
+        .is("deleted_at", null),
 
       supabase
         .from("building_billing_concepts")
@@ -375,23 +379,15 @@ export default function BuildingDetailPage() {
     setDeletingBuilding(true);
     setMsg("");
 
+    // Soft delete: marca deleted_at en lugar de eliminar físicamente
     const { error } = await supabase
       .from("buildings")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", building.id)
       .eq("company_id", user.company_id);
 
     if (error) {
-      const hasRelationsError =
-        error.code === "23503" ||
-        error.message.toLowerCase().includes("foreign key") ||
-        error.message.toLowerCase().includes("constraint");
-
-      setMsg(
-        hasRelationsError
-          ? "No se puede eliminar el edificio porque tiene registros relacionados."
-          : `No se pudo eliminar el edificio. ${error.message}`
-      );
+      setMsg(`No se pudo archivar el edificio. ${error.message}`);
       setDeletingBuilding(false);
       return;
     }
@@ -473,7 +469,7 @@ export default function BuildingDetailPage() {
             </UiButton>
             <UiButton onClick={() => setIsDeleteModalOpen(true)}>
               <Trash2 size={16} />
-              Eliminar edificio
+              Archivar edificio
             </UiButton>
             <UiButton href={`/buildings/${building.id}/units`} variant="primary">
               Departamentos
@@ -945,9 +941,9 @@ export default function BuildingDetailPage() {
 
       <DeleteConfirmModal
         open={isDeleteModalOpen}
-        title="Eliminar edificio"
-        description={building ? `¿Seguro que quieres eliminar ${building.name}? Esta acción no se puede deshacer.` : "¿Seguro que quieres eliminar este edificio?"}
-        confirmText={deletingBuilding ? "Eliminando..." : "Eliminar edificio"}
+        title="Archivar edificio"
+        description={building ? `¿Archivar ${building.name}? Esta acción lo ocultará del sistema pero conservará toda su información.` : "¿Archivar este edificio?"}
+        confirmText={deletingBuilding ? "Archivando..." : "Archivar edificio"}
         onConfirm={() => void handleDeleteBuilding()}
         onCancel={() => {
           if (!deletingBuilding) setIsDeleteModalOpen(false);

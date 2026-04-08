@@ -27,6 +27,7 @@ import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
+import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 
 type DayOption = {
@@ -63,6 +64,7 @@ export default function CleaningCommonPage() {
   const [saving, setSaving] = useState(false);
   const [clearing, setClearing] = useState(false);
   const [msg, setMsg] = useState("");
+  const [isClearModalOpen, setIsClearModalOpen] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -82,7 +84,8 @@ export default function CleaningCommonPage() {
       .select("*")
       .eq("building_id", buildingId)
       .eq("company_id", user?.company_id)
-      .eq("cleaning_type", "common");
+      .eq("cleaning_type", "common")
+      .is("deleted_at", null);
 
     if (error || !data) return;
 
@@ -118,12 +121,14 @@ export default function CleaningCommonPage() {
       setSaving(true);
       setMsg("");
 
+      // Soft delete: archiva los registros existentes antes de insertar los nuevos
       await supabase
         .from("cleaning_building_schedules")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("building_id", buildingId)
         .eq("company_id", user.company_id)
-        .eq("cleaning_type", "common");
+        .eq("cleaning_type", "common")
+        .is("deleted_at", null);
 
       const rows = [
         ...morningSelected.map((day) => ({
@@ -159,25 +164,27 @@ export default function CleaningCommonPage() {
     }
   }
 
-  async function clearSchedule() {
+  function clearSchedule() {
+    // Abre el modal de confirmación en lugar de usar window.confirm
+    setIsClearModalOpen(true);
+  }
+
+  async function handleClearConfirmed() {
     if (!user?.company_id) return;
-
-    const confirmed = window.confirm(
-      "¿Seguro que quieres eliminar toda la programación de áreas comunes?"
-    );
-
-    if (!confirmed) return;
 
     try {
       setClearing(true);
       setMsg("");
+      setIsClearModalOpen(false);
 
+      // Soft delete: archiva la programación en lugar de eliminarla físicamente
       const { error } = await supabase
         .from("cleaning_building_schedules")
-        .delete()
+        .update({ deleted_at: new Date().toISOString() })
         .eq("building_id", buildingId)
         .eq("company_id", user.company_id)
-        .eq("cleaning_type", "common");
+        .eq("cleaning_type", "common")
+        .is("deleted_at", null);
 
       if (error) {
         setMsg("No se pudo limpiar la programación.");
@@ -186,7 +193,7 @@ export default function CleaningCommonPage() {
 
       setMorningSelected([]);
       setAfternoonSelected([]);
-      setMsg("La programación se eliminó correctamente.");
+      setMsg("La programación se limpió correctamente.");
     } finally {
       setClearing(false);
     }
@@ -314,6 +321,50 @@ export default function CleaningCommonPage() {
           {clearing ? "Limpiando..." : "Limpiar programación"}
         </UiButton>
       </div>
+
+      {/* Modal de confirmación para limpiar la programación */}
+      <Modal
+        open={isClearModalOpen}
+        onClose={() => { if (!clearing) setIsClearModalOpen(false); }}
+        title="Limpiar programación"
+        maxWidth="480px"
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 14,
+              background: "#FFF7ED",
+              border: "1px solid #FED7AA",
+              color: "#9A3412",
+              fontSize: 14,
+              fontWeight: 600,
+              lineHeight: 1.5,
+            }}
+          >
+            ¿Limpiar toda la programación de áreas comunes? Esta acción archivará
+            los registros actuales pero conservará su historial.
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <UiButton
+              type="button"
+              variant="secondary"
+              onClick={() => setIsClearModalOpen(false)}
+              disabled={clearing}
+            >
+              Cancelar
+            </UiButton>
+            <UiButton
+              type="button"
+              onClick={() => void handleClearConfirmed()}
+              disabled={clearing}
+            >
+              <Trash2 size={16} />
+              {clearing ? "Limpiando..." : "Limpiar programación"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }

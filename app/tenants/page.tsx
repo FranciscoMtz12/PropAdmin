@@ -247,6 +247,7 @@ export default function TenantsPage() {
           "id, company_id, full_name, email, phone, tax_id, billing_name, billing_email, status, notes, created_at, updated_at"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("full_name", { ascending: true }),
 
       supabase
@@ -255,17 +256,20 @@ export default function TenantsPage() {
           "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, room_number, status, start_date, end_date, created_at"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
       supabase
         .from("units")
         .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("buildings")
         .select("id, name")
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("name", { ascending: true }),
     ]);
 
@@ -529,27 +533,19 @@ export default function TenantsPage() {
   async function handleDeleteTenantConfirmed() {
     if (!user?.company_id || !tenantToDelete) return;
 
-    if (!tenantToDelete.canDelete) {
-      setMessage(
-        "No se puede eliminar este inquilino porque tiene leases relacionados. Primero hay que finalizar o limpiar esos registros."
-      );
-      setShowDeleteModal(false);
-      setTenantToDelete(null);
-      return;
-    }
-
     setSaving(true);
     setMessage("");
 
+    // Soft delete: marca deleted_at en lugar de eliminar físicamente
     const { error } = await supabase
       .from("tenants")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", tenantToDelete.id)
       .eq("company_id", user.company_id);
 
     if (error) {
       setSaving(false);
-      setMessage(error.message);
+      setMessage(`No se pudo archivar el inquilino. ${error.message}`);
       return;
     }
 
@@ -562,7 +558,7 @@ export default function TenantsPage() {
     setSaving(false);
     setShowDeleteModal(false);
     setTenantToDelete(null);
-    setMessage("Inquilino eliminado correctamente.");
+    setMessage("Inquilino archivado correctamente.");
     await loadTenantsPage();
   }
 
@@ -905,7 +901,7 @@ export default function TenantsPage() {
                           style={dropdownDeleteItemStyle}
                         >
                           <Trash2 size={14} />
-                          Eliminar
+                          Archivar
                         </button>
                       </div>
                     ) : null}
@@ -1076,40 +1072,25 @@ export default function TenantsPage() {
       <Modal
         open={showDeleteModal}
         onClose={closeDeleteModal}
-        title="Eliminar inquilino"
+        title="Archivar inquilino"
       >
         <div style={{ display: "grid", gap: 16 }}>
           <div
             style={{
               padding: "14px 16px",
               borderRadius: 14,
-              background: tenantToDelete?.canDelete ? "#FEF2F2" : "#FFF7ED",
-              border: tenantToDelete?.canDelete
-                ? "1px solid #FECACA"
-                : "1px solid #FED7AA",
-              color: tenantToDelete?.canDelete ? "#991B1B" : "#9A3412",
+              background: "#FFF7ED",
+              border: "1px solid #FED7AA",
+              color: "#9A3412",
               fontSize: 14,
               fontWeight: 600,
               lineHeight: 1.5,
             }}
           >
-            {tenantToDelete ? (
-              tenantToDelete.canDelete ? (
-                <>
-                  ¿Seguro que quieres eliminar a <strong>{tenantToDelete.fullName}</strong>?
-                  Esta acción no se puede deshacer.
-                </>
-              ) : (
-                <>
-                  No se puede eliminar a <strong>{tenantToDelete.fullName}</strong> porque
-                  tiene <strong> {tenantToDelete.relatedLeaseCount} </strong>
-                  lease(s) relacionado(s). Primero hay que finalizar o limpiar esos
-                  registros.
-                </>
-              )
-            ) : (
-              "¿Seguro que quieres eliminar este inquilino?"
-            )}
+            ¿Archivar a{" "}
+            <strong>{tenantToDelete?.fullName ?? "este inquilino"}</strong>?
+            Esta acción lo ocultará del sistema pero conservará toda su
+            información.
           </div>
 
           <div
@@ -1126,18 +1107,16 @@ export default function TenantsPage() {
               onClick={closeDeleteModal}
               disabled={saving}
             >
-              Cerrar
+              Cancelar
             </UiButton>
-
-            {tenantToDelete?.canDelete ? (
-              <UiButton
-                type="button"
-                onClick={handleDeleteTenantConfirmed}
-                disabled={saving}
-              >
-                {saving ? "Eliminando..." : "Eliminar"}
-              </UiButton>
-            ) : null}
+            <UiButton
+              type="button"
+              onClick={handleDeleteTenantConfirmed}
+              disabled={saving}
+            >
+              <Trash2 size={16} />
+              {saving ? "Archivando..." : "Archivar inquilino"}
+            </UiButton>
           </div>
         </div>
       </Modal>

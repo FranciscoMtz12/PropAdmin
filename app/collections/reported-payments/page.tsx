@@ -207,6 +207,7 @@ export default function ReportedPaymentsPage() {
           email
         )
       `)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (isCompanyAdmin && user?.company_id) {

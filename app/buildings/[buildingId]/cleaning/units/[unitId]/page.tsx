@@ -137,6 +137,7 @@ export default function CleaningUnitDetailPage() {
         .select("id, company_id, name, address")
         .eq("id", buildingId)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .single(),
 
       supabase
@@ -145,6 +146,7 @@ export default function CleaningUnitDetailPage() {
         .eq("id", unitId)
         .eq("building_id", buildingId)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .single(),
 
       supabase
@@ -153,6 +155,7 @@ export default function CleaningUnitDetailPage() {
         .eq("unit_id", unitId)
         .eq("building_id", buildingId)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .maybeSingle(),
     ]);
 

@@ -811,12 +811,14 @@ export default function CollectionsPage() {
         .from("buildings")
         .select("id, name")
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("name", { ascending: true }),
 
       supabase
         .from("units")
         .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("app_users")
@@ -826,21 +828,24 @@ export default function CollectionsPage() {
       supabase
         .from("tenants")
         .select("id, company_id, full_name, email, billing_name, billing_email, tax_id")
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("leases")
         .select(
           "id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, billing_tax_id, due_day, rent_amount, status, start_date, end_date"
         )
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("collection_schedules")
         .select(
           "id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes"
         )
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("collection_records")
@@ -848,6 +853,7 @@ export default function CollectionsPage() {
           "id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("due_date", { ascending: true }),
 
       supabase
@@ -856,6 +862,7 @@ export default function CollectionsPage() {
           "id, collection_record_id, company_id, amount, paid_at, payment_method, reference, notes, created_by, created_at"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("paid_at", { ascending: false }),
 
       supabase
@@ -865,6 +872,7 @@ export default function CollectionsPage() {
         )
         .eq("company_id", user.company_id)
         .is("replaced_at", null)
+        .is("deleted_at", null)
         .order("issued_at", { ascending: false }),
 
       supabase
@@ -872,6 +880,7 @@ export default function CollectionsPage() {
         .select("id, company_id, review_status")
         .eq("company_id", user.company_id)
         .eq("review_status", "pending_review")
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
       supabase
@@ -1359,54 +1368,60 @@ export default function CollectionsPage() {
         }
       }
 
+      const now = new Date().toISOString();
+
+      // Soft delete: archiva las facturas ligadas al cobro
       if (linkedInvoices.length > 0) {
-        const deleteInvoices = await supabase
+        const archiveInvoices = await supabase
           .from("collection_invoices")
-          .delete()
+          .update({ deleted_at: now })
           .in("id", linkedInvoices.map((invoice) => invoice.id));
 
-        if (deleteInvoices.error) {
-          throw new Error(deleteInvoices.error.message || "No pude eliminar las facturas ligadas a este cobro.");
+        if (archiveInvoices.error) {
+          throw new Error(archiveInvoices.error.message || "No pude archivar las facturas ligadas a este cobro.");
         }
       }
 
+      // Soft delete: archiva los abonos ligados al cobro
       if (linkedPayments.length > 0) {
-        const deletePayments = await supabase
+        const archivePayments = await supabase
           .from("collection_payments")
-          .delete()
+          .update({ deleted_at: now })
           .in("id", linkedPayments.map((payment) => payment.id));
 
-        if (deletePayments.error) {
-          throw new Error(deletePayments.error.message || "No pude eliminar los abonos ligados a este cobro.");
+        if (archivePayments.error) {
+          throw new Error(archivePayments.error.message || "No pude archivar los abonos ligados a este cobro.");
         }
       }
 
-      const deleteRecord = await supabase
+      // Soft delete: archiva el registro de cobro
+      const archiveRecord = await supabase
         .from("collection_records")
-        .delete()
+        .update({ deleted_at: now })
         .eq("id", deleteRecordId)
         .eq("company_id", user.company_id);
 
-      if (deleteRecord.error) {
-        throw new Error(deleteRecord.error.message || "No pude eliminar el cobro.");
+      if (archiveRecord.error) {
+        throw new Error(archiveRecord.error.message || "No pude archivar el cobro.");
       }
 
+      // Soft delete: archiva el schedule huérfano si aplica
       if (schedule && !schedule.active && otherRecordsForSchedule.length === 0) {
-        const deleteSchedule = await supabase
+        const archiveSchedule = await supabase
           .from("collection_schedules")
-          .delete()
+          .update({ deleted_at: now })
           .eq("id", schedule.id)
           .eq("company_id", user.company_id);
 
-        if (deleteSchedule.error) {
-          console.warn("No pude eliminar la configuración huérfana del cobro.", deleteSchedule.error.message);
+        if (archiveSchedule.error) {
+          console.warn("No pude archivar la configuración huérfana del cobro.", archiveSchedule.error.message);
         }
       }
 
       await loadCollectionsData();
       setDetailRecordId((current) => (current === deleteRecordId ? null : current));
       setDeleteRecordId(null);
-      showToast({ type: "success", message: "Cobro eliminado correctamente." });
+      showToast({ type: "success", message: "Cobro archivado correctamente." });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "No pude eliminar el cobro.";
       showToast({ type: "error", message: errorMessage });
@@ -1877,9 +1892,13 @@ const preview: ImportPreviewData = {
         }
       }
 
+      // Soft delete de rollback: archiva los registros creados parcialmente
       if (createdRecordId) {
         try {
-          await supabase.from("collection_records").delete().eq("id", createdRecordId);
+          await supabase
+            .from("collection_records")
+            .update({ deleted_at: new Date().toISOString() })
+            .eq("id", createdRecordId);
         } catch (cleanupError) {
           console.error("No pude limpiar el record creado tras fallar la importación.", cleanupError);
         }
@@ -1887,7 +1906,10 @@ const preview: ImportPreviewData = {
 
       if (createdScheduleId) {
         try {
-          await supabase.from("collection_schedules").delete().eq("id", createdScheduleId);
+          await supabase
+            .from("collection_schedules")
+            .update({ deleted_at: new Date().toISOString() })
+            .eq("id", createdScheduleId);
         } catch (cleanupError) {
           console.error("No pude limpiar el schedule creado tras fallar la importación.", cleanupError);
         }
@@ -2002,7 +2024,11 @@ const preview: ImportPreviewData = {
 
       if (recordError) {
         console.error(recordError);
-        await supabase.from("collection_schedules").delete().eq("id", insertedSchedule.id);
+        // Soft delete de rollback
+        await supabase
+          .from("collection_schedules")
+          .update({ deleted_at: new Date().toISOString() })
+          .eq("id", insertedSchedule.id);
         showToast({
           type: "error",
           message:
@@ -2570,7 +2596,7 @@ const preview: ImportPreviewData = {
 
       <Modal
         open={Boolean(deleteRecordRow)}
-        title="Eliminar cobro"
+        title="Archivar cobro"
         onClose={() => {
           if (!deletingRecord) {
             setDeleteRecordId(null);
@@ -2583,8 +2609,8 @@ const preview: ImportPreviewData = {
               <div style={{ display: "grid", gap: 6 }}>
                 <div style={detailSectionTitleStyle}>Confirmación requerida</div>
                 <div style={quickSectionTextStyle}>
-                  Vas a eliminar este cobro, sus abonos ligados y también las facturas importadas con sus archivos XML/PDF.
-                  Esta acción no se puede deshacer.
+                  ¿Archivar este cobro, sus abonos ligados y sus facturas importadas?
+                  Esta acción los ocultará del sistema pero conservará toda su información.
                 </div>
               </div>
             </div>
@@ -2627,7 +2653,7 @@ const preview: ImportPreviewData = {
                 disabled={deletingRecord}
                 icon={<Trash2 size={16} />}
               >
-                {deletingRecord ? "Eliminando..." : "Confirmar eliminación"}
+                {deletingRecord ? "Archivando..." : "Archivar cobro"}
               </UiButton>
             </div>
           </div>

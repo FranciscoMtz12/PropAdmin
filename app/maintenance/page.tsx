@@ -308,6 +308,7 @@ export default function MaintenancePage() {
       .from("buildings")
       .select("id, name, code")
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .order("name", { ascending: true });
 
     if (!buildingError) {
@@ -322,6 +323,7 @@ export default function MaintenancePage() {
         "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
       )
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .order("performed_at", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(1000);
@@ -351,7 +353,8 @@ export default function MaintenancePage() {
       const { data: logBuildingData, error: logBuildingError } = await supabase
         .from("buildings")
         .select("id, name, code")
-        .in("id", buildingIds);
+        .in("id", buildingIds)
+        .is("deleted_at", null);
 
       if (!logBuildingError) {
         buildingMap = new Map(
@@ -364,7 +367,8 @@ export default function MaintenancePage() {
       const { data: logUnitData, error: logUnitError } = await supabase
         .from("units")
         .select("id, unit_number, display_code, building_id")
-        .in("id", unitIds);
+        .in("id", unitIds)
+        .is("deleted_at", null);
 
       if (!logUnitError) {
         unitMap = new Map(

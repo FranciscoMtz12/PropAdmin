@@ -122,6 +122,7 @@ export default function CleaningUnitsPage() {
         .select("id, company_id, name, address")
         .eq("id", buildingId)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .single(),
 
       supabase
@@ -129,6 +130,7 @@ export default function CleaningUnitsPage() {
         .select("id, unit_number, display_code, floor, status")
         .eq("building_id", buildingId)
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("floor", { ascending: true })
         .order("unit_number", { ascending: true }),
 
@@ -136,7 +138,8 @@ export default function CleaningUnitsPage() {
         .from("cleaning_unit_schedules")
         .select("id, unit_id, day_of_week, start_time, duration_hours, active")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
     ]);
 
     if (buildingRes.error || !buildingRes.data) {

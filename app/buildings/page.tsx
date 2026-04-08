@@ -176,6 +176,7 @@ export default function BuildingsPage() {
         "id, company_id, name, address, code, building_category, building_subcategory"
       )
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -200,33 +201,12 @@ export default function BuildingsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Pre-verifica si el edificio tiene departamentos al abrir el modal de eliminación
+  // Con soft delete no necesitamos pre-verificar relaciones.
+  // Limpiamos la elegibilidad cuando se cierra el modal.
   useEffect(() => {
     if (!buildingToDelete) {
       setBuildingDeleteEligibility(null);
-      return;
     }
-
-    let cancelled = false;
-
-    async function checkEligibility() {
-      const { count } = await supabase
-        .from("units")
-        .select("id", { count: "exact", head: true })
-        .eq("building_id", buildingToDelete!.id);
-
-      if (!cancelled) {
-        setBuildingDeleteEligibility({
-          canDelete: (count ?? 0) === 0,
-          unitCount: count ?? 0,
-        });
-      }
-    }
-
-    void checkEligibility();
-    return () => {
-      cancelled = true;
-    };
   }, [buildingToDelete]);
 
   function resetForm() {
@@ -373,23 +353,15 @@ export default function BuildingsPage() {
     setDeleting(true);
     setDeleteError(null);
 
+    // Soft delete: marca deleted_at en lugar de eliminar físicamente
     const { error } = await supabase
       .from("buildings")
-      .delete()
+      .update({ deleted_at: new Date().toISOString() })
       .eq("id", buildingToDelete.id)
       .eq("company_id", user.company_id);
 
     if (error) {
-      const hasRelationsError =
-        error.code === "23503" ||
-        error.message.toLowerCase().includes("foreign key") ||
-        error.message.toLowerCase().includes("constraint");
-
-      setDeleteError(
-        hasRelationsError
-          ? "No se puede eliminar el edificio porque tiene registros relacionados. Elimina primero los departamentos, tipos de unidad y otros registros vinculados."
-          : `No se pudo eliminar el edificio. ${error.message}`
-      );
+      setDeleteError(`No se pudo archivar el edificio. ${error.message}`);
       setDeleting(false);
       return;
     }
@@ -398,7 +370,7 @@ export default function BuildingsPage() {
     setBuildingToDelete(null);
     setBuildingDeleteEligibility(null);
     setDeleting(false);
-    setMsg("Edificio eliminado correctamente.");
+    setMsg("Edificio archivado correctamente.");
     await loadBuildings();
   }
 
@@ -672,7 +644,7 @@ export default function BuildingsPage() {
                             style={dropdownDeleteItemStyle}
                           >
                             <Trash2 size={14} />
-                            Eliminar
+                            Archivar
                           </button>
                         </div>
                       )}
@@ -771,11 +743,11 @@ export default function BuildingsPage() {
         </form>
       </Modal>
 
-      {/* Modal de eliminación */}
+      {/* Modal de archivar */}
       <Modal
         open={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        title="Eliminar edificio"
+        title="Archivar edificio"
         maxWidth="480px"
       >
         <div style={{ display: "grid", gap: 16 }}>
@@ -783,45 +755,17 @@ export default function BuildingsPage() {
             style={{
               padding: "14px 16px",
               borderRadius: 14,
-              background:
-                buildingDeleteEligibility === null
-                  ? "#F9FAFB"
-                  : buildingDeleteEligibility.canDelete
-                    ? "#FEF2F2"
-                    : "#FFF7ED",
-              border:
-                buildingDeleteEligibility === null
-                  ? "1px solid #E5E7EB"
-                  : buildingDeleteEligibility.canDelete
-                    ? "1px solid #FECACA"
-                    : "1px solid #FED7AA",
-              color:
-                buildingDeleteEligibility === null
-                  ? "#6B7280"
-                  : buildingDeleteEligibility.canDelete
-                    ? "#991B1B"
-                    : "#9A3412",
+              background: "#FFF7ED",
+              border: "1px solid #FED7AA",
+              color: "#9A3412",
               fontSize: 14,
               fontWeight: 600,
               lineHeight: 1.5,
             }}
           >
-            {buildingDeleteEligibility === null ? (
-              "Verificando si el edificio puede eliminarse..."
-            ) : buildingDeleteEligibility.canDelete ? (
-              <>
-                ¿Seguro que quieres eliminar el edificio{" "}
-                <strong>{buildingToDelete?.name}</strong>? Esta acción no se puede
-                deshacer.
-              </>
-            ) : (
-              <>
-                No se puede eliminar <strong>{buildingToDelete?.name}</strong> porque
-                tiene{" "}
-                <strong>{buildingDeleteEligibility.unitCount}</strong>{" "}
-                departamento(s) registrado(s). Elimina los departamentos primero.
-              </>
-            )}
+            ¿Archivar el edificio{" "}
+            <strong>{buildingToDelete?.name}</strong>? Esta acción lo ocultará del
+            sistema pero conservará toda su información.
           </div>
 
           {deleteError ? (
@@ -855,19 +799,16 @@ export default function BuildingsPage() {
               onClick={closeDeleteModal}
               disabled={deleting}
             >
-              Cerrar
+              Cancelar
             </UiButton>
-
-            {buildingDeleteEligibility?.canDelete ? (
-              <UiButton
-                type="button"
-                onClick={() => void handleDeleteBuilding()}
-                disabled={deleting}
-              >
-                <Trash2 size={16} />
-                {deleting ? "Eliminando..." : "Eliminar edificio"}
-              </UiButton>
-            ) : null}
+            <UiButton
+              type="button"
+              onClick={() => void handleDeleteBuilding()}
+              disabled={deleting}
+            >
+              <Trash2 size={16} />
+              {deleting ? "Archivando..." : "Archivar edificio"}
+            </UiButton>
           </div>
         </div>
       </Modal>

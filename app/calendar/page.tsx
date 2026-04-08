@@ -694,24 +694,32 @@ export default function CalendarPage() {
         .from("buildings")
         .select("id, name")
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("name", { ascending: true }),
 
       supabase
         .from("units")
         .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
-      supabase.from("leases").select("*").eq("company_id", user.company_id),
+      supabase
+        .from("leases")
+        .select("*")
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("cleaning_building_schedules")
         .select("id, building_id, cleaning_type, day_of_week, time_block")
-        .eq("company_id", user.company_id),
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
 
       supabase
         .from("cleaning_unit_schedules")
         .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active")
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .eq("active", true),
 
       supabase
@@ -720,6 +728,7 @@ export default function CalendarPage() {
           "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
       supabase
@@ -729,6 +738,7 @@ export default function CalendarPage() {
         )
         .eq("company_id", user.company_id)
         .eq("active", true)
+        .is("deleted_at", null)
         .in("responsibility_type", ["company", "building"]),
 
       supabase
@@ -737,6 +747,7 @@ export default function CalendarPage() {
           "id, expense_schedule_id, company_id, building_id, unit_id, period_year, period_month, due_date, amount_due, status, paid_at, payment_reference, notes, created_at"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("due_date", { ascending: true }),
 
       supabase
@@ -745,7 +756,8 @@ export default function CalendarPage() {
           "id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes"
         )
         .eq("company_id", user.company_id)
-        .eq("active", true),
+        .eq("active", true)
+        .is("deleted_at", null),
 
       supabase
         .from("collection_records")
@@ -753,6 +765,7 @@ export default function CalendarPage() {
           "id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at"
         )
         .eq("company_id", user.company_id)
+        .is("deleted_at", null)
         .order("due_date", { ascending: true }),
     ]);
 

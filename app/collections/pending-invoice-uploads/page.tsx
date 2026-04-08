@@ -156,6 +156,7 @@ export default function PendingInvoiceUploadsPage() {
             .from("buildings")
             .select("id, name")
             .eq("company_id", user.company_id)
+            .is("deleted_at", null)
             .order("name", { ascending: true }),
         ]);
 

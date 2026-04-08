@@ -173,22 +173,26 @@ export default function CleaningPage() {
           .from("buildings")
           .select("id, name")
           .eq("company_id", user.company_id)
+          .is("deleted_at", null)
           .order("name", { ascending: true }),
 
         supabase
           .from("units")
           .select("id, building_id, unit_number, display_code")
-          .eq("company_id", user.company_id),
+          .eq("company_id", user.company_id)
+          .is("deleted_at", null),
 
         supabase
           .from("cleaning_building_schedules")
           .select("id, building_id, cleaning_type, day_of_week, time_block")
-          .eq("company_id", user.company_id),
+          .eq("company_id", user.company_id)
+          .is("deleted_at", null),
 
         supabase
           .from("cleaning_unit_schedules")
           .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active")
           .eq("company_id", user.company_id)
+          .is("deleted_at", null)
           .eq("active", true),
       ]);
 

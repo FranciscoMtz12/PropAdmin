@@ -169,6 +169,7 @@ export default function PortalRenewalPage() {
       const { data, error } = await supabase
         .from("tenants")
         .select("id, full_name, email, company_id")
+        .is("deleted_at", null)
         .order("full_name", { ascending: true });
 
       if (error) {
@@ -228,6 +229,7 @@ export default function PortalRenewalPage() {
           renewal_offered_at
         `)
         .eq("tenant_id", effectiveTenantId)
+        .is("deleted_at", null)
         .order("start_date", { ascending: false })
         .limit(1)
         .maybeSingle();

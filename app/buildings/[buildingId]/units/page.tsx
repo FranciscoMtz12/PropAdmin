@@ -176,6 +176,7 @@ export default function BuildingUnitsPage() {
       .select("id, company_id, name, code, address")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
+      .is("deleted_at", null)
       .single();
 
     if (buildingError) {
@@ -193,6 +194,7 @@ export default function BuildingUnitsPage() {
       .from("unit_types")
       .select("id, building_id, name")
       .eq("building_id", buildingId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (unitTypeError) {
@@ -221,6 +223,7 @@ export default function BuildingUnitsPage() {
         unit_types(name)
       `)
       .eq("building_id", buildingId)
+      .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
     if (unitError) {
@@ -266,6 +269,7 @@ export default function BuildingUnitsPage() {
       .from("unit_type_assets")
       .select("asset_type, name, status, notes, sort_order")
       .eq("unit_type_id", selectedTypeId)
+      .is("deleted_at", null)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
