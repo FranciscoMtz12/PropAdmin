@@ -2521,7 +2521,7 @@ const preview: ImportPreviewData = {
                         </button>
                         <button type="button" onClick={() => setDeleteRecordId(row.id)} style={inlineRedButtonStyle}>
                           <Trash2 size={15} />
-                          Eliminar
+                          Archivar
                         </button>
                       </div>
 

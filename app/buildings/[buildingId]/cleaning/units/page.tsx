@@ -15,13 +15,14 @@ Importante:
 - La base de datos guarda day_of_week en inglés
 */
 
-import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   ArrowLeft,
   CheckCircle2,
   Clock3,
   Home,
+  MoreHorizontal,
   PauseCircle,
   PlayCircle,
   Settings2,
@@ -97,6 +98,8 @@ export default function CleaningUnitsPage() {
   const [loadingPage, setLoadingPage] = useState(true);
   const [msg, setMsg] = useState("");
   const [togglingScheduleId, setTogglingScheduleId] = useState<string | null>(null);
+  const [openActionsRowId, setOpenActionsRowId] = useState<string | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -109,6 +112,17 @@ export default function CleaningUnitsPage() {
       loadPageData();
     }
   }, [user, buildingId]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!actionsMenuRef.current) return;
+      if (!actionsMenuRef.current.contains(event.target as Node)) {
+        setOpenActionsRowId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   async function loadPageData() {
     if (!user?.company_id || !buildingId) return;
@@ -435,44 +449,42 @@ export default function CleaningUnitsPage() {
                         <td style={tableCellStyle}>{row.cleaningDuration}</td>
                         <td style={tableCellStyle}>
                           <div
-                            style={{
-                              display: "flex",
-                              flexDirection: "column",
-                              gap: 8,
-                              alignItems: "flex-start",
-                            }}
+                            style={{ position: "relative", display: "inline-block" }}
+                            ref={openActionsRowId === row.id ? actionsMenuRef : undefined}
                           >
-                            <UiButton
-                              href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
-                              icon={<Settings2 size={14} />}
+                            <button
+                              type="button"
+                              onClick={() => setOpenActionsRowId(openActionsRowId === row.id ? null : row.id)}
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF", color: "#111827", padding: "8px 10px", cursor: "pointer" }}
+                              aria-label="Más acciones"
                             >
-                              Configurar
-                            </UiButton>
-
-                            {row.scheduleId ? (
-                              <UiButton
-                                onClick={() =>
-                                  toggleScheduleStatus(
-                                    row.scheduleId as string,
-                                    row.cleaningState !== "active"
-                                  )
-                                }
-                                icon={
-                                  row.cleaningState === "active" ? (
-                                    <PauseCircle size={14} />
-                                  ) : (
-                                    <PlayCircle size={14} />
-                                  )
-                                }
-                                disabled={isToggling}
-                              >
-                                {isToggling
-                                  ? "Guardando..."
-                                  : row.cleaningState === "active"
-                                  ? "Desactivar"
-                                  : "Activar"}
-                              </UiButton>
-                            ) : null}
+                              <MoreHorizontal size={16} />
+                            </button>
+                            {openActionsRowId === row.id && (
+                              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                                <a
+                                  href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600 }}
+                                >
+                                  <Settings2 size={14} />
+                                  Configurar
+                                </a>
+                                {row.scheduleId ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionsRowId(null);
+                                      void toggleScheduleStatus(row.scheduleId as string, row.cleaningState !== "active");
+                                    }}
+                                    disabled={isToggling}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                                  >
+                                    {row.cleaningState === "active" ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
+                                    {isToggling ? "Guardando..." : row.cleaningState === "active" ? "Desactivar" : "Activar"}
+                                  </button>
+                                ) : null}
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>

@@ -10,9 +10,9 @@
  *   .is("deleted_at", null)
  */
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Plus, Tag } from "lucide-react";
+import { Edit3, MoreHorizontal, Plus, Tag, Trash2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -137,6 +137,13 @@ export default function UnitAssetsPage() {
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [assetToDelete, setAssetToDelete] = useState<AssetRow | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [openActionsAssetId, setOpenActionsAssetId] = useState<string | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+
   useEffect(() => {
     if (!loading && !user) {
       router.push("/login");
@@ -148,6 +155,53 @@ export default function UnitAssetsPage() {
       void loadPageData();
     }
   }, [user, buildingId, unitId]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!actionsMenuRef.current) return;
+      if (!actionsMenuRef.current.contains(event.target as Node)) {
+        setOpenActionsAssetId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  function openDeleteModal(asset: AssetRow) {
+    setAssetToDelete(asset);
+    setIsDeleteModalOpen(true);
+    setOpenActionsAssetId(null);
+    setMsg("");
+    setDeleteError(null);
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setIsDeleteModalOpen(false);
+    setAssetToDelete(null);
+    setDeleteError(null);
+  }
+
+  async function handleDeleteAsset() {
+    if (!user?.company_id || !assetToDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const { error } = await supabase
+      .from("assets")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", assetToDelete.id)
+      .eq("company_id", user.company_id);
+    if (error) {
+      setDeleteError(`No se pudo archivar el equipo. ${error.message}`);
+      setDeleting(false);
+      return;
+    }
+    setIsDeleteModalOpen(false);
+    setAssetToDelete(null);
+    setDeleting(false);
+    setMsg("Equipo archivado correctamente.");
+    await loadPageData();
+  }
 
   async function loadPageData() {
     if (!user?.company_id || !buildingId || !unitId) return;
@@ -425,17 +479,46 @@ export default function UnitAssetsPage() {
                     </div>
                   ) : null}
 
-                  <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <UiButton
                       variant="secondary"
-                      onClick={() =>
-                        router.push(
-                          `/buildings/${buildingId}/units/${unitId}/assets/${asset.id}`
-                        )
-                      }
+                      onClick={() => router.push(`/buildings/${buildingId}/units/${unitId}/assets/${asset.id}`)}
                     >
                       Ver asset
                     </UiButton>
+                    <div
+                      style={{ position: "relative" }}
+                      ref={openActionsAssetId === asset.id ? actionsMenuRef : undefined}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenActionsAssetId(openActionsAssetId === asset.id ? null : asset.id)}
+                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF", color: "#111827", padding: "8px 10px", cursor: "pointer" }}
+                        aria-label="Más acciones"
+                      >
+                        <MoreHorizontal size={16} />
+                      </button>
+                      {openActionsAssetId === asset.id && (
+                        <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160, borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                          <button
+                            type="button"
+                            onClick={() => { setOpenActionsAssetId(null); router.push(`/buildings/${buildingId}/units/${unitId}/assets/${asset.id}`); }}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            <Edit3 size={14} />
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(asset)}
+                            style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "#FEF2F2", color: "#B42318", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          >
+                            <Trash2 size={14} />
+                            Archivar
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </AppCard>
@@ -443,6 +526,24 @@ export default function UnitAssetsPage() {
           </AppGrid>
         )}
       </div>
+
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar equipo" maxWidth="480px">
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+            ¿Archivar el equipo <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
+          </div>
+          {deleteError ? (
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+          ) : null}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
+            <UiButton type="button" onClick={() => void handleDeleteAsset()} disabled={deleting}>
+              <Trash2 size={16} />
+              {deleting ? "Archivando..." : "Archivar equipo"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={isCreateModalOpen}

@@ -17,9 +17,9 @@
   crean automáticamente cuando nace un nuevo departamento.
 */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { Bath, BedDouble, Home, LayoutPanelTop, PackageSearch, PencilLine } from "lucide-react";
+import { Bath, BedDouble, Edit3, Home, LayoutPanelTop, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
@@ -89,6 +89,11 @@ export default function UnitTypeDetailPage() {
   const [stoveType, setStoveType] = useState("NONE");
 
   const [showEditForm, setShowEditForm] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [isActionsMenuOpen, setIsActionsMenuOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -104,6 +109,17 @@ export default function UnitTypeDetailPage() {
       loadPageData();
     }
   }, [user, buildingId, unitTypeId]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!actionsMenuRef.current) return;
+      if (!actionsMenuRef.current.contains(event.target as Node)) {
+        setIsActionsMenuOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   /*
     Cargamos:
@@ -263,6 +279,38 @@ export default function UnitTypeDetailPage() {
     await loadPageData();
   }
 
+  function openDeleteModal() {
+    setIsDeleteModalOpen(true);
+    setIsActionsMenuOpen(false);
+    setDeleteError(null);
+    setMsg("");
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setIsDeleteModalOpen(false);
+    setDeleteError(null);
+  }
+
+  async function handleDeleteUnitType() {
+    if (!unitType) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const { error } = await supabase
+      .from("unit_types")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", unitType.id)
+      .eq("building_id", buildingId);
+    if (error) {
+      setDeleteError(`No se pudo archivar la tipología. ${error.message}`);
+      setDeleting(false);
+      return;
+    }
+    setIsDeleteModalOpen(false);
+    setDeleting(false);
+    router.push(`/buildings/${buildingId}/unit-types`);
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
@@ -307,10 +355,44 @@ export default function UnitTypeDetailPage() {
           <>
             <UiButton href={`/buildings/${building.id}/unit-types`}>Volver a tipologías</UiButton>
             <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Administrar assets base</UiButton>
-            <UiButton onClick={openEditForm} variant="primary">
-              <PencilLine size={16} />
-              Editar tipología
-            </UiButton>
+            <div style={{ position: "relative" }} ref={actionsMenuRef}>
+              <button
+                type="button"
+                onClick={() => setIsActionsMenuOpen((prev) => !prev)}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                  borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF",
+                  color: "#111827", padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                }}
+                aria-label="Más acciones"
+              >
+                <MoreHorizontal size={16} />
+              </button>
+              {isActionsMenuOpen && (
+                <div style={{
+                  position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160,
+                  borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF",
+                  boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30,
+                }}>
+                  <button
+                    type="button"
+                    onClick={() => { openEditForm(); setIsActionsMenuOpen(false); }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    <Edit3 size={14} />
+                    Editar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={openDeleteModal}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "#FEF2F2", color: "#B42318", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                  >
+                    <Trash2 size={14} />
+                    Archivar
+                  </button>
+                </div>
+              )}
+            </div>
           </>
         }
       />
@@ -358,6 +440,24 @@ export default function UnitTypeDetailPage() {
           )}
         </SectionCard>
       </div>
+
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar tipología" maxWidth="480px">
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+            ¿Archivar la tipología <strong>{unitType?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
+          </div>
+          {deleteError ? (
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+          ) : null}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
+            <UiButton type="button" onClick={() => void handleDeleteUnitType()} disabled={deleting}>
+              <Trash2 size={16} />
+              {deleting ? "Archivando..." : "Archivar tipología"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={showEditForm}

@@ -17,15 +17,18 @@
   - clonar automáticamente los assets base de la tipología elegida
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   BedDouble,
   DoorOpen,
+  Edit3,
   FolderCog,
   Hash,
   Layers3,
+  MoreHorizontal,
   Plus,
+  Trash2,
   Warehouse,
   Wrench,
 } from "lucide-react";
@@ -82,6 +85,30 @@ type UnitRow = {
   } | null;
 };
 
+const dropdownTriggerStyle: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", justifyContent: "center",
+  borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF",
+  color: "#111827", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+};
+
+const dropdownMenuStyle: React.CSSProperties = {
+  position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160,
+  borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF",
+  boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30,
+};
+
+const dropdownItemStyle: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
+  border: "none", background: "transparent", color: "#111827",
+  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+};
+
+const dropdownDeleteItemStyle: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
+  border: "none", background: "#FEF2F2", color: "#B42318",
+  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+};
+
 function getUnitStatusBadge(status: string | null | undefined) {
   switch ((status || "").toUpperCase()) {
     case "OCCUPIED":
@@ -132,6 +159,29 @@ export default function BuildingUnitsPage() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   /*
+    Estados del modal de archivar.
+  */
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [unitToDelete, setUnitToDelete] = useState<UnitRow | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  /*
+    Estados del modal de edición.
+  */
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingUnit, setEditingUnit] = useState<UnitRow | null>(null);
+  const [editUnitNumber, setEditUnitNumber] = useState("");
+  const [editFloor, setEditFloor] = useState("");
+  const [editUnitTypeId, setEditUnitTypeId] = useState("");
+
+  /*
+    Control de dropdown de acciones por unidad.
+  */
+  const [openActionsUnitId, setOpenActionsUnitId] = useState<string | null>(null);
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  /*
     Estados auxiliares.
   */
   const [msg, setMsg] = useState("");
@@ -158,6 +208,17 @@ export default function BuildingUnitsPage() {
       loadPageData();
     }
   }, [user, buildingId]);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (!actionsMenuRef.current) return;
+      if (!actionsMenuRef.current.contains(event.target as Node)) {
+        setOpenActionsUnitId(null);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   /*
     Función principal para cargar todos los datos necesarios de la página.
@@ -372,6 +433,82 @@ export default function BuildingUnitsPage() {
     await loadPageData();
   }
 
+  function openDeleteModal(unit: UnitRow) {
+    setUnitToDelete(unit);
+    setIsDeleteModalOpen(true);
+    setOpenActionsUnitId(null);
+    setMsg("");
+    setDeleteError(null);
+  }
+
+  function openEditModal(unit: UnitRow) {
+    setEditingUnit(unit);
+    setEditUnitNumber(unit.unit_number);
+    setEditFloor(unit.floor !== null ? String(unit.floor) : "");
+    setEditUnitTypeId(unit.unit_type_id);
+    setIsEditModalOpen(true);
+    setOpenActionsUnitId(null);
+    setMsg("");
+  }
+
+  function closeEditModal() {
+    if (saving) return;
+    setIsEditModalOpen(false);
+    setEditingUnit(null);
+  }
+
+  async function handleUpdateUnit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.company_id || !editingUnit || !building) return;
+    if (!editUnitNumber.trim()) { setMsg("El número del departamento es obligatorio."); return; }
+    setSaving(true);
+    const displayCode = generateDisplayCode(building.code, editUnitNumber);
+    const { error } = await supabase
+      .from("units")
+      .update({
+        unit_number: editUnitNumber.trim(),
+        display_code: displayCode,
+        floor: editFloor.trim() ? Number(editFloor) : null,
+        unit_type_id: editUnitTypeId || editingUnit.unit_type_id,
+      })
+      .eq("id", editingUnit.id)
+      .eq("company_id", user.company_id);
+    setSaving(false);
+    if (error) { setMsg(`No se pudo actualizar el departamento. ${error.message}`); return; }
+    setIsEditModalOpen(false);
+    setEditingUnit(null);
+    setMsg("Departamento actualizado correctamente.");
+    await loadPageData();
+  }
+
+  function closeDeleteModal() {
+    if (deleting) return;
+    setIsDeleteModalOpen(false);
+    setUnitToDelete(null);
+    setDeleteError(null);
+  }
+
+  async function handleDeleteUnit() {
+    if (!user?.company_id || !unitToDelete) return;
+    setDeleting(true);
+    setDeleteError(null);
+    const { error } = await supabase
+      .from("units")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", unitToDelete.id)
+      .eq("company_id", user.company_id);
+    if (error) {
+      setDeleteError(`No se pudo archivar el departamento. ${error.message}`);
+      setDeleting(false);
+      return;
+    }
+    setIsDeleteModalOpen(false);
+    setUnitToDelete(null);
+    setDeleting(false);
+    setMsg("Departamento archivado correctamente.");
+    await loadPageData();
+  }
+
   const stats = useMemo(() => {
     return {
       total: units.length,
@@ -520,14 +657,40 @@ export default function BuildingUnitsPage() {
                     </div>
                   </div>
 
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                    <UiButton href={`/buildings/${building.id}/units/${unit.id}`}>
-                      Ver departamento
-                    </UiButton>
-
-                    <UiButton href={`/buildings/${building.id}/units/${unit.id}/assets`}>
-                      Administrar assets
-                    </UiButton>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <UiButton href={`/buildings/${building.id}/units/${unit.id}`}>
+                        Ver departamento
+                      </UiButton>
+                      <UiButton href={`/buildings/${building.id}/units/${unit.id}/assets`}>
+                        Administrar assets
+                      </UiButton>
+                    </div>
+                    <div
+                      style={{ position: "relative" }}
+                      ref={openActionsUnitId === unit.id ? actionsMenuRef : undefined}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setOpenActionsUnitId(openActionsUnitId === unit.id ? null : unit.id)}
+                        style={dropdownTriggerStyle}
+                        aria-label="Más acciones"
+                      >
+                        <MoreHorizontal size={16} />
+                      </button>
+                      {openActionsUnitId === unit.id && (
+                        <div style={dropdownMenuStyle}>
+                          <button type="button" onClick={() => openEditModal(unit)} style={dropdownItemStyle}>
+                            <Edit3 size={14} />
+                            Editar
+                          </button>
+                          <button type="button" onClick={() => openDeleteModal(unit)} style={dropdownDeleteItemStyle}>
+                            <Trash2 size={14} />
+                            Archivar
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </AppCard>
               );
@@ -535,6 +698,59 @@ export default function BuildingUnitsPage() {
           </AppGrid>
         )}
       </SectionCard>
+
+      <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar departamento">
+        <form onSubmit={handleUpdateUnit}>
+          <AppFormField label="Número de departamento" required>
+            <input
+              value={editUnitNumber}
+              onChange={(e) => setEditUnitNumber(e.target.value)}
+              placeholder="Ej. 101"
+              style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10 }}
+            />
+          </AppFormField>
+          <AppFormField label="Tipología">
+            <AppSelect value={editUnitTypeId} onChange={(e) => setEditUnitTypeId(e.target.value)}>
+              {unitTypes.map((ut) => (
+                <option key={ut.id} value={ut.id}>{ut.name}</option>
+              ))}
+            </AppSelect>
+          </AppFormField>
+          <AppFormField label="Piso (opcional)">
+            <input
+              type="number"
+              value={editFloor}
+              onChange={(e) => setEditFloor(e.target.value)}
+              placeholder="Ej. 1"
+              style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10 }}
+            />
+          </AppFormField>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+            <UiButton type="submit" disabled={saving} variant="primary">
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </UiButton>
+            <UiButton type="button" onClick={closeEditModal}>Cancelar</UiButton>
+          </div>
+        </form>
+      </Modal>
+
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar departamento" maxWidth="480px">
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+            ¿Archivar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
+          </div>
+          {deleteError ? (
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+          ) : null}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
+            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
+            <UiButton type="button" onClick={() => void handleDeleteUnit()} disabled={deleting}>
+              <Trash2 size={16} />
+              {deleting ? "Archivando..." : "Archivar departamento"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
 
       <Modal
         open={isCreateModalOpen}
