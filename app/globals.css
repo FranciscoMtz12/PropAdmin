@@ -1,9 +1,198 @@
 @import "tailwindcss";
 
+/* ════════════════════════════════════════════════════════════════════
+   Variables de diseño — PropAdmin
+   Paleta light (default) y dark (.dark en <html>).
+
+   Convención de nombres:
+   --bg-*       fondos
+   --text-*     colores de texto
+   --border-*   bordes
+   --shadow-*   sombras
+   --icon-*     contenedores de íconos
+   --metric-*   cards de métricas semánticas
+   --badge-*    badges/pills de estado
+   --accent     color de marca de la empresa (sobreescrito por JS)
+   ════════════════════════════════════════════════════════════════════ */
+
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  /* ── Acento de empresa ─────────────────────────────────────────── */
+  --accent: #8B2252; /* sobreescrito por ThemeContext desde companies.brand_color */
+
+  /* ── Fondos ────────────────────────────────────────────────────── */
+  --bg-page:        #F1F5F9;
+  --bg-card:        #FFFFFF;
+  --bg-card-hover:  #F8FAFC;
+  --bg-topbar:      #FFFFFF;
+  --bg-input:       #FFFFFF;
+  --bg-sidebar:     #1E2A3A;
+
+  /* ── Texto ─────────────────────────────────────────────────────── */
+  --text-primary:     #0F172A;
+  --text-secondary:   #64748B;
+  --text-muted:       #94A3B8;
+  --text-placeholder: #CBD5E1;
+
+  /* ── Bordes ────────────────────────────────────────────────────── */
+  --border-default: #E2E8F0;
+  --border-strong:  #CBD5E1;
+
+  /* ── Sombras ───────────────────────────────────────────────────── */
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.04);
+
+  /* ── Contenedores de íconos ────────────────────────────────────── */
+  --icon-bg-neutral: #F1F5F9;
+  --icon-color-neutral: #64748B;
+  --icon-bg-green:   #DCFCE7;
+  --icon-color-green: #15803D;
+  --icon-bg-amber:   #FEF3C7;
+  --icon-color-amber: #B45309;
+  --icon-bg-red:     #FEE2E2;
+  --icon-color-red:  #B91C1C;
+  --icon-bg-blue:    #EFF6FF;
+  --icon-color-blue: #1D4ED8;
+  --icon-bg-purple:  #F5F3FF;
+  --icon-color-purple: #6D28D9;
+
+  /* ── Cards de métricas semánticas ──────────────────────────────── */
+  --metric-bg-green:     #F0FDF4;
+  --metric-border-green: #BBF7D0;
+  --metric-value-green:  #15803D;
+  --metric-bg-amber:     #FFFBEB;
+  --metric-border-amber: #FDE68A;
+  --metric-value-amber:  #B45309;
+  --metric-bg-red:       #FFF1F2;
+  --metric-border-red:   #FECDD3;
+  --metric-value-red:    #B91C1C;
+  --metric-bg-neutral:   #F8FAFC;
+  --metric-border-neutral: #E2E8F0;
+  --metric-value-neutral: #374151;
+
+  /* ── Badges ────────────────────────────────────────────────────── */
+  --badge-bg-green:   #DCFCE7;
+  --badge-text-green: #15803D;
+  --badge-bg-amber:   #FEF3C7;
+  --badge-text-amber: #B45309;
+  --badge-bg-red:     #FEE2E2;
+  --badge-text-red:   #B91C1C;
+  --badge-bg-blue:    #EFF6FF;
+  --badge-text-blue:  #1D4ED8;
+  --badge-bg-gray:    #F1F5F9;
+  --badge-text-gray:  #475569;
+
+  /* ── Tabla ─────────────────────────────────────────────────────── */
+  --bg-table-header: #F8FAFC;
+  --bg-table-empty:  #F8FAFC;
+  --border-subtle:   #F1F5F9;
+  --border-dashed:   #CBD5E1;
+
+  /* ── Recharts / charts ─────────────────────────────────────────── */
+  --chart-axis: #94A3B8;
+  --chart-grid: #E2E8F0;
+
+  /* ── Separadores internos de cards ────────────────────────────── */
+  --divider: #F1F5F9;
+
+  /* ── Compatibilidad con tokens legacy ──────────────────────────── */
+  --bg-primary:    #F1F5F9;
+  --border-color:  #E2E8F0;
+  --text-label:    #94A3B8;
+  --text-subtle:   #CBD5E1;
+  --background:    #F8FAFC;
+  --foreground:    #0F172A;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Paleta dark — activada añadiendo la clase .dark en <html>
+   ════════════════════════════════════════════════════════════════════ */
+
+.dark {
+  /* ── Fondos ────────────────────────────────────────────────────── */
+  --bg-page:       #0F1623;
+  --bg-card:       #1E2535;
+  --bg-card-hover: #243044;
+  --bg-topbar:     #1E2535;
+  --bg-input:      #243044;
+  --bg-sidebar:    #0F1623;
+
+  /* ── Texto ─────────────────────────────────────────────────────── */
+  --text-primary:     #F1F5F9;
+  --text-secondary:   #94A3B8;
+  --text-muted:       #64748B;
+  --text-placeholder: #475569;
+
+  /* ── Bordes ────────────────────────────────────────────────────── */
+  --border-default: #2D3748;
+  --border-strong:  #3D4F6A;
+
+  /* ── Sombras ───────────────────────────────────────────────────── */
+  --shadow-card: none;
+
+  /* ── Contenedores de íconos ────────────────────────────────────── */
+  --icon-bg-neutral:    #2D3748;
+  --icon-color-neutral: #94A3B8;
+  --icon-bg-green:      #052E16;
+  --icon-color-green:   #4ADE80;
+  --icon-bg-amber:      #1C1106;
+  --icon-color-amber:   #FCD34D;
+  --icon-bg-red:        #1C0507;
+  --icon-color-red:     #F87171;
+  --icon-bg-blue:       #0C1A3A;
+  --icon-color-blue:    #60A5FA;
+  --icon-bg-purple:     #1E1433;
+  --icon-color-purple:  #A78BFA;
+
+  /* ── Cards de métricas semánticas ──────────────────────────────── */
+  --metric-bg-green:     #052E16;
+  --metric-border-green: #166534;
+  --metric-value-green:  #4ADE80;
+  --metric-bg-amber:     #1C1106;
+  --metric-border-amber: #854D0E;
+  --metric-value-amber:  #FCD34D;
+  --metric-bg-red:       #1C0507;
+  --metric-border-red:   #9F1239;
+  --metric-value-red:    #F87171;
+  --metric-bg-neutral:   #1E2535;
+  --metric-border-neutral: #2D3748;
+  --metric-value-neutral: #F1F5F9;
+
+  /* ── Badges ────────────────────────────────────────────────────── */
+  --badge-bg-green:   #052E16;
+  --badge-text-green: #4ADE80;
+  --badge-bg-amber:   #1C1106;
+  --badge-text-amber: #FCD34D;
+  --badge-bg-red:     #1C0507;
+  --badge-text-red:   #F87171;
+  --badge-bg-blue:    #0C1A3A;
+  --badge-text-blue:  #60A5FA;
+  --badge-bg-gray:    #2D3748;
+  --badge-text-gray:  #94A3B8;
+
+  /* ── Tabla ─────────────────────────────────────────────────────── */
+  --bg-table-header: #1A2030;
+  --bg-table-empty:  #1A2030;
+  --border-subtle:   #2D3748;
+  --border-dashed:   #2D3748;
+
+  /* ── Recharts / charts ─────────────────────────────────────────── */
+  --chart-axis: #64748B;
+  --chart-grid: #2D3748;
+
+  /* ── Separadores internos de cards ────────────────────────────── */
+  --divider: #2D3748;
+
+  /* ── Compatibilidad con tokens legacy ──────────────────────────── */
+  --bg-primary:   #0F1623;
+  --border-color: #2D3748;
+  --text-label:   #64748B;
+  --text-subtle:  #475569;
+  --background:   #0F1623;
+  --foreground:   #F1F5F9;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Tailwind theme inline
+   ════════════════════════════════════════════════════════════════════ */
 
 @theme inline {
   --color-background: var(--background);
@@ -11,6 +200,10 @@
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Base global
+   ════════════════════════════════════════════════════════════════════ */
 
 * {
   box-sizing: border-box;
@@ -23,9 +216,10 @@ body {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--bg-page);
+  color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
+  transition: background 0.2s, color 0.2s;
 }
 
 button,

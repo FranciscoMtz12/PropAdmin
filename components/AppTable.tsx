@@ -1,14 +1,10 @@
 "use client";
 
 /*
-  AppTable
+  AppTable — tabla base reutilizable de PropAdmin.
 
-  Tabla base reutilizable para PropAdmin.
-
-  Objetivo:
-  - evitar repetir tablas en edificios, assets, pagos y mantenimiento
-  - mantener el mismo estilo visual en todo el sistema
-  - permitir renderizar celdas simples o contenido custom
+  Theming: usa variables CSS para fondos, bordes y colores de texto,
+  responde automáticamente al dark/light mode.
 */
 
 import React from "react";
@@ -25,22 +21,26 @@ type AppTableProps<T> = {
   columns: Column<T>[];
   rows: T[];
   emptyState?: React.ReactNode;
+  /** Ancho mínimo de la tabla interna. Default 720px para tablas con muchas columnas.
+   *  Pasa 0 cuando la tabla vive dentro de un grid estrecho. */
+  minWidth?: number;
 };
 
 export default function AppTable<T>({
   columns,
   rows,
   emptyState = "No hay datos para mostrar.",
+  minWidth = 720,
 }: AppTableProps<T>) {
   if (!rows.length) {
     return (
       <div
         style={{
-          border: "1px dashed #D0D5DD",
+          border: "1px dashed var(--border-dashed)",
           borderRadius: 16,
           padding: 20,
-          background: "#FCFCFD",
-          color: "#667085",
+          background: "var(--bg-table-empty)",
+          color: "var(--text-muted)",
           fontSize: 14,
         }}
       >
@@ -54,9 +54,9 @@ export default function AppTable<T>({
       style={{
         width: "100%",
         overflowX: "auto",
-        border: "1px solid #E5E7EB",
+        border: "1px solid var(--border-default)",
         borderRadius: 16,
-        background: "white",
+        background: "var(--bg-card)",
       }}
     >
       <table
@@ -64,11 +64,11 @@ export default function AppTable<T>({
           width: "100%",
           borderCollapse: "separate",
           borderSpacing: 0,
-          minWidth: 720,
+          minWidth,
         }}
       >
         <thead>
-          <tr style={{ background: "#F9FAFB" }}>
+          <tr style={{ background: "var(--bg-table-header)" }}>
             {columns.map((column) => (
               <th
                 key={column.key}
@@ -77,8 +77,9 @@ export default function AppTable<T>({
                   padding: "14px 16px",
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#344054",
-                  borderBottom: "1px solid #E5E7EB",
+                  /* var(--text-secondary): #344054 light / #CBD5E1 dark */
+                  color: "var(--text-secondary)",
+                  borderBottom: "1px solid var(--border-default)",
                   width: column.width,
                   whiteSpace: "nowrap",
                 }}
@@ -98,10 +99,13 @@ export default function AppTable<T>({
                   style={{
                     padding: "14px 16px",
                     borderBottom:
-                      rowIndex === rows.length - 1 ? "none" : "1px solid #F2F4F7",
+                      rowIndex === rows.length - 1
+                        ? "none"
+                        : "1px solid var(--border-subtle)",
                     textAlign: column.align || "left",
                     fontSize: 14,
-                    color: "#101828",
+                    /* var(--text-primary): #101828 light / #F1F5F9 dark */
+                    color: "var(--text-primary)",
                     verticalAlign: "top",
                   }}
                 >

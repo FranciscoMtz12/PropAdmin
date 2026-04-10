@@ -1,16 +1,14 @@
 import type { CSSProperties, ReactNode } from "react";
 
 /*
-  Botón simple reutilizable para PropAdmin.
+  Botón reutilizable de PropAdmin.
 
-  Variants actuales:
-  - primary: fondo oscuro
-  - secondary: blanco con borde
+  Variants:
+  - primary   → usa var(--accent) como fondo (color de marca de la empresa)
+  - secondary → blanco con borde gris neutro
 
-  Mejoras:
-  - soporte opcional para icon
-  - soporte para href, onClick, type y form
-  - mantiene compatibilidad con el resto del proyecto
+  El variant "primary" se usa en botones de acción principal:
+  "+ Nuevo", "Guardar", "Confirmar", etc.
 */
 
 type UiButtonProps = {
@@ -40,15 +38,19 @@ export default function UiButton({
     justifyContent: "center",
     gap: "8px",
     border:
-      variant === "primary" ? "1px solid #111827" : "1px solid #E5E7EB",
+      variant === "primary"
+        ? "1px solid var(--accent)"
+        : "1px solid #E5E7EB",
     borderRadius: "12px",
     padding: "11px 16px",
-    background: variant === "primary" ? "#111827" : "white",
+    /* Primary usa el color de acento de la empresa */
+    background: variant === "primary" ? "var(--accent)" : "white",
     color: variant === "primary" ? "white" : "#111827",
     fontWeight: 600,
     textDecoration: "none",
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.65 : 1,
+    transition: "opacity 0.15s",
   };
 
   const content = (
@@ -65,7 +67,6 @@ export default function UiButton({
           {icon}
         </span>
       ) : null}
-
       <span>{children}</span>
     </>
   );

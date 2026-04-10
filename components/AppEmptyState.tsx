@@ -1,10 +1,10 @@
 "use client";
 
 /*
-  AppEmptyState
+  AppEmptyState — estado vacío reutilizable de PropAdmin.
 
-  Estado vacío reutilizable para listas y módulos sin registros.
-  Ideal para edificios, departamentos, assets, mantenimiento y documentos.
+  Theming: usa variables CSS para colores de texto, responde
+  automáticamente al dark/light mode.
 */
 
 import React from "react";
@@ -35,10 +35,27 @@ export default function AppEmptyState({
         }}
       >
         <div>
-          <strong style={{ display: "block", fontSize: 16, marginBottom: 6 }}>
+          <strong
+            style={{
+              display: "block",
+              fontSize: 16,
+              marginBottom: 6,
+              /* var(--text-primary): #101828 light / #F1F5F9 dark */
+              color: "var(--text-primary)",
+            }}
+          >
             {title}
           </strong>
-          <p style={{ margin: 0, color: "#667085", fontSize: 14 }}>{description}</p>
+          <p
+            style={{
+              margin: 0,
+              /* var(--text-muted): #667085 light / #94A3B8 dark */
+              color: "var(--text-muted)",
+              fontSize: 14,
+            }}
+          >
+            {description}
+          </p>
         </div>
 
         {actionLabel && onAction ? (

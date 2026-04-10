@@ -116,7 +116,7 @@ export default function GlobalBreadcrumbs() {
           gap: "8px",
           alignItems: "center",
           fontSize: "13px",
-          color: "#6B7280",
+          color: "var(--text-secondary)",
         }}
       >
         {crumbs.map((crumb, index) => {
@@ -128,19 +128,19 @@ export default function GlobalBreadcrumbs() {
               style={{ display: "flex", alignItems: "center", gap: "8px" }}
             >
               {isLast ? (
-                <span style={{ fontWeight: 600, color: "#111827" }}>
+                <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>
                   {crumb.label}
                 </span>
               ) : (
                 <Link
                   href={crumb.href}
-                  style={{ color: "#6B7280", textDecoration: "none" }}
+                  style={{ color: "var(--text-secondary)", textDecoration: "none" }}
                 >
                   {crumb.label}
                 </Link>
               )}
 
-              {!isLast && <span style={{ color: "#9CA3AF" }}>{">"}</span>}
+              {!isLast && <span style={{ color: "var(--text-muted)" }}>{">"}</span>}
             </div>
           );
         })}

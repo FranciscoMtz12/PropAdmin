@@ -4,11 +4,9 @@ import AppIconBox from "@/components/AppIconBox";
 
 /*
   Card base del sistema para secciones, formularios y listas.
-  Ahora también soporta:
-  - icono de sección
-  - acción en el header
 
-  Internamente usa AppCard y AppIconBox para evitar repetir estilos.
+  Theming: usa variables CSS para títulos y subtítulos, por lo que
+  responde automáticamente al dark/light mode sin lógica extra.
 */
 
 export default function SectionCard({
@@ -38,13 +36,36 @@ export default function SectionCard({
           }}
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
-            {icon ? <AppIconBox size={40} radius={12} background="#F5F7FF" color="#4338CA">{icon}</AppIconBox> : null}
+            {icon ? (
+              <AppIconBox size={40} radius={12} variant="neutral">
+                {icon}
+              </AppIconBox>
+            ) : null}
 
             <div>
-              <h2 style={{ fontSize: "24px", fontWeight: 700, marginBottom: subtitle ? "6px" : 0 }}>
+              <h2
+                style={{
+                  fontSize: "20px",
+                  fontWeight: 700,
+                  marginBottom: subtitle ? "4px" : 0,
+                  /* var(--text-primary) → #101828 light / #F1F5F9 dark */
+                  color: "var(--text-primary)",
+                }}
+              >
                 {title}
               </h2>
-              {subtitle ? <p style={{ color: "#667085", margin: 0 }}>{subtitle}</p> : null}
+              {subtitle ? (
+                <p
+                  style={{
+                    /* var(--text-muted) → #667085 light / #94A3B8 dark */
+                    color: "var(--text-muted)",
+                    margin: 0,
+                    fontSize: 14,
+                  }}
+                >
+                  {subtitle}
+                </p>
+              ) : null}
             </div>
           </div>
 

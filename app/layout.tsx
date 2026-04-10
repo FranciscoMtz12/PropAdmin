@@ -4,8 +4,10 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { UserProvider } from "@/contexts/UserContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import Sidebar from "@/components/Sidebar";
+import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
 import { AppToastProvider } from "@/components/AppToastProvider";
 
@@ -27,13 +29,13 @@ export const metadata: Metadata = {
 /*
   RootLayout global de la aplicación.
 
-  Aquí mantenemos:
-  - sidebar global
-  - breadcrumbs globales
-  - provider de usuario
-  - provider de toasts
-  - route guard cliente para separar admin vs tenant
-  - contenedor principal centrado con ancho máximo consistente
+  Jerarquía de providers (de exterior a interior):
+  UserProvider → AppToastProvider → ThemeProvider → AppShell
+
+  ThemeProvider debe estar DENTRO de UserProvider porque lee
+  company_id del usuario autenticado para cargar el branding.
+
+  AppShell es un client component que aplica el fondo según isDark.
 */
 
 export default function RootLayout({
@@ -46,53 +48,51 @@ export default function RootLayout({
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
         <UserProvider>
           <AppToastProvider>
-            {/* Guard de navegación cliente */}
-            <RouteGuard />
+            {/* ThemeProvider lee company branding y gestiona dark/light mode */}
+            <ThemeProvider>
+              {/* Guard de navegación cliente */}
+              <RouteGuard />
 
-            <div
-              style={{
-                minHeight: "100vh",
-                display: "flex",
-                background: "#F5F7FB",
-              }}
-            >
-              {/* Sidebar global del sistema */}
-              <Sidebar />
+              {/* AppShell aplica el fondo dinámico según el modo activo */}
+              <AppShell>
+                {/* Sidebar global del sistema */}
+                <Sidebar />
 
-              {/* Área principal del sistema */}
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                }}
-              >
-                {/* Breadcrumb global superior */}
-                <GlobalBreadcrumbs />
-
-                {/* Contenido principal con contenedor centrado global */}
-                <main
+                {/* Área principal del sistema */}
+                <div
                   style={{
                     flex: 1,
                     minWidth: 0,
                     display: "flex",
-                    justifyContent: "center",
+                    flexDirection: "column",
                   }}
                 >
-                  <div
+                  {/* Breadcrumb global superior */}
+                  <GlobalBreadcrumbs />
+
+                  {/* Contenido principal con contenedor centrado global */}
+                  <main
                     style={{
-                      width: "100%",
-                      maxWidth: 1280,
-                      padding: "24px 32px 40px",
-                      boxSizing: "border-box",
+                      flex: 1,
+                      minWidth: 0,
+                      display: "flex",
+                      justifyContent: "center",
                     }}
                   >
-                    {children}
-                  </div>
-                </main>
-              </div>
-            </div>
+                    <div
+                      style={{
+                        width: "100%",
+                        maxWidth: 1280,
+                        padding: "24px 32px 40px",
+                        boxSizing: "border-box",
+                      }}
+                    >
+                      {children}
+                    </div>
+                  </main>
+                </div>
+              </AppShell>
+            </ThemeProvider>
           </AppToastProvider>
         </UserProvider>
       </body>
