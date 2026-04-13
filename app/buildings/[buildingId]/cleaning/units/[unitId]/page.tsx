@@ -76,11 +76,11 @@ const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: "12px",
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   outline: "none",
   fontSize: "14px",
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const checkboxRowStyle: CSSProperties = {
@@ -88,7 +88,7 @@ const checkboxRowStyle: CSSProperties = {
   alignItems: "center",
   gap: "10px",
   fontSize: "14px",
-  color: "#374151",
+  color: "var(--text-secondary)",
 };
 
 export default function CleaningUnitDetailPage() {
@@ -273,7 +273,7 @@ export default function CleaningUnitDetailPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando...</div>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>Cargando...</div>
       </PageContainer>
     );
   }
@@ -283,7 +283,7 @@ export default function CleaningUnitDetailPage() {
   if (!building || !unit) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#B91C1C" }}>
+        <div style={{ padding: "32px 0", color: "var(--badge-text-red)" }}>
           {msg || "No se encontró la unidad."}
         </div>
       </PageContainer>
@@ -398,8 +398,8 @@ export default function CleaningUnitDetailPage() {
                 style={{
                   padding: "12px 14px",
                   borderRadius: 12,
-                  background: msg.includes("correctamente") ? "#ECFDF5" : "#FEF2F2",
-                  color: msg.includes("correctamente") ? "#166534" : "#B91C1C",
+                  background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
+                  color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
                   fontSize: 14,
                   fontWeight: 600,
                 }}
@@ -425,11 +425,11 @@ const labelTinyStyle: CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const valueStrongStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };

@@ -47,13 +47,13 @@ type TemplateAssetDetail = {
 
 function SummaryCard({ label, value, icon }: { label: string; value: string | number; icon: ReactNode }) {
   return (
-    <div style={{ border: "1px solid #E5E7EB", borderRadius: 16, padding: 18, background: "white" }}>
+    <div style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 18, background: "var(--bg-card)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
-          <p style={{ fontSize: 13, color: "#667085", marginBottom: 8 }}>{label}</p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>{label}</p>
           <strong style={{ fontSize: 26, lineHeight: 1.1 }}>{value}</strong>
         </div>
-        <div style={{ width: 38, height: 38, borderRadius: 12, background: "#EEF2FF", color: "#4338CA", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
+        <div style={{ width: 38, height: 38, borderRadius: 12, background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
       </div>
     </div>
   );
@@ -221,10 +221,10 @@ export default function UnitTypeAssetDetailPage() {
 
       <SectionCard title="Información actual" subtitle="Datos base del equipo plantilla dentro de la tipología." icon={<PackageOpen size={18} />}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: 14, padding: 14 }}><strong>Edificio</strong><p style={{ margin: "8px 0 0 0", color: "#667085" }}>{building.name}</p></div>
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: 14, padding: 14 }}><strong>Tipología</strong><p style={{ margin: "8px 0 0 0", color: "#667085" }}>{unitType.name}</p></div>
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: 14, padding: 14 }}><strong>Tipo de asset</strong><p style={{ margin: "8px 0 0 0", color: "#667085" }}>{templateAsset.asset_type}</p></div>
-          <div style={{ border: "1px solid #E5E7EB", borderRadius: 14, padding: 14 }}><strong>Notas</strong><p style={{ margin: "8px 0 0 0", color: "#667085" }}>{templateAsset.notes || "Sin notas"}</p></div>
+          <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Edificio</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{building.name}</p></div>
+          <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Tipología</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.name}</p></div>
+          <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Tipo de asset</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{templateAsset.asset_type}</p></div>
+          <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Notas</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{templateAsset.notes || "Sin notas"}</p></div>
         </div>
       </SectionCard>
 
@@ -237,7 +237,7 @@ export default function UnitTypeAssetDetailPage() {
         <form onSubmit={handleUpdateTemplateAsset}>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 8 }}>Tipo de asset</label>
-            <select value={assetType} onChange={(e) => setAssetType(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10, background: "white" }}>
+            <select value={assetType} onChange={(e) => setAssetType(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--border-default)", borderRadius: 10, background: "var(--bg-card)" }}>
               <option value="MINISPLIT">Minisplit</option>
               <option value="CENTRAL_AC">A/C central</option>
               <option value="FRIDGE">Refrigerador</option>
@@ -250,24 +250,24 @@ export default function UnitTypeAssetDetailPage() {
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 8 }}>Nombre</label>
-            <input value={assetName} onChange={(e) => setAssetName(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10 }} />
+            <input value={assetName} onChange={(e) => setAssetName(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--border-default)", borderRadius: 10 }} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
             <div>
               <label style={{ display: "block", marginBottom: 8 }}>Estatus</label>
-              <select value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10, background: "white" }}>
+              <select value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--border-default)", borderRadius: 10, background: "var(--bg-card)" }}>
                 <option value="ACTIVE">Activo</option>
                 <option value="INACTIVE">Inactivo</option>
               </select>
             </div>
             <div>
               <label style={{ display: "block", marginBottom: 8 }}>Orden visual</label>
-              <input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10 }} />
+              <input type="number" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--border-default)", borderRadius: 10 }} />
             </div>
           </div>
           <div style={{ marginBottom: 16 }}>
             <label style={{ display: "block", marginBottom: 8 }}>Notas</label>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10, resize: "vertical" }} />
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={4} style={{ width: "100%", padding: 12, border: "1px solid var(--border-default)", borderRadius: 10, resize: "vertical" }} />
           </div>
           {msg && showEditForm ? <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: 12 }}>{msg}</p> : null}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>

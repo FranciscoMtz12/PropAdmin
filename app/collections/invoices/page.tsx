@@ -208,7 +208,6 @@ export default function AdminInvoicesPage() {
         await removeInvoiceFile(deleteTarget.xmlPath);
       }
 
-      // Soft delete: archiva la factura en lugar de eliminarla físicamente
       const { error } = await supabase
         .from("collection_invoices")
         .update({ deleted_at: new Date().toISOString() })
@@ -283,19 +282,19 @@ export default function AdminInvoicesPage() {
         <AppGrid minWidth={260} style={{ marginBottom: 18 }}>
           <AppCard>
             <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Buscar</label>
+              <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>Buscar</label>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
-                  border: "1px solid #D0D5DD",
+                  border: "1px solid var(--border-default)",
                   borderRadius: 12,
                   padding: "0 12px",
-                  background: "white",
+                  background: "var(--bg-input)",
                 }}
               >
-                <Search size={16} color="#667085" />
+                <Search size={16} color="var(--text-muted)" />
                 <input
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
@@ -305,7 +304,7 @@ export default function AdminInvoicesPage() {
                     border: "none",
                     outline: "none",
                     padding: "12px 0",
-                    color: "#111827",
+                    color: "var(--text-primary)",
                     background: "transparent",
                   }}
                 />
@@ -315,7 +314,7 @@ export default function AdminInvoicesPage() {
 
           <AppCard>
             <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>Edificio</label>
+              <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>Edificio</label>
               <AppSelect value={buildingFilter} onChange={(event) => setBuildingFilter(event.target.value)}>
                 <option value="all">Todos los edificios</option>
                 {buildingOptions.map((building) => (
@@ -340,12 +339,12 @@ export default function AdminInvoicesPage() {
               width: 220,
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
-                  <div style={{ fontWeight: 700, color: "#111827" }}>
+                  <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
                     {row.invoiceSeries !== "—" ? `${row.invoiceSeries}-` : ""}
                     {row.invoiceFolio}
                   </div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.invoiceUuid}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.invoiceTypeLabel}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.invoiceUuid}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.invoiceTypeLabel}</div>
                 </div>
               ),
             },
@@ -356,7 +355,7 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.customerName}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.customerTaxId}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.customerTaxId}</div>
                 </div>
               ),
             },
@@ -367,8 +366,8 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.buildingName}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.unitLabel}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.tenantName}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.unitLabel}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.tenantName}</div>
                 </div>
               ),
             },
@@ -379,8 +378,8 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.totalLabel}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.periodLabel}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.issuedAtLabel}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.periodLabel}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.issuedAtLabel}</div>
                 </div>
               ),
             },
@@ -391,8 +390,8 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.collectionStatusLabel}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.collectionAmountDueLabel}</div>
-                  <div style={{ fontSize: 12, color: "#667085" }}>{row.collectionDueDateLabel}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.collectionAmountDueLabel}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.collectionDueDateLabel}</div>
                 </div>
               ),
             },

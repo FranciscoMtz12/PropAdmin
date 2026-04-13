@@ -4,8 +4,7 @@ import type { ReactNode } from "react";
   Contenedor principal reutilizable.
 
   Mantiene el contenido visualmente centrado dentro del shell global.
-  Esto ayuda a que todas las páginas se sientan consistentes, aunque
-  cada módulo todavía tenga componentes internos propios.
+  No aplica colores propios — hereda los CSS vars del tema activo.
 */
 
 export default function PageContainer({
@@ -17,7 +16,6 @@ export default function PageContainer({
     <div
       style={{
         padding: "24px 32px 40px 32px",
-        color: "#0F172A",
       }}
     >
       {children}

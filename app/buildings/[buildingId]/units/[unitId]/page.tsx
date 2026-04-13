@@ -144,15 +144,15 @@ const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: "12px",
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   outline: "none",
 };
 
 const readOnlyInputStyle: CSSProperties = {
   ...inputStyle,
-  background: "#F9FAFB",
-  color: "#6B7280",
+  background: "var(--bg-card-hover)",
+  color: "var(--text-muted)",
 };
 
 const labelStyle: CSSProperties = {
@@ -160,7 +160,7 @@ const labelStyle: CSSProperties = {
   fontSize: "14px",
   fontWeight: 600,
   marginBottom: "8px",
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 function parseDateOnly(dateValue: string | null) {
@@ -209,18 +209,18 @@ function getUnitStatusLabel(status: string) {
 
 function getUnitStatusColors(status: string) {
   if (status === "VACANT") {
-    return { background: "#DCFCE7", color: "#166534" };
+    return { background: "var(--icon-bg-green)", color: "var(--badge-text-green)" };
   }
 
   if (status === "RENTED") {
-    return { background: "#DBEAFE", color: "#1D4ED8" };
+    return { background: "var(--icon-bg-blue)", color: "var(--badge-text-blue)" };
   }
 
   if (status === "MAINTENANCE") {
-    return { background: "#FEF3C7", color: "#B45309" };
+    return { background: "var(--icon-bg-amber)", color: "var(--badge-text-amber)" };
   }
 
-  return { background: "#F3F4F6", color: "#374151" };
+  return { background: "var(--bg-card-hover)", color: "var(--text-secondary)" };
 }
 
 function getAssetStatusLabel(status: string) {
@@ -231,10 +231,10 @@ function getAssetStatusLabel(status: string) {
 }
 
 function getAssetStatusColor(status: string) {
-  if (status === "ACTIVE") return "#22C55E";
-  if (status === "PENDING") return "#F59E0B";
-  if (status === "INACTIVE") return "#94A3B8";
-  return "#CBD5E1";
+  if (status === "ACTIVE") return "var(--badge-text-green)";
+  if (status === "PENDING") return "var(--badge-text-amber)";
+  if (status === "INACTIVE") return "var(--text-muted)";
+  return "var(--text-placeholder)";
 }
 
 function getLeaseStatusLabel(status: string | null) {
@@ -245,10 +245,10 @@ function getLeaseStatusLabel(status: string | null) {
 
 function getLeaseStatusColors(status: string | null) {
   if (status === "ACTIVE") {
-    return { background: "#DCFCE7", color: "#166534", border: "#86EFAC" };
+    return { background: "var(--icon-bg-green)", color: "var(--badge-text-green)", border: "var(--metric-border-green)" };
   }
 
-  return { background: "#FEF3C7", color: "#B45309", border: "#FCD34D" };
+  return { background: "var(--icon-bg-amber)", color: "var(--badge-text-amber)", border: "var(--metric-border-amber)" };
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -306,7 +306,7 @@ function InfoStatCard({
   return (
     <AppCard>
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        <AppIconBox size={42} radius={14} background="#F3F4F6" color="#111827">
+        <AppIconBox size={42} radius={14} background="var(--icon-bg-neutral)" color="var(--icon-color-neutral)">
           {icon}
         </AppIconBox>
 
@@ -314,7 +314,7 @@ function InfoStatCard({
           <div
             style={{
               fontSize: "13px",
-              color: "#6B7280",
+              color: "var(--text-muted)",
               fontWeight: 600,
             }}
           >
@@ -325,7 +325,7 @@ function InfoStatCard({
             style={{
               marginTop: "4px",
               fontSize: "16px",
-              color: "#111827",
+              color: "var(--text-primary)",
               fontWeight: 700,
             }}
           >
@@ -1052,7 +1052,7 @@ export default function UnitDetailPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#6B7280",
+            color: "var(--text-muted)",
             fontWeight: 600,
           }}
         >
@@ -1069,7 +1069,7 @@ export default function UnitDetailPage() {
       <PageContainer>
         <AppCard>
           <div style={{ display: "grid", gap: "14px" }}>
-            <div style={{ color: "#B91C1C", fontWeight: 600 }}>
+            <div style={{ color: "var(--badge-text-red)", fontWeight: 600 }}>
               {msg || "No se encontró el departamento."}
             </div>
 
@@ -1107,7 +1107,7 @@ export default function UnitDetailPage() {
 
       {msg && !showEditForm && !showLeaseModal && !showDeleteLeaseModal ? (
         <AppCard>
-          <div style={{ color: "#1D4ED8", fontWeight: 600 }}>{msg}</div>
+          <div style={{ color: "var(--badge-text-blue)", fontWeight: 600 }}>{msg}</div>
         </AppCard>
       ) : null}
 
@@ -1180,7 +1180,7 @@ export default function UnitDetailPage() {
                 segments={
                   assetStatusSegments.length > 0
                     ? assetStatusSegments
-                    : [{ label: "Sin assets", value: 0, color: "#CBD5E1" }]
+                    : [{ label: "Sin assets", value: 0, color: "var(--text-placeholder)" }]
                 }
               />
 
@@ -1361,7 +1361,7 @@ export default function UnitDetailPage() {
                             style={{
                               fontSize: "16px",
                               fontWeight: 800,
-                              color: "#111827",
+                              color: "var(--text-primary)",
                             }}
                           >
                             Cuarto {lease.room_number || "—"}
@@ -1459,7 +1459,7 @@ export default function UnitDetailPage() {
             ) : (
               <AppCard>
                 <div style={{ display: "grid", gap: "12px" }}>
-                  <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                  <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
                     No hay leases activos para este departamento.
                   </div>
 
@@ -1480,7 +1480,7 @@ export default function UnitDetailPage() {
           <SectionCard title="Assets del departamento">
             {assets.length === 0 ? (
               <AppCard>
-                <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
                   Todavía no hay assets registrados para este departamento.
                 </div>
               </AppCard>
@@ -1493,7 +1493,7 @@ export default function UnitDetailPage() {
                         style={{
                           fontSize: "16px",
                           fontWeight: 700,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {asset.name}
@@ -1502,7 +1502,7 @@ export default function UnitDetailPage() {
                       <div
                         style={{
                           fontSize: "13px",
-                          color: "#6B7280",
+                          color: "var(--text-muted)",
                           fontWeight: 600,
                         }}
                       >
@@ -1512,7 +1512,7 @@ export default function UnitDetailPage() {
                       <div
                         style={{
                           fontSize: "13px",
-                          color: "#374151",
+                          color: "var(--text-secondary)",
                           fontWeight: 600,
                         }}
                       >
@@ -1532,7 +1532,7 @@ export default function UnitDetailPage() {
           <SectionCard title="Historial de leases">
             {leaseHistory.length === 0 ? (
               <AppCard>
-                <div style={{ color: "#6B7280", fontWeight: 500 }}>
+                <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
                   Todavía no hay historial de leases para este departamento.
                 </div>
               </AppCard>
@@ -1560,7 +1560,7 @@ export default function UnitDetailPage() {
                             style={{
                               fontSize: "16px",
                               fontWeight: 700,
-                              color: "#111827",
+                              color: "var(--text-primary)",
                             }}
                           >
                             {getTenantDisplayName(tenant)} · Cuarto {lease.room_number || "—"}
@@ -1670,9 +1670,9 @@ export default function UnitDetailPage() {
                 style={{
                   padding: "12px 14px",
                   borderRadius: "12px",
-                  background: "#F9FAFB",
-                  border: "1px solid #E5E7EB",
-                  color: "#374151",
+                  background: "var(--bg-card-hover)",
+                  border: "1px solid var(--border-default)",
+                  color: "var(--text-secondary)",
                   fontSize: "14px",
                   fontWeight: 500,
                 }}
@@ -1755,15 +1755,15 @@ export default function UnitDetailPage() {
               <div
                 style={{
                   gridColumn: "1 / -1",
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid var(--border-default)",
                   borderRadius: "16px",
                   padding: "16px",
-                  background: "#F9FAFB",
+                  background: "var(--bg-card-hover)",
                   display: "grid",
                   gap: "12px",
                 }}
               >
-                <div style={{ fontSize: "15px", fontWeight: 800, color: "#111827" }}>
+                <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--text-primary)" }}>
                   Facturación y cobranza
                 </div>
 
@@ -1774,7 +1774,7 @@ export default function UnitDetailPage() {
                     gap: "10px",
                     fontSize: "14px",
                     fontWeight: 600,
-                    color: "#111827",
+                    color: "var(--text-primary)",
                   }}
                 >
                   <input
@@ -1799,7 +1799,7 @@ export default function UnitDetailPage() {
                   <div
                     style={{
                       fontSize: "13px",
-                      color: "#6B7280",
+                      color: "var(--text-muted)",
                       lineHeight: 1.5,
                     }}
                   >
@@ -2017,8 +2017,8 @@ export default function UnitDetailPage() {
                 style={{
                   padding: "12px 14px",
                   borderRadius: "12px",
-                  background: "#FEF2F2",
-                  color: "#B91C1C",
+                  background: "var(--badge-bg-red)",
+                  color: "var(--badge-text-red)",
                   fontSize: "14px",
                   fontWeight: 600,
                 }}
@@ -2062,9 +2062,9 @@ export default function UnitDetailPage() {
             style={{
               padding: "14px 16px",
               borderRadius: "14px",
-              background: "#FFF7ED",
-              border: "1px solid #FED7AA",
-              color: "#9A3412",
+              background: "var(--metric-bg-amber)",
+              border: "1px solid var(--metric-border-amber)",
+              color: "var(--badge-text-amber)",
               fontSize: "14px",
               fontWeight: 600,
               lineHeight: 1.5,
@@ -2113,32 +2113,32 @@ export default function UnitDetailPage() {
 
 const miniLabelStyle: CSSProperties = {
   fontSize: "13px",
-  color: "#6B7280",
+  color: "var(--text-muted)",
   fontWeight: 600,
 };
 
 const miniValueStyle: CSSProperties = {
   fontSize: "16px",
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const summaryCardTitleStyle: CSSProperties = {
   fontSize: "14px",
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const summaryCardTextStyle: CSSProperties = {
   marginTop: "4px",
   fontSize: "13px",
-  color: "#6B7280",
+  color: "var(--text-muted)",
   fontWeight: 500,
 };
 
 const historyMetaTextStyle: CSSProperties = {
   fontSize: "14px",
-  color: "#4B5563",
+  color: "var(--text-secondary)",
 };
 
 const miniGroupStyle: CSSProperties = {

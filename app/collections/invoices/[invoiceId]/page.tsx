@@ -200,7 +200,7 @@ export default function InvoiceDetailPage() {
 
       {pageLoading ? (
         <SectionCard title="Cargando" subtitle="Estoy recuperando la información de la factura seleccionada.">
-          <div style={{ color: "#667085" }}>Un momento...</div>
+          <div style={{ color: "var(--text-secondary)" }}>Un momento...</div>
         </SectionCard>
       ) : !invoice ? (
         <SectionCard title="Factura no disponible" subtitle="No se encontró la factura o no tienes permiso para verla.">
@@ -221,7 +221,7 @@ export default function InvoiceDetailPage() {
               <InfoItem label="Categoría" value={invoice.chargeCategoryLabel} />
             </InfoGrid>
 
-            <AppCard style={{ background: "#F8FAFC", marginTop: 18 }}>
+            <AppCard style={{ background: "var(--bg-table-header)", marginTop: 18 }}>
               <div style={{ display: "grid", gap: 10 }}>
                 <InfoRow label="Subtotal" value={invoice.subtotalLabel} />
                 <InfoRow label="IVA" value={invoice.taxLabel} />
@@ -230,10 +230,10 @@ export default function InvoiceDetailPage() {
             </AppCard>
 
             <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#111827", marginBottom: 8 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 Descripción
               </div>
-              <div style={{ color: "#475467", lineHeight: 1.7 }}>{invoice.description}</div>
+              <div style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>{invoice.description}</div>
             </div>
           </SectionCard>
 
@@ -259,7 +259,7 @@ export default function InvoiceDetailPage() {
               <AppCard style={{ display: "grid", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <FileText size={18} />
-                  <div style={{ fontWeight: 700, color: "#111827" }}>{invoice.originalPdfFilename}</div>
+                  <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{invoice.originalPdfFilename}</div>
                 </div>
 
                 {pdfSignedUrl ? (
@@ -272,14 +272,14 @@ export default function InvoiceDetailPage() {
                     </UiButton>
                   </div>
                 ) : (
-                  <div style={{ color: "#667085", fontSize: 14 }}>No hay PDF disponible.</div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>No hay PDF disponible.</div>
                 )}
               </AppCard>
 
               <AppCard style={{ display: "grid", gap: 12 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <FileCode2 size={18} />
-                  <div style={{ fontWeight: 700, color: "#111827" }}>{invoice.originalXmlFilename}</div>
+                  <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>{invoice.originalXmlFilename}</div>
                 </div>
 
                 {xmlSignedUrl ? (
@@ -292,7 +292,7 @@ export default function InvoiceDetailPage() {
                     </UiButton>
                   </div>
                 ) : (
-                  <div style={{ color: "#667085", fontSize: 14 }}>No hay XML disponible.</div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>No hay XML disponible.</div>
                 )}
               </AppCard>
             </AppGrid>
@@ -335,9 +335,9 @@ function InfoGrid({ children }: { children: ReactNode }) {
 
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
-    <AppCard style={{ background: "#FCFCFD" }}>
-      <div style={{ fontSize: 13, color: "#667085", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 15, color: "#111827", fontWeight: 700, lineHeight: 1.5 }}>
+    <AppCard style={{ background: "var(--bg-card-hover)" }}>
+      <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: 15, color: "var(--text-primary)", fontWeight: 700, lineHeight: 1.5 }}>
         {value || "—"}
       </div>
     </AppCard>
@@ -347,8 +347,8 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-      <span style={{ color: "#667085", fontSize: 14 }}>{label}</span>
-      <span style={{ color: "#111827", fontSize: 14, fontWeight: 700 }}>{value || "—"}</span>
+      <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{label}</span>
+      <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700 }}>{value || "—"}</span>
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { errorBannerStyle } from "@/lib/pageStyles";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -321,15 +322,10 @@ export default function CleaningPage() {
   const totalCommon = buildingSchedules.filter((x) => x.cleaning_type === "common").length;
   const totalInterior = unitSchedules.filter((x) => x.active).length;
 
-  const selectedBuildingName =
-    selectedBuildingId === "all"
-      ? "Todos los edificios"
-      : buildings.find((b) => b.id === selectedBuildingId)?.name || "Edificio";
-
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando limpieza...</div>
+        <div style={{ padding: "32px 0", color: "var(--text-secondary)" }}>Cargando limpieza...</div>
       </PageContainer>
     );
   }
@@ -345,17 +341,7 @@ export default function CleaningPage() {
       />
 
       {msg ? (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "12px 14px",
-            borderRadius: 12,
-            background: "#FEF2F2",
-            color: "#B91C1C",
-            fontSize: 14,
-            fontWeight: 600,
-          }}
-        >
+        <div style={{ ...errorBannerStyle, marginBottom: 16 }}>
           {msg}
         </div>
       ) : null}
@@ -406,7 +392,10 @@ export default function CleaningPage() {
               }}
             >
               <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <AppBadge backgroundColor="#EEF2FF" textColor="#4338CA">
+                <AppBadge
+                  backgroundColor="var(--badge-bg-blue)"
+                  textColor="var(--badge-text-blue)"
+                >
                   Semana
                 </AppBadge>
               </div>
@@ -454,7 +443,7 @@ export default function CleaningPage() {
                   gap: 8,
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#6B7280",
+                  color: "var(--text-secondary)",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -470,9 +459,9 @@ export default function CleaningPage() {
                   minWidth: 240,
                   padding: "10px 12px",
                   borderRadius: 12,
-                  border: "1px solid #E5E7EB",
-                  background: "#FFFFFF",
-                  color: "#111827",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-input)",
+                  color: "var(--text-primary)",
                   fontSize: 14,
                 }}
               >
@@ -499,10 +488,10 @@ export default function CleaningPage() {
                   <div
                     key={day.key}
                     style={{
-                      border: "1px solid #E5E7EB",
+                      border: "1px solid var(--border-default)",
                       borderRadius: 16,
                       padding: 14,
-                      background: "#FFFFFF",
+                      background: "var(--bg-card)",
                       display: "flex",
                       flexDirection: "column",
                       gap: 14,
@@ -514,7 +503,7 @@ export default function CleaningPage() {
                         style={{
                           fontSize: 14,
                           fontWeight: 800,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {day.label}
@@ -524,7 +513,7 @@ export default function CleaningPage() {
                         style={{
                           fontSize: 12,
                           fontWeight: 600,
-                          color: "#6B7280",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         {day.shortDate}
@@ -536,10 +525,10 @@ export default function CleaningPage() {
                         style={{
                           borderRadius: 12,
                           padding: "10px 10px",
-                          background: "#F9FAFB",
-                          border: "1px dashed #D1D5DB",
+                          background: "var(--bg-table-empty)",
+                          border: "1px dashed var(--border-dashed)",
                           fontSize: 12,
-                          color: "#6B7280",
+                          color: "var(--text-secondary)",
                           fontWeight: 600,
                         }}
                       >
@@ -553,8 +542,8 @@ export default function CleaningPage() {
                             style={{
                               borderRadius: 12,
                               padding: "10px 10px",
-                              background: "#ECFDF5",
-                              border: "1px solid #A7F3D0",
+                              background: "var(--metric-bg-green)",
+                              border: "1px solid var(--metric-border-green)",
                               display: "flex",
                               flexDirection: "column",
                               gap: 4,
@@ -564,7 +553,7 @@ export default function CleaningPage() {
                               style={{
                                 fontSize: 11,
                                 fontWeight: 800,
-                                color: "#166534",
+                                color: "var(--metric-value-green)",
                                 lineHeight: 1.35,
                               }}
                             >
@@ -575,7 +564,7 @@ export default function CleaningPage() {
                               style={{
                                 fontSize: 10.5,
                                 fontWeight: 700,
-                                color: "#166534",
+                                color: "var(--metric-value-green)",
                                 opacity: 0.9,
                                 lineHeight: 1.35,
                               }}
@@ -610,11 +599,11 @@ export default function CleaningPage() {
                 width: 14,
                 height: 14,
                 borderRadius: 999,
-                background: "#10B981",
+                background: "var(--icon-color-green)",
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Limpieza
             </span>
           </div>
@@ -623,4 +612,3 @@ export default function CleaningPage() {
     </PageContainer>
   );
 }
-

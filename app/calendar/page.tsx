@@ -545,7 +545,7 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
         return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
       }
       if (value === "Vencido") {
-        return { background: "#FEF2F2", border: "#FECACA", text: "#B91C1C" };
+        return { background: "var(--badge-bg-red)", border: "#FECACA", text: "#B91C1C" };
       }
       return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
     }
@@ -560,7 +560,7 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
       return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
     }
     if (value === "Vencido") {
-      return { background: "#FEF2F2", border: "#FECACA", text: "#B91C1C" };
+      return { background: "var(--badge-bg-red)", border: "#FECACA", text: "#B91C1C" };
     }
     return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
   }
@@ -578,11 +578,11 @@ function renderViewTab(
       type="button"
       onClick={onClick}
       style={{
-        border: "1px solid #E5E7EB",
+        border: "1px solid var(--border-default)",
         borderRadius: 999,
         padding: "6px 12px",
-        background: active ? "#EEF2FF" : "#F3F4F6",
-        color: active ? "#4338CA" : "#374151",
+        background: active ? "var(--icon-bg-purple)" : "var(--bg-card-hover)",
+        color: active ? "var(--icon-color-purple)" : "var(--text-secondary)",
         fontSize: 13,
         fontWeight: 700,
         cursor: "pointer",
@@ -607,7 +607,7 @@ function renderModuleToggle(
         border: `1px solid ${colors.border}`,
         borderRadius: 999,
         padding: "8px 12px",
-        background: active ? colors.background : "#FFFFFF",
+        background: active ? colors.background : "var(--bg-card)",
         color: colors.text,
         fontSize: 13,
         fontWeight: 700,
@@ -1432,7 +1432,7 @@ export default function CalendarPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>
           Cargando calendario...
         </div>
       </PageContainer>
@@ -1455,8 +1455,8 @@ export default function CalendarPage() {
             marginBottom: 16,
             padding: "12px 14px",
             borderRadius: 12,
-            background: "#FEF2F2",
-            color: "#B91C1C",
+            background: "var(--badge-bg-red)",
+            color: "var(--badge-text-red)",
             fontSize: 14,
             fontWeight: 600,
           }}
@@ -1577,7 +1577,7 @@ export default function CalendarPage() {
                   gap: 8,
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -1593,9 +1593,9 @@ export default function CalendarPage() {
                   minWidth: 240,
                   padding: "10px 12px",
                   borderRadius: 12,
-                  border: "1px solid #E5E7EB",
-                  background: "#FFFFFF",
-                  color: "#111827",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)",
+                  color: "var(--text-primary)",
                   fontSize: 14,
                 }}
               >
@@ -1660,10 +1660,10 @@ export default function CalendarPage() {
                     <div
                       key={day.key}
                       style={{
-                        border: "1px solid #E5E7EB",
+                        border: "1px solid var(--border-default)",
                         borderRadius: 16,
                         padding: 14,
-                        background: "#FFFFFF",
+                        background: "var(--bg-card)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 14,
@@ -1675,7 +1675,7 @@ export default function CalendarPage() {
                           style={{
                             fontSize: 14,
                             fontWeight: 800,
-                            color: "#111827",
+                            color: "var(--text-primary)",
                           }}
                         >
                           {day.label}
@@ -1685,7 +1685,7 @@ export default function CalendarPage() {
                           style={{
                             fontSize: 12,
                             fontWeight: 600,
-                            color: "#6B7280",
+                            color: "var(--text-muted)",
                           }}
                         >
                           {day.shortDate}
@@ -1697,10 +1697,10 @@ export default function CalendarPage() {
                           style={{
                             borderRadius: 12,
                             padding: "10px 10px",
-                            background: "#F9FAFB",
+                            background: "var(--bg-card-hover)",
                             border: "1px dashed #D1D5DB",
                             fontSize: 12,
-                            color: "#6B7280",
+                            color: "var(--text-muted)",
                             fontWeight: 600,
                           }}
                         >
@@ -1789,7 +1789,7 @@ export default function CalendarPage() {
                         border: isToday ? "2px solid #2563EB" : "1px solid #E5E7EB",
                         borderRadius: 16,
                         padding: 12,
-                        background: isToday ? "#F8FBFF" : "#FFFFFF",
+                        background: isToday ? "var(--metric-bg-neutral)" : "var(--bg-card)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 10,
@@ -1823,7 +1823,7 @@ export default function CalendarPage() {
                               justifyContent: "center",
                               padding: "4px 8px",
                               borderRadius: 999,
-                              background: "#DBEAFE",
+                              background: "var(--icon-bg-blue)",
                               border: "1px solid #93C5FD",
                               color: "#1D4ED8",
                               fontSize: 10,
@@ -1841,10 +1841,10 @@ export default function CalendarPage() {
                           style={{
                             borderRadius: 10,
                             padding: "8px 8px",
-                            background: "#F9FAFB",
+                            background: "var(--bg-card-hover)",
                             border: "1px dashed #D1D5DB",
                             fontSize: 11,
-                            color: "#6B7280",
+                            color: "var(--text-muted)",
                             fontWeight: 600,
                           }}
                         >
@@ -1923,7 +1923,7 @@ export default function CalendarPage() {
                                 textAlign: "left",
                                 fontSize: 10.5,
                                 fontWeight: 700,
-                                color: "#6B7280",
+                                color: "var(--text-muted)",
                                 cursor: "pointer",
                               }}
                             >
@@ -1950,10 +1950,10 @@ export default function CalendarPage() {
                   <div
                     key={month.monthLabel}
                     style={{
-                      border: "1px solid #E5E7EB",
+                      border: "1px solid var(--border-default)",
                       borderRadius: 16,
                       padding: 14,
-                      background: "#FFFFFF",
+                      background: "var(--bg-card)",
                       display: "flex",
                       flexDirection: "column",
                       gap: 10,
@@ -1964,7 +1964,7 @@ export default function CalendarPage() {
                       style={{
                         fontSize: 14,
                         fontWeight: 800,
-                        color: "#111827",
+                        color: "var(--text-primary)",
                       }}
                     >
                       {month.monthLabel}
@@ -1974,8 +1974,8 @@ export default function CalendarPage() {
                       style={{
                         borderRadius: 10,
                         padding: "10px 10px",
-                        background: "#F9FAFB",
-                        border: "1px solid #E5E7EB",
+                        background: "var(--bg-card-hover)",
+                        border: "1px solid var(--border-default)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 8,
@@ -1985,7 +1985,7 @@ export default function CalendarPage() {
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                         }}
                       >
                         Eventos: {month.total}
@@ -2059,7 +2059,7 @@ export default function CalendarPage() {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Limpieza interior de unidad
             </span>
           </div>
@@ -2076,7 +2076,7 @@ export default function CalendarPage() {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Mantenimiento
             </span>
           </div>
@@ -2089,11 +2089,11 @@ export default function CalendarPage() {
                 width: 14,
                 height: 14,
                 borderRadius: 999,
-                background: "#2563EB",
+                background: "var(--badge-text-blue)",
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Pagos reales
             </span>
           </div>
@@ -2110,7 +2110,7 @@ export default function CalendarPage() {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Pagos proyectados
             </span>
           </div>
@@ -2127,7 +2127,7 @@ export default function CalendarPage() {
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Cobranza
             </span>
           </div>
@@ -2144,8 +2144,8 @@ export default function CalendarPage() {
             zIndex: 2000,
             pointerEvents: "none",
             borderRadius: 14,
-            border: "1px solid #E5E7EB",
-            background: "#FFFFFF",
+            border: "1px solid var(--border-default)",
+            background: "var(--bg-card)",
             boxShadow: "0 20px 40px rgba(15, 23, 42, 0.14)",
             padding: 12,
           }}
@@ -2165,7 +2165,7 @@ export default function CalendarPage() {
             style={{
               fontSize: 11,
               fontWeight: 700,
-              color: "#6B7280",
+              color: "var(--text-muted)",
               marginBottom: 8,
             }}
           >
@@ -2187,7 +2187,7 @@ export default function CalendarPage() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#6B7280",
+                    color: "var(--text-muted)",
                   }}
                 >
                   {item.label}
@@ -2196,7 +2196,7 @@ export default function CalendarPage() {
                   style={{
                     fontSize: 11,
                     fontWeight: 700,
-                    color: "#111827",
+                    color: "var(--text-primary)",
                   }}
                 >
                   {item.value}
@@ -2221,8 +2221,8 @@ export default function CalendarPage() {
             <div
               style={{
                 borderRadius: 14,
-                border: "1px solid #E5E7EB",
-                background: "#F9FAFB",
+                border: "1px solid var(--border-default)",
+                background: "var(--bg-card-hover)",
                 padding: 14,
                 display: "grid",
                 gap: 6,
@@ -2232,7 +2232,7 @@ export default function CalendarPage() {
                 style={{
                   fontSize: 14,
                   fontWeight: 800,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 {formatFullDate(dayEventsModal.isoDate)}
@@ -2242,7 +2242,7 @@ export default function CalendarPage() {
                 style={{
                   fontSize: 12,
                   fontWeight: 700,
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                 }}
               >
                 {dayEventsModal.events.length} evento
@@ -2287,7 +2287,7 @@ export default function CalendarPage() {
                       borderRadius: 9,
                       display: "grid",
                       placeItems: "center",
-                      background: "#FFFFFF",
+                      background: "var(--bg-card)",
                       color: event.colorText,
                       border: `1px solid ${event.colorBorder}`,
                       flexShrink: 0,
@@ -2324,7 +2324,7 @@ export default function CalendarPage() {
                       style={{
                         fontSize: 11,
                         fontWeight: 700,
-                        color: "#6B7280",
+                        color: "var(--text-muted)",
                         marginTop: 2,
                       }}
                     >
@@ -2367,7 +2367,7 @@ export default function CalendarPage() {
                   borderRadius: 10,
                   display: "grid",
                   placeItems: "center",
-                  background: "#FFFFFF",
+                  background: "var(--bg-card)",
                   color: selectedEvent.colorText,
                   border: `1px solid ${selectedEvent.colorBorder}`,
                   flexShrink: 0,
@@ -2402,8 +2402,8 @@ export default function CalendarPage() {
             <div
               style={{
                 borderRadius: 14,
-                border: "1px solid #E5E7EB",
-                background: "#FFFFFF",
+                border: "1px solid var(--border-default)",
+                background: "var(--bg-card)",
                 overflow: "hidden",
               }}
             >
@@ -2429,7 +2429,7 @@ export default function CalendarPage() {
                       style={{
                         fontSize: 12,
                         fontWeight: 700,
-                        color: "#6B7280",
+                        color: "var(--text-muted)",
                         textTransform: "uppercase",
                         letterSpacing: "0.04em",
                       }}
@@ -2441,7 +2441,7 @@ export default function CalendarPage() {
                       style={{
                         fontSize: 14,
                         fontWeight: 700,
-                        color: "#111827",
+                        color: "var(--text-primary)",
                       }}
                     >
                       {badgeColors ? (

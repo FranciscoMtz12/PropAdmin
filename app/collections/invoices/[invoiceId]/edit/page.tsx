@@ -147,7 +147,7 @@ export default function EditInvoicePage() {
     return (
       <PageContainer>
         <SectionCard title="Cargando factura" subtitle="Estoy preparando la información para editarla.">
-          <div style={{ color: "#667085" }}>Un momento...</div>
+          <div style={{ color: "var(--text-muted)" }}>Un momento...</div>
         </SectionCard>
       </PageContainer>
     );
@@ -157,7 +157,7 @@ export default function EditInvoicePage() {
     return (
       <PageContainer>
         <SectionCard title="Factura no encontrada" subtitle="No pude recuperar la factura para edición.">
-          <div style={{ color: "#667085" }}>Revisa el listado y vuelve a intentarlo.</div>
+          <div style={{ color: "var(--text-muted)" }}>Revisa el listado y vuelve a intentarlo.</div>
         </SectionCard>
       </PageContainer>
     );

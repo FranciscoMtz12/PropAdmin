@@ -59,13 +59,13 @@ type BuildingOption = {
 const sectionTextStyle: CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-secondary)",
 };
 
 const strongValueStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const badgeBaseStyle: CSSProperties = {
@@ -256,12 +256,19 @@ export default function PendingInvoiceUploadsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: filteredRows.length > 0 ? "#FEF3C7" : "#F3F4F6",
+                background: filteredRows.length > 0
+                  ? "var(--icon-bg-amber)"
+                  : "var(--icon-bg-neutral)",
                 display: "grid",
                 placeItems: "center",
               }}
             >
-              <FileUp size={18} color={filteredRows.length > 0 ? "#D97706" : "#4B5563"} />
+              <FileUp
+                size={18}
+                color={filteredRows.length > 0
+                  ? "var(--icon-color-amber)"
+                  : "var(--icon-color-neutral)"}
+              />
             </div>
           }
         />
@@ -276,12 +283,12 @@ export default function PendingInvoiceUploadsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#EEF2FF",
+                background: "var(--icon-bg-blue)",
                 display: "grid",
                 placeItems: "center",
               }}
             >
-              <CalendarClock size={18} color="#4338CA" />
+              <CalendarClock size={18} color="var(--icon-color-blue)" />
             </div>
           }
         />
@@ -307,8 +314,8 @@ export default function PendingInvoiceUploadsPage() {
         <AppCard
           style={{
             marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
+            border: "1px solid var(--metric-border-red)",
+            background: "var(--metric-bg-red)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -317,8 +324,8 @@ export default function PendingInvoiceUploadsPage() {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--icon-bg-red)",
+                color: "var(--icon-color-red)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -333,7 +340,7 @@ export default function PendingInvoiceUploadsPage() {
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 Ocurrió un problema
@@ -353,7 +360,7 @@ export default function PendingInvoiceUploadsPage() {
           }}
         >
           <div>
-            <div style={{ ...sectionTextStyle, fontWeight: 700, color: "#111827", marginBottom: 8 }}>
+            <div style={{ ...sectionTextStyle, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
               Filtrar por edificio
             </div>
             <AppSelect
@@ -370,7 +377,7 @@ export default function PendingInvoiceUploadsPage() {
           </div>
 
           <div>
-            <div style={{ ...sectionTextStyle, fontWeight: 700, color: "#111827", marginBottom: 8 }}>
+            <div style={{ ...sectionTextStyle, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
               Filtrar por periodo
             </div>
             <AppSelect
@@ -427,9 +434,9 @@ export default function PendingInvoiceUploadsPage() {
                   <span
                     style={{
                       ...badgeBaseStyle,
-                      background: "#FEF3C7",
-                      border: "1px solid #FDE68A",
-                      color: "#92400E",
+                      background: "var(--badge-bg-amber)",
+                      border: "1px solid var(--metric-border-amber)",
+                      color: "var(--badge-text-amber)",
                     }}
                   >
                     <Upload size={14} />
@@ -463,7 +470,7 @@ export default function PendingInvoiceUploadsPage() {
                         gap: 8,
                         fontSize: 15,
                         fontWeight: 800,
-                        color: "#111827",
+                        color: "var(--text-primary)",
                       }}
                     >
                       {getConceptIcon(row.concept_code)}

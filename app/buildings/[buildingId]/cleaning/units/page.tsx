@@ -260,7 +260,7 @@ export default function CleaningUnitsPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando...</div>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>Cargando...</div>
       </PageContainer>
     );
   }
@@ -270,7 +270,7 @@ export default function CleaningUnitsPage() {
   if (!building) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#B91C1C" }}>
+        <div style={{ padding: "32px 0", color: "var(--badge-text-red)" }}>
           {msg || "No se encontró el edificio."}
         </div>
       </PageContainer>
@@ -330,8 +330,8 @@ export default function CleaningUnitsPage() {
               marginBottom: 16,
               padding: "12px 14px",
               borderRadius: 12,
-              background: msg.includes("correctamente") ? "#ECFDF5" : "#FEF2F2",
-              color: msg.includes("correctamente") ? "#166534" : "#B91C1C",
+              background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
+              color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
               fontSize: 14,
               fontWeight: 600,
             }}
@@ -372,24 +372,24 @@ export default function CleaningUnitsPage() {
                   {rows.map((row) => {
                     const rowBackground =
                       row.cleaningState === "active"
-                        ? "#F0FDF4"
+                        ? "var(--metric-bg-green)"
                         : row.cleaningState === "inactive"
-                        ? "#FFFBEB"
-                        : "#FFFFFF";
+                        ? "var(--metric-bg-amber)"
+                        : "var(--bg-card)";
 
                     const badgeBackground =
                       row.cleaningState === "active"
-                        ? "#DCFCE7"
+                        ? "var(--icon-bg-green)"
                         : row.cleaningState === "inactive"
-                        ? "#FEF3C7"
-                        : "#F3F4F6";
+                        ? "var(--icon-bg-amber)"
+                        : "var(--bg-card-hover)";
 
                     const badgeColor =
                       row.cleaningState === "active"
-                        ? "#166534"
+                        ? "var(--badge-text-green)"
                         : row.cleaningState === "inactive"
-                        ? "#92400E"
-                        : "#4B5563";
+                        ? "var(--badge-text-amber)"
+                        : "var(--text-secondary)";
 
                     const badgeLabel =
                       row.cleaningState === "active"
@@ -405,7 +405,7 @@ export default function CleaningUnitsPage() {
                         key={row.id}
                         style={{
                           background: rowBackground,
-                          borderBottom: "1px solid #E5E7EB",
+                          borderBottom: "1px solid var(--border-default)",
                         }}
                       >
                         <td style={tableCellStyleStrong}>{row.unitLabel}</td>
@@ -455,16 +455,16 @@ export default function CleaningUnitsPage() {
                             <button
                               type="button"
                               onClick={() => setOpenActionsRowId(openActionsRowId === row.id ? null : row.id)}
-                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF", color: "#111827", padding: "8px 10px", cursor: "pointer" }}
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", padding: "8px 10px", cursor: "pointer" }}
                               aria-label="Más acciones"
                             >
                               <MoreHorizontal size={16} />
                             </button>
                             {openActionsRowId === row.id && (
-                              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
                                 <a
                                   href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
-                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600 }}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600 }}
                                 >
                                   <Settings2 size={14} />
                                   Configurar
@@ -477,7 +477,7 @@ export default function CleaningUnitsPage() {
                                       void toggleScheduleStatus(row.scheduleId as string, row.cleaningState !== "active");
                                     }}
                                     disabled={isToggling}
-                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                                   >
                                     {row.cleaningState === "active" ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
                                     {isToggling ? "Guardando..." : row.cleaningState === "active" ? "Desactivar" : "Activar"}
@@ -505,13 +505,13 @@ const labelTinyStyle: CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const valueStrongStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const tableHeadStyle: CSSProperties = {
@@ -521,20 +521,20 @@ const tableHeadStyle: CSSProperties = {
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
-  color: "#6B7280",
-  borderBottom: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  color: "var(--text-muted)",
+  borderBottom: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
 };
 
 const tableCellStyle: CSSProperties = {
   padding: "14px",
   fontSize: 14,
-  color: "#374151",
+  color: "var(--text-secondary)",
   verticalAlign: "middle",
 };
 
 const tableCellStyleStrong: CSSProperties = {
   ...tableCellStyle,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };

@@ -12,13 +12,14 @@ import AppIconBox from "@/components/AppIconBox";
   Theming: usa variables CSS, responde automáticamente al dark/light mode.
 */
 
-type MetricVariant = "green" | "amber" | "red" | "neutral";
+type MetricVariant = "green" | "amber" | "red" | "neutral" | "blue";
 
 const VARIANT_CARD_STYLE: Record<MetricVariant, React.CSSProperties> = {
   green:   { background: "var(--metric-bg-green)",   border: "1px solid var(--metric-border-green)" },
   amber:   { background: "var(--metric-bg-amber)",   border: "1px solid var(--metric-border-amber)" },
   red:     { background: "var(--metric-bg-red)",     border: "1px solid var(--metric-border-red)" },
   neutral: { background: "var(--metric-bg-neutral)", border: "1px solid var(--metric-border-neutral)" },
+  blue:    { background: "var(--metric-bg-blue)",    border: "1px solid var(--metric-border-blue)" },
 };
 
 const VARIANT_VALUE_COLOR: Record<MetricVariant, string> = {
@@ -26,6 +27,7 @@ const VARIANT_VALUE_COLOR: Record<MetricVariant, string> = {
   amber:   "var(--metric-value-amber)",
   red:     "var(--metric-value-red)",
   neutral: "var(--metric-value-neutral)",
+  blue:    "var(--metric-value-blue)",
 };
 
 export default function MetricCard({
@@ -40,6 +42,7 @@ export default function MetricCard({
   icon?: ReactNode;
   helper?: string;
   variant?: MetricVariant;
+  // "blue" — vacantes / disponibles
 }) {
   const cardStyle = variant ? VARIANT_CARD_STYLE[variant] : undefined;
   const valueColor = variant ? VARIANT_VALUE_COLOR[variant] : "var(--text-primary)";

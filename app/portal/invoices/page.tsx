@@ -131,8 +131,8 @@ const iconBoxStyle: React.CSSProperties = {
   width: 44,
   height: 44,
   borderRadius: 14,
-  background: "#EEF2FF",
-  color: "#4338CA",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -142,19 +142,19 @@ const iconBoxStyle: React.CSSProperties = {
 const mutedTextStyle: React.CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const valueStyle: React.CSSProperties = {
   fontSize: 18,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 function parseDateOnly(dateKey: string) {
@@ -228,24 +228,24 @@ function getDisplayStatusLabel(status: DisplayStatus) {
 function getStatusColors(status: DisplayStatus) {
   if (status === "paid") {
     return {
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      text: "#166534",
+      background: "var(--icon-bg-green)",
+      border: "var(--metric-border-green)",
+      text: "var(--badge-text-green)",
     };
   }
 
   if (status === "overdue") {
     return {
-      background: "#FEF2F2",
-      border: "#FECACA",
-      text: "#B91C1C",
+      background: "var(--badge-bg-red)",
+      border: "1px solid var(--metric-border-red)",
+      text: "var(--badge-text-red)",
     };
   }
 
   return {
-    background: "#FEFCE8",
-    border: "#FDE68A",
-    text: "#A16207",
+    background: "var(--metric-bg-amber)",
+    border: "var(--metric-border-amber)",
+    text: "var(--badge-text-amber)",
   };
 }
 
@@ -318,7 +318,7 @@ function DetailRow({
       <div
         style={{
           fontSize: 13,
-          color: "#6B7280",
+          color: "var(--text-muted)",
           fontWeight: 600,
         }}
       >
@@ -328,7 +328,7 @@ function DetailRow({
       <div
         style={{
           fontSize: 14,
-          color: "#111827",
+          color: "var(--text-primary)",
           fontWeight: 600,
           wordBreak: "break-word",
         }}
@@ -747,10 +747,10 @@ export default function PortalInvoicesPage() {
                     width: "100%",
                     minHeight: 48,
                     borderRadius: 12,
-                    border: "1px solid #D1D5DB",
+                    border: "1px solid var(--border-default)",
                     padding: "0 14px",
-                    background: "#FFFFFF",
-                    color: "#111827",
+                    background: "var(--bg-card)",
+                    color: "var(--text-primary)",
                     fontSize: 14,
                     fontWeight: 600,
                     outline: "none",
@@ -786,9 +786,9 @@ export default function PortalInvoicesPage() {
                       gap: 8,
                       padding: "12px 16px",
                       borderRadius: 12,
-                      border: "1px solid #D1D5DB",
-                      background: "#FFFFFF",
-                      color: "#111827",
+                      border: "1px solid var(--border-default)",
+                      background: "var(--bg-card)",
+                      color: "var(--text-primary)",
                       fontSize: 14,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -809,8 +809,8 @@ export default function PortalInvoicesPage() {
                       padding: "12px 16px",
                       borderRadius: 12,
                       border: "none",
-                      background: "#111827",
-                      color: "#FFFFFF",
+                      background: "var(--text-primary)",
+                      color: "var(--bg-card)",
                       fontSize: 14,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -832,8 +832,8 @@ export default function PortalInvoicesPage() {
                       padding: "12px 16px",
                       borderRadius: 12,
                       border: "none",
-                      background: "#4F46E5",
-                      color: "#FFFFFF",
+                      background: "var(--accent)",
+                      color: "var(--bg-card)",
                       fontSize: 14,
                       fontWeight: 700,
                       cursor: "pointer",
@@ -852,11 +852,11 @@ export default function PortalInvoicesPage() {
                     marginTop: 14,
                     padding: 12,
                     borderRadius: 12,
-                    background: "#F8FAFC",
-                    border: "1px solid #E5E7EB",
+                    background: "var(--bg-card-hover)",
+                    border: "1px solid var(--border-default)",
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                     Tenant seleccionado: {selectedTenant.full_name || "Sin nombre"}
                   </div>
                   <div style={{ marginTop: 6, ...mutedTextStyle }}>
@@ -873,16 +873,16 @@ export default function PortalInvoicesPage() {
         <AppCard
           style={{
             marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
+            border: "1px solid var(--metric-border-red)",
+            background: "var(--badge-bg-red)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <div
               style={{
                 ...iconBoxStyle,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--badge-bg-red)",
+                color: "var(--badge-text-red)",
               }}
             >
               <AlertTriangle size={18} />
@@ -1008,7 +1008,7 @@ export default function PortalInvoicesPage() {
                             style={{
                               fontSize: 18,
                               fontWeight: 700,
-                              color: "#111827",
+                              color: "var(--text-primary)",
                             }}
                           >
                             {row.periodLabel}
@@ -1042,10 +1042,10 @@ export default function PortalInvoicesPage() {
                     <AppGrid minWidth={180} gap={12}>
                       <div
                         style={{
-                          border: "1px solid #E5E7EB",
+                          border: "1px solid var(--border-default)",
                           borderRadius: 14,
                           padding: 14,
-                          background: "#F9FAFB",
+                          background: "var(--bg-card-hover)",
                         }}
                       >
                         <div style={{ ...mutedTextStyle, marginBottom: 6 }}>Monto del cargo</div>
@@ -1054,10 +1054,10 @@ export default function PortalInvoicesPage() {
 
                       <div
                         style={{
-                          border: "1px solid #E5E7EB",
+                          border: "1px solid var(--border-default)",
                           borderRadius: 14,
                           padding: 14,
-                          background: "#F9FAFB",
+                          background: "var(--bg-card-hover)",
                         }}
                       >
                         <div style={{ ...mutedTextStyle, marginBottom: 6 }}>Pagado</div>
@@ -1066,10 +1066,10 @@ export default function PortalInvoicesPage() {
 
                       <div
                         style={{
-                          border: "1px solid #E5E7EB",
+                          border: "1px solid var(--border-default)",
                           borderRadius: 14,
                           padding: 14,
-                          background: "#F9FAFB",
+                          background: "var(--bg-card-hover)",
                         }}
                       >
                         <div style={{ ...mutedTextStyle, marginBottom: 6 }}>Saldo pendiente</div>
@@ -1078,10 +1078,10 @@ export default function PortalInvoicesPage() {
 
                       <div
                         style={{
-                          border: "1px solid #E5E7EB",
+                          border: "1px solid var(--border-default)",
                           borderRadius: 14,
                           padding: 14,
-                          background: "#F9FAFB",
+                          background: "var(--bg-card-hover)",
                         }}
                       >
                         <div style={{ ...mutedTextStyle, marginBottom: 6 }}>Vencimiento</div>
@@ -1094,9 +1094,9 @@ export default function PortalInvoicesPage() {
                         style={{
                           padding: 12,
                           borderRadius: 12,
-                          background: "#EFF6FF",
-                          border: "1px solid #BFDBFE",
-                          color: "#1D4ED8",
+                          background: "var(--metric-bg-neutral)",
+                          border: "1px solid var(--border-default)",
+                          color: "var(--badge-text-blue)",
                           fontSize: 14,
                           fontWeight: 600,
                         }}
@@ -1142,7 +1142,7 @@ export default function PortalInvoicesPage() {
                     {expanded ? (
                       <div
                         style={{
-                          borderTop: "1px solid #E5E7EB",
+                          borderTop: "1px solid var(--border-default)",
                           paddingTop: 16,
                           display: "grid",
                           gap: 12,
@@ -1177,7 +1177,7 @@ export default function PortalInvoicesPage() {
         <AppCard
           style={{
             border: "1px solid #E0E7FF",
-            background: "#F8FAFC",
+            background: "var(--bg-card-hover)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -1210,8 +1210,8 @@ export default function PortalInvoicesPage() {
                     padding: "12px 16px",
                     borderRadius: 12,
                     border: "none",
-                    background: "#111827",
-                    color: "#FFFFFF",
+                    background: "var(--text-primary)",
+                    color: "var(--bg-card)",
                     fontSize: 14,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -1233,8 +1233,8 @@ export default function PortalInvoicesPage() {
                     padding: "12px 16px",
                     borderRadius: 12,
                     border: "none",
-                    background: "#4F46E5",
-                    color: "#FFFFFF",
+                    background: "var(--accent)",
+                    color: "var(--bg-card)",
                     fontSize: 14,
                     fontWeight: 700,
                     cursor: "pointer",
@@ -1255,9 +1255,9 @@ export default function PortalInvoicesPage() {
                       gap: 8,
                       padding: "12px 16px",
                       borderRadius: 12,
-                      border: "1px solid #D1D5DB",
-                      background: "#FFFFFF",
-                      color: "#111827",
+                      border: "1px solid var(--border-default)",
+                      background: "var(--bg-card)",
+                      color: "var(--text-primary)",
                       fontSize: 14,
                       fontWeight: 700,
                       cursor: "pointer",

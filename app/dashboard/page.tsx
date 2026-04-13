@@ -216,8 +216,8 @@ function MXNTooltip({
   return (
     <div
       style={{
-        background: isDark ? "#1E2535" : "white",
-        border: `1px solid ${isDark ? "#2D3748" : "#E5E7EB"}`,
+        background: "var(--bg-card)",
+        border: "1px solid var(--border-default)",
         borderRadius: 10,
         padding: "12px 16px",
         fontSize: 13,
@@ -228,7 +228,7 @@ function MXNTooltip({
         style={{
           fontWeight: 700,
           marginBottom: 6,
-          color: isDark ? "#F1F5F9" : "#111827",
+          color: "var(--text-primary)",
         }}
       >
         {label}
@@ -248,11 +248,11 @@ function yAxisFormatter(value: number): string {
   return `$${value}`;
 }
 
-/* Colores del badge de días restantes de contrato */
+/* Colores del badge de días restantes de contrato — usa CSS vars */
 function daysLeftBadge(days: number) {
-  if (days < 30) return { bg: "#FEF2F2", text: "#B91C1C", border: "#FECACA" };
-  if (days < 60) return { bg: "#FFEDD5", text: "#C2410C", border: "#FDBA74" };
-  return { bg: "#FEF9C3", text: "#854D0E", border: "#FDE68A" };
+  if (days < 30) return { bg: "var(--badge-bg-red)",   text: "var(--badge-text-red)",   border: "var(--metric-border-red)" };
+  if (days < 60) return { bg: "var(--badge-bg-amber)", text: "var(--badge-text-amber)", border: "var(--metric-border-amber)" };
+  return          { bg: "var(--badge-bg-amber)",       text: "var(--badge-text-amber)", border: "var(--metric-border-amber)" };
 }
 
 /* ─── Tipos de filas de tablas ────────────────────────────────────── */
@@ -1209,8 +1209,8 @@ export default function DashboardPage() {
                     alignItems: "center",
                     gap: 14,
                     padding: "12px 14px",
-                    background: "#F0FDF4",
-                    border: "1px solid #BBF7D0",
+                    background: "var(--metric-bg-green)",
+                    border: "1px solid var(--metric-border-green)",
                     borderRadius: 12,
                   }}
                 >
@@ -1218,22 +1218,23 @@ export default function DashboardPage() {
                     style={{
                       width: 38,
                       height: 38,
-                      background: "#DCFCE7",
+                      background: "var(--icon-bg-green)",
                       borderRadius: 10,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
+                      color: "var(--icon-color-green)",
                     }}
                   >
-                    <Sparkles size={18} color="#16A34A" />
+                    <Sparkles size={18} />
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#15803D" }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "var(--metric-value-green)" }}>
                       {agendaHoy.totalCleanings}{" "}
                       {agendaHoy.totalCleanings === 1 ? "limpieza" : "limpiezas"}
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "#4ADE80" }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
                       {agendaHoy.buildingCleanings > 0 &&
                         `${agendaHoy.buildingCleanings} de edificio`}
                       {agendaHoy.buildingCleanings > 0 && agendaHoy.unitCleanings > 0 && " · "}
@@ -1252,8 +1253,8 @@ export default function DashboardPage() {
                     alignItems: "center",
                     gap: 14,
                     padding: "12px 14px",
-                    background: "#EFF6FF",
-                    border: "1px solid #BFDBFE",
+                    background: "var(--metric-bg-neutral)",
+                    border: "1px solid var(--metric-border-neutral)",
                     borderRadius: 12,
                   }}
                 >
@@ -1261,22 +1262,23 @@ export default function DashboardPage() {
                     style={{
                       width: 38,
                       height: 38,
-                      background: "#DBEAFE",
+                      background: "var(--icon-bg-blue)",
                       borderRadius: 10,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
+                      color: "var(--icon-color-blue)",
                     }}
                   >
-                    <Wrench size={18} color="#1D4ED8" />
+                    <Wrench size={18} />
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#1E40AF" }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
                       {agendaHoy.maintenances}{" "}
                       {agendaHoy.maintenances === 1 ? "mantenimiento" : "mantenimientos"}
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "#60A5FA" }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
                       Programados para hoy
                     </p>
                   </div>
@@ -1291,8 +1293,8 @@ export default function DashboardPage() {
                     alignItems: "center",
                     gap: 14,
                     padding: "12px 14px",
-                    background: "#FFFBEB",
-                    border: "1px solid #FDE68A",
+                    background: "var(--metric-bg-amber)",
+                    border: "1px solid var(--metric-border-amber)",
                     borderRadius: 12,
                   }}
                 >
@@ -1300,22 +1302,23 @@ export default function DashboardPage() {
                     style={{
                       width: 38,
                       height: 38,
-                      background: "#FEF3C7",
+                      background: "var(--icon-bg-amber)",
                       borderRadius: 10,
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
                       flexShrink: 0,
+                      color: "var(--icon-color-amber)",
                     }}
                   >
-                    <Wallet size={18} color="#D97706" />
+                    <Wallet size={18} />
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "#B45309" }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "var(--metric-value-amber)" }}>
                       {agendaHoy.paymentsDueToday}{" "}
                       {agendaHoy.paymentsDueToday === 1 ? "pago vence" : "pagos vencen"} hoy
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "#FBBF24" }}>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
                       Gastos administrativos
                     </p>
                   </div>
@@ -1453,17 +1456,13 @@ export default function DashboardPage() {
                         style={{
                           fontWeight: 700,
                           fontSize: 13,
-                          color: "#B91C1C",
+                          color: "var(--badge-text-red)",
                           display: "block",
                         }}
                       >
                         {row.amount}
                       </span>
-                      <AppBadge
-                        backgroundColor="#FEF2F2"
-                        textColor="#B91C1C"
-                        borderColor="#FECACA"
-                      >
+                      <AppBadge variant="red">
                         {row.daysOverdue}{" "}
                         {row.daysOverdue === 1 ? "día" : "días"}
                       </AppBadge>
@@ -1539,21 +1538,11 @@ export default function DashboardPage() {
                         {row.amount}
                       </span>
                       {row.paymentStatus === "overdue" ? (
-                        <AppBadge
-                          backgroundColor="#FEF2F2"
-                          textColor="#B91C1C"
-                          borderColor="#FECACA"
-                          style={{ whiteSpace: "nowrap" }}
-                        >
+                        <AppBadge variant="red" style={{ whiteSpace: "nowrap" }}>
                           Vencido
                         </AppBadge>
                       ) : (
-                        <AppBadge
-                          backgroundColor="#FFEDD5"
-                          textColor="#C2410C"
-                          borderColor="#FDBA74"
-                          style={{ whiteSpace: "nowrap" }}
-                        >
+                        <AppBadge variant="amber" style={{ whiteSpace: "nowrap" }}>
                           Próximo
                         </AppBadge>
                       )}

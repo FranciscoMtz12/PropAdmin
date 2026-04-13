@@ -72,25 +72,25 @@ type UnitTypeAssetCountRow = {
 
 const dropdownTriggerStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-  borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF",
-  color: "#111827", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)",
+  color: "var(--text-primary)", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
 };
 
 const dropdownMenuStyle: React.CSSProperties = {
   position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160,
-  borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF",
+  borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-card)",
   boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30,
 };
 
 const dropdownItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
-  border: "none", background: "transparent", color: "#111827",
+  border: "none", background: "transparent", color: "var(--text-primary)",
   borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
 const dropdownDeleteItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
-  border: "none", background: "#FEF2F2", color: "#B42318",
+  border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
   borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
@@ -473,7 +473,7 @@ export default function BuildingUnitTypesPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "white", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
         Cargando usuario...
       </div>
     );
@@ -483,7 +483,7 @@ export default function BuildingUnitTypesPage() {
 
   if (loadingData) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "white", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
         Cargando tipologías...
       </div>
     );
@@ -491,7 +491,7 @@ export default function BuildingUnitTypesPage() {
 
   if (!building) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "white", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
         <p>{msg || "No se encontró el edificio."}</p>
         <a href="/buildings" style={{ display: "inline-block", marginTop: "16px", color: "black" }}>
           Volver a edificios
@@ -525,28 +525,28 @@ export default function BuildingUnitTypesPage() {
         ) : (
           <div style={{ display: "grid", gap: "12px" }}>
             {unitTypes.map((unitType) => (
-              <div key={unitType.id} style={{ border: "1px solid #E5E7EB", borderRadius: "16px", padding: "18px", background: "white" }}>
+              <div key={unitType.id} style={{ border: "1px solid var(--border-default)", borderRadius: "16px", padding: "18px", background: "var(--bg-card)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "14px", background: "#EEF2FF", color: "#4338CA", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: "42px", height: "42px", borderRadius: "14px", background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <LayoutPanelTop size={18} />
                   </div>
                   <div>
                     <p style={{ fontWeight: "bold", marginBottom: "4px" }}>{unitType.name}</p>
-                    <p style={{ margin: 0, color: "#667085", fontSize: "14px" }}>Plantilla base del edificio</p>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>Plantilla base del edificio</p>
                   </div>
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "14px" }}>
-                  <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
-                  <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
-                  <div style={{ border: "1px solid #E5E7EB", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Assets base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Assets base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-                  <span style={{ border: "1px solid #E5E7EB", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><Sofa size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Sala: {unitType.has_living_room ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid #E5E7EB", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Comedor: {unitType.has_dining_room ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid #E5E7EB", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Patio: {unitType.has_patio ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid #E5E7EB", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Estufa: {unitType.stove_type}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><Sofa size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Sala: {unitType.has_living_room ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Comedor: {unitType.has_dining_room ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Patio: {unitType.has_patio ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Estufa: {unitType.stove_type}</span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -588,11 +588,11 @@ export default function BuildingUnitTypesPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
             ¿Archivar la tipología <strong>{unitTypeToDelete?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
@@ -613,17 +613,17 @@ export default function BuildingUnitTypesPage() {
         <form onSubmit={handleSubmitUnitType}>
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Nombre de la tipología</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Tipo A" style={{ width: "100%", padding: "12px", border: "1px solid #D0D5DD", borderRadius: "10px" }} />
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Tipo A" style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
             <div>
               <label style={{ display: "block", marginBottom: "8px" }}>Recámaras</label>
-              <input type="number" min={0} value={bedrooms} onChange={(e) => setBedrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid #D0D5DD", borderRadius: "10px" }} />
+              <input type="number" min={0} value={bedrooms} onChange={(e) => setBedrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
             </div>
             <div>
               <label style={{ display: "block", marginBottom: "8px" }}>Baños</label>
-              <input type="number" min={0} value={bathrooms} onChange={(e) => setBathrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid #D0D5DD", borderRadius: "10px" }} />
+              <input type="number" min={0} value={bathrooms} onChange={(e) => setBathrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
             </div>
           </div>
 
@@ -638,7 +638,7 @@ export default function BuildingUnitTypesPage() {
 
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Tipo de estufa</label>
-            <select value={stoveType} onChange={(e) => setStoveType(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid #D0D5DD", borderRadius: "10px", background: "white" }}>
+            <select value={stoveType} onChange={(e) => setStoveType(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px", background: "var(--bg-card)" }}>
               <option value="NONE">No tiene</option>
               <option value="GAS">Gas</option>
               <option value="ELECTRIC">Eléctrica</option>

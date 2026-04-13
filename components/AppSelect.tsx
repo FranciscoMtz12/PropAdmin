@@ -4,7 +4,8 @@
   AppSelect
 
   Select base reutilizable para todo el sistema.
-  Mantiene el mismo padding, borde y radio visual.
+  Theming: usa variables CSS para fondo, borde y texto — responde
+  automáticamente al dark/light mode.
 */
 
 import React from "react";
@@ -20,10 +21,10 @@ export default function AppSelect({ children, style, ...props }: AppSelectProps)
       style={{
         width: "100%",
         padding: 12,
-        border: "1px solid #D0D5DD",
+        border: "1px solid var(--border-default)",
         borderRadius: 10,
-        background: "white",
-        color: "#111827",
+        background: "var(--bg-input)",
+        color: "var(--text-primary)",
         outline: "none",
         ...style,
       }}

@@ -40,12 +40,12 @@ export default function UiButton({
     border:
       variant === "primary"
         ? "1px solid var(--accent)"
-        : "1px solid #E5E7EB",
+        : "1px solid var(--border-default)",
     borderRadius: "12px",
     padding: "11px 16px",
     /* Primary usa el color de acento de la empresa */
-    background: variant === "primary" ? "var(--accent)" : "white",
-    color: variant === "primary" ? "white" : "#111827",
+    background: variant === "primary" ? "var(--accent)" : "var(--bg-card)",
+    color: variant === "primary" ? "#ffffff" : "var(--text-primary)",
     fontWeight: 600,
     textDecoration: "none",
     cursor: disabled ? "not-allowed" : "pointer",

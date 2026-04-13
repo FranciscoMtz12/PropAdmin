@@ -80,10 +80,10 @@ type FormState = {
 const INPUT_STYLE: CSSProperties = {
   width: "100%",
   padding: 12,
-  border: "1px solid #D0D5DD",
+  border: "1px solid var(--border-default)",
   borderRadius: 10,
-  background: "white",
-  color: "#111827",
+  background: "var(--bg-input)",
+  color: "var(--text-primary)",
   outline: "none",
 };
 
@@ -625,9 +625,9 @@ export default function InvoiceForm({
                 style={{
                   padding: 14,
                   borderRadius: 12,
-                  background: sourceRecordId ? "#F0FDF4" : "#FFF7ED",
-                  border: sourceRecordId ? "1px solid #BBF7D0" : "1px solid #FED7AA",
-                  color: sourceRecordId ? "#166534" : "#9A3412",
+                  background: sourceRecordId ? "var(--metric-bg-green)" : "var(--metric-bg-amber)",
+                  border: sourceRecordId ? "1px solid var(--metric-border-green)" : "1px solid var(--metric-border-amber)",
+                  color: sourceRecordId ? "var(--metric-value-green)" : "var(--badge-text-amber)",
                   fontSize: 14,
                   fontWeight: 600,
                 }}
@@ -673,7 +673,7 @@ export default function InvoiceForm({
             </AppFormField>
 
             {selectedRecord ? (
-              <AppCard style={{ background: "#F8FAFC", borderStyle: "dashed" }}>
+              <AppCard style={{ background: "var(--bg-card-hover)", borderStyle: "dashed" }}>
                 <div style={{ display: "grid", gap: 10 }}>
                   <InfoRow label="Cobro" value={selectedRecord.title} />
                   <InfoRow label="Periodo" value={selectedRecord.periodLabel} />
@@ -801,19 +801,19 @@ export default function InvoiceForm({
             subtitle="Aquí guardamos la metadata principal y los archivos originales que vas a probar desde la interfaz."
             icon={<Upload size={18} />}
           >
-            <AppCard style={{ background: "#F8FAFC", borderStyle: "dashed" }}>
+            <AppCard style={{ background: "var(--bg-card-hover)", borderStyle: "dashed" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                 <WandSparkles size={16} />
-                <div style={{ fontWeight: 700, color: "#111827" }}>
+                <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
                   Autollenado desde XML
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: "#667085", lineHeight: 1.6 }}>
+              <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
                 Cuando selecciones un XML CFDI válido, intentaré leerlo para completar la
                 información principal automáticamente.
               </div>
               {xmlAutofillStatus ? (
-                <div style={{ marginTop: 10, fontSize: 13, color: "#475467" }}>
+                <div style={{ marginTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
                   {xmlAutofillStatus}
                 </div>
               ) : null}
@@ -878,9 +878,9 @@ export default function InvoiceForm({
               </AppFormField>
             </AppGrid>
 
-            <AppCard style={{ background: "#F8FAFC" }}>
-              <div style={{ fontSize: 13, color: "#475467", marginBottom: 6 }}>Total visible</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "#111827" }}>{totalPreview}</div>
+            <AppCard style={{ background: "var(--bg-card-hover)" }}>
+              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>Total visible</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>{totalPreview}</div>
             </AppCard>
 
             <AppFormField label="Descripción">
@@ -931,7 +931,7 @@ export default function InvoiceForm({
             </AppGrid>
 
             {selectedPdfFile || selectedXmlFile ? (
-              <AppCard style={{ background: "#FFFBEB", borderColor: "#FDE68A" }}>
+              <AppCard style={{ background: "var(--metric-bg-amber)", borderColor: "var(--metric-border-amber)" }}>
                 <div style={{ display: "grid", gap: 8 }}>
                   {selectedPdfFile ? <InfoRow label="PDF nuevo" value={selectedPdfFile.name} /> : null}
                   {selectedXmlFile ? <InfoRow label="XML nuevo" value={selectedXmlFile.name} /> : null}
@@ -948,8 +948,8 @@ export default function InvoiceForm({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-      <span style={{ fontSize: 13, color: "#667085", fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: 14, color: "#111827", fontWeight: 700 }}>{value || "—"}</span>
+      <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 700 }}>{value || "—"}</span>
     </div>
   );
 }

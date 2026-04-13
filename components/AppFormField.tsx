@@ -4,11 +4,7 @@
   AppFormField
 
   Wrapper reutilizable para campos de formulario en todo PropAdmin.
-
-  Beneficios:
-  - evita repetir label + spacing + helper + error
-  - mantiene consistencia visual en modales y formularios
-  - funciona con input, select, textarea o cualquier child
+  Theming: usa variables CSS — responde al dark/light mode automáticamente.
 */
 
 import React from "react";
@@ -36,11 +32,11 @@ export default function AppFormField({
           marginBottom: 8,
           fontSize: 14,
           fontWeight: 600,
-          color: "#111827",
+          color: "var(--text-primary)",
         }}
       >
         {label}
-        {required ? <span style={{ color: "#DC2626" }}> *</span> : null}
+        {required ? <span style={{ color: "var(--badge-text-red)" }}> *</span> : null}
       </label>
 
       {children}
@@ -51,7 +47,7 @@ export default function AppFormField({
             marginTop: 8,
             marginBottom: 0,
             fontSize: 12,
-            color: "#667085",
+            color: "var(--text-muted)",
           }}
         >
           {helperText}
@@ -65,7 +61,7 @@ export default function AppFormField({
             marginBottom: 0,
             fontSize: 12,
             fontWeight: 600,
-            color: "#DC2626",
+            color: "var(--badge-text-red)",
           }}
         >
           {error}

@@ -108,8 +108,8 @@ const iconBoxStyle: CSSProperties = {
   width: 44,
   height: 44,
   borderRadius: 14,
-  background: "#EEF2FF",
-  color: "#4338CA",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -119,29 +119,29 @@ const iconBoxStyle: CSSProperties = {
 const mutedTextStyle: CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const sectionTitleStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const valueStyle: CSSProperties = {
   fontSize: 18,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
   minHeight: 48,
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
+  border: "1px solid var(--border-default)",
   padding: "0 14px",
-  background: "#FFFFFF",
-  color: "#111827",
+  background: "var(--bg-card)",
+  color: "var(--text-primary)",
   fontSize: 14,
   fontWeight: 600,
   outline: "none",
@@ -151,10 +151,10 @@ const textareaStyle: CSSProperties = {
   width: "100%",
   minHeight: 110,
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
+  border: "1px solid var(--border-default)",
   padding: "12px 14px",
-  background: "#FFFFFF",
-  color: "#111827",
+  background: "var(--bg-card)",
+  color: "var(--text-primary)",
   fontSize: 14,
   fontWeight: 500,
   outline: "none",
@@ -284,9 +284,9 @@ function getStatusVisual(status?: string | null) {
   if (status === "approved") {
     return {
       label: "Aprobado",
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      color: "#166534",
+      background: "var(--icon-bg-green)",
+      border: "var(--metric-border-green)",
+      color: "var(--badge-text-green)",
       icon: <CheckCircle2 size={14} />,
     };
   }
@@ -294,18 +294,18 @@ function getStatusVisual(status?: string | null) {
   if (status === "rejected") {
     return {
       label: "Rechazado",
-      background: "#FEF2F2",
-      border: "#FECACA",
-      color: "#B91C1C",
+      background: "var(--badge-bg-red)",
+      border: "1px solid var(--metric-border-red)",
+      color: "var(--badge-text-red)",
       icon: <XCircle size={14} />,
     };
   }
 
   return {
     label: "Pendiente de revisión",
-    background: "#FEF3C7",
-    border: "#FDE68A",
-    color: "#92400E",
+    background: "var(--icon-bg-amber)",
+    border: "var(--metric-border-amber)",
+    color: "var(--badge-text-amber)",
     icon: <Clock3 size={14} />,
   };
 }
@@ -890,9 +890,9 @@ export default function PortalReportPaymentPage() {
                     onClick={goBackToTenants}
                     style={{
                       ...actionButtonStyle,
-                      background: "#FFFFFF",
-                      color: "#111827",
-                      border: "1px solid #D1D5DB",
+                      background: "var(--bg-card)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--border-default)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
@@ -908,8 +908,8 @@ export default function PortalReportPaymentPage() {
                     disabled={!effectiveTenantId}
                     style={{
                       ...actionButtonStyle,
-                      background: "#111827",
-                      color: "#FFFFFF",
+                      background: "var(--text-primary)",
+                      color: "var(--bg-card)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
@@ -926,8 +926,8 @@ export default function PortalReportPaymentPage() {
                     disabled={!effectiveTenantId}
                     style={{
                       ...actionButtonStyle,
-                      background: "#4F46E5",
-                      color: "#FFFFFF",
+                      background: "var(--accent)",
+                      color: "var(--bg-card)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
@@ -948,16 +948,16 @@ export default function PortalReportPaymentPage() {
         <AppCard
           style={{
             marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
+            border: "1px solid var(--metric-border-red)",
+            background: "var(--badge-bg-red)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <div
               style={{
                 ...iconBoxStyle,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--badge-bg-red)",
+                color: "var(--badge-text-red)",
               }}
             >
               <AlertTriangle size={18} />
@@ -1075,7 +1075,7 @@ export default function PortalReportPaymentPage() {
 
             <form onSubmit={handleSubmit} style={{ display: "grid", gap: 16 }}>
               <div style={{ display: "grid", gap: 8 }}>
-                <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                   Adeudo a reportar
                 </label>
 
@@ -1110,13 +1110,13 @@ export default function PortalReportPaymentPage() {
                   style={{
                     padding: 14,
                     borderRadius: 12,
-                    background: "#F8FAFC",
-                    border: "1px solid #E5E7EB",
+                    background: "var(--bg-card-hover)",
+                    border: "1px solid var(--border-default)",
                     display: "grid",
                     gap: 12,
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                     {selectedDebt.label}
                   </div>
 
@@ -1129,25 +1129,25 @@ export default function PortalReportPaymentPage() {
                   >
                     <div>
                       <div style={mutedTextStyle}>Edificio</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                         {selectedDebt.buildingLabel}
                       </div>
                     </div>
                     <div>
                       <div style={mutedTextStyle}>Unidad</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                         {selectedDebt.unitLabel}
                       </div>
                     </div>
                     <div>
                       <div style={mutedTextStyle}>Vencimiento</div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                         {selectedDebt.dueDateLabel}
                       </div>
                     </div>
                     <div>
                       <div style={mutedTextStyle}>Saldo pendiente</div>
-                      <div style={{ fontSize: 16, fontWeight: 800, color: "#111827" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
                         {formatCurrency(selectedDebt.pendingAmount)}
                       </div>
                     </div>
@@ -1156,7 +1156,7 @@ export default function PortalReportPaymentPage() {
               ) : null}
 
               <div style={{ display: "grid", gap: 10 }}>
-                <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                   ¿Qué monto quieres reportar?
                 </label>
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -1168,8 +1168,8 @@ export default function PortalReportPaymentPage() {
                       padding: "10px 12px",
                       borderRadius: 12,
                       border: amountMode === "full" ? "1px solid #86EFAC" : "1px solid #D1D5DB",
-                      background: amountMode === "full" ? "#F0FDF4" : "#FFFFFF",
-                      color: "#111827",
+                      background: amountMode === "full" ? "var(--metric-bg-green)" : "var(--bg-card)",
+                      color: "var(--text-primary)",
                       fontSize: 14,
                       fontWeight: 600,
                     }}
@@ -1191,8 +1191,8 @@ export default function PortalReportPaymentPage() {
                       padding: "10px 12px",
                       borderRadius: 12,
                       border: amountMode === "other" ? "1px solid #93C5FD" : "1px solid #D1D5DB",
-                      background: amountMode === "other" ? "#EFF6FF" : "#FFFFFF",
-                      color: "#111827",
+                      background: amountMode === "other" ? "var(--metric-bg-neutral)" : "var(--bg-card)",
+                      color: "var(--text-primary)",
                       fontSize: 14,
                       fontWeight: 600,
                     }}
@@ -1216,7 +1216,7 @@ export default function PortalReportPaymentPage() {
                 }}
               >
                 <div style={{ display: "grid", gap: 8 }}>
-                  <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                  <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                     Monto reportado
                   </label>
                   <input
@@ -1228,7 +1228,7 @@ export default function PortalReportPaymentPage() {
                     }
                     style={{
                       ...inputStyle,
-                      background: amountMode === "full" ? "#F9FAFB" : "#FFFFFF",
+                      background: amountMode === "full" ? "var(--bg-card-hover)" : "var(--bg-card)",
                     }}
                     placeholder="0.00"
                     disabled={(isSuperAdmin && !allowSuperadminSubmission) || amountMode === "full"}
@@ -1241,7 +1241,7 @@ export default function PortalReportPaymentPage() {
                 </div>
 
                 <div style={{ display: "grid", gap: 8 }}>
-                  <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                  <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                     Fecha del pago
                   </label>
                   <input
@@ -1258,7 +1258,7 @@ export default function PortalReportPaymentPage() {
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                   Notas
                 </label>
                 <textarea
@@ -1271,7 +1271,7 @@ export default function PortalReportPaymentPage() {
               </div>
 
               <div style={{ display: "grid", gap: 8 }}>
-                <label style={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
                   Comprobante
                 </label>
 
@@ -1283,18 +1283,18 @@ export default function PortalReportPaymentPage() {
                     minHeight: 54,
                     borderRadius: 12,
                     border: "1px dashed #C7D2FE",
-                    background: "#F8FAFC",
+                    background: "var(--bg-card-hover)",
                     padding: "0 14px",
                     cursor: isSuperAdmin && !allowSuperadminSubmission ? "not-allowed" : "pointer",
                     opacity: isSuperAdmin && !allowSuperadminSubmission ? 0.7 : 1,
                   }}
                 >
-                  <Upload size={16} color="#4F46E5" />
+                  <Upload size={16} color="var(--accent, #4F46E5)" />
                   <span
                     style={{
                       fontSize: 14,
                       fontWeight: 600,
-                      color: "#374151",
+                      color: "var(--text-secondary)",
                     }}
                   >
                     {proofFile
@@ -1322,9 +1322,9 @@ export default function PortalReportPaymentPage() {
                     gap: 10,
                     padding: "12px 14px",
                     borderRadius: 12,
-                    border: "1px solid #D1D5DB",
-                    background: allowSuperadminSubmission ? "#EEF2FF" : "#F9FAFB",
-                    color: "#111827",
+                    border: "1px solid var(--border-default)",
+                    background: allowSuperadminSubmission ? "var(--icon-bg-purple)" : "var(--bg-card-hover)",
+                    color: "var(--text-primary)",
                     fontSize: 14,
                     fontWeight: 600,
                   }}
@@ -1343,9 +1343,9 @@ export default function PortalReportPaymentPage() {
                   style={{
                     padding: 12,
                     borderRadius: 12,
-                    background: "#FEF2F2",
-                    border: "1px solid #FECACA",
-                    color: "#B91C1C",
+                    background: "var(--badge-bg-red)",
+                    border: "1px solid var(--metric-border-red)",
+                    color: "var(--badge-text-red)",
                     fontSize: 14,
                     fontWeight: 600,
                   }}
@@ -1359,9 +1359,9 @@ export default function PortalReportPaymentPage() {
                   style={{
                     padding: 12,
                     borderRadius: 12,
-                    background: "#ECFDF5",
-                    border: "1px solid #A7F3D0",
-                    color: "#065F46",
+                    background: "var(--icon-bg-green)",
+                    border: "1px solid var(--metric-border-green)",
+                    color: "var(--badge-text-green)",
                     fontSize: 14,
                     fontWeight: 600,
                     display: "flex",
@@ -1407,8 +1407,8 @@ export default function PortalReportPaymentPage() {
                   padding: 14,
                   borderRadius: 12,
                   border: "1px dashed #D1D5DB",
-                  background: "#F9FAFB",
-                  color: "#6B7280",
+                  background: "var(--bg-card-hover)",
+                  color: "var(--text-muted)",
                   fontSize: 14,
                   fontWeight: 600,
                 }}
@@ -1431,8 +1431,8 @@ export default function PortalReportPaymentPage() {
                     <div
                       key={report.id}
                       style={{
-                        border: "1px solid #E5E7EB",
-                        background: "#FFFFFF",
+                        border: "1px solid var(--border-default)",
+                        background: "var(--bg-card)",
                         borderRadius: 14,
                         padding: 14,
                         display: "grid",
@@ -1449,7 +1449,7 @@ export default function PortalReportPaymentPage() {
                         }}
                       >
                         <div style={{ display: "grid", gap: 4 }}>
-                          <div style={{ fontSize: 15, fontWeight: 700, color: "#111827" }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
                             {reportLabel}
                           </div>
                           <div style={mutedTextStyle}>
@@ -1514,15 +1514,15 @@ export default function PortalReportPaymentPage() {
                           style={{
                             padding: 12,
                             borderRadius: 12,
-                            background: "#F9FAFB",
-                            border: "1px solid #E5E7EB",
+                            background: "var(--bg-card-hover)",
+                            border: "1px solid var(--border-default)",
                           }}
                         >
                           <div
                             style={{
                               fontSize: 14,
                               fontWeight: 700,
-                              color: "#111827",
+                              color: "var(--text-primary)",
                               marginBottom: 4,
                             }}
                           >
@@ -1537,21 +1537,21 @@ export default function PortalReportPaymentPage() {
                           style={{
                             padding: 12,
                             borderRadius: 12,
-                            background: "#FEF2F2",
-                            border: "1px solid #FECACA",
+                            background: "var(--badge-bg-red)",
+                            border: "1px solid var(--metric-border-red)",
                           }}
                         >
                           <div
                             style={{
                               fontSize: 14,
                               fontWeight: 700,
-                              color: "#991B1B",
+                              color: "var(--badge-text-red)",
                               marginBottom: 4,
                             }}
                           >
                             Motivo del rechazo
                           </div>
-                          <div style={{ ...mutedTextStyle, color: "#991B1B" }}>
+                          <div style={{ ...mutedTextStyle, color: "var(--badge-text-red)" }}>
                             {report.rejection_reason}
                           </div>
                         </div>
@@ -1584,7 +1584,7 @@ export default function PortalReportPaymentPage() {
                               padding: "10px 12px",
                               borderRadius: 12,
                               border: "1px dashed #D1D5DB",
-                              color: "#6B7280",
+                              color: "var(--text-muted)",
                               fontSize: 13,
                               fontWeight: 700,
                             }}
@@ -1599,7 +1599,7 @@ export default function PortalReportPaymentPage() {
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 6,
-                              color: "#6B7280",
+                              color: "var(--text-muted)",
                               fontSize: 13,
                               fontWeight: 600,
                             }}

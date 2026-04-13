@@ -68,7 +68,7 @@ export default function PageHeader({
               </h1>
 
               {subtitle ? (
-                <p style={{ color: "#667085", maxWidth: "760px", margin: 0 }}>
+                <p style={{ color: "var(--text-muted)", maxWidth: "760px", margin: 0 }}>
                   {subtitle}
                 </p>
               ) : null}

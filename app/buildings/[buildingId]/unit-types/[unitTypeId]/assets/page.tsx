@@ -250,7 +250,7 @@ export default function UnitTypeAssetsPage() {
         style={{
           minHeight: "100vh",
           padding: "40px",
-          background: "white",
+          background: "var(--bg-card)",
           color: "black",
         }}
       >
@@ -267,7 +267,7 @@ export default function UnitTypeAssetsPage() {
         style={{
           minHeight: "100vh",
           padding: "40px",
-          background: "white",
+          background: "var(--bg-card)",
           color: "black",
         }}
       >
@@ -282,7 +282,7 @@ export default function UnitTypeAssetsPage() {
         style={{
           minHeight: "100vh",
           padding: "40px",
-          background: "white",
+          background: "var(--bg-card)",
           color: "black",
         }}
       >
@@ -344,10 +344,10 @@ export default function UnitTypeAssetsPage() {
               <div
                 key={asset.id}
                 style={{
-                  border: "1px solid #E5E7EB",
+                  border: "1px solid var(--border-default)",
                   borderRadius: "16px",
                   padding: "16px",
-                  background: "white",
+                  background: "var(--bg-card)",
                 }}
               >
                 <div
@@ -363,7 +363,7 @@ export default function UnitTypeAssetsPage() {
                     <p style={{ fontWeight: "bold", marginBottom: "4px" }}>
                       {asset.name}
                     </p>
-                    <p style={{ margin: 0, color: "#667085", fontSize: "14px" }}>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>
                       {asset.asset_type}
                     </p>
                   </div>
@@ -379,7 +379,7 @@ export default function UnitTypeAssetsPage() {
                 >
                   <span
                     style={{
-                      border: "1px solid #E5E7EB",
+                      border: "1px solid var(--border-default)",
                       borderRadius: 999,
                       padding: "6px 10px",
                       fontSize: "12px",
@@ -390,7 +390,7 @@ export default function UnitTypeAssetsPage() {
 
                   <span
                     style={{
-                      border: "1px solid #E5E7EB",
+                      border: "1px solid var(--border-default)",
                       borderRadius: 999,
                       padding: "6px 10px",
                       fontSize: "12px",
@@ -411,16 +411,16 @@ export default function UnitTypeAssetsPage() {
                     <button
                       type="button"
                       onClick={() => setOpenActionsAssetId(openActionsAssetId === asset.id ? null : asset.id)}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF", color: "#111827", padding: "8px 10px", cursor: "pointer" }}
+                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", padding: "8px 10px", cursor: "pointer" }}
                       aria-label="Más acciones"
                     >
                       <MoreHorizontal size={16} />
                     </button>
                     {openActionsAssetId === asset.id && (
-                      <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160, borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                      <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
                         <a
                           href={`/buildings/${building.id}/unit-types/${unitType.id}/assets/${asset.id}`}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                         >
                           <Edit3 size={14} />
                           Editar
@@ -428,7 +428,7 @@ export default function UnitTypeAssetsPage() {
                         <button
                           type="button"
                           onClick={() => openDeleteModal(asset)}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "#FEF2F2", color: "#B42318", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                         >
                           <Trash2 size={14} />
                           Archivar
@@ -445,11 +445,11 @@ export default function UnitTypeAssetsPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar equipo base" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
             ¿Archivar el equipo base <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
@@ -478,9 +478,9 @@ export default function UnitTypeAssetsPage() {
               style={{
                 width: "100%",
                 padding: "12px",
-                border: "1px solid #D0D5DD",
+                border: "1px solid var(--border-default)",
                 borderRadius: "10px",
-                background: "white",
+                background: "var(--bg-card)",
               }}
             >
               <option value="MINISPLIT">MINISPLIT</option>
@@ -505,7 +505,7 @@ export default function UnitTypeAssetsPage() {
               style={{
                 width: "100%",
                 padding: "12px",
-                border: "1px solid #D0D5DD",
+                border: "1px solid var(--border-default)",
                 borderRadius: "10px",
               }}
             />
@@ -521,9 +521,9 @@ export default function UnitTypeAssetsPage() {
               style={{
                 width: "100%",
                 padding: "12px",
-                border: "1px solid #D0D5DD",
+                border: "1px solid var(--border-default)",
                 borderRadius: "10px",
-                background: "white",
+                background: "var(--bg-card)",
               }}
             >
               <option value="ACTIVE">ACTIVE</option>
@@ -542,7 +542,7 @@ export default function UnitTypeAssetsPage() {
               style={{
                 width: "100%",
                 padding: "12px",
-                border: "1px solid #D0D5DD",
+                border: "1px solid var(--border-default)",
                 borderRadius: "10px",
                 minHeight: "100px",
                 resize: "vertical",
@@ -561,7 +561,7 @@ export default function UnitTypeAssetsPage() {
               style={{
                 width: "100%",
                 padding: "12px",
-                border: "1px solid #D0D5DD",
+                border: "1px solid var(--border-default)",
                 borderRadius: "10px",
               }}
             />

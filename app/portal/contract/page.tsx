@@ -61,8 +61,8 @@ const iconBoxStyle: React.CSSProperties = {
   width: 44,
   height: 44,
   borderRadius: 14,
-  background: "#EEF2FF",
-  color: "#4338CA",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
@@ -72,19 +72,19 @@ const iconBoxStyle: React.CSSProperties = {
 const mutedTextStyle: React.CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const sectionTitleStyle: React.CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const valueStyle: React.CSSProperties = {
   fontSize: 18,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const actionButtonStyle: React.CSSProperties = {
@@ -227,7 +227,7 @@ function DetailRow({
       <div
         style={{
           fontSize: 13,
-          color: "#6B7280",
+          color: "var(--text-muted)",
           fontWeight: 600,
         }}
       >
@@ -237,7 +237,7 @@ function DetailRow({
       <div
         style={{
           fontSize: 14,
-          color: "#111827",
+          color: "var(--text-primary)",
           fontWeight: 600,
           wordBreak: "break-word",
         }}
@@ -457,10 +457,10 @@ export default function PortalContractPage() {
                     width: "100%",
                     minHeight: 48,
                     borderRadius: 12,
-                    border: "1px solid #D1D5DB",
+                    border: "1px solid var(--border-default)",
                     padding: "0 14px",
-                    background: "#FFFFFF",
-                    color: "#111827",
+                    background: "var(--bg-card)",
+                    color: "var(--text-primary)",
                     fontSize: 14,
                     fontWeight: 600,
                     outline: "none",
@@ -486,9 +486,9 @@ export default function PortalContractPage() {
                     onClick={goBackToTenants}
                     style={{
                       ...actionButtonStyle,
-                      background: "#FFFFFF",
-                      color: "#111827",
-                      border: "1px solid #D1D5DB",
+                      background: "var(--bg-card)",
+                      color: "var(--text-primary)",
+                      border: "1px solid var(--border-default)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
@@ -504,8 +504,8 @@ export default function PortalContractPage() {
                     disabled={!effectiveTenantId}
                     style={{
                       ...actionButtonStyle,
-                      background: "#111827",
-                      color: "#FFFFFF",
+                      background: "var(--text-primary)",
+                      color: "var(--bg-card)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
@@ -522,8 +522,8 @@ export default function PortalContractPage() {
                     disabled={!effectiveTenantId}
                     style={{
                       ...actionButtonStyle,
-                      background: "#4F46E5",
-                      color: "#FFFFFF",
+                      background: "var(--accent)",
+                      color: "var(--bg-card)",
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 8,
@@ -544,16 +544,16 @@ export default function PortalContractPage() {
         <AppCard
           style={{
             marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
+            border: "1px solid var(--metric-border-red)",
+            background: "var(--badge-bg-red)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
             <div
               style={{
                 ...iconBoxStyle,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--badge-bg-red)",
+                color: "var(--badge-text-red)",
               }}
             >
               <AlertTriangle size={18} />

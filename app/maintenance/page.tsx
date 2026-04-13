@@ -241,11 +241,11 @@ function renderViewTab(
       type="button"
       onClick={onClick}
       style={{
-        border: "1px solid #E5E7EB",
+        border: "1px solid var(--border-default)",
         borderRadius: 999,
         padding: "6px 12px",
-        background: active ? "#EEF2FF" : "#F3F4F6",
-        color: active ? "#4338CA" : "#374151",
+        background: active ? "var(--badge-bg-blue)" : "var(--bg-page)",
+        color: active ? "var(--badge-text-blue)" : "var(--text-primary)",
         fontSize: 13,
         fontWeight: 700,
         cursor: "pointer",
@@ -438,9 +438,9 @@ export default function MaintenancePage() {
           title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
           subtitle: `${log.title} · ${formatLogType(log.log_type)}`,
           kind: "done",
-          colorBackground: "#FFF7ED",
-          colorBorder: "#FED7AA",
-          colorText: "#9A3412",
+          colorBackground: "var(--metric-bg-amber)",
+          colorBorder: "var(--metric-border-amber)",
+          colorText: "var(--metric-value-amber)",
         };
       });
 
@@ -459,9 +459,9 @@ export default function MaintenancePage() {
           title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
           subtitle: `${log.title} · Próximo`,
           kind: "upcoming",
-          colorBackground: "#FEF3C7",
-          colorBorder: "#FCD34D",
-          colorText: "#92400E",
+          colorBackground: "var(--badge-bg-amber)",
+          colorBorder: "var(--metric-border-amber)",
+          colorText: "var(--badge-text-amber)",
         };
       });
 
@@ -531,9 +531,9 @@ export default function MaintenancePage() {
         title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
         subtitle: `${log.title} · ${formatLogType(log.log_type)}`,
         kind: "done" as const,
-        colorBackground: "#FFF7ED",
-        colorBorder: "#FED7AA",
-        colorText: "#9A3412",
+        colorBackground: "var(--metric-bg-amber)",
+        colorBorder: "var(--metric-border-amber)",
+        colorText: "var(--metric-value-amber)",
       }));
 
     const upcomingEvents = filteredLogs
@@ -548,9 +548,9 @@ export default function MaintenancePage() {
         title: `${log.building_label}${log.unit_label ? ` · ${log.unit_label}` : ""}`,
         subtitle: `${log.title} · Próximo`,
         kind: "upcoming" as const,
-        colorBackground: "#FEF3C7",
-        colorBorder: "#FCD34D",
-        colorText: "#92400E",
+        colorBackground: "var(--badge-bg-amber)",
+        colorBorder: "var(--metric-border-amber)",
+        colorText: "var(--badge-text-amber)",
       }));
 
     [...doneEvents, ...upcomingEvents]
@@ -662,7 +662,7 @@ export default function MaintenancePage() {
   if (loading) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando usuario...</div>
+        <div style={{ padding: "32px 0", color: "var(--text-secondary)" }}>Cargando usuario...</div>
       </PageContainer>
     );
   }
@@ -672,7 +672,7 @@ export default function MaintenancePage() {
   if (loadingData) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando mantenimiento...</div>
+        <div style={{ padding: "32px 0", color: "var(--text-secondary)" }}>Cargando mantenimiento...</div>
       </PageContainer>
     );
   }
@@ -691,8 +691,8 @@ export default function MaintenancePage() {
             marginBottom: 16,
             padding: "12px 14px",
             borderRadius: 12,
-            background: "#FEF2F2",
-            color: "#B91C1C",
+            background: "var(--badge-bg-red)",
+            color: "var(--badge-text-red)",
             fontSize: 14,
             fontWeight: 600,
           }}
@@ -807,7 +807,7 @@ export default function MaintenancePage() {
                   gap: 8,
                   fontSize: 13,
                   fontWeight: 700,
-                  color: "#6B7280",
+                  color: "var(--text-secondary)",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -823,9 +823,9 @@ export default function MaintenancePage() {
                   minWidth: 240,
                   padding: "10px 12px",
                   borderRadius: 12,
-                  border: "1px solid #E5E7EB",
-                  background: "#FFFFFF",
-                  color: "#111827",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-input)",
+                  color: "var(--text-primary)",
                   fontSize: 14,
                 }}
               >
@@ -854,10 +854,10 @@ export default function MaintenancePage() {
                     <div
                       key={day.key}
                       style={{
-                        border: "1px solid #E5E7EB",
+                        border: "1px solid var(--border-default)",
                         borderRadius: 16,
                         padding: 14,
-                        background: "#FFFFFF",
+                        background: "var(--bg-card)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 14,
@@ -869,7 +869,7 @@ export default function MaintenancePage() {
                           style={{
                             fontSize: 14,
                             fontWeight: 800,
-                            color: "#111827",
+                            color: "var(--text-primary)",
                           }}
                         >
                           {day.label}
@@ -879,7 +879,7 @@ export default function MaintenancePage() {
                           style={{
                             fontSize: 12,
                             fontWeight: 600,
-                            color: "#6B7280",
+                            color: "var(--text-secondary)",
                           }}
                         >
                           {day.shortDate}
@@ -891,10 +891,10 @@ export default function MaintenancePage() {
                           style={{
                             borderRadius: 12,
                             padding: "10px 10px",
-                            background: "#F9FAFB",
-                            border: "1px dashed #D1D5DB",
+                            background: "var(--bg-page)",
+                            border: "1px dashed var(--border-strong)",
                             fontSize: 12,
-                            color: "#6B7280",
+                            color: "var(--text-secondary)",
                             fontWeight: 600,
                           }}
                         >
@@ -963,10 +963,10 @@ export default function MaintenancePage() {
                     <div
                       key={day.isoDate}
                       style={{
-                        border: "1px solid #E5E7EB",
+                        border: "1px solid var(--border-default)",
                         borderRadius: 16,
                         padding: 12,
-                        background: "#FFFFFF",
+                        background: "var(--bg-card)",
                         display: "flex",
                         flexDirection: "column",
                         gap: 10,
@@ -977,7 +977,7 @@ export default function MaintenancePage() {
                         style={{
                           fontSize: 13,
                           fontWeight: 800,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {day.dayNumber} · {day.label}
@@ -988,10 +988,10 @@ export default function MaintenancePage() {
                           style={{
                             borderRadius: 10,
                             padding: "8px 8px",
-                            background: "#F9FAFB",
-                            border: "1px dashed #D1D5DB",
+                            background: "var(--bg-page)",
+                            border: "1px dashed var(--border-strong)",
                             fontSize: 11,
-                            color: "#6B7280",
+                            color: "var(--text-secondary)",
                             fontWeight: 600,
                           }}
                         >
@@ -1041,7 +1041,7 @@ export default function MaintenancePage() {
                               style={{
                                 fontSize: 10.5,
                                 fontWeight: 700,
-                                color: "#6B7280",
+                                color: "var(--text-secondary)",
                               }}
                             >
                               + {dayEvents.length - 3} más
@@ -1067,10 +1067,10 @@ export default function MaintenancePage() {
                   <div
                     key={month.monthLabel}
                     style={{
-                      border: "1px solid #E5E7EB",
+                      border: "1px solid var(--border-default)",
                       borderRadius: 16,
                       padding: 14,
-                      background: "#FFFFFF",
+                      background: "var(--bg-card)",
                       display: "flex",
                       flexDirection: "column",
                       gap: 10,
@@ -1081,7 +1081,7 @@ export default function MaintenancePage() {
                       style={{
                         fontSize: 14,
                         fontWeight: 800,
-                        color: "#111827",
+                        color: "var(--text-primary)",
                       }}
                     >
                       {month.monthLabel}
@@ -1098,11 +1098,11 @@ export default function MaintenancePage() {
                         style={{
                           borderRadius: 10,
                           padding: "10px 10px",
-                          background: "#FFF7ED",
-                          border: "1px solid #FED7AA",
+                          background: "var(--metric-bg-amber)",
+                          border: "1px solid var(--metric-border-amber)",
                           fontSize: 12,
                           fontWeight: 700,
-                          color: "#9A3412",
+                          color: "var(--metric-value-amber)",
                         }}
                       >
                         Realizados: {month.done}
@@ -1112,11 +1112,11 @@ export default function MaintenancePage() {
                         style={{
                           borderRadius: 10,
                           padding: "10px 10px",
-                          background: "#FEF3C7",
-                          border: "1px solid #FCD34D",
+                          background: "var(--badge-bg-amber)",
+                          border: "1px solid var(--metric-border-amber)",
                           fontSize: 12,
                           fontWeight: 700,
-                          color: "#92400E",
+                          color: "var(--badge-text-amber)",
                         }}
                       >
                         Próximos: {month.upcoming}
@@ -1126,7 +1126,7 @@ export default function MaintenancePage() {
                         style={{
                           fontSize: 12,
                           fontWeight: 700,
-                          color: "#6B7280",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         Total: {month.total}
@@ -1156,11 +1156,11 @@ export default function MaintenancePage() {
                 width: 14,
                 height: 14,
                 borderRadius: 999,
-                background: "#F97316",
+                background: "var(--icon-color-amber)",
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Realizado
             </span>
           </div>
@@ -1173,11 +1173,11 @@ export default function MaintenancePage() {
                 width: 14,
                 height: 14,
                 borderRadius: 999,
-                background: "#EAB308",
+                background: "var(--badge-text-amber)",
                 flexShrink: 0,
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "#111827" }}>
+            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
               Próximo / programado
             </span>
           </div>

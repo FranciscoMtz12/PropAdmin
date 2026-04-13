@@ -20,7 +20,7 @@
   - agregar soft delete para assets
 */
 
-import { useEffect, useMemo, useState, type CSSProperties, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   AlertTriangle,
@@ -50,6 +50,12 @@ import AppTabs from "@/components/AppTabs";
 import AppFormField from "@/components/AppFormField";
 import AppSelect from "@/components/AppSelect";
 import AppBadge from "@/components/AppBadge";
+
+import {
+  INPUT_STYLE,
+  dangerButtonStyle,
+  errorBannerStyle,
+} from "@/lib/pageStyles";
 
 type AssetRow = {
   id: string;
@@ -93,58 +99,6 @@ type TimelineItem = {
 
 type TabKey = "summary" | "timeline" | "documents";
 
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: 12,
-  border: "1px solid #D0D5DD",
-  borderRadius: 10,
-  background: "white",
-  color: "#111827",
-  outline: "none",
-};
-
-const dangerButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 10,
-  border: "1px solid #FECACA",
-  background: "#FEF2F2",
-  color: "#B91C1C",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
-const dangerPrimaryButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 10,
-  border: "1px solid #DC2626",
-  background: "#DC2626",
-  color: "white",
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const ghostButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 10,
-  border: "1px solid #D0D5DD",
-  background: "white",
-  color: "#344054",
-  fontWeight: 600,
-  cursor: "pointer",
-};
-
 function formatDate(dateValue: string | null | undefined) {
   if (!dateValue) return "No registrada";
 
@@ -180,19 +134,19 @@ function getAssetStatusLabel(status: string | null | undefined) {
 function getAssetStatusBadge(status: string | null | undefined) {
   switch ((status || "").toUpperCase()) {
     case "ACTIVE":
-      return { background: "#DCFCE7", color: "#166534", border: "#BBF7D0" };
+      return { background: "var(--badge-bg-green)", color: "var(--badge-text-green)", border: "var(--metric-border-green)" };
     case "PENDING":
-      return { background: "#FEF3C7", color: "#B45309", border: "#FDE68A" };
+      return { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)", border: "var(--metric-border-amber)" };
     case "INACTIVE":
-      return { background: "#F3F4F6", color: "#374151", border: "#E5E7EB" };
+      return { background: "var(--badge-bg-gray)", color: "var(--badge-text-gray)", border: "var(--border-default)" };
     case "MAINTENANCE":
-      return { background: "#FEF3C7", color: "#92400E", border: "#FDE68A" };
+      return { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)", border: "var(--metric-border-amber)" };
     case "BROKEN":
-      return { background: "#FEE2E2", color: "#991B1B", border: "#FECACA" };
+      return { background: "var(--badge-bg-red)", color: "var(--badge-text-red)", border: "var(--metric-border-red)" };
     case "REPLACED":
-      return { background: "#E5E7EB", color: "#374151", border: "#D1D5DB" };
+      return { background: "var(--badge-bg-gray)", color: "var(--badge-text-gray)", border: "var(--border-default)" };
     default:
-      return { background: "#EFF6FF", color: "#1D4ED8", border: "#BFDBFE" };
+      return { background: "var(--badge-bg-blue)", color: "var(--badge-text-blue)", border: "var(--border-default)" };
   }
 }
 
@@ -433,7 +387,7 @@ export default function AssetDetailPage() {
             </UiButton>
           }
         />
-        {msg ? <p style={{ color: "crimson" }}>{msg}</p> : null}
+        {msg ? <p style={{ color: "var(--badge-text-red)" }}>{msg}</p> : null}
       </PageContainer>
     );
   }
@@ -480,7 +434,7 @@ export default function AssetDetailPage() {
       {msg ? (
         <p
           style={{
-            color: msg.includes("correctamente") ? "green" : "crimson",
+            color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
             marginBottom: 16,
           }}
         >
@@ -502,8 +456,8 @@ export default function AssetDetailPage() {
               <AssetTypeIcon assetType={asset.asset_type || "OTHER"} size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Tipo</p>
-              <strong>{asset.asset_type || "No definido"}</strong>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Tipo</p>
+              <strong style={{ color: "var(--text-primary)" }}>{asset.asset_type || "No definido"}</strong>
             </div>
           </div>
         </AppCard>
@@ -514,8 +468,8 @@ export default function AssetDetailPage() {
               <Hash size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Departamento</p>
-              <strong>{unitLabel}</strong>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Departamento</p>
+              <strong style={{ color: "var(--text-primary)" }}>{unitLabel}</strong>
             </div>
           </div>
         </AppCard>
@@ -526,8 +480,8 @@ export default function AssetDetailPage() {
               <CalendarDays size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Fecha de alta</p>
-              <strong>{formatDate(asset.created_at)}</strong>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Fecha de alta</p>
+              <strong style={{ color: "var(--text-primary)" }}>{formatDate(asset.created_at)}</strong>
             </div>
           </div>
         </AppCard>
@@ -538,7 +492,7 @@ export default function AssetDetailPage() {
               <ShieldCheck size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Estatus</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Estatus</p>
               <div style={{ marginTop: 6 }}>
                 <AppBadge
                   backgroundColor={statusBadge.background}
@@ -580,20 +534,20 @@ export default function AssetDetailPage() {
             >
               <div style={{ display: "grid", gap: 14 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Nombre</p>
-                  <strong>{asset.name || "No registrado"}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Nombre</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{asset.name || "No registrado"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Tipo</p>
-                  <strong>{asset.asset_type || "No definido"}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Tipo</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{asset.asset_type || "No definido"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Icono sugerido</p>
-                  <strong>{asset.icon_name || "No registrado"}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Icono sugerido</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{asset.icon_name || "No registrado"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Fecha de creación</p>
-                  <strong>{formatDate(asset.created_at)}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Fecha de creación</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{formatDate(asset.created_at)}</strong>
                 </div>
               </div>
             </SectionCard>
@@ -605,26 +559,26 @@ export default function AssetDetailPage() {
             >
               <div style={{ display: "grid", gap: 14 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Edificio</p>
-                  <strong>{building.name}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Edificio</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{building.name}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Departamento</p>
-                  <strong>{unitLabel}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Departamento</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{unitLabel}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Piso</p>
-                  <strong>{unit.floor ?? "No registrado"}</strong>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Piso</p>
+                  <strong style={{ color: "var(--text-primary)" }}>{unit.floor ?? "No registrado"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
                     Estatus del departamento
                   </p>
-                  <strong>{unit.status || "No definido"}</strong>
+                  <strong style={{ color: "var(--text-primary)" }}>{unit.status || "No definido"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Notas</p>
-                  <p style={{ marginTop: 6 }}>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Notas</p>
+                  <p style={{ marginTop: 6, color: "var(--text-secondary)" }}>
                     {asset.notes || "Todavía no hay notas registradas para este equipo."}
                   </p>
                 </div>
@@ -650,8 +604,8 @@ export default function AssetDetailPage() {
                         }}
                       >
                         <div>
-                          <strong>{item.title}</strong>
-                          <p style={{ margin: "6px 0 0", color: "#667085" }}>{item.subtitle}</p>
+                          <strong style={{ color: "var(--text-primary)" }}>{item.title}</strong>
+                          <p style={{ margin: "6px 0 0", color: "var(--text-muted)" }}>{item.subtitle}</p>
                         </div>
                         <AppBadge>{item.dateLabel}</AppBadge>
                       </div>
@@ -660,7 +614,7 @@ export default function AssetDetailPage() {
                 </AppCard>
               ))
             ) : (
-              <p style={{ margin: 0, color: "#667085" }}>
+              <p style={{ margin: 0, color: "var(--text-muted)" }}>
                 Todavía no hay movimientos visibles para este asset.
               </p>
             )}
@@ -673,7 +627,7 @@ export default function AssetDetailPage() {
             subtitle="Esta sección queda lista para conectar archivos específicos del equipo."
             icon={<FileText size={18} />}
           >
-            <p style={{ margin: 0, color: "#667085" }}>
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
               Todavía no hay documentos cargados para este asset.
             </p>
           </SectionCard>
@@ -692,7 +646,7 @@ export default function AssetDetailPage() {
               value={assetName}
               onChange={(e) => setAssetName(e.target.value)}
               placeholder="Ej. Frigobar Whirlpool"
-              style={inputStyle}
+              style={INPUT_STYLE}
             />
           </AppFormField>
 
@@ -718,7 +672,7 @@ export default function AssetDetailPage() {
               value={iconName}
               onChange={(e) => setIconName(e.target.value)}
               placeholder="Ej. fridge, snowflake, tv"
-              style={inputStyle}
+              style={INPUT_STYLE}
             />
           </AppFormField>
 
@@ -739,7 +693,7 @@ export default function AssetDetailPage() {
               onChange={(e) => setNotes(e.target.value)}
               rows={5}
               placeholder="Detalles útiles para operación, revisión o mantenimiento..."
-              style={{ ...inputStyle, resize: "vertical" }}
+              style={{ ...INPUT_STYLE, resize: "vertical" }}
             />
           </AppFormField>
 
@@ -768,8 +722,8 @@ export default function AssetDetailPage() {
               alignItems: "flex-start",
               padding: 14,
               borderRadius: 12,
-              background: "#FEF2F2",
-              border: "1px solid #FECACA",
+              background: "var(--badge-bg-red)",
+              border: "1px solid var(--metric-border-red)",
             }}
           >
             <div
@@ -777,8 +731,8 @@ export default function AssetDetailPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--icon-bg-red)",
+                color: "var(--icon-color-red)",
                 display: "grid",
                 placeItems: "center",
                 flexShrink: 0,
@@ -788,10 +742,10 @@ export default function AssetDetailPage() {
             </div>
 
             <div>
-              <p style={{ margin: 0, fontWeight: 700, color: "#991B1B" }}>
+              <p style={{ margin: 0, fontWeight: 700, color: "var(--badge-text-red)" }}>
                 ¿Seguro que quieres eliminar este asset?
               </p>
-              <p style={{ margin: "6px 0 0", color: "#7F1D1D" }}>
+              <p style={{ margin: "6px 0 0", color: "var(--badge-text-red)", opacity: 0.85 }}>
                 El asset <strong>{asset.name}</strong> dejará de aparecer en las vistas normales del
                 sistema. Esta acción está pensada para limpieza operativa y pruebas.
               </p>
@@ -799,37 +753,32 @@ export default function AssetDetailPage() {
           </div>
 
           <div style={{ display: "grid", gap: 8 }}>
-            <p style={{ margin: 0, color: "#667085" }}>
-              Edificio: <strong>{building.name}</strong>
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
+              Edificio: <strong style={{ color: "var(--text-primary)" }}>{building.name}</strong>
             </p>
-            <p style={{ margin: 0, color: "#667085" }}>
-              Departamento: <strong>{unitLabel}</strong>
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
+              Departamento: <strong style={{ color: "var(--text-primary)" }}>{unitLabel}</strong>
             </p>
-            <p style={{ margin: 0, color: "#667085" }}>
-              Asset: <strong>{asset.name}</strong>
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
+              Asset: <strong style={{ color: "var(--text-primary)" }}>{asset.name}</strong>
             </p>
           </div>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button
-              type="button"
+            <UiButton
               onClick={() => setIsDeleteModalOpen(false)}
               disabled={deleting}
-              style={{
-                ...ghostButtonStyle,
-                opacity: deleting ? 0.7 : 1,
-                cursor: deleting ? "not-allowed" : "pointer",
-              }}
+              variant="secondary"
             >
               Cancelar
-            </button>
+            </UiButton>
 
             <button
               type="button"
               onClick={() => void handleDeleteAsset()}
               disabled={deleting}
               style={{
-                ...dangerPrimaryButtonStyle,
+                ...dangerButtonStyle,
                 opacity: deleting ? 0.7 : 1,
                 cursor: deleting ? "not-allowed" : "pointer",
               }}

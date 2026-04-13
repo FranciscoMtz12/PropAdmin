@@ -4,15 +4,8 @@
   AppStatBar
 
   Barra visual para mostrar progreso o composición.
-
-  Casos de uso:
-  - ocupación de edificio
-  - pagos cobrados vs pendientes
-  - mantenimiento completado vs programado
-  - assets activos vs en revisión
+  Theming: usa variables CSS — responde al dark/light mode automáticamente.
 */
-
-import React from "react";
 
 type Segment = {
   label: string;
@@ -36,10 +29,10 @@ export default function AppStatBar({
   return (
     <div
       style={{
-        border: "1px solid #E5E7EB",
+        border: "1px solid var(--border-default)",
         borderRadius: 16,
         padding: 18,
-        background: "white",
+        background: "var(--bg-card)",
       }}
     >
       <div
@@ -51,8 +44,8 @@ export default function AppStatBar({
           marginBottom: 12,
         }}
       >
-        <strong style={{ fontSize: 15, color: "#101828" }}>{title}</strong>
-        <span style={{ fontSize: 13, color: "#667085" }}>
+        <strong style={{ fontSize: 15, color: "var(--text-primary)" }}>{title}</strong>
+        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
           {totalLabel || `Total: ${total}`}
         </span>
       </div>
@@ -64,7 +57,7 @@ export default function AppStatBar({
           height: 12,
           borderRadius: 999,
           overflow: "hidden",
-          background: "#F2F4F7",
+          background: "var(--divider)",
           marginBottom: 14,
         }}
       >
@@ -100,8 +93,8 @@ export default function AppStatBar({
                 display: "inline-block",
               }}
             />
-            <span style={{ fontSize: 13, color: "#475467" }}>
-              {segment.label}: <strong style={{ color: "#101828" }}>{segment.value}</strong>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+              {segment.label}: <strong style={{ color: "var(--text-primary)" }}>{segment.value}</strong>
             </span>
           </div>
         ))}

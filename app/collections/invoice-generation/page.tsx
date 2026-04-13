@@ -90,13 +90,13 @@ type LeaseInvoiceGroup = {
 const sectionTextStyle: CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const strongValueStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const badgeBaseStyle: CSSProperties = {
@@ -187,9 +187,9 @@ function getGeneralStatusVisual(status: GeneralStatus) {
   if (status === "generated") {
     return {
       label: "Facturas generadas",
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      color: "#166534",
+      background: "var(--badge-bg-green)",
+      border: "var(--metric-border-green)",
+      color: "var(--badge-text-green)",
       icon: <CheckCircle2 size={14} />,
     };
   }
@@ -197,18 +197,18 @@ function getGeneralStatusVisual(status: GeneralStatus) {
   if (status === "partial") {
     return {
       label: "Parcial",
-      background: "#EEF2FF",
-      border: "#C7D2FE",
-      color: "#3730A3",
+      background: "var(--icon-bg-purple)",
+      border: "var(--border-default)",
+      color: "var(--icon-color-purple)",
       icon: <FileText size={14} />,
     };
   }
 
   return {
     label: "Pendiente de generar",
-    background: "#FEF3C7",
-    border: "#FDE68A",
-    color: "#92400E",
+    background: "var(--icon-bg-amber)",
+    border: "var(--metric-border-amber)",
+    color: "var(--badge-text-amber)",
     icon: <CalendarClock size={14} />,
   };
 }
@@ -217,17 +217,17 @@ function getConceptStatusVisual(status: "pending" | "generated") {
   if (status === "generated") {
     return {
       label: "Generada",
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      color: "#166534",
+      background: "var(--badge-bg-green)",
+      border: "var(--metric-border-green)",
+      color: "var(--badge-text-green)",
     };
   }
 
   return {
     label: "Pendiente",
-    background: "#FEF3C7",
-    border: "#FDE68A",
-    color: "#92400E",
+    background: "var(--icon-bg-amber)",
+    border: "var(--metric-border-amber)",
+    color: "var(--badge-text-amber)",
   };
 }
 
@@ -559,7 +559,7 @@ export default function InvoiceGenerationPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#FEF3C7",
+                background: "var(--icon-bg-amber)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -579,7 +579,7 @@ export default function InvoiceGenerationPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#EEF2FF",
+                background: "var(--icon-bg-purple)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -599,7 +599,7 @@ export default function InvoiceGenerationPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#DCFCE7",
+                background: "var(--icon-bg-green)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -619,7 +619,7 @@ export default function InvoiceGenerationPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#F3F4F6",
+                background: "var(--bg-card-hover)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -665,8 +665,8 @@ export default function InvoiceGenerationPage() {
         <AppCard
           style={{
             marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
+            border: "1px solid var(--metric-border-red)",
+            background: "var(--badge-bg-red)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -675,8 +675,8 @@ export default function InvoiceGenerationPage() {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--badge-bg-red)",
+                color: "var(--badge-text-red)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -691,7 +691,7 @@ export default function InvoiceGenerationPage() {
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 Ocurrió un problema
@@ -755,7 +755,7 @@ export default function InvoiceGenerationPage() {
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 6,
-                            color: "#374151",
+                            color: "var(--text-secondary)",
                             fontSize: 14,
                             fontWeight: 700,
                           }}
@@ -769,7 +769,7 @@ export default function InvoiceGenerationPage() {
                             display: "inline-flex",
                             alignItems: "center",
                             gap: 6,
-                            color: "#6B7280",
+                            color: "var(--text-muted)",
                             fontSize: 14,
                             fontWeight: 600,
                           }}
@@ -829,9 +829,9 @@ export default function InvoiceGenerationPage() {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 8,
-                        border: "1px solid #D1D5DB",
-                        background: "#FFFFFF",
-                        color: "#374151",
+                        border: "1px solid var(--border-default)",
+                        background: "var(--bg-card)",
+                        color: "var(--text-secondary)",
                         borderRadius: 12,
                         padding: "10px 14px",
                         fontSize: 14,
@@ -856,7 +856,7 @@ export default function InvoiceGenerationPage() {
                   {isExpanded ? (
                     <div
                       style={{
-                        borderTop: "1px solid #E5E7EB",
+                        borderTop: "1px solid var(--border-default)",
                         paddingTop: 14,
                         display: "grid",
                         gap: 12,
@@ -871,9 +871,9 @@ export default function InvoiceGenerationPage() {
                           <div
                             key={`${group.lease_id}-${concept.concept_code}`}
                             style={{
-                              border: "1px solid #E5E7EB",
+                              border: "1px solid var(--border-default)",
                               borderRadius: 14,
-                              background: "#FAFAFA",
+                              background: "var(--bg-card-hover)",
                               padding: 14,
                               display: "grid",
                               gap: 12,
@@ -895,7 +895,7 @@ export default function InvoiceGenerationPage() {
                                   gap: 8,
                                   fontSize: 15,
                                   fontWeight: 800,
-                                  color: "#111827",
+                                  color: "var(--text-primary)",
                                 }}
                               >
                                 {getConceptIcon(concept.concept_code)}

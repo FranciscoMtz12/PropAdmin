@@ -270,7 +270,7 @@ function getStatusColors(status: ExpenseDisplayStatus) {
 
   if (status === "due_today") {
     return {
-      background: "#FFF7ED",
+      background: "var(--metric-bg-amber)",
       border: "#FDBA74",
       text: "#C2410C",
     };
@@ -285,7 +285,7 @@ function getStatusColors(status: ExpenseDisplayStatus) {
   }
 
   return {
-    background: "#FEF2F2",
+    background: "var(--badge-bg-red)",
     border: "#FECACA",
     text: "#B91C1C",
   };
@@ -307,38 +307,38 @@ function getIdentifierLabel(expenseType: ExpenseType) {
 
 function getServiceVisual(type: ExpenseType) {
   if (type === "electricity") {
-    return { icon: <Zap size={16} />, background: "#FEF3C7", color: "#CA8A04" };
+    return { icon: <Zap size={16} />, background: "var(--icon-bg-amber)", color: "#CA8A04" };
   }
 
   if (type === "water") {
-    return { icon: <Droplet size={16} />, background: "#DBEAFE", color: "#2563EB" };
+    return { icon: <Droplet size={16} />, background: "var(--icon-bg-blue)", color: "var(--badge-text-blue)" };
   }
 
   if (type === "gas") {
-    return { icon: <Flame size={16} />, background: "#FFEDD5", color: "#EA580C" };
+    return { icon: <Flame size={16} />, background: "var(--metric-bg-amber)", color: "#EA580C" };
   }
 
   if (type === "internet") {
-    return { icon: <Globe size={16} />, background: "#E0F2FE", color: "#0284C7" };
+    return { icon: <Globe size={16} />, background: "var(--icon-bg-blue)", color: "#0284C7" };
   }
 
   if (type === "phone") {
-    return { icon: <Phone size={16} />, background: "#F3E8FF", color: "#7C3AED" };
+    return { icon: <Phone size={16} />, background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)" };
   }
 
   if (type === "maintenance_service") {
-    return { icon: <Wrench size={16} />, background: "#FFEDD5", color: "#C2410C" };
+    return { icon: <Wrench size={16} />, background: "var(--metric-bg-amber)", color: "#C2410C" };
   }
 
   if (type === "security") {
-    return { icon: <Shield size={16} />, background: "#FEE2E2", color: "#DC2626" };
+    return { icon: <Shield size={16} />, background: "var(--badge-bg-red)", color: "#DC2626" };
   }
 
   if (type === "cleaning_service") {
-    return { icon: <Sparkles size={16} />, background: "#DCFCE7", color: "#16A34A" };
+    return { icon: <Sparkles size={16} />, background: "var(--icon-bg-green)", color: "#16A34A" };
   }
 
-  return { icon: <Package size={16} />, background: "#E5E7EB", color: "#4B5563" };
+  return { icon: <Package size={16} />, background: "var(--bg-card-hover)", color: "var(--text-secondary)" };
 }
 
 function getDueDayFromDate(dateKey: string) {
@@ -1288,7 +1288,7 @@ export default function PaymentsPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>
           Cargando módulo de pagos...
         </div>
       </PageContainer>
@@ -1309,7 +1309,7 @@ export default function PaymentsPage() {
           value={String(totalRecords)}
           helper={selectedBuildingLabel}
           icon={
-            <div style={getMetricIconBoxStyle("#E0F2FE")}>
+            <div style={getMetricIconBoxStyle("var(--icon-bg-blue)")}>
               <ReceiptText size={18} color="#0284C7" />
             </div>
           }
@@ -1320,7 +1320,7 @@ export default function PaymentsPage() {
           value={formatCurrency(pendingAmount)}
           helper="No pagado"
           icon={
-            <div style={getMetricIconBoxStyle("#DBEAFE")}>
+            <div style={getMetricIconBoxStyle("var(--icon-bg-blue)")}>
               <CreditCard size={18} color="#2563EB" />
             </div>
           }
@@ -1335,7 +1335,7 @@ export default function PaymentsPage() {
           value={String(paidCount)}
           helper="Pagos realizados"
           icon={
-            <div style={getMetricIconBoxStyle("#DCFCE7")}>
+            <div style={getMetricIconBoxStyle("var(--icon-bg-green)")}>
               <CheckCircle2 size={18} color="#16A34A" />
             </div>
           }
@@ -1346,7 +1346,7 @@ export default function PaymentsPage() {
           value={String(pendingCount)}
           helper={nextPendingLabel}
           icon={
-            <div style={getMetricIconBoxStyle("#FEF3C7")}>
+            <div style={getMetricIconBoxStyle("var(--icon-bg-amber)")}>
               <Clock3 size={18} color="#D97706" />
             </div>
           }
@@ -1357,7 +1357,7 @@ export default function PaymentsPage() {
           value={String(dueTodayCount)}
           helper="Revisión inmediata"
           icon={
-            <div style={getMetricIconBoxStyle("#FFEDD5")}>
+            <div style={getMetricIconBoxStyle("var(--metric-bg-amber)")}>
               <AlertCircle size={18} color="#EA580C" />
             </div>
           }
@@ -1368,7 +1368,7 @@ export default function PaymentsPage() {
           value={String(overdueCount)}
           helper="Requieren atención"
           icon={
-            <div style={getMetricIconBoxStyle("#FEE2E2")}>
+            <div style={getMetricIconBoxStyle("var(--badge-bg-red)")}>
               <AlertCircle size={18} color="#DC2626" />
             </div>
           }
@@ -2220,9 +2220,9 @@ export default function PaymentsPage() {
               style={{
                 padding: "14px 16px",
                 borderRadius: 14,
-                background: "#FFF7ED",
+                background: "var(--metric-bg-amber)",
                 border: "1px solid #FED7AA",
-                color: "#9A3412",
+                color: "var(--badge-text-amber)",
                 fontSize: 14,
                 fontWeight: 600,
                 lineHeight: 1.5,
@@ -2298,8 +2298,8 @@ const inlineErrorStyle: CSSProperties = {
   marginBottom: 16,
   padding: "12px 14px",
   borderRadius: 12,
-  background: "#FEF2F2",
-  color: "#B91C1C",
+  background: "var(--badge-bg-red)",
+  color: "var(--badge-text-red)",
   fontSize: 14,
   fontWeight: 600,
 };
@@ -2322,7 +2322,7 @@ const filterLabelStyle: CSSProperties = {
   gap: 8,
   fontSize: 13,
   fontWeight: 700,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
@@ -2330,11 +2330,11 @@ const filterLabelStyle: CSSProperties = {
 const filterReadonlyStyle: CSSProperties = {
   minHeight: 42,
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   padding: "10px 12px",
   fontSize: 14,
-  color: "#374151",
+  color: "var(--text-secondary)",
   display: "flex",
   alignItems: "center",
 };
@@ -2358,29 +2358,29 @@ const fieldWrapStyle: CSSProperties = {
 const fieldLabelStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 700,
-  color: "#374151",
+  color: "var(--text-secondary)",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
   height: 42,
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   paddingInline: 12,
   fontSize: 14,
-  color: "#111827",
+  color: "var(--text-primary)",
   outline: "none",
 };
 
 const textareaStyle: CSSProperties = {
   width: "100%",
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   padding: 12,
   fontSize: 14,
-  color: "#111827",
+  color: "var(--text-primary)",
   outline: "none",
   resize: "vertical",
 };
@@ -2390,11 +2390,11 @@ const readonlyFieldStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   padding: "10px 12px",
   fontSize: 14,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const ghostButtonStyle: CSSProperties = {
@@ -2403,12 +2403,12 @@ const ghostButtonStyle: CSSProperties = {
   justifyContent: "center",
   gap: 8,
   borderRadius: 10,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   padding: "10px 14px",
   fontSize: 13,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
   cursor: "pointer",
 };
 
@@ -2419,9 +2419,9 @@ const iconOnlyButtonStyle: CSSProperties = {
   alignItems: "center",
   justifyContent: "center",
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
-  color: "#111827",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  color: "var(--text-primary)",
   cursor: "pointer",
 };
 
@@ -2429,8 +2429,8 @@ const emptyStateStyle: CSSProperties = {
   padding: "18px 16px",
   borderRadius: 14,
   border: "1px dashed #D1D5DB",
-  background: "#F9FAFB",
-  color: "#6B7280",
+  background: "var(--bg-card-hover)",
+  color: "var(--text-muted)",
   fontSize: 14,
 };
 
@@ -2450,17 +2450,17 @@ const thStyle: CSSProperties = {
   textAlign: "left",
   fontSize: 12,
   fontWeight: 800,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
-  borderBottom: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  borderBottom: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   position: "sticky",
   top: 0,
 };
 
 const rowStyle: CSSProperties = {
-  background: "#FFFFFF",
+  background: "var(--bg-card)",
 };
 
 const tdStyle: CSSProperties = {
@@ -2482,24 +2482,24 @@ const conceptDropdownButtonStyle: CSSProperties = {
 const conceptPrimaryTextStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 800,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const conceptSecondaryActionStyle: CSSProperties = {
   fontSize: 12,
-  color: "#2563EB",
+  color: "var(--badge-text-blue)",
   fontWeight: 600,
 };
 
 const cellPrimaryTextStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const cellSecondaryTextStyle: CSSProperties = {
   fontSize: 12,
-  color: "#9CA3AF",
+  color: "var(--text-placeholder)",
 };
 
 const statusButtonStyle: CSSProperties = {
@@ -2518,12 +2518,12 @@ const tableActionButtonStyle: CSSProperties = {
   alignItems: "center",
   gap: 8,
   borderRadius: 10,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   padding: "8px 10px",
   fontSize: 12,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
   cursor: "pointer",
 };
 
@@ -2532,20 +2532,20 @@ const tableDangerButtonStyle: CSSProperties = {
   alignItems: "center",
   gap: 8,
   borderRadius: 10,
-  border: "1px solid #FECACA",
-  background: "#FEF2F2",
+  border: "1px solid var(--metric-border-red)",
+  background: "var(--badge-bg-red)",
   padding: "8px 10px",
   fontSize: 12,
   fontWeight: 700,
-  color: "#B91C1C",
+  color: "var(--badge-text-red)",
   cursor: "pointer",
 };
 
 const inlineDetailsCardStyle: CSSProperties = {
   marginTop: 2,
   marginBottom: 10,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   borderRadius: 14,
   padding: 14,
 };
@@ -2564,25 +2564,25 @@ const detailBlockStyle: CSSProperties = {
 const detailLabelStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 700,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
 
 const detailValueStyle: CSSProperties = {
   fontSize: 14,
-  color: "#111827",
+  color: "var(--text-primary)",
   fontWeight: 600,
 };
 
 const notesBoxStyle: CSSProperties = {
   marginTop: 6,
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   padding: 12,
   fontSize: 13,
-  color: "#374151",
+  color: "var(--text-secondary)",
   lineHeight: 1.5,
 };
 
@@ -2600,16 +2600,16 @@ const deleteAlertBoxStyle: CSSProperties = {
   alignItems: "flex-start",
   padding: 14,
   borderRadius: 12,
-  background: "#FEF2F2",
-  border: "1px solid #FECACA",
+  background: "var(--badge-bg-red)",
+  border: "1px solid var(--metric-border-red)",
 };
 
 const deleteAlertIconWrapStyle: CSSProperties = {
   width: 36,
   height: 36,
   borderRadius: 10,
-  background: "#FEE2E2",
-  color: "#B91C1C",
+  background: "var(--badge-bg-red)",
+  color: "var(--badge-text-red)",
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
@@ -2618,19 +2618,19 @@ const deleteAlertIconWrapStyle: CSSProperties = {
 const deleteAlertTitleStyle: CSSProperties = {
   margin: 0,
   fontWeight: 700,
-  color: "#991B1B",
+  color: "var(--badge-text-red)",
 };
 
 const deleteAlertTextStyle: CSSProperties = {
   margin: "6px 0 0",
-  color: "#7F1D1D",
+  color: "var(--badge-text-red)",
   lineHeight: 1.5,
 };
 
 const deleteSummaryBoxStyle: CSSProperties = {
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   padding: 14,
   display: "grid",
   gap: 8,
@@ -2644,8 +2644,8 @@ const dangerPrimaryButtonStyle: CSSProperties = {
   padding: "10px 14px",
   borderRadius: 10,
   border: "1px solid #DC2626",
-  background: "#DC2626",
-  color: "#FFFFFF",
+  background: "var(--badge-text-red)",
+  color: "var(--bg-card)",
   fontWeight: 700,
   cursor: "pointer",
 };

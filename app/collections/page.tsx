@@ -455,7 +455,7 @@ function getStatusColors(status: CollectionStoredStatus) {
 
   if (status === "partial") {
     return {
-      background: "#EFF6FF",
+      background: "var(--metric-bg-neutral)",
       border: "#BFDBFE",
       text: "#1D4ED8",
     };
@@ -470,7 +470,7 @@ function getStatusColors(status: CollectionStoredStatus) {
   }
 
   return {
-    background: "#FEF2F2",
+    background: "var(--badge-bg-red)",
     border: "#FECACA",
     text: "#B91C1C",
   };
@@ -2060,7 +2060,7 @@ const preview: ImportPreviewData = {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>
           Cargando módulo de cobranza...
         </div>
       </PageContainer>
@@ -2099,8 +2099,8 @@ const preview: ImportPreviewData = {
             marginBottom: 16,
             padding: "12px 14px",
             borderRadius: 12,
-            background: "#FEF2F2",
-            color: "#B91C1C",
+            background: "var(--badge-bg-red)",
+            color: "var(--badge-text-red)",
             fontSize: 14,
             fontWeight: 600,
           }}
@@ -2127,7 +2127,7 @@ const preview: ImportPreviewData = {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#DCFCE7",
+                background: "var(--icon-bg-green)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -2147,7 +2147,7 @@ const preview: ImportPreviewData = {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#DBEAFE",
+                background: "var(--icon-bg-blue)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -2167,7 +2167,7 @@ const preview: ImportPreviewData = {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#FEF9C3",
+                background: "var(--metric-bg-amber)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -2187,7 +2187,7 @@ const preview: ImportPreviewData = {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#FEE2E2",
+                background: "var(--badge-bg-red)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -2207,7 +2207,7 @@ const preview: ImportPreviewData = {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#EEF2FF",
+                background: "var(--icon-bg-purple)",
                 display: "grid",
                 placeItems: "center",
               }}
@@ -2228,7 +2228,7 @@ const preview: ImportPreviewData = {
                   width: 36,
                   height: 36,
                   borderRadius: 10,
-                  background: pendingInvoiceUploadCount > 0 ? "#FEF3C7" : "#F3F4F6",
+                  background: pendingInvoiceUploadCount > 0 ? "var(--icon-bg-amber)" : "var(--bg-card-hover)",
                   display: "grid",
                   placeItems: "center",
                 }}
@@ -2265,9 +2265,9 @@ const preview: ImportPreviewData = {
                 <div
                   style={{
                     ...reviewBadgeStyle,
-                    background: reportedPendingCount > 0 ? "#FEF3C7" : "#ECFDF5",
-                    border: `1px solid ${reportedPendingCount > 0 ? "#FDE68A" : "#A7F3D0"}`,
-                    color: reportedPendingCount > 0 ? "#92400E" : "#166534",
+                    background: reportedPendingCount > 0 ? "var(--icon-bg-amber)" : "var(--icon-bg-green)",
+                    border: `1px solid ${reportedPendingCount > 0 ? "var(--metric-border-amber)" : "var(--metric-border-green)"}`,
+                    color: reportedPendingCount > 0 ? "var(--badge-text-amber)" : "var(--badge-text-green)",
                   }}
                 >
                   {reportedPendingCount > 0
@@ -2292,9 +2292,9 @@ const preview: ImportPreviewData = {
                 <div
                   style={{
                     ...reviewBadgeStyle,
-                    background: "#EEF2FF",
+                    background: "var(--icon-bg-purple)",
                     border: "1px solid #C7D2FE",
-                    color: "#3730A3",
+                    color: "var(--icon-color-purple)",
                   }}
                 >
                   Control mensual
@@ -2317,8 +2317,8 @@ const preview: ImportPreviewData = {
                 <div
                   style={{
                     ...reviewBadgeStyle,
-                    background: pendingInvoiceUploadCount > 0 ? "#FEF3C7" : "#F3F4F6",
-                    border: `1px solid ${pendingInvoiceUploadCount > 0 ? "#FDE68A" : "#E5E7EB"}`,
+                    background: pendingInvoiceUploadCount > 0 ? "var(--icon-bg-amber)" : "var(--bg-card-hover)",
+                    border: `1px solid ${pendingInvoiceUploadCount > 0 ? "var(--metric-border-amber)" : "var(--border-default)"}`,
                     color: pendingInvoiceUploadCount > 0 ? "#92400E" : "#374151",
                   }}
                 >
@@ -2717,8 +2717,8 @@ const preview: ImportPreviewData = {
           <div
             style={{
               ...importPreviewBannerStyle,
-              border: `1px solid ${importPreview ? "#BFDBFE" : "#E5E7EB"}`,
-              background: importPreview ? "#EFF6FF" : "#F9FAFB",
+              border: `1px solid ${importPreview ? "var(--border-default)" : "var(--border-default)"}`,
+              background: importPreview ? "var(--metric-bg-neutral)" : "var(--bg-card-hover)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -2838,7 +2838,7 @@ const preview: ImportPreviewData = {
                     type="date"
                     value={importForm.dueDate}
                     disabled
-                    style={{ ...inputStyle, background: "#F3F4F6", color: "#6B7280" }}
+                    style={{ ...inputStyle, background: "var(--bg-card-hover)", color: "var(--text-muted)" }}
                   />
                   <span style={fieldHelperStyle}>
                     Se calcula automáticamente como el último día del mes correspondiente al CFDI.
@@ -3313,7 +3313,7 @@ const preview: ImportPreviewData = {
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Vencimiento</span>
-                <input value={editRecordRow.dueDateLabel} disabled style={{ ...inputStyle, background: "#F3F4F6", color: "#6B7280" }} />
+                <input value={editRecordRow.dueDateLabel} disabled style={{ ...inputStyle, background: "var(--bg-card-hover)", color: "var(--text-muted)" }} />
               </label>
             </div>
 
@@ -3482,13 +3482,13 @@ const preview: ImportPreviewData = {
 const quickSectionTitleStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 800,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const quickSectionTextStyle: CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const reviewQuickGridStyle: CSSProperties = {
@@ -3503,8 +3503,8 @@ const reviewCardButtonStyle: CSSProperties = {
   textAlign: "left",
   padding: 16,
   borderRadius: 18,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   cursor: "pointer",
   transition: "transform 0.15s ease, box-shadow 0.15s ease",
   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
@@ -3520,8 +3520,8 @@ const reviewCardIconWrapStyle: CSSProperties = {
   width: 44,
   height: 44,
   borderRadius: 14,
-  background: "#EEF2FF",
-  color: "#4338CA",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
@@ -3550,8 +3550,8 @@ const compactFilterFieldStyle: CSSProperties = {
   gap: 10,
   padding: 14,
   borderRadius: 16,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
 };
 
 
@@ -3561,26 +3561,26 @@ const filterLabelStyle: CSSProperties = {
   gap: 8,
   fontSize: 13,
   fontWeight: 700,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
 
 const cellPrimaryStyle: CSSProperties = {
   fontSize: 13,
-  color: "#111827",
+  color: "var(--text-primary)",
   fontWeight: 700,
 };
 
 const cellPrimaryStrongStyle: CSSProperties = {
   fontSize: 13,
-  color: "#111827",
+  color: "var(--text-primary)",
   fontWeight: 800,
 };
 
 const cellSecondaryStyle: CSSProperties = {
   fontSize: 12,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const tableActionButtonStyle: CSSProperties = {
@@ -3590,9 +3590,9 @@ const tableActionButtonStyle: CSSProperties = {
   gap: 6,
   padding: "8px 10px",
   borderRadius: 10,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
-  color: "#374151",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  color: "var(--text-secondary)",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
@@ -3605,9 +3605,9 @@ const tablePrimaryButtonStyle: CSSProperties = {
   gap: 6,
   padding: "8px 10px",
   borderRadius: 10,
-  border: "1px solid #BFDBFE",
-  background: "#EFF6FF",
-  color: "#1D4ED8",
+  border: "1px solid var(--border-default)",
+  background: "var(--metric-bg-neutral)",
+  color: "var(--badge-text-blue)",
   fontSize: 12,
   fontWeight: 700,
 };
@@ -3633,8 +3633,8 @@ const collectionRowCardStyle: CSSProperties = {
   gap: 14,
   padding: 12,
   borderRadius: 20,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
   width: "100%",
   overflow: "hidden",
@@ -3648,7 +3648,7 @@ const headerCellWrapStyle: CSSProperties = {
 const headerPrimaryTextStyle: CSSProperties = {
   fontSize: 11,
   fontWeight: 900,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
   lineHeight: 1.1,
@@ -3656,7 +3656,7 @@ const headerPrimaryTextStyle: CSSProperties = {
 
 const headerSecondaryTextStyle: CSSProperties = {
   fontSize: 9,
-  color: "#9CA3AF",
+  color: "var(--text-placeholder)",
   fontWeight: 700,
   textTransform: "uppercase",
   letterSpacing: "0.03em",
@@ -3674,7 +3674,7 @@ const chargeIconWrapStyle: CSSProperties = {
   width: 40,
   height: 40,
   borderRadius: 14,
-  background: "#EEF2FF",
+  background: "var(--icon-bg-purple)",
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
@@ -3683,7 +3683,7 @@ const chargeIconWrapStyle: CSSProperties = {
 const rowTitleStyle: CSSProperties = {
   fontSize: 15,
   fontWeight: 800,
-  color: "#111827",
+  color: "var(--text-primary)",
   lineHeight: 1.15,
   wordBreak: "break-word",
 };
@@ -3695,7 +3695,7 @@ const detailToggleButtonStyle: CSSProperties = {
   border: "none",
   background: "transparent",
   padding: 0,
-  color: "#2563EB",
+  color: "var(--badge-text-blue)",
   fontSize: 12,
   fontWeight: 800,
   cursor: "pointer",
@@ -3718,14 +3718,14 @@ const rowSingleCellStyle: CSSProperties = {
 const rowPrimaryTextStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
-  color: "#111827",
+  color: "var(--text-primary)",
   lineHeight: 1.25,
   wordBreak: "break-word",
 };
 
 const rowSecondaryTextStyle: CSSProperties = {
   fontSize: 11,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   lineHeight: 1.25,
   wordBreak: "break-word",
 };
@@ -3733,7 +3733,7 @@ const rowSecondaryTextStyle: CSSProperties = {
 const rowMoneyPrimaryStyle: CSSProperties = {
   fontSize: 13,
   fontWeight: 900,
-  color: "#111827",
+  color: "var(--text-primary)",
   lineHeight: 1.2,
 };
 
@@ -3741,7 +3741,7 @@ const expandedRowWrapStyle: CSSProperties = {
   display: "grid",
   gap: 16,
   paddingTop: 16,
-  borderTop: "1px solid #E5E7EB",
+  borderTop: "1px solid var(--border-default)",
 };
 
 const inlineActionRowStyle: CSSProperties = {
@@ -3765,23 +3765,23 @@ const actionBaseButtonStyle: CSSProperties = {
 
 const inlineGreenButtonStyle: CSSProperties = {
   ...actionBaseButtonStyle,
-  background: "#16A34A",
-  borderColor: "#15803D",
-  color: "#FFFFFF",
+  background: "var(--metric-value-green)",
+  borderColor: "var(--metric-value-green)",
+  color: "var(--bg-card)",
 };
 
 const inlineBlueButtonStyle: CSSProperties = {
   ...actionBaseButtonStyle,
-  background: "#2563EB",
-  borderColor: "#1D4ED8",
-  color: "#FFFFFF",
+  background: "var(--badge-text-blue)",
+  borderColor: "var(--badge-text-blue)",
+  color: "var(--bg-card)",
 };
 
 const inlineRedButtonStyle: CSSProperties = {
   ...actionBaseButtonStyle,
-  background: "#DC2626",
-  borderColor: "#B91C1C",
-  color: "#FFFFFF",
+  background: "var(--badge-text-red)",
+  borderColor: "var(--badge-text-red)",
+  color: "var(--bg-card)",
 };
 
 const smallGhostButtonStyle: CSSProperties = {
@@ -3791,9 +3791,9 @@ const smallGhostButtonStyle: CSSProperties = {
   gap: 6,
   padding: "7px 10px",
   borderRadius: 10,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
-  color: "#374151",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  color: "var(--text-secondary)",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
@@ -3802,13 +3802,13 @@ const smallGhostButtonStyle: CSSProperties = {
 const dangerBoxStyle: CSSProperties = {
   padding: 14,
   borderRadius: 14,
-  border: "1px solid #FECACA",
-  background: "#FEF2F2",
+  border: "1px solid var(--metric-border-red)",
+  background: "var(--badge-bg-red)",
 };
 
 const fieldHelperStyle: CSSProperties = {
   fontSize: 12,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   lineHeight: 1.5,
 };
 
@@ -3823,14 +3823,14 @@ const detailBlockStyle: CSSProperties = {
   gap: 4,
   padding: 12,
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
 };
 
 const detailLabelStyle: CSSProperties = {
   fontSize: 11,
   fontWeight: 800,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
@@ -3838,13 +3838,13 @@ const detailLabelStyle: CSSProperties = {
 const detailValueStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const detailSectionTitleStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 800,
-  color: "#111827",
+  color: "var(--text-primary)",
   marginBottom: 10,
 };
 
@@ -3858,21 +3858,21 @@ const detailSectionHeaderStyle: CSSProperties = {
 
 const notesBoxStyle: CSSProperties = {
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   padding: 12,
   fontSize: 13,
-  color: "#4B5563",
+  color: "var(--text-secondary)",
   lineHeight: 1.6,
 };
 
 const emptyInlineBoxStyle: CSSProperties = {
   borderRadius: 12,
   border: "1px dashed #D1D5DB",
-  background: "#F9FAFB",
+  background: "var(--bg-card-hover)",
   padding: 14,
   fontSize: 13,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const detailListWrapStyle: CSSProperties = {
@@ -3887,16 +3887,16 @@ const detailListItemStyle: CSSProperties = {
   gap: 14,
   padding: 12,
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
 };
 
 const invoiceIconWrapStyle: CSSProperties = {
   width: 34,
   height: 34,
   borderRadius: 10,
-  background: "#EEF2FF",
-  color: "#4338CA",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   display: "grid",
   placeItems: "center",
   flexShrink: 0,
@@ -3904,8 +3904,8 @@ const invoiceIconWrapStyle: CSSProperties = {
 
 const paymentSummaryCardStyle: CSSProperties = {
   borderRadius: 14,
-  border: "1px solid #E5E7EB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   padding: 14,
 };
 
@@ -3916,8 +3916,8 @@ const importModalBodyStyle: CSSProperties = {
 
 const importIntroCardStyle: CSSProperties = {
   borderRadius: 16,
-  border: "1px solid #E5E7EB",
-  background: "#F8FAFC",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   padding: 14,
 };
 
@@ -3947,7 +3947,7 @@ const importPreviewMetaStackStyle: CSSProperties = {
 const importConceptPreviewTextStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
   lineHeight: 1.45,
   display: "-webkit-box",
   WebkitLineClamp: 4,
@@ -3977,7 +3977,7 @@ const fieldWrapStyle: CSSProperties = {
 const fieldLabelStyle: CSSProperties = {
   fontSize: 12,
   fontWeight: 800,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
@@ -3985,22 +3985,22 @@ const fieldLabelStyle: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: "100%",
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   padding: "10px 12px",
   fontSize: 14,
-  color: "#111827",
+  color: "var(--text-primary)",
   outline: "none",
 };
 
 const textareaStyle: CSSProperties = {
   width: "100%",
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   padding: "10px 12px",
   fontSize: 14,
-  color: "#111827",
+  color: "var(--text-primary)",
   outline: "none",
   resize: "vertical",
 };
@@ -4011,19 +4011,19 @@ const toggleCardStyle: CSSProperties = {
   gap: 10,
   padding: 12,
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#F9FAFB",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card-hover)",
   fontSize: 13,
-  color: "#374151",
+  color: "var(--text-secondary)",
   lineHeight: 1.5,
 };
 
 const oneTimeInfoStyle: CSSProperties = {
   padding: 12,
   borderRadius: 12,
-  border: "1px solid #BFDBFE",
-  background: "#EFF6FF",
-  color: "#1D4ED8",
+  border: "1px solid var(--border-default)",
+  background: "var(--metric-bg-neutral)",
+  color: "var(--badge-text-blue)",
   fontSize: 13,
   fontWeight: 600,
   lineHeight: 1.6,
@@ -4037,9 +4037,9 @@ const ghostButtonStyle: CSSProperties = {
   minWidth: 110,
   padding: "10px 14px",
   borderRadius: 12,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
-  color: "#374151",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  color: "var(--text-secondary)",
   fontSize: 14,
   fontWeight: 700,
   cursor: "pointer",

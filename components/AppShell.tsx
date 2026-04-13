@@ -1,19 +1,16 @@
 "use client";
 
 /*
-  AppShell — contenedor principal del layout con soporte de theming.
+  AppShell — contenedor principal del layout.
 
-  Es un client component porque necesita leer isDark desde ThemeContext
-  para aplicar el fondo correcto. El layout raíz (server component) lo
-  importa y lo usa como wrapper del área de contenido.
+  Usa variables CSS para el fondo y texto — responde automáticamente
+  cuando ThemeContext agrega/quita la clase .dark en <html>.
+  No necesita leer isDark directamente.
 */
 
 import type { ReactNode } from "react";
-import { useTheme } from "@/contexts/ThemeContext";
 
 export default function AppShell({ children }: { children: ReactNode }) {
-  const { isDark } = useTheme();
-
   return (
     <div
       style={{

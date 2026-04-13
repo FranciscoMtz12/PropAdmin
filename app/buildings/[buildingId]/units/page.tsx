@@ -1,20 +1,18 @@
 "use client";
 
 /*
-  Página para administrar departamentos (units) de un edificio específico.
+  Página de departamentos de un edificio — diseño v2.
 
-  Esta versión mantiene toda la lógica existente del sistema, pero actualiza la UI
-  para que siga el mismo design system global de PropAdmin:
-  - métricas arriba
-  - cards visuales con iconos
-  - badges de estado
-  - empty state consistente
-  - formulario de creación con AppFormField y AppSelect
+  Cambios visuales vs v1:
+  - MetricCards con colores semánticos: neutral / blue / green / amber
+  - Cards más compactas: número grande | badges + piso | inquilino si está ocupado
+  - Mini dona SVG (40px) en esquina superior derecha de cada card
+  - Grid de 2 columnas en desktop, 1 en móvil
+  - Ordenado por unit_number ASC
+  - Botón "Administrar assets" removido de la card (disponible desde el detalle)
+  - Se carga el nombre del inquilino activo para unidades OCCUPIED
 
-  Además sigue haciendo lo más importante:
-  - crear departamentos
-  - asociarlos a una tipología
-  - clonar automáticamente los assets base de la tipología elegida
+  Funcionalidad CRUD intacta: crear / editar / archivar departamento.
 */
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -29,6 +27,7 @@ import {
   MoreHorizontal,
   Plus,
   Trash2,
+  User,
   Warehouse,
   Wrench,
 } from "lucide-react";
@@ -42,15 +41,22 @@ import UiButton from "@/components/UiButton";
 import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
-import AppIconBox from "@/components/AppIconBox";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
 import AppFormField from "@/components/AppFormField";
 import AppSelect from "@/components/AppSelect";
+import {
+  INPUT_STYLE,
+  dropdownTriggerStyle,
+  dropdownMenuStyle,
+  dropdownActionButtonStyle,
+  dropdownDeleteItemStyle,
+  warnBannerStyle,
+  errorBannerStyle,
+} from "@/lib/pageStyles";
 
-/*
-  Tipo para el edificio actual.
-*/
+/* ─── Tipos ─────────────────────────────────────────────────────────── */
+
 type Building = {
   id: string;
   company_id: string;
@@ -59,18 +65,12 @@ type Building = {
   address: string | null;
 };
 
-/*
-  Tipo para las tipologías disponibles del edificio.
-*/
 type UnitType = {
   id: string;
   building_id: string;
   name: string;
 };
 
-/*
-  Tipo para un departamento con el nombre de su tipología.
-*/
 type UnitRow = {
   id: string;
   company_id: string;
@@ -80,139 +80,110 @@ type UnitRow = {
   display_code: string | null;
   floor: number | null;
   status: string;
-  unit_types: {
-    name: string;
-  } | null;
+  unit_types: { name: string } | null;
 };
 
-const dropdownTriggerStyle: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", justifyContent: "center",
-  borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF",
-  color: "#111827", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
-};
-
-const dropdownMenuStyle: React.CSSProperties = {
-  position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160,
-  borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF",
-  boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30,
-};
-
-const dropdownItemStyle: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
-  border: "none", background: "transparent", color: "#111827",
-  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-};
-
-const dropdownDeleteItemStyle: React.CSSProperties = {
-  display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
-  border: "none", background: "#FEF2F2", color: "#B42318",
-  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
-};
+/* ─── Helper: color de badge por estado ─────────────────────────────── */
 
 function getUnitStatusBadge(status: string | null | undefined) {
   switch ((status || "").toUpperCase()) {
     case "OCCUPIED":
       return {
         label: "Ocupado",
-        backgroundColor: "#DCFCE7",
-        textColor: "#166534",
-        borderColor: "#BBF7D0",
+        backgroundColor: "var(--badge-bg-green)",
+        textColor: "var(--badge-text-green)",
+        borderColor: "var(--metric-border-green)",
       };
     case "MAINTENANCE":
       return {
         label: "Mantenimiento",
-        backgroundColor: "#FEF3C7",
-        textColor: "#92400E",
-        borderColor: "#FDE68A",
+        backgroundColor: "var(--badge-bg-amber)",
+        textColor: "var(--badge-text-amber)",
+        borderColor: "var(--metric-border-amber)",
       };
     case "VACANT":
     default:
       return {
         label: "Vacante",
-        backgroundColor: "#EEF2FF",
-        textColor: "#4338CA",
-        borderColor: "#C7D2FE",
+        backgroundColor: "var(--badge-bg-blue)",
+        textColor: "var(--badge-text-blue)",
+        borderColor: "var(--metric-border-neutral)",
       };
   }
 }
 
-export default function BuildingUnitsPage() {
-  const router = useRouter();
-  const params = useParams();
-  const buildingId = params.buildingId as string;
+/* ─── Componente: mini dona de estado ───────────────────────────────── */
+/*
+  Anillo SVG sólido de 40px — indicador visual de estado por color.
+  Verde = OCCUPIED, amber = MAINTENANCE, gris = VACANT.
+*/
+function MiniStatusRing({ status }: { status: string }) {
+  const color =
+    status === "OCCUPIED"    ? "#10B981"
+    : status === "MAINTENANCE" ? "#F59E0B"
+    : "#9CA3AF";
 
+  return (
+    <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="20" cy="20" r="14" fill="none" stroke={color} strokeWidth="6" />
+    </svg>
+  );
+}
+
+/* ─── Página ─────────────────────────────────────────────────────────── */
+
+export default function BuildingUnitsPage() {
+  const router    = useRouter();
+  const params    = useParams();
+  const buildingId = params.buildingId as string;
   const { user, loading } = useCurrentUser();
 
-  /*
-    Estados principales de la página.
-  */
-  const [building, setBuilding] = useState<Building | null>(null);
-  const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
-  const [units, setUnits] = useState<UnitRow[]>([]);
+  /* Estado de datos */
+  const [building, setBuilding]     = useState<Building | null>(null);
+  const [unitTypes, setUnitTypes]   = useState<UnitType[]>([]);
+  const [units, setUnits]           = useState<UnitRow[]>([]);
+  const [tenantsByUnitId, setTenantsByUnitId] = useState<Map<string, string>>(new Map());
+  const [loadingData, setLoadingData] = useState(true);
+  const [msg, setMsg]               = useState("");
 
-  /*
-    Estados del formulario para crear departamentos.
-  */
-  const [unitNumber, setUnitNumber] = useState("");
+  /* Estado del formulario de creación */
+  const [unitNumber, setUnitNumber]           = useState("");
   const [selectedUnitTypeId, setSelectedUnitTypeId] = useState("");
-  const [floor, setFloor] = useState("");
+  const [floor, setFloor]                     = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [saving, setSaving]                   = useState(false);
 
-  /*
-    Estados del modal de archivar.
-  */
+  /* Estado del modal de archivar */
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [unitToDelete, setUnitToDelete] = useState<UnitRow | null>(null);
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-  const [deleting, setDeleting] = useState(false);
+  const [unitToDelete, setUnitToDelete]           = useState<UnitRow | null>(null);
+  const [deleteError, setDeleteError]             = useState<string | null>(null);
+  const [deleting, setDeleting]                   = useState(false);
 
-  /*
-    Estados del modal de edición.
-  */
+  /* Estado del modal de edición */
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingUnit, setEditingUnit] = useState<UnitRow | null>(null);
-  const [editUnitNumber, setEditUnitNumber] = useState("");
-  const [editFloor, setEditFloor] = useState("");
-  const [editUnitTypeId, setEditUnitTypeId] = useState("");
+  const [editingUnit, setEditingUnit]         = useState<UnitRow | null>(null);
+  const [editUnitNumber, setEditUnitNumber]   = useState("");
+  const [editFloor, setEditFloor]             = useState("");
+  const [editUnitTypeId, setEditUnitTypeId]   = useState("");
 
-  /*
-    Control de dropdown de acciones por unidad.
-  */
+  /* Control de dropdown por unidad */
   const [openActionsUnitId, setOpenActionsUnitId] = useState<string | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
-  /*
-    Estados auxiliares.
-  */
-  const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [loadingData, setLoadingData] = useState(true);
-
-  /*
-    Si no hay usuario, lo mandamos al login.
-  */
+  /* Redirigir si no hay sesión */
   useEffect(() => {
-    if (!loading && !user) {
-      router.push("/login");
-    }
+    if (!loading && !user) router.push("/login");
   }, [loading, user, router]);
 
-  /*
-    Cuando ya existe usuario y buildingId, cargamos:
-    - edificio
-    - tipologías del edificio
-    - departamentos del edificio
-  */
   useEffect(() => {
-    if (user?.company_id && buildingId) {
-      loadPageData();
-    }
+    if (user?.company_id && buildingId) loadPageData();
   }, [user, buildingId]);
 
+  /* Cerrar dropdown al hacer click fuera */
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
+    function handleClickOutside(e: MouseEvent) {
       if (!actionsMenuRef.current) return;
-      if (!actionsMenuRef.current.contains(event.target as Node)) {
+      if (!actionsMenuRef.current.contains(e.target as Node)) {
         setOpenActionsUnitId(null);
       }
     }
@@ -220,18 +191,14 @@ export default function BuildingUnitsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /*
-    Función principal para cargar todos los datos necesarios de la página.
-  */
+  /* ── Carga de datos ──────────────────────────────────────────────── */
+
   async function loadPageData() {
     if (!user?.company_id || !buildingId) return;
-
     setLoadingData(true);
     setMsg("");
 
-    /*
-      1) Cargar el edificio y validar que pertenezca a la empresa del usuario.
-    */
+    /* 1. Edificio */
     const { data: buildingData, error: buildingError } = await supabase
       .from("buildings")
       .select("id, company_id, name, code, address")
@@ -245,12 +212,9 @@ export default function BuildingUnitsPage() {
       setLoadingData(false);
       return;
     }
-
     setBuilding(buildingData);
 
-    /*
-      2) Cargar tipologías de este edificio.
-    */
+    /* 2. Tipologías */
     const { data: unitTypeData, error: unitTypeError } = await supabase
       .from("unit_types")
       .select("id, building_id, name")
@@ -263,13 +227,9 @@ export default function BuildingUnitsPage() {
       setLoadingData(false);
       return;
     }
-
     setUnitTypes(unitTypeData || []);
 
-    /*
-      3) Cargar departamentos del edificio.
-      Traemos también el nombre de la tipología relacionada.
-    */
+    /* 3. Departamentos — ordenados por número ASC */
     const { data: unitData, error: unitError } = await supabase
       .from("units")
       .select(`
@@ -285,7 +245,7 @@ export default function BuildingUnitsPage() {
       `)
       .eq("building_id", buildingId)
       .is("deleted_at", null)
-      .order("created_at", { ascending: false });
+      .order("unit_number", { ascending: true });
 
     if (unitError) {
       setMsg("No se pudieron cargar los departamentos.");
@@ -293,37 +253,74 @@ export default function BuildingUnitsPage() {
       return;
     }
 
-    if (unitData) {
-      setUnits(unitData as unknown as UnitRow[]);
-    } else {
-      setUnits([]);
+    const loadedUnits = (unitData as unknown as UnitRow[]) || [];
+    setUnits(loadedUnits);
+
+    /* 4. Nombre del inquilino activo para unidades OCCUPIED */
+    const occupiedIds = loadedUnits
+      .filter((u) => u.status === "OCCUPIED")
+      .map((u) => u.id);
+
+    const tenantMap = new Map<string, string>();
+
+    if (occupiedIds.length > 0) {
+      const { data: activeLeasesData } = await supabase
+        .from("leases")
+        .select("unit_id, tenant_id")
+        .in("unit_id", occupiedIds)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null);
+
+      const tenantIds = [
+        ...new Set(
+          (activeLeasesData || [])
+            .map((l: { tenant_id: string | null }) => l.tenant_id)
+            .filter(Boolean) as string[]
+        ),
+      ];
+
+      if (tenantIds.length > 0) {
+        const { data: tenantsData } = await supabase
+          .from("tenants")
+          .select("id, full_name")
+          .in("id", tenantIds);
+
+        const tenantById = new Map(
+          (tenantsData || []).map(
+            (t: { id: string; full_name: string }) => [t.id, t.full_name]
+          )
+        );
+
+        (activeLeasesData || []).forEach(
+          (l: { unit_id: string; tenant_id: string | null }) => {
+            const name = l.tenant_id ? tenantById.get(l.tenant_id) : undefined;
+            if (name) tenantMap.set(l.unit_id, name);
+          }
+        );
+      }
     }
 
+    setTenantsByUnitId(tenantMap);
     setLoadingData(false);
   }
 
-  /*
-    Genera un display_code amigable.
-    Si el edificio tiene código:
-      E1 + 101 => E1-101
-    Si no tiene código:
-      usa solo el número del departamento
-  */
-  function generateDisplayCode(buildingCode: string | null, unitNumberValue: string) {
-    if (!unitNumberValue.trim()) return null;
+  /* ── Helpers ─────────────────────────────────────────────────────── */
 
-    if (buildingCode && buildingCode.trim()) {
-      return `${buildingCode.trim()}-${unitNumberValue.trim()}`;
-    }
-
-    return unitNumberValue.trim();
+  /** Genera un display_code combinando el código del edificio con el número */
+  function generateDisplayCode(buildingCode: string | null, unitNum: string) {
+    if (!unitNum.trim()) return null;
+    if (buildingCode?.trim()) return `${buildingCode.trim()}-${unitNum.trim()}`;
+    return unitNum.trim();
   }
 
-  /*
-    Clona a la tabla real de assets todos los assets base definidos en la
-    tipología seleccionada.
-  */
-  async function cloneTemplateAssetsToUnit(newUnitId: string, selectedTypeId: string) {
+  /**
+   * Clona los assets base de la tipología seleccionada al nuevo departamento.
+   * Retorna null si todo fue bien, o un mensaje de error.
+   */
+  async function cloneTemplateAssetsToUnit(
+    newUnitId: string,
+    selectedTypeId: string
+  ): Promise<string | null> {
     if (!user?.company_id || !building) return null;
 
     const { data: templateAssets, error: templateAssetsError } = await supabase
@@ -334,15 +331,10 @@ export default function BuildingUnitsPage() {
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true });
 
-    if (templateAssetsError) {
-      return templateAssetsError.message;
-    }
+    if (templateAssetsError) return templateAssetsError.message;
+    if (!templateAssets || templateAssets.length === 0) return null;
 
-    if (!templateAssets || templateAssets.length === 0) {
-      return null;
-    }
-
-    const assetRowsToInsert = templateAssets.map((item) => ({
+    const rows = templateAssets.map((item) => ({
       company_id: user.company_id,
       building_id: building.id,
       unit_id: newUnitId,
@@ -352,46 +344,21 @@ export default function BuildingUnitsPage() {
       notes: item.notes || null,
     }));
 
-    const { error: insertAssetsError } = await supabase
-      .from("assets")
-      .insert(assetRowsToInsert);
-
-    if (insertAssetsError) {
-      return insertAssetsError.message;
-    }
-
-    return null;
+    const { error: insertError } = await supabase.from("assets").insert(rows);
+    return insertError ? insertError.message : null;
   }
 
-  /*
-    Crea un departamento nuevo dentro del edificio y clona sus assets base.
-  */
+  /* ── Handlers CRUD ───────────────────────────────────────────────── */
+
   async function handleCreateUnit(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
-
-    if (!user?.company_id) {
-      setMsg("No se encontró la empresa del usuario.");
-      return;
-    }
-
-    if (!building) {
-      setMsg("No se encontró el edificio.");
-      return;
-    }
-
-    if (!unitNumber.trim()) {
-      setMsg("El número del departamento es obligatorio.");
-      return;
-    }
-
-    if (!selectedUnitTypeId) {
-      setMsg("Debes seleccionar una tipología.");
-      return;
-    }
+    if (!user?.company_id) { setMsg("No se encontró la empresa del usuario."); return; }
+    if (!building)          { setMsg("No se encontró el edificio."); return; }
+    if (!unitNumber.trim()) { setMsg("El número del departamento es obligatorio."); return; }
+    if (!selectedUnitTypeId) { setMsg("Debes seleccionar una tipología."); return; }
 
     const displayCode = generateDisplayCode(building.code, unitNumber);
-
     setSaving(true);
 
     const { data: newUnit, error } = await supabase
@@ -414,12 +381,13 @@ export default function BuildingUnitsPage() {
       return;
     }
 
-    const cloneErrorMessage = await cloneTemplateAssetsToUnit(newUnit.id, selectedUnitTypeId);
-
+    const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, selectedUnitTypeId);
     setSaving(false);
 
-    if (cloneErrorMessage) {
-      setMsg(`El departamento se creó, pero hubo un problema al clonar los assets base: ${cloneErrorMessage}`);
+    if (cloneError) {
+      setMsg(
+        `El departamento se creó, pero hubo un problema al clonar los assets base: ${cloneError}`
+      );
       await loadPageData();
       return;
     }
@@ -428,8 +396,9 @@ export default function BuildingUnitsPage() {
     setSelectedUnitTypeId("");
     setFloor("");
     setIsCreateModalOpen(false);
-    setMsg("Departamento guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente.");
-
+    setMsg(
+      "Departamento guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente."
+    );
     await loadPageData();
   }
 
@@ -460,7 +429,10 @@ export default function BuildingUnitsPage() {
   async function handleUpdateUnit(e: React.FormEvent) {
     e.preventDefault();
     if (!user?.company_id || !editingUnit || !building) return;
-    if (!editUnitNumber.trim()) { setMsg("El número del departamento es obligatorio."); return; }
+    if (!editUnitNumber.trim()) {
+      setMsg("El número del departamento es obligatorio.");
+      return;
+    }
     setSaving(true);
     const displayCode = generateDisplayCode(building.code, editUnitNumber);
     const { error } = await supabase
@@ -474,7 +446,10 @@ export default function BuildingUnitsPage() {
       .eq("id", editingUnit.id)
       .eq("company_id", user.company_id);
     setSaving(false);
-    if (error) { setMsg(`No se pudo actualizar el departamento. ${error.message}`); return; }
+    if (error) {
+      setMsg(`No se pudo actualizar el departamento. ${error.message}`);
+      return;
+    }
     setIsEditModalOpen(false);
     setEditingUnit(null);
     setMsg("Departamento actualizado correctamente.");
@@ -509,50 +484,49 @@ export default function BuildingUnitsPage() {
     await loadPageData();
   }
 
-  const stats = useMemo(() => {
-    return {
-      total: units.length,
-      vacant: units.filter((unit) => unit.status === "VACANT").length,
-      occupied: units.filter((unit) => unit.status === "OCCUPIED").length,
-      maintenance: units.filter((unit) => unit.status === "MAINTENANCE").length,
-    };
-  }, [units]);
+  /* ── Estadísticas ─────────────────────────────────────────────────── */
 
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "white", color: "black" }}>
-        Cargando usuario...
-      </div>
-    );
-  }
+  const stats = useMemo(
+    () => ({
+      total:       units.length,
+      vacant:      units.filter((u) => u.status === "VACANT").length,
+      occupied:    units.filter((u) => u.status === "OCCUPIED").length,
+      maintenance: units.filter((u) => u.status === "MAINTENANCE").length,
+    }),
+    [units]
+  );
 
-  if (!user) return null;
+  /* ── Render ──────────────────────────────────────────────────────── */
 
-  if (loadingData) {
-    return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "white", color: "black" }}>
-        Cargando departamentos...
-      </div>
-    );
-  }
+  if (loading)    return <PageContainer>Cargando usuario...</PageContainer>;
+  if (!user)      return null;
+  if (loadingData) return <PageContainer>Cargando departamentos...</PageContainer>;
 
   if (!building) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "white", color: "black" }}>
+      <PageContainer>
         <p>{msg || "No se encontró el edificio."}</p>
-        <a href="/buildings" style={{ display: "inline-block", marginTop: "16px", color: "black" }}>
+        <a
+          href="/buildings"
+          style={{
+            display: "inline-block",
+            marginTop: 16,
+            color: "var(--text-primary)",
+          }}
+        >
           Volver a edificios
         </a>
-      </div>
+      </PageContainer>
     );
   }
 
   return (
     <PageContainer>
+      {/* Encabezado */}
       <PageHeader
         title={`Departamentos — ${building.name}`}
         titleIcon={<DoorOpen size={20} />}
-        subtitle="Crea, organiza y administra las unidades del edificio dentro del mismo lenguaje visual del resto de PropAdmin."
+        subtitle="Crea, organiza y administra las unidades del edificio."
         actions={
           <>
             <UiButton href={`/buildings/${building.id}`}>Volver al edificio</UiButton>
@@ -564,13 +538,24 @@ export default function BuildingUnitsPage() {
         }
       />
 
+      {/* Mensaje de feedback */}
       {msg ? (
-        <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: "16px" }}>
+        <p
+          style={{
+            color: msg.includes("correctamente")
+              ? "var(--badge-text-green)"
+              : "var(--badge-text-red)",
+            marginBottom: 16,
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
           {msg}
         </p>
       ) : null}
 
-      <AppGrid minWidth={220} gap={16} style={{ marginBottom: 24 }}>
+      {/* ── Métricas con color semántico ── */}
+      <AppGrid minWidth={200} gap={16} style={{ marginBottom: 24 }}>
         <MetricCard
           label="Total de departamentos"
           value={stats.total}
@@ -582,24 +567,28 @@ export default function BuildingUnitsPage() {
           value={stats.vacant}
           icon={<DoorOpen size={18} />}
           helper="Disponibles para ocupación"
+          variant="blue"
         />
         <MetricCard
           label="Ocupados"
           value={stats.occupied}
           icon={<BedDouble size={18} />}
           helper="Con lease activo"
+          variant="green"
         />
         <MetricCard
           label="En mantenimiento"
           value={stats.maintenance}
           icon={<Wrench size={18} />}
           helper="Requieren atención"
+          variant="amber"
         />
       </AppGrid>
 
+      {/* ── Grid de departamentos ── */}
       <SectionCard
         title="Departamentos del edificio"
-        subtitle="Desde aquí puedes entrar al detalle o administrar sus assets reales."
+        subtitle="Desde aquí puedes entrar al detalle o administrar sus assets."
         icon={<FolderCog size={18} />}
       >
         {units.length === 0 ? (
@@ -610,81 +599,187 @@ export default function BuildingUnitsPage() {
             onAction={() => setIsCreateModalOpen(true)}
           />
         ) : (
-          <AppGrid minWidth={300} gap={16}>
+          /* Grid de 2 columnas en desktop (≥ 360px mínimo), 1 en móvil */
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))",
+              gap: 12,
+            }}
+          >
             {units.map((unit) => {
               const unitStatus = getUnitStatusBadge(unit.status);
+              const tenantName = tenantsByUnitId.get(unit.id);
 
               return (
-                <AppCard key={unit.id} style={{ padding: 20 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-                    <AppIconBox>
-                      <DoorOpen size={18} />
-                    </AppIconBox>
-
-                    <div style={{ minWidth: 0 }}>
-                      <strong style={{ display: "block", fontSize: 18, marginBottom: 4 }}>
-                        Departamento {unit.unit_number}
-                      </strong>
-                      <p style={{ color: "#667085", margin: 0, fontSize: 14 }}>
-                        {unit.display_code || "Sin código visible"}
-                      </p>
-                    </div>
+                <AppCard
+                  key={unit.id}
+                  style={{ padding: 16, position: "relative" }}
+                >
+                  {/* Mini dona de estado — esquina superior derecha */}
+                  <div style={{ position: "absolute", top: 12, right: 12 }}>
+                    <MiniStatusRing status={unit.status} />
                   </div>
 
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                    <AppBadge
-                      backgroundColor={unitStatus.backgroundColor}
-                      textColor={unitStatus.textColor}
-                      borderColor={unitStatus.borderColor}
+                  {/* Contenido principal — con margen derecho para no solaparse con dona */}
+                  <div style={{ paddingRight: 52 }}>
+                    {/* Fila superior: número + info central */}
+                    <div
+                      style={{
+                        display: "flex",
+                        gap: 14,
+                        alignItems: "flex-start",
+                        marginBottom: 10,
+                      }}
                     >
-                      {unitStatus.label}
-                    </AppBadge>
+                      {/* Izquierda: número grande + display_code */}
+                      <div style={{ flexShrink: 0 }}>
+                        <p
+                          style={{
+                            fontSize: 20,
+                            fontWeight: 600,
+                            color: "var(--text-primary)",
+                            lineHeight: 1,
+                            marginBottom: 3,
+                          }}
+                        >
+                          {unit.unit_number}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-muted)",
+                            lineHeight: 1,
+                          }}
+                        >
+                          {unit.display_code || "—"}
+                        </p>
+                      </div>
 
-                    <AppBadge backgroundColor="#F8FAFC" textColor="#475467" borderColor="#E2E8F0">
-                      <Layers3 size={14} />
-                      {unit.unit_types?.name || "Sin tipología"}
-                    </AppBadge>
+                      {/* Centro: badge estado + badge tipo + piso */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          style={{
+                            display: "flex",
+                            gap: 6,
+                            flexWrap: "wrap",
+                            marginBottom: unit.floor != null ? 5 : 0,
+                          }}
+                        >
+                          <AppBadge
+                            backgroundColor={unitStatus.backgroundColor}
+                            textColor={unitStatus.textColor}
+                            borderColor={unitStatus.borderColor}
+                          >
+                            {unitStatus.label}
+                          </AppBadge>
+                          <AppBadge
+                            backgroundColor="var(--bg-page)"
+                            textColor="var(--text-secondary)"
+                            borderColor="var(--border-default)"
+                          >
+                            <Layers3 size={12} />
+                            {unit.unit_types?.name || "Sin tipología"}
+                          </AppBadge>
+                        </div>
+                        {unit.floor != null ? (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 5,
+                              color: "var(--text-secondary)",
+                              fontSize: 12,
+                            }}
+                          >
+                            <Hash size={12} />
+                            Piso {unit.floor}
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {/* Nombre del inquilino activo (solo si OCCUPIED) */}
+                    {tenantName ? (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 5,
+                          marginBottom: 8,
+                        }}
+                      >
+                        <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                        <span
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-muted)",
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {tenantName}
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
 
-                  <div style={{ display: "grid", gap: 10, marginBottom: 16 }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#667085", fontSize: 14 }}>
-                      <Hash size={14} />
-                      <span>Piso: {unit.floor ?? "Sin piso"}</span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#667085", fontSize: 14 }}>
-                      <Layers3 size={14} />
-                      <span>Tipo: {unit.unit_types?.name || "No asignada"}</span>
-                    </div>
-                  </div>
+                  {/* Divisor */}
+                  <div
+                    style={{
+                      height: "0.5px",
+                      background: "var(--border-default)",
+                      margin: "10px 0",
+                    }}
+                  />
 
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <UiButton href={`/buildings/${building.id}/units/${unit.id}`}>
-                        Ver departamento
-                      </UiButton>
-                      <UiButton href={`/buildings/${building.id}/units/${unit.id}/assets`}>
-                        Administrar assets
-                      </UiButton>
-                    </div>
+                  {/* Acciones */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 8,
+                    }}
+                  >
+                    <UiButton href={`/buildings/${building.id}/units/${unit.id}`}>
+                      Ver
+                    </UiButton>
+
+                    {/* Dropdown ... */}
                     <div
                       style={{ position: "relative" }}
                       ref={openActionsUnitId === unit.id ? actionsMenuRef : undefined}
                     >
                       <button
                         type="button"
-                        onClick={() => setOpenActionsUnitId(openActionsUnitId === unit.id ? null : unit.id)}
+                        onClick={() =>
+                          setOpenActionsUnitId(
+                            openActionsUnitId === unit.id ? null : unit.id
+                          )
+                        }
                         style={dropdownTriggerStyle}
                         aria-label="Más acciones"
                       >
                         <MoreHorizontal size={16} />
                       </button>
+
                       {openActionsUnitId === unit.id && (
                         <div style={dropdownMenuStyle}>
-                          <button type="button" onClick={() => openEditModal(unit)} style={dropdownItemStyle}>
+                          <button
+                            type="button"
+                            onClick={() => openEditModal(unit)}
+                            style={dropdownActionButtonStyle}
+                          >
                             <Edit3 size={14} />
                             Editar
                           </button>
-                          <button type="button" onClick={() => openDeleteModal(unit)} style={dropdownDeleteItemStyle}>
+                          <button
+                            type="button"
+                            onClick={() => openDeleteModal(unit)}
+                            style={dropdownDeleteItemStyle}
+                          >
                             <Trash2 size={14} />
                             Archivar
                           </button>
@@ -695,10 +790,11 @@ export default function BuildingUnitsPage() {
                 </AppCard>
               );
             })}
-          </AppGrid>
+          </div>
         )}
       </SectionCard>
 
+      {/* ── Modal: editar departamento ── */}
       <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar departamento">
         <form onSubmit={handleUpdateUnit}>
           <AppFormField label="Número de departamento" required>
@@ -706,13 +802,18 @@ export default function BuildingUnitsPage() {
               value={editUnitNumber}
               onChange={(e) => setEditUnitNumber(e.target.value)}
               placeholder="Ej. 101"
-              style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10 }}
+              style={INPUT_STYLE}
             />
           </AppFormField>
           <AppFormField label="Tipología">
-            <AppSelect value={editUnitTypeId} onChange={(e) => setEditUnitTypeId(e.target.value)}>
+            <AppSelect
+              value={editUnitTypeId}
+              onChange={(e) => setEditUnitTypeId(e.target.value)}
+            >
               {unitTypes.map((ut) => (
-                <option key={ut.id} value={ut.id}>{ut.name}</option>
+                <option key={ut.id} value={ut.id}>
+                  {ut.name}
+                </option>
               ))}
             </AppSelect>
           </AppFormField>
@@ -722,29 +823,57 @@ export default function BuildingUnitsPage() {
               value={editFloor}
               onChange={(e) => setEditFloor(e.target.value)}
               placeholder="Ej. 1"
-              style={{ width: "100%", padding: 12, border: "1px solid #D0D5DD", borderRadius: 10 }}
+              style={INPUT_STYLE}
             />
           </AppFormField>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={saving} variant="primary">
               {saving ? "Guardando..." : "Guardar cambios"}
             </UiButton>
-            <UiButton type="button" onClick={closeEditModal}>Cancelar</UiButton>
+            <UiButton type="button" onClick={closeEditModal}>
+              Cancelar
+            </UiButton>
           </div>
         </form>
       </Modal>
 
-      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar departamento" maxWidth="480px">
+      {/* ── Modal: archivar departamento ── */}
+      <Modal
+        open={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Archivar departamento"
+        maxWidth="480px"
+      >
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
-            ¿Archivar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
+          <div style={warnBannerStyle}>
+            ¿Archivar el departamento{" "}
+            <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo ocultará del
+            sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={errorBannerStyle}>{deleteError}</div>
           ) : null}
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
-            <UiButton type="button" onClick={() => void handleDeleteUnit()} disabled={deleting}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              flexWrap: "wrap",
+            }}
+          >
+            <UiButton
+              type="button"
+              variant="secondary"
+              onClick={closeDeleteModal}
+              disabled={deleting}
+            >
+              Cancelar
+            </UiButton>
+            <UiButton
+              type="button"
+              onClick={() => void handleDeleteUnit()}
+              disabled={deleting}
+            >
               <Trash2 size={16} />
               {deleting ? "Archivando..." : "Archivar departamento"}
             </UiButton>
@@ -752,11 +881,12 @@ export default function BuildingUnitsPage() {
         </div>
       </Modal>
 
+      {/* ── Modal: crear departamento ── */}
       <Modal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
         title="Crear departamento"
-        subtitle="El formulario se abre solo cuando lo necesitas para que la página no se sienta saturada."
+        subtitle="Los assets base de la tipología se clonarán automáticamente al guardar."
       >
         <form onSubmit={handleCreateUnit}>
           <AppFormField label="Número de departamento" required>
@@ -764,12 +894,7 @@ export default function BuildingUnitsPage() {
               value={unitNumber}
               onChange={(e) => setUnitNumber(e.target.value)}
               placeholder="Ej. 101"
-              style={{
-                width: "100%",
-                padding: 12,
-                border: "1px solid #D0D5DD",
-                borderRadius: 10,
-              }}
+              style={INPUT_STYLE}
             />
           </AppFormField>
 
@@ -779,9 +904,9 @@ export default function BuildingUnitsPage() {
               onChange={(e) => setSelectedUnitTypeId(e.target.value)}
             >
               <option value="">Selecciona una tipología</option>
-              {unitTypes.map((unitType) => (
-                <option key={unitType.id} value={unitType.id}>
-                  {unitType.name}
+              {unitTypes.map((ut) => (
+                <option key={ut.id} value={ut.id}>
+                  {ut.name}
                 </option>
               ))}
             </AppSelect>
@@ -793,26 +918,31 @@ export default function BuildingUnitsPage() {
               value={floor}
               onChange={(e) => setFloor(e.target.value)}
               placeholder="Ej. 1"
-              style={{
-                width: "100%",
-                padding: 12,
-                border: "1px solid #D0D5DD",
-                borderRadius: 10,
-              }}
+              style={INPUT_STYLE}
             />
           </AppFormField>
 
+          {/* Preview del display_code */}
           {building.code && unitNumber.trim() ? (
-            <p style={{ fontSize: "12px", color: "#667085", marginBottom: "16px" }}>
-              Display code que se generará: {generateDisplayCode(building.code, unitNumber)}
+            <p
+              style={{
+                fontSize: 12,
+                color: "var(--text-secondary)",
+                marginBottom: 16,
+              }}
+            >
+              Código generado:{" "}
+              <strong>{generateDisplayCode(building.code, unitNumber)}</strong>
             </p>
           ) : null}
 
-          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={saving} variant="primary">
               {saving ? "Guardando..." : "Guardar departamento"}
             </UiButton>
-            <UiButton onClick={() => setIsCreateModalOpen(false)}>Cancelar</UiButton>
+            <UiButton type="button" onClick={() => setIsCreateModalOpen(false)}>
+              Cancelar
+            </UiButton>
           </div>
         </form>
       </Modal>

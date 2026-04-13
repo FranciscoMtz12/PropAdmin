@@ -231,8 +231,8 @@ export default function CleaningExteriorPage() {
             marginBottom: 16,
             padding: "12px 14px",
             borderRadius: 12,
-            background: msg.includes("correctamente") ? "#ECFDF5" : "#FEF2F2",
-            color: msg.includes("correctamente") ? "#166534" : "#B91C1C",
+            background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
+            color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
             fontSize: 14,
             fontWeight: 600,
           }}
@@ -253,7 +253,7 @@ export default function CleaningExteriorPage() {
                     alignItems: "center",
                     gap: 10,
                     fontSize: 14,
-                    color: "#374151",
+                    color: "var(--text-secondary)",
                     cursor: "pointer",
                   }}
                 >
@@ -280,7 +280,7 @@ export default function CleaningExteriorPage() {
                     alignItems: "center",
                     gap: 10,
                     fontSize: 14,
-                    color: "#374151",
+                    color: "var(--text-secondary)",
                     cursor: "pointer",
                   }}
                 >
@@ -334,9 +334,9 @@ export default function CleaningExteriorPage() {
             style={{
               padding: "14px 16px",
               borderRadius: 14,
-              background: "#FFF7ED",
-              border: "1px solid #FED7AA",
-              color: "#9A3412",
+              background: "var(--metric-bg-amber)",
+              border: "1px solid var(--metric-border-amber)",
+              color: "var(--badge-text-amber)",
               fontSize: 14,
               fontWeight: 600,
               lineHeight: 1.5,

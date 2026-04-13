@@ -6,8 +6,8 @@ import { X } from "lucide-react";
 /*
   Modal reutilizable del sistema.
 
-  Lo usamos para que acciones como crear o editar no dominen
-  visualmente la página si el usuario todavía no quiere abrirlas.
+  Theming: usa variables CSS para fondo, bordes y texto — responde
+  automáticamente al dark/light mode.
 */
 
 export default function Modal({
@@ -39,7 +39,7 @@ export default function Modal({
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(15, 23, 42, 0.45)",
+        background: "rgba(15, 23, 42, 0.55)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -55,11 +55,12 @@ export default function Modal({
           maxWidth,
           maxHeight,
           overflowY: "auto",
-          background: "white",
+          background: "var(--bg-card)",
           borderRadius: "22px",
-          border: "1px solid #E5E7EB",
-          boxShadow: "0 20px 60px rgba(15, 23, 42, 0.16)",
+          border: "1px solid var(--border-default)",
+          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
           padding: "24px",
+          color: "var(--text-primary)",
           ...contentStyle,
         }}
       >
@@ -73,18 +74,28 @@ export default function Modal({
           }}
         >
           <div>
-            <h2 style={{ fontSize: "28px", fontWeight: 700, marginBottom: subtitle ? "6px" : 0 }}>
+            <h2
+              style={{
+                fontSize: "28px",
+                fontWeight: 700,
+                marginBottom: subtitle ? "6px" : 0,
+                color: "var(--text-primary)",
+              }}
+            >
               {title}
             </h2>
-            {subtitle ? <p style={{ color: "#667085", margin: 0 }}>{subtitle}</p> : null}
+            {subtitle ? (
+              <p style={{ color: "var(--text-muted)", margin: 0 }}>{subtitle}</p>
+            ) : null}
           </div>
 
           <button
             type="button"
             onClick={onClose}
             style={{
-              border: "1px solid #E5E7EB",
-              background: "white",
+              border: "1px solid var(--border-default)",
+              background: "var(--bg-card)",
+              color: "var(--text-secondary)",
               borderRadius: "12px",
               width: "40px",
               height: "40px",
@@ -92,6 +103,7 @@ export default function Modal({
               alignItems: "center",
               justifyContent: "center",
               cursor: "pointer",
+              flexShrink: 0,
             }}
           >
             <X size={18} />

@@ -140,16 +140,16 @@ function getStatusLabel(status: "ACTIVE" | "INACTIVE") {
 function getStatusColors(status: "ACTIVE" | "INACTIVE") {
   if (status === "ACTIVE") {
     return {
-      background: "#DCFCE7",
-      color: "#166534",
-      border: "#86EFAC",
+      background: "var(--icon-bg-green)",
+      color: "var(--badge-text-green)",
+      border: "var(--metric-border-green)",
     };
   }
 
   return {
-    background: "#F3F4F6",
-    color: "#374151",
-    border: "#D1D5DB",
+    background: "var(--bg-card-hover)",
+    color: "var(--text-secondary)",
+    border: "var(--border-default)",
   };
 }
 
@@ -157,8 +157,8 @@ const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   outline: "none",
 };
 
@@ -166,8 +166,8 @@ const textareaStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
   borderRadius: 12,
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   outline: "none",
   resize: "vertical",
 };
@@ -177,7 +177,7 @@ const labelStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 600,
   marginBottom: 8,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 export default function TenantsPage() {
@@ -565,7 +565,7 @@ export default function TenantsPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>
           Cargando inquilinos...
         </div>
       </PageContainer>
@@ -590,7 +590,7 @@ export default function TenantsPage() {
         <AppCard>
           <div
             style={{
-              color: message.includes("correctamente") ? "#1D4ED8" : "#B91C1C",
+              color: message.includes("correctamente") ? "var(--badge-text-blue)" : "var(--badge-text-red)",
               fontWeight: 600,
             }}
           >
@@ -607,8 +607,8 @@ export default function TenantsPage() {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "#EEF2FF",
-                color: "#4338CA",
+                background: "var(--icon-bg-purple)",
+                color: "var(--icon-color-purple)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -623,7 +623,7 @@ export default function TenantsPage() {
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 Vista portal desde superadmin
@@ -634,7 +634,7 @@ export default function TenantsPage() {
                   marginTop: 6,
                   fontSize: 14,
                   lineHeight: 1.6,
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                 }}
               >
                 Desde la columna de acciones puedes abrir directamente el dashboard
@@ -1034,8 +1034,8 @@ export default function TenantsPage() {
                 style={{
                   padding: "12px 14px",
                   borderRadius: 12,
-                  background: "#FEF2F2",
-                  color: "#B91C1C",
+                  background: "var(--badge-bg-red)",
+                  color: "var(--badge-text-red)",
                   fontSize: 14,
                   fontWeight: 600,
                 }}
@@ -1079,9 +1079,9 @@ export default function TenantsPage() {
             style={{
               padding: "14px 16px",
               borderRadius: 14,
-              background: "#FFF7ED",
+              background: "var(--metric-bg-amber)",
               border: "1px solid #FED7AA",
-              color: "#9A3412",
+              color: "var(--badge-text-amber)",
               fontSize: 14,
               fontWeight: 600,
               lineHeight: 1.5,
@@ -1126,13 +1126,13 @@ export default function TenantsPage() {
 
 const metricLabelStyle: CSSProperties = {
   fontSize: 13,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   fontWeight: 600,
 };
 
 const metricValueStyle: CSSProperties = {
   fontSize: 28,
-  color: "#111827",
+  color: "var(--text-primary)",
   fontWeight: 800,
 };
 
@@ -1142,20 +1142,20 @@ const filterLabelStyle: CSSProperties = {
   gap: 8,
   fontSize: 13,
   fontWeight: 700,
-  color: "#6B7280",
+  color: "var(--text-muted)",
   textTransform: "uppercase",
   letterSpacing: "0.04em",
 };
 
 const cellPrimaryStyle: CSSProperties = {
   fontSize: 13,
-  color: "#111827",
+  color: "var(--text-primary)",
   fontWeight: 700,
 };
 
 const cellSecondaryStyle: CSSProperties = {
   fontSize: 12,
-  color: "#6B7280",
+  color: "var(--text-muted)",
 };
 
 const dropdownTriggerStyle: CSSProperties = {
@@ -1164,9 +1164,9 @@ const dropdownTriggerStyle: CSSProperties = {
   gap: 8,
   padding: "8px 10px",
   borderRadius: 10,
-  border: "1px solid #D1D5DB",
-  background: "#FFFFFF",
-  color: "#374151",
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  color: "var(--text-secondary)",
   fontSize: 12,
   fontWeight: 700,
   cursor: "pointer",
@@ -1177,8 +1177,8 @@ const dropdownMenuStyle: CSSProperties = {
   top: "calc(100% + 8px)",
   right: 0,
   minWidth: 220,
-  background: "#FFFFFF",
-  border: "1px solid #E5E7EB",
+  background: "var(--bg-card)",
+  border: "1px solid var(--border-default)",
   borderRadius: 12,
   boxShadow: "0 12px 30px rgba(15, 23, 42, 0.12)",
   padding: 8,
@@ -1196,8 +1196,8 @@ const dropdownItemStyle: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
   border: "none",
-  background: "#FFFFFF",
-  color: "#374151",
+  background: "var(--bg-card)",
+  color: "var(--text-secondary)",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
@@ -1212,8 +1212,8 @@ const dropdownPortalItemStyle: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
   border: "none",
-  background: "#EEF2FF",
-  color: "#3730A3",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
@@ -1228,8 +1228,8 @@ const dropdownPortalSecondaryItemStyle: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
   border: "none",
-  background: "#F5F3FF",
-  color: "#5B21B6",
+  background: "var(--icon-bg-purple)",
+  color: "var(--icon-color-purple)",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",
@@ -1244,8 +1244,8 @@ const dropdownDeleteItemStyle: CSSProperties = {
   padding: "10px 12px",
   borderRadius: 10,
   border: "none",
-  background: "#FFF1F2",
-  color: "#B91C1C",
+  background: "var(--badge-bg-red)",
+  color: "var(--badge-text-red)",
   fontSize: 13,
   fontWeight: 700,
   cursor: "pointer",

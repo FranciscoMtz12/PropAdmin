@@ -296,9 +296,9 @@ export default function BuildingCleaningPage() {
         title: "Exterior del edificio",
         description:
           "Programa qué días se limpia el exterior del edificio, con bloques simples de mañana y tarde.",
-        color: "#166534",
-        background: "#F0FDF4",
-        border: "#BBF7D0",
+        color: "var(--badge-text-green)",
+        background: "var(--metric-bg-green)",
+        border: "var(--metric-border-green)",
         badgeText: "Exterior",
         icon: <Leaf size={18} />,
         href: `/buildings/${buildingId}/cleaning/exterior`,
@@ -311,9 +311,9 @@ export default function BuildingCleaningPage() {
         title: "Áreas comunes",
         description:
           "Define los días de limpieza para pasillos, lobby y espacios compartidos del edificio.",
-        color: "#1D4ED8",
-        background: "#EFF6FF",
-        border: "#BFDBFE",
+        color: "var(--badge-text-blue)",
+        background: "var(--metric-bg-neutral)",
+        border: "var(--border-default)",
         badgeText: "Común",
         icon: <Brush size={18} />,
         href: `/buildings/${buildingId}/cleaning/common`,
@@ -326,9 +326,9 @@ export default function BuildingCleaningPage() {
         title: "Interior de unidades",
         description:
           "Administra la limpieza interior por departamento, con horario y duración estimada.",
-        color: "#7C3AED",
-        background: "#F5F3FF",
-        border: "#DDD6FE",
+        color: "var(--icon-color-purple)",
+        background: "var(--icon-bg-purple)",
+        border: "var(--border-default)",
         badgeText: "Unidad",
         icon: <Home size={18} />,
         href: `/buildings/${buildingId}/cleaning/units`,
@@ -345,7 +345,7 @@ export default function BuildingCleaningPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#6B7280" }}>Cargando...</div>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>Cargando...</div>
       </PageContainer>
     );
   }
@@ -355,7 +355,7 @@ export default function BuildingCleaningPage() {
   if (!building) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "#B91C1C" }}>
+        <div style={{ padding: "32px 0", color: "var(--badge-text-red)" }}>
           {msg || "No se encontró el edificio."}
         </div>
       </PageContainer>
@@ -392,12 +392,12 @@ export default function BuildingCleaningPage() {
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                 }}
               >
                 Nombre
               </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
                 {building.name}
               </span>
             </div>
@@ -411,12 +411,12 @@ export default function BuildingCleaningPage() {
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                 }}
               >
                 Dirección
               </span>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "#111827" }}>
+              <span style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
                 {building.address || "Sin dirección registrada"}
               </span>
             </div>
@@ -430,15 +430,15 @@ export default function BuildingCleaningPage() {
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                 }}
               >
                 Programación edificio
               </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
                 {totalBuildingSchedules}
               </span>
-              <span style={{ fontSize: 13, color: "#6B7280" }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
                 Exterior + áreas comunes
               </span>
             </div>
@@ -452,15 +452,15 @@ export default function BuildingCleaningPage() {
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
-                  color: "#6B7280",
+                  color: "var(--text-muted)",
                 }}
               >
                 Unidades activas
               </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
                 {totalActiveUnitSchedules}
               </span>
-              <span style={{ fontSize: 13, color: "#6B7280" }}>
+              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
                 Limpieza interior activa
               </span>
             </div>
@@ -516,7 +516,7 @@ export default function BuildingCleaningPage() {
                           margin: 0,
                           fontSize: 18,
                           fontWeight: 700,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                         }}
                       >
                         {area.title}
@@ -538,7 +538,7 @@ export default function BuildingCleaningPage() {
                     margin: 0,
                     fontSize: 14,
                     lineHeight: 1.6,
-                    color: "#4B5563",
+                    color: "var(--text-secondary)",
                   }}
                 >
                   {area.description}
@@ -562,7 +562,7 @@ export default function BuildingCleaningPage() {
                       fontWeight: 700,
                       letterSpacing: "0.04em",
                       textTransform: "uppercase",
-                      color: "#6B7280",
+                      color: "var(--text-muted)",
                     }}
                   >
                     {area.summaryTitle}
@@ -575,7 +575,7 @@ export default function BuildingCleaningPage() {
                         style={{
                           fontSize: 14,
                           fontWeight: index < 2 && area.key === "units" ? 700 : 600,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                           lineHeight: 1.5,
                         }}
                       >

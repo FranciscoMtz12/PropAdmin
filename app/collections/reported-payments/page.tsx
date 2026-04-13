@@ -14,6 +14,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { INPUT_STYLE } from "@/lib/pageStyles";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -48,13 +49,13 @@ type ReviewTab = "pending_review" | "approved" | "rejected";
 const sectionTextStyle: CSSProperties = {
   fontSize: 14,
   lineHeight: 1.6,
-  color: "#6B7280",
+  color: "var(--text-secondary)",
 };
 
 const strongValueStyle: CSSProperties = {
   fontSize: 16,
   fontWeight: 700,
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 const badgeStyleBase: CSSProperties = {
@@ -131,9 +132,9 @@ function getStatusVisual(status: string) {
   if (status === "approved") {
     return {
       label: "Aprobado",
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      color: "#166534",
+      background: "var(--badge-bg-green)",
+      border: "var(--metric-border-green)",
+      color: "var(--badge-text-green)",
       icon: <CheckCircle size={14} />,
     };
   }
@@ -141,18 +142,18 @@ function getStatusVisual(status: string) {
   if (status === "rejected") {
     return {
       label: "Rechazado",
-      background: "#FEF2F2",
-      border: "#FECACA",
-      color: "#B91C1C",
+      background: "var(--badge-bg-red)",
+      border: "var(--metric-border-red)",
+      color: "var(--badge-text-red)",
       icon: <XCircle size={14} />,
     };
   }
 
   return {
     label: "Pendiente de revisión",
-    background: "#FEF3C7",
-    border: "#FDE68A",
-    color: "#92400E",
+    background: "var(--badge-bg-amber)",
+    border: "var(--metric-border-amber)",
+    color: "var(--badge-text-amber)",
     icon: <Clock3 size={14} />,
   };
 }
@@ -404,12 +405,12 @@ export default function ReportedPaymentsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#FEF3C7",
+                background: "var(--icon-bg-amber)",
                 display: "grid",
                 placeItems: "center",
               }}
             >
-              <Clock3 size={18} color="#92400E" />
+              <Clock3 size={18} color="var(--icon-color-amber)" />
             </div>
           }
         />
@@ -424,12 +425,12 @@ export default function ReportedPaymentsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#DCFCE7",
+                background: "var(--icon-bg-green)",
                 display: "grid",
                 placeItems: "center",
               }}
             >
-              <CheckCircle size={18} color="#166534" />
+              <CheckCircle size={18} color="var(--icon-color-green)" />
             </div>
           }
         />
@@ -444,12 +445,12 @@ export default function ReportedPaymentsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#FEE2E2",
+                background: "var(--icon-bg-red)",
                 display: "grid",
                 placeItems: "center",
               }}
             >
-              <XCircle size={18} color="#B91C1C" />
+              <XCircle size={18} color="var(--icon-color-red)" />
             </div>
           }
         />
@@ -464,12 +465,12 @@ export default function ReportedPaymentsPage() {
                 width: 36,
                 height: 36,
                 borderRadius: 10,
-                background: "#EEF2FF",
+                background: "var(--icon-bg-blue)",
                 display: "grid",
                 placeItems: "center",
               }}
             >
-              <CreditCard size={18} color="#4338CA" />
+              <CreditCard size={18} color="var(--icon-color-blue)" />
             </div>
           }
         />
@@ -481,8 +482,8 @@ export default function ReportedPaymentsPage() {
         <AppCard
           style={{
             marginBottom: 18,
-            border: "1px solid #FECACA",
-            background: "#FEF2F2",
+            border: "1px solid var(--metric-border-red)",
+            background: "var(--metric-bg-red)",
           }}
         >
           <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
@@ -491,8 +492,8 @@ export default function ReportedPaymentsPage() {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "#FEE2E2",
-                color: "#B91C1C",
+                background: "var(--icon-bg-red)",
+                color: "var(--icon-color-red)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -507,7 +508,7 @@ export default function ReportedPaymentsPage() {
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 Ocurrió un problema
@@ -531,10 +532,10 @@ export default function ReportedPaymentsPage() {
                   onClick={() => setActiveTab(tab)}
                   style={{
                     border: isActive
-                      ? "1px solid #C7D2FE"
-                      : "1px solid #E5E7EB",
-                    background: isActive ? "#EEF2FF" : "#FFFFFF",
-                    color: isActive ? "#3730A3" : "#374151",
+                      ? "1px solid var(--metric-border-neutral)"
+                      : "1px solid var(--border-default)",
+                    background: isActive ? "var(--icon-bg-blue)" : "var(--bg-card)",
+                    color: isActive ? "var(--icon-color-blue)" : "var(--text-secondary)",
                     borderRadius: 12,
                     padding: "10px 14px",
                     fontSize: 14,
@@ -564,8 +565,8 @@ export default function ReportedPaymentsPage() {
                 width: 44,
                 height: 44,
                 borderRadius: 14,
-                background: "#FEF3C7",
-                color: "#92400E",
+                background: "var(--icon-bg-amber)",
+                color: "var(--icon-color-amber)",
                 display: "inline-flex",
                 alignItems: "center",
                 justifyContent: "center",
@@ -580,7 +581,7 @@ export default function ReportedPaymentsPage() {
                 style={{
                   fontSize: 16,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 No hay registros en esta vista
@@ -664,8 +665,8 @@ export default function ReportedPaymentsPage() {
                   {payment.notes ? (
                     <div
                       style={{
-                        border: "1px solid #E5E7EB",
-                        background: "#F9FAFB",
+                        border: "1px solid var(--border-default)",
+                        background: "var(--bg-card-hover)",
                         borderRadius: 12,
                         padding: 12,
                       }}
@@ -674,7 +675,7 @@ export default function ReportedPaymentsPage() {
                         style={{
                           fontSize: 14,
                           fontWeight: 700,
-                          color: "#111827",
+                          color: "var(--text-primary)",
                           marginBottom: 4,
                         }}
                       >
@@ -688,8 +689,8 @@ export default function ReportedPaymentsPage() {
                   payment.rejection_reason ? (
                     <div
                       style={{
-                        border: "1px solid #FECACA",
-                        background: "#FEF2F2",
+                        border: "1px solid var(--metric-border-red)",
+                        background: "var(--metric-bg-red)",
                         borderRadius: 12,
                         padding: 12,
                       }}
@@ -698,13 +699,13 @@ export default function ReportedPaymentsPage() {
                         style={{
                           fontSize: 14,
                           fontWeight: 700,
-                          color: "#991B1B",
+                          color: "var(--badge-text-red)",
                           marginBottom: 4,
                         }}
                       >
                         Motivo del rechazo
                       </div>
-                      <div style={{ ...sectionTextStyle, color: "#991B1B" }}>
+                      <div style={{ ...sectionTextStyle, color: "var(--badge-text-red)" }}>
                         {payment.rejection_reason}
                       </div>
                     </div>
@@ -733,7 +734,7 @@ export default function ReportedPaymentsPage() {
                           alignItems: "center",
                           gap: 6,
                           fontSize: 13,
-                          color: "#6B7280",
+                          color: "var(--text-secondary)",
                         }}
                       >
                         <Eye size={15} />
@@ -743,11 +744,11 @@ export default function ReportedPaymentsPage() {
                   ) : (
                     <div
                       style={{
-                        border: "1px dashed #D1D5DB",
-                        background: "#F9FAFB",
+                        border: "1px dashed var(--border-strong)",
+                        background: "var(--bg-card-hover)",
                         borderRadius: 12,
                         padding: 12,
-                        color: "#6B7280",
+                        color: "var(--text-secondary)",
                         fontSize: 14,
                         fontWeight: 600,
                       }}
@@ -821,8 +822,8 @@ export default function ReportedPaymentsPage() {
             <div
               style={{
                 borderRadius: 12,
-                border: "1px solid #E5E7EB",
-                background: "#F9FAFB",
+                border: "1px solid var(--border-default)",
+                background: "var(--bg-card-hover)",
                 padding: 12,
               }}
             >
@@ -830,7 +831,7 @@ export default function ReportedPaymentsPage() {
                 style={{
                   ...sectionTextStyle,
                   fontWeight: 700,
-                  color: "#111827",
+                  color: "var(--text-primary)",
                 }}
               >
                 {rejectingPayment.tenants?.full_name ||
@@ -850,7 +851,7 @@ export default function ReportedPaymentsPage() {
                 style={{
                   fontSize: 13,
                   fontWeight: 800,
-                  color: "#6B7280",
+                  color: "var(--text-secondary)",
                   textTransform: "uppercase",
                   letterSpacing: "0.04em",
                 }}
@@ -864,14 +865,7 @@ export default function ReportedPaymentsPage() {
                 rows={4}
                 placeholder="Escribe el motivo para que quede registrado."
                 style={{
-                  width: "100%",
-                  borderRadius: 12,
-                  border: "1px solid #D1D5DB",
-                  background: "#FFFFFF",
-                  padding: "10px 12px",
-                  fontSize: 14,
-                  color: "#111827",
-                  outline: "none",
+                  ...INPUT_STYLE,
                   resize: "vertical",
                 }}
               />
@@ -896,9 +890,9 @@ export default function ReportedPaymentsPage() {
                   minWidth: 110,
                   padding: "10px 14px",
                   borderRadius: 12,
-                  border: "1px solid #D1D5DB",
-                  background: "#FFFFFF",
-                  color: "#374151",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)",
+                  color: "var(--text-primary)",
                   fontSize: 14,
                   fontWeight: 700,
                   cursor: "pointer",

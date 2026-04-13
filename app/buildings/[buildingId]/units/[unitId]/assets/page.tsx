@@ -26,6 +26,17 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AssetTypeIcon from "@/components/AssetTypeIcon";
 
+import {
+  INPUT_STYLE,
+  TEXTAREA_STYLE,
+  dropdownTriggerStyle,
+  dropdownMenuStyle,
+  dropdownActionButtonStyle,
+  dropdownDeleteItemStyle,
+  warnBannerStyle,
+  errorBannerStyle,
+  dangerButtonStyle,
+} from "@/lib/pageStyles";
 
 type Building = {
   id: string;
@@ -53,21 +64,12 @@ type AssetRow = {
   notes: string | null;
 };
 
-const inputStyle: CSSProperties = {
-  width: "100%",
-  padding: "12px 14px",
-  borderRadius: "12px",
-  border: "1px solid #E5E7EB",
-  background: "#FFFFFF",
-  outline: "none",
-};
-
 const labelStyle: CSSProperties = {
   display: "block",
   fontSize: "14px",
   fontWeight: 600,
   marginBottom: "8px",
-  color: "#111827",
+  color: "var(--text-primary)",
 };
 
 function getAssetStatusLabel(status: string) {
@@ -79,18 +81,15 @@ function getAssetStatusLabel(status: string) {
 
 function getAssetStatusColors(status: string) {
   if (status === "ACTIVE") {
-    return { background: "#DCFCE7", color: "#166534" };
+    return { background: "var(--badge-bg-green)", color: "var(--badge-text-green)" };
   }
-
   if (status === "PENDING") {
-    return { background: "#FEF3C7", color: "#B45309" };
+    return { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)" };
   }
-
   if (status === "INACTIVE") {
-    return { background: "#F3F4F6", color: "#374151" };
+    return { background: "var(--badge-bg-gray)", color: "var(--badge-text-gray)" };
   }
-
-  return { background: "#EFF6FF", color: "#1D4ED8" };
+  return { background: "var(--badge-bg-blue)", color: "var(--badge-text-blue)" };
 }
 
 function StatusPill({ status }: { status: string }) {
@@ -248,11 +247,6 @@ export default function UnitAssetsPage() {
       .eq("unit_id", unitId)
       .eq("building_id", buildingId)
       .eq("company_id", user.company_id)
-      /**
-       * Cambio clave:
-       * Solo traemos assets que NO han sido eliminados lógicamente.
-       * Esto alinea esta vista con el soft delete ya implementado.
-       */
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
@@ -323,7 +317,7 @@ export default function UnitAssetsPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            color: "#6B7280",
+            color: "var(--text-muted)",
             fontWeight: 600,
           }}
         >
@@ -340,7 +334,7 @@ export default function UnitAssetsPage() {
       <PageContainer>
         <AppCard>
           <div style={{ display: "grid", gap: "14px" }}>
-            <div style={{ color: "#B91C1C", fontWeight: 600 }}>
+            <div style={{ color: "var(--badge-text-red)", fontWeight: 600 }}>
               {msg || "No se encontró el contexto del equipo."}
             </div>
 
@@ -388,13 +382,13 @@ export default function UnitAssetsPage() {
       <div style={{ display: "grid", gap: "18px" }}>
         {msg ? (
           <AppCard>
-            <div style={{ color: "#1D4ED8", fontWeight: 600 }}>{msg}</div>
+            <div style={{ color: "var(--accent)", fontWeight: 600 }}>{msg}</div>
           </AppCard>
         ) : null}
 
         {assets.length === 0 ? (
           <AppCard>
-            <div style={{ padding: "8px 2px", color: "#6B7280", fontWeight: 500 }}>
+            <div style={{ padding: "8px 2px", color: "var(--text-muted)", fontWeight: 500 }}>
               Todavía no hay assets registrados para este departamento.
             </div>
           </AppCard>
@@ -417,11 +411,11 @@ export default function UnitAssetsPage() {
                           width: "44px",
                           height: "44px",
                           borderRadius: "14px",
-                          background: "#F3F4F6",
+                          background: "var(--icon-bg-neutral)",
                           display: "flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          color: "#111827",
+                          color: "var(--icon-color-neutral)",
                           flexShrink: 0,
                         }}
                       >
@@ -433,7 +427,7 @@ export default function UnitAssetsPage() {
                           style={{
                             fontSize: "16px",
                             fontWeight: 700,
-                            color: "#111827",
+                            color: "var(--text-primary)",
                           }}
                         >
                           {asset.name}
@@ -445,7 +439,7 @@ export default function UnitAssetsPage() {
                             display: "flex",
                             alignItems: "center",
                             gap: "8px",
-                            color: "#6B7280",
+                            color: "var(--text-muted)",
                             fontSize: "13px",
                             fontWeight: 600,
                           }}
@@ -468,9 +462,9 @@ export default function UnitAssetsPage() {
                       style={{
                         fontSize: "14px",
                         lineHeight: 1.6,
-                        color: "#4B5563",
-                        background: "#F9FAFB",
-                        border: "1px solid #F3F4F6",
+                        color: "var(--text-secondary)",
+                        background: "var(--bg-page)",
+                        border: "1px solid var(--border-default)",
                         borderRadius: "14px",
                         padding: "12px 14px",
                       }}
@@ -493,17 +487,17 @@ export default function UnitAssetsPage() {
                       <button
                         type="button"
                         onClick={() => setOpenActionsAssetId(openActionsAssetId === asset.id ? null : asset.id)}
-                        style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid #E5E7EB", background: "#FFFFFF", color: "#111827", padding: "8px 10px", cursor: "pointer" }}
+                        style={dropdownTriggerStyle}
                         aria-label="Más acciones"
                       >
                         <MoreHorizontal size={16} />
                       </button>
                       {openActionsAssetId === asset.id && (
-                        <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160, borderRadius: 12, border: "1px solid #E5E7EB", background: "#FFFFFF", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                        <div style={dropdownMenuStyle}>
                           <button
                             type="button"
                             onClick={() => { setOpenActionsAssetId(null); router.push(`/buildings/${buildingId}/units/${unitId}/assets/${asset.id}`); }}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "#111827", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                            style={dropdownActionButtonStyle}
                           >
                             <Edit3 size={14} />
                             Editar
@@ -511,7 +505,7 @@ export default function UnitAssetsPage() {
                           <button
                             type="button"
                             onClick={() => openDeleteModal(asset)}
-                            style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "#FEF2F2", color: "#B42318", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                            style={dropdownDeleteItemStyle}
                           >
                             <Trash2 size={14} />
                             Archivar
@@ -529,11 +523,11 @@ export default function UnitAssetsPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar equipo" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "#FFF7ED", border: "1px solid #FED7AA", color: "#9A3412", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={warnBannerStyle}>
             ¿Archivar el equipo <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", color: "#B91C1C", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={errorBannerStyle}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
@@ -558,7 +552,7 @@ export default function UnitAssetsPage() {
               <select
                 value={assetType}
                 onChange={(e) => setAssetType(e.target.value)}
-                style={inputStyle}
+                style={INPUT_STYLE}
               >
                 <option value="MINISPLIT">MINISPLIT</option>
                 <option value="CENTRAL_AC">CENTRAL_AC</option>
@@ -577,7 +571,7 @@ export default function UnitAssetsPage() {
                 value={assetName}
                 onChange={(e) => setAssetName(e.target.value)}
                 placeholder="Ej. Aire acondicionado sala"
-                style={inputStyle}
+                style={INPUT_STYLE}
               />
             </div>
 
@@ -586,7 +580,7 @@ export default function UnitAssetsPage() {
               <select
                 value={assetStatus}
                 onChange={(e) => setAssetStatus(e.target.value)}
-                style={inputStyle}
+                style={INPUT_STYLE}
               >
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="PENDING">PENDING</option>
@@ -600,11 +594,7 @@ export default function UnitAssetsPage() {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Notas opcionales"
-                style={{
-                  ...inputStyle,
-                  minHeight: "110px",
-                  resize: "vertical",
-                }}
+                style={TEXTAREA_STYLE}
               />
             </div>
 

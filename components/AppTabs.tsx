@@ -5,13 +5,8 @@ import type { ReactNode } from "react";
 /*
   Tabs horizontales reutilizables para PropAdmin.
 
-  Este componente se usa en varias vistas del sistema y actualmente
-  hay páginas que lo llaman con:
-  - items={...}
-  - tabs={...}
-
-  Para no romper rutas ni vistas existentes, este archivo acepta ambas
-  props y normaliza internamente a una sola lista.
+  Acepta tanto items= como tabs= y normaliza internamente.
+  Theming: usa variables CSS para responder al dark/light mode.
 */
 
 type TabItem = {
@@ -41,7 +36,7 @@ export default function AppTabs({
       style={{
         display: "flex",
         gap: "8px",
-        borderBottom: "1px solid #E5E7EB",
+        borderBottom: "1px solid var(--border-default)",
         paddingBottom: "6px",
         overflowX: "auto",
       }}
@@ -61,14 +56,15 @@ export default function AppTabs({
               padding: "10px 14px",
               borderRadius: 999,
               border: isActive
-                ? "1px solid #C7D7FE"
-                : "1px solid #E5E7EB",
-              background: isActive ? "#EEF4FF" : "white",
-              color: isActive ? "#1D4ED8" : "#344054",
+                ? "1px solid var(--accent)"
+                : "1px solid var(--border-default)",
+              background: isActive ? "var(--accent)" : "var(--bg-card)",
+              color: isActive ? "#ffffff" : "var(--text-secondary)",
               fontSize: 14,
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
+              transition: "background 0.15s, border-color 0.15s, color 0.15s",
             }}
           >
             {item.icon ? (
@@ -96,8 +92,8 @@ export default function AppTabs({
                   height: 22,
                   padding: "0 8px",
                   borderRadius: 999,
-                  background: isActive ? "#DCE7FF" : "#F2F4F7",
-                  color: isActive ? "#1D4ED8" : "#475467",
+                  background: isActive ? "rgba(255,255,255,0.25)" : "var(--divider)",
+                  color: isActive ? "#ffffff" : "var(--text-secondary)",
                   fontSize: 12,
                   fontWeight: 700,
                 }}

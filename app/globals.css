@@ -67,6 +67,9 @@
   --metric-bg-neutral:   #F8FAFC;
   --metric-border-neutral: #E2E8F0;
   --metric-value-neutral: #374151;
+  --metric-bg-blue:      #EFF6FF;
+  --metric-border-blue:  #BFDBFE;
+  --metric-value-blue:   #1D4ED8;
 
   /* ── Badges ────────────────────────────────────────────────────── */
   --badge-bg-green:   #DCFCE7;
@@ -155,6 +158,9 @@
   --metric-bg-neutral:   #1E2535;
   --metric-border-neutral: #2D3748;
   --metric-value-neutral: #F1F5F9;
+  --metric-bg-blue:      #0C1A3A;
+  --metric-border-blue:  #1E40AF;
+  --metric-value-blue:   #60A5FA;
 
   /* ── Badges ────────────────────────────────────────────────────── */
   --badge-bg-green:   #052E16;
@@ -220,6 +226,14 @@ body {
   color: var(--text-primary);
   font-family: Arial, Helvetica, sans-serif;
   transition: background 0.2s, color 0.2s;
+}
+
+/* Evita flash de modo claro cuando el usuario tiene dark guardado */
+html:not(.dark) body {
+  color-scheme: light;
+}
+html.dark body {
+  color-scheme: dark;
 }
 
 button,

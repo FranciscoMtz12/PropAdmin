@@ -76,27 +76,27 @@ function getStatusStyles(status: MaintenanceItem["status"]): CSSProperties {
   switch (status) {
     case "PENDING":
       return {
-        background: "#FEF3C7",
-        color: "#92400E",
+        background: "var(--icon-bg-amber)",
+        color: "var(--badge-text-amber)",
         border: "1px solid #FDE68A",
       };
     case "IN_PROGRESS":
       return {
-        background: "#DBEAFE",
-        color: "#1D4ED8",
-        border: "1px solid #BFDBFE",
+        background: "var(--icon-bg-blue)",
+        color: "var(--badge-text-blue)",
+        border: "1px solid var(--border-default)",
       };
     case "COMPLETED":
       return {
-        background: "#DCFCE7",
-        color: "#166534",
+        background: "var(--icon-bg-green)",
+        color: "var(--badge-text-green)",
         border: "1px solid #BBF7D0",
       };
     default:
       return {
-        background: "#F3F4F6",
-        color: "#4B5563",
-        border: "1px solid #E5E7EB",
+        background: "var(--bg-card-hover)",
+        color: "var(--text-secondary)",
+        border: "1px solid var(--border-default)",
       };
   }
 }
@@ -237,7 +237,7 @@ export default function AssetMaintenancePage() {
               <ClipboardList size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Total</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Total</p>
               <strong style={{ fontSize: 24 }}>{stats.total}</strong>
             </div>
           </div>
@@ -249,7 +249,7 @@ export default function AssetMaintenancePage() {
               <CalendarDays size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Pendientes</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Pendientes</p>
               <strong style={{ fontSize: 24 }}>{stats.pending}</strong>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function AssetMaintenancePage() {
               <Wrench size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>En proceso</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>En proceso</p>
               <strong style={{ fontSize: 24 }}>{stats.inProgress}</strong>
             </div>
           </div>
@@ -273,7 +273,7 @@ export default function AssetMaintenancePage() {
               <ShieldCheck size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "#667085" }}>Completados</p>
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Completados</p>
               <strong style={{ fontSize: 24 }}>{stats.completed}</strong>
             </div>
           </div>
@@ -297,7 +297,7 @@ export default function AssetMaintenancePage() {
             <strong style={{ display: "block", marginBottom: 8 }}>
               Todavía no hay mantenimientos
             </strong>
-            <p style={{ margin: 0, color: "#667085" }}>
+            <p style={{ margin: 0, color: "var(--text-muted)" }}>
               Usa el botón superior para crear el primer registro y probar el flujo.
             </p>
           </div>
@@ -340,7 +340,7 @@ export default function AssetMaintenancePage() {
                       </span>
                     </div>
 
-                    <p style={{ marginTop: 0, marginBottom: 12, color: "#475467" }}>
+                    <p style={{ marginTop: 0, marginBottom: 12, color: "var(--text-secondary)" }}>
                       {item.description}
                     </p>
 
@@ -382,7 +382,7 @@ export default function AssetMaintenancePage() {
                           style={{
                             margin: 0,
                             fontSize: 12,
-                            color: "#667085",
+                            color: "var(--text-muted)",
                             marginBottom: 4,
                           }}
                         >
@@ -418,8 +418,8 @@ export default function AssetMaintenancePage() {
                   width: "100%",
                   padding: 12,
                   borderRadius: 10,
-                  border: "1px solid #D0D5DD",
-                  background: "white",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)",
                 }}
               >
                 <option value="Preventivo">Preventivo</option>
@@ -443,8 +443,8 @@ export default function AssetMaintenancePage() {
                   width: "100%",
                   padding: 12,
                   borderRadius: 10,
-                  border: "1px solid #D0D5DD",
-                  background: "white",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)",
                 }}
               >
                 <option value="PENDING">Pendiente</option>
@@ -465,7 +465,7 @@ export default function AssetMaintenancePage() {
                   width: "100%",
                   padding: 12,
                   borderRadius: 10,
-                  border: "1px solid #D0D5DD",
+                  border: "1px solid var(--border-default)",
                   minHeight: 110,
                   resize: "vertical",
                 }}
@@ -491,7 +491,7 @@ export default function AssetMaintenancePage() {
                     width: "100%",
                     padding: 12,
                     borderRadius: 10,
-                    border: "1px solid #D0D5DD",
+                    border: "1px solid var(--border-default)",
                   }}
                 />
               </div>
@@ -506,7 +506,7 @@ export default function AssetMaintenancePage() {
                     width: "100%",
                     padding: 12,
                     borderRadius: 10,
-                    border: "1px solid #D0D5DD",
+                    border: "1px solid var(--border-default)",
                   }}
                 />
               </div>
@@ -531,7 +531,7 @@ export default function AssetMaintenancePage() {
                     width: "100%",
                     padding: 12,
                     borderRadius: 10,
-                    border: "1px solid #D0D5DD",
+                    border: "1px solid var(--border-default)",
                   }}
                 />
               </div>
@@ -548,7 +548,7 @@ export default function AssetMaintenancePage() {
                     width: "100%",
                     padding: 12,
                     borderRadius: 10,
-                    border: "1px solid #D0D5DD",
+                    border: "1px solid var(--border-default)",
                   }}
                 />
               </div>
@@ -564,7 +564,7 @@ export default function AssetMaintenancePage() {
                   width: "100%",
                   padding: 12,
                   borderRadius: 10,
-                  border: "1px solid #D0D5DD",
+                  border: "1px solid var(--border-default)",
                   minHeight: 90,
                   resize: "vertical",
                 }}
