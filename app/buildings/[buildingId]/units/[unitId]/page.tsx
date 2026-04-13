@@ -72,6 +72,8 @@ type UnitType = {
   building_id: string;
   name: string;
   bedroom_count: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
 };
 
 type UnitDetail = {
@@ -83,7 +85,7 @@ type UnitDetail = {
   display_code: string | null;
   floor: number | null;
   status: string;
-  unit_types: { name: string; bedroom_count: number | null } | null;
+  unit_types: { name: string; bedroom_count: number | null; bedrooms: number | null; bathrooms: number | null } | null;
 };
 
 type Tenant = {
@@ -504,7 +506,7 @@ export default function UnitDetailPage() {
         display_code,
         floor,
         status,
-        unit_types(name, bedroom_count)
+        unit_types(name, bedroom_count, bedrooms, bathrooms)
       `)
       .eq("id", unitId)
       .eq("building_id", buildingId)
@@ -537,7 +539,7 @@ export default function UnitDetailPage() {
     ] = await Promise.all([
       supabase
         .from("unit_types")
-        .select("id, building_id, name, bedroom_count")
+        .select("id, building_id, name, bedroom_count, bedrooms, bathrooms")
         .eq("building_id", buildingId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
@@ -1127,19 +1129,19 @@ export default function UnitDetailPage() {
         <InfoStatCard
           icon={<BedDouble size={18} />}
           label="Recámaras"
-          value={bedroomCount}
+          value={unit.unit_types?.bedrooms ?? "—"}
+        />
+
+        <InfoStatCard
+          icon={<Home size={18} />}
+          label="Baños"
+          value={unit.unit_types?.bathrooms ?? "—"}
         />
 
         <InfoStatCard
           icon={<Building2 size={18} />}
           label="Piso"
-          value={unit.floor ?? "Sin piso"}
-        />
-
-        <InfoStatCard
-          icon={<Home size={18} />}
-          label="Estatus"
-          value={<StatusPill status={unit.status} />}
+          value={unit.floor ?? "—"}
         />
       </AppGrid>
 
@@ -1211,23 +1213,14 @@ export default function UnitDetailPage() {
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
                     <div style={miniLabelStyle}>Recámaras</div>
-                    <div style={miniValueStyle}>{bedroomCount}</div>
+                    <div style={miniValueStyle}>{unit.unit_types?.bedrooms ?? "—"}</div>
                   </div>
                 </AppCard>
 
                 <AppCard>
                   <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={miniLabelStyle}>Leases activos</div>
-                    <div style={miniValueStyle}>{activeLeases.length}</div>
-                  </div>
-                </AppCard>
-
-                <AppCard>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={miniLabelStyle}>Cuartos disponibles</div>
-                    <div style={miniValueStyle}>
-                      {Math.max(bedroomCount - activeLeases.length, 0)}
-                    </div>
+                    <div style={miniLabelStyle}>Baños</div>
+                    <div style={miniValueStyle}>{unit.unit_types?.bathrooms ?? "—"}</div>
                   </div>
                 </AppCard>
               </AppGrid>

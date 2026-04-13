@@ -1,19 +1,22 @@
 "use client";
 
 /*
-  Página de departamentos de un edificio — diseño v2.1
+  Página de departamentos de un edificio — diseño v2.3
 
-  Correcciones vs v2:
-  - Ocupación refleja correctamente unidades OCCUPIED o RENTED (ambos status)
-  - Leases query: .eq('status', 'ACTIVE') (mayúsculas siempre)
-  - Ordenamiento numérico de unit_number en cliente (1, 2, 10 en lugar de 1, 10, 2)
-  - MiniStatusRing y getUnitStatusBadge manejan ambos valores de status
-  - Tenant lookup también filtra por OCCUPIED | RENTED
+  Lógica de baños/recámaras corregida:
+  - La fuente de verdad es la TIPOLOGÍA (unit_types), no la unidad.
+  - El SELECT hace JOIN: unit_types(name, bedrooms, bathrooms).
+  - Las cards muestran bedrooms/bathrooms de la tipología (read-only).
+  - Los modales crear/editar no tienen campos propios de baños/recámaras:
+    solo el selector de tipología. Al seleccionar una tipología se muestra
+    un preview de sus valores.
+  - No se necesita ALTER TABLE en units.
 */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  Bath,
   BedDouble,
   DoorOpen,
   Edit3,
@@ -61,10 +64,13 @@ type Building = {
   address: string | null;
 };
 
+/* La tipología trae bedrooms y bathrooms desde la tabla unit_types */
 type UnitType = {
   id: string;
   building_id: string;
   name: string;
+  bedrooms: number | null;
+  bathrooms: number | null;
 };
 
 type UnitRow = {
@@ -75,21 +81,19 @@ type UnitRow = {
   unit_number: string;
   display_code: string | null;
   floor: number | null;
-  bedrooms: number | null;
-  bathrooms: number | null;
   status: string;
-  unit_types: { name: string } | null;
+  /* Datos de la tipología — vienen del JOIN, NO son columnas propias de units */
+  unit_types: {
+    name: string;
+    bedrooms: number | null;
+    bathrooms: number | null;
+  } | null;
 };
 
 /* ─── Helpers de estado ─────────────────────────────────────────────── */
 
-/**
- * Normaliza el status de una unidad.
- * El DB puede usar "OCCUPIED" o "RENTED" para indicar ocupación activa.
- */
 function normalizeStatus(status: string | null | undefined): string {
   const s = (status || "").toUpperCase();
-  // Mapear RENTED → OCCUPIED para uniformidad de UI
   if (s === "RENTED") return "OCCUPIED";
   return s;
 }
@@ -129,9 +133,9 @@ function getUnitStatusBadge(status: string | null | undefined) {
 function MiniStatusRing({ status }: { status: string }) {
   const s = normalizeStatus(status);
   const color =
-    s === "OCCUPIED"    ? "#10B981"
+    s === "OCCUPIED"      ? "#10B981"
     : s === "MAINTENANCE" ? "#F59E0B"
-    : "#9CA3AF"; // VACANT
+    : "#9CA3AF";
 
   return (
     <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -160,8 +164,6 @@ export default function BuildingUnitsPage() {
   const [unitNumber, setUnitNumber]               = useState("");
   const [selectedUnitTypeId, setSelectedUnitTypeId] = useState("");
   const [floor, setFloor]                         = useState("");
-  const [bedrooms, setBedrooms]                   = useState("");
-  const [bathrooms, setBathrooms]                 = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [saving, setSaving]                       = useState(false);
 
@@ -176,8 +178,6 @@ export default function BuildingUnitsPage() {
   const [editingUnit, setEditingUnit]         = useState<UnitRow | null>(null);
   const [editUnitNumber, setEditUnitNumber]   = useState("");
   const [editFloor, setEditFloor]             = useState("");
-  const [editBedrooms, setEditBedrooms]       = useState("");
-  const [editBathrooms, setEditBathrooms]     = useState("");
   const [editUnitTypeId, setEditUnitTypeId]   = useState("");
 
   /* Control de dropdown por unidad */
@@ -189,7 +189,8 @@ export default function BuildingUnitsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId) loadPageData();
+    if (user?.company_id && buildingId) void loadPageData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, buildingId]);
 
   useEffect(() => {
@@ -226,10 +227,10 @@ export default function BuildingUnitsPage() {
     }
     setBuilding(buildingData);
 
-    /* 2. Tipologías */
+    /* 2. Tipologías — traer bedrooms y bathrooms para los modales */
     const { data: unitTypeData, error: unitTypeError } = await supabase
       .from("unit_types")
-      .select("id, building_id, name")
+      .select("id, building_id, name, bedrooms, bathrooms")
       .eq("building_id", buildingId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -239,9 +240,9 @@ export default function BuildingUnitsPage() {
       setLoadingData(false);
       return;
     }
-    setUnitTypes(unitTypeData || []);
+    setUnitTypes((unitTypeData || []) as UnitType[]);
 
-    /* 3. Departamentos — traer todos y ordenar numéricamente en cliente */
+    /* 3. Departamentos — JOIN con unit_types para traer bedrooms/bathrooms */
     const { data: unitData, error: unitError } = await supabase
       .from("units")
       .select(`
@@ -252,10 +253,8 @@ export default function BuildingUnitsPage() {
         unit_number,
         display_code,
         floor,
-        bedrooms,
-        bathrooms,
         status,
-        unit_types(name)
+        unit_types(name, bedrooms, bathrooms)
       `)
       .eq("building_id", buildingId)
       .is("deleted_at", null);
@@ -278,12 +277,10 @@ export default function BuildingUnitsPage() {
     setUnits(sorted);
 
     /* 4. Nombre del inquilino activo para unidades ocupadas */
-    /*    isOccupied() maneja tanto "OCCUPIED" como "RENTED"        */
     const occupiedIds = sorted.filter((u) => isOccupied(u.status)).map((u) => u.id);
     const tenantMap = new Map<string, string>();
 
     if (occupiedIds.length > 0) {
-      /* Leases activos — status ACTIVE (mayúsculas) */
       const { data: activeLeasesData } = await supabase
         .from("leases")
         .select("unit_id, tenant_id")
@@ -368,10 +365,10 @@ export default function BuildingUnitsPage() {
   async function handleCreateUnit(e: React.FormEvent) {
     e.preventDefault();
     setMsg("");
-    if (!user?.company_id)   { setMsg("No se encontró la empresa del usuario."); return; }
-    if (!building)            { setMsg("No se encontró el edificio."); return; }
-    if (!unitNumber.trim())   { setMsg("El número del departamento es obligatorio."); return; }
-    if (!selectedUnitTypeId)  { setMsg("Debes seleccionar una tipología."); return; }
+    if (!user?.company_id)  { setMsg("No se encontró la empresa del usuario."); return; }
+    if (!building)           { setMsg("No se encontró el edificio."); return; }
+    if (!unitNumber.trim())  { setMsg("El número del departamento es obligatorio."); return; }
+    if (!selectedUnitTypeId) { setMsg("Debes seleccionar una tipología."); return; }
 
     const displayCode = generateDisplayCode(building.code, unitNumber);
     setSaving(true);
@@ -379,15 +376,13 @@ export default function BuildingUnitsPage() {
     const { data: newUnit, error } = await supabase
       .from("units")
       .insert({
-        company_id: user.company_id,
-        building_id: building.id,
+        company_id:   user.company_id,
+        building_id:  building.id,
         unit_type_id: selectedUnitTypeId,
-        unit_number: unitNumber.trim(),
+        unit_number:  unitNumber.trim(),
         display_code: displayCode,
-        floor: floor.trim() ? Number(floor) : null,
-        bedrooms: bedrooms.trim() ? Number(bedrooms) : null,
-        bathrooms: bathrooms.trim() ? Number(bathrooms) : null,
-        status: "VACANT",
+        floor:        floor.trim() ? Number(floor) : null,
+        status:       "VACANT",
       })
       .select("id")
       .single();
@@ -410,8 +405,6 @@ export default function BuildingUnitsPage() {
     setUnitNumber("");
     setSelectedUnitTypeId("");
     setFloor("");
-    setBedrooms("");
-    setBathrooms("");
     setIsCreateModalOpen(false);
     setMsg("Departamento guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente.");
     await loadPageData();
@@ -428,9 +421,7 @@ export default function BuildingUnitsPage() {
   function openEditModal(unit: UnitRow) {
     setEditingUnit(unit);
     setEditUnitNumber(unit.unit_number);
-    setEditFloor(unit.floor !== null ? String(unit.floor) : "");
-    setEditBedrooms(unit.bedrooms !== null && unit.bedrooms !== undefined ? String(unit.bedrooms) : "");
-    setEditBathrooms(unit.bathrooms !== null && unit.bathrooms !== undefined ? String(unit.bathrooms) : "");
+    setEditFloor(unit.floor != null ? String(unit.floor) : "");
     setEditUnitTypeId(unit.unit_type_id);
     setIsEditModalOpen(true);
     setOpenActionsUnitId(null);
@@ -453,11 +444,9 @@ export default function BuildingUnitsPage() {
     const { error } = await supabase
       .from("units")
       .update({
-        unit_number: editUnitNumber.trim(),
+        unit_number:  editUnitNumber.trim(),
         display_code: displayCode,
-        floor: editFloor.trim() ? Number(editFloor) : null,
-        bedrooms: editBedrooms.trim() ? Number(editBedrooms) : null,
-        bathrooms: editBathrooms.trim() ? Number(editBathrooms) : null,
+        floor:        editFloor.trim() ? Number(editFloor) : null,
         unit_type_id: editUnitTypeId || editingUnit.unit_type_id,
       })
       .eq("id", editingUnit.id)
@@ -505,13 +494,17 @@ export default function BuildingUnitsPage() {
   const stats = useMemo(
     () => ({
       total:       units.length,
-      /* isOccupied() maneja OCCUPIED y RENTED */
       occupied:    units.filter((u) => isOccupied(u.status)).length,
       vacant:      units.filter((u) => normalizeStatus(u.status) === "VACANT").length,
       maintenance: units.filter((u) => normalizeStatus(u.status) === "MAINTENANCE").length,
     }),
     [units]
   );
+
+  /* ── Tipología seleccionada (para preview en modales) ─────────────── */
+
+  const selectedTypeForCreate = unitTypes.find((ut) => ut.id === selectedUnitTypeId) ?? null;
+  const selectedTypeForEdit   = unitTypes.find((ut) => ut.id === editUnitTypeId)     ?? null;
 
   /* ── Render ──────────────────────────────────────────────────────── */
 
@@ -548,17 +541,20 @@ export default function BuildingUnitsPage() {
       />
 
       {msg ? (
-        <p style={{ color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
+        <p style={{
+          color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
+          marginBottom: 16, fontSize: 14, fontWeight: 600,
+        }}>
           {msg}
         </p>
       ) : null}
 
-      {/* Métricas con color semántico */}
+      {/* Métricas */}
       <AppGrid minWidth={200} gap={16} style={{ marginBottom: 24 }}>
-        <MetricCard label="Total de departamentos" value={stats.total} icon={<Warehouse size={18} />} helper="Unidades registradas" />
-        <MetricCard label="Vacantes"          value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
-        <MetricCard label="Ocupados"          value={stats.occupied}    icon={<BedDouble size={18} />} helper="Con lease activo"            variant="green" />
-        <MetricCard label="En mantenimiento"  value={stats.maintenance} icon={<Wrench size={18} />}   helper="Requieren atención"          variant="amber" />
+        <MetricCard label="Total de departamentos" value={stats.total}       icon={<Warehouse size={18} />} helper="Unidades registradas" />
+        <MetricCard label="Vacantes"               value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
+        <MetricCard label="Ocupados"               value={stats.occupied}    icon={<BedDouble size={18} />} helper="Con lease activo"            variant="green" />
+        <MetricCard label="En mantenimiento"       value={stats.maintenance} icon={<Wrench size={18} />}   helper="Requieren atención"          variant="amber" />
       </AppGrid>
 
       {/* Grid de departamentos */}
@@ -579,6 +575,7 @@ export default function BuildingUnitsPage() {
             {units.map((unit) => {
               const badge      = getUnitStatusBadge(unit.status);
               const tenantName = tenantsByUnitId.get(unit.id);
+              const typeInfo   = unit.unit_types;
 
               return (
                 <AppCard key={unit.id} style={{ padding: 16, position: "relative" }}>
@@ -600,9 +597,9 @@ export default function BuildingUnitsPage() {
                         </p>
                       </div>
 
-                      {/* Centro: badges + piso */}
+                      {/* Derecha: badges + detalles */}
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: unit.floor != null ? 5 : 0 }}>
+                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
                           <AppBadge
                             backgroundColor={badge.backgroundColor}
                             textColor={badge.textColor}
@@ -612,19 +609,35 @@ export default function BuildingUnitsPage() {
                           </AppBadge>
                           <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">
                             <Layers3 size={12} />
-                            {unit.unit_types?.name || "Sin tipología"}
+                            {typeInfo?.name || "Sin tipología"}
                           </AppBadge>
                         </div>
-                        {unit.floor != null ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: 5, color: "var(--text-secondary)", fontSize: 12 }}>
-                            <Hash size={12} />
-                            Piso {unit.floor}
-                          </div>
-                        ) : null}
+
+                        {/* Piso + recámaras + baños (datos de la tipología) */}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: 12 }}>
+                          {unit.floor != null ? (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <Hash size={11} />
+                              Piso {unit.floor}
+                            </span>
+                          ) : null}
+                          {typeInfo?.bedrooms != null ? (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <BedDouble size={11} />
+                              {typeInfo.bedrooms} rec.
+                            </span>
+                          ) : null}
+                          {typeInfo?.bathrooms != null ? (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <Bath size={11} />
+                              {typeInfo.bathrooms} baño{typeInfo.bathrooms !== 1 ? "s" : ""}
+                            </span>
+                          ) : null}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Inquilino activo (solo si está ocupado) */}
+                    {/* Inquilino activo */}
                     {tenantName ? (
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
                         <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
@@ -655,7 +668,7 @@ export default function BuildingUnitsPage() {
                       </button>
                       {openActionsUnitId === unit.id && (
                         <div style={dropdownMenuStyle}>
-                          <button type="button" onClick={() => openEditModal(unit)}  style={dropdownActionButtonStyle}><Edit3 size={14} /> Editar</button>
+                          <button type="button" onClick={() => openEditModal(unit)}   style={dropdownActionButtonStyle}><Edit3 size={14} /> Editar</button>
                           <button type="button" onClick={() => openDeleteModal(unit)} style={dropdownDeleteItemStyle}><Trash2 size={14} /> Archivar</button>
                         </div>
                       )}
@@ -668,44 +681,59 @@ export default function BuildingUnitsPage() {
         )}
       </SectionCard>
 
-      {/* Modal: editar */}
+      {/* ── Modal: editar ── */}
       <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar departamento">
         <form onSubmit={handleUpdateUnit}>
           <AppFormField label="Número de departamento" required>
-            <input value={editUnitNumber} onChange={(e) => setEditUnitNumber(e.target.value)} placeholder="Ej. 101" style={INPUT_STYLE} />
+            <input
+              value={editUnitNumber}
+              onChange={(e) => setEditUnitNumber(e.target.value)}
+              placeholder="Ej. 101"
+              style={INPUT_STYLE}
+            />
           </AppFormField>
-          <AppFormField label="Tipología">
-            <AppSelect value={editUnitTypeId} onChange={(e) => setEditUnitTypeId(e.target.value)}>
-              {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
-            </AppSelect>
-          </AppFormField>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <AppFormField label="Tipología">
+              <AppSelect value={editUnitTypeId} onChange={(e) => setEditUnitTypeId(e.target.value)}>
+                {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
+              </AppSelect>
+            </AppFormField>
             <AppFormField label="Piso">
-              <input type="number" min={0} value={editFloor} onChange={(e) => setEditFloor(e.target.value)} placeholder="Ej. 1" style={INPUT_STYLE} />
-            </AppFormField>
-            <AppFormField label="Recámaras">
-              <input type="number" min={0} value={editBedrooms} onChange={(e) => setEditBedrooms(e.target.value)} placeholder="Ej. 2" style={INPUT_STYLE} />
-            </AppFormField>
-            <AppFormField label="Baños">
-              <input type="number" min={0} value={editBathrooms} onChange={(e) => setEditBathrooms(e.target.value)} placeholder="Ej. 1" style={INPUT_STYLE} />
+              <input
+                type="number" min={0} value={editFloor}
+                onChange={(e) => setEditFloor(e.target.value)}
+                placeholder="Ej. 1" style={INPUT_STYLE}
+              />
             </AppFormField>
           </div>
+
+          {/* Preview de recámaras/baños de la tipología seleccionada */}
+          {selectedTypeForEdit ? (
+            <TypePreview type={selectedTypeForEdit} />
+          ) : null}
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">{saving ? "Guardando..." : "Guardar cambios"}</UiButton>
+            <UiButton type="submit" disabled={saving} variant="primary">
+              {saving ? "Guardando..." : "Guardar cambios"}
+            </UiButton>
             <UiButton type="button" onClick={closeEditModal}>Cancelar</UiButton>
           </div>
         </form>
       </Modal>
 
-      {/* Modal: archivar */}
+      {/* ── Modal: archivar ── */}
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar departamento" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
           <div style={warnBannerStyle}>
-            ¿Archivar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
+            ¿Archivar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo
+            ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? <div style={errorBannerStyle}>{deleteError}</div> : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
+            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>
+              Cancelar
+            </UiButton>
             <UiButton type="button" onClick={() => void handleDeleteUnit()} disabled={deleting}>
               <Trash2 size={16} />
               {deleting ? "Archivando..." : "Archivar departamento"}
@@ -714,40 +742,100 @@ export default function BuildingUnitsPage() {
         </div>
       </Modal>
 
-      {/* Modal: crear */}
-      <Modal open={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} title="Crear departamento" subtitle="Los assets base de la tipología se clonarán automáticamente al guardar.">
+      {/* ── Modal: crear ── */}
+      <Modal
+        open={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        title="Crear departamento"
+        subtitle="Los assets base de la tipología se clonarán automáticamente al guardar."
+      >
         <form onSubmit={handleCreateUnit}>
           <AppFormField label="Número de departamento" required>
-            <input value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} placeholder="Ej. 101" style={INPUT_STYLE} />
+            <input
+              value={unitNumber}
+              onChange={(e) => setUnitNumber(e.target.value)}
+              placeholder="Ej. 101"
+              style={INPUT_STYLE}
+            />
           </AppFormField>
-          <AppFormField label="Tipología" required>
-            <AppSelect value={selectedUnitTypeId} onChange={(e) => setSelectedUnitTypeId(e.target.value)}>
-              <option value="">Selecciona una tipología</option>
-              {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
-            </AppSelect>
-          </AppFormField>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <AppFormField label="Tipología" required>
+              <AppSelect value={selectedUnitTypeId} onChange={(e) => setSelectedUnitTypeId(e.target.value)}>
+                <option value="">Selecciona una tipología</option>
+                {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
+              </AppSelect>
+            </AppFormField>
             <AppFormField label="Piso">
-              <input type="number" min={0} value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="Ej. 1" style={INPUT_STYLE} />
-            </AppFormField>
-            <AppFormField label="Recámaras">
-              <input type="number" min={0} value={bedrooms} onChange={(e) => setBedrooms(e.target.value)} placeholder="Ej. 2" style={INPUT_STYLE} />
-            </AppFormField>
-            <AppFormField label="Baños">
-              <input type="number" min={0} value={bathrooms} onChange={(e) => setBathrooms(e.target.value)} placeholder="Ej. 1" style={INPUT_STYLE} />
+              <input
+                type="number" min={0} value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+                placeholder="Ej. 1" style={INPUT_STYLE}
+              />
             </AppFormField>
           </div>
+
+          {/* Preview de recámaras/baños de la tipología seleccionada */}
+          {selectedTypeForCreate ? (
+            <TypePreview type={selectedTypeForCreate} />
+          ) : null}
+
           {building.code && unitNumber.trim() ? (
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 16 }}>
               Código generado: <strong>{generateDisplayCode(building.code, unitNumber)}</strong>
             </p>
           ) : null}
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">{saving ? "Guardando..." : "Guardar departamento"}</UiButton>
-            <UiButton type="button" onClick={() => setIsCreateModalOpen(false)}>Cancelar</UiButton>
+            <UiButton type="submit" disabled={saving} variant="primary">
+              {saving ? "Guardando..." : "Guardar departamento"}
+            </UiButton>
+            <UiButton type="button" onClick={() => setIsCreateModalOpen(false)}>
+              Cancelar
+            </UiButton>
           </div>
         </form>
       </Modal>
     </PageContainer>
+  );
+}
+
+/* ─── TypePreview — muestra recámaras/baños de la tipología ─────────── */
+
+function TypePreview({ type }: { type: UnitType }) {
+  const hasBed  = type.bedrooms  != null;
+  const hasBath = type.bathrooms != null;
+  if (!hasBed && !hasBath) return null;
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 12,
+        padding: "10px 14px",
+        borderRadius: 10,
+        background: "var(--bg-page)",
+        border: "1px solid var(--border-default)",
+        marginBottom: 16,
+        fontSize: 13,
+        color: "var(--text-secondary)",
+      }}
+    >
+      <span style={{ fontWeight: 600, color: "var(--text-muted)", marginRight: 4 }}>
+        {type.name}:
+      </span>
+      {hasBed ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <BedDouble size={14} />
+          {type.bedrooms} recámara{type.bedrooms !== 1 ? "s" : ""}
+        </span>
+      ) : null}
+      {hasBath ? (
+        <span style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <Bath size={14} />
+          {type.bathrooms} baño{type.bathrooms !== 1 ? "s" : ""}
+        </span>
+      ) : null}
+    </div>
   );
 }
