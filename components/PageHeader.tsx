@@ -1,5 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
 import AppIconBox from "@/components/AppIconBox";
+import { useTheme } from "@/contexts/ThemeContext";
 
 /*
   Encabezado reutilizable para páginas del sistema.
@@ -7,6 +10,7 @@ import AppIconBox from "@/components/AppIconBox";
   Cambios de theming:
   - El título tiene una barra vertical izquierda de 4px con color var(--accent).
     Esto aplica automáticamente a todas las páginas sin configuración adicional.
+  - El subtitle respeta la preferencia showDescriptions del ThemeContext.
 
   Props:
   - title        → texto del título
@@ -26,6 +30,8 @@ export default function PageHeader({
   actions?: ReactNode;
   titleIcon?: ReactNode;
 }) {
+  const { showDescriptions } = useTheme();
+
   return (
     <div
       style={{
@@ -61,13 +67,13 @@ export default function PageHeader({
                   fontSize: "38px",
                   fontWeight: 700,
                   lineHeight: 1.08,
-                  marginBottom: subtitle ? "8px" : 0,
+                  marginBottom: subtitle && showDescriptions ? "8px" : 0,
                 }}
               >
                 {title}
               </h1>
 
-              {subtitle ? (
+              {subtitle && showDescriptions ? (
                 <p style={{ color: "var(--text-muted)", maxWidth: "760px", margin: 0 }}>
                   {subtitle}
                 </p>

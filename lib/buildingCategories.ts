@@ -14,7 +14,9 @@ export type BuildingCategoryKey =
   | "residential"
   | "commercial"
   | "industrial"
-  | "mixed_use";
+  | "mixed_use"
+  | "house"
+  | "land";
 
 export type MixedUseSubcategoryKey =
   | "residential_commercial"
@@ -61,6 +63,22 @@ export const BUILDING_CATEGORIES: BuildingCategoryDefinition[] = [
     backgroundColor: "#DCFCE7",
     textColor: "#15803D",
     borderColor: "#BBF7D0",
+  },
+  {
+    key: "house",
+    label: "Casa habitación",
+    shortLabel: "Casa",
+    backgroundColor: "#FEF3C7",
+    textColor: "#B45309",
+    borderColor: "#FDE68A",
+  },
+  {
+    key: "land",
+    label: "Terreno",
+    shortLabel: "Terreno",
+    backgroundColor: "#F5F3FF",
+    textColor: "#6D28D9",
+    borderColor: "#DDD6FE",
   },
 ];
 

@@ -1,12 +1,17 @@
+"use client";
+
 import type { ReactNode } from "react";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
+import { useTheme } from "@/contexts/ThemeContext";
 
 /*
   Card base del sistema para secciones, formularios y listas.
 
   Theming: usa variables CSS para títulos y subtítulos, por lo que
   responde automáticamente al dark/light mode sin lógica extra.
+
+  El subtitle respeta la preferencia showDescriptions del ThemeContext.
 */
 
 export default function SectionCard({
@@ -22,6 +27,8 @@ export default function SectionCard({
   icon?: ReactNode;
   action?: ReactNode;
 }) {
+  const { showDescriptions } = useTheme();
+
   return (
     <AppCard style={{ padding: 24, borderRadius: 18 }}>
       {title ? (
@@ -47,14 +54,14 @@ export default function SectionCard({
                 style={{
                   fontSize: "20px",
                   fontWeight: 700,
-                  marginBottom: subtitle ? "4px" : 0,
+                  marginBottom: subtitle && showDescriptions ? "4px" : 0,
                   /* var(--text-primary) → #101828 light / #F1F5F9 dark */
                   color: "var(--text-primary)",
                 }}
               >
                 {title}
               </h2>
-              {subtitle ? (
+              {subtitle && showDescriptions ? (
                 <p
                   style={{
                     /* var(--text-muted) → #667085 light / #94A3B8 dark */

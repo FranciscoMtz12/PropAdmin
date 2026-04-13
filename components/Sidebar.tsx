@@ -11,6 +11,7 @@
   - Fondo: #0f1623 en dark mode, #1e2a3a en light mode
 */
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -27,6 +28,7 @@ import {
   LogOut,
   Moon,
   ReceiptText,
+  Settings,
   Sparkles,
   Sun,
   User2,
@@ -34,6 +36,7 @@ import {
   Wallet,
   Wrench,
 } from "lucide-react";
+import SettingsModal from "@/components/SettingsModal";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -217,6 +220,7 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, logoUrl, logoDarkUrl, shortName, isDark, toggleDark } = useTheme();
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
   const isHiddenRoute =
@@ -489,6 +493,30 @@ export default function Sidebar() {
             )}
           </div>
 
+          {/* Ajustes */}
+          <button
+            type="button"
+            onClick={() => setIsSettingsOpen(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 10,
+              width: "100%",
+              padding: "10px 12px",
+              borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)",
+              background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.78)",
+              fontWeight: 600,
+              fontSize: 13,
+              cursor: "pointer",
+              transition: "background 0.15s",
+            }}
+          >
+            <Settings size={15} />
+            Ajustes
+          </button>
+
           {/* Toggle dark/light mode */}
           <button
             type="button"
@@ -539,6 +567,8 @@ export default function Sidebar() {
           </button>
         </div>
       </div>
+
+      <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </aside>
   );
 }

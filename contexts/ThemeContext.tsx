@@ -1,7 +1,7 @@
 "use client";
 
 /*
-  ThemeContext — contexto global de branding y modo claro/oscuro.
+  ThemeContext — contexto global de branding, modo claro/oscuro y preferencias UI.
 
   Responsabilidades:
   1. Lee brand_color, logo_url, logo_dark_url, short_name de la tabla companies.
@@ -9,6 +9,7 @@
   3. Aplica la clase .dark en <html> para activar los CSS vars del modo.
   4. Detecta preferencia de sistema (prefers-color-scheme) en el primer render.
   5. Permite toggle manual que se guarda en localStorage ("prop-theme").
+  6. Expone showDescriptions para controlar visibilidad de subtítulos en la UI.
 */
 
 import {
@@ -30,6 +31,8 @@ type ThemeContextType = {
   shortName: string;
   isDark: boolean;
   toggleDark: () => void;
+  showDescriptions: boolean;
+  setShowDescriptions: (v: boolean) => void;
 };
 
 /* ─── Valor por defecto (antes de cargar empresa) ────────────────── */
@@ -43,6 +46,8 @@ const ThemeContext = createContext<ThemeContextType>({
   shortName: "PropAdmin",
   isDark: false,
   toggleDark: () => {},
+  showDescriptions: true,
+  setShowDescriptions: () => {},
 });
 
 /* ─── Genera iniciales del short_name para el logo de fallback ───── */
@@ -66,6 +71,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [logoDarkUrl, setLogoDarkUrl] = useState<string | null>(null);
   const [shortName, setShortName] = useState("PropAdmin");
   const [isDark, setIsDark] = useState(false);
+  const [showDescriptions, setShowDescriptions] = useState(true);
 
   /* ── Leer preferencia de modo guardada o del sistema (solo en cliente) ── */
   useEffect(() => {
@@ -89,12 +95,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty("--accent", accentColor);
   }, [accentColor]);
 
-  /* ── Cargar branding de la empresa cuando el usuario esté listo ── */
+  /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
     if (user?.company_id) {
       void loadCompanyBranding(user.company_id);
     }
-  }, [user?.company_id]);
+    if (user?.id) {
+      void loadUserPreferences(user.id);
+    }
+  }, [user?.company_id, user?.id]);
 
   async function loadCompanyBranding(companyId: string) {
     const { data } = await supabase
@@ -111,6 +120,22 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (data.short_name) setShortName(data.short_name);
   }
 
+  async function loadUserPreferences(userId: string) {
+    const { data } = await supabase
+      .from("user_preferences")
+      .select("dark_mode, show_descriptions")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (!data) return; // tabla no existe o no hay registro — usar defaults
+
+    if (typeof data.show_descriptions === "boolean") {
+      setShowDescriptions(data.show_descriptions);
+    }
+    // dark_mode se sincroniza desde SettingsModal al cambiar; aquí solo cargamos show_descriptions
+    // para no sobreescribir la preferencia de localStorage en el primer render
+  }
+
   function toggleDark() {
     const next = !isDark;
     setIsDark(next);
@@ -119,7 +144,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ accentColor, logoUrl, logoDarkUrl, shortName, isDark, toggleDark }}
+      value={{
+        accentColor,
+        logoUrl,
+        logoDarkUrl,
+        shortName,
+        isDark,
+        toggleDark,
+        showDescriptions,
+        setShowDescriptions,
+      }}
     >
       {children}
     </ThemeContext.Provider>

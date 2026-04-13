@@ -19,6 +19,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import {
   Building2,
   DoorOpen,
   Edit3,
@@ -68,6 +78,26 @@ type Building = {
   code: string | null;
   building_category: string | null;
   building_subcategory: string | null;
+};
+
+type UnitForTrend = {
+  id: string;
+  building_id: string;
+  created_at: string;
+};
+
+type LeaseForTrend = {
+  unit_id: string;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+};
+
+type TrendPoint = {
+  label: string;
+  total: number;
+  occupied: number;
+  pct: number;
 };
 
 /* ─── Componente: dona SVG de ocupación ─────────────────────────────── */
@@ -150,6 +180,8 @@ export default function BuildingsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [unitCountByBuilding, setUnitCountByBuilding] = useState<Map<string, number>>(new Map());
   const [activeLeasesCountByBuilding, setActiveLeasesCountByBuilding] = useState<Map<string, number>>(new Map());
+  const [allUnitsForTrend, setAllUnitsForTrend] = useState<UnitForTrend[]>([]);
+  const [allLeasesForTrend, setAllLeasesForTrend] = useState<LeaseForTrend[]>([]);
   const [loadingBuildings, setLoadingBuildings] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState("ALL");
   const [msg, setMsg] = useState("");
@@ -233,11 +265,11 @@ export default function BuildingsPage() {
     /* 2. Unidades de todos los edificios */
     const { data: unitsData } = await supabase
       .from("units")
-      .select("id, building_id")
+      .select("id, building_id, created_at")
       .in("building_id", buildingIds)
       .is("deleted_at", null);
 
-    const units = (unitsData || []) as Array<{ id: string; building_id: string }>;
+    const units = (unitsData || []) as UnitForTrend[];
 
     /* Mapa building_id → cantidad de unidades */
     const unitCounts = new Map<string, number>();
@@ -248,23 +280,35 @@ export default function BuildingsPage() {
       unitBuildingMap.set(u.id, u.building_id);
     });
     setUnitCountByBuilding(unitCounts);
+    setAllUnitsForTrend(units);
 
-    /* 3. Leases activos */
+    /* 3. Leases activos + datos de tendencia */
     const unitIds = units.map((u) => u.id);
     const leaseCounts = new Map<string, number>();
 
     if (unitIds.length > 0) {
-      const { data: leasesData } = await supabase
-        .from("leases")
-        .select("unit_id")
-        .in("unit_id", unitIds)
-        .eq("status", "ACTIVE")
-        .is("deleted_at", null);
+      const [{ data: leasesActiveData }, { data: leasesTrendData }] = await Promise.all([
+        supabase
+          .from("leases")
+          .select("unit_id")
+          .in("unit_id", unitIds)
+          .eq("status", "ACTIVE")
+          .is("deleted_at", null),
+        supabase
+          .from("leases")
+          .select("unit_id, start_date, end_date, created_at")
+          .in("unit_id", unitIds)
+          .is("deleted_at", null),
+      ]);
 
-      (leasesData || []).forEach((l: { unit_id: string }) => {
+      (leasesActiveData || []).forEach((l: { unit_id: string }) => {
         const bid = unitBuildingMap.get(l.unit_id);
         if (bid) leaseCounts.set(bid, (leaseCounts.get(bid) || 0) + 1);
       });
+
+      setAllLeasesForTrend((leasesTrendData || []) as LeaseForTrend[]);
+    } else {
+      setAllLeasesForTrend([]);
     }
 
     setActiveLeasesCountByBuilding(leaseCounts);
@@ -298,12 +342,57 @@ export default function BuildingsPage() {
     return { total, highOccupancy, avgOccupancy, totalPortfolioUnits };
   }, [buildings, unitCountByBuilding, activeLeasesCountByBuilding]);
 
-  /* Edificios filtrados por categoría */
+  /* ── Tendencia del portafolio (últimos 12 meses) ────────────────── */
+
+  const MONTHS_ES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+
+  function getLastNMonths(n: number): Array<{ year: number; month: number; label: string }> {
+    const result = [];
+    const now = new Date();
+    for (let i = n - 1; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      result.push({
+        year: d.getFullYear(),
+        month: d.getMonth(), // 0-indexed
+        label: `${MONTHS_ES[d.getMonth()]} ${String(d.getFullYear()).slice(2)}`,
+      });
+    }
+    return result;
+  }
+
+  const portfolioTrend = useMemo<TrendPoint[]>(() => {
+    if (allUnitsForTrend.length === 0) return [];
+    const months = getLastNMonths(12);
+    return months.map(({ year, month, label }) => {
+      const firstDay = new Date(year, month, 1);
+      const lastDay  = new Date(year, month + 1, 0, 23, 59, 59);
+
+      const total = allUnitsForTrend.filter((u) => {
+        return new Date(u.created_at) <= lastDay;
+      }).length;
+
+      const occupied = allLeasesForTrend.filter((l) => {
+        const start = new Date((l.start_date || l.created_at) as string);
+        const end   = l.end_date ? new Date(l.end_date) : null;
+        return start <= lastDay && (!end || end >= firstDay);
+      }).length;
+
+      const pct = total > 0 ? Math.round((Math.min(occupied, total) / total) * 100) : 0;
+      return { label, total, occupied: Math.min(occupied, total), pct };
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allUnitsForTrend, allLeasesForTrend]);
+
+  const hasPortfolioTrend = portfolioTrend.some((p) => p.total > 0);
+
+  /* Edificios filtrados por categoría y ordenados alfabéticamente (orden natural) */
   const filteredBuildings = useMemo(
     () =>
-      buildings.filter(
-        (b) => selectedCategory === "ALL" || b.building_category === selectedCategory
-      ),
+      buildings
+        .filter((b) => selectedCategory === "ALL" || b.building_category === selectedCategory)
+        .sort((a, b) =>
+          a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" })
+        ),
     [buildings, selectedCategory]
   );
 
@@ -562,6 +651,9 @@ export default function BuildingsPage() {
                     transform: isHovered ? "translateY(-2px)" : "translateY(0)",
                     transition: "transform 0.15s ease",
                     borderRadius: 16,
+                    position: "relative",
+                    /* Elevar sobre cards vecinas cuando el dropdown está abierto */
+                    zIndex: openActionsBuildingId === building.id ? 100 : 1,
                   }}
                 >
                   <AppCard
@@ -784,6 +876,108 @@ export default function BuildingsPage() {
           </div>
         )}
       </SectionCard>
+
+      {/* ── Tendencia del portafolio ── */}
+      <div style={{ marginTop: 24 }}>
+      <SectionCard
+        title="Tendencia del portafolio"
+        icon={<TrendingUp size={18} />}
+      >
+        {loadingBuildings ? (
+          <p style={{ margin: 0 }}>Cargando datos...</p>
+        ) : !hasPortfolioTrend ? (
+          <AppEmptyState
+            title="Sin datos de tendencia"
+            description="Registra unidades y contratos para ver la evolución de ocupación del portafolio."
+          />
+        ) : (
+          <div style={{ width: "100%", height: 280 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={portfolioTrend}
+                margin={{ top: 8, right: 48, left: 0, bottom: 4 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
+                <XAxis
+                  dataKey="label"
+                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                {/* Eje izquierdo — conteos */}
+                <YAxis
+                  yAxisId="count"
+                  allowDecimals={false}
+                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={36}
+                />
+                {/* Eje derecho — porcentaje */}
+                <YAxis
+                  yAxisId="pct"
+                  orientation="right"
+                  domain={[0, 100]}
+                  tickFormatter={(v) => `${v}%`}
+                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={44}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: "var(--bg-card)",
+                    border: "1px solid var(--border-default)",
+                    borderRadius: 8,
+                    fontSize: 12,
+                  }}
+                  formatter={(value, name) => {
+                    if (name === "% Ocupación") return [`${value ?? 0}%`, name];
+                    return [value ?? 0, name];
+                  }}
+                />
+                <Legend
+                  iconType="line"
+                  wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+                />
+                <Line
+                  yAxisId="count"
+                  type="monotone"
+                  dataKey="total"
+                  name="Total unidades"
+                  stroke="#3B82F6"
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                <Line
+                  yAxisId="count"
+                  type="monotone"
+                  dataKey="occupied"
+                  name="Ocupadas"
+                  stroke="#10B981"
+                  strokeWidth={2}
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+                <Line
+                  yAxisId="pct"
+                  type="monotone"
+                  dataKey="pct"
+                  name="% Ocupación"
+                  stroke="#F59E0B"
+                  strokeWidth={2}
+                  strokeDasharray="3 3"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+      </SectionCard>
+      </div>
 
       {/* ── Modal de edición ── */}
       <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar edificio">
