@@ -24,9 +24,11 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import {
+  Archive,
   Building2,
   CreditCard,
   Droplets,
+  Edit3,
   Flame,
   Gem,
   FileImage,
@@ -36,7 +38,10 @@ import {
   ImageIcon,
   Layers3,
   MapPin,
+  MoreHorizontal,
+  Package,
   Pencil,
+  Plus,
   Tags,
   Trash2,
   Zap,
@@ -64,7 +69,17 @@ import {
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
-import { INPUT_STYLE, TEXTAREA_STYLE } from "@/lib/pageStyles";
+import {
+  INPUT_STYLE,
+  TEXTAREA_STYLE,
+  dropdownTriggerStyle,
+  dropdownMenuStyle,
+  dropdownActionButtonStyle,
+  dropdownDeleteItemStyle,
+  errorBannerStyle,
+} from "@/lib/pageStyles";
+import AssetTypeIcon from "@/components/AssetTypeIcon";
+import AppBadge from "@/components/AppBadge";
 
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
@@ -130,6 +145,15 @@ type LeaseForTrend = {
 
 type TrendPoint = { label: string; total: number; occupied: number; pct: number };
 
+type BuildingAssetRow = {
+  id: string;
+  asset_type: string;
+  name: string;
+  status: string;
+  notes: string | null;
+  created_at: string;
+};
+
 /* ─── Constantes ─────────────────────────────────────────────────────── */
 
 const BILLING_CONCEPT_OPTIONS: Array<{
@@ -147,6 +171,25 @@ const BILLING_CONCEPT_OPTIONS: Array<{
 const MONTH_LABELS = [
   "Ene","Feb","Mar","Abr","May","Jun",
   "Jul","Ago","Sep","Oct","Nov","Dic",
+];
+
+const BUILDING_ASSET_TYPES: Array<{ value: string; label: string }> = [
+  { value: "ELEVATOR",      label: "Elevador" },
+  { value: "CISTERN",       label: "Cisterna" },
+  { value: "HYDROPNEUMATIC",label: "Sistema hidroneumático" },
+  { value: "GENERATOR",     label: "Generador" },
+  { value: "PUMP",          label: "Bomba de agua" },
+  { value: "GATE",          label: "Portón / Acceso" },
+  { value: "SECURITY_CAMERA",label: "Cámara de seguridad" },
+  { value: "INTERCOM",      label: "Intercomunicador" },
+  { value: "COMMON_AREA_AC",label: "A/C de áreas comunes" },
+  { value: "OTHER",         label: "Otro" },
+];
+
+const ASSET_STATUS_OPTIONS = [
+  { value: "active",   label: "Activo" },
+  { value: "inactive", label: "Inactivo" },
+  { value: "pending",  label: "Pendiente" },
 ];
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
@@ -350,6 +393,7 @@ export default function BuildingDetailPage() {
   const [billingConcepts, setBillingConcepts] = useState<BuildingBillingConcept[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [leasesForTrend, setLeasesForTrend] = useState<LeaseForTrend[]>([]);
+  const [buildingAssets, setBuildingAssets] = useState<BuildingAssetRow[]>([]);
 
   /* Estado de UI */
   const [activeTab, setActiveTab]             = useState("overview");
@@ -358,12 +402,27 @@ export default function BuildingDetailPage() {
   const [collectionMonths, setCollectionMonths] = useState<3 | 6>(3);
   const [savingBillingConcept, setSavingBillingConcept] =
     useState<BuildingBillingConceptCode | null>(null);
+  const [openActionsAssetId, setOpenActionsAssetId] = useState<string | null>(null);
 
   /* Estado de modales */
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [savingEdit, setSavingEdit]               = useState(false);
   const [deletingBuilding, setDeletingBuilding]   = useState(false);
+
+  /* Modales de assets del edificio */
+  const [assetCreateOpen, setAssetCreateOpen]   = useState(false);
+  const [assetEditOpen, setAssetEditOpen]       = useState(false);
+  const [assetArchiveOpen, setAssetArchiveOpen] = useState(false);
+  const [selectedAsset, setSelectedAsset]       = useState<BuildingAssetRow | null>(null);
+  const [savingAsset, setSavingAsset]           = useState(false);
+  const [assetModalMsg, setAssetModalMsg]       = useState("");
+
+  /* Formulario de asset */
+  const [assetType, setAssetType]   = useState("ELEVATOR");
+  const [assetName, setAssetName]   = useState("");
+  const [assetStatus, setAssetStatus] = useState("active");
+  const [assetNotes, setAssetNotes] = useState("");
 
   /* Estado de formulario edición */
   const [name, setName]                               = useState("");
@@ -412,6 +471,7 @@ export default function BuildingDetailPage() {
       { data: unitTypesData },
       { data: billingData },
       { data: collData },
+      { data: assetsData },
     ] = await Promise.all([
       supabase
         .from("building_files")
@@ -449,6 +509,15 @@ export default function BuildingDetailPage() {
         .order("period_year", { ascending: false })
         .order("period_month", { ascending: false })
         .limit(200),
+
+      supabase
+        .from("assets")
+        .select("id, asset_type, name, status, notes, created_at")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .is("unit_id", null)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false }),
     ]);
 
     setFiles((filesData as BuildingFile[]) || []);
@@ -456,6 +525,7 @@ export default function BuildingDetailPage() {
     setUnitTypeCount((unitTypesData as UnitTypeRow[] | null)?.length || 0);
     setBillingConcepts((billingData as BuildingBillingConcept[]) || []);
     setCollectionRecords((collData as CollectionRecord[]) || []);
+    setBuildingAssets((assetsData as BuildingAssetRow[]) || []);
 
     /* Leases para tendencia — consulta independiente tras conocer unit_ids */
     const unitIds = ((unitsData || []) as Array<{ id: string }>).map((u) => u.id);
@@ -596,6 +666,87 @@ export default function BuildingDetailPage() {
     await loadBuilding();
   }
 
+  /* ── Handlers de assets del edificio ───────────────────────────── */
+
+  function openCreateAssetModal() {
+    setAssetType("ELEVATOR");
+    setAssetName("");
+    setAssetStatus("active");
+    setAssetNotes("");
+    setAssetModalMsg("");
+    setAssetCreateOpen(true);
+  }
+
+  async function handleCreateAsset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.company_id || !building) return;
+    if (!assetName.trim()) { setAssetModalMsg("El nombre del asset es obligatorio."); return; }
+    setSavingAsset(true);
+    setAssetModalMsg("");
+    const { error } = await supabase.from("assets").insert({
+      company_id: user.company_id,
+      building_id: building.id,
+      unit_id: null,
+      asset_type: assetType,
+      name: assetName.trim(),
+      status: assetStatus,
+      notes: assetNotes.trim() || null,
+    });
+    setSavingAsset(false);
+    if (error) { setAssetModalMsg(`Error al crear el asset: ${error.message}`); return; }
+    setAssetCreateOpen(false);
+    await loadBuilding();
+  }
+
+  function openEditAssetModal(asset: BuildingAssetRow) {
+    setSelectedAsset(asset);
+    setAssetType(asset.asset_type);
+    setAssetName(asset.name);
+    setAssetStatus(asset.status);
+    setAssetNotes(asset.notes || "");
+    setAssetModalMsg("");
+    setAssetEditOpen(true);
+    setOpenActionsAssetId(null);
+  }
+
+  async function handleEditAsset(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedAsset) return;
+    if (!assetName.trim()) { setAssetModalMsg("El nombre del asset es obligatorio."); return; }
+    setSavingAsset(true);
+    setAssetModalMsg("");
+    const { error } = await supabase.from("assets").update({
+      asset_type: assetType,
+      name: assetName.trim(),
+      status: assetStatus,
+      notes: assetNotes.trim() || null,
+    }).eq("id", selectedAsset.id);
+    setSavingAsset(false);
+    if (error) { setAssetModalMsg(`Error al actualizar el asset: ${error.message}`); return; }
+    setAssetEditOpen(false);
+    await loadBuilding();
+  }
+
+  function openArchiveAssetModal(asset: BuildingAssetRow) {
+    setSelectedAsset(asset);
+    setAssetModalMsg("");
+    setAssetArchiveOpen(true);
+    setOpenActionsAssetId(null);
+  }
+
+  async function handleArchiveAsset() {
+    if (!selectedAsset) return;
+    setSavingAsset(true);
+    setAssetModalMsg("");
+    const { error } = await supabase.from("assets")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", selectedAsset.id);
+    setSavingAsset(false);
+    if (error) { setAssetModalMsg(`Error al archivar el asset: ${error.message}`); return; }
+    setAssetArchiveOpen(false);
+    await loadBuilding();
+  }
+
   /* ── Render ──────────────────────────────────────────────────────── */
 
   if (loading)        return <PageContainer>Cargando usuario...</PageContainer>;
@@ -633,6 +784,7 @@ export default function BuildingDetailPage() {
         onChange={setActiveTab}
         items={[
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
+          { key: "assets",    label: "Assets",     icon: <Package size={16} />,    count: buildingAssets.length },
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: documentFiles.length },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: imageFiles.length },
         ]}
@@ -866,6 +1018,106 @@ export default function BuildingDetailPage() {
       ) : null}
 
       {/* ══════════════════════════════════════════════════════════════
+          TAB: ASSETS DEL EDIFICIO
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "assets" ? (() => {
+        const activeAssets   = buildingAssets.filter((a) => a.status === "active");
+        const inactiveAssets = buildingAssets.filter((a) => a.status !== "active");
+
+        function getAssetStatusBadge(status: string) {
+          if (status === "active")   return <AppBadge variant="green">Activo</AppBadge>;
+          if (status === "inactive") return <AppBadge variant="red">Inactivo</AppBadge>;
+          return <AppBadge variant="amber">Pendiente</AppBadge>;
+        }
+
+        return (
+          <div style={{ display: "grid", gap: 24 }}>
+            {/* Métricas */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+              <MetricCard
+                label="Total assets"
+                value={buildingAssets.length}
+                icon={<Package size={18} />}
+              />
+              <MetricCard
+                label="Activos"
+                value={activeAssets.length}
+                icon={<Package size={18} />}
+                variant="green"
+              />
+              <MetricCard
+                label="Inactivos / Pendientes"
+                value={inactiveAssets.length}
+                icon={<Package size={18} />}
+                variant="amber"
+              />
+            </div>
+
+            {/* Lista */}
+            <SectionCard
+              title="Assets del edificio"
+              subtitle="Equipos e instalaciones de áreas comunes."
+              icon={<Package size={18} />}
+              action={
+                <UiButton variant="primary" onClick={openCreateAssetModal}>
+                  <Plus size={15} /> Agregar asset
+                </UiButton>
+              }
+            >
+              {buildingAssets.length === 0 ? (
+                <AppEmptyState
+                  title="Sin assets registrados"
+                  description="Registra los equipos e instalaciones del edificio."
+                />
+              ) : (
+                <AppGrid minWidth={260} gap={16}>
+                  {buildingAssets.map((asset) => {
+                    const typeLabel = BUILDING_ASSET_TYPES.find((t) => t.value === asset.asset_type)?.label || asset.asset_type;
+                    return (
+                      <AppCard key={asset.id} style={{ padding: 16, borderRadius: 16 }}>
+                        <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                          <AssetTypeIcon assetType={asset.asset_type} size={18} />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <strong style={{ display: "block", fontSize: 14, marginBottom: 2 }}>{asset.name}</strong>
+                            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 12, marginBottom: 8 }}>{typeLabel}</p>
+                            {getAssetStatusBadge(asset.status)}
+                          </div>
+                          <div style={{ position: "relative", flexShrink: 0 }}>
+                            <button
+                              type="button"
+                              style={dropdownTriggerStyle}
+                              onClick={() => setOpenActionsAssetId(openActionsAssetId === asset.id ? null : asset.id)}
+                            >
+                              <MoreHorizontal size={16} />
+                            </button>
+                            {openActionsAssetId === asset.id && (
+                              <div style={dropdownMenuStyle}>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => openEditAssetModal(asset)}>
+                                  <Edit3 size={14} /> Editar
+                                </button>
+                                <button type="button" style={dropdownDeleteItemStyle} onClick={() => openArchiveAssetModal(asset)}>
+                                  <Archive size={14} /> Archivar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        {asset.notes ? (
+                          <p style={{ margin: "10px 0 0", color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.5 }}>
+                            {asset.notes}
+                          </p>
+                        ) : null}
+                      </AppCard>
+                    );
+                  })}
+                </AppGrid>
+              )}
+            </SectionCard>
+          </div>
+        );
+      })() : null}
+
+      {/* ══════════════════════════════════════════════════════════════
           TAB: DOCUMENTOS
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "documents" ? (
@@ -957,6 +1209,74 @@ export default function BuildingDetailPage() {
           </div>
         </form>
       </Modal>
+
+      {/* ── Modal crear asset ── */}
+      <Modal open={assetCreateOpen} onClose={() => { if (!savingAsset) setAssetCreateOpen(false); }} title="Agregar asset">
+        <form onSubmit={handleCreateAsset}>
+          {assetModalMsg ? <p style={errorBannerStyle}>{assetModalMsg}</p> : null}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <AppFormField label="Tipo de asset" required>
+              <AppSelect value={assetType} onChange={(e) => setAssetType(e.target.value)}>
+                {BUILDING_ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </AppSelect>
+            </AppFormField>
+            <AppFormField label="Estatus" required>
+              <AppSelect value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)}>
+                {ASSET_STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </AppSelect>
+            </AppFormField>
+          </div>
+          <AppFormField label="Nombre / descripción" required>
+            <input value={assetName} onChange={(e) => setAssetName(e.target.value)} placeholder="Ej. Elevador principal" style={INPUT_STYLE} />
+          </AppFormField>
+          <AppFormField label="Notas">
+            <textarea value={assetNotes} onChange={(e) => setAssetNotes(e.target.value)} placeholder="Modelo, número de serie, observaciones…" style={TEXTAREA_STYLE} />
+          </AppFormField>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+            <UiButton type="button" variant="secondary" onClick={() => setAssetCreateOpen(false)} disabled={savingAsset}>Cancelar</UiButton>
+            <UiButton type="submit" variant="primary" disabled={savingAsset}>{savingAsset ? "Guardando..." : "Crear asset"}</UiButton>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal editar asset ── */}
+      <Modal open={assetEditOpen} onClose={() => { if (!savingAsset) setAssetEditOpen(false); }} title="Editar asset">
+        <form onSubmit={handleEditAsset}>
+          {assetModalMsg ? <p style={errorBannerStyle}>{assetModalMsg}</p> : null}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+            <AppFormField label="Tipo de asset" required>
+              <AppSelect value={assetType} onChange={(e) => setAssetType(e.target.value)}>
+                {BUILDING_ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+              </AppSelect>
+            </AppFormField>
+            <AppFormField label="Estatus" required>
+              <AppSelect value={assetStatus} onChange={(e) => setAssetStatus(e.target.value)}>
+                {ASSET_STATUS_OPTIONS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </AppSelect>
+            </AppFormField>
+          </div>
+          <AppFormField label="Nombre / descripción" required>
+            <input value={assetName} onChange={(e) => setAssetName(e.target.value)} placeholder="Ej. Elevador principal" style={INPUT_STYLE} />
+          </AppFormField>
+          <AppFormField label="Notas">
+            <textarea value={assetNotes} onChange={(e) => setAssetNotes(e.target.value)} placeholder="Modelo, número de serie, observaciones…" style={TEXTAREA_STYLE} />
+          </AppFormField>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+            <UiButton type="button" variant="secondary" onClick={() => setAssetEditOpen(false)} disabled={savingAsset}>Cancelar</UiButton>
+            <UiButton type="submit" variant="primary" disabled={savingAsset}>{savingAsset ? "Guardando..." : "Guardar cambios"}</UiButton>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal archivar asset ── */}
+      <DeleteConfirmModal
+        open={assetArchiveOpen}
+        title="Archivar asset"
+        description={selectedAsset ? `¿Archivar "${selectedAsset.name}"? El registro se ocultará pero se conserva en la base de datos.` : "¿Archivar este asset?"}
+        confirmText={savingAsset ? "Archivando..." : "Archivar asset"}
+        onConfirm={() => void handleArchiveAsset()}
+        onCancel={() => { if (!savingAsset) setAssetArchiveOpen(false); }}
+      />
 
       {/* ── Modal archivar edificio ── */}
       <DeleteConfirmModal
