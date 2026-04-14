@@ -85,6 +85,7 @@ type UnitDetail = {
   display_code: string | null;
   floor: number | null;
   status: string;
+  rental_type: string | null;
   unit_types: { name: string; bedroom_count: number | null; bedrooms: number | null; bathrooms: number | null } | null;
 };
 
@@ -203,25 +204,26 @@ function getTodayDateInput() {
 }
 
 function getUnitStatusLabel(status: string) {
-  if (status === "VACANT") return "Disponible";
-  if (status === "RENTED") return "Rentado";
-  if (status === "MAINTENANCE") return "En mantenimiento";
+  if (status === "VACANT")      return "Vacante";
+  if (status === "RENTED" || status === "OCCUPIED") return "Rentado";
+  if (status === "PARTIAL")     return "Parcial";
+  if (status === "MAINTENANCE") return "Mantenimiento";
   return status;
 }
 
 function getUnitStatusColors(status: string) {
   if (status === "VACANT") {
-    return { background: "var(--icon-bg-green)", color: "var(--badge-text-green)" };
+    return { background: "var(--badge-bg-blue)", color: "var(--badge-text-blue)" };
   }
-
-  if (status === "RENTED") {
-    return { background: "var(--icon-bg-blue)", color: "var(--badge-text-blue)" };
+  if (status === "RENTED" || status === "OCCUPIED") {
+    return { background: "var(--badge-bg-green)", color: "var(--badge-text-green)" };
   }
-
+  if (status === "PARTIAL") {
+    return { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)" };
+  }
   if (status === "MAINTENANCE") {
-    return { background: "var(--icon-bg-amber)", color: "var(--badge-text-amber)" };
+    return { background: "var(--badge-bg-red)", color: "var(--badge-text-red)" };
   }
-
   return { background: "var(--bg-card-hover)", color: "var(--text-secondary)" };
 }
 
@@ -447,6 +449,7 @@ export default function UnitDetailPage() {
   const [selectedUnitTypeId, setSelectedUnitTypeId] = useState("");
   const [floor, setFloor] = useState("");
   const [status, setStatus] = useState("VACANT");
+  const [rentalType, setRentalType] = useState<string>("whole");
 
   const [activeTab, setActiveTab] = useState("summary");
   const [showEditForm, setShowEditForm] = useState(false);
@@ -506,6 +509,7 @@ export default function UnitDetailPage() {
         display_code,
         floor,
         status,
+        rental_type,
         unit_types(name, bedroom_count, bedrooms, bathrooms)
       `)
       .eq("id", unitId)
@@ -530,6 +534,7 @@ export default function UnitDetailPage() {
         : ""
     );
     setStatus(parsedUnit.status || "VACANT");
+    setRentalType(parsedUnit.rental_type || "whole");
 
     const [
       { data: unitTypeData, error: unitTypeError },
@@ -630,6 +635,7 @@ export default function UnitDetailPage() {
         unit.floor !== null && unit.floor !== undefined ? String(unit.floor) : ""
       );
       setStatus(unit.status || "VACANT");
+      setRentalType(unit.rental_type || "whole");
     }
 
     setShowEditForm(false);
@@ -671,6 +677,7 @@ export default function UnitDetailPage() {
         unit_type_id: selectedUnitTypeId,
         floor: floor.trim() ? Number(floor) : null,
         status,
+        rental_type: rentalType,
         display_code: displayCode,
       })
       .eq("id", unit.id)
@@ -1142,6 +1149,27 @@ export default function UnitDetailPage() {
           icon={<Building2 size={18} />}
           label="Piso"
           value={unit.floor ?? "—"}
+        />
+
+        <InfoStatCard
+          icon={<Home size={18} />}
+          label="Estatus"
+          value={
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <StatusPill status={unit.status} />
+              {unit.rental_type === "by_room" ? (
+                <span style={{
+                  display: "inline-flex", alignItems: "center",
+                  borderRadius: 999, padding: "4px 10px",
+                  fontSize: 11, fontWeight: 700,
+                  background: "var(--badge-bg-blue)",
+                  color: "var(--badge-text-blue)",
+                }}>
+                  Por cuarto
+                </span>
+              ) : null}
+            </div>
+          }
         />
       </AppGrid>
 
@@ -1652,10 +1680,43 @@ export default function UnitDetailPage() {
             <div>
               <label style={labelStyle}>Estatus</label>
               <AppSelect value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="VACANT">VACANT</option>
-                <option value="RENTED">RENTED</option>
-                <option value="MAINTENANCE">MAINTENANCE</option>
+                <option value="VACANT">Vacante</option>
+                <option value="RENTED">Rentado</option>
+                <option value="PARTIAL">Parcial</option>
+                <option value="MAINTENANCE">Mantenimiento</option>
               </AppSelect>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Tipo de renta</label>
+              <label
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  padding: "14px 16px",
+                  borderRadius: "12px",
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)",
+                  cursor: "pointer",
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={rentalType === "by_room"}
+                  onChange={(e) => setRentalType(e.target.checked ? "by_room" : "whole")}
+                  style={{ marginTop: 3, flexShrink: 0 }}
+                />
+                <div>
+                  <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+                    Rentar por cuarto
+                  </div>
+                  <div style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                    Activa esto si esta unidad se renta por recámara individual.
+                    Cada cuarto tiene su propio lease e inquilino.
+                  </div>
+                </div>
+              </label>
             </div>
 
             {building.code && unitNumber.trim() ? (

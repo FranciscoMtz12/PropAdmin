@@ -93,33 +93,43 @@ type UnitRow = {
 /* ─── Helpers de estado ─────────────────────────────────────────────── */
 
 function normalizeStatus(status: string | null | undefined): string {
-  const s = (status || "").toUpperCase();
-  if (s === "RENTED") return "OCCUPIED";
-  return s;
+  return (status || "").toUpperCase();
 }
 
+/** Unidad tiene inquilino(s) activos — RENTED, OCCUPIED o PARTIAL */
 function isOccupied(status: string | null | undefined): boolean {
-  return normalizeStatus(status) === "OCCUPIED";
+  const s = normalizeStatus(status);
+  return s === "RENTED" || s === "OCCUPIED" || s === "PARTIAL";
 }
 
 function getUnitStatusBadge(status: string | null | undefined) {
   const s = normalizeStatus(status);
-  if (s === "OCCUPIED") {
+
+  if (s === "RENTED" || s === "OCCUPIED") {
     return {
-      label: "Ocupado",
+      label: "Rentado",
       backgroundColor: "var(--badge-bg-green)",
       textColor: "var(--badge-text-green)",
       borderColor: "var(--metric-border-green)",
     };
   }
-  if (s === "MAINTENANCE") {
+  if (s === "PARTIAL") {
     return {
-      label: "Mantenimiento",
+      label: "Parcial",
       backgroundColor: "var(--badge-bg-amber)",
       textColor: "var(--badge-text-amber)",
       borderColor: "var(--metric-border-amber)",
     };
   }
+  if (s === "MAINTENANCE") {
+    return {
+      label: "Mantenimiento",
+      backgroundColor: "var(--badge-bg-red)",
+      textColor: "var(--badge-text-red)",
+      borderColor: "var(--metric-border-red)",
+    };
+  }
+  /* VACANT y cualquier otro */
   return {
     label: "Vacante",
     backgroundColor: "var(--badge-bg-blue)",
@@ -132,9 +142,28 @@ function getUnitStatusBadge(status: string | null | undefined) {
 
 function MiniStatusRing({ status }: { status: string }) {
   const s = normalizeStatus(status);
+
+  if (s === "PARTIAL") {
+    /* Dona partida: mitad verde, mitad gris */
+    const r = 14;
+    const circ = 2 * Math.PI * r;
+    const half = circ / 2;
+    return (
+      <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <circle cx="20" cy="20" r={r} fill="none" stroke="#9CA3AF" strokeWidth="6" />
+        <circle
+          cx="20" cy="20" r={r} fill="none"
+          stroke="#10B981" strokeWidth="6"
+          strokeDasharray={`${half} ${circ}`}
+          style={{ transform: "rotate(-90deg)", transformOrigin: "20px 20px" }}
+        />
+      </svg>
+    );
+  }
+
   const color =
-    s === "OCCUPIED"      ? "#10B981"
-    : s === "MAINTENANCE" ? "#F59E0B"
+    s === "RENTED" || s === "OCCUPIED" ? "#10B981"
+    : s === "MAINTENANCE"              ? "#EF4444"
     : "#9CA3AF";
 
   return (
@@ -494,7 +523,8 @@ export default function BuildingUnitsPage() {
   const stats = useMemo(
     () => ({
       total:       units.length,
-      occupied:    units.filter((u) => isOccupied(u.status)).length,
+      rented:      units.filter((u) => ["RENTED", "OCCUPIED"].includes(normalizeStatus(u.status))).length,
+      partial:     units.filter((u) => normalizeStatus(u.status) === "PARTIAL").length,
       vacant:      units.filter((u) => normalizeStatus(u.status) === "VACANT").length,
       maintenance: units.filter((u) => normalizeStatus(u.status) === "MAINTENANCE").length,
     }),
@@ -550,11 +580,12 @@ export default function BuildingUnitsPage() {
       ) : null}
 
       {/* Métricas */}
-      <AppGrid minWidth={200} gap={16} style={{ marginBottom: 24 }}>
-        <MetricCard label="Total de departamentos" value={stats.total}       icon={<Warehouse size={18} />} helper="Unidades registradas" />
-        <MetricCard label="Vacantes"               value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
-        <MetricCard label="Ocupados"               value={stats.occupied}    icon={<BedDouble size={18} />} helper="Con lease activo"            variant="green" />
-        <MetricCard label="En mantenimiento"       value={stats.maintenance} icon={<Wrench size={18} />}   helper="Requieren atención"          variant="amber" />
+      <AppGrid minWidth={180} gap={16} style={{ marginBottom: 24 }}>
+        <MetricCard label="Total"            value={stats.total}       icon={<Warehouse size={18} />} helper="Unidades registradas" />
+        <MetricCard label="Vacantes"         value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
+        <MetricCard label="Parciales"        value={stats.partial}     icon={<BedDouble size={18} />} helper="Rentadas por cuarto" variant="amber" />
+        <MetricCard label="Rentados"         value={stats.rented}      icon={<BedDouble size={18} />} helper="Con lease activo" variant="green" />
+        <MetricCard label="Mantenimiento"    value={stats.maintenance} icon={<Wrench size={18} />}   helper="Requieren atención" variant="amber" />
       </AppGrid>
 
       {/* Grid de departamentos */}

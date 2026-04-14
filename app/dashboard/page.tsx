@@ -454,8 +454,12 @@ export default function DashboardPage() {
 
   const occupancyStats = useMemo(() => {
     const total = units.length;
-    const occupied = units.filter((u) => u.status === "OCCUPIED").length;
-    const vacant = total - occupied;
+    /* RENTED, OCCUPIED y PARTIAL cuentan como ocupadas */
+    const occupied = units.filter((u) => {
+      const s = (u.status || "").toUpperCase();
+      return s === "RENTED" || s === "OCCUPIED" || s === "PARTIAL";
+    }).length;
+    const vacant = units.filter((u) => (u.status || "").toUpperCase() === "VACANT").length;
     const rate = total > 0 ? Math.round((occupied / total) * 100) : 0;
     return { total, occupied, vacant, rate };
   }, [units]);
@@ -590,15 +594,9 @@ export default function DashboardPage() {
   /* ─── FILA 3, Card B: Unidades disponibles ───────────────────── */
 
   const availableUnitRows = useMemo<AvailableUnitRow[]>(() => {
-    /* IDs de unidades con lease activo */
-    const occupiedUnitIds = new Set(
-      leases
-        .filter((l) => l.status === "ACTIVE" && l.unit_id)
-        .map((l) => l.unit_id as string)
-    );
-
+    /* Solo unidades con status VACANT */
     return units
-      .filter((u) => !occupiedUnitIds.has(u.id))
+      .filter((u) => (u.status || "").toUpperCase() === "VACANT")
       .slice(0, 6)
       .map((u) => ({
         id: u.id,

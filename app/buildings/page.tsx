@@ -84,6 +84,7 @@ type UnitForTrend = {
   id: string;
   building_id: string;
   created_at: string;
+  status: string | null;
 };
 
 type LeaseForTrend = {
@@ -179,6 +180,8 @@ export default function BuildingsPage() {
   /* Estado de datos */
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [unitCountByBuilding, setUnitCountByBuilding] = useState<Map<string, number>>(new Map());
+  const [occupiedByBuilding, setOccupiedByBuilding] = useState<Map<string, number>>(new Map());
+  const [vacantByBuilding, setVacantByBuilding] = useState<Map<string, number>>(new Map());
   const [activeLeasesCountByBuilding, setActiveLeasesCountByBuilding] = useState<Map<string, number>>(new Map());
   const [allUnitsForTrend, setAllUnitsForTrend] = useState<UnitForTrend[]>([]);
   const [allLeasesForTrend, setAllLeasesForTrend] = useState<LeaseForTrend[]>([]);
@@ -262,10 +265,10 @@ export default function BuildingsPage() {
 
     const buildingIds = loadedBuildings.map((b) => b.id);
 
-    /* 2. Unidades de todos los edificios */
+    /* 2. Unidades de todos los edificios — incluye status para ocupación real */
     const { data: unitsData } = await supabase
       .from("units")
-      .select("id, building_id, created_at")
+      .select("id, building_id, created_at, status")
       .in("building_id", buildingIds)
       .is("deleted_at", null);
 
@@ -273,13 +276,26 @@ export default function BuildingsPage() {
 
     /* Mapa building_id → cantidad de unidades */
     const unitCounts = new Map<string, number>();
+    /* Ocupados por status (RENTED, OCCUPIED, PARTIAL) */
+    const occupiedCounts = new Map<string, number>();
+    /* Vacantes por status */
+    const vacantCounts = new Map<string, number>();
     /* Mapa unit_id → building_id (para cruzar con leases) */
     const unitBuildingMap = new Map<string, string>();
     units.forEach((u) => {
       unitCounts.set(u.building_id, (unitCounts.get(u.building_id) || 0) + 1);
+      const s = (u.status || "").toUpperCase();
+      if (s === "RENTED" || s === "OCCUPIED" || s === "PARTIAL") {
+        occupiedCounts.set(u.building_id, (occupiedCounts.get(u.building_id) || 0) + 1);
+      }
+      if (s === "VACANT") {
+        vacantCounts.set(u.building_id, (vacantCounts.get(u.building_id) || 0) + 1);
+      }
       unitBuildingMap.set(u.id, u.building_id);
     });
     setUnitCountByBuilding(unitCounts);
+    setOccupiedByBuilding(occupiedCounts);
+    setVacantByBuilding(vacantCounts);
     setAllUnitsForTrend(units);
 
     /* 3. Leases activos + datos de tendencia */
@@ -326,7 +342,7 @@ export default function BuildingsPage() {
 
     const occupancies = buildings.map((b) => {
       const totalU = unitCountByBuilding.get(b.id) || 0;
-      const active = activeLeasesCountByBuilding.get(b.id) || 0;
+      const active = occupiedByBuilding.get(b.id) || 0;
       return totalU > 0 ? (active / totalU) * 100 : 0;
     });
 
@@ -635,8 +651,8 @@ export default function BuildingsPage() {
           >
             {filteredBuildings.map((building) => {
               const totalUnits = unitCountByBuilding.get(building.id) || 0;
-              const activeLeases = activeLeasesCountByBuilding.get(building.id) || 0;
-              const freeUnits = Math.max(0, totalUnits - activeLeases);
+              const activeLeases = occupiedByBuilding.get(building.id) || 0;
+              const freeUnits = vacantByBuilding.get(building.id) || 0;
               const isHovered = hoveredBuildingId === building.id;
 
               return (

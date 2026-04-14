@@ -548,11 +548,12 @@ export default function BuildingDetailPage() {
   const documentFiles = useMemo(() => files.filter((f) => f.file_type === "document"), [files]);
   const imageFiles    = useMemo(() => files.filter((f) => f.file_type === "image"),    [files]);
 
-  /* Ocupación: contar status RENTED y OCCUPIED por si hay inconsistencia en el DB */
+  /* Ocupación: RENTED, OCCUPIED y PARTIAL cuentan como ocupadas */
   const occupiedUnits    = unitStatuses.filter((u) => {
     const s = (u.status || "").toUpperCase();
-    return s === "RENTED" || s === "OCCUPIED";
+    return s === "RENTED" || s === "OCCUPIED" || s === "PARTIAL";
   }).length;
+  const partialUnits     = unitStatuses.filter((u) => (u.status || "").toUpperCase() === "PARTIAL").length;
   const vacantUnits      = unitStatuses.filter((u) => (u.status || "").toUpperCase() === "VACANT").length;
   const maintenanceUnits = unitStatuses.filter((u) => (u.status || "").toUpperCase() === "MAINTENANCE").length;
   const totalUnits       = unitStatuses.length;
@@ -561,11 +562,13 @@ export default function BuildingDetailPage() {
   const occupancyPct = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
 
   /* Datos para el PieChart de distribución */
+  const rentedUnits = occupiedUnits - partialUnits;
   const pieData = useMemo(() => [
-    { name: "Rentados",      value: occupiedUnits,    color: "#10B981" },
+    { name: "Rentados",      value: rentedUnits,      color: "#10B981" },
+    { name: "Parciales",     value: partialUnits,     color: "#F59E0B" },
     { name: "Disponibles",   value: vacantUnits,      color: "#3B82F6" },
-    { name: "Mantenimiento", value: maintenanceUnits, color: "#F59E0B" },
-  ], [occupiedUnits, vacantUnits, maintenanceUnits]);
+    { name: "Mantenimiento", value: maintenanceUnits, color: "#EF4444" },
+  ].filter((d) => d.value > 0), [rentedUnits, partialUnits, vacantUnits, maintenanceUnits]);
 
   /* Datos para el BarChart de cobranza — últimos N meses */
   const collectionChartData = useMemo(() => {
