@@ -9,14 +9,17 @@
 
   Lee/escribe en la tabla user_preferences con UPSERT inmediato.
   Requiere columnas: user_id, dark_mode, show_descriptions.
+
+  Usa React Portal para renderizar directamente en document.body y
+  evitar que el stacking context del sidebar lo tape.
 */
 
 import { useEffect, useState } from "react";
-import { FileText, Moon, Settings, Sun, User } from "lucide-react";
+import { createPortal } from "react-dom";
+import { FileText, Moon, Settings, Sun, User, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import Modal from "@/components/Modal";
 
 export default function SettingsModal({
   open,
@@ -31,6 +34,10 @@ export default function SettingsModal({
   const [loadingPrefs, setLoadingPrefs] = useState(false);
   const [savingDark, setSavingDark]     = useState(false);
   const [savingDesc, setSavingDesc]     = useState(false);
+  const [mounted, setMounted]           = useState(false);
+
+  /* Necesario para que createPortal solo corra en el cliente */
+  useEffect(() => { setMounted(true); }, []);
 
   /* ── Cargar preferencias al abrir ───────────────────────────────── */
   useEffect(() => {
@@ -38,6 +45,24 @@ export default function SettingsModal({
     void loadPreferences();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, user?.id]);
+
+  /* Bloquear scroll del body mientras el modal está abierto */
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
+  /* Cerrar con Escape */
+  useEffect(() => {
+    if (!open) return;
+    function handleKey(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("keydown", handleKey);
+    return () => document.removeEventListener("keydown", handleKey);
+  }, [open, onClose]);
 
   async function loadPreferences() {
     if (!user?.id) return;
@@ -102,80 +127,160 @@ export default function SettingsModal({
         : "ADMIN"
       : "TENANT";
 
-  return (
-    <Modal open={open} onClose={onClose} title="Ajustes" maxWidth="480px">
-      {loadingPrefs ? (
-        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
-          Cargando preferencias...
-        </p>
-      ) : (
-        <div style={{ display: "grid", gap: 28 }}>
+  if (!mounted || !open) return null;
 
-          {/* ── APARIENCIA ─────────────────────────────────────────── */}
-          <section>
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.07em",
-                marginBottom: 10,
-              }}
-            >
-              Apariencia
-            </p>
-            <div style={{ display: "grid", gap: 8 }}>
-              <ToggleRow
-                label="Modo oscuro"
-                description="Cambiar entre tema claro y oscuro"
-                icon={isDark ? <Moon size={15} /> : <Sun size={15} />}
-                checked={isDark}
-                onChange={handleToggleDark}
-                saving={savingDark}
-              />
-              <ToggleRow
-                label="Mostrar descripciones"
-                description="Subtítulos grises bajo los títulos de sección"
-                icon={<FileText size={15} />}
-                checked={showDescriptions}
-                onChange={handleToggleDescriptions}
-                saving={savingDesc}
-              />
-            </div>
-          </section>
+  return createPortal(
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 99998,
+          background: "rgba(0, 0, 0, 0.5)",
+          backdropFilter: "blur(2px)",
+        }}
+      />
 
-          {/* ── CUENTA ─────────────────────────────────────────────── */}
-          <section>
-            <p
-              style={{
-                fontSize: 12,
-                fontWeight: 700,
-                color: "var(--text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.07em",
-                marginBottom: 10,
-              }}
-            >
-              Cuenta
-            </p>
-            <div style={{ display: "grid", gap: 8 }}>
-              <InfoRow
-                label="Correo electrónico"
-                value={user?.email || "—"}
-                icon={<User size={15} />}
-              />
-              <InfoRow
-                label="Rol"
-                value={roleLabel}
-                icon={<Settings size={15} />}
-              />
-            </div>
-          </section>
-
+      {/* Panel centrado */}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Ajustes"
+        style={{
+          position: "fixed",
+          top: "50%",
+          left: "50%",
+          transform: "translate(-50%, -50%)",
+          zIndex: 99999,
+          width: "calc(100vw - 32px)",
+          maxWidth: 480,
+          maxHeight: "calc(100vh - 48px)",
+          overflowY: "auto",
+          borderRadius: 20,
+          background: "var(--bg-card)",
+          border: "1px solid var(--border-default)",
+          boxShadow: "0 24px 64px rgba(0, 0, 0, 0.28)",
+          padding: "24px 24px 28px",
+        }}
+      >
+        {/* Encabezado */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 24,
+          }}
+        >
+          <h2
+            style={{
+              margin: 0,
+              fontSize: 18,
+              fontWeight: 800,
+              color: "var(--text-primary)",
+            }}
+          >
+            Ajustes
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar ajustes"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              border: "1px solid var(--border-default)",
+              background: "var(--bg-page)",
+              color: "var(--text-muted)",
+              cursor: "pointer",
+              flexShrink: 0,
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
-      )}
-    </Modal>
+
+        {/* Contenido */}
+        {loadingPrefs ? (
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
+            Cargando preferencias...
+          </p>
+        ) : (
+          <div style={{ display: "grid", gap: 28 }}>
+
+            {/* ── APARIENCIA ─────────────────────────────────────────── */}
+            <section>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.07em",
+                  marginBottom: 10,
+                }}
+              >
+                Apariencia
+              </p>
+              <div style={{ display: "grid", gap: 8 }}>
+                <ToggleRow
+                  label="Modo oscuro"
+                  description="Cambiar entre tema claro y oscuro"
+                  icon={isDark ? <Moon size={15} /> : <Sun size={15} />}
+                  checked={isDark}
+                  onChange={handleToggleDark}
+                  saving={savingDark}
+                />
+                <ToggleRow
+                  label="Mostrar descripciones"
+                  description="Subtítulos grises bajo los títulos de sección"
+                  icon={<FileText size={15} />}
+                  checked={showDescriptions}
+                  onChange={handleToggleDescriptions}
+                  saving={savingDesc}
+                />
+              </div>
+            </section>
+
+            {/* ── CUENTA ─────────────────────────────────────────────── */}
+            <section>
+              <p
+                style={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "var(--text-muted)",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.07em",
+                  marginBottom: 10,
+                }}
+              >
+                Cuenta
+              </p>
+              <div style={{ display: "grid", gap: 8 }}>
+                <InfoRow
+                  label="Correo electrónico"
+                  value={user?.email || "—"}
+                  icon={<User size={15} />}
+                />
+                <InfoRow
+                  label="Rol"
+                  value={roleLabel}
+                  icon={<Settings size={15} />}
+                />
+              </div>
+            </section>
+
+          </div>
+        )}
+      </div>
+    </>,
+    document.body
   );
 }
 
