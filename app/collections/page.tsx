@@ -1,29 +1,18 @@
 "use client";
 
 /*
-  Módulo de Cobranza.
+  Cobranza — vista simplificada por mes.
 
-  Esta versión ya integra:
-  - collection_schedules
-  - collection_records
-  - collection_payments
-  - collection_invoices
-  - acceso rápido a pagos reportados por tenants
+  Flujo:
+  - Navegar por mes con < / >
+  - "Generar cobros del mes" → lee leases activos + schedules activos y crea los records faltantes
+  - Auto-marca como 'overdue' los records pending con due_date pasada al montar
+  - Lista agrupada por inquilino/lease — acordeón expandible
+  - Marcar cobro individual o todos los cobros del inquilino como pagados (collected)
+  - Cargo manual (cobro adicional o recurrente nuevo)
+  - Archivado de cobros
 
-  Objetivo:
-  - mostrar cobros administrativos a inquilinos
-  - identificar pendientes, parciales, cobrados y vencidos
-  - filtrar por edificio y estado
-  - abrir detalle por registro
-  - registrar abonos parciales
-  - visualizar historial de pagos
-  - visualizar facturas ligadas al cobro
-  - revisar pagos reportados por tenants
-
-  Importante:
-  - esta pantalla NO timbra facturas
-  - esta pantalla NO es contabilidad
-  - esta pantalla sigue siendo control administrativo interno de cobranza
+  Lógica CFDI preservada en: lib/cfdi-import-preserved.ts
 */
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
@@ -32,53 +21,46 @@ import {
   AlertCircle,
   AlertTriangle,
   Building2,
-  CalendarDays,
   CarFront,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Clock3,
-  CreditCard,
   Droplets,
-  Eye,
   FileText,
-  FileUp,
   Filter,
   Flame,
   Gem,
   House,
-  Landmark,
   Pencil,
   Plus,
   Receipt,
   Trash2,
   Upload,
   Wallet,
-  WandSparkles,
   Wrench,
   Zap,
 } from "lucide-react";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { supabase } from "@/lib/supabaseClient";
-import { type ParsedCfdiData, parseCfdiXml } from "@/lib/cfdiXmlParser";
-import { removeInvoiceFile, uploadInvoiceFiles } from "@/lib/invoiceStorage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useAppToast } from "@/components/AppToastProvider";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
-import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
-import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
+import SectionCard from "@/components/SectionCard";
 
-type Building = {
-  id: string;
-  name: string;
-};
+// ── Tipos ──────────────────────────────────────────────────────────────────────
+
+type Building = { id: string; name: string };
 
 type Unit = {
   id: string;
@@ -87,28 +69,8 @@ type Unit = {
   display_code: string | null;
 };
 
-
-
-type ImportPreviewData = ParsedCfdiData & {
-  emitterTaxId?: string | null;
-  customerTaxId?: string | null;
-  series?: string | null;
-  folio?: string | null;
-  xmlFileName?: string | null;
-};
-
-type AppUser = {
-  id: string;
-  company_id: string;
-  full_name: string | null;
-  email: string | null;
-  is_superadmin: boolean | null;
-  created_at: string;
-};
-
 type Tenant = {
   id: string;
-  company_id: string;
   full_name: string;
   email: string | null;
   billing_name: string | null;
@@ -120,11 +82,9 @@ type Lease = {
   id: string;
   unit_id: string | null;
   tenant_id: string | null;
-  responsible_payer_id: string | null;
   billing_name: string | null;
   billing_email: string | null;
   billing_tax_id: string | null;
-  due_day: number | null;
   rent_amount: number | null;
   status: string | null;
   start_date: string | null;
@@ -143,6 +103,8 @@ type CollectionChargeType =
   | "penalty"
   | "other";
 
+type CollectionStoredStatus = "pending" | "partial" | "collected" | "overdue";
+
 type CollectionSchedule = {
   id: string;
   building_id: string;
@@ -150,14 +112,11 @@ type CollectionSchedule = {
   lease_id: string | null;
   charge_type: CollectionChargeType;
   title: string;
-  responsibility_type: "tenant" | "owner" | "other";
   amount_expected: number;
   due_day: number;
   active: boolean;
   notes: string | null;
 };
-
-type CollectionStoredStatus = "pending" | "partial" | "collected" | "overdue";
 
 type CollectionRecord = {
   id: string;
@@ -173,116 +132,12 @@ type CollectionRecord = {
   amount_collected: number | null;
   status: CollectionStoredStatus;
   collected_at: string | null;
-  payment_method: string | null;
   notes: string | null;
   created_at: string;
 };
 
-type CollectionPayment = {
-  id: string;
-  collection_record_id: string;
-  company_id: string;
-  amount: number;
-  paid_at: string;
-  payment_method: string | null;
-  reference: string | null;
-  notes: string | null;
-  created_by: string | null;
-  created_at: string;
-};
-
-type CollectionInvoice = {
-  id: string;
-  collection_record_id: string | null;
-  company_id: string;
-  building_id: string | null;
-  unit_id: string | null;
-  lease_id: string | null;
-  invoice_uuid: string | null;
-  invoice_series: string | null;
-  invoice_folio: string | null;
-  customer_name: string | null;
-  customer_tax_id: string | null;
-  description: string | null;
-  invoice_type: string | null;
-  charge_category: string | null;
-  issued_at: string | null;
-  period_year: number | null;
-  period_month: number | null;
-  subtotal: number | null;
-  tax: number | null;
-  total: number | null;
-  pdf_path: string;
-  xml_path: string;
-  original_pdf_filename: string | null;
-  original_xml_filename: string | null;
-  match_confidence: number | null;
-  match_notes: string | null;
-  replaced_at: string | null;
-  replaced_by_invoice_id: string | null;
-  created_by: string | null;
-  created_at: string;
-};
-
-type TenantReportedPayment = {
-  id: string;
-  company_id: string | null;
-  review_status: string | null;
-};
-
-type InvoicePendingUploadSummary = {
-  id: string;
-  company_id: string | null;
-  status: string | null;
-};
-
-type CollectionStatusFilter =
-  | "all"
-  | "pending"
-  | "partial"
-  | "collected"
-  | "overdue";
-
-type PaymentMethod =
-  | ""
-  | "transferencia"
-  | "efectivo"
-  | "tarjeta"
-  | "depósito"
-  | "otro";
-
-type PaymentForm = {
-  recordId: string;
-  amount: string;
-  paidAt: string;
-  paymentMethod: PaymentMethod;
-  reference: string;
-  notes: string;
-};
-
+type CollectionStatusFilter = "all" | "pending" | "partial" | "collected" | "overdue";
 type ChargeMode = "recurring" | "one_time";
-
-type InvoiceImportForm = {
-  selectedLeaseId: string;
-  selectedChargeCategory: CollectionChargeType;
-  title: string;
-  dueDate: string;
-  notes: string;
-};
-
-type InvoiceImportCandidate = {
-  leaseId: string;
-  buildingId: string;
-  buildingName: string;
-  unitId: string;
-  unitLabel: string;
-  tenantLabel: string;
-  responsiblePayerLabel: string;
-  billingName: string;
-  billingTaxId: string;
-  score: number;
-  reasons: string[];
-};
 
 type ChargeForm = {
   chargeMode: ChargeMode;
@@ -301,107 +156,52 @@ type ChargeForm = {
 
 type EditRecordForm = {
   recordId: string;
-  title: string;
   amountDue: string;
   notes: string;
 };
 
-type CollectionRow = {
-  id: string;
+type InquilinoRow = {
+  groupKey: string; // lease_id o "unit-{unit_id}"
+  leaseId: string | null;
+  tenantLabel: string;
   buildingId: string;
   buildingName: string;
-  unitId: string;
   unitLabel: string;
-  tenantLabel: string;
-  responsiblePayerLabel: string;
-  title: string;
-  chargeType: CollectionChargeType;
-  chargeTypeLabel: string;
-  periodLabel: string;
-  dueDate: string;
-  dueDateLabel: string;
-  amountDue: number;
-  amountDueLabel: string;
-  amountCollected: number;
-  amountCollectedLabel: string;
+  records: CollectionRecord[];
+  totalDue: number;
+  totalCollected: number;
   balance: number;
-  balanceLabel: string;
-  status: CollectionStoredStatus;
-  statusLabel: string;
-  paymentMethodLabel: string;
-  notes: string;
-  invoicesCount: number;
-  paymentsCount: number;
+  estadoGeneral: CollectionStoredStatus;
 };
 
-const MONTH_LABELS_SHORT = [
-  "Ene",
-  "Feb",
-  "Mar",
-  "Abr",
-  "May",
-  "Jun",
-  "Jul",
-  "Ago",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dic",
-];
+// ── Constantes ─────────────────────────────────────────────────────────────────
 
 const MONTH_LABELS_LONG = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
 ];
 
-function getTodayDateOnlyKey() {
+// ── Helpers puros ──────────────────────────────────────────────────────────────
+
+function getTodayDateKey() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, "0");
-  const day = String(now.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 }
 
-function parseDateOnly(dateKey: string) {
-  const [year, month, day] = dateKey.split("-").map(Number);
-  return new Date(year, (month || 1) - 1, day || 1);
+function getMonthLastDay(year: number, month: number) {
+  return new Date(year, month, 0).getDate();
+}
+
+function buildDateKey(year: number, month: number, day: number) {
+  const safeDay = Math.max(1, Math.min(day, getMonthLastDay(year, month)));
+  return `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
 }
 
 function formatDate(dateKey: string | null) {
   if (!dateKey) return "Sin fecha";
-
-  const safeDate = dateKey.length >= 10 ? dateKey.slice(0, 10) : dateKey;
-  const date = parseDateOnly(safeDate);
-
-  return `${date.getDate()} ${MONTH_LABELS_SHORT[date.getMonth()]} ${date.getFullYear()}`;
-}
-
-function formatDateTime(dateKey: string | null) {
-  if (!dateKey) return "Sin fecha";
-
-  const date = new Date(dateKey);
-
-  return new Intl.DateTimeFormat("es-MX", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-}
-
-function formatPeriod(periodYear: number, periodMonth: number) {
-  return `${MONTH_LABELS_SHORT[periodMonth - 1] || "Mes"} ${periodYear}`;
+  const [year, month, day] = dateKey.slice(0, 10).split("-").map(Number);
+  const date = new Date(year, (month || 1) - 1, day || 1);
+  return `${date.getDate()} ${MONTH_LABELS_LONG[(date.getMonth())].slice(0, 3)} ${date.getFullYear()}`;
 }
 
 function formatCurrency(amount: number | null) {
@@ -415,65 +215,8 @@ function formatCurrency(amount: number | null) {
 function formatDecimalInput(value: string) {
   const sanitized = value.replace(/[^\d.]/g, "");
   const firstDot = sanitized.indexOf(".");
-
   if (firstDot === -1) return sanitized;
-
-  return (
-    sanitized.slice(0, firstDot + 1) +
-    sanitized.slice(firstDot + 1).replace(/\./g, "")
-  );
-}
-
-function getChargeTypeLabel(type: CollectionChargeType) {
-  if (type === "rent") return "Renta";
-  if (type === "maintenance_fee") return "Mantenimiento";
-  if (type === "electricity") return "Electricidad";
-  if (type === "water") return "Agua";
-  if (type === "gas") return "Gas";
-  if (type === "amenities") return "Amenidades";
-  if (type === "services") return "Servicios (legado)";
-  if (type === "parking") return "Estacionamiento";
-  if (type === "penalty") return "Penalización";
-  return "Otro";
-}
-
-function getStatusLabel(status: CollectionStoredStatus) {
-  if (status === "collected") return "Cobrado";
-  if (status === "partial") return "Parcial";
-  if (status === "pending") return "Pendiente";
-  return "Vencido";
-}
-
-function getStatusColors(status: CollectionStoredStatus) {
-  if (status === "collected") {
-    return {
-      background: "#ECFDF5",
-      border: "#A7F3D0",
-      text: "#166534",
-    };
-  }
-
-  if (status === "partial") {
-    return {
-      background: "var(--metric-bg-neutral)",
-      border: "#BFDBFE",
-      text: "#1D4ED8",
-    };
-  }
-
-  if (status === "pending") {
-    return {
-      background: "#FEFCE8",
-      border: "#FDE68A",
-      text: "#A16207",
-    };
-  }
-
-  return {
-    background: "var(--badge-bg-red)",
-    border: "#FECACA",
-    text: "#B91C1C",
-  };
+  return sanitized.slice(0, firstDot + 1) + sanitized.slice(firstDot + 1).replace(/\./g, "");
 }
 
 function parsePositiveNumber(value: string) {
@@ -482,1586 +225,640 @@ function parsePositiveNumber(value: string) {
   return parsed;
 }
 
-function getMonthLastDay(year: number, month: number) {
-  return new Date(year, month, 0).getDate();
+function getStatusLabel(status: CollectionStoredStatus) {
+  if (status === "collected") return "Cobrado";
+  if (status === "partial")   return "Parcial";
+  if (status === "pending")   return "Pendiente";
+  return "Vencido";
 }
 
-function buildDateKey(year: number, month: number, day: number) {
-  const safeDay = Math.max(1, Math.min(day, getMonthLastDay(year, month)));
-  return `${year}-${String(month).padStart(2, "0")}-${String(safeDay).padStart(2, "0")}`;
+function getStatusColors(status: CollectionStoredStatus) {
+  if (status === "collected") return { bg: "var(--badge-bg-green)",  text: "var(--badge-text-green)",  border: "var(--metric-border-green)" };
+  if (status === "partial")   return { bg: "var(--metric-bg-neutral)", text: "var(--badge-text-blue)",  border: "#BFDBFE" };
+  if (status === "pending")   return { bg: "#FEFCE8",                text: "#A16207",                  border: "#FDE68A" };
+  return                             { bg: "var(--badge-bg-red)",    text: "var(--badge-text-red)",    border: "#FECACA" };
 }
 
-function deriveStatusFromDueDate(dueDate: string) {
-  return dueDate < getTodayDateOnlyKey() ? "overdue" : "pending";
-}
-function getEndOfMonthDateKey(dateKey: string) {
-  const safeKey = dateKey || getTodayDateOnlyKey();
-  const date = parseDateOnly(safeKey);
-  const year = date.getFullYear();
-  const month = date.getMonth() + 1;
-  return buildDateKey(year, month, getMonthLastDay(year, month));
-}
-
-function getCollectionTypeIcon(chargeType: CollectionChargeType) {
-  if (chargeType === "rent") return <House size={18} color="#4F46E5" />;
-  if (chargeType === "maintenance_fee") return <Wrench size={18} color="#D97706" />;
-  if (chargeType === "electricity") return <Zap size={18} color="#2563EB" />;
-  if (chargeType === "water") return <Droplets size={18} color="#0EA5E9" />;
-  if (chargeType === "gas") return <Flame size={18} color="#EA580C" />;
-  if (chargeType === "amenities") return <Gem size={18} color="#7C3AED" />;
-  if (chargeType === "services") return <Wrench size={18} color="#0891B2" />;
-  if (chargeType === "parking") return <CarFront size={18} color="#0F766E" />;
-  if (chargeType === "penalty") return <AlertTriangle size={18} color="#DC2626" />;
-  return <Receipt size={18} color="#6D28D9" />;
-}
-
-
-function createDefaultImportForm(): InvoiceImportForm {
-  return {
-    selectedLeaseId: "",
-    selectedChargeCategory: "rent",
-    title: "",
-    dueDate: getTodayDateOnlyKey(),
-    notes: "",
+function getChargeTypeLabel(type: CollectionChargeType) {
+  const map: Record<CollectionChargeType, string> = {
+    rent: "Renta", maintenance_fee: "Mantenimiento", electricity: "Electricidad",
+    water: "Agua", gas: "Gas", amenities: "Amenidades", services: "Servicios",
+    parking: "Estacionamiento", penalty: "Penalización", other: "Otro",
   };
+  return map[type] || "Otro";
 }
 
-function normalizeComparableText(value: string | null | undefined) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-zA-Z0-9\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
+function getChargeTypeIcon(type: CollectionChargeType) {
+  if (type === "rent")            return <House size={15} color="var(--badge-text-blue)" />;
+  if (type === "maintenance_fee") return <Wrench size={15} color="#D97706" />;
+  if (type === "electricity")     return <Zap size={15} color="#2563EB" />;
+  if (type === "water")           return <Droplets size={15} color="#0EA5E9" />;
+  if (type === "gas")             return <Flame size={15} color="#EA580C" />;
+  if (type === "amenities")       return <Gem size={15} color="#7C3AED" />;
+  if (type === "parking")         return <CarFront size={15} color="#0F766E" />;
+  if (type === "penalty")         return <AlertTriangle size={15} color="#DC2626" />;
+  return                                 <Receipt size={15} color="#6D28D9" />;
 }
 
-function scoreExactOrContains(candidate: string | null | undefined, search: string | null | undefined) {
-  const normalizedCandidate = normalizeComparableText(candidate);
-  const normalizedSearch = normalizeComparableText(search);
-
-  if (!normalizedCandidate || !normalizedSearch) return 0;
-  if (normalizedCandidate === normalizedSearch) return 100;
-  if (normalizedCandidate.includes(normalizedSearch) || normalizedSearch.includes(normalizedCandidate)) {
-    return 65;
-  }
-
-  const candidateTokens = new Set(normalizedCandidate.split(" ").filter(Boolean));
-  const searchTokens = normalizedSearch.split(" ").filter(Boolean);
-  const overlap = searchTokens.filter((token) => candidateTokens.has(token)).length;
-
-  if (overlap >= 3) return 45;
-  if (overlap >= 2) return 25;
-  if (overlap >= 1) return 10;
-  return 0;
-}
-
-function inferChargeTypeFromDescription(description: string | null | undefined): CollectionChargeType {
-  const normalized = normalizeComparableText(description);
-
-  if (!normalized) return "other";
-  if (normalized.includes("renta") || normalized.includes("arrendamiento") || normalized.includes("alquiler")) return "rent";
-  if (normalized.includes("mantenimiento") || normalized.includes("mtto")) return "maintenance_fee";
-  if (normalized.includes("electric") || normalized.includes("electr") || normalized.includes("luz") || normalized.includes("energia")) return "electricity";
-  if (normalized.includes("agua")) return "water";
-  if (normalized.includes("gas")) return "gas";
-  if (normalized.includes("amenidad") || normalized.includes("amenidades") || normalized.includes("amenity") || normalized.includes("gym") || normalized.includes("gimnasio") || normalized.includes("alberca") || normalized.includes("pool") || normalized.includes("club")) return "amenities";
-  if (normalized.includes("parking") || normalized.includes("estacionamiento") || normalized.includes("cajon")) return "parking";
-  if (normalized.includes("penal") || normalized.includes("recargo") || normalized.includes("mora")) return "penalty";
-  return "other";
-}
-
-
-function extractCfdiFileIdentifiers(xmlText: string) {
-  const readAttr = (tagName: string, attrName: string) => {
-    const tagRegex = new RegExp(
-      `<[^>]*(?:\\w+:)?${tagName}\\b[^>]*\\b${attrName}="([^"]+)"`,
-      "i"
-    );
-    const match = xmlText.match(tagRegex);
-
-    if (match?.[1]) {
-      return String(match[1]).trim();
-    }
-
-    const lowercaseAttrRegex = new RegExp(
-      `<[^>]*(?:\\w+:)?${tagName}\\b[^>]*\\b${attrName.toLowerCase()}="([^"]+)"`,
-      "i"
-    );
-    const lowercaseMatch = xmlText.match(lowercaseAttrRegex);
-    return lowercaseMatch?.[1] ? String(lowercaseMatch[1]).trim() : null;
-  };
-
-  return {
-    emitterTaxId: readAttr("Emisor", "Rfc"),
-    receiverTaxId: readAttr("Receptor", "Rfc"),
-    series: readAttr("Comprobante", "Serie"),
-    folio: readAttr("Comprobante", "Folio"),
-  };
-}
-
-function isLikelyMatchingInvoicePair(xmlFile: File, pdfFile: File, parsed: ImportPreviewData) {
-  const normalizeFileName = (value: string) => normalizeComparableText(value).replace(/\s+/g, "");
-  const pdfName = normalizeFileName(pdfFile.name);
-  const xmlName = normalizeFileName(xmlFile.name);
-  const parsedAny = parsed as any;
-
-  const uuid = normalizeComparableText(parsed.uuid || "").replace(/\s+/g, "");
-  const series = normalizeComparableText(String(parsed.series || "")).replace(/\s+/g, "");
-  const folio = normalizeComparableText(String(parsed.folio || "")).replace(/\s+/g, "");
-  const seriesFolio = normalizeComparableText(`${parsed.series || ""}${parsed.folio || ""}`).replace(/\s+/g, "");
-  const receiverTaxId = normalizeComparableText(parsed.customerTaxId || "").replace(/\s+/g, "");
-  const emitterTaxId = normalizeComparableText(
-    String(
-      parsedAny.emitterTaxId ||
-      parsedAny.issuerTaxId ||
-      parsedAny.supplierTaxId ||
-      parsedAny.companyTaxId ||
-      ""
-    )
-  ).replace(/\s+/g, "");
-
-  const matchesByUuid = Boolean(uuid && pdfName.includes(uuid));
-
-  const matchesByBusinessData = Boolean(
-    emitterTaxId &&
-      receiverTaxId &&
-      pdfName.includes(emitterTaxId) &&
-      pdfName.includes(receiverTaxId) &&
-      ((seriesFolio && pdfName.includes(seriesFolio)) ||
-        (folio && pdfName.includes(folio)) ||
-        (series && folio && pdfName.includes(`${series}${folio}`)))
-  );
-
-  if (matchesByUuid || matchesByBusinessData) return true;
-
-  const xmlStem = xmlName.replace(/xml$/g, "");
-  const pdfStem = pdfName.replace(/pdf$/g, "");
-  if (xmlStem && pdfStem && (xmlStem.includes(pdfStem) || pdfStem.includes(xmlStem))) return true;
-
-  return false;
-}
-
-function buildImportedChargeTitle(parsed: ParsedCfdiData | null, category: CollectionChargeType) {
-  const fromXml = String(parsed?.description || "").trim();
-  if (fromXml) return fromXml;
-  if (category === "rent") return "Renta importada desde XML";
-  if (category === "maintenance_fee") return "Mantenimiento importado desde XML";
-  if (category === "electricity") return "Electricidad importada desde XML";
-  if (category === "water") return "Agua importada desde XML";
-  if (category === "gas") return "Gas importado desde XML";
-  if (category === "amenities") return "Amenidades importadas desde XML";
-  if (category === "services") return "Servicios importados desde XML";
-  if (category === "parking") return "Estacionamiento importado desde XML";
-  if (category === "penalty") return "Penalización importada desde XML";
-  return "Cobro importado desde XML";
-}
-
-
-function formatCollectionTitleForRow({
-  chargeType,
-  periodMonth,
-  fallbackTitle,
-}: {
-  chargeType: CollectionChargeType;
-  periodMonth: number;
-  fallbackTitle: string | null | undefined;
-}) {
-  const monthLabel = MONTH_LABELS_LONG[periodMonth - 1] || "Mes";
-
-  if (chargeType === "rent") return `Renta ${monthLabel}`;
-  if (chargeType === "maintenance_fee") return `Mantenimiento ${monthLabel}`;
-  if (chargeType === "electricity") return `Electricidad ${monthLabel}`;
-  if (chargeType === "water") return `Agua ${monthLabel}`;
-  if (chargeType === "gas") return `Gas ${monthLabel}`;
-  if (chargeType === "amenities") return `Amenidades ${monthLabel}`;
-  if (chargeType === "services") return `Servicios ${monthLabel}`;
-  if (chargeType === "parking") return `Estacionamiento ${monthLabel}`;
-  if (chargeType === "penalty") return `Penalización ${monthLabel}`;
-
-  const normalizedFallback = String(fallbackTitle || "").trim();
-  if (!normalizedFallback) return `Cobro ${monthLabel}`;
-  if (normalizedFallback.length <= 42) return normalizedFallback;
-  return `${normalizedFallback.slice(0, 39).trim()}...`;
-}
-
-function formatUnitLabel(unit: Unit | null | undefined) {
-  const unitNumber = String(unit?.unit_number || "").trim();
-  const displayCode = String(unit?.display_code || "").trim();
-  const rawValue = unitNumber || displayCode;
-
-  if (!rawValue) return "Departamento sin número";
-
-  const normalized = normalizeComparableText(`${displayCode} ${unitNumber}`);
-  const usesCommercialLabel = normalized.includes("local") || normalized.includes("comercial");
-  const prefix = usesCommercialLabel ? "Unidad" : "Departamento";
-
-  return `${prefix} ${rawValue}`;
+function computeEstadoGeneral(records: CollectionRecord[]): CollectionStoredStatus {
+  if (!records.length) return "pending";
+  if (records.every((r) => r.status === "collected")) return "collected";
+  if (records.some((r) => r.status === "overdue"))    return "overdue";
+  if (records.some((r) => r.status === "partial"))    return "partial";
+  // Mix: alguno cobrado + alguno sin cobrar
+  if (records.some((r) => r.status === "collected"))  return "partial";
+  return "pending";
 }
 
 function createDefaultChargeForm(): ChargeForm {
-  const todayKey = getTodayDateOnlyKey();
-  const today = parseDateOnly(todayKey);
-
+  const today = getTodayDateKey();
+  const day = new Date().getDate();
   return {
     chargeMode: "recurring",
-    buildingId: "",
-    unitId: "",
-    leaseId: "",
+    buildingId: "", unitId: "", leaseId: "",
     chargeType: "rent",
     title: "",
     responsibilityType: "tenant",
     amountExpected: "",
-    dueDay: String(today.getDate()),
-    initialDueDate: todayKey,
+    dueDay: String(day),
+    initialDueDate: today,
     notes: "",
     createFirstRecordNow: true,
   };
 }
 
-function getUserDisplayLabel(user: AppUser | null | undefined) {
-  if (!user) return null;
-  return user.full_name || user.email || null;
-}
+// ── Componente principal ───────────────────────────────────────────────────────
 
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
   const router = useRouter();
 
-  const [loadingPage, setLoadingPage] = useState(true);
-  const [message, setMessage] = useState("");
+  const now = new Date();
+  const [selectedYear, setSelectedYear]   = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
 
-  const [buildings, setBuildings] = useState<Building[]>([]);
-  const [units, setUnits] = useState<Unit[]>([]);
-  const [appUsers, setAppUsers] = useState<AppUser[]>([]);
-  const [tenants, setTenants] = useState<Tenant[]>([]);
-  const [leases, setLeases] = useState<Lease[]>([]);
-  const [collectionSchedules, setCollectionSchedules] = useState<CollectionSchedule[]>([]);
-  const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
-  const [collectionPayments, setCollectionPayments] = useState<CollectionPayment[]>([]);
-  const [collectionInvoices, setCollectionInvoices] = useState<CollectionInvoice[]>([]);
-  const [reportedPayments, setReportedPayments] = useState<TenantReportedPayment[]>([]);
-  const [invoicePendingUploads, setInvoicePendingUploads] = useState<InvoicePendingUploadSummary[]>([]);
+  const [buildings, setBuildings]   = useState<Building[]>([]);
+  const [units, setUnits]           = useState<Unit[]>([]);
+  const [tenants, setTenants]       = useState<Tenant[]>([]);
+  const [leases, setLeases]         = useState<Lease[]>([]);
+  const [schedules, setSchedules]   = useState<CollectionSchedule[]>([]);
+  const [records, setRecords]       = useState<CollectionRecord[]>([]);
 
-  const [selectedBuildingId, setSelectedBuildingId] = useState("all");
-  const [selectedStatus, setSelectedStatus] =
-    useState<CollectionStatusFilter>("all");
+  const [loadingPage, setLoadingPage]     = useState(true);
+  const [generating, setGenerating]       = useState(false);
+  const [markingIds, setMarkingIds]       = useState<Set<string>>(new Set());
 
-  const [detailRecordId, setDetailRecordId] = useState<string | null>(null);
-  const [paymentRecordId, setPaymentRecordId] = useState<string | null>(null);
+  const [filterBuildingId, setFilterBuildingId] = useState("all");
+  const [filterStatus, setFilterStatus]         = useState<CollectionStatusFilter>("all");
+  const [expandedKey, setExpandedKey]           = useState<string | null>(null);
+
   const [createChargeOpen, setCreateChargeOpen] = useState(false);
-  const [importInvoiceOpen, setImportInvoiceOpen] = useState(false);
-  const [creatingCharge, setCreatingCharge] = useState(false);
-  const [savingPayment, setSavingPayment] = useState(false);
-  const [importingInvoice, setImportingInvoice] = useState(false);
-  const [deleteRecordId, setDeleteRecordId] = useState<string | null>(null);
-  const [deletingRecord, setDeletingRecord] = useState(false);
-  const [editRecordId, setEditRecordId] = useState<string | null>(null);
-  const [editingRecord, setEditingRecord] = useState(false);
+  const [chargeForm, setChargeForm]             = useState<ChargeForm>(createDefaultChargeForm());
+  const [creatingCharge, setCreatingCharge]     = useState(false);
 
-  const [paymentForm, setPaymentForm] = useState<PaymentForm>({
-    recordId: "",
-    amount: "",
-    paidAt: getTodayDateOnlyKey(),
-    paymentMethod: "",
-    reference: "",
-    notes: "",
-  });
-  const [chargeForm, setChargeForm] = useState<ChargeForm>(createDefaultChargeForm());
-  const [importForm, setImportForm] = useState<InvoiceImportForm>(createDefaultImportForm());
-  const [importXmlFile, setImportXmlFile] = useState<File | null>(null);
-  const [importPdfFile, setImportPdfFile] = useState<File | null>(null);
-  const [importPreview, setImportPreview] = useState<ImportPreviewData | null>(null);
-  const [importStatusMessage, setImportStatusMessage] = useState("");
-  const [editForm, setEditForm] = useState<EditRecordForm>({
-    recordId: "",
-    title: "",
-    amountDue: "",
-    notes: "",
-  });
+  const [deleteRecordId, setDeleteRecordId]   = useState<string | null>(null);
+  const [deletingRecord, setDeletingRecord]   = useState(false);
+
+  const [editRecordId, setEditRecordId]     = useState<string | null>(null);
+  const [editForm, setEditForm]             = useState<EditRecordForm>({ recordId: "", amountDue: "", notes: "" });
+  const [editingRecord, setEditingRecord]   = useState(false);
+
+  const [abonoModal, setAbonoModal]         = useState<{ record: CollectionRecord; monto: string } | null>(null);
+  const [abonoSaving, setAbonoSaving]       = useState(false);
+  const [revertConfirmId, setRevertConfirmId] = useState<string | null>(null);
+
+  const [eventoModal, setEventoModal]       = useState<{ groupKey: string; leaseId: string | null; buildingId: string; unitId: string } | null>(null);
+  const [eventoForm, setEventoForm]         = useState({ concepto: "", chargeType: "amenities" as CollectionChargeType, monto: "" });
+  const [eventoSaving, setEventoSaving]     = useState(false);
+
+  // ── Cargar datos ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
-
-    void loadCollectionsData();
+    void loadData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user?.company_id]);
 
-  async function loadCollectionsData() {
+  async function loadData() {
     if (!user?.company_id) return;
-
     setLoadingPage(true);
-    setMessage("");
 
-    const [
-      buildingsRes,
-      unitsRes,
-      appUsersRes,
-      tenantsRes,
-      leasesRes,
-      schedulesRes,
-      recordsRes,
-      paymentsRes,
-      invoicesRes,
-      reportedPaymentsRes,
-      pendingUploadsRes,
-    ] = await Promise.all([
-      supabase
-        .from("buildings")
-        .select("id, name")
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null)
-        .order("name", { ascending: true }),
+    const [buildingsRes, unitsRes, tenantsRes, leasesRes, schedulesRes, recordsRes] =
+      await Promise.all([
+        supabase.from("buildings").select("id, name").eq("company_id", user.company_id).is("deleted_at", null).order("name"),
+        supabase.from("units").select("id, building_id, unit_number, display_code").eq("company_id", user.company_id).is("deleted_at", null),
+        supabase.from("tenants").select("id, full_name, email, billing_name, billing_email, tax_id").eq("company_id", user.company_id).is("deleted_at", null),
+        supabase.from("leases").select("id, unit_id, tenant_id, billing_name, billing_email, billing_tax_id, rent_amount, status, start_date, end_date").eq("company_id", user.company_id).eq("status", "ACTIVE").is("deleted_at", null),
+        supabase.from("collection_schedules").select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes").eq("company_id", user.company_id).is("deleted_at", null),
+        supabase.from("collection_records").select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, created_at").eq("company_id", user.company_id).is("deleted_at", null).order("due_date"),
+      ]);
 
-      supabase
-        .from("units")
-        .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-
-      supabase
-        .from("app_users")
-        .select("id, company_id, full_name, email, is_superadmin, created_at")
-        .eq("company_id", user.company_id),
-
-      supabase
-        .from("tenants")
-        .select("id, company_id, full_name, email, billing_name, billing_email, tax_id")
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-
-      supabase
-        .from("leases")
-        .select(
-          "id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, billing_tax_id, due_day, rent_amount, status, start_date, end_date"
-        )
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-
-      supabase
-        .from("collection_schedules")
-        .select(
-          "id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes"
-        )
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-
-      supabase
-        .from("collection_records")
-        .select(
-          "id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at"
-        )
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null)
-        .order("due_date", { ascending: true }),
-
-      supabase
-        .from("collection_payments")
-        .select(
-          "id, collection_record_id, company_id, amount, paid_at, payment_method, reference, notes, created_by, created_at"
-        )
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null)
-        .order("paid_at", { ascending: false }),
-
-      supabase
-        .from("collection_invoices")
-        .select(
-          "id, collection_record_id, company_id, building_id, unit_id, lease_id, invoice_uuid, invoice_series, invoice_folio, customer_name, customer_tax_id, description, invoice_type, charge_category, issued_at, period_year, period_month, subtotal, tax, total, pdf_path, xml_path, original_pdf_filename, original_xml_filename, match_confidence, match_notes, replaced_at, replaced_by_invoice_id, created_by, created_at"
-        )
-        .eq("company_id", user.company_id)
-        .is("replaced_at", null)
-        .is("deleted_at", null)
-        .order("issued_at", { ascending: false }),
-
-      supabase
-        .from("tenant_reported_payments")
-        .select("id, company_id, review_status")
-        .eq("company_id", user.company_id)
-        .eq("review_status", "pending_review")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
-
-      supabase
-        .from("invoice_pending_uploads")
-        .select("id, company_id, status")
-        .eq("company_id", user.company_id)
-        .eq("status", "pending_upload")
-        .order("created_at", { ascending: false }),
-    ]);
-
-    if (buildingsRes.error) {
-      setMessage("No se pudieron cargar los edificios.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (unitsRes.error) {
-      setMessage("No se pudieron cargar las unidades.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (appUsersRes.error) {
-      setMessage("No se pudieron cargar los usuarios.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (tenantsRes.error) {
-      setMessage("No se pudieron cargar los inquilinos.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (leasesRes.error) {
-      setMessage("No se pudieron cargar los contratos.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (schedulesRes.error) {
-      setMessage("No se pudieron cargar las configuraciones de cobranza.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (recordsRes.error) {
-      setMessage("No se pudieron cargar los registros de cobranza.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (paymentsRes.error) {
-      setMessage("No se pudieron cargar los abonos de cobranza.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (invoicesRes.error) {
-      setMessage("No se pudieron cargar las facturas ligadas a cobranza.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (reportedPaymentsRes.error) {
-      setMessage("No se pudieron cargar los pagos reportados pendientes.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (pendingUploadsRes.error) {
-      setMessage("No se pudieron cargar los pendientes de factura por cargar.");
-      setLoadingPage(false);
-      return;
+    for (const res of [buildingsRes, unitsRes, tenantsRes, leasesRes, schedulesRes, recordsRes]) {
+      if (res.error) {
+        showToast({ type: "error", message: "Error cargando datos de cobranza." });
+        setLoadingPage(false);
+        return;
+      }
     }
 
     setBuildings((buildingsRes.data as Building[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);
-    setAppUsers((appUsersRes.data as AppUser[]) || []);
     setTenants((tenantsRes.data as Tenant[]) || []);
     setLeases((leasesRes.data as Lease[]) || []);
-    setCollectionSchedules((schedulesRes.data as CollectionSchedule[]) || []);
-    setCollectionRecords((recordsRes.data as CollectionRecord[]) || []);
-    setCollectionPayments((paymentsRes.data as CollectionPayment[]) || []);
-    setCollectionInvoices((invoicesRes.data as CollectionInvoice[]) || []);
-    setReportedPayments((reportedPaymentsRes.data as TenantReportedPayment[]) || []);
-    setInvoicePendingUploads((pendingUploadsRes.data as InvoicePendingUploadSummary[]) || []);
+    setSchedules((schedulesRes.data as CollectionSchedule[]) || []);
+    setRecords((recordsRes.data as CollectionRecord[]) || []);
     setLoadingPage(false);
+
+    // PASO 3 — Auto-marcar vencidos
+    void autoMarkOverdue();
   }
 
-  const collectionRows = useMemo<CollectionRow[]>(() => {
-    const buildingMap = new Map<string, Building>();
-    const unitMap = new Map<string, Unit>();
-    const userMap = new Map<string, AppUser>();
-    const leaseMap = new Map<string, Lease>();
-    const scheduleMap = new Map<string, CollectionSchedule>();
-    const paymentsByRecordId = new Map<string, CollectionPayment[]>();
-    const invoicesByRecordId = new Map<string, CollectionInvoice[]>();
+  // ── PASO 3: auto-mark overdue ─────────────────────────────────────────────────
 
-    buildings.forEach((building) => buildingMap.set(building.id, building));
-    units.forEach((unit) => unitMap.set(unit.id, unit));
-    appUsers.forEach((appUser) => userMap.set(appUser.id, appUser));
-    leases.forEach((lease) => leaseMap.set(lease.id, lease));
-    collectionSchedules.forEach((schedule) => scheduleMap.set(schedule.id, schedule));
+  async function autoMarkOverdue() {
+    if (!user?.company_id) return;
+    await supabase
+      .from("collection_records")
+      .update({ status: "overdue" })
+      .eq("company_id", user.company_id)
+      .eq("status", "pending")
+      .lt("due_date", getTodayDateKey())
+      .is("deleted_at", null);
+  }
 
-    collectionPayments.forEach((payment) => {
-      const current = paymentsByRecordId.get(payment.collection_record_id) || [];
-      current.push(payment);
-      paymentsByRecordId.set(payment.collection_record_id, current);
-    });
+  // ── PASO 1: generar cobros del mes ────────────────────────────────────────────
 
-    collectionInvoices.forEach((invoice) => {
-      if (!invoice.collection_record_id) return;
-      const current = invoicesByRecordId.get(invoice.collection_record_id) || [];
-      current.push(invoice);
-      invoicesByRecordId.set(invoice.collection_record_id, current);
-    });
+  async function generateMonthlyCharges(year: number, month: number) {
+    if (!user?.company_id) return;
+    setGenerating(true);
 
-    return collectionRecords
-      .map((record) => {
-        const schedule = scheduleMap.get(record.collection_schedule_id);
-        if (!schedule) return null;
-
-        const building =
-          buildingMap.get(record.building_id) || buildingMap.get(schedule.building_id);
-        const unit = unitMap.get(record.unit_id) || unitMap.get(schedule.unit_id);
-        const lease =
-          (record.lease_id ? leaseMap.get(record.lease_id) : null) ||
-          (schedule.lease_id ? leaseMap.get(schedule.lease_id) : null);
-
-        const tenantUser = lease?.tenant_id ? userMap.get(lease.tenant_id) : null;
-        const responsiblePayerUser = lease?.responsible_payer_id
-          ? userMap.get(lease.responsible_payer_id)
-          : null;
-
-        const unitLabel = formatUnitLabel(unit);
-
-        const tenantLabel =
-          getUserDisplayLabel(tenantUser) ||
-          lease?.billing_name ||
-          lease?.billing_email ||
-          "Sin inquilino asignado";
-
-        const responsiblePayerLabel =
-          getUserDisplayLabel(responsiblePayerUser) ||
-          lease?.billing_name ||
-          lease?.billing_email ||
-          getUserDisplayLabel(tenantUser) ||
-          "Sin responsable definido";
-
-        const paidAmount =
-          record.amount_collected ??
-          (paymentsByRecordId.get(record.id) || []).reduce(
-            (sum, payment) => sum + (payment.amount || 0),
-            0
-          );
-
-        const balance = Math.max((record.amount_due || 0) - paidAmount, 0);
-
-        return {
-          id: record.id,
-          buildingId: record.building_id,
-          buildingName: building?.name || "Edificio",
-          unitId: record.unit_id,
-          unitLabel,
-          tenantLabel,
-          responsiblePayerLabel,
-          title: formatCollectionTitleForRow({
-            chargeType: schedule.charge_type,
-            periodMonth: record.period_month,
-            fallbackTitle: schedule.title,
-          }),
-          chargeType: schedule.charge_type,
-          chargeTypeLabel: getChargeTypeLabel(schedule.charge_type),
-          periodLabel: formatPeriod(record.period_year, record.period_month),
-          dueDate: record.due_date,
-          dueDateLabel: formatDate(record.due_date),
-          amountDue: record.amount_due || 0,
-          amountDueLabel: formatCurrency(record.amount_due || 0),
-          amountCollected: paidAmount,
-          amountCollectedLabel: formatCurrency(paidAmount),
-          balance,
-          balanceLabel: formatCurrency(balance),
-          status: record.status,
-          statusLabel: getStatusLabel(record.status),
-          paymentMethodLabel: record.payment_method || "—",
-          notes: record.notes || schedule.notes || "—",
-          invoicesCount: (invoicesByRecordId.get(record.id) || []).length,
-          paymentsCount: (paymentsByRecordId.get(record.id) || []).length,
-        };
-      })
-      .filter((row): row is CollectionRow => Boolean(row));
-  }, [
-    buildings,
-    units,
-    appUsers,
-    leases,
-    collectionSchedules,
-    collectionRecords,
-    collectionPayments,
-    collectionInvoices,
-  ]);
-
-  const collectionRowsById = useMemo(() => {
-    return new Map(collectionRows.map((row) => [row.id, row]));
-  }, [collectionRows]);
-
-  const unitsForSelectedBuilding = useMemo(() => {
-    if (!chargeForm.buildingId) return [];
-    return units
-      .filter((unit) => unit.building_id === chargeForm.buildingId)
-      .sort((a, b) => {
-        const aLabel = a.display_code || a.unit_number || "";
-        const bLabel = b.display_code || b.unit_number || "";
-        return aLabel.localeCompare(bLabel);
-      });
-  }, [units, chargeForm.buildingId]);
-
-  const leasesForSelectedUnit = useMemo(() => {
-    if (!chargeForm.unitId) return [];
-    return leases.filter((lease) => lease.unit_id === chargeForm.unitId);
-  }, [leases, chargeForm.unitId]);
-
-  const tenantMap = useMemo(() => {
-    return new Map(tenants.map((tenant) => [tenant.id, tenant]));
-  }, [tenants]);
-
-  const selectedChargeLease = useMemo(() => {
-    if (!chargeForm.leaseId) return null;
-    return leases.find((lease) => lease.id === chargeForm.leaseId) || null;
-  }, [leases, chargeForm.leaseId]);
-
-  const selectedChargeTenant = useMemo(() => {
-    if (!selectedChargeLease?.tenant_id) return null;
-    return tenantMap.get(selectedChargeLease.tenant_id) || null;
-  }, [selectedChargeLease, tenantMap]);
-
-  const leaseLookupOptions = useMemo(() => {
-    return leases
-      .filter((lease) => Boolean(lease.unit_id))
-      .map((lease) => {
-        const unit = units.find((item) => item.id === lease.unit_id) || null;
-        const building = unit
-          ? buildings.find((item) => item.id === unit.building_id) || null
-          : null;
-        const tenant = lease.tenant_id ? tenantMap.get(lease.tenant_id) || null : null;
-
-        const label = `${lease.billing_name || tenant?.billing_name || tenant?.full_name || "Sin nombre"} · ${building?.name || "Edificio"} · Unidad ${unit?.display_code || unit?.unit_number || "Unidad"}`;
-
-        return {
-          id: lease.id,
-          label,
-        };
-      })
-      .sort((a, b) => a.label.localeCompare(b.label));
-  }, [leases, units, buildings, tenantMap]);
-
-  const importCandidates = useMemo<InvoiceImportCandidate[]>(() => {
-    if (!importPreview) return [];
-
-    return leases
-      .filter((lease) => Boolean(lease.unit_id))
-      .map((lease) => {
-        const unit = units.find((item) => item.id === lease.unit_id) || null;
-        const building = unit ? buildings.find((item) => item.id === unit.building_id) || null : null;
-        const tenant = lease.tenant_id ? tenantMap.get(lease.tenant_id) || null : null;
-        const payer = lease.responsible_payer_id ? tenantMap.get(lease.responsible_payer_id) || null : null;
-        const reasons: string[] = [];
-        let score = 0;
-
-        const xmlTaxId = normalizeComparableText(importPreview.customerTaxId);
-        const xmlName = normalizeComparableText(importPreview.customerName);
-        const xmlDescription = normalizeComparableText(importPreview.description);
-
-        if (xmlTaxId && normalizeComparableText(lease.billing_tax_id) === xmlTaxId) {
-          score += 120;
-          reasons.push("RFC exacto contra facturación del contrato");
-        } else if (xmlTaxId && normalizeComparableText(payer?.tax_id) === xmlTaxId) {
-          score += 100;
-          reasons.push("RFC exacto contra responsable de pago");
-        } else if (xmlTaxId && normalizeComparableText(tenant?.tax_id) === xmlTaxId) {
-          score += 80;
-          reasons.push("RFC exacto contra inquilino");
-        }
-
-        const billingNameScore = scoreExactOrContains(lease.billing_name, xmlName);
-        if (billingNameScore > 0) {
-          score += billingNameScore;
-          reasons.push("Nombre parecido al de facturación del contrato");
-        }
-
-        const payerScore = scoreExactOrContains(payer?.billing_name || payer?.full_name, xmlName);
-        if (payerScore > 0) {
-          score += Math.min(payerScore, 45);
-          reasons.push("Nombre parecido al responsable de pago");
-        }
-
-        const tenantScore = scoreExactOrContains(tenant?.billing_name || tenant?.full_name, xmlName);
-        if (tenantScore > 0) {
-          score += Math.min(tenantScore, 35);
-          reasons.push("Nombre parecido al inquilino");
-        }
-
-        const unitTokens = normalizeComparableText(`${unit?.display_code || ""} ${unit?.unit_number || ""}`)
-          .split(" ")
-          .filter(Boolean);
-        if (xmlDescription && unitTokens.some((token) => token.length >= 2 && xmlDescription.includes(token))) {
-          score += 18;
-          reasons.push("La descripción menciona la unidad");
-        }
-
-        return {
-          leaseId: lease.id,
-          buildingId: building?.id || unit?.building_id || "",
-          buildingName: building?.name || "Edificio",
-          unitId: unit?.id || "",
-          unitLabel: unit?.display_code || unit?.unit_number || "Unidad",
-          tenantLabel: tenant?.full_name || tenant?.billing_name || "Sin inquilino",
-          responsiblePayerLabel: payer?.full_name || payer?.billing_name || lease.billing_name || tenant?.full_name || "Sin responsable",
-          billingName: lease.billing_name || tenant?.billing_name || tenant?.full_name || "",
-          billingTaxId: lease.billing_tax_id || payer?.tax_id || tenant?.tax_id || "",
-          score,
-          reasons,
-        };
-      })
-      .filter((candidate) => candidate.score > 0)
-      .sort((a, b) => b.score - a.score)
-      .slice(0, 8);
-  }, [importPreview, leases, units, buildings, tenantMap]);
-
-  const selectedImportCandidate = useMemo(() => {
-    if (!importForm.selectedLeaseId) return null;
-    return importCandidates.find((candidate) => candidate.leaseId === importForm.selectedLeaseId) || null;
-  }, [importCandidates, importForm.selectedLeaseId]);
-
-  useEffect(() => {
-    if (!importPreview) return;
-
-    const inferredCategory = inferChargeTypeFromDescription(importPreview.description);
-    const suggestedTitle = buildImportedChargeTitle(importPreview, inferredCategory);
-
-    setImportForm((prev) => ({
-      ...prev,
-      selectedLeaseId: prev.selectedLeaseId || importCandidates[0]?.leaseId || "",
-      selectedChargeCategory: prev.selectedChargeCategory || inferredCategory,
-      title: prev.title || suggestedTitle,
-      dueDate: getEndOfMonthDateKey(importPreview.issuedAt || prev.dueDate || getTodayDateOnlyKey()),
-    }));
-
-    setImportStatusMessage(
-      importCandidates[0]
-        ? `Clasificación automática propuesta con ${importCandidates[0].score >= 100 ? "alta" : importCandidates[0].score >= 60 ? "media" : "baja"} confianza.`
-        : "No encontré una coincidencia automática fuerte. Revisa y selecciona manualmente el contrato correcto."
+    // Schedules activos para leases activos
+    const activeLeaseIds = new Set(leases.map((l) => l.id));
+    const activeSchedules = schedules.filter(
+      (s) => s.active && s.lease_id && activeLeaseIds.has(s.lease_id),
     );
-  }, [importPreview, importCandidates]);
 
-  const filteredRows = useMemo(() => {
-    return collectionRows.filter((row) => {
-      if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) {
-        return false;
-      }
-
-      if (selectedStatus !== "all" && row.status !== selectedStatus) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [collectionRows, selectedBuildingId, selectedStatus]);
-
-  const selectedBuildingLabel =
-    selectedBuildingId === "all"
-      ? "Todos los edificios"
-      : buildings.find((building) => building.id === selectedBuildingId)?.name ||
-        "Edificio";
-
-  const totalRecords = filteredRows.length;
-  const collectedCount = filteredRows.filter((row) => row.status === "collected").length;
-  const partialCount = filteredRows.filter((row) => row.status === "partial").length;
-  const pendingCount = filteredRows.filter((row) => row.status === "pending").length;
-  const overdueCount = filteredRows.filter((row) => row.status === "overdue").length;
-  const reportedPendingCount = reportedPayments.length;
-  const pendingInvoiceUploadCount = invoicePendingUploads.length;
-
-  const totalOutstandingAmount = filteredRows
-    .filter((row) => row.status !== "collected")
-    .reduce((sum, row) => sum + row.balance, 0);
-
-  const todayKey = getTodayDateOnlyKey();
-
-  const nextPendingLabel = useMemo(() => {
-    const nextPending = filteredRows
-      .filter(
-        (row) =>
-          (row.status === "pending" || row.status === "partial") &&
-          row.dueDate >= todayKey
-      )
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
-
-    if (!nextPending) return "Sin próximos cobros";
-    return `${nextPending.title} · ${nextPending.dueDateLabel}`;
-  }, [filteredRows, todayKey]);
-
-  const detailRow = detailRecordId ? collectionRowsById.get(detailRecordId) || null : null;
-
-  const detailPayments = useMemo(() => {
-    if (!detailRecordId) return [];
-    return collectionPayments
-      .filter((payment) => payment.collection_record_id === detailRecordId)
-      .sort((a, b) => b.paid_at.localeCompare(a.paid_at));
-  }, [collectionPayments, detailRecordId]);
-
-  const detailInvoices = useMemo(() => {
-    if (!detailRecordId) return [];
-    return collectionInvoices
-      .filter((invoice) => invoice.collection_record_id === detailRecordId)
-      .sort((a, b) => {
-        const aDate = a.issued_at || a.created_at;
-        const bDate = b.issued_at || b.created_at;
-        return bDate.localeCompare(aDate);
-      });
-  }, [collectionInvoices, detailRecordId]);
-
-  const deleteRecordRow = deleteRecordId
-    ? collectionRowsById.get(deleteRecordId) || null
-    : null;
-  const editRecordRow = editRecordId
-    ? collectionRowsById.get(editRecordId) || null
-    : null;
-
-  const paymentsByRecordId = useMemo(() => {
-    const map = new Map<string, CollectionPayment[]>();
-    collectionPayments.forEach((payment) => {
-      const current = map.get(payment.collection_record_id) || [];
-      current.push(payment);
-      map.set(payment.collection_record_id, current);
-    });
-    return map;
-  }, [collectionPayments]);
-
-  const invoicesByRecordId = useMemo(() => {
-    const map = new Map<string, CollectionInvoice[]>();
-    collectionInvoices.forEach((invoice) => {
-      if (!invoice.collection_record_id) return;
-      const current = map.get(invoice.collection_record_id) || [];
-      current.push(invoice);
-      map.set(invoice.collection_record_id, current);
-    });
-    return map;
-  }, [collectionInvoices]);
-
-  async function handleDeleteCollectionRecord() {
-    if (!deleteRecordId || !user?.company_id) return;
-
-    const record = collectionRecords.find((item) => item.id === deleteRecordId);
-    if (!record) {
-      showToast({ type: "warning", message: "Ese cobro ya no existe o ya fue eliminado." });
-      setDeleteRecordId(null);
+    if (!activeSchedules.length) {
+      showToast({ type: "warning", message: "No hay configuraciones de cobro activas asociadas a contratos activos." });
+      setGenerating(false);
       return;
     }
 
-    const linkedInvoices = collectionInvoices.filter((invoice) => invoice.collection_record_id === deleteRecordId);
-    const linkedPayments = collectionPayments.filter((payment) => payment.collection_record_id === deleteRecordId);
-    const otherRecordsForSchedule = collectionRecords.filter((item) => item.collection_schedule_id === record.collection_schedule_id && item.id !== record.id);
-    const schedule = collectionSchedules.find((item) => item.id === record.collection_schedule_id) || null;
+    // Registros ya existentes este mes (fresh query para evitar race conditions)
+    const { data: existingRecords } = await supabase
+      .from("collection_records")
+      .select("collection_schedule_id")
+      .eq("company_id", user.company_id)
+      .eq("period_year", year)
+      .eq("period_month", month)
+      .is("deleted_at", null);
 
-    setDeletingRecord(true);
+    const existingScheduleIds = new Set(
+      (existingRecords || []).map((r) => r.collection_schedule_id),
+    );
 
-    try {
-      for (const invoice of linkedInvoices) {
-        if (invoice.pdf_path) {
-          try {
-            await removeInvoiceFile(invoice.pdf_path);
-          } catch (storageError) {
-            console.warn("No pude borrar el PDF de la factura ligada.", storageError);
-          }
-        }
+    const today = getTodayDateKey();
+    const toInsert = activeSchedules
+      .filter((s) => !existingScheduleIds.has(s.id))
+      .map((s) => {
+        const dueDate = buildDateKey(year, month, s.due_day || 15);
+        return {
+          collection_schedule_id: s.id,
+          company_id: user.company_id,
+          building_id: s.building_id,
+          unit_id: s.unit_id,
+          lease_id: s.lease_id,
+          period_year: year,
+          period_month: month,
+          due_date: dueDate,
+          amount_due: s.amount_expected,
+          amount_collected: 0,
+          status: dueDate < today ? "overdue" : "pending",
+          collected_at: null,
+          payment_method: null,
+          notes: null,
+        };
+      });
 
-        if (invoice.xml_path) {
-          try {
-            await removeInvoiceFile(invoice.xml_path);
-          } catch (storageError) {
-            console.warn("No pude borrar el XML de la factura ligada.", storageError);
-          }
-        }
-      }
-
-      const now = new Date().toISOString();
-
-      // Soft delete: archiva las facturas ligadas al cobro
-      if (linkedInvoices.length > 0) {
-        const archiveInvoices = await supabase
-          .from("collection_invoices")
-          .update({ deleted_at: now })
-          .in("id", linkedInvoices.map((invoice) => invoice.id));
-
-        if (archiveInvoices.error) {
-          throw new Error(archiveInvoices.error.message || "No pude archivar las facturas ligadas a este cobro.");
-        }
-      }
-
-      // Soft delete: archiva los abonos ligados al cobro
-      if (linkedPayments.length > 0) {
-        const archivePayments = await supabase
-          .from("collection_payments")
-          .update({ deleted_at: now })
-          .in("id", linkedPayments.map((payment) => payment.id));
-
-        if (archivePayments.error) {
-          throw new Error(archivePayments.error.message || "No pude archivar los abonos ligados a este cobro.");
-        }
-      }
-
-      // Soft delete: archiva el registro de cobro
-      const archiveRecord = await supabase
-        .from("collection_records")
-        .update({ deleted_at: now })
-        .eq("id", deleteRecordId)
-        .eq("company_id", user.company_id);
-
-      if (archiveRecord.error) {
-        throw new Error(archiveRecord.error.message || "No pude archivar el cobro.");
-      }
-
-      // Soft delete: archiva el schedule huérfano si aplica
-      if (schedule && !schedule.active && otherRecordsForSchedule.length === 0) {
-        const archiveSchedule = await supabase
-          .from("collection_schedules")
-          .update({ deleted_at: now })
-          .eq("id", schedule.id)
-          .eq("company_id", user.company_id);
-
-        if (archiveSchedule.error) {
-          console.warn("No pude archivar la configuración huérfana del cobro.", archiveSchedule.error.message);
-        }
-      }
-
-      await loadCollectionsData();
-      setDetailRecordId((current) => (current === deleteRecordId ? null : current));
-      setDeleteRecordId(null);
-      showToast({ type: "success", message: "Cobro archivado correctamente." });
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : "No pude eliminar el cobro.";
-      showToast({ type: "error", message: errorMessage });
-    } finally {
-      setDeletingRecord(false);
+    if (!toInsert.length) {
+      const monthLabel = `${MONTH_LABELS_LONG[month - 1]} ${year}`;
+      showToast({ type: "success", message: `Los cobros de ${monthLabel} ya están generados.` });
+      setGenerating(false);
+      return;
     }
+
+    const { error } = await supabase.from("collection_records").insert(toInsert);
+
+    if (error) {
+      showToast({ type: "error", message: `Error generando cobros: ${error.message}` });
+      setGenerating(false);
+      return;
+    }
+
+    await loadData();
+    setGenerating(false);
+    const monthLabel = `${MONTH_LABELS_LONG[month - 1]} ${year}`;
+    showToast({ type: "success", message: `${toInsert.length} cobro${toInsert.length === 1 ? "" : "s"} generado${toInsert.length === 1 ? "" : "s"} para ${monthLabel}.` });
   }
 
-  function openEditRecordModal(row: CollectionRow) {
-    setEditRecordId(row.id);
+  // ── Registrar abono (parcial o total) ────────────────────────────────────────
+
+  async function handleAbono(record: CollectionRecord, monto: number) {
+    if (!user?.company_id) return;
+    setAbonoSaving(true);
+    const prevCollected = record.amount_collected || 0;
+    const newCollected  = Math.min(prevCollected + monto, record.amount_due);
+    const newStatus: CollectionStoredStatus = newCollected >= record.amount_due ? "collected" : "partial";
+    const newCollectedAt = newStatus === "collected" ? new Date().toISOString() : null;
+
+    const { error } = await supabase
+      .from("collection_records")
+      .update({ amount_collected: newCollected, status: newStatus, collected_at: newCollectedAt })
+      .eq("id", record.id)
+      .eq("company_id", user.company_id);
+
+    setAbonoSaving(false);
+    if (error) {
+      showToast({ type: "error", message: `No se pudo registrar el abono: ${error.message}` });
+      return;
+    }
+    setRecords((prev) =>
+      prev.map((r) => r.id === record.id
+        ? { ...r, amount_collected: newCollected, status: newStatus, collected_at: newCollectedAt }
+        : r
+      )
+    );
+    setAbonoModal(null);
+    showToast({ type: "success", message: newStatus === "collected" ? "Cobro marcado como pagado." : "Abono registrado." });
+  }
+
+  // ── Revertir cobro a pendiente ────────────────────────────────────────────────
+
+  async function handleRevertRecord(record: CollectionRecord) {
+    if (!user?.company_id) return;
+    setMarkingIds((prev) => new Set([...prev, record.id]));
+    setRevertConfirmId(null);
+
+    const { error } = await supabase
+      .from("collection_records")
+      .update({ status: "pending", amount_collected: 0, collected_at: null })
+      .eq("id", record.id)
+      .eq("company_id", user.company_id);
+
+    setMarkingIds((prev) => { const next = new Set(prev); next.delete(record.id); return next; });
+    if (error) {
+      showToast({ type: "error", message: `No se pudo revertir: ${error.message}` });
+      return;
+    }
+    setRecords((prev) =>
+      prev.map((r) => r.id === record.id ? { ...r, status: "pending", amount_collected: 0, collected_at: null } : r)
+    );
+    showToast({ type: "success", message: "Cobro revertido a pendiente." });
+  }
+
+  // ── Cargo eventual (único, active=false) ──────────────────────────────────────
+
+  async function handleCreateEvento() {
+    if (!eventoModal || !user?.company_id) return;
+    const monto = parsePositiveNumber(eventoForm.monto);
+    if (!monto) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+    if (!eventoForm.concepto.trim()) { showToast({ type: "error", message: "Escribe un concepto." }); return; }
+
+    setEventoSaving(true);
+    const dueDay  = new Date().getDate();
+    const dueDate = buildDateKey(selectedYear, selectedMonth, dueDay);
+    const initialStatus: CollectionStoredStatus = dueDate < getTodayDateKey() ? "overdue" : "pending";
+
+    const { data: schedData, error: schedError } = await supabase
+      .from("collection_schedules")
+      .insert({
+        company_id:      user.company_id,
+        building_id:     eventoModal.buildingId,
+        unit_id:         eventoModal.unitId,
+        lease_id:        eventoModal.leaseId,
+        charge_type:     eventoForm.chargeType,
+        title:           eventoForm.concepto.trim(),
+        amount_expected: monto,
+        due_day:         dueDay,
+        active:          false,
+      })
+      .select("id")
+      .single();
+
+    if (schedError || !schedData) {
+      showToast({ type: "error", message: `No se pudo crear el cargo: ${schedError?.message || "error desconocido"}` });
+      setEventoSaving(false);
+      return;
+    }
+
+    const { data: recData, error: recError } = await supabase
+      .from("collection_records")
+      .insert({
+        company_id:               user.company_id,
+        building_id:              eventoModal.buildingId,
+        unit_id:                  eventoModal.unitId,
+        lease_id:                 eventoModal.leaseId,
+        collection_schedule_id:   schedData.id,
+        period_year:              selectedYear,
+        period_month:             selectedMonth,
+        due_date:                 dueDate,
+        amount_due:               monto,
+        amount_collected:         0,
+        status:                   initialStatus,
+      })
+      .select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, created_at")
+      .single();
+
+    if (recError || !recData) {
+      showToast({ type: "error", message: `No se pudo crear el cobro: ${recError?.message || "error desconocido"}` });
+      setEventoSaving(false);
+      return;
+    }
+
+    setSchedules((prev) => [...prev, {
+      id: schedData.id,
+      building_id:     eventoModal.buildingId,
+      unit_id:         eventoModal.unitId,
+      lease_id:        eventoModal.leaseId,
+      charge_type:     eventoForm.chargeType,
+      title:           eventoForm.concepto.trim(),
+      amount_expected: monto,
+      due_day:         dueDay,
+      active:          false,
+      notes:           null,
+    }]);
+    setRecords((prev) => [...prev, recData as CollectionRecord]);
+    setEventoModal(null);
+    setEventoForm({ concepto: "", chargeType: "amenities", monto: "" });
+    setEventoSaving(false);
+    showToast({ type: "success", message: "Cargo eventual registrado." });
+  }
+
+  // ── Archivar cobro ────────────────────────────────────────────────────────────
+
+  async function handleDeleteRecord() {
+    if (!deleteRecordId || !user?.company_id) return;
+    setDeletingRecord(true);
+
+    const { error } = await supabase
+      .from("collection_records")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", deleteRecordId)
+      .eq("company_id", user.company_id);
+
+    setDeletingRecord(false);
+    setDeleteRecordId(null);
+
+    if (error) {
+      showToast({ type: "error", message: `No se pudo archivar: ${error.message}` });
+      return;
+    }
+
+    setRecords((prev) => prev.filter((r) => r.id !== deleteRecordId));
+    showToast({ type: "success", message: "Cobro archivado correctamente." });
+  }
+
+  // ── Editar cobro ──────────────────────────────────────────────────────────────
+
+  function openEditRecord(record: CollectionRecord) {
+    setEditRecordId(record.id);
     setEditForm({
-      recordId: row.id,
-      title: row.title,
-      amountDue: String(row.amountDue || ""),
-      notes: row.notes === "—" ? "" : row.notes,
+      recordId: record.id,
+      amountDue: String(record.amount_due || ""),
+      notes: record.notes || "",
     });
   }
 
   async function handleSaveRecordEdits() {
-    if (!user?.company_id || !editRecordId) return;
-
-    const record = collectionRecords.find((item) => item.id === editRecordId);
-    if (!record) {
-      showToast({ type: "error", message: "No pude encontrar el cobro a editar." });
-      return;
-    }
-
+    if (!editRecordId || !user?.company_id) return;
     const nextAmount = parsePositiveNumber(editForm.amountDue);
     if (!nextAmount) {
-      showToast({ type: "error", message: "Ingresa un monto válido para este cobro." });
+      showToast({ type: "error", message: "Ingresa un monto válido." });
       return;
     }
 
     setEditingRecord(true);
 
-    try {
-      const schedule = collectionSchedules.find((item) => item.id === record.collection_schedule_id) || null;
+    const { error } = await supabase
+      .from("collection_records")
+      .update({ amount_due: nextAmount, notes: editForm.notes.trim() || null })
+      .eq("id", editRecordId)
+      .eq("company_id", user.company_id);
 
-      const updateRecord = await supabase
-        .from("collection_records")
-        .update({
-          amount_due: nextAmount,
-          notes: editForm.notes.trim() || null,
-        })
-        .eq("id", editRecordId)
-        .eq("company_id", user.company_id);
+    setEditingRecord(false);
 
-      if (updateRecord.error) {
-        throw new Error(updateRecord.error.message || "No pude actualizar el cobro.");
-      }
-
-      if (schedule) {
-        const updateSchedule = await supabase
-          .from("collection_schedules")
-          .update({
-            title: editForm.title.trim() || schedule.title,
-            amount_expected: nextAmount,
-            notes: editForm.notes.trim() || null,
-          })
-          .eq("id", schedule.id)
-          .eq("company_id", user.company_id);
-
-        if (updateSchedule.error) {
-          throw new Error(updateSchedule.error.message || "No pude actualizar la configuración del cobro.");
-        }
-      }
-
-      await loadCollectionsData();
-      setEditRecordId(null);
-      showToast({ type: "success", message: "Cobro actualizado correctamente." });
-    } catch (error) {
-      showToast({
-        type: "error",
-        message: error instanceof Error ? error.message : "No pude actualizar el cobro.",
-      });
-    } finally {
-      setEditingRecord(false);
-    }
-  }
-
-  function openPaymentModal(row: CollectionRow) {
-    setPaymentRecordId(row.id);
-    setPaymentForm({
-      recordId: row.id,
-      amount: row.balance > 0 ? String(row.balance) : "",
-      paidAt: getTodayDateOnlyKey(),
-      paymentMethod: "",
-      reference: "",
-      notes: "",
-    });
-  }
-
-  async function handleSavePayment() {
-    if (!user?.company_id || !paymentRecordId) return;
-
-    const row = collectionRowsById.get(paymentRecordId);
-    if (!row) return;
-
-    const amount = parsePositiveNumber(paymentForm.amount);
-
-    if (!amount) {
-      showToast({ type: "error", message: "Ingresa un monto válido para el abono." });
+    if (error) {
+      showToast({ type: "error", message: `No se pudo actualizar: ${error.message}` });
       return;
     }
 
-    if (amount > row.balance) {
-      showToast({ type: "error", message: "El abono no puede ser mayor al saldo pendiente." });
-      return;
-    }
-
-    if (!paymentForm.paidAt) {
-      showToast({ type: "error", message: "Selecciona la fecha del abono." });
-      return;
-    }
-
-    setSavingPayment(true);
-
-    const paidAtIso = new Date(`${paymentForm.paidAt}T12:00:00`).toISOString();
-
-    const insertRes = await supabase.from("collection_payments").insert({
-      collection_record_id: row.id,
-      company_id: user.company_id,
-      amount,
-      paid_at: paidAtIso,
-      payment_method: paymentForm.paymentMethod || null,
-      reference: paymentForm.reference.trim() || null,
-      notes: paymentForm.notes.trim() || null,
-      created_by: user.id || null,
-    });
-
-    if (insertRes.error) {
-      showToast({ type: "error", message: "No se pudo registrar el abono." });
-      setSavingPayment(false);
-      return;
-    }
-
-    await loadCollectionsData();
-
-    setSavingPayment(false);
-    setPaymentRecordId(null);
-
-    showToast({ type: "success", message: "Abono registrado correctamente." });
-  }
-
-  const paymentRow = paymentRecordId
-    ? collectionRowsById.get(paymentRecordId) || null
-    : null;
-
-  function resetImportInvoiceState() {
-    setImportForm(createDefaultImportForm());
-    setImportXmlFile(null);
-    setImportPdfFile(null);
-    setImportPreview(null);
-    setImportStatusMessage("");
-  }
-
-  function openImportInvoiceModal() {
-    resetImportInvoiceState();
-    setImportInvoiceOpen(true);
-  }
-
-  async function handleImportXmlSelected(file: File | null) {
-    setImportXmlFile(file);
-
-    if (!file) {
-      setImportPreview(null);
-      setImportStatusMessage("");
-      return;
-    }
-
-    try {
-      const xmlText = await file.text();
-      const parsed = parseCfdiXml(xmlText);
-      const extractedIdentifiers = extractCfdiFileIdentifiers(xmlText);
-      const parsedAny = parsed as any;
-
-const preview: ImportPreviewData = {
-  ...parsed,
-  emitterTaxId:
-    extractedIdentifiers.emitterTaxId ||
-    parsedAny.emitterTaxId ||
-    null,
-  customerTaxId:
-    parsedAny.customerTaxId ||
-    extractedIdentifiers.receiverTaxId ||
-    null,
-  series:
-    parsedAny.series ||
-    extractedIdentifiers.series ||
-    null,
-  folio:
-    parsedAny.folio ||
-    extractedIdentifiers.folio ||
-    null,
-  xmlFileName: file.name,
-};
-      const inferredCategory = inferChargeTypeFromDescription(preview.description);
-
-      setImportPreview(preview);
-      setImportForm((prev) => ({
-        ...prev,
-        selectedChargeCategory: inferredCategory,
-        title: buildImportedChargeTitle(preview, inferredCategory),
-        dueDate: getEndOfMonthDateKey(preview.issuedAt || prev.dueDate || getTodayDateOnlyKey()),
-      }));
-      setImportStatusMessage("XML leído correctamente. Ahora revisa la coincidencia sugerida antes de confirmar.");
-    } catch (error) {
-      console.error(error);
-      setImportPreview(null);
-      setImportStatusMessage(error instanceof Error ? error.message : "No fue posible leer este XML automáticamente.");
-      showToast({
-        type: "error",
-        message: error instanceof Error ? error.message : "No pude leer automáticamente el XML.",
-      });
-    }
-  }
-
-  async function handleConfirmImportedInvoice() {
-    if (!user?.company_id || !user.id) return;
-
-    if (!importPreview) {
-      showToast({ type: "warning", message: "Primero sube un XML válido para analizar la factura." });
-      return;
-    }
-
-    if (!importXmlFile || !importPdfFile) {
-      showToast({ type: "warning", message: "Necesito tanto el XML como el PDF para importar la factura." });
-      return;
-    }
-
-    if (!isLikelyMatchingInvoicePair(importXmlFile, importPdfFile, importPreview)) {
-      showToast({
-        type: "error",
-        message: "El XML y el PDF no parecen corresponder a la misma factura. Deben coincidir por UUID o por RFC emisor + RFC receptor + folio/serie-folio.",
-      });
-      return;
-    }
-
-    if (!importForm.selectedLeaseId) {
-      showToast({ type: "warning", message: "Selecciona el contrato al que pertenece esta factura." });
-      return;
-    }
-
-    const lease = leases.find((item) => item.id === importForm.selectedLeaseId);
-    if (!lease || !lease.unit_id) {
-      showToast({ type: "error", message: "No pude ubicar el contrato seleccionado." });
-      return;
-    }
-
-    const unit = units.find((item) => item.id === lease.unit_id);
-    if (!unit) {
-      showToast({ type: "error", message: "No pude ubicar la unidad del contrato seleccionado." });
-      return;
-    }
-
-    const duplicateInvoice = collectionInvoices.find(
-      (invoice) => invoice.invoice_uuid && invoice.invoice_uuid === importPreview.uuid
+    setRecords((prev) =>
+      prev.map((r) =>
+        r.id === editRecordId ? { ...r, amount_due: nextAmount, notes: editForm.notes.trim() || null } : r,
+      ),
     );
-
-    if (duplicateInvoice) {
-      showToast({
-        type: "warning",
-        message: "Ese UUID ya existe en Cobranza. Ya puedes consultarlo desde el botón Ver facturas sin salir de esta pantalla.",
-      });
-      return;
-    }
-
-    const chargeCategory = importForm.selectedChargeCategory || inferChargeTypeFromDescription(importPreview.description);
-    const dueDate = getEndOfMonthDateKey(importPreview.issuedAt || importForm.dueDate || getTodayDateOnlyKey());
-    const dueDateObject = parseDateOnly(dueDate);
-    const amountDue = Number(importPreview.total || importPreview.subtotal || 0);
-
-    if (!Number.isFinite(amountDue) || amountDue <= 0) {
-      showToast({ type: "warning", message: "No pude detectar un total válido en el XML." });
-      return;
-    }
-
-    setImportingInvoice(true);
-
-    let uploadedFilesForCleanup: { pdfPath: string | null; xmlPath: string | null } | null = null;
-    let createdScheduleId: string | null = null;
-    let createdRecordId: string | null = null;
-
-    try {
-      let schedule = collectionSchedules.find(
-        (item) =>
-          item.lease_id === lease.id &&
-          item.unit_id === unit.id &&
-          item.building_id === unit.building_id &&
-          item.charge_type === chargeCategory &&
-          item.active
-      ) || null;
-
-      if (!schedule) {
-        const createdSchedule = await supabase
-          .from("collection_schedules")
-          .insert({
-            company_id: user.company_id,
-            building_id: unit.building_id,
-            unit_id: unit.id,
-            lease_id: lease.id,
-            charge_type: chargeCategory,
-            title: importForm.title.trim() || buildImportedChargeTitle(importPreview, chargeCategory),
-            responsibility_type: "tenant",
-            amount_expected: amountDue,
-            due_day: 31,
-            active: ["rent", "maintenance_fee", "electricity", "water", "gas", "amenities", "parking"].includes(chargeCategory),
-            notes: importForm.notes.trim() || "Configuración creada automáticamente desde importación de factura.",
-          })
-          .select("id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes")
-          .single();
-
-        if (createdSchedule.error || !createdSchedule.data) {
-          throw new Error(createdSchedule.error?.message || "No pude crear la configuración base del cobro importado.");
-        }
-
-        schedule = createdSchedule.data as CollectionSchedule;
-        createdScheduleId = schedule.id;
-      }
-
-      let record = collectionRecords.find(
-        (item) =>
-          item.collection_schedule_id === schedule.id &&
-          item.period_year === dueDateObject.getFullYear() &&
-          item.period_month === dueDateObject.getMonth() + 1
-      ) || null;
-
-      if (!record) {
-        record = collectionRecords.find((item) => {
-          if (item.unit_id !== unit.id) return false;
-          if ((item.lease_id || null) !== lease.id) return false;
-          if (item.period_year !== dueDateObject.getFullYear()) return false;
-          if (item.period_month !== dueDateObject.getMonth() + 1) return false;
-          const relatedSchedule = collectionSchedules.find((scheduleItem) => scheduleItem.id === item.collection_schedule_id);
-          return relatedSchedule?.charge_type === chargeCategory;
-        }) || null;
-      }
-
-      if (!record) {
-        const createdRecord = await supabase
-          .from("collection_records")
-          .insert({
-            collection_schedule_id: schedule.id,
-            company_id: user.company_id,
-            building_id: unit.building_id,
-            unit_id: unit.id,
-            lease_id: lease.id,
-            period_year: dueDateObject.getFullYear(),
-            period_month: dueDateObject.getMonth() + 1,
-            due_date: dueDate,
-            amount_due: amountDue,
-            amount_collected: 0,
-            status: deriveStatusFromDueDate(dueDate),
-            collected_at: null,
-            payment_method: null,
-            notes: importForm.notes.trim() || importPreview.description || "Cobro generado automáticamente desde factura importada.",
-          })
-          .select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at")
-          .single();
-
-        if (createdRecord.error || !createdRecord.data) {
-          throw new Error(createdRecord.error?.message || "No pude crear el registro de cobranza desde la factura importada.");
-        }
-
-        record = createdRecord.data as CollectionRecord;
-        createdRecordId = record.id;
-      }
-
-      const uploadedFiles = await uploadInvoiceFiles({
-        companyId: user.company_id,
-        buildingId: unit.building_id,
-        leaseId: lease.id,
-        invoiceUuid: importPreview.uuid,
-        pdfFile: importPdfFile,
-        xmlFile: importXmlFile,
-      });
-
-      uploadedFilesForCleanup = {
-        pdfPath: uploadedFiles.pdfPath,
-        xmlPath: uploadedFiles.xmlPath,
-      };
-
-      if (!uploadedFiles.pdfPath || !uploadedFiles.xmlPath) {
-        throw new Error("No pude guardar correctamente los archivos de la factura importada.");
-      }
-
-      const invoiceInsert = await supabase
-        .from("collection_invoices")
-        .insert({
-          company_id: user.company_id,
-          building_id: unit.building_id,
-          unit_id: unit.id,
-          lease_id: lease.id,
-          collection_record_id: record.id,
-          invoice_uuid: importPreview.uuid || null,
-          invoice_series: importPreview.series || null,
-          invoice_folio: importPreview.folio || null,
-          customer_name: importPreview.customerName || null,
-          customer_tax_id: importPreview.customerTaxId || null,
-          description: importPreview.description || importForm.title.trim() || null,
-          invoice_type: importPreview.invoiceType || "income",
-          charge_category: chargeCategory,
-          issued_at: importPreview.issuedAt || dueDate,
-          period_year: dueDateObject.getFullYear(),
-          period_month: dueDateObject.getMonth() + 1,
-          subtotal: importPreview.subtotal ? Number(importPreview.subtotal) : null,
-          tax: importPreview.tax ? Number(importPreview.tax) : null,
-          total: importPreview.total ? Number(importPreview.total) : amountDue,
-          pdf_path: uploadedFiles.pdfPath,
-          xml_path: uploadedFiles.xmlPath,
-          original_pdf_filename: uploadedFiles.originalPdfFilename,
-          original_xml_filename: uploadedFiles.originalXmlFilename,
-          match_confidence: selectedImportCandidate?.score || 0,
-          match_notes: selectedImportCandidate?.reasons.join(" | ") || importStatusMessage || null,
-          created_by: user.id,
-        })
-        .select("id")
-        .single();
-
-      if (invoiceInsert.error || !invoiceInsert.data?.id) {
-        throw new Error(invoiceInsert.error?.message || "No pude crear la factura importada dentro de Cobranza.");
-      }
-
-      const { error: pendingUploadCompletionError } = await supabase
-        .from("invoice_pending_uploads")
-        .update({
-          status: "completed",
-          linked_collection_record_id: record.id,
-          completed_at: new Date().toISOString(),
-          completed_by: user.id,
-        })
-        .eq("company_id", user.company_id)
-        .eq("lease_id", lease.id)
-        .eq("period_year", dueDateObject.getFullYear())
-        .eq("period_month", dueDateObject.getMonth() + 1)
-        .eq("concept_code", chargeCategory)
-        .eq("status", "pending_upload");
-
-      if (pendingUploadCompletionError) {
-        throw new Error(
-          pendingUploadCompletionError.message ||
-            "La factura se importó, pero no pude completar el pendiente de carga relacionado."
-        );
-      }
-
-      await loadCollectionsData();
-      setImportingInvoice(false);
-      setImportInvoiceOpen(false);
-      resetImportInvoiceState();
-
-      showToast({
-        type: "success",
-        message: "Factura importada correctamente. El cobro ya quedó clasificado y visible en Cobranza. Puedes revisar el documento cuando quieras desde Ver facturas.",
-      });
-
-      setDetailRecordId(record.id);
-    } catch (error) {
-      console.error(error);
-
-      if (uploadedFilesForCleanup?.pdfPath || uploadedFilesForCleanup?.xmlPath) {
-        try {
-          await Promise.all([
-            removeInvoiceFile(uploadedFilesForCleanup.pdfPath),
-            removeInvoiceFile(uploadedFilesForCleanup.xmlPath),
-          ]);
-        } catch (cleanupError) {
-          console.error("No pude limpiar los archivos subidos tras fallar la importación.", cleanupError);
-        }
-      }
-
-      // Soft delete de rollback: archiva los registros creados parcialmente
-      if (createdRecordId) {
-        try {
-          await supabase
-            .from("collection_records")
-            .update({ deleted_at: new Date().toISOString() })
-            .eq("id", createdRecordId);
-        } catch (cleanupError) {
-          console.error("No pude limpiar el record creado tras fallar la importación.", cleanupError);
-        }
-      }
-
-      if (createdScheduleId) {
-        try {
-          await supabase
-            .from("collection_schedules")
-            .update({ deleted_at: new Date().toISOString() })
-            .eq("id", createdScheduleId);
-        } catch (cleanupError) {
-          console.error("No pude limpiar el schedule creado tras fallar la importación.", cleanupError);
-        }
-      }
-
-      setImportingInvoice(false);
-      showToast({
-        type: "error",
-        message: error instanceof Error ? error.message : "No pude completar la importación de la factura.",
-      });
-    }
+    setEditRecordId(null);
+    showToast({ type: "success", message: "Cobro actualizado." });
   }
 
-  function openCreateChargeModal() {
-    setChargeForm(createDefaultChargeForm());
-    setCreateChargeOpen(true);
-  }
+  // ── Crear cargo manual ────────────────────────────────────────────────────────
 
   async function handleCreateCharge() {
     if (!user?.company_id) return;
 
-    if (!chargeForm.buildingId) {
-      showToast({ type: "error", message: "Selecciona un edificio para el cobro." });
-      return;
-    }
-
-    if (!chargeForm.unitId) {
-      showToast({ type: "error", message: "Selecciona una unidad para el cobro." });
-      return;
-    }
+    if (!chargeForm.buildingId) { showToast({ type: "error", message: "Selecciona un edificio." }); return; }
+    if (!chargeForm.unitId)     { showToast({ type: "error", message: "Selecciona una unidad." }); return; }
 
     const amountExpected = parsePositiveNumber(chargeForm.amountExpected);
-    if (!amountExpected) {
-      showToast({ type: "error", message: "Ingresa un monto válido para el cobro." });
-      return;
-    }
+    if (!amountExpected) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+    if (!chargeForm.title.trim()) { showToast({ type: "error", message: "Escribe el concepto del cobro." }); return; }
+    if (!chargeForm.initialDueDate) { showToast({ type: "error", message: "Selecciona una fecha de vencimiento." }); return; }
 
-    if (!chargeForm.title.trim()) {
-      showToast({ type: "error", message: "Escribe el concepto o título del cobro." });
-      return;
-    }
-
-    if (!chargeForm.initialDueDate) {
-      showToast({ type: "error", message: "Selecciona la fecha inicial de vencimiento." });
-      return;
-    }
-
-    const dueDate = chargeForm.initialDueDate;
-    const dueDateObject = parseDateOnly(dueDate);
-    const derivedDueDay = chargeForm.chargeMode === "recurring"
-      ? Number(chargeForm.dueDay || dueDateObject.getDate())
-      : dueDateObject.getDate();
-
-    if (!Number.isFinite(derivedDueDay) || derivedDueDay < 1 || derivedDueDay > 31) {
-      showToast({ type: "error", message: "Selecciona un día de vencimiento válido." });
-      return;
-    }
+    const dueDateObj = new Date(`${chargeForm.initialDueDate}T00:00:00`);
+    const derivedDueDay =
+      chargeForm.chargeMode === "recurring"
+        ? Number(chargeForm.dueDay || dueDateObj.getDate())
+        : dueDateObj.getDate();
 
     setCreatingCharge(true);
 
-    const schedulePayload = {
-      company_id: user.company_id,
-      building_id: chargeForm.buildingId,
-      unit_id: chargeForm.unitId,
-      lease_id: chargeForm.leaseId || null,
-      charge_type: chargeForm.chargeType,
-      title: chargeForm.title.trim(),
-      responsibility_type: chargeForm.responsibilityType,
-      amount_expected: amountExpected,
-      due_day: derivedDueDay,
-      active: chargeForm.chargeMode === "recurring",
-      notes: chargeForm.notes.trim() || null,
-    };
-
     const { data: insertedSchedule, error: scheduleError } = await supabase
       .from("collection_schedules")
-      .insert(schedulePayload)
+      .insert({
+        company_id: user.company_id,
+        building_id: chargeForm.buildingId,
+        unit_id: chargeForm.unitId,
+        lease_id: chargeForm.leaseId || null,
+        charge_type: chargeForm.chargeType,
+        title: chargeForm.title.trim(),
+        responsibility_type: chargeForm.responsibilityType,
+        amount_expected: amountExpected,
+        due_day: derivedDueDay,
+        active: chargeForm.chargeMode === "recurring",
+        notes: chargeForm.notes.trim() || null,
+      })
       .select("id")
       .single();
 
     if (scheduleError || !insertedSchedule) {
-      console.error(scheduleError);
       showToast({ type: "error", message: "No se pudo crear la configuración del cobro." });
       setCreatingCharge(false);
       return;
     }
 
-    const shouldCreateRecord =
-      chargeForm.chargeMode === "one_time" || chargeForm.createFirstRecordNow;
+    const shouldCreateRecord = chargeForm.chargeMode === "one_time" || chargeForm.createFirstRecordNow;
 
     if (shouldCreateRecord) {
-      const recordPayload = {
+      const today = getTodayDateKey();
+      const { error: recordError } = await supabase.from("collection_records").insert({
         collection_schedule_id: insertedSchedule.id,
         company_id: user.company_id,
         building_id: chargeForm.buildingId,
         unit_id: chargeForm.unitId,
         lease_id: chargeForm.leaseId || null,
-        period_year: dueDateObject.getFullYear(),
-        period_month: dueDateObject.getMonth() + 1,
-        due_date: dueDate,
+        period_year: dueDateObj.getFullYear(),
+        period_month: dueDateObj.getMonth() + 1,
+        due_date: chargeForm.initialDueDate,
         amount_due: amountExpected,
         amount_collected: 0,
-        status: deriveStatusFromDueDate(dueDate),
+        status: chargeForm.initialDueDate < today ? "overdue" : "pending",
         collected_at: null,
         payment_method: null,
         notes: chargeForm.notes.trim() || null,
-      };
-
-      const { error: recordError } = await supabase
-        .from("collection_records")
-        .insert(recordPayload);
+      });
 
       if (recordError) {
-        console.error(recordError);
-        // Soft delete de rollback
-        await supabase
-          .from("collection_schedules")
-          .update({ deleted_at: new Date().toISOString() })
-          .eq("id", insertedSchedule.id);
-        showToast({
-          type: "error",
-          message:
-            recordError.message.includes("unique")
-              ? "Ya existe un cobro para ese mismo periodo en esta configuración. Ajusta la fecha inicial."
-              : "No se pudo crear el primer cobro ligado a la configuración.",
-        });
+        // Rollback schedule
+        await supabase.from("collection_schedules").update({ deleted_at: new Date().toISOString() }).eq("id", insertedSchedule.id);
+        showToast({ type: "error", message: recordError.message.includes("unique") ? "Ya existe un cobro para ese periodo." : "No se pudo crear el primer registro del cobro." });
         setCreatingCharge(false);
         return;
       }
     }
 
-    await loadCollectionsData();
+    await loadData();
     setCreatingCharge(false);
     setCreateChargeOpen(false);
     setChargeForm(createDefaultChargeForm());
-
-    showToast({
-      type: "success",
-      message:
-        chargeForm.chargeMode === "recurring"
-          ? shouldCreateRecord
-            ? "Cobro recurrente creado y primer registro generado correctamente."
-            : "Cobro recurrente creado correctamente."
-          : "Cargo adicional creado correctamente.",
-    });
+    showToast({ type: "success", message: chargeForm.chargeMode === "recurring" ? "Cobro recurrente creado." : "Cargo adicional creado." });
   }
+
+  // ── Navegación de mes ─────────────────────────────────────────────────────────
+
+  function prevMonth() {
+    if (selectedMonth === 1) { setSelectedYear((y) => y - 1); setSelectedMonth(12); }
+    else setSelectedMonth((m) => m - 1);
+  }
+
+  function nextMonth() {
+    if (selectedMonth === 12) { setSelectedYear((y) => y + 1); setSelectedMonth(1); }
+    else setSelectedMonth((m) => m + 1);
+  }
+
+  // ── Datos derivados ───────────────────────────────────────────────────────────
+
+  const scheduleMap = useMemo(() => new Map(schedules.map((s) => [s.id, s])), [schedules]);
+  const tenantMap   = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
+  const unitMap     = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
+  const buildingMap = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
+  const leaseMap    = useMemo(() => new Map(leases.map((l) => [l.id, l])), [leases]);
+
+  const monthRecords = useMemo(
+    () => records.filter((r) => r.period_year === selectedYear && r.period_month === selectedMonth),
+    [records, selectedYear, selectedMonth],
+  );
+
+  const inquilinoRows = useMemo<InquilinoRow[]>(() => {
+    const byKey = new Map<string, CollectionRecord[]>();
+
+    for (const record of monthRecords) {
+      const key = record.lease_id || `unit-${record.unit_id}`;
+      const existing = byKey.get(key) || [];
+      existing.push(record);
+      byKey.set(key, existing);
+    }
+
+    return Array.from(byKey.entries())
+      .map(([groupKey, groupRecords]) => {
+        const leaseId = groupRecords[0].lease_id;
+        const lease   = leaseId ? leaseMap.get(leaseId) : null;
+        const unit    = unitMap.get(groupRecords[0].unit_id);
+        const building = unit ? buildingMap.get(unit.building_id) : null;
+        const tenant  = lease?.tenant_id ? tenantMap.get(lease.tenant_id) : null;
+
+        const tenantLabel  = tenant?.full_name || lease?.billing_name || lease?.billing_email || "Sin inquilino";
+        const unitLabel    = unit ? (unit.display_code || unit.unit_number || "Unidad") : "Sin unidad";
+        const buildingName = building?.name || "Sin edificio";
+        const buildingId   = building?.id || unit?.building_id || "";
+
+        const totalDue       = groupRecords.reduce((s, r) => s + (r.amount_due || 0), 0);
+        const totalCollected = groupRecords.reduce((s, r) => s + (r.amount_collected || 0), 0);
+        const balance        = Math.max(totalDue - totalCollected, 0);
+        const estadoGeneral  = computeEstadoGeneral(groupRecords);
+
+        return { groupKey, leaseId: leaseId ?? null, tenantLabel, buildingId, buildingName, unitLabel, records: groupRecords, totalDue, totalCollected, balance, estadoGeneral };
+      })
+      .filter((row) => {
+        if (filterBuildingId !== "all" && row.buildingId !== filterBuildingId) return false;
+        if (filterStatus !== "all" && row.estadoGeneral !== filterStatus) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        const order: Record<CollectionStoredStatus, number> = { overdue: 0, pending: 1, partial: 2, collected: 3 };
+        return order[a.estadoGeneral] - order[b.estadoGeneral];
+      });
+  }, [monthRecords, leaseMap, unitMap, buildingMap, tenantMap, filterBuildingId, filterStatus]);
+
+  // ── Métricas del mes ──────────────────────────────────────────────────────────
+
+  const metrics = useMemo(() => {
+    const rows = inquilinoRows;
+    const totalDue = rows.reduce((s, r) => s + r.totalDue, 0);
+
+    const collected = monthRecords
+      .filter((r) => r.status === "collected")
+      .reduce((s, r) => s + (r.amount_collected || r.amount_due || 0), 0);
+
+    const pendiente = monthRecords
+      .filter((r) => r.status === "pending" || r.status === "partial")
+      .reduce((s, r) => s + Math.max((r.amount_due || 0) - (r.amount_collected || 0), 0), 0);
+
+    const vencido = monthRecords
+      .filter((r) => r.status === "overdue")
+      .reduce((s, r) => s + (r.amount_due || 0), 0);
+
+    return { totalDue, collected, pendiente, vencido };
+  }, [inquilinoRows, monthRecords]);
+
+  const donutData = useMemo(() => {
+    const segments = [
+      { name: "Cobrado",   value: metrics.collected, color: "#10B981" },
+      { name: "Pendiente", value: metrics.pendiente, color: "#F59E0B" },
+      { name: "Vencido",   value: metrics.vencido,   color: "#EF4444" },
+    ].filter((s) => s.value > 0);
+    return segments.length ? segments : [{ name: "Sin cobros", value: 1, color: "var(--border-strong)" }];
+  }, [metrics]);
+
+  const unitsForBuilding = useMemo(
+    () => units.filter((u) => u.building_id === chargeForm.buildingId),
+    [units, chargeForm.buildingId],
+  );
+  const leasesForUnit = useMemo(
+    () => leases.filter((l) => l.unit_id === chargeForm.unitId),
+    [leases, chargeForm.unitId],
+  );
+
+  const deleteRecord = deleteRecordId ? records.find((r) => r.id === deleteRecordId) : null;
+
+  // ── Guard ─────────────────────────────────────────────────────────────────────
 
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>
-          Cargando módulo de cobranza...
+        <div style={{ padding: "32px 0", color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
+          Cargando cobranza...
         </div>
       </PageContainer>
     );
@@ -2069,590 +866,585 @@ const preview: ImportPreviewData = {
 
   if (!user) return null;
 
+  const monthLabel = `${MONTH_LABELS_LONG[selectedMonth - 1]} ${selectedYear}`;
+
+  // ── JSX ───────────────────────────────────────────────────────────────────────
+
   return (
     <PageContainer>
+      {/* ── Header ── */}
       <PageHeader
         title="Cobranza"
         titleIcon={<Wallet size={18} />}
         actions={
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton onClick={openImportInvoiceModal} icon={<FileUp size={16} />}>
-              Importar factura
-            </UiButton>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+            {/* Navegador de mes */}
+            <div style={monthNavStyle}>
+              <button type="button" onClick={prevMonth} style={monthNavBtnStyle} aria-label="Mes anterior">
+                <ChevronLeft size={16} />
+              </button>
+              <span style={monthNavLabelStyle}>{monthLabel}</span>
+              <button type="button" onClick={nextMonth} style={monthNavBtnStyle} aria-label="Mes siguiente">
+                <ChevronRight size={16} />
+              </button>
+            </div>
+
             <UiButton
-              onClick={() => router.push("/collections/invoices")}
-              icon={<FileText size={16} />}
-              variant="secondary"
+              onClick={() => void generateMonthlyCharges(selectedYear, selectedMonth)}
+              disabled={generating}
+              icon={<Zap size={15} />}
             >
-              Ver facturas
+              {generating ? "Generando..." : "Generar cobros del mes"}
             </UiButton>
-            <UiButton onClick={openCreateChargeModal} icon={<Plus size={16} />} variant="secondary">
+
+            <UiButton
+              variant="secondary"
+              onClick={() => router.push("/collections/invoices")}
+              icon={<FileText size={15} />}
+            >
+              Ver historial
+            </UiButton>
+
+            <UiButton
+              variant="secondary"
+              onClick={() => { setChargeForm(createDefaultChargeForm()); setCreateChargeOpen(true); }}
+              icon={<Plus size={15} />}
+            >
               Cargo manual
             </UiButton>
           </div>
         }
       />
 
-      {message ? (
-        <div
-          style={{
-            marginBottom: 16,
-            padding: "12px 14px",
-            borderRadius: 12,
-            background: "var(--badge-bg-red)",
-            color: "var(--badge-text-red)",
-            fontSize: 14,
-            fontWeight: 600,
-          }}
-        >
-          {message}
-        </div>
-      ) : null}
-
-      <AppGrid minWidth={220}>
+      {/* ── Métricas ── */}
+      <AppGrid minWidth={200}>
         <MetricCard
-          label="Registros"
-          value={String(totalRecords)}
-          helper={selectedBuildingLabel}
+          label="Total a cobrar"
+          value={formatCurrency(metrics.totalDue)}
+          helper={monthLabel}
           icon={<Wallet size={18} />}
         />
-
         <MetricCard
-          label="Cobrados"
-          value={String(collectedCount)}
-          helper="Cobros cerrados"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "var(--icon-bg-green)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CheckCircle2 size={18} color="#16A34A" />
-            </div>
-          }
+          label="Cobrado"
+          value={formatCurrency(metrics.collected)}
+          helper="Pagos confirmados"
+          variant="green"
+          icon={<CheckCircle2 size={18} />}
         />
-
         <MetricCard
-          label="Parciales"
-          value={String(partialCount)}
-          helper="Con abonos registrados"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "var(--icon-bg-blue)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <Landmark size={18} color="#2563EB" />
-            </div>
-          }
+          label="Pendiente"
+          value={formatCurrency(metrics.pendiente)}
+          helper="Pendiente + parcial"
+          variant="amber"
+          icon={<Clock3 size={18} />}
         />
-
         <MetricCard
-          label="Pendientes"
-          value={String(pendingCount)}
-          helper={nextPendingLabel}
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "var(--metric-bg-amber)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <Clock3 size={18} color="#EAB308" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Vencidos"
-          value={String(overdueCount)}
-          helper="Requieren seguimiento"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "var(--badge-bg-red)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <AlertCircle size={18} color="#DC2626" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Pagos reportados"
-          value={String(reportedPendingCount)}
-          helper="Pendientes de revisión"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: "var(--icon-bg-purple)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CreditCard size={18} color="#4338CA" />
-            </div>
-          }
-        />
-
-        <div onClick={() => router.push("/collections/pending-invoice-uploads")} style={{ cursor: "pointer" }}>
-          <MetricCard
-            label="Falta cargar factura"
-            value={String(pendingInvoiceUploadCount)}
-            helper="Facturas generadas sin XML/PDF"
-            icon={
-              <div
-                style={{
-                  width: 36,
-                  height: 36,
-                  borderRadius: 10,
-                  background: pendingInvoiceUploadCount > 0 ? "var(--icon-bg-amber)" : "var(--bg-card-hover)",
-                  display: "grid",
-                  placeItems: "center",
-                }}
-              >
-                <Upload size={18} color={pendingInvoiceUploadCount > 0 ? "#D97706" : "#4B5563"} />
-              </div>
-            }
-          />
-        </div>
-
-        <MetricCard
-          label="Saldo pendiente"
-          value={formatCurrency(totalOutstandingAmount)}
-          helper="Pendiente + parcial + vencido"
-          icon={<CalendarDays size={18} />}
+          label="Vencido"
+          value={formatCurrency(metrics.vencido)}
+          helper="Requiere seguimiento"
+          variant="red"
+          icon={<AlertCircle size={18} />}
         />
       </AppGrid>
 
-      <div style={{ height: 16 }} />
-
-      <SectionCard title="Revisión" icon={<CreditCard size={18} />}>
-        <div style={reviewQuickGridStyle}>
-          <button
-            type="button"
-            onClick={() => router.push("/collections/reported-payments")}
-            style={reviewCardButtonStyle}
-          >
-            <div style={reviewCardTopRowStyle}>
-              <div style={reviewCardIconWrapStyle}>
-                <CreditCard size={18} />
+      {/* ── Gráfica donut + accesos rápidos ── */}
+      <div style={chartRowStyle}>
+        {/* Donut */}
+        <div style={donutCardStyle}>
+          <p style={sectionLabelStyle}>Distribución del mes</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <PieChart>
+              <Pie
+                data={donutData}
+                cx="50%"
+                cy="50%"
+                innerRadius={52}
+                outerRadius={78}
+                paddingAngle={3}
+                dataKey="value"
+                stroke="none"
+              >
+                {donutData.map((entry, i) => (
+                  <Cell key={i} fill={entry.color} />
+                ))}
+              </Pie>
+              <Tooltip
+                formatter={(value: unknown) => [formatCurrency(Number(value ?? 0)), ""]}
+                contentStyle={{
+                  borderRadius: 12,
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)",
+                  color: "var(--text-primary)",
+                  fontSize: 13,
+                }}
+              />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={donutLegendStyle}>
+            {donutData.map((d) => (
+              <div key={d.name} style={donutLegendItemStyle}>
+                <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{d.name}</span>
               </div>
-              <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                <div style={quickSectionTitleStyle}>Pagos reportados</div>
-                <div
-                  style={{
-                    ...reviewBadgeStyle,
-                    background: reportedPendingCount > 0 ? "var(--icon-bg-amber)" : "var(--icon-bg-green)",
-                    border: `1px solid ${reportedPendingCount > 0 ? "var(--metric-border-amber)" : "var(--metric-border-green)"}`,
-                    color: reportedPendingCount > 0 ? "var(--badge-text-amber)" : "var(--badge-text-green)",
-                  }}
-                >
-                  {reportedPendingCount > 0
-                    ? `${reportedPendingCount} pendiente${reportedPendingCount === 1 ? "" : "s"}`
-                    : "Sin pendientes"}
-                </div>
-              </div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/collections/invoice-generation")}
-            style={reviewCardButtonStyle}
-          >
-            <div style={reviewCardTopRowStyle}>
-              <div style={reviewCardIconWrapStyle}>
-                <FileText size={18} />
-              </div>
-              <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                <div style={quickSectionTitleStyle}>Generación de facturas</div>
-                <div
-                  style={{
-                    ...reviewBadgeStyle,
-                    background: "var(--icon-bg-purple)",
-                    border: "1px solid #C7D2FE",
-                    color: "var(--icon-color-purple)",
-                  }}
-                >
-                  Control mensual
-                </div>
-              </div>
-            </div>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => router.push("/collections/pending-invoice-uploads")}
-            style={reviewCardButtonStyle}
-          >
-            <div style={reviewCardTopRowStyle}>
-              <div style={reviewCardIconWrapStyle}>
-                <Upload size={18} />
-              </div>
-              <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                <div style={quickSectionTitleStyle}>Falta cargar factura</div>
-                <div
-                  style={{
-                    ...reviewBadgeStyle,
-                    background: pendingInvoiceUploadCount > 0 ? "var(--icon-bg-amber)" : "var(--bg-card-hover)",
-                    border: `1px solid ${pendingInvoiceUploadCount > 0 ? "var(--metric-border-amber)" : "var(--border-default)"}`,
-                    color: pendingInvoiceUploadCount > 0 ? "#92400E" : "#374151",
-                  }}
-                >
-                  {pendingInvoiceUploadCount > 0
-                    ? `${pendingInvoiceUploadCount} pendiente${pendingInvoiceUploadCount === 1 ? "" : "s"}`
-                    : "Sin pendientes"}
-                </div>
-              </div>
-            </div>
-          </button>
-        </div>
-      </SectionCard>
-
-      <div style={{ height: 16 }} />
-
-      <SectionCard title="Filtros" icon={<Filter size={18} />}>
-        <div style={compactFiltersGridStyle}>
-          <label style={compactFilterFieldStyle}>
-            <span style={filterLabelStyle}>
-              <Building2 size={14} />
-              Edificio
-            </span>
-
-            <AppSelect
-              value={selectedBuildingId}
-              onChange={(event) => setSelectedBuildingId(event.target.value)}
-            >
-              <option value="all">Todos los edificios</option>
-              {buildings.map((building) => (
-                <option key={building.id} value={building.id}>
-                  {building.name}
-                </option>
-              ))}
-            </AppSelect>
-          </label>
-
-          <label style={compactFilterFieldStyle}>
-            <span style={filterLabelStyle}>
-              <Filter size={14} />
-              Estado
-            </span>
-
-            <AppSelect
-              value={selectedStatus}
-              onChange={(event) =>
-                setSelectedStatus(event.target.value as CollectionStatusFilter)
-              }
-            >
-              <option value="all">Todos los estados</option>
-              <option value="pending">Pendiente</option>
-              <option value="partial">Parcial</option>
-              <option value="collected">Cobrado</option>
-              <option value="overdue">Vencido</option>
-            </AppSelect>
-          </label>
-        </div>
-      </SectionCard>
-
-      <div style={{ height: 16 }} />
-
-      <SectionCard title="Listado de cobranza" icon={<Wallet size={18} />}>
-                <div style={{ display: "grid", gap: 14 }}>
-          <div style={collectionHeaderGridStyle}>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Concepto</span>
-              <span style={headerSecondaryTextStyle}>categoría</span>
-            </div>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Edificio</span>
-              <span style={headerSecondaryTextStyle}>departamento / unidad</span>
-            </div>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Inquilino</span>
-              <span style={headerSecondaryTextStyle}>responsable de pago</span>
-            </div>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Periodo</span>
-              <span style={headerSecondaryTextStyle}>tipo de cobro</span>
-            </div>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Vencimiento</span>
-              <span style={headerSecondaryTextStyle}>fin de mes</span>
-            </div>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Monto</span>
-              <span style={headerSecondaryTextStyle}>cobrado</span>
-            </div>
-            <div style={headerCellWrapStyle}>
-              <span style={headerPrimaryTextStyle}>Estado</span>
-              <span style={headerSecondaryTextStyle}>saldo actual</span>
-            </div>
+            ))}
           </div>
+        </div>
 
-          {filteredRows.length === 0 ? (
-            <div style={emptyInlineBoxStyle}>
-              Todavía no hay registros de cobranza. Importa una factura o crea un cargo manual para empezar a operar este módulo.
-            </div>
-          ) : (
-            filteredRows.map((row) => {
-              const isExpanded = detailRecordId === row.id;
-              const rowPayments = (paymentsByRecordId.get(row.id) || []).slice().sort((a, b) => b.paid_at.localeCompare(a.paid_at));
-              const rowInvoices = (invoicesByRecordId.get(row.id) || []).slice().sort((a, b) => {
-                const aDate = a.issued_at || a.created_at;
-                const bDate = b.issued_at || b.created_at;
-                return bDate.localeCompare(aDate);
-              });
-              const statusColors = getStatusColors(row.status);
+        {/* Accesos rápidos */}
+        <div style={quickLinksGridStyle}>
+          <button type="button" onClick={() => router.push("/collections/reported-payments")} style={quickLinkCardStyle}>
+            <div style={quickLinkIconStyle}><Upload size={18} /></div>
+            <span style={quickLinkLabelStyle}>Pagos reportados</span>
+          </button>
+          <button type="button" onClick={() => router.push("/collections/invoice-generation")} style={quickLinkCardStyle}>
+            <div style={quickLinkIconStyle}><FileText size={18} /></div>
+            <span style={quickLinkLabelStyle}>Generación de facturas</span>
+          </button>
+          <button type="button" onClick={() => router.push("/collections/invoices")} style={quickLinkCardStyle}>
+            <div style={quickLinkIconStyle}><Receipt size={18} /></div>
+            <span style={quickLinkLabelStyle}>Facturas importadas</span>
+          </button>
+          <button type="button" onClick={() => router.push("/collections/pending-invoice-uploads")} style={quickLinkCardStyle}>
+            <div style={quickLinkIconStyle}><Upload size={18} /></div>
+            <span style={quickLinkLabelStyle}>Falta cargar factura</span>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Filtros ── */}
+      <div style={filtersRowStyle}>
+        <div style={filterFieldStyle}>
+          <Building2 size={14} style={{ color: "var(--text-muted)" }} />
+          <AppSelect value={filterBuildingId} onChange={(e) => setFilterBuildingId(e.target.value)}>
+            <option value="all">Todos los edificios</option>
+            {buildings.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </AppSelect>
+        </div>
+
+        <div style={filterFieldStyle}>
+          <Filter size={14} style={{ color: "var(--text-muted)" }} />
+          <AppSelect value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as CollectionStatusFilter)}>
+            <option value="all">Todos los estados</option>
+            <option value="pending">Pendiente</option>
+            <option value="partial">Parcial</option>
+            <option value="overdue">Vencido</option>
+            <option value="collected">Cobrado</option>
+          </AppSelect>
+        </div>
+      </div>
+
+      {/* ── Lista de inquilinos ── */}
+      <SectionCard title={`Cobros de ${monthLabel}`} icon={<Wallet size={18} />}>
+        {inquilinoRows.length === 0 ? (
+          <div style={emptyBoxStyle}>
+            {monthRecords.length === 0
+              ? `Todavía no hay cobros para ${monthLabel}. Usa "Generar cobros del mes" para crear los registros desde los contratos activos.`
+              : "No hay cobros que coincidan con los filtros seleccionados."}
+          </div>
+        ) : (
+          <div style={{ display: "grid", gap: 10 }}>
+            {inquilinoRows.map((row) => {
+              const isExpanded = expandedKey === row.groupKey;
+              const statusColors = getStatusColors(row.estadoGeneral);
 
               return (
-                <div key={row.id} style={collectionRowCardStyle}>
-                  <div style={collectionBodyGridStyle}>
-                    <div style={conceptCellWrapStyle}>
-                      <div style={chargeIconWrapStyle}>{getCollectionTypeIcon(row.chargeType)}</div>
-                      <div style={{ display: "grid", gap: 6, minWidth: 0 }}>
-                        <div style={{ ...rowTitleStyle, lineHeight: 1.1 }}>{row.title}</div>
-                        <div style={rowSecondaryTextStyle}>{row.chargeTypeLabel}</div>
-                        <button
-                          type="button"
-                          onClick={() => setDetailRecordId((current) => (current === row.id ? null : row.id))}
-                          style={detailToggleButtonStyle}
-                        >
-                          {isExpanded ? "Ocultar detalles" : "Ver detalles"}
-                          {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                        </button>
-                      </div>
+                <div key={row.groupKey} style={tenantCardStyle}>
+                  {/* Fila principal — siempre visible */}
+                  <div
+                    style={tenantCardHeaderStyle}
+                    onClick={() => setExpandedKey(isExpanded ? null : row.groupKey)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") setExpandedKey(isExpanded ? null : row.groupKey); }}
+                  >
+                    {/* Izquierda: nombre + ubicación */}
+                    <div style={{ display: "grid", gap: 3, minWidth: 0 }}>
+                      <span style={tenantNameStyle}>{row.tenantLabel}</span>
+                      <span style={tenantSubtitleStyle}>{row.buildingName} · {row.unitLabel}</span>
                     </div>
 
-                    <div style={rowTwoLineCellStyle}>
-                      <span style={rowPrimaryTextStyle}>{row.buildingName}</span>
-                      <span style={rowSecondaryTextStyle}>{row.unitLabel}</span>
-                    </div>
-
-                    <div style={rowTwoLineCellStyle}>
-                      <span style={rowPrimaryTextStyle}>{row.tenantLabel}</span>
-                      <span style={rowSecondaryTextStyle}>{row.responsiblePayerLabel}</span>
-                    </div>
-
-                    <div style={rowTwoLineCellStyle}>
-                      <span style={rowPrimaryTextStyle}>{row.periodLabel}</span>
-                      <span style={rowSecondaryTextStyle}>{row.chargeTypeLabel}</span>
-                    </div>
-
-                    <div style={rowSingleCellStyle}>
-                      <span style={rowPrimaryTextStyle}>{row.dueDateLabel}</span>
-                    </div>
-
-                    <div style={rowTwoLineCellStyle}>
-                      <span style={rowMoneyPrimaryStyle}>{row.amountDueLabel}</span>
-                      <span style={rowSecondaryTextStyle}>{row.amountCollectedLabel} cobrados</span>
-                    </div>
-
-                    <div style={rowTwoLineCellStyle}>
-                      <span
-                        style={{
-                          display: "inline-flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          padding: "6px 10px",
-                          borderRadius: 999,
-                          border: `1px solid ${statusColors.border}`,
-                          background: statusColors.background,
-                          color: statusColors.text,
-                          fontSize: 12,
-                          fontWeight: 800,
-                          whiteSpace: "nowrap",
-                          width: "fit-content",
-                        }}
-                      >
-                        {row.statusLabel}
+                    {/* Centro: total + badge estado */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                      <span style={totalAmountStyle}>{formatCurrency(row.totalDue)}</span>
+                      <span style={{
+                        ...badgeStyle,
+                        background: statusColors.bg,
+                        color: statusColors.text,
+                        border: `1px solid ${statusColors.border}`,
+                      }}>
+                        {getStatusLabel(row.estadoGeneral)}
                       </span>
-                      <span style={rowSecondaryTextStyle}>{row.balanceLabel} pendientes</span>
+                    </div>
+
+                    {/* Derecha: chevron */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                      <div style={chevronWrapStyle}>
+                        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                      </div>
                     </div>
                   </div>
 
+                  {/* Contenido expandido */}
                   {isExpanded ? (
-                    <div style={expandedRowWrapStyle}>
-                      <div style={detailTopGridStyle}>
-                        <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Actividad</div>
-                          <div style={detailValueStyle}>{row.paymentsCount} abono{row.paymentsCount === 1 ? "" : "s"} · {row.invoicesCount} factura{row.invoicesCount === 1 ? "" : "s"}</div>
+                    <div style={expandedBodyStyle}>
+                      {/* Tabla de conceptos */}
+                      <div style={conceptsTableStyle}>
+                        {/* Encabezado */}
+                        <div style={conceptsHeaderRowStyle}>
+                          <span style={thStyle}>Concepto</span>
+                          <span style={{ ...thStyle, textAlign: "right" }}>Monto</span>
+                          <span style={{ ...thStyle, textAlign: "center" }}>Estado</span>
+                          <span style={{ ...thStyle, textAlign: "right" }}>Acción</span>
                         </div>
-                        <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Saldo pendiente</div>
-                          <div style={detailValueStyle}>{row.balanceLabel}</div>
-                        </div>
-                        <div style={detailBlockStyle}>
-                          <div style={detailLabelStyle}>Método registrado</div>
-                          <div style={detailValueStyle}>{row.paymentMethodLabel}</div>
-                        </div>
-                      </div>
 
-                      <div style={inlineActionRowStyle}>
-                        <button type="button" onClick={() => openPaymentModal(row)} style={inlineGreenButtonStyle} disabled={row.balance <= 0}>
-                          <Plus size={15} />
-                          Registrar abono
-                        </button>
-                        <button type="button" onClick={() => openEditRecordModal(row)} style={inlineBlueButtonStyle}>
-                          <Pencil size={15} />
-                          Editar
-                        </button>
-                        <button type="button" onClick={() => setDeleteRecordId(row.id)} style={inlineRedButtonStyle}>
-                          <Trash2 size={15} />
-                          Archivar
-                        </button>
-                      </div>
+                        {/* Filas */}
+                        {row.records.map((record) => {
+                          const schedule = scheduleMap.get(record.collection_schedule_id);
+                          const chargeType = (schedule?.charge_type || "other") as CollectionChargeType;
+                          const conceptLabel = schedule ? getChargeTypeLabel(chargeType) : "Cobro";
+                          const recColors = getStatusColors(record.status);
+                          const isMarking = markingIds.has(record.id);
 
-                      <div>
-                        <div style={detailSectionTitleStyle}>Notas</div>
-                        <div style={notesBoxStyle}>
-                          {row.notes && row.notes !== "—" ? row.notes : "No hay notas registradas para este cobro."}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div style={detailSectionTitleStyle}>Historial de abonos</div>
-                        {rowPayments.length === 0 ? (
-                          <div style={emptyInlineBoxStyle}>No hay abonos registrados para este cobro.</div>
-                        ) : (
-                          <div style={detailListWrapStyle}>
-                            {rowPayments.map((payment) => (
-                              <div key={payment.id} style={detailListItemStyle}>
-                                <div style={{ display: "grid", gap: 4 }}>
-                                  <span style={cellPrimaryStrongStyle}>{formatCurrency(payment.amount)}</span>
-                                  <span style={cellSecondaryStyle}>{payment.payment_method || "Sin método"} · {formatDateTime(payment.paid_at)}</span>
-                                </div>
-                                <div style={{ display: "grid", gap: 4, textAlign: "right" }}>
-                                  <span style={cellSecondaryStyle}>{payment.reference || "Sin referencia"}</span>
-                                  <span style={cellSecondaryStyle}>{payment.notes || "Sin notas"}</span>
+                          return (
+                            <div key={record.id} style={conceptRowStyle}>
+                              {/* Concepto */}
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <div style={chargeIconWrapStyle}>{getChargeTypeIcon(chargeType)}</div>
+                                <div style={{ display: "grid", gap: 2 }}>
+                                  <span style={conceptNameStyle}>{conceptLabel}</span>
+                                  <span style={conceptSubStyle}>Vence {formatDate(record.due_date)}</span>
                                 </div>
                               </div>
-                            ))}
-                          </div>
-                        )}
+
+                              {/* Monto — 3 líneas */}
+                              <div style={{ display: "grid", gap: 2, textAlign: "right" }}>
+                                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Total: {formatCurrency(record.amount_due)}</span>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "#10B981" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
+                                <span style={{ fontSize: 12, fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "#EF4444" : "#10B981" }}>
+                                  Resta: {formatCurrency(Math.max(record.amount_due - (record.amount_collected || 0), 0))}
+                                </span>
+                              </div>
+
+                              {/* Estado */}
+                              <div style={{ display: "flex", justifyContent: "center" }}>
+                                <span style={{
+                                  ...badgeStyle,
+                                  fontSize: 11,
+                                  padding: "4px 8px",
+                                  background: recColors.bg,
+                                  color: recColors.text,
+                                  border: `1px solid ${recColors.border}`,
+                                }}>
+                                  {getStatusLabel(record.status)}
+                                </span>
+                              </div>
+
+                              {/* Acción */}
+                              <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap", alignItems: "center" }}>
+                                {record.status !== "collected" ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setAbonoModal({ record, monto: String(Math.max(record.amount_due - (record.amount_collected || 0), 0)) })}
+                                    disabled={isMarking}
+                                    style={paidBtnStyle}
+                                  >
+                                    <Wallet size={13} />
+                                    {isMarking ? "..." : "Abonar"}
+                                  </button>
+                                ) : (
+                                  <div style={{ position: "relative" }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => setRevertConfirmId(record.id)}
+                                      disabled={isMarking}
+                                      style={{ ...editBtnStyle, width: "auto", padding: "4px 9px", fontSize: 11, fontWeight: 600 }}
+                                    >
+                                      {isMarking ? "..." : "Revertir"}
+                                    </button>
+                                    {revertConfirmId === record.id ? (
+                                      <div style={{
+                                        position: "absolute",
+                                        top: "calc(100% + 4px)",
+                                        right: 0,
+                                        zIndex: 10,
+                                        background: "var(--bg-card)",
+                                        border: "1px solid var(--border-default)",
+                                        borderRadius: 12,
+                                        padding: "10px 14px",
+                                        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                                        display: "flex",
+                                        flexDirection: "column",
+                                        gap: 8,
+                                        minWidth: 160,
+                                        whiteSpace: "nowrap",
+                                      }}>
+                                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>¿Revertir pago?</span>
+                                        <div style={{ display: "flex", gap: 6 }}>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); void handleRevertRecord(record); }} style={{ flex: 1, padding: "5px 0", borderRadius: 8, border: "1px solid #FECACA", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Sí</button>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); setRevertConfirmId(null); }} style={{ flex: 1, padding: "5px 0", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>No</button>
+                                        </div>
+                                      </div>
+                                    ) : null}
+                                  </div>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => openEditRecord(record)}
+                                  style={editBtnStyle}
+                                >
+                                  <Pencil size={13} />
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setDeleteRecordId(record.id)}
+                                  style={archiveBtnStyle}
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
 
-                      <div>
-                        <div style={detailSectionTitleStyle}>Facturas ligadas</div>
-                        {rowInvoices.length === 0 ? (
-                          <div style={emptyInlineBoxStyle}>Todavía no hay facturas ligadas a este cobro.</div>
-                        ) : (
-                          <div style={detailListWrapStyle}>
-                            {rowInvoices.map((invoice) => (
-                              <div key={invoice.id} style={detailListItemStyle}>
-                                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                  <div style={invoiceIconWrapStyle}>
-                                    <Receipt size={16} />
-                                  </div>
-                                  <div style={{ display: "grid", gap: 4 }}>
-                                    <span style={cellPrimaryStrongStyle}>{invoice.description || "Factura ligada"}</span>
-                                    <span style={cellSecondaryStyle}>{invoice.customer_name || "Sin cliente"} · {invoice.invoice_uuid || "Sin UUID"}</span>
-                                  </div>
-                                </div>
-                                <div style={{ display: "grid", gap: 8, textAlign: "right" }}>
-                                  <span style={cellPrimaryStyle}>{formatCurrency(invoice.total)}</span>
-                                  <span style={cellSecondaryStyle}>{formatDate(invoice.issued_at)}</span>
-                                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-                                    <button type="button" onClick={() => router.push(`/collections/invoices/${invoice.id}`)} style={smallGhostButtonStyle}>Abrir factura</button>
-                                    {invoice.pdf_path ? <button type="button" onClick={async () => { const { data } = await supabase.storage.from("invoices").createSignedUrl(invoice.pdf_path, 60); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer"); }} style={smallGhostButtonStyle}>Ver PDF</button> : null}
-                                    {invoice.xml_path ? <button type="button" onClick={async () => { const { data } = await supabase.storage.from("invoices").createSignedUrl(invoice.xml_path, 60); if (data?.signedUrl) window.open(data.signedUrl, "_blank", "noopener,noreferrer"); }} style={smallGhostButtonStyle}>Ver XML</button> : null}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
+                      {/* Pie del expand */}
+                      <div style={{ ...expandFooterStyle, justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>
+                          Saldo pendiente: <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(row.balance)}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEventoModal({ groupKey: row.groupKey, leaseId: row.leaseId, buildingId: row.buildingId, unitId: row.records[0]?.unit_id || "" });
+                            setEventoForm({ concepto: "", chargeType: "amenities", monto: "" });
+                          }}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                        >
+                          <Plus size={13} />
+                          Cargo eventual
+                        </button>
                       </div>
                     </div>
                   ) : null}
                 </div>
               );
-            })
-          )}
-        </div>
-</SectionCard>
+            })}
+          </div>
+        )}
+      </SectionCard>
 
+      {/* ── Modal: Cargo manual ── */}
       <Modal
-        open={Boolean(deleteRecordRow)}
-        title="Archivar cobro"
-        onClose={() => {
-          if (!deletingRecord) {
-            setDeleteRecordId(null);
-          }
-        }}
+        open={createChargeOpen}
+        title="Nuevo cobro"
+        onClose={() => { if (!creatingCharge) { setCreateChargeOpen(false); setChargeForm(createDefaultChargeForm()); } }}
       >
-        {deleteRecordRow ? (
+        <div style={{ display: "grid", gap: 16 }}>
+          <div style={formGridStyle}>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Tipo de cobro</span>
+              <AppSelect
+                value={chargeForm.chargeMode}
+                onChange={(e) => setChargeForm((p) => ({ ...p, chargeMode: e.target.value as ChargeMode, createFirstRecordNow: e.target.value === "recurring" }))}
+              >
+                <option value="recurring">Recurrente</option>
+                <option value="one_time">Único / cargo adicional</option>
+              </AppSelect>
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Categoría</span>
+              <AppSelect value={chargeForm.chargeType} onChange={(e) => setChargeForm((p) => ({ ...p, chargeType: e.target.value as CollectionChargeType }))}>
+                <option value="rent">Renta</option>
+                <option value="maintenance_fee">Mantenimiento</option>
+                <option value="electricity">Electricidad</option>
+                <option value="water">Agua</option>
+                <option value="gas">Gas</option>
+                <option value="amenities">Amenidades</option>
+                <option value="parking">Estacionamiento</option>
+                <option value="penalty">Penalización</option>
+                <option value="other">Otro</option>
+              </AppSelect>
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Edificio</span>
+              <AppSelect
+                value={chargeForm.buildingId}
+                onChange={(e) => setChargeForm((p) => ({ ...p, buildingId: e.target.value, unitId: "", leaseId: "" }))}
+              >
+                <option value="">Selecciona un edificio</option>
+                {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              </AppSelect>
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Unidad</span>
+              <AppSelect
+                value={chargeForm.unitId}
+                onChange={(e) => setChargeForm((p) => ({ ...p, unitId: e.target.value, leaseId: "" }))}
+                disabled={!chargeForm.buildingId}
+              >
+                <option value="">Selecciona una unidad</option>
+                {unitsForBuilding.map((u) => <option key={u.id} value={u.id}>{u.display_code || u.unit_number || "Unidad"}</option>)}
+              </AppSelect>
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Contrato</span>
+              <AppSelect
+                value={chargeForm.leaseId}
+                onChange={(e) => setChargeForm((p) => ({ ...p, leaseId: e.target.value }))}
+                disabled={!chargeForm.unitId}
+              >
+                <option value="">Sin contrato específico</option>
+                {leasesForUnit.map((l) => {
+                  const t = l.tenant_id ? tenantMap.get(l.tenant_id) : null;
+                  return <option key={l.id} value={l.id}>{t?.full_name || l.billing_name || "Contrato"}</option>;
+                })}
+              </AppSelect>
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Concepto</span>
+              <input
+                value={chargeForm.title}
+                onChange={(e) => setChargeForm((p) => ({ ...p, title: e.target.value }))}
+                style={inputStyle}
+                placeholder="Ej. Renta abril o cargo extraordinario"
+              />
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Monto</span>
+              <input
+                value={chargeForm.amountExpected}
+                onChange={(e) => setChargeForm((p) => ({ ...p, amountExpected: formatDecimalInput(e.target.value) }))}
+                style={inputStyle}
+                inputMode="decimal"
+                placeholder="0.00"
+              />
+            </label>
+
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>{chargeForm.chargeMode === "recurring" ? "Primer vencimiento" : "Vencimiento"}</span>
+              <input
+                type="date"
+                value={chargeForm.initialDueDate}
+                onChange={(e) => {
+                  const parsed = new Date(`${e.target.value}T00:00:00`);
+                  setChargeForm((p) => ({
+                    ...p,
+                    initialDueDate: e.target.value,
+                    dueDay: p.chargeMode === "recurring" ? String(parsed.getDate()) : p.dueDay,
+                  }));
+                }}
+                style={inputStyle}
+              />
+            </label>
+
+            {chargeForm.chargeMode === "recurring" ? (
+              <>
+                <label style={fieldStyle}>
+                  <span style={fieldLabelStyle}>Día de vencimiento mensual</span>
+                  <AppSelect value={chargeForm.dueDay} onChange={(e) => setChargeForm((p) => ({ ...p, dueDay: e.target.value }))}>
+                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                      <option key={d} value={String(d)}>Día {d}</option>
+                    ))}
+                  </AppSelect>
+                </label>
+
+                <label style={{ ...fieldStyle, flexDirection: "row", alignItems: "center", gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={chargeForm.createFirstRecordNow}
+                    onChange={(e) => setChargeForm((p) => ({ ...p, createFirstRecordNow: e.target.checked }))}
+                  />
+                  <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
+                    Crear primer cobro ahora
+                  </span>
+                </label>
+              </>
+            ) : null}
+          </div>
+
+          <label style={fieldStyle}>
+            <span style={fieldLabelStyle}>Notas</span>
+            <textarea
+              value={chargeForm.notes}
+              onChange={(e) => setChargeForm((p) => ({ ...p, notes: e.target.value }))}
+              rows={3}
+              style={textareaStyle}
+              placeholder="Notas internas opcionales"
+            />
+          </label>
+
+          <div style={modalFooterStyle}>
+            <UiButton variant="secondary" onClick={() => { if (!creatingCharge) { setCreateChargeOpen(false); setChargeForm(createDefaultChargeForm()); } }}>
+              Cancelar
+            </UiButton>
+            <UiButton onClick={handleCreateCharge} disabled={creatingCharge} icon={<Plus size={15} />}>
+              {creatingCharge ? "Guardando..." : "Guardar cobro"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Modal: Editar cobro ── */}
+      <Modal
+        open={Boolean(editRecordId)}
+        title="Editar cobro"
+        onClose={() => { if (!editingRecord) setEditRecordId(null); }}
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <label style={fieldStyle}>
+            <span style={fieldLabelStyle}>Monto</span>
+            <input
+              value={editForm.amountDue}
+              onChange={(e) => setEditForm((p) => ({ ...p, amountDue: formatDecimalInput(e.target.value) }))}
+              style={inputStyle}
+              inputMode="decimal"
+              placeholder="0.00"
+            />
+          </label>
+          <label style={fieldStyle}>
+            <span style={fieldLabelStyle}>Notas</span>
+            <textarea
+              value={editForm.notes}
+              onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+              rows={3}
+              style={textareaStyle}
+            />
+          </label>
+          <div style={modalFooterStyle}>
+            <UiButton variant="secondary" onClick={() => { if (!editingRecord) setEditRecordId(null); }}>Cancelar</UiButton>
+            <UiButton onClick={handleSaveRecordEdits} disabled={editingRecord} icon={<Pencil size={15} />}>
+              {editingRecord ? "Guardando..." : "Guardar cambios"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Modal: Archivar cobro ── */}
+      <Modal
+        open={Boolean(deleteRecordId)}
+        title="Archivar cobro"
+        onClose={() => { if (!deletingRecord) setDeleteRecordId(null); }}
+      >
+        {deleteRecord ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div style={dangerBoxStyle}>
-              <div style={{ display: "grid", gap: 6 }}>
-                <div style={detailSectionTitleStyle}>Confirmación requerida</div>
-                <div style={quickSectionTextStyle}>
-                  ¿Archivar este cobro, sus abonos ligados y sus facturas importadas?
-                  Esta acción los ocultará del sistema pero conservará toda su información.
-                </div>
-              </div>
+            <div style={warningBoxStyle}>
+              ¿Archivar el cobro de{" "}
+              <strong>{formatCurrency(deleteRecord.amount_due)}</strong> con vencimiento{" "}
+              <strong>{formatDate(deleteRecord.due_date)}</strong>? Esta acción lo ocultará del
+              sistema pero conservará su información.
             </div>
-
-            <div style={detailTopGridStyle}>
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Concepto</div>
-                <div style={detailValueStyle}>{deleteRecordRow.title}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Ubicación</div>
-                <div style={detailValueStyle}>
-                  {deleteRecordRow.buildingName} · {deleteRecordRow.unitLabel}
-                </div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Periodo</div>
-                <div style={detailValueStyle}>{deleteRecordRow.periodLabel}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Saldo</div>
-                <div style={detailValueStyle}>{deleteRecordRow.balanceLabel}</div>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-              <UiButton
-                variant="secondary"
-                onClick={() => setDeleteRecordId(null)}
-                disabled={deletingRecord}
-              >
-                Cancelar
-              </UiButton>
-
-              <UiButton
-                onClick={handleDeleteCollectionRecord}
-                disabled={deletingRecord}
-                icon={<Trash2 size={16} />}
-              >
+            <div style={modalFooterStyle}>
+              <UiButton variant="secondary" onClick={() => setDeleteRecordId(null)} disabled={deletingRecord}>Cancelar</UiButton>
+              <UiButton onClick={handleDeleteRecord} disabled={deletingRecord} icon={<Trash2 size={15} />}>
                 {deletingRecord ? "Archivando..." : "Archivar cobro"}
               </UiButton>
             </div>
@@ -2660,1387 +1452,455 @@ const preview: ImportPreviewData = {
         ) : null}
       </Modal>
 
+      {/* ── Modal: Registrar abono ── */}
       <Modal
-        open={importInvoiceOpen}
-        title="Importar factura"
-        maxWidth={1120}
-        maxHeight="calc(100vh - 24px)"
-        contentStyle={{ padding: 20 }}
-        onClose={() => {
-          if (!importingInvoice) {
-            setImportInvoiceOpen(false);
-            resetImportInvoiceState();
-          }
-        }}
-      >
-
-        <div style={importModalBodyStyle}>
-          <div style={importIntroCardStyle}>
-            <div style={importIntroHeaderStyle}>
-              <div style={invoiceIconWrapStyle}>
-                <WandSparkles size={16} />
-              </div>
-              <div style={{ display: "grid", gap: 4 }}>
-                <div style={{ ...detailSectionTitleStyle, marginBottom: 0 }}>Ingesta inteligente de XML + PDF</div>
-                <div style={quickSectionTextStyle}>
-                  Sube ambos archivos y el sistema clasificará la factura para crear o ligar el cobro correspondiente.
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={simpleFormGridStyle}>
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>XML CFDI</span>
-              <input
-                type="file"
-                accept=".xml,text/xml,application/xml"
-                onChange={(event) => {
-                  const file = event.target.files?.[0] || null;
-                  void handleImportXmlSelected(file);
-                }}
-                style={inputStyle}
-              />
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>PDF de la factura</span>
-              <input
-                type="file"
-                accept=".pdf,application/pdf"
-                onChange={(event) => setImportPdfFile(event.target.files?.[0] || null)}
-                style={inputStyle}
-              />
-            </label>
-          </div>
-
-          <div
-            style={{
-              ...importPreviewBannerStyle,
-              border: `1px solid ${importPreview ? "var(--border-default)" : "var(--border-default)"}`,
-              background: importPreview ? "var(--metric-bg-neutral)" : "var(--bg-card-hover)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={invoiceIconWrapStyle}>
-                {importPreview ? <WandSparkles size={16} /> : <Upload size={16} />}
-              </div>
-              <div style={{ display: "grid", gap: 4 }}>
-                <div style={{ ...detailSectionTitleStyle, marginBottom: 0 }}>
-                  {importPreview ? "Vista previa detectada" : "Aún no se ha leído un XML"}
-                </div>
-                <div style={quickSectionTextStyle}>
-                  {importStatusMessage || "Sube un XML para extraer UUID, cliente, RFC, fecha, importe y concepto."}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {importPreview ? (
-            <>
-              <div style={importPreviewMainGridStyle}>
-                <div style={detailBlockStyle}>
-                  <div style={detailLabelStyle}>Cliente detectado</div>
-                  <div style={detailValueStyle}>{importPreview.customerName || "Sin nombre"}</div>
-                </div>
-
-                <div style={detailBlockStyle}>
-                  <div style={detailLabelStyle}>RFC detectado</div>
-                  <div style={detailValueStyle}>{importPreview.customerTaxId || "Sin RFC"}</div>
-                </div>
-
-                <div style={detailBlockStyle}>
-                  <div style={detailLabelStyle}>UUID</div>
-                  <div style={{ ...detailValueStyle, fontSize: 13, wordBreak: "break-word" }}>
-                    {importPreview.uuid || "Sin UUID"}
-                  </div>
-                </div>
-
-                <div style={importPreviewMetaStackStyle}>
-                  <div style={detailBlockStyle}>
-                    <div style={detailLabelStyle}>Fecha CFDI</div>
-                    <div style={detailValueStyle}>{formatDate(importPreview.issuedAt || null)}</div>
-                  </div>
-
-                  <div style={detailBlockStyle}>
-                    <div style={detailLabelStyle}>Total</div>
-                    <div style={detailValueStyle}>{formatCurrency(Number(importPreview.total || 0))}</div>
-                  </div>
-                </div>
-
-                <div style={{ ...detailBlockStyle, gridColumn: "span 2" }}>
-                  <div style={detailLabelStyle}>Concepto</div>
-                  <div style={importConceptPreviewTextStyle}>
-                    {importPreview.description || "Sin descripción"}
-                  </div>
-                </div>
-              </div>
-
-              <div style={simpleFormGridStyle}>
-                <label style={fieldWrapStyle}>
-                  <span style={fieldLabelStyle}>Contrato sugerido</span>
-                  <AppSelect
-                    value={importForm.selectedLeaseId}
-                    onChange={(event) =>
-                      setImportForm((prev) => ({
-                        ...prev,
-                        selectedLeaseId: event.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">Selecciona un contrato</option>
-                    {importCandidates.length > 0 ? (
-                      <optgroup label="Coincidencias sugeridas">
-                        {importCandidates.map((candidate) => (
-                          <option key={`candidate-${candidate.leaseId}`} value={candidate.leaseId}>
-                            {candidate.tenantLabel} · {candidate.buildingName} · Unidad {candidate.unitLabel} · score {candidate.score}
-                          </option>
-                        ))}
-                      </optgroup>
-                    ) : null}
-                    <optgroup label="Todos los contratos disponibles">
-                      {leaseLookupOptions.map((option) => (
-                        <option key={option.id} value={option.id}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </optgroup>
-                  </AppSelect>
-                </label>
-
-                <label style={fieldWrapStyle}>
-                  <span style={fieldLabelStyle}>Categoría sugerida</span>
-                  <AppSelect
-                    value={importForm.selectedChargeCategory}
-                    onChange={(event) =>
-                      setImportForm((prev) => ({
-                        ...prev,
-                        selectedChargeCategory: event.target.value as CollectionChargeType,
-                      }))
-                    }
-                  >
-                    <option value="rent">Renta</option>
-                    <option value="maintenance_fee">Mantenimiento</option>
-                    <option value="electricity">Electricidad</option>
-                    <option value="water">Agua</option>
-                    <option value="gas">Gas</option>
-                    <option value="amenities">Amenidades</option>
-                    <option value="services">Servicios (legado)</option>
-                    <option value="parking">Estacionamiento</option>
-                    <option value="penalty">Penalización</option>
-                    <option value="other">Otro</option>
-                  </AppSelect>
-                </label>
-
-                <label style={fieldWrapStyle}>
-                  <span style={fieldLabelStyle}>Vencimiento del cobro</span>
-                  <input
-                    type="date"
-                    value={importForm.dueDate}
-                    disabled
-                    style={{ ...inputStyle, background: "var(--bg-card-hover)", color: "var(--text-muted)" }}
-                  />
-                  <span style={fieldHelperStyle}>
-                    Se calcula automáticamente como el último día del mes correspondiente al CFDI.
-                  </span>
-                </label>
-              </div>
-
-              <div style={simpleFormGridStyle}>
-                <label style={{ ...fieldWrapStyle, gridColumn: "span 2" }}>
-                  <span style={fieldLabelStyle}>Título del cobro</span>
-                  <input
-                    type="text"
-                    value={importForm.title}
-                    onChange={(event) =>
-                      setImportForm((prev) => ({
-                        ...prev,
-                        title: event.target.value,
-                      }))
-                    }
-                    placeholder="Cómo quieres que aparezca este cobro en el listado"
-                    style={inputStyle}
-                  />
-                </label>
-
-                <label style={fieldWrapStyle}>
-                  <span style={fieldLabelStyle}>Notas internas</span>
-                  <textarea
-                    value={importForm.notes}
-                    onChange={(event) =>
-                      setImportForm((prev) => ({
-                        ...prev,
-                        notes: event.target.value,
-                      }))
-                    }
-                    rows={2}
-                    placeholder="Opcional"
-                    style={textareaStyle}
-                  />
-                </label>
-              </div>
-
-              {selectedImportCandidate ? (
-                <div style={paymentSummaryCardStyle}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-                    <div style={invoiceIconWrapStyle}>
-                      <Receipt size={16} />
-                    </div>
-                    <div style={{ ...detailSectionTitleStyle, marginBottom: 0 }}>
-                      Coincidencia sugerida · score {selectedImportCandidate.score}
-                    </div>
-                  </div>
-
-                  <div style={detailTopGridStyle}>
-                    <div style={detailBlockStyle}>
-                      <div style={detailLabelStyle}>Contrato propuesto</div>
-                      <div style={detailValueStyle}>
-                        {selectedImportCandidate.tenantLabel} · {selectedImportCandidate.buildingName} · Unidad {selectedImportCandidate.unitLabel}
-                      </div>
-                    </div>
-
-                    <div style={detailBlockStyle}>
-                      <div style={detailLabelStyle}>Responsable sugerido</div>
-                      <div style={detailValueStyle}>{selectedImportCandidate.responsiblePayerLabel}</div>
-                    </div>
-
-                    <div style={detailBlockStyle}>
-                      <div style={detailLabelStyle}>Facturación esperada</div>
-                      <div style={detailValueStyle}>{selectedImportCandidate.billingName || "Sin nombre fiscal"}</div>
-                    </div>
-                  </div>
-
-                  <div style={{ ...fieldHelperStyle, marginTop: 10 }}>
-                    {selectedImportCandidate.reasons.join(" · ") || "Revisión manual"}
-                  </div>
-                </div>
-              ) : null}
-
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!importingInvoice) {
-                      setImportInvoiceOpen(false);
-                      resetImportInvoiceState();
-                    }
-                  }}
-                  style={ghostButtonStyle}
-                  disabled={importingInvoice}
-                >
-                  Cancelar
-                </button>
-
-                <UiButton
-                  onClick={handleConfirmImportedInvoice}
-                  icon={<FileUp size={16} />}
-                  disabled={importingInvoice || !importPreview || !importPdfFile || !importForm.selectedLeaseId}
-                >
-                  {importingInvoice ? "Importando..." : "Confirmar importación"}
-                </UiButton>
-              </div>
-            </>
-          ) : null}
-        </div>
-      </Modal>
-
-      <Modal
-        open={createChargeOpen}
-        title="Nuevo cobro"
-        onClose={() => {
-          if (!creatingCharge) {
-            setCreateChargeOpen(false);
-            setChargeForm(createDefaultChargeForm());
-          }
-        }}
-      >
-        <div style={{ display: "grid", gap: 16 }}>
-          <div style={paymentSummaryCardStyle}>
-            <div style={{ display: "grid", gap: 6 }}>
-              <div style={detailSectionTitleStyle}>Alta operativa de cobranza</div>
-              <div style={quickSectionTextStyle}>
-                Aquí podrás crear tanto cobros recurrentes como cargos adicionales. En los recurrentes,
-                el sistema puede generar de una vez el primer registro visible en este listado.
-              </div>
-            </div>
-          </div>
-
-          <div style={simpleFormGridStyle}>
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Tipo de cobro</span>
-              <AppSelect
-                value={chargeForm.chargeMode}
-                onChange={(event) => {
-                  const nextMode = event.target.value as ChargeMode;
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    chargeMode: nextMode,
-                    createFirstRecordNow: nextMode === "recurring",
-                  }));
-                }}
-              >
-                <option value="recurring">Recurrente</option>
-                <option value="one_time">Único / cargo adicional</option>
-              </AppSelect>
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Categoría</span>
-              <AppSelect
-                value={chargeForm.chargeType}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    chargeType: event.target.value as CollectionChargeType,
-                  }))
-                }
-              >
-                <option value="rent">Renta</option>
-                <option value="maintenance_fee">Mantenimiento</option>
-                <option value="electricity">Electricidad</option>
-                    <option value="water">Agua</option>
-                    <option value="gas">Gas</option>
-                    <option value="amenities">Amenidades</option>
-                    <option value="services">Servicios (legado)</option>
-                <option value="parking">Estacionamiento</option>
-                <option value="penalty">Penalización</option>
-                <option value="other">Otro</option>
-              </AppSelect>
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Responsable</span>
-              <AppSelect
-                value={chargeForm.responsibilityType}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    responsibilityType: event.target.value as "tenant" | "owner" | "other",
-                  }))
-                }
-              >
-                <option value="tenant">Inquilino</option>
-                <option value="owner">Propietario</option>
-                <option value="other">Otro</option>
-              </AppSelect>
-            </label>
-          </div>
-
-          <div style={simpleFormGridStyle}>
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Edificio</span>
-              <AppSelect
-                value={chargeForm.buildingId}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    buildingId: event.target.value,
-                    unitId: "",
-                    leaseId: "",
-                  }))
-                }
-              >
-                <option value="">Selecciona un edificio</option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
-                  </option>
-                ))}
-              </AppSelect>
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Unidad</span>
-              <AppSelect
-                value={chargeForm.unitId}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    unitId: event.target.value,
-                    leaseId: "",
-                  }))
-                }
-                disabled={!chargeForm.buildingId}
-              >
-                <option value="">Selecciona una unidad</option>
-                {unitsForSelectedBuilding.map((unit) => {
-                  const label = unit.display_code || unit.unit_number || "Unidad";
-                  return (
-                    <option key={unit.id} value={unit.id}>
-                      {label}
-                    </option>
-                  );
-                })}
-              </AppSelect>
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Contrato / lease</span>
-              <AppSelect
-                value={chargeForm.leaseId}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    leaseId: event.target.value,
-                  }))
-                }
-                disabled={!chargeForm.unitId}
-              >
-                <option value="">Sin contrato específico</option>
-                {leasesForSelectedUnit.map((lease) => {
-                  const tenant = lease.tenant_id ? tenantMap.get(lease.tenant_id) : null;
-                  const tenantLabel =
-                    tenant?.full_name ||
-                    lease.billing_name ||
-                    lease.billing_email ||
-                    "Contrato sin inquilino visible";
-
-                  return (
-                    <option key={lease.id} value={lease.id}>
-                      {tenantLabel}
-                    </option>
-                  );
-                })}
-              </AppSelect>
-            </label>
-          </div>
-
-          {(selectedChargeLease || selectedChargeTenant) ? (
-            <div style={detailTopGridStyle}>
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Cliente sugerido</div>
-                <div style={detailValueStyle}>
-                  {selectedChargeTenant?.billing_name ||
-                    selectedChargeLease?.billing_name ||
-                    selectedChargeTenant?.full_name ||
-                    "Sin nombre de facturación"}
-                </div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>RFC sugerido</div>
-                <div style={detailValueStyle}>{selectedChargeTenant?.tax_id || "Sin RFC"}</div>
-              </div>
-
-              <div style={detailBlockStyle}>
-                <div style={detailLabelStyle}>Correo</div>
-                <div style={detailValueStyle}>
-                  {selectedChargeTenant?.billing_email ||
-                    selectedChargeTenant?.email ||
-                    selectedChargeLease?.billing_email ||
-                    "Sin correo"}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <div style={simpleFormGridStyle}>
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Concepto</span>
-              <input
-                value={chargeForm.title}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({ ...prev, title: event.target.value }))
-                }
-                style={inputStyle}
-                placeholder="Ej. Renta marzo 302 o ajuste extraordinario"
-              />
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Monto esperado</span>
-              <input
-                value={chargeForm.amountExpected}
-                onChange={(event) =>
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    amountExpected: formatDecimalInput(event.target.value),
-                  }))
-                }
-                inputMode="decimal"
-                style={inputStyle}
-                placeholder="0.00"
-              />
-            </label>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>
-                {chargeForm.chargeMode === "recurring" ? "Primer vencimiento" : "Vencimiento"}
-              </span>
-              <input
-                type="date"
-                value={chargeForm.initialDueDate}
-                onChange={(event) => {
-                  const nextDate = event.target.value;
-                  const parsed = parseDateOnly(nextDate || getTodayDateOnlyKey());
-                  setChargeForm((prev) => ({
-                    ...prev,
-                    initialDueDate: nextDate,
-                    dueDay:
-                      prev.chargeMode === "recurring"
-                        ? String(parsed.getDate())
-                        : prev.dueDay,
-                  }));
-                }}
-                style={inputStyle}
-              />
-            </label>
-          </div>
-
-          {chargeForm.chargeMode === "recurring" ? (
-            <div style={simpleFormGridStyle}>
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Día de vencimiento mensual</span>
-                <AppSelect
-                  value={chargeForm.dueDay}
-                  onChange={(event) =>
-                    setChargeForm((prev) => ({ ...prev, dueDay: event.target.value }))
-                  }
-                >
-                  {Array.from({ length: 31 }, (_, index) => index + 1).map((day) => (
-                    <option key={day} value={String(day)}>
-                      Día {day}
-                    </option>
-                  ))}
-                </AppSelect>
-              </label>
-
-              <div style={{ ...fieldWrapStyle, alignSelf: "end" }}>
-                <span style={fieldLabelStyle}>Generación inicial</span>
-                <label style={toggleCardStyle}>
-                  <input
-                    type="checkbox"
-                    checked={chargeForm.createFirstRecordNow}
-                    onChange={(event) =>
-                      setChargeForm((prev) => ({
-                        ...prev,
-                        createFirstRecordNow: event.target.checked,
-                      }))
-                    }
-                  />
-                  <span>
-                    Crear primer cobro ahora para que ya aparezca en este listado.
-                  </span>
-                </label>
-              </div>
-            </div>
-          ) : (
-            <div style={oneTimeInfoStyle}>
-              Este cargo adicional se guardará con una configuración interna no recurrente y generará
-              inmediatamente un solo registro de cobranza.
-            </div>
-          )}
-
-          <label style={fieldWrapStyle}>
-            <span style={fieldLabelStyle}>Notas</span>
-            <textarea
-              value={chargeForm.notes}
-              onChange={(event) =>
-                setChargeForm((prev) => ({ ...prev, notes: event.target.value }))
-              }
-              rows={4}
-              style={textareaStyle}
-              placeholder="Notas internas, detalle del cargo o instrucciones administrativas"
-            />
-          </label>
-
-          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-            <button
-              type="button"
-              onClick={() => {
-                if (!creatingCharge) {
-                  setCreateChargeOpen(false);
-                  setChargeForm(createDefaultChargeForm());
-                }
-              }}
-              style={ghostButtonStyle}
-            >
-              Cancelar
-            </button>
-
-            <UiButton onClick={handleCreateCharge} icon={<Plus size={16} />}>
-              {creatingCharge ? "Guardando..." : "Guardar cobro"}
-            </UiButton>
-          </div>
-        </div>
-      </Modal>
-
-            <Modal
-        open={Boolean(editRecordRow)}
-        title="Editar cobro"
-        onClose={() => {
-          if (!editingRecord) setEditRecordId(null);
-        }}
-      >
-        {editRecordRow ? (
-          <div style={{ display: "grid", gap: 16 }}>
-            <div style={paymentSummaryCardStyle}>
-              <div style={paymentSummaryGridStyle}>
-                <div>
-                  <div style={detailLabelStyle}>Ubicación</div>
-                  <div style={detailValueStyle}>{editRecordRow.buildingName} · {editRecordRow.unitLabel}</div>
-                </div>
-                <div>
-                  <div style={detailLabelStyle}>Periodo</div>
-                  <div style={detailValueStyle}>{editRecordRow.periodLabel}</div>
-                </div>
-                <div>
-                  <div style={detailLabelStyle}>Estado actual</div>
-                  <div style={detailValueStyle}>{editRecordRow.statusLabel}</div>
-                </div>
-              </div>
-            </div>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Concepto</span>
-              <input
-                value={editForm.title}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, title: event.target.value }))}
-                style={inputStyle}
-              />
-            </label>
-
-            <div style={simpleFormGridStyle}>
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Monto</span>
-                <input
-                  value={editForm.amountDue}
-                  onChange={(event) => setEditForm((prev) => ({ ...prev, amountDue: formatDecimalInput(event.target.value) }))}
-                  inputMode="decimal"
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Vencimiento</span>
-                <input value={editRecordRow.dueDateLabel} disabled style={{ ...inputStyle, background: "var(--bg-card-hover)", color: "var(--text-muted)" }} />
-              </label>
-            </div>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Notas</span>
-              <textarea
-                value={editForm.notes}
-                onChange={(event) => setEditForm((prev) => ({ ...prev, notes: event.target.value }))}
-                rows={4}
-                style={textareaStyle}
-              />
-            </label>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button type="button" onClick={() => { if (!editingRecord) setEditRecordId(null); }} style={ghostButtonStyle}>Cancelar</button>
-              <button type="button" onClick={handleSaveRecordEdits} style={inlineBlueButtonStyle}>
-                <Pencil size={15} />
-                {editingRecord ? "Guardando..." : "Guardar cambios"}
-              </button>
-            </div>
-          </div>
-        ) : null}
-      </Modal>
-
-<Modal
-        open={Boolean(paymentRow)}
+        open={Boolean(abonoModal)}
         title="Registrar abono"
-        onClose={() => {
-          if (!savingPayment) setPaymentRecordId(null);
-        }}
+        onClose={() => { if (!abonoSaving) setAbonoModal(null); }}
       >
-        {paymentRow ? (
+        {abonoModal ? (
           <div style={{ display: "grid", gap: 16 }}>
-            <div style={paymentSummaryCardStyle}>
-              <div style={paymentSummaryGridStyle}>
-                <div>
-                  <div style={detailLabelStyle}>Concepto</div>
-                  <div style={detailValueStyle}>{paymentRow.title}</div>
-                </div>
-
-                <div>
-                  <div style={detailLabelStyle}>Unidad</div>
-                  <div style={detailValueStyle}>
-                    {paymentRow.buildingName} · {paymentRow.unitLabel}
-                  </div>
-                </div>
-
-                <div>
-                  <div style={detailLabelStyle}>Inquilino</div>
-                  <div style={detailValueStyle}>{paymentRow.tenantLabel}</div>
-                </div>
-
-                <div>
-                  <div style={detailLabelStyle}>Saldo actual</div>
-                  <div style={detailValueStyle}>{paymentRow.balanceLabel}</div>
-                </div>
-              </div>
-            </div>
-
-            <div style={simpleFormGridStyle}>
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Monto del abono</span>
-                <input
-                  value={paymentForm.amount}
-                  onChange={(event) =>
-                    setPaymentForm((prev) => ({
-                      ...prev,
-                      amount: formatDecimalInput(event.target.value),
-                    }))
-                  }
-                  inputMode="decimal"
-                  style={inputStyle}
-                  placeholder="0.00"
-                />
-              </label>
-
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Fecha del abono</span>
-                <input
-                  type="date"
-                  value={paymentForm.paidAt}
-                  onChange={(event) =>
-                    setPaymentForm((prev) => ({
-                      ...prev,
-                      paidAt: event.target.value,
-                    }))
-                  }
-                  style={inputStyle}
-                />
-              </label>
-
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Método</span>
-                <AppSelect
-                  value={paymentForm.paymentMethod}
-                  onChange={(event) =>
-                    setPaymentForm((prev) => ({
-                      ...prev,
-                      paymentMethod: event.target.value as PaymentMethod,
-                    }))
-                  }
-                >
-                  <option value="">Selecciona un método</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="depósito">Depósito</option>
-                  <option value="efectivo">Efectivo</option>
-                  <option value="tarjeta">Tarjeta</option>
-                  <option value="otro">Otro</option>
-                </AppSelect>
-              </label>
-
-              <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>Referencia</span>
-                <input
-                  value={paymentForm.reference}
-                  onChange={(event) =>
-                    setPaymentForm((prev) => ({
-                      ...prev,
-                      reference: event.target.value,
-                    }))
-                  }
-                  style={inputStyle}
-                  placeholder="Transferencia, folio o comentario corto"
-                />
-              </label>
-            </div>
-
-            <label style={fieldWrapStyle}>
-              <span style={fieldLabelStyle}>Notas</span>
-              <textarea
-                value={paymentForm.notes}
-                onChange={(event) =>
-                  setPaymentForm((prev) => ({
-                    ...prev,
-                    notes: event.target.value,
-                  }))
-                }
-                rows={4}
-                style={textareaStyle}
-                placeholder="Notas internas del abono"
+            <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+              Total del cobro:{" "}
+              <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(abonoModal.record.amount_due)}</strong>
+              {(abonoModal.record.amount_collected || 0) > 0 ? (
+                <> · Ya abonado:{" "}
+                  <strong style={{ color: "#10B981" }}>{formatCurrency(abonoModal.record.amount_collected || 0)}</strong>
+                </>
+              ) : null}
+            </p>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Monto a abonar</span>
+              <input
+                value={abonoModal.monto}
+                onChange={(e) => setAbonoModal((p) => p ? { ...p, monto: formatDecimalInput(e.target.value) } : p)}
+                style={inputStyle}
+                inputMode="decimal"
+                placeholder="0.00"
+                autoFocus
               />
             </label>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button
-                type="button"
+            <div style={modalFooterStyle}>
+              <UiButton variant="secondary" onClick={() => { if (!abonoSaving) setAbonoModal(null); }}>Cancelar</UiButton>
+              <UiButton
                 onClick={() => {
-                  if (!savingPayment) setPaymentRecordId(null);
+                  const m = parsePositiveNumber(abonoModal.monto);
+                  if (!m) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+                  void handleAbono(abonoModal.record, m);
                 }}
-                style={ghostButtonStyle}
+                disabled={abonoSaving}
+                icon={<CheckCircle2 size={15} />}
               >
-                Cancelar
-              </button>
-
-              <UiButton onClick={handleSavePayment} icon={<Plus size={16} />}>
-                {savingPayment ? "Guardando..." : "Guardar abono"}
+                {abonoSaving ? "Guardando..." : "Confirmar abono"}
               </UiButton>
             </div>
           </div>
         ) : null}
       </Modal>
+
+      {/* ── Modal: Cargo eventual ── */}
+      <Modal
+        open={Boolean(eventoModal)}
+        title="Cargo eventual"
+        onClose={() => { if (!eventoSaving) { setEventoModal(null); setEventoForm({ concepto: "", chargeType: "amenities", monto: "" }); } }}
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <label style={fieldStyle}>
+            <span style={fieldLabelStyle}>Concepto</span>
+            <input
+              value={eventoForm.concepto}
+              onChange={(e) => setEventoForm((p) => ({ ...p, concepto: e.target.value }))}
+              style={inputStyle}
+              placeholder="Ej. Limpieza de terraza"
+              autoFocus
+            />
+          </label>
+          <label style={fieldStyle}>
+            <span style={fieldLabelStyle}>Tipo</span>
+            <AppSelect
+              value={eventoForm.chargeType}
+              onChange={(e) => setEventoForm((p) => ({ ...p, chargeType: e.target.value as CollectionChargeType }))}
+            >
+              <option value="amenities">Amenidades</option>
+              <option value="parking">Estacionamiento</option>
+              <option value="penalty">Penalización</option>
+              <option value="other">Otro</option>
+            </AppSelect>
+          </label>
+          <label style={fieldStyle}>
+            <span style={fieldLabelStyle}>Monto</span>
+            <input
+              value={eventoForm.monto}
+              onChange={(e) => setEventoForm((p) => ({ ...p, monto: formatDecimalInput(e.target.value) }))}
+              style={inputStyle}
+              inputMode="decimal"
+              placeholder="0.00"
+            />
+          </label>
+          <div style={modalFooterStyle}>
+            <UiButton variant="secondary" onClick={() => { if (!eventoSaving) { setEventoModal(null); setEventoForm({ concepto: "", chargeType: "amenities", monto: "" }); } }}>Cancelar</UiButton>
+            <UiButton onClick={handleCreateEvento} disabled={eventoSaving} icon={<Plus size={15} />}>
+              {eventoSaving ? "Guardando..." : "Agregar cargo"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }
 
-const quickSectionTitleStyle: CSSProperties = {
-  fontSize: 16,
-  fontWeight: 800,
-  color: "var(--text-primary)",
-};
+// ── Estilos ────────────────────────────────────────────────────────────────────
 
-const quickSectionTextStyle: CSSProperties = {
-  fontSize: 14,
-  lineHeight: 1.6,
-  color: "var(--text-muted)",
-};
-
-const reviewQuickGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))",
-  gap: 14,
-};
-
-const reviewCardButtonStyle: CSSProperties = {
-  display: "grid",
-  width: "100%",
-  textAlign: "left",
-  padding: 16,
-  borderRadius: 18,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-  cursor: "pointer",
-  transition: "transform 0.15s ease, box-shadow 0.15s ease",
-  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
-};
-
-const reviewCardTopRowStyle: CSSProperties = {
+const monthNavStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 12,
+  gap: 6,
+  padding: "6px 12px",
+  borderRadius: 12,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
 };
 
-const reviewCardIconWrapStyle: CSSProperties = {
-  width: 44,
-  height: 44,
-  borderRadius: 14,
-  background: "var(--icon-bg-purple)",
-  color: "var(--icon-color-purple)",
-  display: "grid",
-  placeItems: "center",
+const monthNavBtnStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-page)",
+  color: "var(--text-secondary)",
+  cursor: "pointer",
   flexShrink: 0,
 };
 
-const reviewBadgeStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  alignSelf: "flex-start",
-  padding: "8px 12px",
-  borderRadius: 999,
-  fontSize: 13,
-  fontWeight: 800,
-  width: "fit-content",
+const monthNavLabelStyle: CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: "var(--text-primary)",
+  minWidth: 120,
+  textAlign: "center",
 };
 
-const compactFiltersGridStyle: CSSProperties = {
+const chartRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gridTemplateColumns: "280px 1fr",
   gap: 16,
+  marginTop: 4,
 };
 
-const compactFilterFieldStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-  padding: 14,
-  borderRadius: 16,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-};
-
-
-const filterLabelStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  gap: 8,
-  fontSize: 13,
-  fontWeight: 700,
-  color: "var(--text-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-};
-
-const cellPrimaryStyle: CSSProperties = {
-  fontSize: 13,
-  color: "var(--text-primary)",
-  fontWeight: 700,
-};
-
-const cellPrimaryStrongStyle: CSSProperties = {
-  fontSize: 13,
-  color: "var(--text-primary)",
-  fontWeight: 800,
-};
-
-const cellSecondaryStyle: CSSProperties = {
-  fontSize: 12,
-  color: "var(--text-muted)",
-};
-
-const tableActionButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 6,
-  padding: "8px 10px",
-  borderRadius: 10,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-  color: "var(--text-secondary)",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const tablePrimaryButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 6,
-  padding: "8px 10px",
-  borderRadius: 10,
-  border: "1px solid var(--border-default)",
-  background: "var(--metric-bg-neutral)",
-  color: "var(--badge-text-blue)",
-  fontSize: 12,
-  fontWeight: 700,
-};
-
-const collectionHeaderGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.92fr) minmax(0, 0.96fr) minmax(0, 0.92fr)",
-  gap: 12,
-  padding: "0 8px 2px",
-  width: "100%",
-};
-
-const collectionBodyGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1.45fr) minmax(0, 1.05fr) minmax(0, 1.35fr) minmax(0, 0.82fr) minmax(0, 0.92fr) minmax(0, 0.96fr) minmax(0, 0.92fr)",
-  gap: 12,
-  alignItems: "center",
-  width: "100%",
-};
-
-const collectionRowCardStyle: CSSProperties = {
-  display: "grid",
-  gap: 14,
-  padding: 12,
+const donutCardStyle: CSSProperties = {
+  padding: "18px 16px",
   borderRadius: 20,
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
-  boxShadow: "0 1px 2px rgba(15, 23, 42, 0.03)",
-  width: "100%",
-  overflow: "hidden",
-};
-
-const headerCellWrapStyle: CSSProperties = {
   display: "grid",
-  gap: 2,
+  gap: 8,
 };
 
-const headerPrimaryTextStyle: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 900,
+const sectionLabelStyle: CSSProperties = {
+  fontSize: 12,
+  fontWeight: 700,
   color: "var(--text-muted)",
   textTransform: "uppercase",
-  letterSpacing: "0.04em",
-  lineHeight: 1.1,
+  letterSpacing: "0.06em",
+  margin: 0,
 };
 
-const headerSecondaryTextStyle: CSSProperties = {
-  fontSize: 9,
-  color: "var(--text-placeholder)",
-  fontWeight: 700,
-  textTransform: "uppercase",
-  letterSpacing: "0.03em",
-  lineHeight: 1.1,
+const donutLegendStyle: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+  justifyContent: "center",
 };
 
-const conceptCellWrapStyle: CSSProperties = {
+const donutLegendItemStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
-  gap: 10,
-  minWidth: 0,
+  gap: 6,
 };
 
-const chargeIconWrapStyle: CSSProperties = {
-  width: 40,
-  height: 40,
-  borderRadius: 14,
-  background: "var(--icon-bg-purple)",
+const quickLinksGridStyle: CSSProperties = {
   display: "grid",
-  placeItems: "center",
+  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+  gap: 12,
+};
+
+const quickLinkCardStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "flex-start",
+  gap: 10,
+  padding: "16px 14px",
+  borderRadius: 16,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  cursor: "pointer",
+  textAlign: "left",
+};
+
+const quickLinkIconStyle: CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 10,
+  background: "var(--icon-bg-neutral)",
+  color: "var(--icon-color-neutral)",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
   flexShrink: 0,
 };
 
-const rowTitleStyle: CSSProperties = {
+const quickLinkLabelStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text-primary)",
+};
+
+const filtersRowStyle: CSSProperties = {
+  display: "flex",
+  gap: 12,
+  flexWrap: "wrap",
+  marginTop: 4,
+};
+
+const filterFieldStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 8,
+  padding: "8px 12px",
+  borderRadius: 12,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  flex: "1 1 200px",
+  maxWidth: 280,
+};
+
+const tenantCardStyle: CSSProperties = {
+  borderRadius: 16,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+  overflow: "hidden",
+};
+
+const tenantCardHeaderStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr auto auto",
+  gap: 12,
+  alignItems: "center",
+  padding: "14px 16px",
+  cursor: "pointer",
+};
+
+const tenantNameStyle: CSSProperties = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: "var(--text-primary)",
+};
+
+const tenantSubtitleStyle: CSSProperties = {
+  fontSize: 12,
+  color: "var(--text-muted)",
+  fontWeight: 500,
+};
+
+const totalAmountStyle: CSSProperties = {
   fontSize: 15,
   fontWeight: 800,
   color: "var(--text-primary)",
-  lineHeight: 1.15,
-  wordBreak: "break-word",
 };
 
-const detailToggleButtonStyle: CSSProperties = {
+const badgeStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
-  gap: 6,
-  border: "none",
-  background: "transparent",
-  padding: 0,
-  color: "var(--badge-text-blue)",
+  borderRadius: 999,
+  padding: "5px 10px",
   fontSize: 12,
   fontWeight: 800,
-  cursor: "pointer",
-  width: "fit-content",
+  whiteSpace: "nowrap",
 };
 
-const rowTwoLineCellStyle: CSSProperties = {
-  display: "grid",
-  gap: 4,
-  alignContent: "center",
-  minWidth: 0,
-};
 
-const rowSingleCellStyle: CSSProperties = {
-  display: "grid",
-  alignContent: "center",
-  minWidth: 0,
-};
-
-const rowPrimaryTextStyle: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 800,
-  color: "var(--text-primary)",
-  lineHeight: 1.25,
-  wordBreak: "break-word",
-};
-
-const rowSecondaryTextStyle: CSSProperties = {
-  fontSize: 11,
+const chevronWrapStyle: CSSProperties = {
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-page)",
   color: "var(--text-muted)",
-  lineHeight: 1.25,
-  wordBreak: "break-word",
-};
-
-const rowMoneyPrimaryStyle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 900,
-  color: "var(--text-primary)",
-  lineHeight: 1.2,
-};
-
-const expandedRowWrapStyle: CSSProperties = {
-  display: "grid",
-  gap: 16,
-  paddingTop: 16,
-  borderTop: "1px solid var(--border-default)",
-};
-
-const inlineActionRowStyle: CSSProperties = {
   display: "flex",
-  gap: 10,
-  flexWrap: "wrap",
-};
-
-const actionBaseButtonStyle: CSSProperties = {
-  display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: 8,
-  padding: "10px 14px",
-  borderRadius: 12,
-  border: "1px solid transparent",
-  fontSize: 14,
-  fontWeight: 800,
-  cursor: "pointer",
-};
-
-const inlineGreenButtonStyle: CSSProperties = {
-  ...actionBaseButtonStyle,
-  background: "var(--metric-value-green)",
-  borderColor: "var(--metric-value-green)",
-  color: "var(--bg-card)",
-};
-
-const inlineBlueButtonStyle: CSSProperties = {
-  ...actionBaseButtonStyle,
-  background: "var(--badge-text-blue)",
-  borderColor: "var(--badge-text-blue)",
-  color: "var(--bg-card)",
-};
-
-const inlineRedButtonStyle: CSSProperties = {
-  ...actionBaseButtonStyle,
-  background: "var(--badge-text-red)",
-  borderColor: "var(--badge-text-red)",
-  color: "var(--bg-card)",
-};
-
-const smallGhostButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 6,
-  padding: "7px 10px",
-  borderRadius: 10,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-  color: "var(--text-secondary)",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-};
-
-const dangerBoxStyle: CSSProperties = {
-  padding: 14,
-  borderRadius: 14,
-  border: "1px solid var(--metric-border-red)",
-  background: "var(--badge-bg-red)",
-};
-
-const fieldHelperStyle: CSSProperties = {
-  fontSize: 12,
-  color: "var(--text-muted)",
-  lineHeight: 1.5,
-};
-
-const detailTopGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 12,
-};
-
-const detailBlockStyle: CSSProperties = {
-  display: "grid",
-  gap: 4,
-  padding: 12,
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card-hover)",
-};
-
-const detailLabelStyle: CSSProperties = {
-  fontSize: 11,
-  fontWeight: 800,
-  color: "var(--text-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
-};
-
-const detailValueStyle: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 700,
-  color: "var(--text-primary)",
-};
-
-const detailSectionTitleStyle: CSSProperties = {
-  fontSize: 14,
-  fontWeight: 800,
-  color: "var(--text-primary)",
-  marginBottom: 10,
-};
-
-const detailSectionHeaderStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 12,
-  marginBottom: 10,
-};
-
-const notesBoxStyle: CSSProperties = {
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card-hover)",
-  padding: 12,
-  fontSize: 13,
-  color: "var(--text-secondary)",
-  lineHeight: 1.6,
-};
-
-const emptyInlineBoxStyle: CSSProperties = {
-  borderRadius: 12,
-  border: "1px dashed #D1D5DB",
-  background: "var(--bg-card-hover)",
-  padding: 14,
-  fontSize: 13,
-  color: "var(--text-muted)",
-};
-
-const detailListWrapStyle: CSSProperties = {
-  display: "grid",
-  gap: 10,
-};
-
-const detailListItemStyle: CSSProperties = {
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "space-between",
-  gap: 14,
-  padding: 12,
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-};
-
-const invoiceIconWrapStyle: CSSProperties = {
-  width: 34,
-  height: 34,
-  borderRadius: 10,
-  background: "var(--icon-bg-purple)",
-  color: "var(--icon-color-purple)",
-  display: "grid",
-  placeItems: "center",
   flexShrink: 0,
 };
 
-const paymentSummaryCardStyle: CSSProperties = {
-  borderRadius: 14,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card-hover)",
-  padding: 14,
-};
-
-const importModalBodyStyle: CSSProperties = {
+const expandedBodyStyle: CSSProperties = {
+  borderTop: "1px solid var(--border-default)",
+  padding: "14px 16px",
   display: "grid",
+  gap: 0,
+};
+
+const conceptsTableStyle: CSSProperties = {
+  display: "grid",
+  gap: 0,
+};
+
+const conceptsHeaderRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 160px 110px 170px",
   gap: 12,
+  padding: "6px 8px",
+  marginBottom: 4,
 };
 
-const importIntroCardStyle: CSSProperties = {
-  borderRadius: 16,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card-hover)",
-  padding: 14,
+const thStyle: CSSProperties = {
+  fontSize: 11,
+  fontWeight: 700,
+  color: "var(--text-muted)",
+  textTransform: "uppercase",
+  letterSpacing: "0.05em",
 };
 
-const importIntroHeaderStyle: CSSProperties = {
+const conceptRowStyle: CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "1fr 160px 110px 170px",
+  gap: 12,
+  alignItems: "center",
+  padding: "10px 8px",
+  borderRadius: 10,
+};
+
+const chargeIconWrapStyle: CSSProperties = {
+  width: 30,
+  height: 30,
+  borderRadius: 8,
+  background: "var(--icon-bg-neutral)",
   display: "flex",
   alignItems: "center",
-  gap: 12,
+  justifyContent: "center",
+  flexShrink: 0,
 };
 
-const importPreviewBannerStyle: CSSProperties = {
-  borderRadius: 16,
-  padding: 14,
+const conceptNameStyle: CSSProperties = {
+  fontSize: 13,
+  fontWeight: 600,
+  color: "var(--text-primary)",
 };
 
-const importPreviewMainGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
-  gap: 12,
-  alignItems: "stretch",
+const conceptSubStyle: CSSProperties = {
+  fontSize: 11,
+  color: "var(--text-muted)",
 };
 
-const importPreviewMetaStackStyle: CSSProperties = {
-  display: "grid",
-  gap: 12,
-};
-
-const importConceptPreviewTextStyle: CSSProperties = {
+const conceptAmountStyle: CSSProperties = {
   fontSize: 14,
   fontWeight: 700,
   color: "var(--text-primary)",
-  lineHeight: 1.45,
-  display: "-webkit-box",
-  WebkitLineClamp: 4,
-  WebkitBoxOrient: "vertical",
-  overflow: "hidden",
-  wordBreak: "break-word",
 };
 
-
-const paymentSummaryGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
-  gap: 12,
+const paidBtnStyle: CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: 5,
+  padding: "5px 10px",
+  borderRadius: 8,
+  border: "1px solid var(--metric-border-green)",
+  background: "var(--badge-bg-green)",
+  color: "var(--badge-text-green)",
+  fontSize: 12,
+  fontWeight: 700,
+  cursor: "pointer",
 };
 
-const simpleFormGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-  gap: 14,
+const editBtnStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-page)",
+  color: "var(--text-muted)",
+  cursor: "pointer",
 };
 
-const fieldWrapStyle: CSSProperties = {
+const archiveBtnStyle: CSSProperties = {
+  ...editBtnStyle,
+  color: "var(--badge-text-red)",
+  borderColor: "#FECACA",
+  background: "var(--badge-bg-red)",
+};
+
+const expandFooterStyle: CSSProperties = {
+  borderTop: "1px solid var(--border-default)",
+  marginTop: 10,
+  paddingTop: 10,
+  display: "flex",
+  justifyContent: "flex-end",
+};
+
+const emptyBoxStyle: CSSProperties = {
+  padding: "20px 16px",
+  borderRadius: 12,
+  border: "1px dashed var(--border-default)",
+  color: "var(--text-muted)",
+  fontSize: 14,
+  fontWeight: 500,
+  lineHeight: 1.6,
+  textAlign: "center",
+};
+
+const warningBoxStyle: CSSProperties = {
+  padding: "14px 16px",
+  borderRadius: 12,
+  background: "var(--metric-bg-amber)",
+  border: "1px solid var(--metric-border-amber)",
+  color: "var(--badge-text-amber)",
+  fontSize: 14,
+  fontWeight: 500,
+  lineHeight: 1.6,
+};
+
+const formGridStyle: CSSProperties = {
   display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gap: 16,
+};
+
+const fieldStyle: CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
   gap: 8,
 };
 
 const fieldLabelStyle: CSSProperties = {
-  fontSize: 12,
-  fontWeight: 800,
-  color: "var(--text-muted)",
-  textTransform: "uppercase",
-  letterSpacing: "0.04em",
+  fontSize: 13,
+  fontWeight: 700,
+  color: "var(--text-primary)",
 };
 
 const inputStyle: CSSProperties = {
   width: "100%",
-  borderRadius: 12,
+  padding: "10px 12px",
+  borderRadius: 10,
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
-  padding: "10px 12px",
+  outline: "none",
   fontSize: 14,
   color: "var(--text-primary)",
-  outline: "none",
 };
 
 const textareaStyle: CSSProperties = {
-  width: "100%",
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-  padding: "10px 12px",
-  fontSize: 14,
-  color: "var(--text-primary)",
-  outline: "none",
+  ...inputStyle,
   resize: "vertical",
 };
 
-const toggleCardStyle: CSSProperties = {
+const modalFooterStyle: CSSProperties = {
   display: "flex",
-  alignItems: "flex-start",
+  justifyContent: "flex-end",
   gap: 10,
-  padding: 12,
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card-hover)",
-  fontSize: 13,
-  color: "var(--text-secondary)",
-  lineHeight: 1.5,
-};
-
-const oneTimeInfoStyle: CSSProperties = {
-  padding: 12,
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--metric-bg-neutral)",
-  color: "var(--badge-text-blue)",
-  fontSize: 13,
-  fontWeight: 600,
-  lineHeight: 1.6,
-};
-
-const ghostButtonStyle: CSSProperties = {
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: 8,
-  minWidth: 110,
-  padding: "10px 14px",
-  borderRadius: 12,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-  color: "var(--text-secondary)",
-  fontSize: 14,
-  fontWeight: 700,
-  cursor: "pointer",
+  flexWrap: "wrap",
 };

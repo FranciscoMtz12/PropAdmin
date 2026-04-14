@@ -484,6 +484,7 @@ export default function PaymentsPage() {
 
   const [statusUpdatingId, setStatusUpdatingId] = useState<string | null>(null);
   const [deletingScheduleId, setDeletingScheduleId] = useState<string | null>(null);
+  const [revertConfirmId, setRevertConfirmId] = useState<string | null>(null);
 
   const todayKey = getTodayDateOnlyKey();
 
@@ -1177,58 +1178,57 @@ export default function PaymentsPage() {
   async function handleCyclePaymentStatus(row: PaymentRow) {
     if (statusUpdatingId || deletingScheduleId) return;
 
+    // Si ya está pagado: mostrar confirmación de revertir en lugar de ejecutar directamente
+    if (row.displayStatus === "paid") {
+      setRevertConfirmId(row.id);
+      return;
+    }
+
     setStatusUpdatingId(row.id);
 
     try {
-      /**
-       * Regla de negocio deseada:
-       * - pending    -> paid
-       * - due_today  -> paid
-       * - overdue    -> paid
-       * - paid       -> regresar al estado real según la fecha
-       */
-      const isCurrentlyPaid = row.displayStatus === "paid";
-
-      const nextStoredStatus: ExpenseStoredStatus = isCurrentlyPaid
-        ? getStoredStatusFromDueDate(row.dueDate, todayKey)
-        : "paid";
-
-      const nextPaidAt = isCurrentlyPaid ? null : new Date().toISOString();
-
       const { error } = await supabase
         .from("expense_payments")
         .update({
-          status: nextStoredStatus,
-          paid_at: nextPaidAt,
+          status: "paid",
+          paid_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
         .eq("id", row.id);
 
-      if (error) {
-        throw new Error(error.message || "No se pudo actualizar el estado.");
-      }
+      if (error) throw new Error(error.message || "No se pudo actualizar el estado.");
 
       setExpensePayments((prev) =>
         prev.map((payment) =>
-          payment.id === row.id
-            ? {
-                ...payment,
-                status: nextStoredStatus,
-                paid_at: nextPaidAt,
-              }
-            : payment
+          payment.id === row.id ? { ...payment, status: "paid", paid_at: new Date().toISOString() } : payment
         )
       );
-
-      showToast({
-        type: "success",
-        message: !isCurrentlyPaid
-          ? "Pago marcado como pagado."
-          : "El pago volvió a su estado real según la fecha.",
-      });
+      showToast({ type: "success", message: "Pago marcado como pagado." });
     } catch (error) {
-      const errorText =
-        error instanceof Error ? error.message : "Ocurrió un error actualizando el estado.";
+      const errorText = error instanceof Error ? error.message : "Ocurrió un error actualizando el estado.";
+      showToast({ type: "error", message: errorText });
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  }
+
+  async function handleConfirmRevert(row: PaymentRow) {
+    setRevertConfirmId(null);
+    if (statusUpdatingId || deletingScheduleId) return;
+    setStatusUpdatingId(row.id);
+    try {
+      const nextStoredStatus = getStoredStatusFromDueDate(row.dueDate, todayKey);
+      const { error } = await supabase
+        .from("expense_payments")
+        .update({ status: nextStoredStatus, paid_at: null, updated_at: new Date().toISOString() })
+        .eq("id", row.id);
+      if (error) throw new Error(error.message || "No se pudo revertir el pago.");
+      setExpensePayments((prev) =>
+        prev.map((p) => p.id === row.id ? { ...p, status: nextStoredStatus, paid_at: null } : p)
+      );
+      showToast({ type: "success", message: "El pago volvió a su estado real según la fecha." });
+    } catch (error) {
+      const errorText = error instanceof Error ? error.message : "Ocurrió un error.";
       showToast({ type: "error", message: errorText });
     } finally {
       setStatusUpdatingId(null);
@@ -1841,21 +1841,61 @@ export default function PaymentsPage() {
                         </td>
 
                         <td style={tdStyle}>
-                          <button
-                            type="button"
-                            onClick={() => handleCyclePaymentStatus(row)}
-                            disabled={isUpdating || deletingScheduleId === row.scheduleId}
-                            title="Haz clic para cambiar el estado"
-                            style={{
-                              ...statusButtonStyle,
-                              background: colors.background,
-                              color: colors.text,
-                              border: `1px solid ${colors.border}`,
-                              cursor: isUpdating ? "wait" : "pointer",
-                            }}
-                          >
-                            {isUpdating ? "Actualizando..." : row.statusLabel}
-                          </button>
+                          <div style={{ position: "relative", display: "inline-block" }}>
+                            <button
+                              type="button"
+                              onClick={() => handleCyclePaymentStatus(row)}
+                              disabled={isUpdating || deletingScheduleId === row.scheduleId}
+                              title="Haz clic para cambiar el estado"
+                              style={{
+                                ...statusButtonStyle,
+                                background: colors.background,
+                                color: colors.text,
+                                border: `1px solid ${colors.border}`,
+                                cursor: isUpdating ? "wait" : "pointer",
+                              }}
+                            >
+                              {isUpdating ? "Actualizando..." : row.statusLabel}
+                            </button>
+                            {revertConfirmId === row.id ? (
+                              <div style={{
+                                position: "absolute",
+                                top: "calc(100% + 6px)",
+                                right: 0,
+                                zIndex: 10,
+                                background: "var(--bg-card)",
+                                border: "1px solid var(--border-default)",
+                                borderRadius: 12,
+                                padding: "10px 14px",
+                                boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                                display: "flex",
+                                flexDirection: "column",
+                                gap: 8,
+                                minWidth: 180,
+                                whiteSpace: "nowrap",
+                              }}>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                                  ¿Revertir pago?
+                                </span>
+                                <div style={{ display: "flex", gap: 6 }}>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); void handleConfirmRevert(row); }}
+                                    style={{ flex: 1, padding: "5px 0", borderRadius: 8, border: "1px solid #FECACA", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", fontSize: 12, fontWeight: 700, cursor: "pointer" }}
+                                  >
+                                    Sí, revertir
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(e) => { e.stopPropagation(); setRevertConfirmId(null); }}
+                                    style={{ flex: 1, padding: "5px 0", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                                  >
+                                    No
+                                  </button>
+                                </div>
+                              </div>
+                            ) : null}
+                          </div>
                         </td>
                       </tr>
 
