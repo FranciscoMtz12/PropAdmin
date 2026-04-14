@@ -698,9 +698,10 @@ export default function UnitDetailPage() {
   }
 
   const bedroomCount = useMemo(() => {
-    const raw = unit?.unit_types?.bedroom_count;
-    if (!raw || raw < 1) return 1;
-    return raw;
+    if (unit?.rental_type === "by_room") {
+      return Math.max(unit?.unit_types?.bedrooms ?? 1, 1);
+    }
+    return 1;
   }, [unit]);
 
   const activeLeases = useMemo(
@@ -775,9 +776,11 @@ export default function UnitDetailPage() {
     }
 
     if (activeLeases.length >= bedroomCount) {
-      setMsg(
-        `Esta unidad ya alcanzó su capacidad máxima de ${bedroomCount} lease(s) activo(s).`
-      );
+      if (unit?.rental_type === "by_room") {
+        setMsg("Todas las recámaras ya tienen lease activo.");
+      } else {
+        setMsg("Esta unidad ya tiene un lease activo. Para agregar más, activa 'Rentar por cuarto' en la configuración.");
+      }
       return;
     }
 
