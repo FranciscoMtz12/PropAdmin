@@ -20,18 +20,27 @@ function getAssetColors(assetType: string) {
   switch (assetType) {
     case "FRIDGE":
       return { bg: "#EFF6FF", color: "#2563EB" };
+
     case "MINISPLIT":
     case "CENTRAL_AC":
       return { bg: "#EFF6FF", color: "#2563EB" };
+
+    case "BOILER":
+      return { bg: "#FEF3C7", color: "#D97706" }; // 🔥 cálido (ámbar)
+
     case "STOVE":
       return { bg: "#FFF7ED", color: "#EA580C" };
+
     case "WASHER":
     case "DRYER":
       return { bg: "#F5F3FF", color: "#7C3AED" };
+
     case "FAN":
       return { bg: "#F0FDF4", color: "#16A34A" };
+
     case "OTHER":
       return { bg: "#F3F4F6", color: "#374151" };
+
     default:
       return { bg: "#EFF6FF", color: "#2563EB" };
   }
@@ -41,18 +50,27 @@ function getAssetIcon(assetType: string) {
   switch (assetType) {
     case "FRIDGE":
       return Package;
+
     case "MINISPLIT":
     case "CENTRAL_AC":
       return Snowflake;
+
+    case "BOILER":
+      return Flame; // 🔥 icono perfecto para boiler
+
     case "STOVE":
       return Flame;
+
     case "WASHER":
     case "DRYER":
       return Droplets;
+
     case "FAN":
       return Fan;
+
     case "OTHER":
       return Wrench;
+
     default:
       return Wind;
   }

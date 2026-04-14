@@ -125,15 +125,18 @@ export default function UnitTypeAssetsPage() {
     if (!assetToDelete) return;
     setDeleting(true);
     setDeleteError(null);
+
     const { error } = await supabase
       .from("unit_type_assets")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", assetToDelete.id);
+
     if (error) {
       setDeleteError(`No se pudo archivar el equipo base. ${error.message}`);
       setDeleting(false);
       return;
     }
+
     setIsDeleteModalOpen(false);
     setAssetToDelete(null);
     setDeleting(false);
@@ -360,9 +363,7 @@ export default function UnitTypeAssetsPage() {
                 >
                   <AssetTypeIcon assetType={asset.asset_type} size={18} />
                   <div>
-                    <p style={{ fontWeight: "bold", marginBottom: "4px" }}>
-                      {asset.name}
-                    </p>
+                    <p style={{ fontWeight: "bold", marginBottom: "4px" }}>{asset.name}</p>
                     <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>
                       {asset.asset_type}
                     </p>
@@ -400,35 +401,92 @@ export default function UnitTypeAssetsPage() {
                   </span>
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <div
+                  style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
+                >
                   <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets/${asset.id}`}>
                     Ver asset base
                   </UiButton>
+
                   <div
                     style={{ position: "relative" }}
                     ref={openActionsAssetId === asset.id ? actionsMenuRef : undefined}
                   >
                     <button
                       type="button"
-                      onClick={() => setOpenActionsAssetId(openActionsAssetId === asset.id ? null : asset.id)}
-                      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", padding: "8px 10px", cursor: "pointer" }}
+                      onClick={() =>
+                        setOpenActionsAssetId(openActionsAssetId === asset.id ? null : asset.id)
+                      }
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        borderRadius: 10,
+                        border: "1px solid var(--border-default)",
+                        background: "var(--bg-card)",
+                        color: "var(--text-primary)",
+                        padding: "8px 10px",
+                        cursor: "pointer",
+                      }}
                       aria-label="Más acciones"
                     >
                       <MoreHorizontal size={16} />
                     </button>
+
                     {openActionsAssetId === asset.id && (
-                      <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                      <div
+                        style={{
+                          position: "absolute",
+                          right: 0,
+                          top: "calc(100% + 6px)",
+                          minWidth: 160,
+                          borderRadius: 12,
+                          border: "1px solid var(--border-default)",
+                          background: "var(--bg-card)",
+                          boxShadow: "0 10px 28px rgba(15,23,42,0.12)",
+                          padding: 6,
+                          display: "grid",
+                          gap: 4,
+                          zIndex: 30,
+                        }}
+                      >
                         <a
                           href={`/buildings/${building.id}/unit-types/${unitType.id}/assets/${asset.id}`}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            textDecoration: "none",
+                            color: "var(--text-primary)",
+                            borderRadius: 8,
+                            padding: "9px 10px",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
                         >
                           <Edit3 size={14} />
                           Editar
                         </a>
+
                         <button
                           type="button"
                           onClick={() => openDeleteModal(asset)}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 8,
+                            width: "100%",
+                            border: "none",
+                            background: "var(--badge-bg-red)",
+                            color: "var(--badge-text-red)",
+                            borderRadius: 8,
+                            padding: "9px 10px",
+                            fontSize: 13,
+                            fontWeight: 600,
+                            cursor: "pointer",
+                          }}
                         >
                           <Trash2 size={14} />
                           Archivar
@@ -443,16 +501,50 @@ export default function UnitTypeAssetsPage() {
         )}
       </SectionCard>
 
-      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar equipo base" maxWidth="480px">
+      <Modal
+        open={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        title="Archivar equipo base"
+        maxWidth="480px"
+      >
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
-            ¿Archivar el equipo base <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará del sistema pero conservará toda su información.
+          <div
+            style={{
+              padding: "14px 16px",
+              borderRadius: 14,
+              background: "var(--metric-bg-amber)",
+              border: "1px solid var(--metric-border-amber)",
+              color: "var(--badge-text-amber)",
+              fontSize: 14,
+              fontWeight: 600,
+              lineHeight: 1.5,
+            }}
+          >
+            ¿Archivar el equipo base <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará
+            del sistema pero conservará toda su información.
           </div>
+
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div
+              style={{
+                padding: "12px 14px",
+                borderRadius: 12,
+                background: "var(--badge-bg-red)",
+                border: "1px solid var(--metric-border-red)",
+                color: "var(--badge-text-red)",
+                fontSize: 13,
+                fontWeight: 600,
+                lineHeight: 1.5,
+              }}
+            >
+              {deleteError}
+            </div>
           ) : null}
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
+            <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>
+              Cancelar
+            </UiButton>
             <UiButton type="button" onClick={() => void handleDeleteAsset()} disabled={deleting}>
               <Trash2 size={16} />
               {deleting ? "Archivando..." : "Archivar equipo base"}
@@ -469,9 +561,7 @@ export default function UnitTypeAssetsPage() {
       >
         <form onSubmit={handleCreateTemplateAsset}>
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>
-              Tipo de asset
-            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>Tipo de asset</label>
             <select
               value={assetType}
               onChange={(e) => setAssetType(e.target.value)}
@@ -485,6 +575,7 @@ export default function UnitTypeAssetsPage() {
             >
               <option value="MINISPLIT">MINISPLIT</option>
               <option value="CENTRAL_AC">CENTRAL_AC</option>
+              <option value="BOILER">BOILER</option>
               <option value="FRIDGE">FRIDGE</option>
               <option value="WASHER">WASHER</option>
               <option value="DRYER">DRYER</option>
@@ -495,13 +586,11 @@ export default function UnitTypeAssetsPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>
-              Nombre
-            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>Nombre</label>
             <input
               value={assetName}
               onChange={(e) => setAssetName(e.target.value)}
-              placeholder="Ej. Aire acondicionado sala"
+              placeholder="Ej. Boiler baño principal"
               style={{
                 width: "100%",
                 padding: "12px",
@@ -512,9 +601,7 @@ export default function UnitTypeAssetsPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>
-              Estatus
-            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>Estatus</label>
             <select
               value={assetStatus}
               onChange={(e) => setAssetStatus(e.target.value)}
@@ -532,9 +619,7 @@ export default function UnitTypeAssetsPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>
-              Notas
-            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>Notas</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -551,9 +636,7 @@ export default function UnitTypeAssetsPage() {
           </div>
 
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>
-              Orden visual
-            </label>
+            <label style={{ display: "block", marginBottom: "8px" }}>Orden visual</label>
             <input
               type="number"
               value={sortOrder}
@@ -571,9 +654,7 @@ export default function UnitTypeAssetsPage() {
             <UiButton type="submit" disabled={saving} variant="primary">
               {saving ? "Guardando..." : "Guardar asset base"}
             </UiButton>
-            <UiButton onClick={() => setIsCreateModalOpen(false)}>
-              Cancelar
-            </UiButton>
+            <UiButton onClick={() => setIsCreateModalOpen(false)}>Cancelar</UiButton>
           </div>
         </form>
       </Modal>
