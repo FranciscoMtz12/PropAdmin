@@ -457,6 +457,7 @@ export default function UnitDetailPage() {
   const [showLeaseModal, setShowLeaseModal] = useState(false);
   const [editingLeaseId, setEditingLeaseId] = useState<string | null>(null);
   const [leaseForm, setLeaseForm] = useState<LeaseFormState>(emptyLeaseForm());
+  const [leaseRentalChoice, setLeaseRentalChoice] = useState<"whole" | "by_room">("whole");
 
   const [showDeleteLeaseModal, setShowDeleteLeaseModal] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<LeaseRow | null>(null);
@@ -780,6 +781,7 @@ export default function UnitDetailPage() {
       return;
     }
 
+    setLeaseRentalChoice(unit?.rental_type === "by_room" ? "by_room" : "whole");
     setEditingLeaseId(null);
     setLeaseForm({
       ...emptyLeaseForm(),
@@ -821,6 +823,7 @@ export default function UnitDetailPage() {
     setShowLeaseModal(false);
     setEditingLeaseId(null);
     setLeaseForm(emptyLeaseForm());
+    setLeaseRentalChoice("whole");
   }
 
   function openDeleteLeaseModal(lease: LeaseRow) {
@@ -849,8 +852,11 @@ export default function UnitDetailPage() {
       return;
     }
 
-    const roomNumber = Number(leaseForm.roomNumber);
-    if (!Number.isInteger(roomNumber) || roomNumber < 1 || roomNumber > bedroomCount) {
+    /* Para renta de unidad completa en modo creación usamos room_number=1 automáticamente */
+    const isWholeUnitCreate = !editingLeaseId && leaseRentalChoice === "whole";
+    const roomNumber = isWholeUnitCreate ? 1 : Number(leaseForm.roomNumber);
+
+    if (!isWholeUnitCreate && (!Number.isInteger(roomNumber) || roomNumber < 1 || roomNumber > bedroomCount)) {
       setMsg("Debes seleccionar un cuarto válido.");
       return;
     }
@@ -933,6 +939,21 @@ export default function UnitDetailPage() {
         return;
       }
     } else {
+      /* Si el usuario eligió rentar por cuarto y la unidad aún era 'whole', actualizamos rental_type primero */
+      if (leaseRentalChoice === "by_room" && unit.rental_type !== "by_room") {
+        const { error: rtError } = await supabase
+          .from("units")
+          .update({ rental_type: "by_room" })
+          .eq("id", unit.id)
+          .eq("company_id", user.company_id);
+
+        if (rtError) {
+          setSaving(false);
+          setMsg(rtError.message);
+          return;
+        }
+      }
+
       const { error: insertLeaseError } = await supabase.from("leases").insert({
         company_id: user.company_id,
         unit_id: unit.id,
@@ -1764,6 +1785,82 @@ export default function UnitDetailPage() {
       >
         <form onSubmit={handleSaveLease}>
           <div style={{ display: "grid", gap: "16px" }}>
+
+            {/* ── Selector de modo de renta (solo al crear, bedrooms >= 2 y unidad es 'whole') ── */}
+            {!editingLeaseId && (unit.unit_types?.bedrooms ?? 0) >= 2 && unit.rental_type === "whole" ? (
+              <div
+                style={{
+                  borderRadius: 14,
+                  border: "1px solid var(--border-default)",
+                  background: "var(--bg-card-hover)",
+                  padding: "16px",
+                  display: "grid",
+                  gap: 12,
+                }}
+              >
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                  Esta unidad tiene {unit.unit_types?.bedrooms} recámaras. ¿Cómo quieres rentar esta unidad?
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button
+                    type="button"
+                    onClick={() => setLeaseRentalChoice("whole")}
+                    style={{
+                      flex: 1,
+                      minWidth: 140,
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: leaseRentalChoice === "whole"
+                        ? "2px solid var(--accent)"
+                        : "1px solid var(--border-default)",
+                      background: leaseRentalChoice === "whole"
+                        ? "var(--icon-bg-blue)"
+                        : "var(--bg-card)",
+                      color: leaseRentalChoice === "whole"
+                        ? "var(--badge-text-blue)"
+                        : "var(--text-primary)",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    Unidad completa
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setLeaseRentalChoice("by_room")}
+                    style={{
+                      flex: 1,
+                      minWidth: 140,
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      border: leaseRentalChoice === "by_room"
+                        ? "2px solid var(--accent)"
+                        : "1px solid var(--border-default)",
+                      background: leaseRentalChoice === "by_room"
+                        ? "var(--icon-bg-blue)"
+                        : "var(--bg-card)",
+                      color: leaseRentalChoice === "by_room"
+                        ? "var(--badge-text-blue)"
+                        : "var(--text-primary)",
+                      fontWeight: 700,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      textAlign: "center",
+                    }}
+                  >
+                    Por recámara individual
+                  </button>
+                </div>
+                {leaseRentalChoice === "by_room" ? (
+                  <div style={{ fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                    Al guardar, la unidad quedará marcada como "Por cuarto" y cada recámara tendrá su propio lease.
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+
             <div
               style={{
                 display: "grid",
@@ -1953,25 +2050,28 @@ export default function UnitDetailPage() {
                 )}
               </div>
 
-              <div>
-                <label style={labelStyle}>Cuarto</label>
-                <AppSelect
-                  value={leaseForm.roomNumber}
-                  onChange={(e) =>
-                    setLeaseForm((prev) => ({
-                      ...prev,
-                      roomNumber: e.target.value,
-                    }))
-                  }
-                >
-                  <option value="">Selecciona un cuarto</option>
-                  {availableRoomNumbers.map((roomNumber) => (
-                    <option key={roomNumber} value={String(roomNumber)}>
-                      Cuarto {roomNumber}
-                    </option>
-                  ))}
-                </AppSelect>
-              </div>
+              {/* Cuarto: visible al editar, o al crear si la unidad es by_room o el usuario eligió by_room */}
+              {(editingLeaseId || leaseRentalChoice === "by_room") ? (
+                <div>
+                  <label style={labelStyle}>Cuarto</label>
+                  <AppSelect
+                    value={leaseForm.roomNumber}
+                    onChange={(e) =>
+                      setLeaseForm((prev) => ({
+                        ...prev,
+                        roomNumber: e.target.value,
+                      }))
+                    }
+                  >
+                    <option value="">Selecciona un cuarto</option>
+                    {availableRoomNumbers.map((roomNumber) => (
+                      <option key={roomNumber} value={String(roomNumber)}>
+                        Cuarto {roomNumber}
+                      </option>
+                    ))}
+                  </AppSelect>
+                </div>
+              ) : null}
 
               <div>
                 <label style={labelStyle}>Renta mensual</label>
