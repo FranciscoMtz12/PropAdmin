@@ -82,6 +82,7 @@ type UnitRow = {
   display_code: string | null;
   floor: number | null;
   status: string;
+  rental_type: string | null;
   /* Datos de la tipología — vienen del JOIN, NO son columnas propias de units */
   unit_types: {
     name: string;
@@ -140,13 +141,33 @@ function getUnitStatusBadge(status: string | null | undefined) {
 
 /* ─── Componente: mini dona de estado ───────────────────────────────── */
 
-function MiniStatusRing({ status }: { status: string }) {
+function MiniStatusRing({ status, occupiedRooms, totalRooms }: { status: string; occupiedRooms?: number; totalRooms?: number }) {
   const s = normalizeStatus(status);
+  const r = 14;
+  const circ = 2 * Math.PI * r;
+
+  /* Dona proporcional para unidades by_room con datos reales */
+  if (occupiedRooms !== undefined && totalRooms !== undefined && totalRooms > 0) {
+    const fraction = Math.min(occupiedRooms / totalRooms, 1);
+    const filled   = circ * fraction;
+    const color    = fraction === 0 ? "#9CA3AF" : fraction < 1 ? "#F59E0B" : "#10B981";
+    return (
+      <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
+        <circle cx="20" cy="20" r={r} fill="none" stroke="#E5E7EB" strokeWidth="6" />
+        {filled > 0 ? (
+          <circle
+            cx="20" cy="20" r={r} fill="none"
+            stroke={color} strokeWidth="6"
+            strokeDasharray={`${filled} ${circ}`}
+            style={{ transform: "rotate(-90deg)", transformOrigin: "20px 20px" }}
+          />
+        ) : null}
+      </svg>
+    );
+  }
 
   if (s === "PARTIAL") {
     /* Dona partida: mitad verde, mitad gris */
-    const r = 14;
-    const circ = 2 * Math.PI * r;
     const half = circ / 2;
     return (
       <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
@@ -186,6 +207,7 @@ export default function BuildingUnitsPage() {
   const [unitTypes, setUnitTypes]     = useState<UnitType[]>([]);
   const [units, setUnits]             = useState<UnitRow[]>([]);
   const [tenantsByUnitId, setTenantsByUnitId] = useState<Map<string, string>>(new Map());
+  const [activeLeaseCountByUnitId, setActiveLeaseCountByUnitId] = useState<Map<string, number>>(new Map());
   const [loadingData, setLoadingData] = useState(true);
   const [msg, setMsg]                 = useState("");
 
@@ -283,6 +305,7 @@ export default function BuildingUnitsPage() {
         display_code,
         floor,
         status,
+        rental_type,
         unit_types(name, bedrooms, bathrooms)
       `)
       .eq("building_id", buildingId)
@@ -347,6 +370,24 @@ export default function BuildingUnitsPage() {
     }
 
     setTenantsByUnitId(tenantMap);
+
+    /* 5. Conteo de leases activos por unidad — solo para by_room */
+    const byRoomIds = sorted.filter((u) => u.rental_type === "by_room").map((u) => u.id);
+    if (byRoomIds.length > 0) {
+      const { data: byRoomLeases } = await supabase
+        .from("leases")
+        .select("unit_id")
+        .in("unit_id", byRoomIds)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null);
+
+      const countMap = new Map<string, number>();
+      (byRoomLeases || []).forEach((l: { unit_id: string }) => {
+        countMap.set(l.unit_id, (countMap.get(l.unit_id) || 0) + 1);
+      });
+      setActiveLeaseCountByUnitId(countMap);
+    }
+
     setLoadingData(false);
   }
 
@@ -604,15 +645,18 @@ export default function BuildingUnitsPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
             {units.map((unit) => {
-              const badge      = getUnitStatusBadge(unit.status);
-              const tenantName = tenantsByUnitId.get(unit.id);
-              const typeInfo   = unit.unit_types;
+              const badge         = getUnitStatusBadge(unit.status);
+              const tenantName    = tenantsByUnitId.get(unit.id);
+              const typeInfo      = unit.unit_types;
+              const isByRoom      = unit.rental_type === "by_room";
+              const occupiedRooms = isByRoom ? (activeLeaseCountByUnitId.get(unit.id) ?? 0) : undefined;
+              const totalRooms    = isByRoom ? (typeInfo?.bedrooms ?? 1) : undefined;
 
               return (
                 <AppCard key={unit.id} style={{ padding: 16, position: "relative" }}>
                   {/* Mini dona — esquina superior derecha */}
                   <div style={{ position: "absolute", top: 12, right: 12 }}>
-                    <MiniStatusRing status={unit.status} />
+                    <MiniStatusRing status={unit.status} occupiedRooms={occupiedRooms} totalRooms={totalRooms} />
                   </div>
 
                   {/* Contenido con margen derecho para no solaparse con dona */}
@@ -638,6 +682,11 @@ export default function BuildingUnitsPage() {
                           >
                             {badge.label}
                           </AppBadge>
+                          {isByRoom && occupiedRooms !== undefined && totalRooms !== undefined ? (
+                            <AppBadge backgroundColor="var(--metric-bg-amber)" textColor="var(--badge-text-amber)" borderColor="var(--metric-border-amber)">
+                              {occupiedRooms}/{totalRooms} cuartos
+                            </AppBadge>
+                          ) : null}
                           <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">
                             <Layers3 size={12} />
                             {typeInfo?.name || "Sin tipología"}

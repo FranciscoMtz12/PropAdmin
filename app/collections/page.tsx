@@ -86,6 +86,7 @@ type Lease = {
   billing_email: string | null;
   billing_tax_id: string | null;
   rent_amount: number | null;
+  room_number: number | null;
   status: string | null;
   start_date: string | null;
   end_date: string | null;
@@ -350,7 +351,7 @@ export default function CollectionsPage() {
         supabase.from("buildings").select("id, name").eq("company_id", user.company_id).is("deleted_at", null).order("name"),
         supabase.from("units").select("id, building_id, unit_number, display_code").eq("company_id", user.company_id).is("deleted_at", null),
         supabase.from("tenants").select("id, full_name, email, billing_name, billing_email, tax_id").eq("company_id", user.company_id).is("deleted_at", null),
-        supabase.from("leases").select("id, unit_id, tenant_id, billing_name, billing_email, billing_tax_id, rent_amount, status, start_date, end_date").eq("company_id", user.company_id).eq("status", "ACTIVE").is("deleted_at", null),
+        supabase.from("leases").select("id, unit_id, tenant_id, billing_name, billing_email, billing_tax_id, rent_amount, room_number, status, start_date, end_date").eq("company_id", user.company_id).eq("status", "ACTIVE").is("deleted_at", null),
         supabase.from("collection_schedules").select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes").eq("company_id", user.company_id).is("deleted_at", null),
         supabase.from("collection_records").select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, created_at").eq("company_id", user.company_id).is("deleted_at", null).order("due_date"),
       ]);
@@ -789,7 +790,9 @@ export default function CollectionsPage() {
         const tenant  = lease?.tenant_id ? tenantMap.get(lease.tenant_id) : null;
 
         const tenantLabel  = tenant?.full_name || lease?.billing_name || lease?.billing_email || "Sin inquilino";
-        const unitLabel    = unit ? (unit.display_code || unit.unit_number || "Unidad") : "Sin unidad";
+        const baseUnitLabel = unit ? (unit.display_code || unit.unit_number || "Unidad") : "Sin unidad";
+        const roomNum = lease?.room_number;
+        const unitLabel = roomNum && roomNum > 1 ? `${baseUnitLabel} · C${roomNum}` : baseUnitLabel;
         const buildingName = building?.name || "Sin edificio";
         const buildingId   = building?.id || unit?.building_id || "";
 

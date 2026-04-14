@@ -884,6 +884,21 @@ export default function UnitDetailPage() {
       return;
     }
 
+    /* Prevenir mezcla de leases whole y by_room en la misma unidad */
+    if (!editingLeaseId) {
+      const hasRoomBasedLeases = activeLeases.some((l) => l.room_number !== null && l.room_number > 1);
+      const hasWholeLeases     = activeLeases.some((l) => l.room_number === null || l.room_number === 1);
+
+      if (isWholeUnitCreate && hasRoomBasedLeases) {
+        setMsg("No se puede crear un lease de unidad completa porque ya existen leases por cuarto activos. Archiva los leases existentes primero.");
+        return;
+      }
+      if (!isWholeUnitCreate && hasWholeLeases) {
+        setMsg("No se puede crear un lease por cuarto porque ya existe un lease de unidad completa activo. Archiva el lease existente primero.");
+        return;
+      }
+    }
+
     const rentAmountNumber = Number(leaseForm.rentAmount);
     if (!Number.isFinite(rentAmountNumber) || rentAmountNumber <= 0) {
       setMsg("La renta debe ser un monto válido mayor a cero.");
