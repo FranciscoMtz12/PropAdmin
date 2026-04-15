@@ -28,6 +28,10 @@ function isPortalPath(pathname: string) {
   return pathname.startsWith("/portal");
 }
 
+function isCampoPath(pathname: string) {
+  return pathname.startsWith("/campo");
+}
+
 function isAdminPublicPath(pathname: string) {
   return ADMIN_PUBLIC_ROUTES.includes(pathname);
 }
@@ -49,11 +53,15 @@ export default function RouteGuard() {
     if (!pathname || loading) return;
 
     const portalPath = isPortalPath(pathname);
+    const campoPath = isCampoPath(pathname);
     const adminPublic = isAdminPublicPath(pathname);
     const portalPublic = isPortalPublicPath(pathname);
     const publicHome = isPublicHome(pathname);
 
     if (publicHome) return;
+
+    // Campo routes handle their own auth/role redirect internally
+    if (campoPath) return;
 
     if (!user) {
       if (portalPath && !portalPublic) {

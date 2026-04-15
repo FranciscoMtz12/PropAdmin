@@ -93,7 +93,8 @@ export default function GlobalBreadcrumbs() {
     pathname === "/" ||
     pathname === "/login" ||
     pathname === "/portal/login" ||
-    pathname.startsWith("/portal")
+    pathname.startsWith("/portal") ||
+    pathname.startsWith("/campo")
   ) {
     return null;
   }

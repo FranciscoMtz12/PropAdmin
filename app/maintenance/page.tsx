@@ -828,7 +828,7 @@ export default function MaintenancePage() {
           canvas.height = h;
           const ctx = canvas.getContext("2d")!;
           ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/jpeg", 0.7));
+          resolve(canvas.toDataURL("image/png"));
         };
         img.onerror = () => resolve("");
         img.src = imgUrl;
@@ -875,7 +875,7 @@ export default function MaintenancePage() {
             const logoRatio = Math.min(logoMaxW / (tmpImg.width || 1), logoMaxH / (tmpImg.height || 1));
             const logoW = (tmpImg.width || logoMaxW) * logoRatio;
             const logoH = (tmpImg.height || logoMaxH) * logoRatio;
-            doc.addImage(compressed, "JPEG", marginL, cursorY, logoW, logoH);
+            doc.addImage(compressed, "PNG", marginL, cursorY, logoW, logoH);
             logoEndX = marginL + logoW + 16;
           }
         } catch { /* sin logo */ }

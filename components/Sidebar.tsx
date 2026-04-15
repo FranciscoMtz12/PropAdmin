@@ -224,7 +224,8 @@ export default function Sidebar() {
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
   const isHiddenRoute =
-    pathname === "/login" || pathname === "/portal/login" || pathname === "/";
+    pathname === "/login" || pathname === "/portal/login" || pathname === "/" ||
+    (pathname?.startsWith("/campo") ?? false);
 
   const previewTenantId = searchParams.get("tenantId");
   const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);

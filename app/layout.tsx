@@ -9,6 +9,7 @@ import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import Sidebar from "@/components/Sidebar";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
+import MainContentWrapper from "@/components/MainContentWrapper";
 import { AppToastProvider } from "@/components/AppToastProvider";
 
 const geistSans = Geist({
@@ -24,6 +25,13 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Administración de Departamentos",
   description: "Sistema de administración de departamentos",
+  other: {
+    "mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-capable": "yes",
+    "apple-mobile-web-app-status-bar-style": "default",
+    "apple-mobile-web-app-title": "PropAdmin",
+    "theme-color": "#1E2A3A",
+  },
 };
 
 /*
@@ -79,16 +87,9 @@ export default function RootLayout({
                       justifyContent: "center",
                     }}
                   >
-                    <div
-                      style={{
-                        width: "100%",
-                        maxWidth: 1280,
-                        padding: "24px 32px 40px",
-                        boxSizing: "border-box",
-                      }}
-                    >
+                    <MainContentWrapper>
                       {children}
-                    </div>
+                    </MainContentWrapper>
                   </main>
                 </div>
               </AppShell>
