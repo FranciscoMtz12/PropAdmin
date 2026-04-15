@@ -96,6 +96,10 @@
   /* ── Separadores internos de cards ────────────────────────────── */
   --divider: #F1F5F9;
 
+  /* ── Espaciado global ──────────────────────────────────────────── */
+  --card-gap:     16px;
+  --section-gap:  24px;
+
   /* ── Compatibilidad con tokens legacy ──────────────────────────── */
   --bg-primary:    #F1F5F9;
   --border-color:  #E2E8F0;

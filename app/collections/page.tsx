@@ -16,7 +16,6 @@
 */
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   AlertTriangle,
@@ -29,7 +28,6 @@ import {
   ChevronUp,
   Clock3,
   Droplets,
-  FileText,
   Filter,
   Flame,
   Gem,
@@ -38,9 +36,10 @@ import {
   Plus,
   Receipt,
   Trash2,
-  Upload,
+  Search,
   Wallet,
   Wrench,
+  X,
   Zap,
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
@@ -138,22 +137,6 @@ type CollectionRecord = {
 };
 
 type CollectionStatusFilter = "all" | "pending" | "partial" | "collected" | "overdue";
-type ChargeMode = "recurring" | "one_time";
-
-type ChargeForm = {
-  chargeMode: ChargeMode;
-  buildingId: string;
-  unitId: string;
-  leaseId: string;
-  chargeType: CollectionChargeType;
-  title: string;
-  responsibilityType: "tenant" | "owner" | "other";
-  amountExpected: string;
-  dueDay: string;
-  initialDueDate: string;
-  notes: string;
-  createFirstRecordNow: boolean;
-};
 
 type EditRecordForm = {
   recordId: string;
@@ -180,6 +163,21 @@ type InquilinoRow = {
 const MONTH_LABELS_LONG = [
   "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
   "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
+
+/** Tipos de cobro con monto variable — se generan con amount_due = 0 */
+const VARIABLE_CHARGE_TYPES = new Set<CollectionChargeType>(["electricity", "water", "gas"]);
+
+/** Orden de presentación de conceptos dentro de cada grupo */
+const CHARGE_ORDER: Partial<Record<CollectionChargeType, number>> = {
+  rent: 1, parking: 2, electricity: 3, water: 4, gas: 5, amenities: 6, other: 99,
+};
+
+/** Colores para identificar edificios por borde izquierdo */
+const BUILDING_COLORS = [
+  "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444",
+  "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16",
+  "#06B6D4", "#A855F7",
 ];
 
 // ── Helpers puros ──────────────────────────────────────────────────────────────
@@ -211,6 +209,10 @@ function formatCurrency(amount: number | null) {
     currency: "MXN",
     maximumFractionDigits: 2,
   }).format(amount || 0);
+}
+
+function normalizeText(text: string) {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function formatDecimalInput(value: string) {
@@ -271,29 +273,11 @@ function computeEstadoGeneral(records: CollectionRecord[]): CollectionStoredStat
   return "pending";
 }
 
-function createDefaultChargeForm(): ChargeForm {
-  const today = getTodayDateKey();
-  const day = new Date().getDate();
-  return {
-    chargeMode: "recurring",
-    buildingId: "", unitId: "", leaseId: "",
-    chargeType: "rent",
-    title: "",
-    responsibilityType: "tenant",
-    amountExpected: "",
-    dueDay: String(day),
-    initialDueDate: today,
-    notes: "",
-    createFirstRecordNow: true,
-  };
-}
-
 // ── Componente principal ───────────────────────────────────────────────────────
 
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { showToast } = useAppToast();
-  const router = useRouter();
 
   const now = new Date();
   const [selectedYear, setSelectedYear]   = useState(now.getFullYear());
@@ -314,10 +298,6 @@ export default function CollectionsPage() {
   const [filterStatus, setFilterStatus]         = useState<CollectionStatusFilter>("all");
   const [expandedKey, setExpandedKey]           = useState<string | null>(null);
 
-  const [createChargeOpen, setCreateChargeOpen] = useState(false);
-  const [chargeForm, setChargeForm]             = useState<ChargeForm>(createDefaultChargeForm());
-  const [creatingCharge, setCreatingCharge]     = useState(false);
-
   const [deleteRecordId, setDeleteRecordId]   = useState<string | null>(null);
   const [deletingRecord, setDeletingRecord]   = useState(false);
 
@@ -332,6 +312,15 @@ export default function CollectionsPage() {
   const [eventoModal, setEventoModal]       = useState<{ groupKey: string; leaseId: string | null; buildingId: string; unitId: string } | null>(null);
   const [eventoForm, setEventoForm]         = useState({ concepto: "", chargeType: "amenities" as CollectionChargeType, monto: "" });
   const [eventoSaving, setEventoSaving]     = useState(false);
+
+  const [capturaModal, setCapturaModal]     = useState<{ record: CollectionRecord; chargeType: CollectionChargeType } | null>(null);
+  const [capturaForm, setCapturaForm]       = useState({ monto: "", unidades: "", notas: "" });
+  const [capturaSaving, setCapturaSaving]   = useState(false);
+
+  type SortMode = "building" | "due_date";
+  const [sortMode, setSortMode]             = useState<SortMode>("building");
+  const [appliedSortMode, setAppliedSortMode] = useState<SortMode>("building");
+  const [searchQuery, setSearchQuery]       = useState("");
 
   // ── Cargar datos ─────────────────────────────────────────────────────────────
 
@@ -424,7 +413,8 @@ export default function CollectionsPage() {
     const toInsert = activeSchedules
       .filter((s) => !existingScheduleIds.has(s.id))
       .map((s) => {
-        const dueDate = buildDateKey(year, month, s.due_day || 15);
+        const dueDate    = buildDateKey(year, month, s.due_day || 15);
+        const isVariable = VARIABLE_CHARGE_TYPES.has(s.charge_type as CollectionChargeType);
         return {
           collection_schedule_id: s.id,
           company_id: user.company_id,
@@ -434,12 +424,12 @@ export default function CollectionsPage() {
           period_year: year,
           period_month: month,
           due_date: dueDate,
-          amount_due: s.amount_expected,
+          amount_due: isVariable ? 0 : s.amount_expected,
           amount_collected: 0,
           status: dueDate < today ? "overdue" : "pending",
           collected_at: null,
           payment_method: null,
-          notes: null,
+          notes: isVariable ? "needs_amount" : null,
         };
       });
 
@@ -597,6 +587,39 @@ export default function CollectionsPage() {
     showToast({ type: "success", message: "Cargo eventual registrado." });
   }
 
+  // ── Capturar monto de servicio variable ───────────────────────────────────────
+
+  async function handleCaptura() {
+    if (!capturaModal || !user?.company_id) return;
+    const monto = parsePositiveNumber(capturaForm.monto);
+    if (!monto) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+
+    const unitSuffix = capturaModal.chargeType === "electricity" ? "kWh" : "m³";
+    const notesLine = capturaForm.unidades.trim()
+      ? `${capturaForm.unidades.trim()} ${unitSuffix}${capturaForm.notas.trim() ? ` · ${capturaForm.notas.trim()}` : ""}`
+      : capturaForm.notas.trim() || null;
+
+    setCapturaSaving(true);
+    const newStatus: CollectionStoredStatus =
+      capturaModal.record.due_date < getTodayDateKey() ? "overdue" : "pending";
+
+    const { error } = await supabase
+      .from("collection_records")
+      .update({ amount_due: monto, notes: notesLine, status: newStatus })
+      .eq("id", capturaModal.record.id)
+      .eq("company_id", user.company_id);
+
+    setCapturaSaving(false);
+    if (error) { showToast({ type: "error", message: `Error: ${error.message}` }); return; }
+
+    setRecords((prev) => prev.map((r) =>
+      r.id === capturaModal.record.id ? { ...r, amount_due: monto, notes: notesLine, status: newStatus } : r
+    ));
+    setCapturaModal(null);
+    setCapturaForm({ monto: "", unidades: "", notas: "" });
+    showToast({ type: "success", message: "Monto capturado correctamente." });
+  }
+
   // ── Archivar cobro ────────────────────────────────────────────────────────────
 
   async function handleDeleteRecord() {
@@ -664,96 +687,16 @@ export default function CollectionsPage() {
     showToast({ type: "success", message: "Cobro actualizado." });
   }
 
-  // ── Crear cargo manual ────────────────────────────────────────────────────────
-
-  async function handleCreateCharge() {
-    if (!user?.company_id) return;
-
-    if (!chargeForm.buildingId) { showToast({ type: "error", message: "Selecciona un edificio." }); return; }
-    if (!chargeForm.unitId)     { showToast({ type: "error", message: "Selecciona una unidad." }); return; }
-
-    const amountExpected = parsePositiveNumber(chargeForm.amountExpected);
-    if (!amountExpected) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
-    if (!chargeForm.title.trim()) { showToast({ type: "error", message: "Escribe el concepto del cobro." }); return; }
-    if (!chargeForm.initialDueDate) { showToast({ type: "error", message: "Selecciona una fecha de vencimiento." }); return; }
-
-    const dueDateObj = new Date(`${chargeForm.initialDueDate}T00:00:00`);
-    const derivedDueDay =
-      chargeForm.chargeMode === "recurring"
-        ? Number(chargeForm.dueDay || dueDateObj.getDate())
-        : dueDateObj.getDate();
-
-    setCreatingCharge(true);
-
-    const { data: insertedSchedule, error: scheduleError } = await supabase
-      .from("collection_schedules")
-      .insert({
-        company_id: user.company_id,
-        building_id: chargeForm.buildingId,
-        unit_id: chargeForm.unitId,
-        lease_id: chargeForm.leaseId || null,
-        charge_type: chargeForm.chargeType,
-        title: chargeForm.title.trim(),
-        responsibility_type: chargeForm.responsibilityType,
-        amount_expected: amountExpected,
-        due_day: derivedDueDay,
-        active: chargeForm.chargeMode === "recurring",
-        notes: chargeForm.notes.trim() || null,
-      })
-      .select("id")
-      .single();
-
-    if (scheduleError || !insertedSchedule) {
-      showToast({ type: "error", message: "No se pudo crear la configuración del cobro." });
-      setCreatingCharge(false);
-      return;
-    }
-
-    const shouldCreateRecord = chargeForm.chargeMode === "one_time" || chargeForm.createFirstRecordNow;
-
-    if (shouldCreateRecord) {
-      const today = getTodayDateKey();
-      const { error: recordError } = await supabase.from("collection_records").insert({
-        collection_schedule_id: insertedSchedule.id,
-        company_id: user.company_id,
-        building_id: chargeForm.buildingId,
-        unit_id: chargeForm.unitId,
-        lease_id: chargeForm.leaseId || null,
-        period_year: dueDateObj.getFullYear(),
-        period_month: dueDateObj.getMonth() + 1,
-        due_date: chargeForm.initialDueDate,
-        amount_due: amountExpected,
-        amount_collected: 0,
-        status: chargeForm.initialDueDate < today ? "overdue" : "pending",
-        collected_at: null,
-        payment_method: null,
-        notes: chargeForm.notes.trim() || null,
-      });
-
-      if (recordError) {
-        // Rollback schedule
-        await supabase.from("collection_schedules").update({ deleted_at: new Date().toISOString() }).eq("id", insertedSchedule.id);
-        showToast({ type: "error", message: recordError.message.includes("unique") ? "Ya existe un cobro para ese periodo." : "No se pudo crear el primer registro del cobro." });
-        setCreatingCharge(false);
-        return;
-      }
-    }
-
-    await loadData();
-    setCreatingCharge(false);
-    setCreateChargeOpen(false);
-    setChargeForm(createDefaultChargeForm());
-    showToast({ type: "success", message: chargeForm.chargeMode === "recurring" ? "Cobro recurrente creado." : "Cargo adicional creado." });
-  }
-
   // ── Navegación de mes ─────────────────────────────────────────────────────────
 
   function prevMonth() {
+    setAppliedSortMode(sortMode);
     if (selectedMonth === 1) { setSelectedYear((y) => y - 1); setSelectedMonth(12); }
     else setSelectedMonth((m) => m - 1);
   }
 
   function nextMonth() {
+    setAppliedSortMode(sortMode);
     if (selectedMonth === 12) { setSelectedYear((y) => y + 1); setSelectedMonth(1); }
     else setSelectedMonth((m) => m + 1);
   }
@@ -796,23 +739,58 @@ export default function CollectionsPage() {
         const buildingName = building?.name || "Sin edificio";
         const buildingId   = building?.id || unit?.building_id || "";
 
-        const totalDue       = groupRecords.reduce((s, r) => s + (r.amount_due || 0), 0);
-        const totalCollected = groupRecords.reduce((s, r) => s + (r.amount_collected || 0), 0);
-        const balance        = Math.max(totalDue - totalCollected, 0);
-        const estadoGeneral  = computeEstadoGeneral(groupRecords);
+        // CAMBIO 2: ordenar registros por CHARGE_ORDER
+        const sortedRecords = [...groupRecords].sort((a, b) => {
+          const tA = scheduleMap.get(a.collection_schedule_id)?.charge_type || "other";
+          const tB = scheduleMap.get(b.collection_schedule_id)?.charge_type || "other";
+          return (CHARGE_ORDER[tA as CollectionChargeType] ?? 50) - (CHARGE_ORDER[tB as CollectionChargeType] ?? 50);
+        });
 
-        return { groupKey, leaseId: leaseId ?? null, tenantLabel, buildingId, buildingName, unitLabel, records: groupRecords, totalDue, totalCollected, balance, estadoGeneral };
+        const totalDue       = sortedRecords.reduce((s, r) => s + (r.amount_due || 0), 0);
+        const totalCollected = sortedRecords.reduce((s, r) => s + (r.amount_collected || 0), 0);
+        const balance        = Math.max(totalDue - totalCollected, 0);
+        const estadoGeneral  = computeEstadoGeneral(sortedRecords);
+
+        return { groupKey, leaseId: leaseId ?? null, tenantLabel, buildingId, buildingName, unitLabel, records: sortedRecords, totalDue, totalCollected, balance, estadoGeneral };
       })
       .filter((row) => {
         if (filterBuildingId !== "all" && row.buildingId !== filterBuildingId) return false;
         if (filterStatus !== "all" && row.estadoGeneral !== filterStatus) return false;
         return true;
       })
+      // CAMBIO 3: ordenar grupos según appliedSortMode
       .sort((a, b) => {
-        const order: Record<CollectionStoredStatus, number> = { overdue: 0, pending: 1, partial: 2, collected: 3 };
-        return order[a.estadoGeneral] - order[b.estadoGeneral];
+        if (appliedSortMode === "due_date") {
+          const aMin = a.records.reduce((m, r) => r.due_date < m ? r.due_date : m, "9999-99-99");
+          const bMin = b.records.reduce((m, r) => r.due_date < m ? r.due_date : m, "9999-99-99");
+          if (aMin !== bMin) return aMin < bMin ? -1 : 1;
+        } else {
+          const aBldg = a.buildingName.toLowerCase();
+          const bBldg = b.buildingName.toLowerCase();
+          if (aBldg !== bBldg) return aBldg < bBldg ? -1 : 1;
+          const aUnit = unitMap.get(a.records[0]?.unit_id);
+          const bUnit = unitMap.get(b.records[0]?.unit_id);
+          const aNum  = parseInt(aUnit?.unit_number || "", 10);
+          const bNum  = parseInt(bUnit?.unit_number || "", 10);
+          if (!isNaN(aNum) && !isNaN(bNum) && aNum !== bNum) return aNum - bNum;
+          if (aUnit?.unit_number && bUnit?.unit_number) return aUnit.unit_number.localeCompare(bUnit.unit_number);
+        }
+        const statusOrder: Record<CollectionStoredStatus, number> = { overdue: 0, pending: 1, partial: 2, collected: 3 };
+        return statusOrder[a.estadoGeneral] - statusOrder[b.estadoGeneral];
       });
-  }, [monthRecords, leaseMap, unitMap, buildingMap, tenantMap, filterBuildingId, filterStatus]);
+  }, [monthRecords, leaseMap, unitMap, buildingMap, tenantMap, scheduleMap, filterBuildingId, filterStatus, appliedSortMode]);
+
+  // ── Búsqueda sobre grupos ─────────────────────────────────────────────────────
+
+  const filteredRows = useMemo(() => {
+    if (!searchQuery.trim()) return inquilinoRows;
+    const q = normalizeText(searchQuery.trim());
+    return inquilinoRows.filter((row) =>
+      normalizeText(row.tenantLabel).includes(q) ||
+      normalizeText(row.unitLabel).includes(q) ||
+      normalizeText(row.buildingName).includes(q)
+    );
+  }, [inquilinoRows, searchQuery]);
 
   // ── Métricas del mes ──────────────────────────────────────────────────────────
 
@@ -844,14 +822,12 @@ export default function CollectionsPage() {
     return segments.length ? segments : [{ name: "Sin cobros", value: 1, color: "var(--border-strong)" }];
   }, [metrics]);
 
-  const unitsForBuilding = useMemo(
-    () => units.filter((u) => u.building_id === chargeForm.buildingId),
-    [units, chargeForm.buildingId],
-  );
-  const leasesForUnit = useMemo(
-    () => leases.filter((l) => l.unit_id === chargeForm.unitId),
-    [leases, chargeForm.unitId],
-  );
+  const countData = useMemo(() => {
+    const overdue   = monthRecords.filter((r) => r.status === "overdue").length;
+    const pending   = monthRecords.filter((r) => r.status === "pending" || r.status === "partial").length;
+    const collected = monthRecords.filter((r) => r.status === "collected").length;
+    return { overdue, pending, collected, total: monthRecords.length };
+  }, [monthRecords]);
 
   const deleteRecord = deleteRecordId ? records.find((r) => r.id === deleteRecordId) : null;
 
@@ -876,51 +852,31 @@ export default function CollectionsPage() {
   return (
     <PageContainer>
       {/* ── Header ── */}
-      <PageHeader
-        title="Cobranza"
-        titleIcon={<Wallet size={18} />}
-        actions={
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-            {/* Navegador de mes */}
-            <div style={monthNavStyle}>
-              <button type="button" onClick={prevMonth} style={monthNavBtnStyle} aria-label="Mes anterior">
-                <ChevronLeft size={16} />
-              </button>
-              <span style={monthNavLabelStyle}>{monthLabel}</span>
-              <button type="button" onClick={nextMonth} style={monthNavBtnStyle} aria-label="Mes siguiente">
-                <ChevronRight size={16} />
-              </button>
-            </div>
+      <PageHeader title="Cobranza" titleIcon={<Wallet size={18} />} />
 
-            <UiButton
-              onClick={() => void generateMonthlyCharges(selectedYear, selectedMonth)}
-              disabled={generating}
-              icon={<Zap size={15} />}
-            >
-              {generating ? "Generando..." : "Generar cobros del mes"}
-            </UiButton>
+      {/* ── Navegador de mes + acción principal ── */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
+        <div style={monthNavStyle}>
+          <button type="button" onClick={prevMonth} style={monthNavBtnStyle} aria-label="Mes anterior">
+            <ChevronLeft size={16} />
+          </button>
+          <span style={monthNavLabelStyle}>{monthLabel}</span>
+          <button type="button" onClick={nextMonth} style={monthNavBtnStyle} aria-label="Mes siguiente">
+            <ChevronRight size={16} />
+          </button>
+        </div>
 
-            <UiButton
-              variant="secondary"
-              onClick={() => router.push("/collections/invoices")}
-              icon={<FileText size={15} />}
-            >
-              Ver historial
-            </UiButton>
-
-            <UiButton
-              variant="secondary"
-              onClick={() => { setChargeForm(createDefaultChargeForm()); setCreateChargeOpen(true); }}
-              icon={<Plus size={15} />}
-            >
-              Cargo manual
-            </UiButton>
-          </div>
-        }
-      />
+        <UiButton
+          onClick={() => void generateMonthlyCharges(selectedYear, selectedMonth)}
+          disabled={generating}
+          icon={<Zap size={15} />}
+        >
+          {generating ? "Generando..." : "Generar cobros del mes"}
+        </UiButton>
+      </div>
 
       {/* ── Métricas ── */}
-      <AppGrid minWidth={200}>
+      <AppGrid minWidth={200} style={{ marginTop: 24 }}>
         <MetricCard
           label="Total a cobrar"
           value={formatCurrency(metrics.totalDue)}
@@ -950,9 +906,9 @@ export default function CollectionsPage() {
         />
       </AppGrid>
 
-      {/* ── Gráfica donut + accesos rápidos ── */}
-      <div style={chartRowStyle}>
-        {/* Donut */}
+      {/* ── Gráfica donut + barra de cantidades ── */}
+      <div style={{ ...chartRowStyle, marginTop: 24 }}>
+        {/* Donut — distribución por monto */}
         <div style={donutCardStyle}>
           <p style={sectionLabelStyle}>Distribución del mes</p>
           <ResponsiveContainer width="100%" height={180}>
@@ -993,29 +949,66 @@ export default function CollectionsPage() {
           </div>
         </div>
 
-        {/* Accesos rápidos */}
-        <div style={quickLinksGridStyle}>
-          <button type="button" onClick={() => router.push("/collections/reported-payments")} style={quickLinkCardStyle}>
-            <div style={quickLinkIconStyle}><Upload size={18} /></div>
-            <span style={quickLinkLabelStyle}>Pagos reportados</span>
-          </button>
-          <button type="button" onClick={() => router.push("/collections/invoice-generation")} style={quickLinkCardStyle}>
-            <div style={quickLinkIconStyle}><FileText size={18} /></div>
-            <span style={quickLinkLabelStyle}>Generación de facturas</span>
-          </button>
-          <button type="button" onClick={() => router.push("/collections/invoices")} style={quickLinkCardStyle}>
-            <div style={quickLinkIconStyle}><Receipt size={18} /></div>
-            <span style={quickLinkLabelStyle}>Facturas importadas</span>
-          </button>
-          <button type="button" onClick={() => router.push("/collections/pending-invoice-uploads")} style={quickLinkCardStyle}>
-            <div style={quickLinkIconStyle}><Upload size={18} /></div>
-            <span style={quickLinkLabelStyle}>Falta cargar factura</span>
-          </button>
+        {/* Barra de cantidades — distribución por número de cobros */}
+        <div style={donutCardStyle}>
+          <p style={sectionLabelStyle}>Cobros del mes</p>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, padding: "8px 0" }}>
+            {countData.total === 0 ? (
+              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Sin cobros generados</p>
+            ) : (
+              <>
+                {/* Barra apilada horizontal */}
+                <div style={{ display: "flex", height: 20, borderRadius: 10, overflow: "hidden", gap: 2 }}>
+                  {countData.overdue > 0 && (
+                    <div style={{ flex: countData.overdue, background: "#EF4444", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
+                  )}
+                  {countData.pending > 0 && (
+                    <div style={{ flex: countData.pending, background: "#F59E0B", minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
+                  )}
+                  {countData.collected > 0 && (
+                    <div style={{ flex: countData.collected, background: "#10B981", minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
+                  )}
+                </div>
+                {/* Leyenda de conteos */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  {[
+                    { label: "Vencido",   count: countData.overdue,   color: "#EF4444" },
+                    { label: "Pendiente", count: countData.pending,   color: "#F59E0B" },
+                    { label: "Cobrado",   count: countData.collected, color: "#10B981" },
+                  ].map(({ label, count, color }) => (
+                    <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                      <span style={{ fontSize: 18, fontWeight: 800, color }}>{count}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <p style={{ ...sectionLabelStyle, marginTop: 4 }}>
+            {countData.total} cobro{countData.total !== 1 ? "s" : ""} en total
+          </p>
         </div>
       </div>
 
-      {/* ── Filtros ── */}
-      <div style={filtersRowStyle}>
+      {/* ── Filtros + búsqueda + ordenamiento ── */}
+      <div style={{ ...filtersRowStyle, marginTop: 24 }}>
+        {/* Buscador */}
+        <div style={{ ...filterFieldStyle, flex: "2 1 240px" }}>
+          <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+          <input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Buscar inquilino o departamento..."
+            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: "var(--text-primary)" }}
+          />
+          {searchQuery ? (
+            <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
+              <X size={14} />
+            </button>
+          ) : null}
+        </div>
+
         <div style={filterFieldStyle}>
           <Building2 size={14} style={{ color: "var(--text-muted)" }} />
           <AppSelect value={filterBuildingId} onChange={(e) => setFilterBuildingId(e.target.value)}>
@@ -1036,27 +1029,48 @@ export default function CollectionsPage() {
             <option value="collected">Cobrado</option>
           </AppSelect>
         </div>
+
+        {/* Ordenamiento */}
+        <div style={filterFieldStyle}>
+          <Filter size={14} style={{ color: "var(--text-muted)" }} />
+          <AppSelect
+            value={sortMode}
+            onChange={(e) => {
+              const mode = e.target.value as SortMode;
+              setSortMode(mode);
+              setAppliedSortMode(mode);
+            }}
+          >
+            <option value="building">Por edificio</option>
+            <option value="due_date">Por vencimiento</option>
+          </AppSelect>
+        </div>
       </div>
 
       {/* ── Lista de inquilinos ── */}
+      <div style={{ marginTop: 16 }}>
       <SectionCard title={`Cobros de ${monthLabel}`} icon={<Wallet size={18} />}>
-        {inquilinoRows.length === 0 ? (
+        {filteredRows.length === 0 ? (
           <div style={emptyBoxStyle}>
-            {monthRecords.length === 0
-              ? `Todavía no hay cobros para ${monthLabel}. Usa "Generar cobros del mes" para crear los registros desde los contratos activos.`
-              : "No hay cobros que coincidan con los filtros seleccionados."}
+            {searchQuery.trim()
+              ? `Sin resultados para "${searchQuery}"`
+              : monthRecords.length === 0
+                ? `Todavía no hay cobros para ${monthLabel}. Usa "Generar cobros del mes" para crear los registros desde los contratos activos.`
+                : "No hay cobros que coincidan con los filtros seleccionados."}
           </div>
         ) : (
           <div style={{ display: "grid", gap: 10 }}>
-            {inquilinoRows.map((row) => {
+            {filteredRows.map((row) => {
               const isExpanded = expandedKey === row.groupKey;
               const statusColors = getStatusColors(row.estadoGeneral);
+              const buildingIdx = buildings.findIndex((b) => b.id === row.buildingId);
+              const buildingColor = BUILDING_COLORS[buildingIdx >= 0 ? buildingIdx % BUILDING_COLORS.length : 0];
 
               return (
                 <div key={row.groupKey} style={tenantCardStyle}>
                   {/* Fila principal — siempre visible */}
                   <div
-                    style={tenantCardHeaderStyle}
+                    style={{ ...tenantCardHeaderStyle, borderLeft: `4px solid ${buildingColor}`, paddingLeft: 12 }}
                     onClick={() => setExpandedKey(isExpanded ? null : row.groupKey)}
                     role="button"
                     tabIndex={0}
@@ -1068,15 +1082,14 @@ export default function CollectionsPage() {
                       <span style={tenantSubtitleStyle}>{row.buildingName} · {row.unitLabel}</span>
                     </div>
 
-                    {/* Centro: total + badge estado */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                      <span style={totalAmountStyle}>{formatCurrency(row.totalDue)}</span>
-                      <span style={{
-                        ...badgeStyle,
-                        background: statusColors.bg,
-                        color: statusColors.text,
-                        border: `1px solid ${statusColors.border}`,
-                      }}>
+                    {/* Centro: saldo pendiente o badge cobrado */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      {row.balance > 0 ? (
+                        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                          {formatCurrency(row.balance)}
+                        </span>
+                      ) : null}
+                      <span style={{ ...badgeStyle, background: statusColors.bg, color: statusColors.text, border: `1px solid ${statusColors.border}` }}>
                         {getStatusLabel(row.estadoGeneral)}
                       </span>
                     </div>
@@ -1109,6 +1122,7 @@ export default function CollectionsPage() {
                           const conceptLabel = schedule ? getChargeTypeLabel(chargeType) : "Cobro";
                           const recColors = getStatusColors(record.status);
                           const isMarking = markingIds.has(record.id);
+                          const needsCaptura = VARIABLE_CHARGE_TYPES.has(chargeType) && record.amount_due === 0;
 
                           return (
                             <div key={record.id} style={conceptRowStyle}>
@@ -1132,21 +1146,37 @@ export default function CollectionsPage() {
 
                               {/* Estado */}
                               <div style={{ display: "flex", justifyContent: "center" }}>
-                                <span style={{
-                                  ...badgeStyle,
-                                  fontSize: 11,
-                                  padding: "4px 8px",
-                                  background: recColors.bg,
-                                  color: recColors.text,
-                                  border: `1px solid ${recColors.border}`,
-                                }}>
-                                  {getStatusLabel(record.status)}
-                                </span>
+                                {needsCaptura ? (
+                                  <span style={{ ...badgeStyle, fontSize: 11, padding: "4px 8px", background: "var(--metric-bg-amber)", color: "var(--badge-text-amber)", border: "1px solid var(--metric-border-amber)" }}>
+                                    Capturar monto
+                                  </span>
+                                ) : (
+                                  <span style={{
+                                    ...badgeStyle,
+                                    fontSize: 11,
+                                    padding: "4px 8px",
+                                    background: recColors.bg,
+                                    color: recColors.text,
+                                    border: `1px solid ${recColors.border}`,
+                                  }}>
+                                    {getStatusLabel(record.status)}
+                                  </span>
+                                )}
                               </div>
 
                               {/* Acción */}
                               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", flexWrap: "wrap", alignItems: "center" }}>
-                                {record.status !== "collected" ? (
+                                {needsCaptura ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => { setCapturaModal({ record, chargeType }); setCapturaForm({ monto: "", unidades: "", notas: "" }); }}
+                                    disabled={isMarking}
+                                    style={paidBtnStyle}
+                                  >
+                                    <Zap size={13} />
+                                    Capturar
+                                  </button>
+                                ) : record.status !== "collected" ? (
                                   <button
                                     type="button"
                                     onClick={() => setAbonoModal({ record, monto: String(Math.max(record.amount_due - (record.amount_collected || 0), 0)) })}
@@ -1238,163 +1268,7 @@ export default function CollectionsPage() {
           </div>
         )}
       </SectionCard>
-
-      {/* ── Modal: Cargo manual ── */}
-      <Modal
-        open={createChargeOpen}
-        title="Nuevo cobro"
-        onClose={() => { if (!creatingCharge) { setCreateChargeOpen(false); setChargeForm(createDefaultChargeForm()); } }}
-      >
-        <div style={{ display: "grid", gap: 16 }}>
-          <div style={formGridStyle}>
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Tipo de cobro</span>
-              <AppSelect
-                value={chargeForm.chargeMode}
-                onChange={(e) => setChargeForm((p) => ({ ...p, chargeMode: e.target.value as ChargeMode, createFirstRecordNow: e.target.value === "recurring" }))}
-              >
-                <option value="recurring">Recurrente</option>
-                <option value="one_time">Único / cargo adicional</option>
-              </AppSelect>
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Categoría</span>
-              <AppSelect value={chargeForm.chargeType} onChange={(e) => setChargeForm((p) => ({ ...p, chargeType: e.target.value as CollectionChargeType }))}>
-                <option value="rent">Renta</option>
-                <option value="maintenance_fee">Mantenimiento</option>
-                <option value="electricity">Electricidad</option>
-                <option value="water">Agua</option>
-                <option value="gas">Gas</option>
-                <option value="amenities">Amenidades</option>
-                <option value="parking">Estacionamiento</option>
-                <option value="penalty">Penalización</option>
-                <option value="other">Otro</option>
-              </AppSelect>
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Edificio</span>
-              <AppSelect
-                value={chargeForm.buildingId}
-                onChange={(e) => setChargeForm((p) => ({ ...p, buildingId: e.target.value, unitId: "", leaseId: "" }))}
-              >
-                <option value="">Selecciona un edificio</option>
-                {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </AppSelect>
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Unidad</span>
-              <AppSelect
-                value={chargeForm.unitId}
-                onChange={(e) => setChargeForm((p) => ({ ...p, unitId: e.target.value, leaseId: "" }))}
-                disabled={!chargeForm.buildingId}
-              >
-                <option value="">Selecciona una unidad</option>
-                {unitsForBuilding.map((u) => <option key={u.id} value={u.id}>{u.display_code || u.unit_number || "Unidad"}</option>)}
-              </AppSelect>
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Contrato</span>
-              <AppSelect
-                value={chargeForm.leaseId}
-                onChange={(e) => setChargeForm((p) => ({ ...p, leaseId: e.target.value }))}
-                disabled={!chargeForm.unitId}
-              >
-                <option value="">Sin contrato específico</option>
-                {leasesForUnit.map((l) => {
-                  const t = l.tenant_id ? tenantMap.get(l.tenant_id) : null;
-                  return <option key={l.id} value={l.id}>{t?.full_name || l.billing_name || "Contrato"}</option>;
-                })}
-              </AppSelect>
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Concepto</span>
-              <input
-                value={chargeForm.title}
-                onChange={(e) => setChargeForm((p) => ({ ...p, title: e.target.value }))}
-                style={inputStyle}
-                placeholder="Ej. Renta abril o cargo extraordinario"
-              />
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>Monto</span>
-              <input
-                value={chargeForm.amountExpected}
-                onChange={(e) => setChargeForm((p) => ({ ...p, amountExpected: formatDecimalInput(e.target.value) }))}
-                style={inputStyle}
-                inputMode="decimal"
-                placeholder="0.00"
-              />
-            </label>
-
-            <label style={fieldStyle}>
-              <span style={fieldLabelStyle}>{chargeForm.chargeMode === "recurring" ? "Primer vencimiento" : "Vencimiento"}</span>
-              <input
-                type="date"
-                value={chargeForm.initialDueDate}
-                onChange={(e) => {
-                  const parsed = new Date(`${e.target.value}T00:00:00`);
-                  setChargeForm((p) => ({
-                    ...p,
-                    initialDueDate: e.target.value,
-                    dueDay: p.chargeMode === "recurring" ? String(parsed.getDate()) : p.dueDay,
-                  }));
-                }}
-                style={inputStyle}
-              />
-            </label>
-
-            {chargeForm.chargeMode === "recurring" ? (
-              <>
-                <label style={fieldStyle}>
-                  <span style={fieldLabelStyle}>Día de vencimiento mensual</span>
-                  <AppSelect value={chargeForm.dueDay} onChange={(e) => setChargeForm((p) => ({ ...p, dueDay: e.target.value }))}>
-                    {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
-                      <option key={d} value={String(d)}>Día {d}</option>
-                    ))}
-                  </AppSelect>
-                </label>
-
-                <label style={{ ...fieldStyle, flexDirection: "row", alignItems: "center", gap: 10 }}>
-                  <input
-                    type="checkbox"
-                    checked={chargeForm.createFirstRecordNow}
-                    onChange={(e) => setChargeForm((p) => ({ ...p, createFirstRecordNow: e.target.checked }))}
-                  />
-                  <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
-                    Crear primer cobro ahora
-                  </span>
-                </label>
-              </>
-            ) : null}
-          </div>
-
-          <label style={fieldStyle}>
-            <span style={fieldLabelStyle}>Notas</span>
-            <textarea
-              value={chargeForm.notes}
-              onChange={(e) => setChargeForm((p) => ({ ...p, notes: e.target.value }))}
-              rows={3}
-              style={textareaStyle}
-              placeholder="Notas internas opcionales"
-            />
-          </label>
-
-          <div style={modalFooterStyle}>
-            <UiButton variant="secondary" onClick={() => { if (!creatingCharge) { setCreateChargeOpen(false); setChargeForm(createDefaultChargeForm()); } }}>
-              Cancelar
-            </UiButton>
-            <UiButton onClick={handleCreateCharge} disabled={creatingCharge} icon={<Plus size={15} />}>
-              {creatingCharge ? "Guardando..." : "Guardar cobro"}
-            </UiButton>
-          </div>
-        </div>
-      </Modal>
+      </div>
 
       {/* ── Modal: Editar cobro ── */}
       <Modal
@@ -1477,6 +1351,13 @@ export default function CollectionsPage() {
               <input
                 value={abonoModal.monto}
                 onChange={(e) => setAbonoModal((p) => p ? { ...p, monto: formatDecimalInput(e.target.value) } : p)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    const m = parsePositiveNumber(abonoModal.monto);
+                    if (!m) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+                    void handleAbono(abonoModal.record, m);
+                  }
+                }}
                 style={inputStyle}
                 inputMode="decimal"
                 placeholder="0.00"
@@ -1495,6 +1376,56 @@ export default function CollectionsPage() {
                 icon={<CheckCircle2 size={15} />}
               >
                 {abonoSaving ? "Guardando..." : "Confirmar abono"}
+              </UiButton>
+            </div>
+          </div>
+        ) : null}
+      </Modal>
+
+      {/* ── Modal: Capturar monto variable ── */}
+      <Modal
+        open={Boolean(capturaModal)}
+        title={`Capturar monto — ${capturaModal ? getChargeTypeLabel(capturaModal.chargeType) : ""}`}
+        onClose={() => { if (!capturaSaving) { setCapturaModal(null); setCapturaForm({ monto: "", unidades: "", notas: "" }); } }}
+      >
+        {capturaModal ? (
+          <div style={{ display: "grid", gap: 16 }}>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Monto a cobrar</span>
+              <input
+                value={capturaForm.monto}
+                onChange={(e) => setCapturaForm((p) => ({ ...p, monto: formatDecimalInput(e.target.value) }))}
+                style={inputStyle}
+                inputMode="decimal"
+                placeholder="0.00"
+                autoFocus
+              />
+            </label>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>
+                Consumo ({capturaModal.chargeType === "electricity" ? "kWh" : "m³"})
+              </span>
+              <input
+                value={capturaForm.unidades}
+                onChange={(e) => setCapturaForm((p) => ({ ...p, unidades: formatDecimalInput(e.target.value) }))}
+                style={inputStyle}
+                inputMode="decimal"
+                placeholder="0"
+              />
+            </label>
+            <label style={fieldStyle}>
+              <span style={fieldLabelStyle}>Comentario (opcional)</span>
+              <input
+                value={capturaForm.notas}
+                onChange={(e) => setCapturaForm((p) => ({ ...p, notas: e.target.value }))}
+                style={inputStyle}
+                placeholder="Ej. Periodo 1-31 mar"
+              />
+            </label>
+            <div style={modalFooterStyle}>
+              <UiButton variant="secondary" onClick={() => { if (!capturaSaving) { setCapturaModal(null); setCapturaForm({ monto: "", unidades: "", notas: "" }); } }}>Cancelar</UiButton>
+              <UiButton onClick={handleCaptura} disabled={capturaSaving} icon={<Zap size={15} />}>
+                {capturaSaving ? "Guardando..." : "Confirmar monto"}
               </UiButton>
             </div>
           </div>
@@ -1588,7 +1519,7 @@ const monthNavLabelStyle: CSSProperties = {
 
 const chartRowStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "280px 1fr",
+  gridTemplateColumns: "1fr 1fr",
   gap: 16,
   marginTop: 4,
 };
@@ -1622,43 +1553,6 @@ const donutLegendItemStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: 6,
-};
-
-const quickLinksGridStyle: CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-  gap: 12,
-};
-
-const quickLinkCardStyle: CSSProperties = {
-  display: "flex",
-  flexDirection: "column",
-  alignItems: "flex-start",
-  gap: 10,
-  padding: "16px 14px",
-  borderRadius: 16,
-  border: "1px solid var(--border-default)",
-  background: "var(--bg-card)",
-  cursor: "pointer",
-  textAlign: "left",
-};
-
-const quickLinkIconStyle: CSSProperties = {
-  width: 36,
-  height: 36,
-  borderRadius: 10,
-  background: "var(--icon-bg-neutral)",
-  color: "var(--icon-color-neutral)",
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  flexShrink: 0,
-};
-
-const quickLinkLabelStyle: CSSProperties = {
-  fontSize: 13,
-  fontWeight: 600,
-  color: "var(--text-primary)",
 };
 
 const filtersRowStyle: CSSProperties = {
@@ -1706,12 +1600,6 @@ const tenantSubtitleStyle: CSSProperties = {
   fontSize: 12,
   color: "var(--text-muted)",
   fontWeight: 500,
-};
-
-const totalAmountStyle: CSSProperties = {
-  fontSize: 15,
-  fontWeight: 800,
-  color: "var(--text-primary)",
 };
 
 const badgeStyle: CSSProperties = {
