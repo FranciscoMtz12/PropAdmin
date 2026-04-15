@@ -28,6 +28,7 @@ import {
 import { useRouter } from "next/navigation";
 import {
   CalendarClock,
+  Camera,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -38,6 +39,7 @@ import {
   MoreHorizontal,
   Pencil,
   Plus,
+  Search,
   ShieldCheck,
   Trash2,
   Wrench,
@@ -92,7 +94,6 @@ type Ticket = {
   assigned_to: string | null;
   photos: string[] | null;
   performed_at: string | null;
-  scheduled_date: string | null;
   resolved_at: string | null;
   created_at: string;
   category_name_snapshot: string | null;
@@ -111,7 +112,7 @@ type Material = {
 type MaterialDraft = {
   id?: string;
   description: string;
-  quantity: number | "";
+  quantity: string | number;
   unit: string;
 };
 
@@ -243,6 +244,10 @@ function getStatusLabel(status: string | null) {
   if (s === "in_progress") return "En proceso";
   if (s === "resolved")    return "Resuelto";
   return status || "—";
+}
+
+function normalizeText(text: string) {
+  return text.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 
 function getTicketNumber(ticket: Ticket) {
@@ -394,7 +399,6 @@ const EMPTY_CREATE_FORM = {
   log_type: "corrective",
   description: "",
   reported_by: "",
-  scheduled_date: "",
 };
 
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
@@ -412,6 +416,9 @@ export default function MaintenancePage() {
   const [categories, setCategories] = useState<MaintenanceCategory[]>([]);
   const [loadingData, setLoadingData] = useState(false);
   const [msg, setMsg] = useState("");
+  const [companyName, setCompanyName]         = useState("");
+  const [companyLogoPrint, setCompanyLogoPrint] = useState("");
+  const [companyLogoUrl, setCompanyLogoUrl]     = useState("");
 
   /* ── Tickets ────────────────────────────────────────────────────── */
   const [tickets, setTickets]         = useState<Ticket[]>([]);
@@ -479,6 +486,7 @@ export default function MaintenancePage() {
       { data: catData },
       { data: buildData },
       { data: ticketData, error: ticketError },
+      { data: companyData },
     ] = await Promise.all([
       supabase
         .from("maintenance_categories")
@@ -498,14 +506,21 @@ export default function MaintenancePage() {
         .select(`
           id, ticket_number, title, description, log_type, status, priority,
           building_id, unit_id, reported_by, assigned_to, photos,
-          performed_at, scheduled_date, resolved_at, created_at,
+          performed_at, resolved_at, created_at,
           category_name_snapshot,
           buildings(id, name, address),
           units(id, unit_number, display_code)
         `)
         .eq("company_id", user.company_id)
         .is("deleted_at", null)
-        .order("created_at", { ascending: false }),
+        .order("created_at", { ascending: false })
+        .limit(200),
+
+      supabase
+        .from("companies")
+        .select("name, logo_url, logo_print_url, logo_dark_url")
+        .eq("id", user.company_id)
+        .single(),
     ]);
 
     if (ticketError) {
@@ -516,6 +531,12 @@ export default function MaintenancePage() {
 
     setCategories((catData as MaintenanceCategory[]) || []);
     setBuildings((buildData as BuildingOption[]) || []);
+    if (companyData && "name" in companyData) {
+      const cd = companyData as { name: string; logo_url?: string; logo_print_url?: string };
+      setCompanyName(cd.name || "");
+      setCompanyLogoPrint(cd.logo_print_url || "");
+      setCompanyLogoUrl(cd.logo_url || "");
+    }
 
     await loadCalendarData(user.company_id);
     setLoadingData(false);
@@ -637,7 +658,6 @@ export default function MaintenancePage() {
       log_type:                createForm.log_type,
       description:             createForm.description.trim() || null,
       reported_by:             createForm.reported_by.trim() || null,
-      scheduled_date:          createForm.scheduled_date     || null,
       status:                  "open",
     });
 
@@ -793,109 +813,213 @@ export default function MaintenancePage() {
     const mats = materialsByTicket[ticket.id] || [];
     setGeneratingPdfId(ticket.id);
 
+    /* Comprime el logo usando canvas antes de insertarlo en el PDF */
+    async function compressLogoForPDF(imgUrl: string): Promise<string> {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = "anonymous";
+        img.onload = () => {
+          const maxW = 300, maxH = 100;
+          const ratio = Math.min(maxW / img.width, maxH / img.height);
+          const w = img.width * ratio;
+          const h = img.height * ratio;
+          const canvas = document.createElement("canvas");
+          canvas.width  = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d")!;
+          ctx.drawImage(img, 0, 0, w, h);
+          resolve(canvas.toDataURL("image/jpeg", 0.7));
+        };
+        img.onerror = () => resolve("");
+        img.src = imgUrl;
+      });
+    }
+
     try {
-      /* Importación dinámica para evitar problemas SSR */
       const { default: jsPDF }     = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
 
-      const doc = new jsPDF();
-      let cursorY = 14;
+      /* Letter: 612 x 792 pt */
+      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+      const pageW   = 612;
+      const marginL = 40;
+      const marginR = 40;
+      const contentW = pageW - marginL - marginR;
 
-      /* Logo de la empresa */
-      if (logoUrl) {
-        try {
-          const res     = await fetch(logoUrl);
-          const blob    = await res.blob();
-          const dataUrl = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-          });
-          doc.addImage(dataUrl, "JPEG", 14, cursorY, 35, 18);
-          cursorY += 26;
-        } catch {
-          /* Logo no disponible — continuar sin él */
-        }
-      }
-
-      /* Título */
-      doc.setFontSize(18);
-      doc.setFont("helvetica", "bold");
-      doc.text("Orden de Materiales", 14, cursorY);
-      cursorY += 10;
-
-      /* Folio + fecha */
       const year  = new Date().getFullYear();
       const folio = `OM-${year}-${String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase()}`;
-      doc.setFontSize(10);
-      doc.setFont("helvetica", "normal");
-      doc.text(`Folio: ${folio}`, 14, cursorY);
-      doc.text(`Fecha: ${new Date().toLocaleDateString("es-MX")}`, 120, cursorY);
-      cursorY += 7;
+      const fechaStr = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
 
-      /* Edificio + departamento */
-      const buildingName    = ticket.buildings?.name     || "Sin edificio";
-      const buildingAddress = ticket.buildings?.address  || "";
+      const buildingName    = ticket.buildings?.name    || "Sin edificio";
+      const buildingAddress = ticket.buildings?.address || "";
       const unitLabel       = ticket.units
-        ? `Depto. ${ticket.units.display_code || ticket.units.unit_number}`
-        : "";
+        ? `${ticket.units.display_code || ticket.units.unit_number}`
+        : "—";
+      const categoryLabel = ticket.category_name_snapshot || "—";
+      const priorityLabel = getPriorityLabel(ticket.priority);
 
-      doc.setFont("helvetica", "bold");
-      doc.text("Edificio:", 14, cursorY);
-      doc.setFont("helvetica", "normal");
-      doc.text(buildingName, 38, cursorY);
-      cursorY += 6;
+      /* ── HEADER ──────────────────────────────────────────────────── */
+      let cursorY = 40;
+      let logoEndX = marginL; /* donde termina el bloque del logo */
 
-      if (buildingAddress) {
-        doc.text(`Dirección: ${buildingAddress}`, 14, cursorY);
-        cursorY += 6;
+      /* Logo comprimido — logo_print_url tiene prioridad sobre logo_url */
+      const pdfLogoSrc = companyLogoPrint || companyLogoUrl;
+      if (pdfLogoSrc) {
+        try {
+          const compressed = await compressLogoForPDF(pdfLogoSrc);
+          if (compressed) {
+            /* Calcular dimensiones proporcionales máx 120pt ancho, 60pt alto */
+            const tmpImg = new Image();
+            await new Promise<void>((res) => { tmpImg.onload = () => res(); tmpImg.onerror = () => res(); tmpImg.src = compressed; });
+            const logoMaxW = 120, logoMaxH = 60;
+            const logoRatio = Math.min(logoMaxW / (tmpImg.width || 1), logoMaxH / (tmpImg.height || 1));
+            const logoW = (tmpImg.width || logoMaxW) * logoRatio;
+            const logoH = (tmpImg.height || logoMaxH) * logoRatio;
+            doc.addImage(compressed, "JPEG", marginL, cursorY, logoW, logoH);
+            logoEndX = marginL + logoW + 16;
+          }
+        } catch { /* sin logo */ }
       }
-      if (unitLabel) {
-        doc.text(unitLabel, 14, cursorY);
-        cursorY += 6;
+
+      /* Título + folio + fecha (columna derecha del header) */
+      const headerRightX = logoEndX + 10;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(18);
+      doc.setTextColor(15, 23, 42);
+      doc.text("Orden de Materiales", headerRightX, cursorY + 14);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Folio: ${folio}`, headerRightX, cursorY + 30);
+      doc.text(`Fecha: ${fechaStr}`, headerRightX, cursorY + 44);
+
+      cursorY += 72;
+
+      /* Línea separadora */
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.75);
+      doc.line(marginL, cursorY, pageW - marginR, cursorY);
+      cursorY += 16;
+
+      /* ── GRID DE DATOS (2 columnas) ──────────────────────────────── */
+      const colW    = (contentW - 8) / 2;
+      const cellH   = 36;
+      const cellPad = 8;
+      const col2X   = marginL + colW + 8;
+
+      function drawCell(x: number, y: number, w: number, label: string, value: string, fullWidth = false) {
+        const cellWidth = fullWidth ? contentW : w;
+        /* Fondo */
+        doc.setFillColor(248, 249, 250);
+        doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "F");
+        /* Borde */
+        doc.setDrawColor(229, 231, 235);
+        doc.setLineWidth(0.5);
+        doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "S");
+        /* Label */
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8);
+        doc.setTextColor(148, 163, 184);
+        doc.text(label.toUpperCase(), x + cellPad, y + cellPad + 7);
+        /* Valor */
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        const maxValueW = cellWidth - cellPad * 2;
+        const valueLines = doc.splitTextToSize(value || "—", maxValueW) as string[];
+        doc.text(valueLines[0] ?? "—", x + cellPad, y + cellPad + 20);
       }
 
-      doc.setFont("helvetica", "bold");
-      doc.text("Ticket #:", 14, cursorY);
-      doc.setFont("helvetica", "normal");
-      doc.text(getTicketNumber(ticket), 40, cursorY);
-      cursorY += 10;
+      const rowGap = cellH + 6;
 
-      /* Descripción del problema */
-      doc.setFont("helvetica", "bold");
-      doc.text("Descripción del problema:", 14, cursorY);
-      cursorY += 6;
-      doc.setFont("helvetica", "normal");
-      const descLines = doc.splitTextToSize(
-        ticket.description || ticket.title, 180
-      ) as string[];
-      doc.text(descLines, 14, cursorY);
-      cursorY += descLines.length * 5 + 10;
+      /* Fila 1 */
+      drawCell(marginL, cursorY, colW, "Edificio",   buildingName);
+      drawCell(col2X,   cursorY, colW, "Ticket #",   getTicketNumber(ticket));
+      cursorY += rowGap;
 
-      /* Tabla de materiales */
+      /* Fila 2 */
+      drawCell(marginL, cursorY, colW, "Dirección",  buildingAddress || "—");
+      drawCell(col2X,   cursorY, colW, "Categoría",  categoryLabel);
+      cursorY += rowGap;
+
+      /* Fila 3 */
+      drawCell(marginL, cursorY, colW, "Departamento", unitLabel);
+      drawCell(col2X,   cursorY, colW, "Prioridad",    priorityLabel);
+      cursorY += rowGap;
+
+      /* Fila 4 — descripción, ancho completo */
+      const descText  = ticket.description || ticket.title;
+      const descLines = doc.splitTextToSize(descText, contentW - cellPad * 2) as string[];
+      const descCellH = Math.max(cellH, cellPad * 2 + descLines.length * 12);
+
+      doc.setFillColor(248, 249, 250);
+      doc.roundedRect(marginL, cursorY, contentW, descCellH, 4, 4, "F");
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.5);
+      doc.roundedRect(marginL, cursorY, contentW, descCellH, 4, 4, "S");
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(148, 163, 184);
+      doc.text("DESCRIPCIÓN DEL PROBLEMA", marginL + cellPad, cursorY + cellPad + 7);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(15, 23, 42);
+      doc.text(descLines, marginL + cellPad, cursorY + cellPad + 20);
+
+      cursorY += descCellH + 16;
+
+      /* ── TABLA DE MATERIALES ─────────────────────────────────────── */
+      type DocWithAutoTable = typeof doc & { lastAutoTable?: { finalY: number } };
+
       autoTable(doc, {
         startY: cursorY,
-        head: [["#", "Descripción", "Cantidad", "Unidad"]],
+        margin: { left: marginL, right: marginR },
+        head: [["#", "Material", "Cantidad", "Unidad"]],
         body: mats.length > 0
           ? mats.map((m, i) => [String(i + 1), m.description, String(m.quantity), m.unit])
           : [["—", "Sin materiales registrados", "", ""]],
-        theme: "striped",
-        headStyles: { fillColor: [30, 30, 30], fontSize: 10 },
-        styles: { fontSize: 10 },
+        theme: "plain",
+        headStyles: {
+          fillColor: [15, 23, 42],
+          textColor: [255, 255, 255],
+          fontSize: 9,
+          fontStyle: "bold",
+          cellPadding: 8,
+        },
+        bodyStyles: {
+          fontSize: 10,
+          cellPadding: 8,
+          textColor: [15, 23, 42],
+        },
+        alternateRowStyles: { fillColor: [248, 249, 250] },
+        styles: {
+          lineColor: [229, 231, 235],
+          lineWidth: 0.5,
+        },
         columnStyles: {
-          0: { cellWidth: 10 },
-          2: { cellWidth: 25 },
-          3: { cellWidth: 28 },
+          0: { cellWidth: 24 },
+          2: { cellWidth: 60, halign: "center" },
+          3: { cellWidth: 60 },
         },
       });
 
-      /* Footer */
-      type DocWithAutoTable = typeof doc & { lastAutoTable?: { finalY: number } };
+      /* ── FOOTER ──────────────────────────────────────────────────── */
       const finalY = (doc as DocWithAutoTable).lastAutoTable?.finalY ?? cursorY + 40;
-      doc.setFontSize(9);
-      doc.setTextColor(150);
-      doc.text("Generado por PropAdmin · FRA-MAR", 14, finalY + 14);
+      const footerY = finalY + 20;
+
+      doc.setDrawColor(226, 232, 240);
+      doc.setLineWidth(0.75);
+      doc.line(marginL, footerY, pageW - marginR, footerY);
+
+      doc.setFontSize(8);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(148, 163, 184);
+      doc.text(
+        `Generado por PropAdmin · ${companyName || ""} · ${fechaStr}`,
+        marginL,
+        footerY + 14,
+      );
 
       doc.save(`orden-materiales-${folio}.pdf`);
     } catch {
@@ -1110,15 +1234,25 @@ export default function MaintenancePage() {
 
   // ─── TICKET COMPUTED ──────────────────────────────────────────────────────
 
+  const [searchQuery, setSearchQuery] = useState("");
+
   const filteredTickets = useMemo(() => {
+    const q = searchQuery.trim() ? normalizeText(searchQuery.trim()) : "";
     return tickets.filter((t) => {
       if (filterBuilding  !== "ALL" && t.building_id !== filterBuilding) return false;
       if (filterPriority  !== "ALL" && (t.priority || "").toLowerCase() !== filterPriority) return false;
       if (filterStatus    !== "ALL" && (t.status   || "").toLowerCase() !== filterStatus)   return false;
       if (filterCategory  !== "ALL" && t.category_name_snapshot !== filterCategory) return false;
+      if (q) {
+        const num      = normalizeText(t.ticket_number || "");
+        const title    = normalizeText(t.title);
+        const building = normalizeText(t.buildings?.name || "");
+        const unit     = normalizeText(t.units?.display_code || t.units?.unit_number || "");
+        if (!num.includes(q) && !title.includes(q) && !building.includes(q) && !unit.includes(q)) return false;
+      }
       return true;
     });
-  }, [tickets, filterBuilding, filterPriority, filterStatus, filterCategory]);
+  }, [tickets, filterBuilding, filterPriority, filterStatus, filterCategory, searchQuery]);
 
   const ticketTotals = useMemo(() => {
     const now = new Date();
@@ -1165,7 +1299,7 @@ export default function MaintenancePage() {
         title="Mantenimiento"
         subtitle="Gestión de tickets, seguimiento de trabajos y calendario operativo."
         titleIcon={<Wrench size={18} />}
-        action={
+        actions={
           activeMainTab === "tickets" ? (
             <UiButton
               icon={<Plus size={16} />}
@@ -1240,6 +1374,22 @@ export default function MaintenancePage() {
                   }}
                 >
                   <Filter size={14} /> Filtros
+                </div>
+
+                {/* Buscador de texto libre */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
+                  <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                  <input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Buscar ticket o descripción..."
+                    style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: "var(--text-primary)" }}
+                  />
+                  {searchQuery ? (
+                    <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
+                      <X size={14} />
+                    </button>
+                  ) : null}
                 </div>
 
                 <select
@@ -1345,6 +1495,11 @@ export default function MaintenancePage() {
                     generatingPdf={generatingPdfId === ticket.id}
                   />
                 ))}
+                {tickets.length === 200 ? (
+                  <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>
+                    Mostrando los 200 tickets más recientes
+                  </p>
+                ) : null}
               </div>
             )}
 
@@ -1619,14 +1774,6 @@ export default function MaintenancePage() {
               </select>
             </AppFormField>
 
-            <AppFormField label="Fecha programada">
-              <input
-                type="date"
-                style={INPUT_STYLE}
-                value={createForm.scheduled_date}
-                onChange={(e) => setCreateForm((p) => ({ ...p, scheduled_date: e.target.value }))}
-              />
-            </AppFormField>
           </div>
 
           <AppFormField label="Reportado por">
@@ -1812,9 +1959,15 @@ function TicketCard({
           <Badge label={getPriorityLabel(ticket.priority)} style={priorityStyle} />
         </div>
 
-        {/* Derecha: estado + fecha + "..." */}
+        {/* Derecha: estado + fotos + fecha + "..." */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           <Badge label={getStatusLabel(ticket.status)} style={statusStyle} />
+          {photos.length > 0 ? (
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+              <Camera size={13} />
+              {photos.length}
+            </span>
+          ) : null}
           <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
             {formatDate(ticket.created_at)}
           </span>
@@ -1891,9 +2044,6 @@ function TicketCard({
                 <InfoTile label="Reportado por" value={ticket.reported_by} />
               ) : null}
               <InfoTile label="Fecha de creación" value={formatDate(ticket.created_at)} />
-              {ticket.scheduled_date ? (
-                <InfoTile label="Fecha programada" value={formatDate(ticket.scheduled_date)} />
-              ) : null}
               {ticket.resolved_at ? (
                 <InfoTile label="Fecha de resolución" value={formatDate(ticket.resolved_at)} />
               ) : null}
