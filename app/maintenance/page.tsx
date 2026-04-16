@@ -25,7 +25,7 @@ import {
   type CSSProperties,
   type FormEvent,
 } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   CalendarClock,
   Camera,
@@ -107,6 +107,8 @@ type Material = {
   description: string;
   quantity: number;
   unit: string;
+  supplier_id: string | null;
+  supplier_name?: string;
 };
 
 type MaterialDraft = {
@@ -114,6 +116,19 @@ type MaterialDraft = {
   description: string;
   quantity: string | number;
   unit: string;
+  supplierId: string;
+};
+
+type SupplierOption = {
+  id: string;
+  name: string;
+};
+
+type TicketPurchaseOrder = {
+  id: string;
+  folio: string;
+  status: "pending" | "sent" | "received" | "cancelled";
+  supplier_name: string | null;
 };
 
 type BuildingOption = {
@@ -412,6 +427,7 @@ export default function MaintenancePage() {
   const { user, loading } = useCurrentUser();
   const { logoUrl } = useTheme();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   /* ── Main tab ───────────────────────────────────────────────────── */
   const [activeMainTab, setActiveMainTab] = useState<MainTab>("tickets");
@@ -434,10 +450,14 @@ export default function MaintenancePage() {
     useState<Record<string, Material[]>>({});
   const [editingMaterials, setEditingMaterials] =
     useState<Record<string, MaterialDraft[]>>({});
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
+  const [purchaseOrdersByTicket, setPurchaseOrdersByTicket] =
+    useState<Record<string, TicketPurchaseOrder[]>>({});
 
   const [savingMaterialsId, setSavingMaterialsId] = useState<string | null>(null);
   const [uploadingPhotoId, setUploadingPhotoId]   = useState<string | null>(null);
   const [generatingPdfId, setGeneratingPdfId]     = useState<string | null>(null);
+  const [generatingOcId,  setGeneratingOcId]      = useState<string | null>(null);
 
   /* ── Filters ────────────────────────────────────────────────────── */
   const [filterBuilding,  setFilterBuilding]  = useState("ALL");
@@ -480,6 +500,18 @@ export default function MaintenancePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  /* Auto-expand por URL ?expand=<id> (entrada desde Compras) */
+  useEffect(() => {
+    const expand = searchParams.get("expand");
+    if (!expand || tickets.length === 0) return;
+    if (expandedId === expand) return;
+    const found = tickets.find((t) => t.id === expand);
+    if (!found) return;
+    setActiveMainTab("tickets");
+    void handleToggleExpand(expand);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams, tickets]);
+
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   async function loadPageData() {
@@ -492,6 +524,7 @@ export default function MaintenancePage() {
       { data: buildData },
       { data: ticketData, error: ticketError },
       { data: companyData },
+      { data: supplierData },
     ] = await Promise.all([
       supabase
         .from("maintenance_categories")
@@ -526,6 +559,14 @@ export default function MaintenancePage() {
         .select("name, logo_url, logo_print_url, logo_dark_url")
         .eq("id", user.company_id)
         .single(),
+
+      supabase
+        .from("suppliers")
+        .select("id, name")
+        .eq("company_id", user.company_id)
+        .eq("active", true)
+        .is("deleted_at", null)
+        .order("name", { ascending: true }),
     ]);
 
     if (ticketError) {
@@ -536,6 +577,7 @@ export default function MaintenancePage() {
 
     setCategories((catData as MaintenanceCategory[]) || []);
     setBuildings((buildData as BuildingOption[]) || []);
+    setSuppliers((supplierData as SupplierOption[]) || []);
     if (companyData && "name" in companyData) {
       const cd = companyData as { name: string; logo_url?: string; logo_print_url?: string };
       setCompanyName(cd.name || "");
@@ -615,17 +657,45 @@ export default function MaintenancePage() {
   async function loadMaterials(ticketId: string) {
     const { data, error } = await supabase
       .from("maintenance_materials")
-      .select("id, maintenance_log_id, description, quantity, unit")
+      .select(`
+        id, maintenance_log_id, description, quantity, unit,
+        supplier_id, created_at, deleted_at,
+        suppliers(id, name)
+      `)
       .eq("maintenance_log_id", ticketId)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
 
-    const mats = (!error && data) ? (data as Material[]) : [];
+    type MatRow = {
+      id: string;
+      maintenance_log_id: string;
+      description: string;
+      quantity: number;
+      unit: string;
+      supplier_id: string | null;
+      suppliers: { id: string; name: string } | null;
+    };
+
+    const rows = (!error && data) ? (data as unknown as MatRow[]) : [];
+    const mats: Material[] = rows.map((r) => ({
+      id:                 r.id,
+      maintenance_log_id: r.maintenance_log_id,
+      description:        r.description,
+      quantity:           r.quantity,
+      unit:               r.unit,
+      supplier_id:        r.supplier_id,
+      supplier_name:      r.suppliers?.name,
+    }));
+
     setMaterialsByTicket((prev) => ({ ...prev, [ticketId]: mats }));
     setEditingMaterials((prev) => ({
       ...prev,
       [ticketId]: mats.map((m) => ({
-        id: m.id, description: m.description, quantity: m.quantity, unit: m.unit,
+        id: m.id,
+        description: m.description,
+        quantity: m.quantity,
+        unit: m.unit,
+        supplierId: m.supplier_id || "",
       })),
     }));
   }
@@ -641,6 +711,32 @@ export default function MaintenancePage() {
     if (!materialsByTicket[ticketId]) {
       await loadMaterials(ticketId);
     }
+    if (!purchaseOrdersByTicket[ticketId]) {
+      await loadPurchaseOrdersForTicket(ticketId);
+    }
+  }
+
+  async function loadPurchaseOrdersForTicket(ticketId: string) {
+    const { data } = await supabase
+      .from("purchase_orders")
+      .select("id, folio, status, suppliers(name)")
+      .eq("maintenance_log_id", ticketId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+
+    type Row = {
+      id: string;
+      folio: string;
+      status: "pending" | "sent" | "received" | "cancelled";
+      suppliers: { name: string } | null;
+    };
+    const rows = ((data || []) as unknown as Row[]).map((r) => ({
+      id:            r.id,
+      folio:         r.folio,
+      status:        r.status,
+      supplier_name: r.suppliers?.name ?? null,
+    }));
+    setPurchaseOrdersByTicket((prev) => ({ ...prev, [ticketId]: rows }));
   }
 
   async function handleCreateTicket(e: FormEvent) {
@@ -806,6 +902,7 @@ export default function MaintenancePage() {
           description:        d.description.trim(),
           quantity:           Number(d.quantity),
           unit:               d.unit,
+          supplier_id:        d.supplierId || null,
         }))
       );
     }
@@ -1032,6 +1129,265 @@ export default function MaintenancePage() {
     }
 
     setGeneratingPdfId(null);
+  }
+
+  /* ── Órdenes de compra — un PDF por proveedor ───────────────────── */
+  async function handleGeneratePurchaseOrders(ticket: Ticket) {
+    if (!user?.company_id) return;
+
+    const mats = materialsByTicket[ticket.id] || [];
+    const matsWithSupplier = mats.filter((m) => m.supplier_id);
+    if (matsWithSupplier.length === 0) {
+      setMsg("No hay materiales con proveedor asignado.");
+      return;
+    }
+
+    setGeneratingOcId(ticket.id);
+
+    try {
+      /* Cargar datos completos de los proveedores involucrados */
+      const supplierIds = Array.from(new Set(matsWithSupplier.map((m) => m.supplier_id!)));
+      const { data: supplierRows } = await supabase
+        .from("suppliers")
+        .select("id, name, contact_name, email, phone, address, tax_id")
+        .in("id", supplierIds);
+
+      type SupplierFull = {
+        id: string;
+        name: string;
+        contact_name: string | null;
+        email: string | null;
+        phone: string | null;
+        address: string | null;
+        tax_id: string | null;
+      };
+      const supplierMap = new Map<string, SupplierFull>(
+        ((supplierRows || []) as SupplierFull[]).map((s) => [s.id, s])
+      );
+
+      /* Agrupar materiales por proveedor */
+      const groups = new Map<string, Material[]>();
+      for (const m of matsWithSupplier) {
+        const sid = m.supplier_id!;
+        if (!groups.has(sid)) groups.set(sid, []);
+        groups.get(sid)!.push(m);
+      }
+
+      /* Compresión de logo reutilizada del PDF de orden de materiales */
+      async function compressLogoForPDF(imgUrl: string): Promise<string> {
+        return new Promise((resolve) => {
+          const img = new Image();
+          img.crossOrigin = "anonymous";
+          img.onload = () => {
+            const maxW = 300, maxH = 100;
+            const ratio = Math.min(maxW / img.width, maxH / img.height);
+            const w = img.width * ratio;
+            const h = img.height * ratio;
+            const canvas = document.createElement("canvas");
+            canvas.width  = w;
+            canvas.height = h;
+            const ctx = canvas.getContext("2d")!;
+            ctx.drawImage(img, 0, 0, w, h);
+            resolve(canvas.toDataURL("image/png"));
+          };
+          img.onerror = () => resolve("");
+          img.src = imgUrl;
+        });
+      }
+
+      const { default: jsPDF }     = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+
+      const year          = new Date().getFullYear();
+      const ticketNumRaw  = String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase();
+      const fechaStr      = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+      const buildingName  = ticket.buildings?.name    || "Sin edificio";
+      const buildingAddr  = ticket.buildings?.address || "";
+      const unitLabel     = ticket.units ? (ticket.units.display_code || ticket.units.unit_number) : "—";
+
+      const pdfLogoSrc = companyLogoPrint || companyLogoUrl;
+      const compressedLogo = pdfLogoSrc ? await compressLogoForPDF(pdfLogoSrc) : "";
+
+      /* Generar un PDF por proveedor */
+      const entries = Array.from(groups.entries());
+      for (let i = 0; i < entries.length; i++) {
+        const [supplierId, supplierMats] = entries[i];
+        const supplier = supplierMap.get(supplierId);
+        if (!supplier) continue;
+
+        const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
+        const pageW    = 612;
+        const marginL  = 40;
+        const marginR  = 40;
+        const contentW = pageW - marginL - marginR;
+
+        const supplierCode = supplier.name
+          .toUpperCase()
+          .replace(/[^A-Z0-9]/g, "")
+          .slice(0, 6) || supplier.id.slice(0, 6).toUpperCase();
+        const folio = `OC-${year}-${ticketNumRaw}-${supplierCode}`;
+
+        /* ── HEADER ── */
+        let cursorY  = 40;
+        let logoEndX = marginL;
+
+        if (compressedLogo) {
+          try {
+            const tmpImg = new Image();
+            await new Promise<void>((res) => { tmpImg.onload = () => res(); tmpImg.onerror = () => res(); tmpImg.src = compressedLogo; });
+            const logoMaxW = 120, logoMaxH = 60;
+            const logoRatio = Math.min(logoMaxW / (tmpImg.width || 1), logoMaxH / (tmpImg.height || 1));
+            const logoW = (tmpImg.width || logoMaxW) * logoRatio;
+            const logoH = (tmpImg.height || logoMaxH) * logoRatio;
+            doc.addImage(compressedLogo, "PNG", marginL, cursorY, logoW, logoH);
+            logoEndX = marginL + logoW + 16;
+          } catch { /* sin logo */ }
+        }
+
+        const headerRightX = logoEndX + 10;
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(18);
+        doc.setTextColor(15, 23, 42);
+        doc.text("Orden de Compra", headerRightX, cursorY + 14);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(10);
+        doc.setTextColor(100, 116, 139);
+        doc.text(`Folio: ${folio}`, headerRightX, cursorY + 30);
+        doc.text(`Fecha: ${fechaStr}`, headerRightX, cursorY + 44);
+
+        cursorY += 72;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.75);
+        doc.line(marginL, cursorY, pageW - marginR, cursorY);
+        cursorY += 16;
+
+        /* ── Helper drawCell ── */
+        const cellH   = 36;
+        const cellPad = 8;
+        const colW    = (contentW - 8) / 2;
+        const col2X   = marginL + colW + 8;
+
+        function drawCell(x: number, y: number, w: number, label: string, value: string, fullWidth = false) {
+          const cellWidth = fullWidth ? contentW : w;
+          doc.setFillColor(248, 249, 250);
+          doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "F");
+          doc.setDrawColor(229, 231, 235);
+          doc.setLineWidth(0.5);
+          doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "S");
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(8);
+          doc.setTextColor(148, 163, 184);
+          doc.text(label.toUpperCase(), x + cellPad, y + cellPad + 7);
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(10);
+          doc.setTextColor(15, 23, 42);
+          const maxValueW = cellWidth - cellPad * 2;
+          const valueLines = doc.splitTextToSize(value || "—", maxValueW) as string[];
+          doc.text(valueLines[0] ?? "—", x + cellPad, y + cellPad + 20);
+        }
+
+        const rowGap = cellH + 6;
+
+        /* ── PROVEEDOR ── */
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text("PROVEEDOR", marginL, cursorY);
+        cursorY += 10;
+
+        drawCell(marginL, cursorY, colW, "Nombre", supplier.name);
+        drawCell(col2X,   cursorY, colW, "RFC",    supplier.tax_id || "—");
+        cursorY += rowGap;
+
+        drawCell(marginL, cursorY, colW, "Email",    supplier.email || "—");
+        drawCell(col2X,   cursorY, colW, "Teléfono", supplier.phone || "—");
+        cursorY += rowGap;
+
+        if (supplier.address) {
+          drawCell(marginL, cursorY, contentW, "Dirección", supplier.address, true);
+          cursorY += rowGap;
+        }
+
+        cursorY += 6;
+
+        /* ── TICKET / EDIFICIO ── */
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(10);
+        doc.setTextColor(15, 23, 42);
+        doc.text("TICKET", marginL, cursorY);
+        cursorY += 10;
+
+        drawCell(marginL, cursorY, colW, "Edificio",     buildingName);
+        drawCell(col2X,   cursorY, colW, "Ticket #",     getTicketNumber(ticket));
+        cursorY += rowGap;
+
+        drawCell(marginL, cursorY, colW, "Dirección",    buildingAddr || "—");
+        drawCell(col2X,   cursorY, colW, "Departamento", unitLabel || "—");
+        cursorY += rowGap + 6;
+
+        /* ── TABLA DE MATERIALES ── */
+        type DocWithAutoTable = typeof doc & { lastAutoTable?: { finalY: number } };
+
+        autoTable(doc, {
+          startY: cursorY,
+          margin: { left: marginL, right: marginR },
+          head: [["#", "Descripción", "Cantidad", "Unidad"]],
+          body: supplierMats.map((m, idx) => [
+            String(idx + 1),
+            m.description,
+            String(m.quantity),
+            m.unit,
+          ]),
+          theme: "plain",
+          headStyles: {
+            fillColor: [15, 23, 42],
+            textColor: [255, 255, 255],
+            fontSize: 9,
+            fontStyle: "bold",
+            cellPadding: 8,
+          },
+          bodyStyles: {
+            fontSize: 10,
+            cellPadding: 8,
+            textColor: [15, 23, 42],
+          },
+          alternateRowStyles: { fillColor: [248, 249, 250] },
+          styles: { lineColor: [229, 231, 235], lineWidth: 0.5 },
+          columnStyles: {
+            0: { cellWidth: 24 },
+            2: { cellWidth: 60, halign: "center" },
+            3: { cellWidth: 60 },
+          },
+        });
+
+        /* ── FOOTER ── */
+        const finalY  = (doc as DocWithAutoTable).lastAutoTable?.finalY ?? cursorY + 40;
+        const footerY = finalY + 20;
+
+        doc.setDrawColor(226, 232, 240);
+        doc.setLineWidth(0.75);
+        doc.line(marginL, footerY, pageW - marginR, footerY);
+
+        doc.setFontSize(8);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `Generado por PropAdmin · ${companyName || ""} · ${fechaStr}`,
+          marginL,
+          footerY + 14,
+        );
+
+        doc.save(`${folio}.pdf`);
+      }
+
+      setMsg(`Se generaron ${entries.length} orden(es) de compra.`);
+    } catch {
+      setMsg("Error al generar las órdenes de compra.");
+    }
+
+    setGeneratingOcId(null);
   }
 
   async function handleCreateBuildingChange(buildingId: string) {
@@ -1498,6 +1854,12 @@ export default function MaintenancePage() {
                     onDeletePhoto={(url) => handleDeletePhoto(ticket, url)}
                     onGeneratePDF={() => handleGeneratePDF(ticket)}
                     generatingPdf={generatingPdfId === ticket.id}
+                    suppliers={suppliers}
+                    materials={materialsByTicket[ticket.id] || []}
+                    onGeneratePurchaseOrders={() => handleGeneratePurchaseOrders(ticket)}
+                    generatingOc={generatingOcId === ticket.id}
+                    purchaseOrders={purchaseOrdersByTicket[ticket.id] || []}
+                    onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
                   />
                 ))}
                 {tickets.length === 200 ? (
@@ -1885,6 +2247,12 @@ function TicketCard({
   onDeletePhoto,
   onGeneratePDF,
   generatingPdf,
+  suppliers,
+  materials,
+  onGeneratePurchaseOrders,
+  generatingOc,
+  purchaseOrders,
+  onOpenPurchaseOrder,
 }: {
   ticket: Ticket;
   isExpanded: boolean;
@@ -1903,6 +2271,12 @@ function TicketCard({
   onDeletePhoto: (url: string) => Promise<void>;
   onGeneratePDF: () => Promise<void>;
   generatingPdf: boolean;
+  suppliers: SupplierOption[];
+  materials: Material[];
+  onGeneratePurchaseOrders: () => Promise<void>;
+  generatingOc: boolean;
+  purchaseOrders: TicketPurchaseOrder[];
+  onOpenPurchaseOrder: (oc: TicketPurchaseOrder) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -2159,15 +2533,16 @@ function TicketCard({
             ) : (
               <div style={{ display: "grid", gap: 8 }}>
                 {/* Encabezado */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 130px 32px", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 130px 160px 32px", gap: 8 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Descripción</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textAlign: "center" }}>Cant.</span>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Unidad</span>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Proveedor</span>
                   <span />
                 </div>
 
                 {editingMaterials.map((mat, idx) => (
-                  <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 80px 130px 32px", gap: 8, alignItems: "center" }}>
+                  <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 80px 130px 160px 32px", gap: 8, alignItems: "center" }}>
                     <input
                       style={INPUT_STYLE}
                       placeholder="Descripción del material"
@@ -2209,6 +2584,21 @@ function TicketCard({
                         <option key={u} value={u}>{u}</option>
                       ))}
                     </select>
+                    <select
+                      style={INPUT_STYLE}
+                      value={mat.supplierId}
+                      onChange={(e) => {
+                        const updated = editingMaterials.map((m, i) =>
+                          i === idx ? { ...m, supplierId: e.target.value } : m
+                        );
+                        onMaterialsChange(updated);
+                      }}
+                    >
+                      <option value="">Sin proveedor</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}</option>
+                      ))}
+                    </select>
                     <button
                       type="button"
                       onClick={() => onMaterialsChange(editingMaterials.filter((_, i) => i !== idx))}
@@ -2231,7 +2621,7 @@ function TicketCard({
               <button
                 type="button"
                 onClick={() =>
-                  onMaterialsChange([...editingMaterials, { description: "", quantity: 1, unit: "Pieza" }])
+                  onMaterialsChange([...editingMaterials, { description: "", quantity: 1, unit: "Pieza", supplierId: "" }])
                 }
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
@@ -2278,7 +2668,87 @@ function TicketCard({
                 <FileText size={14} />
                 {generatingPdf ? "Generando..." : "Generar PDF"}
               </button>
+
+              {materials.some((m) => m.supplier_id) ? (
+                <button
+                  type="button"
+                  onClick={onGeneratePurchaseOrders}
+                  disabled={generatingOc}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "8px 14px", borderRadius: 8,
+                    border: "1px solid var(--border-default)",
+                    background: "var(--bg-card)", color: "var(--text-primary)",
+                    fontSize: 13, fontWeight: 600,
+                    cursor: generatingOc ? "wait" : "pointer",
+                    opacity: generatingOc ? 0.7 : 1,
+                  }}
+                >
+                  <FileText size={14} />
+                  {generatingOc ? "Generando..." : "Generar OC"}
+                </button>
+              ) : null}
             </div>
+
+            {purchaseOrders.length > 0 ? (
+              <div style={{ marginTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                  Órdenes de compra generadas
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  {purchaseOrders.map((oc) => {
+                    const statusLabel =
+                      oc.status === "pending"   ? "Pendiente" :
+                      oc.status === "sent"      ? "Enviada"   :
+                      oc.status === "received"  ? "Recibida"  :
+                      "Cancelada";
+                    const statusStyle =
+                      oc.status === "pending"   ? { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)" } :
+                      oc.status === "sent"      ? { background: "var(--badge-bg-blue)",  color: "var(--badge-text-blue)"  } :
+                      oc.status === "received"  ? { background: "var(--badge-bg-green)", color: "var(--badge-text-green)" } :
+                                                  { background: "var(--badge-bg-red)",   color: "var(--badge-text-red)"   };
+                    return (
+                      <div
+                        key={oc.id}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+                          padding: "8px 12px",
+                          border: "1px solid var(--border-default)",
+                          borderRadius: 8,
+                          background: "var(--bg-input)",
+                        }}
+                      >
+                        <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                          {oc.folio}
+                        </span>
+                        <span style={{ fontSize: 13, color: "var(--text-secondary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          · {oc.supplier_name || "Sin proveedor"}
+                        </span>
+                        <span style={{
+                          padding: "3px 8px", borderRadius: 20,
+                          fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
+                          ...statusStyle,
+                        }}>
+                          {statusLabel}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => onOpenPurchaseOrder(oc)}
+                          style={{
+                            padding: "6px 10px", borderRadius: 6,
+                            border: "1px solid var(--border-default)",
+                            background: "var(--bg-card)", color: "var(--text-primary)",
+                            fontSize: 12, fontWeight: 600, cursor: "pointer",
+                          }}
+                        >
+                          Ver en Compras
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
           </div>
 
         </div>
