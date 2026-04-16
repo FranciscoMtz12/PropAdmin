@@ -139,10 +139,12 @@ export default function CampoTicketsPage() {
   /* Foto picker — "create" | ticketId | null */
   const [photoPicker, setPhotoPicker] = useState<"create" | string | null>(null);
 
-  /* Camera refs — 4 inputs FUERA de cualquier modal (evita dismiss en iOS) */
-  const createCamRef     = useRef<HTMLInputElement>(null); // crear ticket, cámara
+  /* File refs — inputs FUERA de cualquier modal (evita dismiss en iOS) */
+  // TODO: fix iOS camera capture - temporalmente deshabilitado
+  // const createCamRef     = useRef<HTMLInputElement>(null); // crear ticket, cámara
   const createGalleryRef = useRef<HTMLInputElement>(null); // crear ticket, carrete
-  const detailCamRef     = useRef<HTMLInputElement>(null); // ticket existente, cámara
+  // TODO: fix iOS camera capture - temporalmente deshabilitado
+  // const detailCamRef     = useRef<HTMLInputElement>(null); // ticket existente, cámara
   const detailGalleryRef = useRef<HTMLInputElement>(null); // ticket existente, carrete
 
   /* ── Load ───────────────────────────────────────────────────── */
@@ -324,10 +326,13 @@ export default function CampoTicketsPage() {
 
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path      = `temp/${user.id}-${id}-${cleanName}`;
-      const { error: uploadErr } = await supabase.storage
+      const { data, error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
+      console.log("Upload result:", { data, error: uploadErr, path, fileSize: file.size });
       if (uploadErr) {
+        console.error("Upload error detail:", JSON.stringify(uploadErr));
+        alert("Error al subir: " + uploadErr.message);
         setCPhotos(prev => prev.filter(p => p.id !== id));
         continue;
       }
@@ -359,10 +364,15 @@ export default function CampoTicketsPage() {
     for (const file of files) {
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path      = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${cleanName}`;
-      const { error: uploadErr } = await supabase.storage
+      const { data, error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
-      if (uploadErr) continue;
+      console.log("Upload result:", { data, error: uploadErr, path, fileSize: file.size });
+      if (uploadErr) {
+        console.error("Upload error detail:", JSON.stringify(uploadErr));
+        alert("Error al subir: " + uploadErr.message);
+        continue;
+      }
       const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
       if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
     }
@@ -510,15 +520,19 @@ export default function CampoTicketsPage() {
 
   return (
     <>
-      {/* 4 inputs de cámara — fuera de cualquier modal para evitar dismiss en iOS */}
+      {/* Inputs de archivo — fuera de cualquier modal para evitar dismiss en iOS */}
+      {/* TODO: fix iOS camera capture - temporalmente deshabilitado
       <input ref={createCamRef} type="file" accept="image/*"
         capture={"environment" as unknown as boolean}
         style={{ display: "none" }} onChange={handleCreatePhoto} />
+      */}
       <input ref={createGalleryRef} type="file" accept="image/*" multiple
         style={{ display: "none" }} onChange={handleCreatePhoto} />
+      {/* TODO: fix iOS camera capture - temporalmente deshabilitado
       <input ref={detailCamRef} type="file" accept="image/*"
         capture={"environment" as unknown as boolean}
         style={{ display: "none" }} onChange={handleDetailPhoto} />
+      */}
       <input ref={detailGalleryRef} type="file" accept="image/*" multiple
         style={{ display: "none" }} onChange={handleDetailPhoto} />
 
@@ -908,6 +922,7 @@ export default function CampoTicketsPage() {
 
             <div style={{ height: 1, background: "var(--border-default)" }} />
 
+            {/* TODO: fix iOS camera capture - temporalmente deshabilitado
             <button
               type="button"
               onClick={() => triggerInput(photoPicker === "create" ? createCamRef : detailCamRef)}
@@ -917,6 +932,7 @@ export default function CampoTicketsPage() {
             </button>
 
             <div style={{ height: 1, background: "var(--border-default)" }} />
+            */}
 
             <button
               type="button"
