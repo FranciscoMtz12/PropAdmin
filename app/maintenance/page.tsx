@@ -182,9 +182,11 @@ const TICKET_CATEGORIES = [
 ];
 
 const PRIORITIES = [
-  { value: "alta",  label: "Alta" },
-  { value: "media", label: "Media" },
-  { value: "baja",  label: "Baja" },
+  { value: "urgent", label: "Urgente" },
+  { value: "high",   label: "Alta"    },
+  { value: "medium", label: "Media"   },
+  { value: "normal", label: "Normal"  },
+  { value: "low",    label: "Baja"    },
 ];
 
 const TICKET_STATUSES = [
@@ -219,9 +221,10 @@ const MONTH_LABELS = [
 
 function getPriorityStyle(priority: string | null): CSSProperties {
   const p = (priority || "").toLowerCase();
-  if (p === "alta") return { background: "var(--badge-bg-red)",   color: "var(--badge-text-red)",   border: "1px solid var(--metric-border-red)" };
-  if (p === "baja") return { background: "var(--badge-bg-blue)",  color: "var(--badge-text-blue)",  border: "1px solid var(--metric-border-blue)" };
-  return             { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)", border: "1px solid var(--metric-border-amber)" };
+  if (p === "urgent" || p === "urgente") return { background: "var(--badge-bg-red)",   color: "var(--badge-text-red)",   border: "1px solid var(--metric-border-red)"   };
+  if (p === "high"   || p === "alta")    return { background: "var(--badge-bg-amber)", color: "var(--badge-text-amber)", border: "1px solid var(--metric-border-amber)" };
+  if (p === "low"    || p === "baja")    return { background: "var(--badge-bg-blue)",  color: "var(--badge-text-blue)",  border: "1px solid var(--metric-border-blue)"  };
+  return                                        { background: "var(--badge-bg-blue)",  color: "var(--badge-text-blue)",  border: "1px solid var(--metric-border-blue)"  };
 }
 
 function getStatusStyle(status: string | null): CSSProperties {
@@ -233,9 +236,11 @@ function getStatusStyle(status: string | null): CSSProperties {
 
 function getPriorityLabel(priority: string | null) {
   const p = (priority || "").toLowerCase();
-  if (p === "alta") return "Alta";
-  if (p === "baja") return "Baja";
-  return "Media";
+  if (p === "urgent" || p === "urgente") return "Urgente";
+  if (p === "high"   || p === "alta")    return "Alta";
+  if (p === "medium" || p === "media")   return "Media";
+  if (p === "low"    || p === "baja")    return "Baja";
+  return "Normal";
 }
 
 function getStatusLabel(status: string | null) {
@@ -395,7 +400,7 @@ const EMPTY_CREATE_FORM = {
   building_id: "",
   unit_id: "",
   category: "",
-  priority: "media",
+  priority: "medium",
   log_type: "corrective",
   description: "",
   reported_by: "",

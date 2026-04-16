@@ -1,87 +1,148 @@
 "use client";
 
 /*
-  Portal de campo — Tickets de mantenimiento.
-
-  Lista tickets con filtros por estado.
-  FAB para crear nuevo ticket.
-  Modal de creación con cámara (input file accept="image/*" capture="environment").
+  Portal de campo — Tickets.
+  - Camera inputs OUTSIDE any modal/sheet (FIX 1)
+  - Área selector con áreas fijas + departamentos (FIX 3)
+  - Asset relacionado (FIX 4)
+  - Draft en localStorage (FIX 5)
+  - Expansión inline con fotos, materiales y botones de estado (FIX 6)
 */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { Camera, Plus, X } from "lucide-react";
+import { Building2, Calendar, Camera, Check, ChevronDown, ChevronUp, Image as ImageIcon, Play, Plus, Trash2, X } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+
+/* ── Types ─────────────────────────────────────────────────────── */
 
 type Ticket = {
   id: string;
   ticket_number: string | null;
   title: string;
+  description: string | null;
   status: string;
   priority: string;
   created_at: string;
+  photos: string[] | null;
   buildings: { name: string } | null;
   units: { display_code: string | null; unit_number: string | null } | null;
 };
 
 type Building = { id: string; name: string };
+type Unit     = { id: string; unit_number: string | null; display_code: string | null };
+type Asset    = { id: string; name: string; asset_type: string | null };
+
+type MaterialRow = {
+  id: string;
+  description: string;
+  quantity: string;
+  unit: string;
+};
+
+type CreateForm = {
+  title:      string;
+  buildingId: string;
+  area:       string;  // fixed area key OR unit_id
+  assetId:    string;
+  priority:   string;
+  desc:       string;
+};
+
+const DEFAULT_FORM: CreateForm = {
+  title: "", buildingId: "", area: "", assetId: "", priority: "normal", desc: "",
+};
+
+const DRAFT_KEY = "campo_ticket_draft";
+
+const FIXED_AREAS = [
+  { value: "areas_comunes",   label: "Áreas comunes"      },
+  { value: "cuarto_maquinas", label: "Cuarto de máquinas" },
+  { value: "cochera",         label: "Cochera"            },
+  { value: "otro_area",       label: "Otra área"          },
+];
+const FIXED_AREA_VALUES = new Set(FIXED_AREAS.map(a => a.value));
 
 type StatusFilter = "all" | "pending" | "in_progress" | "resolved";
 
 const STATUS_LABELS: Record<string, string> = {
-  pending:     "Pendiente",
-  in_progress: "En proceso",
-  resolved:    "Resuelto",
-  cancelled:   "Cancelado",
+  pending: "Pendiente", in_progress: "En proceso", resolved: "Resuelto", cancelled: "Cancelado",
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: "Baja", normal: "Normal", medium: "Media", high: "Alta", urgent: "Urgente",
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
   urgent: "var(--badge-text-red)",
   high:   "var(--badge-text-amber)",
+  medium: "var(--badge-text-amber)",
   normal: "var(--badge-text-blue)",
   low:    "var(--text-muted)",
 };
 
 const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
-  pending:     { bg: "var(--badge-bg-amber)",  text: "var(--badge-text-amber)"  },
-  in_progress: { bg: "var(--badge-bg-blue)",   text: "var(--badge-text-blue)"   },
-  resolved:    { bg: "var(--badge-bg-green)",  text: "var(--badge-text-green)"  },
-  cancelled:   { bg: "var(--badge-bg-gray)",   text: "var(--badge-text-gray)"   },
+  pending:     { bg: "var(--badge-bg-amber)", text: "var(--badge-text-amber)" },
+  in_progress: { bg: "var(--badge-bg-blue)",  text: "var(--badge-text-blue)"  },
+  resolved:    { bg: "var(--badge-bg-green)", text: "var(--badge-text-green)" },
+  cancelled:   { bg: "var(--badge-bg-gray)",  text: "var(--badge-text-gray)"  },
 };
 
 const TABS: { key: StatusFilter; label: string }[] = [
-  { key: "all",         label: "Todos"      },
-  { key: "pending",     label: "Pendiente"  },
+  { key: "all", label: "Todos" },
+  { key: "pending", label: "Pendiente" },
   { key: "in_progress", label: "En proceso" },
-  { key: "resolved",    label: "Resuelto"   },
+  { key: "resolved", label: "Resuelto" },
 ];
+
+/* ── Component ─────────────────────────────────────────────────── */
 
 export default function CampoTicketsPage() {
   const { user, loading } = useCurrentUser();
 
-  const [tickets,    setTickets]    = useState<Ticket[]>([]);
-  const [buildings,  setBuildings]  = useState<Building[]>([]);
-  const [filter,     setFilter]     = useState<StatusFilter>("all");
+  /* List */
+  const [tickets,     setTickets]     = useState<Ticket[]>([]);
+  const [buildings,   setBuildings]   = useState<Building[]>([]);
+  const [filter,      setFilter]      = useState<StatusFilter>("all");
   const [loadingData, setLoadingData] = useState(true);
-  const [createOpen, setCreateOpen] = useState(false);
+  const [expandedId,  setExpandedId]  = useState<string | null>(null);
+
+  /* Detail per ticket */
+  const [ticketMaterials,   setTicketMaterials]   = useState<Record<string, MaterialRow[]>>({});
+  const [ticketMatsLoading, setTicketMatsLoading] = useState<Record<string, boolean>>({});
+  const [savingMatsFor,     setSavingMatsFor]     = useState<string | null>(null);
+  const [updatingStatusFor, setUpdatingStatusFor] = useState<string | null>(null);
+  const addingPhotoForRef = useRef<string | null>(null);
 
   /* Create form */
-  const [cTitle,      setCTitle]      = useState("");
-  const [cBuilding,   setCBuilding]   = useState("");
-  const [cPriority,   setCPriority]   = useState("normal");
-  const [cDesc,       setCDesc]       = useState("");
-  const [cPhoto,      setCPhoto]      = useState<File | null>(null);
-  const [cPhotoUrl,   setCPhotoUrl]   = useState<string | null>(null);
+  const [createOpen,  setCreateOpen]  = useState(false);
+  const [form,        setForm]        = useState<CreateForm>(DEFAULT_FORM);
+  const [hasDraft,    setHasDraft]    = useState(false);
+  const [cPhotoFiles, setCPhotoFiles] = useState<File[]>([]);
+  const [cPhotoUrls,  setCPhotoUrls]  = useState<string[]>([]);
   const [saving,      setSaving]      = useState(false);
   const [createError, setCreateError] = useState("");
-  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  /* Building-dependent data */
+  const [buildingUnits,  setBuildingUnits]  = useState<Unit[]>([]);
+  const [buildingAssets, setBuildingAssets] = useState<Asset[]>([]);
+  const [loadingDeps,    setLoadingDeps]    = useState(false);
+
+  /* Foto picker — "create" | ticketId | null */
+  const [photoPicker, setPhotoPicker] = useState<"create" | string | null>(null);
+
+  /* Camera refs — 4 inputs FUERA de cualquier modal (evita dismiss en iOS) */
+  const createCamRef     = useRef<HTMLInputElement>(null); // crear ticket, cámara
+  const createGalleryRef = useRef<HTMLInputElement>(null); // crear ticket, carrete
+  const detailCamRef     = useRef<HTMLInputElement>(null); // ticket existente, cámara
+  const detailGalleryRef = useRef<HTMLInputElement>(null); // ticket existente, carrete
+
+  /* ── Load ───────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!loading && user?.company_id) {
-      void loadData(user.company_id);
-    }
+    if (!loading && user?.company_id) void loadData(user.company_id);
   }, [loading, user]);
 
   async function loadData(companyId: string) {
@@ -90,7 +151,7 @@ export default function CampoTicketsPage() {
       supabase
         .from("maintenance_logs")
         .select(`
-          id, ticket_number, title, status, priority, created_at,
+          id, ticket_number, title, description, status, priority, created_at, photos,
           buildings(name),
           units(display_code, unit_number)
         `)
@@ -110,410 +171,743 @@ export default function CampoTicketsPage() {
     setLoadingData(false);
   }
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
-    setCPhoto(file);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setCPhotoUrl(url);
-    } else {
-      setCPhotoUrl(null);
-    }
+  /* ── Draft ──────────────────────────────────────────────────── */
+
+  function setField<K extends keyof CreateForm>(key: K, value: CreateForm[K]) {
+    setForm(prev => {
+      const next = { ...prev, [key]: value };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      return next;
+    });
   }
+
+  function openCreate() {
+    const raw = typeof window !== "undefined" ? localStorage.getItem(DRAFT_KEY) : null;
+    if (raw) {
+      try {
+        const d = JSON.parse(raw) as Partial<CreateForm>;
+        const restored: CreateForm = { ...DEFAULT_FORM, ...d };
+        setForm(restored);
+        setHasDraft(true);
+        if (restored.buildingId) {
+          void loadBuildingDeps(restored.buildingId);
+          if (restored.area) void loadAssetsForArea(restored.buildingId, restored.area);
+        }
+      } catch {
+        setForm(DEFAULT_FORM);
+        setHasDraft(false);
+      }
+    } else {
+      setForm(DEFAULT_FORM);
+      setHasDraft(false);
+    }
+    setCPhotoFiles([]);
+    setCPhotoUrls([]);
+    setCreateError("");
+    setCreateOpen(true);
+  }
+
+  function discardDraft() {
+    localStorage.removeItem(DRAFT_KEY);
+    setForm(DEFAULT_FORM);
+    setHasDraft(false);
+    setBuildingUnits([]);
+    setBuildingAssets([]);
+    setCPhotoFiles([]);
+    setCPhotoUrls([]);
+  }
+
+  function resetAndClose() {
+    localStorage.removeItem(DRAFT_KEY);
+    setForm(DEFAULT_FORM);
+    setHasDraft(false);
+    setCPhotoFiles([]);
+    setCPhotoUrls([]);
+    setCreateError("");
+    setCreateOpen(false);
+    setBuildingUnits([]);
+    setBuildingAssets([]);
+  }
+
+  /* ── Building deps ──────────────────────────────────────────── */
+
+  async function loadBuildingDeps(buildingId: string) {
+    if (!user?.company_id || !buildingId) {
+      setBuildingUnits([]); setBuildingAssets([]); return;
+    }
+    setLoadingDeps(true);
+    const [unitsRes, assetsRes] = await Promise.all([
+      supabase
+        .from("units")
+        .select("id, unit_number, display_code")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null)
+        .order("unit_number"),
+      supabase
+        .from("assets")
+        .select("id, name, asset_type")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .is("unit_id", null)      // solo activos de nivel edificio por defecto
+        .is("deleted_at", null)
+        .order("name"),
+    ]);
+    setBuildingUnits(unitsRes.data || []);
+    setBuildingAssets(assetsRes.data || []);
+    setLoadingDeps(false);
+  }
+
+  /* Recarga assets según el área seleccionada */
+  async function loadAssetsForArea(buildingId: string, area: string) {
+    if (!user?.company_id || !buildingId) return;
+    const isFixed = FIXED_AREA_VALUES.has(area) || !area;
+    let q = supabase
+      .from("assets")
+      .select("id, name, asset_type")
+      .eq("building_id", buildingId)
+      .eq("company_id", user.company_id)
+      .is("deleted_at", null)
+      .order("name");
+    if (isFixed) {
+      // Área común / cochera / etc → solo activos del edificio (sin departamento)
+      q = q.is("unit_id", null);
+    } else {
+      // Departamento seleccionado → activos del edificio + activos del depto
+      q = q.or(`unit_id.is.null,unit_id.eq.${area}`);
+    }
+    const { data } = await q;
+    setBuildingAssets(data || []);
+  }
+
+  async function handleAreaChange(area: string) {
+    setForm(prev => {
+      const next = { ...prev, area, assetId: "" };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      return next;
+    });
+    void loadAssetsForArea(form.buildingId, area);
+  }
+
+  function handleBuildingChange(buildingId: string) {
+    setForm(prev => {
+      const next = { ...prev, buildingId, area: "", assetId: "" };
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(next));
+      return next;
+    });
+    if (buildingId) void loadBuildingDeps(buildingId);
+    else { setBuildingUnits([]); setBuildingAssets([]); }
+  }
+
+  /* ── Photo picker helpers ───────────────────────────────────── */
+
+  function triggerInput(ref: React.RefObject<HTMLInputElement | null>) {
+    setPhotoPicker(null);
+    // pequeño timeout para que el sheet se cierre antes de abrir el picker
+    setTimeout(() => ref.current?.click(), 80);
+  }
+
+  /* ── Camera: create ─────────────────────────────────────────── */
+
+  function handleCreatePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+    e.target.value = "";
+    setCPhotoFiles(prev => [...prev, ...files]);
+    setCPhotoUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+  }
+
+  function removeCreatePhoto(index: number) {
+    setCPhotoFiles(prev => prev.filter((_, i) => i !== index));
+    setCPhotoUrls(prev => prev.filter((_, i) => i !== index));
+  }
+
+  /* ── Camera: detail (add to existing) ──────────────────────── */
+
+  async function handleDetailPhoto(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files || []);
+    const ticketId = addingPhotoForRef.current;
+    if (files.length === 0 || !ticketId || !user?.company_id) return;
+    e.target.value = "";
+    const newUrls: string[] = [];
+    for (const file of files) {
+      const ext  = file.name.split(".").pop() || "jpg";
+      const path = `maintenance/${user.company_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("maintenance-photos").upload(path, file);
+      if (uploadErr) continue;
+      const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
+      if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
+    }
+    if (newUrls.length === 0) return;
+    const ticket = tickets.find(t => t.id === ticketId);
+    const updated = [...(ticket?.photos || []), ...newUrls];
+    await supabase.from("maintenance_logs").update({ photos: updated }).eq("id", ticketId);
+    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, photos: updated } : t));
+  }
+
+  /* ── Create ─────────────────────────────────────────────────── */
 
   async function handleCreate() {
     if (!user?.company_id) return;
-    if (!cTitle.trim()) { setCreateError("Escribe un título."); return; }
+    if (!form.title.trim()) { setCreateError("Escribe un título."); return; }
     setCreateError("");
     setSaving(true);
 
-    let photoUrls: string[] = [];
-
-    if (cPhoto) {
-      const ext  = cPhoto.name.split(".").pop() || "jpg";
-      const path = `maintenance/${user.company_id}/${Date.now()}.${ext}`;
-      const { error: uploadErr } = await supabase.storage
-        .from("maintenance-photos")
-        .upload(path, cPhoto);
+    const photoUrls: string[] = [];
+    for (const file of cPhotoFiles) {
+      const ext  = file.name.split(".").pop() || "jpg";
+      const path = `maintenance/${user.company_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("maintenance-photos").upload(path, file);
       if (!uploadErr) {
-        const { data: urlData } = supabase.storage
-          .from("maintenance-photos")
-          .getPublicUrl(path);
-        if (urlData?.publicUrl) photoUrls = [urlData.publicUrl];
+        const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
+        if (urlData?.publicUrl) photoUrls.push(urlData.publicUrl);
       }
     }
 
+    const isFixedArea = FIXED_AREA_VALUES.has(form.area);
+    const unitId      = !isFixedArea && form.area ? form.area : null;
+    const areaLabel   = isFixedArea ? (FIXED_AREAS.find(a => a.value === form.area)?.label || null) : null;
+
     const { error } = await supabase.from("maintenance_logs").insert({
-      company_id:  user.company_id,
-      building_id: cBuilding || null,
-      title:       cTitle.trim(),
-      description: cDesc.trim() || null,
-      priority:    cPriority,
-      status:      "pending",
-      log_type:    "corrective",
-      photos:      photoUrls,
-      reported_by: user.full_name || user.email,
+      company_id:             user.company_id,
+      building_id:            form.buildingId || null,
+      unit_id:                unitId,
+      title:                  form.title.trim(),
+      description:            form.desc.trim() || null,
+      priority:               form.priority,
+      status:                 "pending",
+      log_type:               "corrective",
+      photos:                 photoUrls,
+      reported_by:            user.full_name || user.email,
+      category_name_snapshot: areaLabel,
     });
 
     setSaving(false);
-
-    if (error) {
-      setCreateError("No se pudo crear el ticket.");
-      return;
-    }
-
-    setCTitle(""); setCBuilding(""); setCPriority("normal");
-    setCDesc(""); setCPhoto(null); setCPhotoUrl(null);
-    setCreateOpen(false);
+    if (error) { setCreateError("No se pudo crear el ticket."); return; }
+    resetAndClose();
     void loadData(user.company_id);
   }
 
-  const filtered = filter === "all"
-    ? tickets
-    : tickets.filter(t => t.status === filter);
+  /* ── Expand ─────────────────────────────────────────────────── */
 
-  /* ── Styles ──────────────────────────────────────────────────── */
-  const containerStyle: CSSProperties = {
-    padding: "16px 16px 80px",
-    maxWidth: 560,
-    margin: "0 auto",
-    width: "100%",
-  };
+  async function handleToggleExpand(ticketId: string) {
+    if (expandedId === ticketId) { setExpandedId(null); return; }
+    setExpandedId(ticketId);
+    if (!ticketMaterials[ticketId]) {
+      setTicketMatsLoading(prev => ({ ...prev, [ticketId]: true }));
+      const { data } = await supabase
+        .from("maintenance_materials")
+        .select("id, description, quantity, unit")
+        .eq("maintenance_log_id", ticketId)
+        .order("created_at");
+      setTicketMaterials(prev => ({
+        ...prev,
+        [ticketId]: (data || []).map(m => ({
+          id: m.id, description: m.description || "",
+          quantity: String(m.quantity || ""), unit: m.unit || "",
+        })),
+      }));
+      setTicketMatsLoading(prev => ({ ...prev, [ticketId]: false }));
+    }
+  }
 
-  const tabStyle = (active: boolean): CSSProperties => ({
-    flexShrink: 0,
-    padding: "7px 14px",
-    borderRadius: 20,
-    fontSize: 13,
-    fontWeight: active ? 700 : 500,
-    border: "none",
-    cursor: "pointer",
-    background: active ? "var(--accent)" : "var(--bg-card)",
-    color: active ? "#fff" : "var(--text-secondary)",
-    transition: "background 0.15s",
-    WebkitTapHighlightColor: "transparent",
-  });
+  /* ── Materials ──────────────────────────────────────────────── */
 
-  const cardStyle: CSSProperties = {
-    background: "var(--bg-card)",
-    border: "1px solid var(--border-default)",
-    borderRadius: 14,
-    padding: "14px 16px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 6,
-  };
+  function updateMaterial(tid: string, i: number, field: keyof MaterialRow, val: string) {
+    setTicketMaterials(prev => ({
+      ...prev,
+      [tid]: (prev[tid] || []).map((m, idx) => idx === i ? { ...m, [field]: val } : m),
+    }));
+  }
 
-  const fabStyle: CSSProperties = {
-    position: "fixed",
-    bottom: 80,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    background: "var(--accent)",
-    color: "#fff",
-    border: "none",
-    cursor: "pointer",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    boxShadow: "0 4px 16px rgba(0,0,0,0.24)",
-    zIndex: 50,
-    WebkitTapHighlightColor: "transparent",
-  };
+  function addMaterialRow(tid: string) {
+    setTicketMaterials(prev => ({
+      ...prev,
+      [tid]: [...(prev[tid] || []), { id: "", description: "", quantity: "1", unit: "pza" }],
+    }));
+  }
 
-  /* Modal */
-  const overlayStyle: CSSProperties = {
-    position: "fixed",
-    inset: 0,
-    zIndex: 200,
-    background: "rgba(0,0,0,0.5)",
-    display: "flex",
-    alignItems: "flex-end",
-  };
+  function removeMaterialRow(tid: string, i: number) {
+    setTicketMaterials(prev => ({
+      ...prev,
+      [tid]: (prev[tid] || []).filter((_, idx) => idx !== i),
+    }));
+  }
 
-  const sheetStyle: CSSProperties = {
-    width: "100%",
-    maxHeight: "90dvh",
-    overflowY: "auto",
-    background: "var(--bg-card)",
-    borderRadius: "20px 20px 0 0",
-    padding: "24px 20px 36px",
-    display: "flex",
-    flexDirection: "column",
-    gap: 16,
-  };
+  async function saveMaterials(tid: string) {
+    if (!user?.company_id) return;
+    setSavingMatsFor(tid);
+    await supabase.from("maintenance_materials").delete().eq("maintenance_log_id", tid);
+    const rows = (ticketMaterials[tid] || []).filter(r => r.description.trim());
+    if (rows.length > 0) {
+      await supabase.from("maintenance_materials").insert(
+        rows.map(r => ({
+          maintenance_log_id: tid,
+          description: r.description.trim(),
+          quantity: parseFloat(r.quantity) || 1,
+          unit: r.unit.trim() || null,
+        }))
+      );
+    }
+    setSavingMatsFor(null);
+  }
+
+  /* ── Status update ──────────────────────────────────────────── */
+
+  async function updateStatus(tid: string, newStatus: string) {
+    setUpdatingStatusFor(tid);
+    const update: Record<string, string> = { status: newStatus };
+    if (newStatus === "resolved") update.resolved_at = new Date().toISOString();
+    await supabase.from("maintenance_logs").update(update).eq("id", tid);
+    setTickets(prev => prev.map(t => t.id === tid ? { ...t, status: newStatus } : t));
+    setUpdatingStatusFor(null);
+  }
+
+  /* ── Derived ────────────────────────────────────────────────── */
+
+  const filtered = useMemo(
+    () => filter === "all" ? tickets : tickets.filter(t => t.status === filter),
+    [tickets, filter]
+  );
+
+  /* ── Styles ─────────────────────────────────────────────────── */
 
   const inputStyle: CSSProperties = {
-    width: "100%",
-    padding: "11px 12px",
-    borderRadius: 10,
-    border: "1px solid var(--border-default)",
-    background: "var(--bg-input)",
-    color: "var(--text-primary)",
-    fontSize: 15,
-    boxSizing: "border-box",
+    width: "100%", padding: "11px 12px", borderRadius: 10,
+    border: "1px solid var(--border-default)", background: "var(--bg-input)",
+    color: "var(--text-primary)", fontSize: 15, boxSizing: "border-box",
+  };
+  const labelStyle: CSSProperties = {
+    fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6,
+  };
+  const sectionLabel: CSSProperties = {
+    margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)",
+    textTransform: "uppercase" as const, letterSpacing: "0.06em",
   };
 
-  const selectStyle: CSSProperties = { ...inputStyle };
+  /* ── Render ─────────────────────────────────────────────────── */
 
   return (
-    <div style={containerStyle}>
+    <>
+      {/* 4 inputs de cámara — fuera de cualquier modal para evitar dismiss en iOS */}
+      <input ref={createCamRef} type="file" accept="image/*"
+        capture={"environment" as unknown as boolean}
+        style={{ display: "none" }} onChange={handleCreatePhoto} />
+      <input ref={createGalleryRef} type="file" accept="image/*" multiple
+        style={{ display: "none" }} onChange={handleCreatePhoto} />
+      <input ref={detailCamRef} type="file" accept="image/*"
+        capture={"environment" as unknown as boolean}
+        style={{ display: "none" }} onChange={handleDetailPhoto} />
+      <input ref={detailGalleryRef} type="file" accept="image/*" multiple
+        style={{ display: "none" }} onChange={handleDetailPhoto} />
 
-      {/* ── Título ───────────────────────────────────────────────── */}
-      <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
-        Tickets
-      </h2>
+      <div style={{ padding: "16px 16px 80px", maxWidth: 560, margin: "0 auto", width: "100%" }}>
 
-      {/* ── Tabs de filtro ──────────────────────────────────────── */}
-      <div
-        style={{
-          display: "flex",
-          gap: 8,
-          overflowX: "auto",
-          paddingBottom: 4,
-          scrollbarWidth: "none",
-          marginBottom: 16,
-        }}
-      >
-        {TABS.map(tab => (
-          <button key={tab.key} type="button" style={tabStyle(filter === tab.key)} onClick={() => setFilter(tab.key)}>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+        <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
+          Tickets
+        </h2>
 
-      {/* ── Lista ───────────────────────────────────────────────── */}
-      {loadingData ? (
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
-      ) : filtered.length === 0 ? (
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Sin tickets.</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map(t => {
-            const badge = STATUS_BADGE[t.status] || STATUS_BADGE.pending;
-            const buildingName = t.buildings?.name;
-            const unitCode = t.units?.display_code || t.units?.unit_number;
-            return (
-              <div key={t.id} style={cardStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                  <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", flex: 1 }}>
-                    {t.title}
-                  </span>
-                  <span
-                    style={{
-                      padding: "3px 8px",
-                      borderRadius: 20,
-                      fontSize: 11,
-                      fontWeight: 700,
-                      background: badge.bg,
-                      color: badge.text,
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    {STATUS_LABELS[t.status] || t.status}
-                  </span>
-                </div>
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-                  {t.ticket_number && (
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
-                      #{t.ticket_number}
-                    </span>
-                  )}
-                  {buildingName && (
-                    <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                      {buildingName}{unitCode ? ` · ${unitCode}` : ""}
-                    </span>
-                  )}
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      color: PRIORITY_COLORS[t.priority] || "var(--text-muted)",
-                    }}
-                  >
-                    {t.priority === "urgent" ? "URGENTE" : t.priority === "high" ? "Alta" : t.priority === "low" ? "Baja" : "Normal"}
-                  </span>
-                </div>
-              </div>
-            );
-          })}
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4, scrollbarWidth: "none" as const, marginBottom: 16 }}>
+          {TABS.map(tab => (
+            <button
+              key={tab.key} type="button"
+              onClick={() => setFilter(tab.key)}
+              style={{
+                flexShrink: 0, padding: "7px 14px", borderRadius: 20, fontSize: 13,
+                fontWeight: filter === tab.key ? 700 : 500, border: "none", cursor: "pointer",
+                background: filter === tab.key ? "var(--accent)" : "var(--bg-card)",
+                color: filter === tab.key ? "#fff" : "var(--text-secondary)",
+                WebkitTapHighlightColor: "transparent",
+              }}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
-      )}
 
-      {/* ── FAB ─────────────────────────────────────────────────── */}
-      <button type="button" style={fabStyle} onClick={() => setCreateOpen(true)} aria-label="Nuevo ticket">
-        <Plus size={24} />
-      </button>
+        {/* List */}
+        {loadingData ? (
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+        ) : filtered.length === 0 ? (
+          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Sin tickets.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {filtered.map(t => {
+              const isExpanded = expandedId === t.id;
+              const badge   = STATUS_BADGE[t.status] || STATUS_BADGE.pending;
+              const bName   = t.buildings?.name;
+              const uCode   = t.units?.display_code || t.units?.unit_number;
+              const photos  = t.photos || [];
+              const mats    = ticketMaterials[t.id] || [];
+              const matsLoading = ticketMatsLoading[t.id];
 
-      {/* ── Modal crear ticket ──────────────────────────────────── */}
-      {createOpen && (
-        <div style={overlayStyle} onClick={e => { if (e.target === e.currentTarget) setCreateOpen(false); }}>
-          <div style={sheetStyle}>
+              return (
+                <div key={t.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 14, overflow: "hidden" }}>
 
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>
-                Nuevo ticket
-              </h3>
-              <button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                  Título *
-                </label>
-                <input
-                  value={cTitle}
-                  onChange={e => setCTitle(e.target.value)}
-                  placeholder="Describe el problema..."
-                  style={inputStyle}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                  Edificio
-                </label>
-                <select value={cBuilding} onChange={e => setCBuilding(e.target.value)} style={selectStyle}>
-                  <option value="">Sin edificio específico</option>
-                  {buildings.map(b => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                  Prioridad
-                </label>
-                <select value={cPriority} onChange={e => setCPriority(e.target.value)} style={selectStyle}>
-                  <option value="low">Baja</option>
-                  <option value="normal">Normal</option>
-                  <option value="high">Alta</option>
-                  <option value="urgent">Urgente</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                  Descripción
-                </label>
-                <textarea
-                  value={cDesc}
-                  onChange={e => setCDesc(e.target.value)}
-                  rows={3}
-                  placeholder="Detalles adicionales..."
-                  style={{ ...inputStyle, resize: "vertical" as const }}
-                />
-              </div>
-
-              {/* Foto con cámara */}
-              <div>
-                <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                  Foto (opcional)
-                </label>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  style={{ display: "none" }}
-                  onChange={handlePhotoChange}
-                />
-                {cPhotoUrl ? (
-                  <div style={{ position: "relative", display: "inline-block" }}>
-                    <img
-                      src={cPhotoUrl}
-                      alt="Foto adjunta"
-                      style={{ width: "100%", maxHeight: 180, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border-default)" }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => { setCPhoto(null); setCPhotoUrl(null); }}
-                      style={{
-                        position: "absolute",
-                        top: 8,
-                        right: 8,
-                        background: "rgba(0,0,0,0.6)",
-                        border: "none",
-                        borderRadius: "50%",
-                        width: 28,
-                        height: 28,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        color: "#fff",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ) : (
+                  {/* Collapsed row — tap to expand */}
                   <button
                     type="button"
-                    onClick={() => photoInputRef.current?.click()}
-                    style={{
-                      width: "100%",
-                      padding: "14px 12px",
-                      borderRadius: 10,
-                      border: "1.5px dashed var(--border-strong)",
-                      background: "var(--bg-page)",
-                      color: "var(--text-secondary)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 8,
-                      fontSize: 14,
-                      cursor: "pointer",
-                    }}
+                    onClick={() => handleToggleExpand(t.id)}
+                    style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 6 }}
                   >
-                    <Camera size={18} />
-                    Tomar foto o seleccionar
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", flex: 1, textAlign: "left" }}>
+                        {t.title}
+                      </span>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        <span style={{ padding: "3px 8px", borderRadius: 20, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.text, whiteSpace: "nowrap" }}>
+                          {STATUS_LABELS[t.status] || t.status}
+                        </span>
+                        {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      {t.ticket_number && (
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>#{t.ticket_number}</span>
+                      )}
+                      {bName && (
+                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                          {bName}{uCode ? ` · ${uCode}` : ""}
+                        </span>
+                      )}
+                      <span style={{ fontSize: 11, fontWeight: 700, color: PRIORITY_COLORS[t.priority] || "var(--text-muted)" }}>
+                        {PRIORITY_LABELS[t.priority] || t.priority}
+                      </span>
+                      {photos.length > 0 && (
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Camera size={20} /> {photos.length}
+                        </span>
+                      )}
+                    </div>
                   </button>
-                )}
+
+                  {/* Expanded detail */}
+                  {isExpanded && (
+                    <div style={{ borderTop: "1px solid var(--border-default)", padding: "16px 16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+
+                      {/* Description */}
+                      {t.description && (
+                        <div>
+                          <p style={sectionLabel}>Descripción</p>
+                          <p style={{ margin: 0, fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>{t.description}</p>
+                        </div>
+                      )}
+
+                      {/* Meta chips */}
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        <span style={{ padding: "5px 10px", background: "var(--bg-page)", borderRadius: 8, fontSize: 12, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <Calendar size={20} /> {new Date(t.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                        </span>
+                        {bName && (
+                          <span style={{ padding: "5px 10px", background: "var(--bg-page)", borderRadius: 8, fontSize: 12, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                            <Building2 size={20} /> {bName}{uCode ? ` · ${uCode}` : ""}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Photos */}
+                      <div>
+                        <p style={sectionLabel}>Fotos {photos.length > 0 ? `(${photos.length})` : ""}</p>
+                        {photos.length > 0 && (
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 10 }}>
+                            {photos.map((url, i) => (
+                              <img
+                                key={i} src={url} alt={`Foto ${i + 1}`}
+                                style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-default)", cursor: "pointer" }}
+                                onClick={() => window.open(url, "_blank")}
+                              />
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => { addingPhotoForRef.current = t.id; setPhotoPicker(t.id); }}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: 8, border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}
+                        >
+                          <Camera size={15} /> Agregar foto
+                        </button>
+                      </div>
+
+                      {/* Materials */}
+                      <div>
+                        <p style={sectionLabel}>Materiales</p>
+                        {matsLoading ? (
+                          <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando...</p>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                            {mats.map((m, i) => (
+                              <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                <input
+                                  value={m.description}
+                                  onChange={e => updateMaterial(t.id, i, "description", e.target.value)}
+                                  placeholder="Descripción"
+                                  style={{ ...inputStyle, flex: 3, padding: "8px 10px", fontSize: 13 }}
+                                />
+                                <input
+                                  value={m.quantity}
+                                  onChange={e => updateMaterial(t.id, i, "quantity", e.target.value)}
+                                  placeholder="Cant."
+                                  inputMode="decimal"
+                                  style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13, textAlign: "center" }}
+                                />
+                                <input
+                                  value={m.unit}
+                                  onChange={e => updateMaterial(t.id, i, "unit", e.target.value)}
+                                  placeholder="Unid."
+                                  style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13 }}
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => removeMaterialRow(t.id, i)}
+                                  style={{ background: "none", border: "none", color: "var(--badge-text-red)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            ))}
+                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                              <button
+                                type="button"
+                                onClick={() => addMaterialRow(t.id)}
+                                style={{ flex: 1, padding: "8px", borderRadius: 8, border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                              >
+                                <Plus size={14} /> Agregar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => saveMaterials(t.id)}
+                                disabled={savingMatsFor === t.id}
+                                style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: 13, fontWeight: 700, cursor: savingMatsFor === t.id ? "wait" : "pointer", opacity: savingMatsFor === t.id ? 0.7 : 1 }}
+                              >
+                                {savingMatsFor === t.id ? "Guardando..." : "Guardar"}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Status buttons */}
+                      {(t.status === "pending" || t.status === "in_progress") && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {t.status === "pending" && (
+                            <button
+                              type="button"
+                              disabled={updatingStatusFor === t.id}
+                              onClick={() => updateStatus(t.id, "in_progress")}
+                              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", fontSize: 15, fontWeight: 700, cursor: updatingStatusFor === t.id ? "wait" : "pointer", opacity: updatingStatusFor === t.id ? 0.7 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                            >
+                              {updatingStatusFor === t.id ? "Actualizando..." : (<><Play size={20} /> Iniciar trabajo</>)}
+                            </button>
+                          )}
+                          {t.status === "in_progress" && (
+                            <button
+                              type="button"
+                              disabled={updatingStatusFor === t.id}
+                              onClick={() => updateStatus(t.id, "resolved")}
+                              style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: 15, fontWeight: 700, cursor: updatingStatusFor === t.id ? "wait" : "pointer", opacity: updatingStatusFor === t.id ? 0.7 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                            >
+                              {updatingStatusFor === t.id ? "Actualizando..." : (<><Check size={20} /> Marcar resuelto</>)}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* FAB */}
+        <button
+          type="button"
+          onClick={openCreate}
+          aria-label="Nuevo ticket"
+          style={{
+            position: "fixed", bottom: 24, right: 20,
+            width: 56, height: 56, borderRadius: 28,
+            background: "var(--accent)", color: "#fff", border: "none",
+            cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
+            boxShadow: "0 4px 16px rgba(0,0,0,0.24)", zIndex: 50,
+            WebkitTapHighlightColor: "transparent",
+          }}
+        >
+          <Plus size={24} />
+        </button>
+
+        {/* Create modal — bottom sheet */}
+        {createOpen && (
+          <div
+            style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}
+            onClick={e => { if (e.target === e.currentTarget) setCreateOpen(false); }}
+          >
+            <div
+              style={{ width: "100%", maxHeight: "92dvh", overflowY: "auto", background: "var(--bg-card)", borderRadius: "20px 20px 0 0", padding: "24px 20px 36px", display: "flex", flexDirection: "column", gap: 14 }}
+              onClick={e => e.stopPropagation()}
+            >
+              {/* Sheet header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>Nuevo ticket</h3>
+                <button type="button" onClick={() => setCreateOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}>
+                  <X size={20} />
+                </button>
               </div>
 
-              {createError && (
-                <p style={{ margin: 0, fontSize: 13, color: "var(--badge-text-red)" }}>{createError}</p>
+              {/* Draft banner */}
+              {hasDraft && (
+                <div style={{ padding: "10px 12px", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 13, color: "var(--metric-value-amber)", fontWeight: 600 }}>
+                    Tienes un borrador guardado
+                  </span>
+                  <button type="button" onClick={discardDraft} style={{ background: "none", border: "none", fontSize: 12, color: "var(--metric-value-amber)", cursor: "pointer", fontWeight: 700, textDecoration: "underline" }}>
+                    Descartar
+                  </button>
+                </div>
               )}
 
-              <button
-                type="button"
-                onClick={handleCreate}
-                disabled={saving}
-                style={{
-                  width: "100%",
-                  padding: "14px",
-                  borderRadius: 12,
-                  border: "none",
-                  background: "var(--accent)",
-                  color: "#fff",
-                  fontSize: 15,
-                  fontWeight: 700,
-                  cursor: saving ? "wait" : "pointer",
-                  opacity: saving ? 0.7 : 1,
-                  marginTop: 4,
-                }}
-              >
-                {saving ? "Guardando..." : "Crear ticket"}
-              </button>
+              {/* Fields */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
+                <div>
+                  <label style={labelStyle}>Título *</label>
+                  <input value={form.title} onChange={e => setField("title", e.target.value)} placeholder="Describe el problema..." style={inputStyle} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Edificio</label>
+                  <select value={form.buildingId} onChange={e => handleBuildingChange(e.target.value)} style={inputStyle}>
+                    <option value="">Sin edificio específico</option>
+                    {buildings.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </div>
+
+                {form.buildingId && (
+                  <div>
+                    <label style={labelStyle}>Área / Departamento</label>
+                    <select value={form.area} onChange={e => handleAreaChange(e.target.value)} style={inputStyle} disabled={loadingDeps}>
+                      <option value="">Sin área específica</option>
+                      {FIXED_AREAS.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+                      {buildingUnits.length > 0 && (
+                        <optgroup label="── Departamentos ──">
+                          {buildingUnits.map(u => (
+                            <option key={u.id} value={u.id}>{u.display_code || u.unit_number || "Unidad"}</option>
+                          ))}
+                        </optgroup>
+                      )}
+                    </select>
+                  </div>
+                )}
+
+                {form.buildingId && buildingAssets.length > 0 && (
+                  <div>
+                    <label style={labelStyle}>Asset relacionado (opcional)</label>
+                    <select value={form.assetId} onChange={e => setField("assetId", e.target.value)} style={inputStyle}>
+                      <option value="">Sin asset específico</option>
+                      {buildingAssets.map(a => (
+                        <option key={a.id} value={a.id}>{a.asset_type ? `[${a.asset_type}] ` : ""}{a.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div>
+                  <label style={labelStyle}>Prioridad</label>
+                  <select value={form.priority} onChange={e => setField("priority", e.target.value)} style={inputStyle}>
+                    <option value="low">Baja</option>
+                    <option value="normal">Normal</option>
+                    <option value="medium">Media</option>
+                    <option value="high">Alta</option>
+                    <option value="urgent">Urgente</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Descripción</label>
+                  <textarea value={form.desc} onChange={e => setField("desc", e.target.value)} rows={3} placeholder="Detalles adicionales..." style={{ ...inputStyle, resize: "vertical" as const }} />
+                </div>
+
+                <div>
+                  <label style={labelStyle}>Fotos (opcional)</label>
+                  {cPhotoUrls.length > 0 && (
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 8 }}>
+                      {cPhotoUrls.map((url, i) => (
+                        <div key={i} style={{ position: "relative" }}>
+                          <img src={url} alt={`Foto ${i + 1}`} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-default)" }} />
+                          <button type="button" onClick={() => removeCreatePhoto(i)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <button type="button" onClick={() => setPhotoPicker("create")} style={{ width: "100%", padding: "12px", borderRadius: 10, border: "1.5px dashed var(--border-strong)", background: "var(--bg-page)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+                    <Camera size={18} />
+                    {cPhotoUrls.length > 0 ? "Agregar otra foto" : "Agregar foto"}
+                  </button>
+                </div>
+
+                {createError && <p style={{ margin: 0, fontSize: 13, color: "var(--badge-text-red)" }}>{createError}</p>}
+
+                <button type="button" onClick={handleCreate} disabled={saving} style={{ width: "100%", padding: "14px", borderRadius: 12, border: "none", background: "var(--accent)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1, marginTop: 4 }}>
+                  {saving ? "Guardando..." : "Crear ticket"}
+                </button>
+
+              </div>
             </div>
+          </div>
+        )}
+
+      </div>
+
+      {/* ── Photo picker bottom sheet ──────────────────────────── */}
+      {photoPicker !== null && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 300, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "flex-end" }}
+          onClick={() => setPhotoPicker(null)}
+        >
+          <div
+            style={{ width: "100%", background: "var(--bg-card)", borderRadius: "20px 20px 0 0", overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
+            onClick={e => e.stopPropagation()}
+          >
+            <p style={{ margin: 0, padding: "18px 20px 14px", fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+              Agregar foto
+            </p>
+
+            <div style={{ height: 1, background: "var(--border-default)" }} />
+
+            <button
+              type="button"
+              onClick={() => triggerInput(photoPicker === "create" ? createCamRef : detailCamRef)}
+              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--text-primary)", textAlign: "left" }}
+            >
+              <Camera size={20} /> Tomar foto
+            </button>
+
+            <div style={{ height: 1, background: "var(--border-default)" }} />
+
+            <button
+              type="button"
+              onClick={() => triggerInput(photoPicker === "create" ? createGalleryRef : detailGalleryRef)}
+              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--text-primary)", textAlign: "left" }}
+            >
+              <ImageIcon size={20} /> Elegir del carrete
+            </button>
+
+            <div style={{ height: 1, background: "var(--border-default)" }} />
+
+            <button
+              type="button"
+              onClick={() => setPhotoPicker(null)}
+              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--badge-text-red)", textAlign: "left" }}
+            >
+              <X size={20} /> Cancelar
+            </button>
           </div>
         </div>
       )}
-
-    </div>
+    </>
   );
 }
