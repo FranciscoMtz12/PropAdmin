@@ -421,11 +421,304 @@ const EMPTY_CREATE_FORM = {
   reported_by: "",
 };
 
+// ─── OC PDF HELPERS ───────────────────────────────────────────────────────────
+
+export type PreparedLogo = {
+  data:          string;   /* PNG data URL */
+  displayWidth:  number;
+  displayHeight: number;
+};
+
+/* Carga, escala y comprime un logo para PDF preservando su aspect ratio. */
+export async function prepareLogoForPDF(
+  imgUrl: string,
+  maxDisplayW: number,
+  maxDisplayH: number,
+): Promise<PreparedLogo | null> {
+  if (!imgUrl) return null;
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const origW = img.width  || maxDisplayW;
+      const origH = img.height || maxDisplayH;
+      const ratio = Math.min(maxDisplayW / origW, maxDisplayH / origH);
+      const displayW = origW * ratio;
+      const displayH = origH * ratio;
+
+      /* Comprime a una resolución razonable conservando aspect ratio */
+      const compMax   = 300;
+      const compRatio = Math.min(compMax / origW, compMax / origH, 1);
+      const compW = Math.max(1, Math.floor(origW * compRatio));
+      const compH = Math.max(1, Math.floor(origH * compRatio));
+
+      const canvas = document.createElement("canvas");
+      canvas.width  = compW;
+      canvas.height = compH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) { resolve(null); return; }
+      ctx.drawImage(img, 0, 0, compW, compH);
+      resolve({
+        data:          canvas.toDataURL("image/png"),
+        displayWidth:  displayW,
+        displayHeight: displayH,
+      });
+    };
+    img.onerror = () => resolve(null);
+    img.src = imgUrl;
+  });
+}
+
+type OCPageParams = {
+  folio:              string;
+  date:               Date;
+  supplierName:       string;
+  supplierTaxId:      string | null;
+  cfdiUse:            string | null;
+  clientNumber:       string | null;
+  branchName:         string | null;
+  items:              { quantity: number | string; unit: string; description: string }[];
+  buildingName:       string;
+  projectDescription: string;
+  responsibleName:    string;
+  responsiblePhone:   string;
+  signerName:         string;
+  logoPrint:          PreparedLogo | null;
+  logoGroup:          PreparedLogo | null;
+  company: { legalName: string; address: string; taxId: string; phone: string; email: string };
+};
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+export function renderPurchaseOrderPage(doc: any, p: OCPageParams) {
+  const pageW    = 612;
+  const marginL  = 36;
+  const marginR  = 36;
+  const rightX   = pageW - marginR;   // 576
+  const contentW = pageW - marginL - marginR;
+
+  /* ── Banda de acento 4pt (y=0, vino FRA-MAR) ── */
+  doc.setFillColor(139, 34, 82);
+  doc.rect(0, 0, pageW, 4, "F");
+
+  let cursorY = 12;
+
+  /* ── Logos lado a lado (cursorY=12) ── */
+  if (p.logoPrint) {
+    try {
+      doc.addImage(
+        p.logoPrint.data, "PNG",
+        marginL, cursorY,
+        p.logoPrint.displayWidth, p.logoPrint.displayHeight,
+      );
+    } catch { /* sin logo */ }
+  }
+  if (p.logoGroup) {
+    try {
+      const gx = rightX - p.logoGroup.displayWidth;
+      doc.addImage(
+        p.logoGroup.data, "PNG",
+        gx, cursorY,
+        p.logoGroup.displayWidth, p.logoGroup.displayHeight,
+      );
+    } catch { /* sin logo */ }
+  }
+
+  cursorY += 50;  /* espacio después de logos → cursorY = 62 */
+
+  /* ── Fecha y folio (alineados derecha, Y fijos 62/74 arriba a la derecha) ── */
+  const dateStr = p.date.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(107, 114, 128);       // #6b7280
+  doc.text(dateStr, rightX, 62, { align: "right" });
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(17, 24, 39);          // #111827
+  doc.text(`Folio: ${p.folio}`, rightX, 74, { align: "right" });
+
+  /* ── Datos empresa (desde cursorY) ── */
+  if (p.company.legalName) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(17, 24, 39);
+    doc.text(p.company.legalName, marginL, cursorY);
+    cursorY += 12;
+  }
+  if (p.company.address) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    const addrLines = doc.splitTextToSize(p.company.address, 280) as string[];
+    addrLines.forEach((line: string) => {
+      doc.text(line, marginL, cursorY);
+      cursorY += 9;
+    });
+  }
+  if (p.company.taxId) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text(`RFC: ${p.company.taxId}`, marginL, cursorY);
+    cursorY += 9;
+  }
+
+  cursorY += 8;  /* espacio extra */
+
+  /* ── Línea separadora ── */
+  doc.setDrawColor(229, 231, 235);       // #e5e7eb
+  doc.setLineWidth(0.5);
+  doc.line(marginL, cursorY, rightX, cursorY);
+  cursorY += 10;
+
+  /* ── Destinatario ── */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(55, 65, 81);          // #374151
+  doc.text("A QUIEN CORRESPONDA.-", marginL, cursorY);
+  cursorY += 11;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(11);
+  doc.setTextColor(17, 24, 39);
+  doc.text((p.supplierName || "").toUpperCase(), marginL, cursorY);
+  cursorY += 13;
+
+  if (p.branchName) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    doc.setTextColor(107, 114, 128);
+    doc.text(p.branchName, marginL, cursorY);
+    cursorY += 10;
+  }
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(107, 114, 128);
+  doc.text(`USO DE CFDI: ${p.cfdiUse || "—"}`, marginL, cursorY);
+  cursorY += 9;
+
+  if (p.clientNumber) {
+    doc.text(`NÚMERO DE CLIENTE ${p.clientNumber}`, marginL, cursorY);
+    cursorY += 9;
+  }
+
+  cursorY += 10;
+
+  /* ── Título ORDEN DE COMPRA ── */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.setTextColor(55, 65, 81);
+  doc.text("ORDEN DE COMPRA", marginL, cursorY);
+  cursorY += 10;
+
+  doc.setDrawColor(55, 65, 81);
+  doc.setLineWidth(0.5);
+  doc.line(marginL, cursorY, rightX, cursorY);
+  cursorY += 6;
+
+  /* ── TABLA desde cursorY ── */
+  const col1W = 60;
+  const col2W = 80;
+  const col3W = contentW - col1W - col2W;
+  const headerH = 20;
+  const rowH    = 18;
+
+  /* Renglones: items reales + 5 vacíos (si <5) o 3 (si ≥5), máx 20 */
+  const nItems     = p.items.length;
+  const emptyRows  = nItems < 5 ? 5 : 3;
+  const totalRows  = Math.min(nItems + emptyRows, 20);
+
+  const tableStartY = cursorY;
+
+  /* Encabezado */
+  doc.setFillColor(26, 26, 26);
+  doc.rect(marginL, cursorY, contentW, headerH, "F");
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(255, 255, 255);
+  doc.text("CANT.",       marginL + col1W / 2,                 cursorY + 13, { align: "center" });
+  doc.text("UNIDAD",      marginL + col1W + col2W / 2,         cursorY + 13, { align: "center" });
+  doc.text("DESCRIPCIÓN", marginL + col1W + col2W + col3W / 2, cursorY + 13, { align: "center" });
+  cursorY += headerH;
+
+  /* Filas (dinámico, alternadas blanco / #fafafa) */
+  const padded: { quantity: number | string; unit: string; description: string }[] = [...p.items];
+  while (padded.length < totalRows) padded.push({ quantity: "", unit: "", description: "" });
+
+  doc.setDrawColor(229, 231, 235);       // #e5e7eb
+  doc.setLineWidth(0.3);
+
+  for (let i = 0; i < padded.length; i++) {
+    const it = padded[i];
+    if (i % 2 === 1) {
+      doc.setFillColor(250, 250, 250);   // #fafafa
+      doc.rect(marginL, cursorY, contentW, rowH, "F");
+    }
+    doc.rect(marginL,                 cursorY, col1W, rowH, "S");
+    doc.rect(marginL + col1W,         cursorY, col2W, rowH, "S");
+    doc.rect(marginL + col1W + col2W, cursorY, col3W, rowH, "S");
+    if (it.description) {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(55, 65, 81);
+      doc.text(String(it.quantity || ""),           marginL + col1W / 2,       cursorY + 12, { align: "center" });
+      doc.text(String(it.unit || "").toUpperCase(), marginL + col1W + col2W / 2, cursorY + 12, { align: "center" });
+      const descLines = doc.splitTextToSize(String(it.description || "").toUpperCase(), col3W - 8);
+      doc.text(descLines[0] || "", marginL + col1W + col2W + 4, cursorY + 12);
+    }
+    cursorY += rowH;
+  }
+
+  const tableEndY = tableStartY + headerH + (totalRows * rowH);
+
+  /* ── PROYECTO y PASA POR MATERIAL (fuera de la tabla) ── */
+  cursorY = tableEndY + 20;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(55, 65, 81);
+  const projectText = `PROYECTO: ${p.buildingName || ""}${p.projectDescription ? " " + p.projectDescription : ""}`;
+  doc.text(projectText.toUpperCase(), marginL, cursorY);
+  cursorY += 12;
+
+  const pasa = `PASA POR MATERIAL ${p.responsibleName || ""} CEL.: ${p.responsiblePhone || ""}`;
+  doc.text(pasa.toUpperCase(), marginL, cursorY);
+  cursorY += 12;
+
+  /* ── FIRMA ── */
+  cursorY += 32;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(156, 163, 175);       // #9ca3af
+  doc.text("ATENTAMENTE", pageW / 2, cursorY, { align: "center" });
+  cursorY += 18;
+
+  /* Línea de firma */
+  const lineLen = 180;
+  const lineX   = (pageW - lineLen) / 2;
+  doc.setDrawColor(55, 65, 81);
+  doc.setLineWidth(0.6);
+  doc.line(lineX, cursorY, lineX + lineLen, cursorY);
+  cursorY += 8;
+
+  /* Nombre del firmante — splitTextToSize(200) para 1 o 2 líneas */
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(55, 65, 81);
+  const signerLines = doc.splitTextToSize((p.signerName || "").toUpperCase(), 200) as string[];
+  signerLines.forEach((line: string, i: number) => {
+    doc.text(line, pageW / 2, cursorY + i * 11, { align: "center" });
+  });
+}
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 // ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 
 export default function MaintenancePage() {
   const { user, loading } = useCurrentUser();
-  const { logoUrl } = useTheme();
+  const { logoUrl, logoGroupUrl, legalName, companyAddress, companyTaxId, companyPhone, companyEmail } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -962,7 +1255,7 @@ export default function MaintenancePage() {
 
       /* ── HEADER ──────────────────────────────────────────────────── */
       let cursorY = 40;
-      let logoEndX = marginL; /* donde termina el bloque del logo */
+      let logoBottomY = cursorY;
 
       /* Logo comprimido — logo_print_url tiene prioridad sobre logo_url */
       const pdfLogoSrc = companyLogoPrint || companyLogoUrl;
@@ -970,7 +1263,6 @@ export default function MaintenancePage() {
         try {
           const compressed = await compressLogoForPDF(pdfLogoSrc);
           if (compressed) {
-            /* Calcular dimensiones proporcionales máx 120pt ancho, 60pt alto */
             const tmpImg = new Image();
             await new Promise<void>((res) => { tmpImg.onload = () => res(); tmpImg.onerror = () => res(); tmpImg.src = compressed; });
             const logoMaxW = 120, logoMaxH = 60;
@@ -978,13 +1270,37 @@ export default function MaintenancePage() {
             const logoW = (tmpImg.width || logoMaxW) * logoRatio;
             const logoH = (tmpImg.height || logoMaxH) * logoRatio;
             doc.addImage(compressed, "PNG", marginL, cursorY, logoW, logoH);
-            logoEndX = marginL + logoW + 16;
+            logoBottomY = cursorY + logoH + 6;
           }
         } catch { /* sin logo */ }
       }
 
+      /* Datos de la empresa debajo del logo (lado izquierdo) */
+      let companyInfoY = logoBottomY;
+      if (legalName) {
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(15, 23, 42);
+        doc.text(legalName, marginL, companyInfoY + 10);
+        companyInfoY += 14;
+      }
+      if (companyAddress) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80);
+        doc.text(companyAddress, marginL, companyInfoY + 10);
+        companyInfoY += 12;
+      }
+      if (companyTaxId) {
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(80, 80, 80);
+        doc.text(`RFC: ${companyTaxId}`, marginL, companyInfoY + 10);
+        companyInfoY += 12;
+      }
+
       /* Título + folio + fecha (columna derecha del header) */
-      const headerRightX = logoEndX + 10;
+      const headerRightX = pageW - marginR - 200;
       doc.setFont("helvetica", "bold");
       doc.setFontSize(18);
       doc.setTextColor(15, 23, 42);
@@ -996,7 +1312,7 @@ export default function MaintenancePage() {
       doc.text(`Folio: ${folio}`, headerRightX, cursorY + 30);
       doc.text(`Fecha: ${fechaStr}`, headerRightX, cursorY + 44);
 
-      cursorY += 72;
+      cursorY = Math.max(companyInfoY + 8, cursorY + 72);
 
       /* Línea separadora */
       doc.setDrawColor(226, 232, 240);
@@ -1117,11 +1433,9 @@ export default function MaintenancePage() {
       doc.setFontSize(8);
       doc.setFont("helvetica", "normal");
       doc.setTextColor(148, 163, 184);
-      doc.text(
-        `Generado por PropAdmin · ${companyName || ""} · ${fechaStr}`,
-        marginL,
-        footerY + 14,
-      );
+      const legalFooter = [legalName, companyTaxId ? `RFC: ${companyTaxId}` : ""]
+        .filter(Boolean).join(" · ");
+      doc.text(legalFooter || `${companyName || ""}`, marginL, footerY + 14);
 
       doc.save(`orden-materiales-${folio}.pdf`);
     } catch {
@@ -1145,27 +1459,31 @@ export default function MaintenancePage() {
     setGeneratingOcId(ticket.id);
 
     try {
-      /* Cargar datos completos de los proveedores involucrados */
       const supplierIds = Array.from(new Set(matsWithSupplier.map((m) => m.supplier_id!)));
       const { data: supplierRows } = await supabase
         .from("suppliers")
-        .select("id, name, contact_name, email, phone, address, tax_id")
+        .select("id, name, tax_id, cfdi_use, client_number, contact_email, contact_phone")
         .in("id", supplierIds);
 
       type SupplierFull = {
-        id: string;
-        name: string;
-        contact_name: string | null;
-        email: string | null;
-        phone: string | null;
-        address: string | null;
-        tax_id: string | null;
+        id: string; name: string;
+        tax_id: string | null; cfdi_use: string | null; client_number: string | null;
+        contact_email: string | null; contact_phone: string | null;
       };
       const supplierMap = new Map<string, SupplierFull>(
         ((supplierRows || []) as SupplierFull[]).map((s) => [s.id, s])
       );
 
-      /* Agrupar materiales por proveedor */
+      /* Firmante por defecto */
+      const { data: signerRow } = await supabase
+        .from("purchase_order_signers")
+        .select("name")
+        .eq("company_id", user.company_id)
+        .eq("is_default", true)
+        .is("deleted_at", null)
+        .maybeSingle();
+      const defaultSignerName = (signerRow as { name: string } | null)?.name || "";
+
       const groups = new Map<string, Material[]>();
       for (const m of matsWithSupplier) {
         const sid = m.supplier_id!;
@@ -1173,53 +1491,23 @@ export default function MaintenancePage() {
         groups.get(sid)!.push(m);
       }
 
-      /* Compresión de logo reutilizada del PDF de orden de materiales */
-      async function compressLogoForPDF(imgUrl: string): Promise<string> {
-        return new Promise((resolve) => {
-          const img = new Image();
-          img.crossOrigin = "anonymous";
-          img.onload = () => {
-            const maxW = 300, maxH = 100;
-            const ratio = Math.min(maxW / img.width, maxH / img.height);
-            const w = img.width * ratio;
-            const h = img.height * ratio;
-            const canvas = document.createElement("canvas");
-            canvas.width  = w;
-            canvas.height = h;
-            const ctx = canvas.getContext("2d")!;
-            ctx.drawImage(img, 0, 0, w, h);
-            resolve(canvas.toDataURL("image/png"));
-          };
-          img.onerror = () => resolve("");
-          img.src = imgUrl;
-        });
-      }
+      const { default: jsPDF } = await import("jspdf");
 
-      const { default: jsPDF }     = await import("jspdf");
-      const { default: autoTable } = await import("jspdf-autotable");
+      const year = new Date().getFullYear();
+      const ticketNumRaw = String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase();
 
-      const year          = new Date().getFullYear();
-      const ticketNumRaw  = String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase();
-      const fechaStr      = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
-      const buildingName  = ticket.buildings?.name    || "Sin edificio";
-      const buildingAddr  = ticket.buildings?.address || "";
-      const unitLabel     = ticket.units ? (ticket.units.display_code || ticket.units.unit_number) : "—";
+      /* Preparar ambos logos una sola vez */
+      const printSrc = companyLogoPrint || companyLogoUrl;
+      const logoPrint = printSrc    ? await prepareLogoForPDF(printSrc,    110, 45) : null;
+      const logoGroup = logoGroupUrl ? await prepareLogoForPDF(logoGroupUrl, 80, 45) : null;
 
-      const pdfLogoSrc = companyLogoPrint || companyLogoUrl;
-      const compressedLogo = pdfLogoSrc ? await compressLogoForPDF(pdfLogoSrc) : "";
+      const buildingName = ticket.buildings?.name || "";
 
-      /* Generar un PDF por proveedor */
       const entries = Array.from(groups.entries());
       for (let i = 0; i < entries.length; i++) {
         const [supplierId, supplierMats] = entries[i];
         const supplier = supplierMap.get(supplierId);
         if (!supplier) continue;
-
-        const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-        const pageW    = 612;
-        const marginL  = 40;
-        const marginR  = 40;
-        const contentW = pageW - marginL - marginR;
 
         const supplierCode = supplier.name
           .toUpperCase()
@@ -1227,157 +1515,26 @@ export default function MaintenancePage() {
           .slice(0, 6) || supplier.id.slice(0, 6).toUpperCase();
         const folio = `OC-${year}-${ticketNumRaw}-${supplierCode}`;
 
-        /* ── HEADER ── */
-        let cursorY  = 40;
-        let logoEndX = marginL;
+        const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
 
-        if (compressedLogo) {
-          try {
-            const tmpImg = new Image();
-            await new Promise<void>((res) => { tmpImg.onload = () => res(); tmpImg.onerror = () => res(); tmpImg.src = compressedLogo; });
-            const logoMaxW = 120, logoMaxH = 60;
-            const logoRatio = Math.min(logoMaxW / (tmpImg.width || 1), logoMaxH / (tmpImg.height || 1));
-            const logoW = (tmpImg.width || logoMaxW) * logoRatio;
-            const logoH = (tmpImg.height || logoMaxH) * logoRatio;
-            doc.addImage(compressedLogo, "PNG", marginL, cursorY, logoW, logoH);
-            logoEndX = marginL + logoW + 16;
-          } catch { /* sin logo */ }
-        }
-
-        const headerRightX = logoEndX + 10;
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(18);
-        doc.setTextColor(15, 23, 42);
-        doc.text("Orden de Compra", headerRightX, cursorY + 14);
-
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(100, 116, 139);
-        doc.text(`Folio: ${folio}`, headerRightX, cursorY + 30);
-        doc.text(`Fecha: ${fechaStr}`, headerRightX, cursorY + 44);
-
-        cursorY += 72;
-
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.75);
-        doc.line(marginL, cursorY, pageW - marginR, cursorY);
-        cursorY += 16;
-
-        /* ── Helper drawCell ── */
-        const cellH   = 36;
-        const cellPad = 8;
-        const colW    = (contentW - 8) / 2;
-        const col2X   = marginL + colW + 8;
-
-        function drawCell(x: number, y: number, w: number, label: string, value: string, fullWidth = false) {
-          const cellWidth = fullWidth ? contentW : w;
-          doc.setFillColor(248, 249, 250);
-          doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "F");
-          doc.setDrawColor(229, 231, 235);
-          doc.setLineWidth(0.5);
-          doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "S");
-          doc.setFont("helvetica", "bold");
-          doc.setFontSize(8);
-          doc.setTextColor(148, 163, 184);
-          doc.text(label.toUpperCase(), x + cellPad, y + cellPad + 7);
-          doc.setFont("helvetica", "normal");
-          doc.setFontSize(10);
-          doc.setTextColor(15, 23, 42);
-          const maxValueW = cellWidth - cellPad * 2;
-          const valueLines = doc.splitTextToSize(value || "—", maxValueW) as string[];
-          doc.text(valueLines[0] ?? "—", x + cellPad, y + cellPad + 20);
-        }
-
-        const rowGap = cellH + 6;
-
-        /* ── PROVEEDOR ── */
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(15, 23, 42);
-        doc.text("PROVEEDOR", marginL, cursorY);
-        cursorY += 10;
-
-        drawCell(marginL, cursorY, colW, "Nombre", supplier.name);
-        drawCell(col2X,   cursorY, colW, "RFC",    supplier.tax_id || "—");
-        cursorY += rowGap;
-
-        drawCell(marginL, cursorY, colW, "Email",    supplier.email || "—");
-        drawCell(col2X,   cursorY, colW, "Teléfono", supplier.phone || "—");
-        cursorY += rowGap;
-
-        if (supplier.address) {
-          drawCell(marginL, cursorY, contentW, "Dirección", supplier.address, true);
-          cursorY += rowGap;
-        }
-
-        cursorY += 6;
-
-        /* ── TICKET / EDIFICIO ── */
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(10);
-        doc.setTextColor(15, 23, 42);
-        doc.text("TICKET", marginL, cursorY);
-        cursorY += 10;
-
-        drawCell(marginL, cursorY, colW, "Edificio",     buildingName);
-        drawCell(col2X,   cursorY, colW, "Ticket #",     getTicketNumber(ticket));
-        cursorY += rowGap;
-
-        drawCell(marginL, cursorY, colW, "Dirección",    buildingAddr || "—");
-        drawCell(col2X,   cursorY, colW, "Departamento", unitLabel || "—");
-        cursorY += rowGap + 6;
-
-        /* ── TABLA DE MATERIALES ── */
-        type DocWithAutoTable = typeof doc & { lastAutoTable?: { finalY: number } };
-
-        autoTable(doc, {
-          startY: cursorY,
-          margin: { left: marginL, right: marginR },
-          head: [["#", "Descripción", "Cantidad", "Unidad"]],
-          body: supplierMats.map((m, idx) => [
-            String(idx + 1),
-            m.description,
-            String(m.quantity),
-            m.unit,
-          ]),
-          theme: "plain",
-          headStyles: {
-            fillColor: [15, 23, 42],
-            textColor: [255, 255, 255],
-            fontSize: 9,
-            fontStyle: "bold",
-            cellPadding: 8,
-          },
-          bodyStyles: {
-            fontSize: 10,
-            cellPadding: 8,
-            textColor: [15, 23, 42],
-          },
-          alternateRowStyles: { fillColor: [248, 249, 250] },
-          styles: { lineColor: [229, 231, 235], lineWidth: 0.5 },
-          columnStyles: {
-            0: { cellWidth: 24 },
-            2: { cellWidth: 60, halign: "center" },
-            3: { cellWidth: 60 },
-          },
+        renderPurchaseOrderPage(doc, {
+          folio,
+          date:               new Date(),
+          supplierName:       supplier.name,
+          supplierTaxId:      supplier.tax_id,
+          cfdiUse:            supplier.cfdi_use,
+          clientNumber:       supplier.client_number,
+          branchName:         null,
+          items:              supplierMats.map((m) => ({ quantity: m.quantity, unit: m.unit, description: m.description })),
+          buildingName,
+          projectDescription: ticket.title || "",
+          responsibleName:    "",
+          responsiblePhone:   "",
+          signerName:         defaultSignerName,
+          logoPrint,
+          logoGroup,
+          company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail },
         });
-
-        /* ── FOOTER ── */
-        const finalY  = (doc as DocWithAutoTable).lastAutoTable?.finalY ?? cursorY + 40;
-        const footerY = finalY + 20;
-
-        doc.setDrawColor(226, 232, 240);
-        doc.setLineWidth(0.75);
-        doc.line(marginL, footerY, pageW - marginR, footerY);
-
-        doc.setFontSize(8);
-        doc.setFont("helvetica", "normal");
-        doc.setTextColor(148, 163, 184);
-        doc.text(
-          `Generado por PropAdmin · ${companyName || ""} · ${fechaStr}`,
-          marginL,
-          footerY + 14,
-        );
 
         doc.save(`${folio}.pdf`);
       }

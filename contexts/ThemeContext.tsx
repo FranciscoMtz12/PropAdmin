@@ -28,7 +28,15 @@ type ThemeContextType = {
   accentColor: string;
   logoUrl: string | null;
   logoDarkUrl: string | null;
+  logoGroupUrl: string | null;
   shortName: string;
+  /* Datos fiscales/contacto de la empresa */
+  legalName: string;
+  companyAddress: string;
+  companyTaxId: string;
+  companyPhone: string;
+  companyEmail: string;
+  companyZipCode: string;
   isDark: boolean;
   toggleDark: () => void;
   showDescriptions: boolean;
@@ -43,7 +51,14 @@ const ThemeContext = createContext<ThemeContextType>({
   accentColor: DEFAULT_ACCENT,
   logoUrl: null,
   logoDarkUrl: null,
+  logoGroupUrl: null,
   shortName: "PropAdmin",
+  legalName: "",
+  companyAddress: "",
+  companyTaxId: "",
+  companyPhone: "",
+  companyEmail: "",
+  companyZipCode: "",
   isDark: false,
   toggleDark: () => {},
   showDescriptions: true,
@@ -69,7 +84,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoDarkUrl, setLogoDarkUrl] = useState<string | null>(null);
+  const [logoGroupUrl, setLogoGroupUrl] = useState<string | null>(null);
   const [shortName, setShortName] = useState("PropAdmin");
+  const [legalName, setLegalName] = useState("");
+  const [companyAddress, setCompanyAddress] = useState("");
+  const [companyTaxId, setCompanyTaxId]     = useState("");
+  const [companyPhone, setCompanyPhone]     = useState("");
+  const [companyEmail, setCompanyEmail]     = useState("");
+  const [companyZipCode, setCompanyZipCode] = useState("");
   const [isDark, setIsDark] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true);
 
@@ -108,7 +130,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadCompanyBranding(companyId: string) {
     const { data } = await supabase
       .from("companies")
-      .select("brand_color, logo_url, logo_dark_url, short_name")
+      .select("brand_color, logo_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime")
       .eq("id", companyId)
       .maybeSingle();
 
@@ -117,7 +139,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (data.brand_color) setAccentColor(data.brand_color);
     setLogoUrl(data.logo_url ?? null);
     setLogoDarkUrl(data.logo_dark_url ?? null);
+    setLogoGroupUrl(data.logo_group_url ?? null);
     if (data.short_name) setShortName(data.short_name);
+    setLegalName(data.legal_name      || "");
+    setCompanyAddress(data.address    || "");
+    setCompanyTaxId(data.tax_id       || "");
+    setCompanyPhone(data.phone        || "");
+    setCompanyEmail(data.email        || "");
+    setCompanyZipCode(data.zip_code   || "");
   }
 
   async function loadUserPreferences(userId: string) {
@@ -148,7 +177,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         accentColor,
         logoUrl,
         logoDarkUrl,
+        logoGroupUrl,
         shortName,
+        legalName,
+        companyAddress,
+        companyTaxId,
+        companyPhone,
+        companyEmail,
+        companyZipCode,
         isDark,
         toggleDark,
         showDescriptions,

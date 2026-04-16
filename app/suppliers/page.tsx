@@ -1,21 +1,33 @@
 "use client";
 
 /*
-  Catálogo de proveedores.
+  Catálogo de proveedores con sucursales.
 
-  Tabla esperada: suppliers
-    id, company_id, name, contact_name, email, phone, address,
-    tax_id, notes, active (bool default true),
-    created_at, updated_at, deleted_at (soft-delete)
+  Tablas esperadas:
+
+    suppliers
+      id uuid PK, company_id uuid, name text,
+      client_number text NULL, contact_name text NULL,
+      contact_email text NULL, contact_phone text NULL,
+      tax_id text NULL, cfdi_use text NULL, notes text NULL,
+      active bool default true,
+      created_at, updated_at, deleted_at
+
+    supplier_branches
+      id uuid PK, supplier_id uuid → suppliers,
+      name text, address text NULL,
+      email text NULL, phone text NULL,
+      active bool default true,
+      created_at, deleted_at
 
   Se usa en:
   - app/maintenance/page.tsx → select de proveedor por material
-  - generación de órdenes de compra por proveedor
+  - app/purchases/page.tsx → OC (proveedor + sucursal)
 */
 
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, FormEvent } from "react";
-import { MoreVertical, Package, Plus, Truck } from "lucide-react";
+import { Edit3, MoreVertical, Package, Plus, Truck, X } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -32,32 +44,53 @@ import AppBadge from "@/components/AppBadge";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
+type SupplierBranch = {
+  id:          string;
+  supplier_id: string;
+  name:        string;
+  address:     string | null;
+  email:       string | null;
+  phone:       string | null;
+  active:      boolean;
+};
+
 type Supplier = {
-  id:              string;
-  name:            string;
-  contact_name:    string | null;
-  email:           string | null;
-  phone:           string | null;
-  address:         string | null;
-  tax_id:          string | null;
-  client_number: string | null;
-  cfdi_use:        string | null;
-  notes:           string | null;
-  active:          boolean;
+  id:             string;
+  company_id:     string;
+  name:           string;
+  client_number:  string | null;
+  contact_name:   string | null;
+  contact_email:  string | null;
+  contact_phone:  string | null;
+  tax_id:         string | null;
+  cfdi_use:       string | null;
+  notes:          string | null;
+  active:         boolean;
+  created_at:     string;
+  deleted_at:     string | null;
+  branches?:      SupplierBranch[];
 };
 
 type FormState = {
-  name:            string;
-  contact_name:    string;
-  email:           string;
-  phone:           string;
-  address:         string;
-  tax_id:          string;
-  client_number: string;
-  cfdi_use:        string;
-  notes:           string;
-  active:          boolean;
+  name:           string;
+  client_number:  string;
+  contact_name:   string;
+  contact_email:  string;
+  contact_phone:  string;
+  tax_id:         string;
+  cfdi_use:       string;
+  notes:          string;
+  active:         boolean;
 };
+
+type BranchDraft = {
+  name:    string;
+  address: string;
+  email:   string;
+  phone:   string;
+};
+
+const EMPTY_BRANCH_DRAFT: BranchDraft = { name: "", address: "", email: "", phone: "" };
 
 const DEFAULT_CFDI_USE = "G03 Gastos en general";
 
@@ -79,8 +112,9 @@ const CFDI_USES = [
 ];
 
 const EMPTY_FORM: FormState = {
-  name: "", contact_name: "", email: "", phone: "", address: "",
-  tax_id: "", client_number: "", cfdi_use: DEFAULT_CFDI_USE,
+  name: "", client_number: "", contact_name: "",
+  contact_email: "", contact_phone: "",
+  tax_id: "", cfdi_use: DEFAULT_CFDI_USE,
   notes: "", active: true,
 };
 
@@ -89,17 +123,33 @@ const EMPTY_FORM: FormState = {
 export default function SuppliersPage() {
   const { user, loading: userLoading } = useCurrentUser();
 
-  const [suppliers,   setSuppliers]   = useState<Supplier[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [msg,         setMsg]         = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [msg,       setMsg]       = useState("");
 
-  const [showModal,   setShowModal]   = useState(false);
-  const [editingId,   setEditingId]   = useState<string | null>(null);
-  const [form,        setForm]        = useState<FormState>(EMPTY_FORM);
-  const [saving,      setSaving]      = useState(false);
-  const [formError,   setFormError]   = useState("");
+  /* Modal */
+  const [showModal, setShowModal] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form,      setForm]      = useState<FormState>(EMPTY_FORM);
+  const [saving,    setSaving]    = useState(false);
+  const [formError, setFormError] = useState("");
 
-  const [openMenuId,  setOpenMenuId]  = useState<string | null>(null);
+  /* Sucursales — formulario inline dentro del modal (editar) */
+  const [branchDraft,   setBranchDraft]   = useState<BranchDraft>(EMPTY_BRANCH_DRAFT);
+  const [showBranchForm, setShowBranchForm] = useState(false);
+  const [savingBranch,  setSavingBranch]  = useState(false);
+
+  /* Edición inline de sucursal existente */
+  const [editingBranchId,   setEditingBranchId]   = useState<string | null>(null);
+  const [editingBranchForm, setEditingBranchForm] = useState<BranchDraft>(EMPTY_BRANCH_DRAFT);
+  const [savingEditBranch,  setSavingEditBranch]  = useState(false);
+
+  /* Sucursales — agregar rápido desde la card */
+  const [quickBranchForSupplier, setQuickBranchForSupplier] = useState<string | null>(null);
+  const [quickBranch, setQuickBranch] = useState<BranchDraft>(EMPTY_BRANCH_DRAFT);
+  const [savingQuickBranch, setSavingQuickBranch] = useState(false);
+
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
 
   /* ── Load ────────────────────────────────────────────────────────── */
 
@@ -113,16 +163,24 @@ export default function SuppliersPage() {
     setMsg("");
     const { data, error } = await supabase
       .from("suppliers")
-      .select("id, name, contact_name, email, phone, address, tax_id, client_number, cfdi_use, notes, active")
+      .select("*, supplier_branches(*)")
       .eq("company_id", companyId)
       .is("deleted_at", null)
       .order("name", { ascending: true });
+
     if (error) {
       console.error("loadSuppliers error:", error);
       setMsg(`No se pudieron cargar los proveedores: ${error.message}`);
       setSuppliers([]);
     } else {
-      setSuppliers((data as Supplier[]) || []);
+      type Row = Supplier & { supplier_branches: SupplierBranch[] | null };
+      const rows = ((data || []) as unknown as Row[]).map((r) => ({
+        ...r,
+        branches: (r.supplier_branches || [])
+          .filter((b) => b.active)
+          .sort((a, b) => a.name.localeCompare(b.name)),
+      }));
+      setSuppliers(rows);
     }
     setLoading(false);
   }
@@ -131,7 +189,7 @@ export default function SuppliersPage() {
 
   const { total, activeCount, inactiveCount } = useMemo(() => {
     const total         = suppliers.length;
-    const activeCount   = suppliers.filter(s => s.active).length;
+    const activeCount   = suppliers.filter((s) => s.active).length;
     const inactiveCount = total - activeCount;
     return { total, activeCount, inactiveCount };
   }, [suppliers]);
@@ -143,25 +201,28 @@ export default function SuppliersPage() {
     setForm(EMPTY_FORM);
     setFormError("");
     setShowModal(true);
+    setShowBranchForm(false);
+    setBranchDraft(EMPTY_BRANCH_DRAFT);
     setOpenMenuId(null);
   }
 
   function openEdit(s: Supplier) {
     setEditingId(s.id);
     setForm({
-      name:            s.name,
-      contact_name:    s.contact_name    || "",
-      email:           s.email           || "",
-      phone:           s.phone           || "",
-      address:         s.address         || "",
-      tax_id:          s.tax_id          || "",
+      name:          s.name,
       client_number: s.client_number || "",
-      cfdi_use:        s.cfdi_use        || DEFAULT_CFDI_USE,
-      notes:           s.notes           || "",
-      active:          s.active,
+      contact_name:  s.contact_name  || "",
+      contact_email: s.contact_email || "",
+      contact_phone: s.contact_phone || "",
+      tax_id:        s.tax_id        || "",
+      cfdi_use:      s.cfdi_use      || DEFAULT_CFDI_USE,
+      notes:         s.notes         || "",
+      active:        s.active,
     });
     setFormError("");
     setShowModal(true);
+    setShowBranchForm(false);
+    setBranchDraft(EMPTY_BRANCH_DRAFT);
     setOpenMenuId(null);
   }
 
@@ -170,6 +231,10 @@ export default function SuppliersPage() {
     setEditingId(null);
     setForm(EMPTY_FORM);
     setFormError("");
+    setShowBranchForm(false);
+    setBranchDraft(EMPTY_BRANCH_DRAFT);
+    setEditingBranchId(null);
+    setEditingBranchForm(EMPTY_BRANCH_DRAFT);
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -181,44 +246,63 @@ export default function SuppliersPage() {
     setFormError("");
 
     const payload = {
-      name:            form.name.trim(),
-      contact_name:    form.contact_name.trim()    || null,
-      email:           form.email.trim()           || null,
-      phone:           form.phone.trim()           || null,
-      address:         form.address.trim()         || null,
-      tax_id:          form.tax_id.trim()          || null,
+      name:          form.name.trim(),
       client_number: form.client_number.trim() || null,
-      cfdi_use:        form.cfdi_use.trim()        || DEFAULT_CFDI_USE,
-      notes:           form.notes.trim()           || null,
-      active:          form.active,
+      contact_name:  form.contact_name.trim()  || null,
+      contact_email: form.contact_email.trim() || null,
+      contact_phone: form.contact_phone.trim() || null,
+      tax_id:        form.tax_id.trim()        || null,
+      cfdi_use:      form.cfdi_use.trim()      || DEFAULT_CFDI_USE,
+      notes:         form.notes.trim()         || null,
+      active:        form.active,
     };
 
-    let error;
     if (editingId) {
-      ({ error } = await supabase
+      const { error } = await supabase
         .from("suppliers")
         .update({ ...payload, updated_at: new Date().toISOString() })
-        .eq("id", editingId));
+        .eq("id", editingId);
+
+      setSaving(false);
+
+      if (error) {
+        console.error("suppliers save error:", error);
+        setFormError(`No se pudo guardar el proveedor: ${error.message}`);
+        return;
+      }
+
+      closeModal();
+      setMsg("Proveedor actualizado correctamente.");
+      void loadSuppliers(user.company_id);
     } else {
-      ({ error } = await supabase
+      const { data, error } = await supabase
         .from("suppliers")
-        .insert({ ...payload, company_id: user.company_id }));
+        .insert({ ...payload, company_id: user.company_id })
+        .select("id")
+        .single();
+
+      setSaving(false);
+
+      if (error) {
+        console.error("suppliers save error:", error);
+        setFormError(`No se pudo guardar el proveedor: ${error.message}`);
+        return;
+      }
+      if (!data) return;
+
+      setMsg("Proveedor creado. Ahora puedes agregar sucursales.");
+      /* Recargar y cambiar a modo editar sin cerrar el modal */
+      await loadSuppliers(user.company_id);
+      setEditingId(data.id);
+      setShowBranchForm(false);
+      setBranchDraft(EMPTY_BRANCH_DRAFT);
     }
-
-    setSaving(false);
-
-    if (error) { setFormError("No se pudo guardar el proveedor."); return; }
-
-    closeModal();
-    setMsg(editingId ? "Proveedor actualizado correctamente." : "Proveedor creado correctamente.");
-    void loadSuppliers(user.company_id);
   }
 
   async function handleArchive(id: string) {
     if (!user?.company_id) return;
     setOpenMenuId(null);
-    const confirmed = window.confirm("¿Archivar este proveedor?");
-    if (!confirmed) return;
+    if (!window.confirm("¿Archivar este proveedor?")) return;
 
     const { error } = await supabase
       .from("suppliers")
@@ -229,6 +313,110 @@ export default function SuppliersPage() {
     setMsg("Proveedor archivado correctamente.");
     void loadSuppliers(user.company_id);
   }
+
+  /* ── Branches ────────────────────────────────────────────────────── */
+
+  async function handleAddBranch(supplierId: string, draft: BranchDraft): Promise<boolean> {
+    if (!draft.name.trim()) return false;
+    const { error } = await supabase.from("supplier_branches").insert({
+      supplier_id: supplierId,
+      name:        draft.name.trim(),
+      address:     draft.address.trim() || null,
+      email:       draft.email.trim()   || null,
+      phone:       draft.phone.trim()   || null,
+      active:      true,
+    });
+    if (error) {
+      console.error("add branch error:", error);
+      setMsg(`No se pudo agregar la sucursal: ${error.message}`);
+      return false;
+    }
+    return true;
+  }
+
+  async function handleArchiveBranch(branchId: string) {
+    if (!window.confirm("¿Archivar esta sucursal?")) return;
+    const { error } = await supabase
+      .from("supplier_branches")
+      .update({ active: false, deleted_at: new Date().toISOString() })
+      .eq("id", branchId);
+    if (error) { setMsg("No se pudo archivar la sucursal."); return; }
+    if (user?.company_id) void loadSuppliers(user.company_id);
+  }
+
+  async function handleSaveModalBranch() {
+    if (!editingId) return;
+    if (!branchDraft.name.trim()) { setFormError("El nombre de la sucursal es requerido."); return; }
+    setSavingBranch(true);
+    setFormError("");
+    const ok = await handleAddBranch(editingId, branchDraft);
+    setSavingBranch(false);
+    if (!ok) return;
+    setBranchDraft(EMPTY_BRANCH_DRAFT);
+    setShowBranchForm(false);
+    if (user?.company_id) void loadSuppliers(user.company_id);
+  }
+
+  function startEditBranch(b: SupplierBranch) {
+    setEditingBranchId(b.id);
+    setEditingBranchForm({
+      name:    b.name,
+      address: b.address || "",
+      email:   b.email   || "",
+      phone:   b.phone   || "",
+    });
+  }
+
+  function cancelEditBranch() {
+    setEditingBranchId(null);
+    setEditingBranchForm(EMPTY_BRANCH_DRAFT);
+  }
+
+  async function handleSaveEditBranch() {
+    if (!editingBranchId) return;
+    if (!editingBranchForm.name.trim()) {
+      setFormError("El nombre de la sucursal es requerido.");
+      return;
+    }
+    setSavingEditBranch(true);
+    setFormError("");
+    const { error } = await supabase
+      .from("supplier_branches")
+      .update({
+        name:    editingBranchForm.name.trim(),
+        address: editingBranchForm.address.trim() || null,
+        email:   editingBranchForm.email.trim()   || null,
+        phone:   editingBranchForm.phone.trim()   || null,
+      })
+      .eq("id", editingBranchId);
+    setSavingEditBranch(false);
+    if (error) {
+      console.error("update branch error:", error);
+      setFormError(`No se pudo actualizar la sucursal: ${error.message}`);
+      return;
+    }
+    cancelEditBranch();
+    if (user?.company_id) void loadSuppliers(user.company_id);
+  }
+
+  async function handleSaveQuickBranch() {
+    if (!quickBranchForSupplier) return;
+    if (!quickBranch.name.trim()) { setMsg("El nombre de la sucursal es requerido."); return; }
+    setSavingQuickBranch(true);
+    const ok = await handleAddBranch(quickBranchForSupplier, quickBranch);
+    setSavingQuickBranch(false);
+    if (!ok) return;
+    setQuickBranch(EMPTY_BRANCH_DRAFT);
+    setQuickBranchForSupplier(null);
+    if (user?.company_id) void loadSuppliers(user.company_id);
+  }
+
+  /* ── Derived: sucursales del proveedor en edición (desde la lista cargada) ── */
+  const editingBranches = useMemo(() => {
+    if (!editingId) return [];
+    const s = suppliers.find((x) => x.id === editingId);
+    return s?.branches || [];
+  }, [editingId, suppliers]);
 
   /* ── Styles ──────────────────────────────────────────────────────── */
 
@@ -244,6 +432,13 @@ export default function SuppliersPage() {
     outline: "none",
   };
 
+  const sectionTitleStyle: CSSProperties = {
+    fontSize: 12, fontWeight: 700, color: "var(--text-muted)",
+    textTransform: "uppercase", letterSpacing: "0.06em",
+    marginBottom: 12, marginTop: 8,
+    paddingBottom: 6, borderBottom: "1px solid var(--border-default)",
+  };
+
   const cardStyle: CSSProperties = {
     padding: 18,
     display: "flex",
@@ -255,11 +450,7 @@ export default function SuppliersPage() {
   /* ── Render ──────────────────────────────────────────────────────── */
 
   if (userLoading) {
-    return (
-      <PageContainer>
-        <p style={{ color: "var(--text-muted)" }}>Cargando...</p>
-      </PageContainer>
-    );
+    return <PageContainer><p style={{ color: "var(--text-muted)" }}>Cargando...</p></PageContainer>;
   }
 
   return (
@@ -267,7 +458,7 @@ export default function SuppliersPage() {
       <PageHeader
         title="Proveedores"
         titleIcon={<Truck size={18} />}
-        subtitle="Catálogo de proveedores usado en materiales y órdenes de compra."
+        subtitle="Catálogo de proveedores y sus sucursales."
         actions={
           <UiButton variant="primary" onClick={openCreate} icon={<Plus size={16} />}>
             Nuevo proveedor
@@ -278,9 +469,7 @@ export default function SuppliersPage() {
       {msg ? (
         <AppCard style={{ marginBottom: 16 }}>
           <div style={{
-            color: msg.includes("correctamente")
-              ? "var(--badge-text-blue)"
-              : "var(--badge-text-red)",
+            color: msg.includes("correctamente") ? "var(--badge-text-blue)" : "var(--badge-text-red)",
             fontWeight: 600,
           }}>
             {msg}
@@ -290,29 +479,14 @@ export default function SuppliersPage() {
 
       {/* Métricas */}
       <AppGrid minWidth={220} style={{ marginBottom: 20 }}>
-        <MetricCard
-          label="Total proveedores"
-          value={total}
-          variant="neutral"
-          icon={<Package size={18} />}
-        />
-        <MetricCard
-          label="Activos"
-          value={activeCount}
-          variant="green"
-        />
-        <MetricCard
-          label="Inactivos"
-          value={inactiveCount}
-          variant="amber"
-        />
+        <MetricCard label="Total proveedores" value={total}         variant="neutral" icon={<Package size={18} />} />
+        <MetricCard label="Activos"           value={activeCount}   variant="green"   />
+        <MetricCard label="Inactivos"         value={inactiveCount} variant="amber"   />
       </AppGrid>
 
       {/* Lista */}
       {loading ? (
-        <AppCard>
-          <p style={{ margin: 0, color: "var(--text-muted)" }}>Cargando proveedores...</p>
-        </AppCard>
+        <AppCard><p style={{ margin: 0, color: "var(--text-muted)" }}>Cargando proveedores...</p></AppCard>
       ) : suppliers.length === 0 ? (
         <AppCard>
           <p style={{ margin: 0, color: "var(--text-muted)" }}>
@@ -320,14 +494,14 @@ export default function SuppliersPage() {
           </p>
         </AppCard>
       ) : (
-        <AppGrid minWidth={280}>
-          {suppliers.map(s => (
+        <AppGrid minWidth={320}>
+          {suppliers.map((s) => (
             <AppCard key={s.id} style={cardStyle}>
 
-              {/* Header de la card */}
+              {/* Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 500, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {s.name}
                   </div>
                   {s.tax_id ? (
@@ -337,7 +511,7 @@ export default function SuppliersPage() {
                   ) : null}
                   {s.client_number ? (
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                      Cliente #: {s.client_number}
+                      Cliente #{s.client_number}
                     </div>
                   ) : null}
                 </div>
@@ -365,42 +539,20 @@ export default function SuppliersPage() {
                     {openMenuId === s.id ? (
                       <div
                         style={{
-                          position: "absolute",
-                          top: 36,
-                          right: 0,
-                          minWidth: 150,
+                          position: "absolute", top: 36, right: 0, minWidth: 150,
                           background: "var(--bg-card)",
                           border: "1px solid var(--border-default)",
                           borderRadius: 10,
                           boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
-                          zIndex: 10,
-                          overflow: "hidden",
+                          zIndex: 10, overflow: "hidden",
                         }}
                       >
-                        <button
-                          type="button"
-                          onClick={() => openEdit(s)}
-                          style={{
-                            display: "block", width: "100%",
-                            padding: "10px 14px", textAlign: "left",
-                            background: "transparent", border: "none",
-                            color: "var(--text-primary)",
-                            fontSize: 13, cursor: "pointer",
-                          }}
-                        >
+                        <button type="button" onClick={() => openEdit(s)}
+                          style={menuBtnStyle()}>
                           Editar
                         </button>
-                        <button
-                          type="button"
-                          onClick={() => handleArchive(s.id)}
-                          style={{
-                            display: "block", width: "100%",
-                            padding: "10px 14px", textAlign: "left",
-                            background: "transparent", border: "none",
-                            color: "var(--badge-text-red)",
-                            fontSize: 13, cursor: "pointer",
-                          }}
-                        >
+                        <button type="button" onClick={() => handleArchive(s.id)}
+                          style={menuBtnStyle(true)}>
                           Archivar
                         </button>
                       </div>
@@ -409,16 +561,109 @@ export default function SuppliersPage() {
                 </div>
               </div>
 
-              {/* Datos de contacto */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 13, color: "var(--text-secondary)" }}>
-                {s.contact_name ? <div>{s.contact_name}</div> : null}
-                {s.phone        ? <div>{s.phone}</div>        : null}
-                {s.email        ? <div style={{ wordBreak: "break-all" }}>{s.email}</div> : null}
-                {!s.contact_name && !s.phone && !s.email ? (
-                  <div style={{ color: "var(--text-muted)" }}>Sin datos de contacto</div>
+              {/* Persona de contacto */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "var(--text-secondary)" }}>
+                {s.contact_name  ? <div>{s.contact_name}</div> : null}
+                {s.contact_phone ? <div>{s.contact_phone}</div> : null}
+                {s.contact_email ? <div style={{ wordBreak: "break-all" }}>{s.contact_email}</div> : null}
+                {!s.contact_name && !s.contact_phone && !s.contact_email ? (
+                  <div style={{ color: "var(--text-muted)" }}>Sin persona de contacto</div>
                 ) : null}
               </div>
 
+              {/* Sucursales */}
+              <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 10, marginTop: 4 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    Sucursales ({s.branches?.length || 0})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuickBranchForSupplier(quickBranchForSupplier === s.id ? null : s.id);
+                      setQuickBranch(EMPTY_BRANCH_DRAFT);
+                    }}
+                    aria-label="Agregar sucursal"
+                    style={{
+                      width: 24, height: 24, borderRadius: 6,
+                      border: "1px solid var(--border-default)",
+                      background: "var(--bg-card)", color: "var(--text-secondary)",
+                      display: "inline-flex", alignItems: "center", justifyContent: "center",
+                      cursor: "pointer", padding: 0,
+                    }}
+                  >
+                    <Plus size={13} />
+                  </button>
+                </div>
+
+                {(s.branches || []).length > 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {(s.branches || []).map((b) => (
+                      <div key={b.id} style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 6 }}>
+                        <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
+                        {b.address ? <span style={{ color: "var(--text-muted)" }}>· {b.address}</span> : null}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sin sucursales registradas.</div>
+                )}
+
+                {/* Quick branch form */}
+                {quickBranchForSupplier === s.id ? (
+                  <div style={{
+                    marginTop: 10, padding: 10,
+                    background: "var(--bg-input)", borderRadius: 8,
+                    border: "1px solid var(--border-default)",
+                    display: "flex", flexDirection: "column", gap: 6,
+                  }}>
+                    <input
+                      style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                      placeholder="Nombre de la sucursal *"
+                      value={quickBranch.name}
+                      onChange={(e) => setQuickBranch({ ...quickBranch, name: e.target.value })}
+                      autoFocus
+                    />
+                    <input
+                      style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                      placeholder="Dirección"
+                      value={quickBranch.address}
+                      onChange={(e) => setQuickBranch({ ...quickBranch, address: e.target.value })}
+                    />
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                      <input
+                        style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                        placeholder="Email sucursal"
+                        value={quickBranch.email}
+                        onChange={(e) => setQuickBranch({ ...quickBranch, email: e.target.value })}
+                      />
+                      <input
+                        style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                        placeholder="Teléfono sucursal"
+                        value={quickBranch.phone}
+                        onChange={(e) => setQuickBranch({ ...quickBranch, phone: e.target.value })}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: 6, justifyContent: "flex-end", marginTop: 4 }}>
+                      <button
+                        type="button"
+                        onClick={() => { setQuickBranchForSupplier(null); setQuickBranch(EMPTY_BRANCH_DRAFT); }}
+                        style={miniBtnStyle()}
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleSaveQuickBranch}
+                        disabled={savingQuickBranch}
+                        style={miniBtnStyle(true)}
+                      >
+                        {savingQuickBranch ? "Guardando..." : "Guardar"}
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </AppCard>
           ))}
         </AppGrid>
@@ -429,10 +674,14 @@ export default function SuppliersPage() {
         open={showModal}
         onClose={closeModal}
         title={editingId ? "Editar proveedor" : "Nuevo proveedor"}
-        maxWidth="600px"
+        maxWidth="680px"
       >
         <form onSubmit={handleSubmit}>
-          <AppFormField label="Nombre" required>
+
+          {/* ─── Sección 1: Datos generales ─── */}
+          <div style={sectionTitleStyle}>Datos generales</div>
+
+          <AppFormField label="Nombre / Razón social" required>
             <input
               style={INPUT_STYLE}
               value={form.name}
@@ -441,84 +690,12 @@ export default function SuppliersPage() {
             />
           </AppFormField>
 
-          <AppFormField label="Nombre de contacto">
+          <AppFormField label="Número de cliente">
             <input
               style={INPUT_STYLE}
-              value={form.contact_name}
-              onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
-              placeholder="Persona de contacto"
-            />
-          </AppFormField>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <AppFormField label="Email">
-              <input
-                type="email"
-                style={INPUT_STYLE}
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                placeholder="correo@ejemplo.com"
-              />
-            </AppFormField>
-
-            <AppFormField label="Teléfono">
-              <input
-                style={INPUT_STYLE}
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="+52 ..."
-              />
-            </AppFormField>
-          </div>
-
-          <AppFormField label="Dirección">
-            <input
-              style={INPUT_STYLE}
-              value={form.address}
-              onChange={(e) => setForm({ ...form, address: e.target.value })}
-              placeholder="Calle, número, colonia, ciudad"
-            />
-          </AppFormField>
-
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <AppFormField label="RFC">
-              <input
-                style={{ ...INPUT_STYLE, fontFamily: "monospace" }}
-                value={form.tax_id}
-                onChange={(e) => setForm({ ...form, tax_id: e.target.value.toUpperCase() })}
-                placeholder="RFC para facturación"
-                maxLength={13}
-              />
-            </AppFormField>
-
-            <AppFormField label="Número de cliente">
-              <input
-                style={INPUT_STYLE}
-                value={form.client_number}
-                onChange={(e) => setForm({ ...form, client_number: e.target.value })}
-                placeholder="Nuestro número con el proveedor"
-              />
-            </AppFormField>
-          </div>
-
-          <AppFormField label="Uso CFDI">
-            <select
-              style={INPUT_STYLE}
-              value={form.cfdi_use}
-              onChange={(e) => setForm({ ...form, cfdi_use: e.target.value })}
-            >
-              {CFDI_USES.map((u) => (
-                <option key={u} value={u}>{u}</option>
-              ))}
-            </select>
-          </AppFormField>
-
-          <AppFormField label="Notas">
-            <textarea
-              style={{ ...INPUT_STYLE, resize: "vertical", minHeight: 80 }}
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              placeholder="Notas internas, especialidades, condiciones..."
+              value={form.client_number}
+              onChange={(e) => setForm({ ...form, client_number: e.target.value })}
+              placeholder="Nuestro número con el proveedor"
             />
           </AppFormField>
 
@@ -535,7 +712,7 @@ export default function SuppliersPage() {
                 Proveedor activo
               </div>
               <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
-                Solo los activos aparecen en el selector de materiales.
+                Solo los activos aparecen en los selectores de materiales y compras.
               </div>
             </div>
             <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
@@ -553,8 +730,7 @@ export default function SuppliersPage() {
               }} />
               <span style={{
                 position: "absolute",
-                left: form.active ? 22 : 2,
-                top: 2,
+                left: form.active ? 22 : 2, top: 2,
                 width: 20, height: 20,
                 background: "#fff", borderRadius: "50%",
                 transition: "0.2s",
@@ -563,18 +739,269 @@ export default function SuppliersPage() {
             </label>
           </div>
 
+          {/* ─── Sección 2: Persona de contacto ─── */}
+          <div style={sectionTitleStyle}>Persona de contacto</div>
+
+          <AppFormField
+            label="Nombre persona de contacto"
+            helperText="Aplica para todas las sucursales (contacto general)."
+          >
+            <input
+              style={INPUT_STYLE}
+              value={form.contact_name}
+              onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
+              placeholder="Persona de contacto"
+            />
+          </AppFormField>
+
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <AppFormField label="Email persona de contacto">
+              <input
+                type="email"
+                style={INPUT_STYLE}
+                value={form.contact_email}
+                onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
+                placeholder="correo@ejemplo.com"
+              />
+            </AppFormField>
+
+            <AppFormField label="Teléfono persona de contacto">
+              <input
+                style={INPUT_STYLE}
+                value={form.contact_phone}
+                onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
+                placeholder="+52 ..."
+              />
+            </AppFormField>
+          </div>
+
+          <AppFormField label="Notas">
+            <textarea
+              style={{ ...INPUT_STYLE, resize: "vertical", minHeight: 70 }}
+              value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              placeholder="Notas internas, especialidades, condiciones..."
+            />
+          </AppFormField>
+
+          {/* ─── Sección 3: Sucursales (solo en editar) ─── */}
+          {editingId ? (
+            <>
+              <div style={sectionTitleStyle}>Sucursales</div>
+
+              {editingBranches.length === 0 ? (
+                <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10 }}>
+                  Sin sucursales registradas.
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 10 }}>
+                  {editingBranches.map((b) => (
+                    editingBranchId === b.id ? (
+                      /* Form de edición inline */
+                      <div key={b.id} style={{
+                        padding: 12, borderRadius: 10,
+                        background: "var(--bg-input)",
+                        border: "1px solid var(--accent)",
+                        display: "flex", flexDirection: "column", gap: 10,
+                      }}>
+                        <AppFormField label="Nombre de la sucursal" required>
+                          <input
+                            style={INPUT_STYLE}
+                            value={editingBranchForm.name}
+                            onChange={(e) => setEditingBranchForm({ ...editingBranchForm, name: e.target.value })}
+                          />
+                        </AppFormField>
+
+                        <AppFormField label="Dirección">
+                          <input
+                            style={INPUT_STYLE}
+                            value={editingBranchForm.address}
+                            onChange={(e) => setEditingBranchForm({ ...editingBranchForm, address: e.target.value })}
+                            placeholder="Calle, número, colonia, ciudad"
+                          />
+                        </AppFormField>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                          <AppFormField label="Email de la sucursal">
+                            <input
+                              type="email"
+                              style={INPUT_STYLE}
+                              value={editingBranchForm.email}
+                              onChange={(e) => setEditingBranchForm({ ...editingBranchForm, email: e.target.value })}
+                              placeholder="correo@sucursal.com"
+                            />
+                          </AppFormField>
+
+                          <AppFormField label="Teléfono de la sucursal">
+                            <input
+                              style={INPUT_STYLE}
+                              value={editingBranchForm.phone}
+                              onChange={(e) => setEditingBranchForm({ ...editingBranchForm, phone: e.target.value })}
+                              placeholder="+52 ..."
+                            />
+                          </AppFormField>
+                        </div>
+
+                        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                          <button type="button" onClick={cancelEditBranch} style={miniBtnStyle()}>
+                            Cancelar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleSaveEditBranch}
+                            disabled={savingEditBranch}
+                            style={miniBtnStyle(true)}
+                          >
+                            {savingEditBranch ? "Guardando..." : "Guardar cambios"}
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Renglón normal */
+                      <div key={b.id} style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        gap: 8, padding: "8px 12px",
+                        border: "1px solid var(--border-default)",
+                        borderRadius: 8, background: "var(--bg-input)",
+                      }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                            {b.name}
+                          </div>
+                          {b.address ? (
+                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{b.address}</div>
+                          ) : null}
+                        </div>
+                        <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => startEditBranch(b)}
+                            aria-label="Editar sucursal"
+                            style={{
+                              width: 28, height: 28, borderRadius: 6,
+                              border: "1px solid var(--border-default)",
+                              background: "var(--bg-card)", color: "var(--text-secondary)",
+                              cursor: "pointer", display: "inline-flex",
+                              alignItems: "center", justifyContent: "center", padding: 0,
+                            }}
+                          >
+                            <Edit3 size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleArchiveBranch(b.id)}
+                            aria-label="Archivar sucursal"
+                            style={{
+                              width: 28, height: 28, borderRadius: 6,
+                              border: "1px solid var(--border-default)",
+                              background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
+                              cursor: "pointer", display: "inline-flex",
+                              alignItems: "center", justifyContent: "center", padding: 0,
+                            }}
+                          >
+                            <X size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  ))}
+                </div>
+              )}
+
+              {showBranchForm ? (
+                <div style={{
+                  padding: 12, borderRadius: 10,
+                  background: "var(--bg-input)",
+                  border: "1px solid var(--border-default)",
+                  display: "flex", flexDirection: "column", gap: 10,
+                  marginBottom: 10,
+                }}>
+                  <AppFormField label="Nombre de la sucursal" required>
+                    <input
+                      style={INPUT_STYLE}
+                      value={branchDraft.name}
+                      onChange={(e) => setBranchDraft({ ...branchDraft, name: e.target.value })}
+                      placeholder="Ej: Sucursal Norte"
+                    />
+                  </AppFormField>
+
+                  <AppFormField label="Dirección">
+                    <input
+                      style={INPUT_STYLE}
+                      value={branchDraft.address}
+                      onChange={(e) => setBranchDraft({ ...branchDraft, address: e.target.value })}
+                      placeholder="Calle, número, colonia, ciudad"
+                    />
+                  </AppFormField>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <AppFormField label="Email de la sucursal">
+                      <input
+                        type="email"
+                        style={INPUT_STYLE}
+                        value={branchDraft.email}
+                        onChange={(e) => setBranchDraft({ ...branchDraft, email: e.target.value })}
+                        placeholder="correo@sucursal.com"
+                      />
+                    </AppFormField>
+
+                    <AppFormField label="Teléfono de la sucursal">
+                      <input
+                        style={INPUT_STYLE}
+                        value={branchDraft.phone}
+                        onChange={(e) => setBranchDraft({ ...branchDraft, phone: e.target.value })}
+                        placeholder="+52 ..."
+                      />
+                    </AppFormField>
+                  </div>
+
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button
+                      type="button"
+                      onClick={() => { setShowBranchForm(false); setBranchDraft(EMPTY_BRANCH_DRAFT); }}
+                      style={miniBtnStyle()}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveModalBranch}
+                      disabled={savingBranch}
+                      style={miniBtnStyle(true)}
+                    >
+                      {savingBranch ? "Guardando..." : "Guardar sucursal"}
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => { setShowBranchForm(true); setBranchDraft(EMPTY_BRANCH_DRAFT); }}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "9px 14px", borderRadius: 8,
+                    border: "1px dashed var(--border-strong)",
+                    background: "transparent", color: "var(--text-secondary)",
+                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    marginBottom: 10,
+                  }}
+                >
+                  <Plus size={14} /> Agregar sucursal
+                </button>
+              )}
+            </>
+          ) : null}
+
           {formError ? (
             <div style={{
               color: "var(--badge-text-red)",
-              marginBottom: 12,
-              fontSize: 13,
-              fontWeight: 600,
+              marginBottom: 12, fontSize: 13, fontWeight: 600,
             }}>
               {formError}
             </div>
           ) : null}
 
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 8 }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-default)" }}>
             <UiButton type="button" variant="secondary" onClick={closeModal}>
               Cancelar
             </UiButton>
@@ -586,4 +1013,26 @@ export default function SuppliersPage() {
       </Modal>
     </PageContainer>
   );
+}
+
+/* ── Helpers de estilos ───────────────────────────────────────────── */
+
+function menuBtnStyle(danger = false): CSSProperties {
+  return {
+    display: "block", width: "100%",
+    padding: "10px 14px", textAlign: "left",
+    background: "transparent", border: "none",
+    color: danger ? "var(--badge-text-red)" : "var(--text-primary)",
+    fontSize: 13, cursor: "pointer",
+  };
+}
+
+function miniBtnStyle(primary = false): CSSProperties {
+  return {
+    padding: "7px 12px", borderRadius: 8,
+    border: primary ? "1px solid var(--accent)" : "1px solid var(--border-default)",
+    background: primary ? "var(--accent)" : "var(--bg-card)",
+    color: primary ? "#fff" : "var(--text-primary)",
+    fontSize: 12, fontWeight: 600, cursor: "pointer",
+  };
 }
