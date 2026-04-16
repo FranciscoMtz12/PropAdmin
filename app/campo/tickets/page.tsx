@@ -42,6 +42,13 @@ type MaterialRow = {
   unit: string;
 };
 
+type CreatePhoto = {
+  id: string;
+  localUrl: string;
+  publicUrl: string | null;
+  uploading: boolean;
+};
+
 type CreateForm = {
   title:      string;
   buildingId: string;
@@ -120,8 +127,7 @@ export default function CampoTicketsPage() {
   const [createOpen,  setCreateOpen]  = useState(false);
   const [form,        setForm]        = useState<CreateForm>(DEFAULT_FORM);
   const [hasDraft,    setHasDraft]    = useState(false);
-  const [cPhotoFiles, setCPhotoFiles] = useState<File[]>([]);
-  const [cPhotoUrls,  setCPhotoUrls]  = useState<string[]>([]);
+  const [cPhotos,     setCPhotos]     = useState<CreatePhoto[]>([]);
   const [saving,      setSaving]      = useState(false);
   const [createError, setCreateError] = useState("");
 
@@ -201,8 +207,7 @@ export default function CampoTicketsPage() {
       setForm(DEFAULT_FORM);
       setHasDraft(false);
     }
-    setCPhotoFiles([]);
-    setCPhotoUrls([]);
+    setCPhotos([]);
     setCreateError("");
     setCreateOpen(true);
   }
@@ -213,16 +218,14 @@ export default function CampoTicketsPage() {
     setHasDraft(false);
     setBuildingUnits([]);
     setBuildingAssets([]);
-    setCPhotoFiles([]);
-    setCPhotoUrls([]);
+    setCPhotos([]);
   }
 
   function resetAndClose() {
     localStorage.removeItem(DRAFT_KEY);
     setForm(DEFAULT_FORM);
     setHasDraft(false);
-    setCPhotoFiles([]);
-    setCPhotoUrls([]);
+    setCPhotos([]);
     setCreateError("");
     setCreateOpen(false);
     setBuildingUnits([]);
@@ -309,17 +312,36 @@ export default function CampoTicketsPage() {
 
   /* ── Camera: create ─────────────────────────────────────────── */
 
-  function handleCreatePhoto(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleCreatePhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
+    if (files.length === 0 || !user?.id) return;
     e.target.value = "";
-    setCPhotoFiles(prev => [...prev, ...files]);
-    setCPhotoUrls(prev => [...prev, ...files.map(f => URL.createObjectURL(f))]);
+
+    for (const file of files) {
+      const id       = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      const localUrl = URL.createObjectURL(file);
+      setCPhotos(prev => [...prev, { id, localUrl, publicUrl: null, uploading: true }]);
+
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const path      = `temp/${user.id}-${id}-${cleanName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("maintenance-photos")
+        .upload(path, file);
+      if (uploadErr) {
+        setCPhotos(prev => prev.filter(p => p.id !== id));
+        continue;
+      }
+      const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
+      setCPhotos(prev => prev.map(p =>
+        p.id === id
+          ? { ...p, publicUrl: urlData?.publicUrl || null, uploading: false }
+          : p
+      ));
+    }
   }
 
-  function removeCreatePhoto(index: number) {
-    setCPhotoFiles(prev => prev.filter((_, i) => i !== index));
-    setCPhotoUrls(prev => prev.filter((_, i) => i !== index));
+  function removeCreatePhoto(id: string) {
+    setCPhotos(prev => prev.filter(p => p.id !== id));
   }
 
   /* ── Camera: detail (add to existing) ──────────────────────── */
@@ -329,17 +351,22 @@ export default function CampoTicketsPage() {
     const ticketId = addingPhotoForRef.current;
     if (files.length === 0 || !ticketId || !user?.company_id) return;
     e.target.value = "";
+
+    const ticket = tickets.find(t => t.id === ticketId);
+    const folder = ticket?.ticket_number || ticketId;
+
     const newUrls: string[] = [];
     for (const file of files) {
-      const ext  = file.name.split(".").pop() || "jpg";
-      const path = `maintenance/${user.company_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("maintenance-photos").upload(path, file);
+      const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
+      const path      = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${cleanName}`;
+      const { error: uploadErr } = await supabase.storage
+        .from("maintenance-photos")
+        .upload(path, file);
       if (uploadErr) continue;
       const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
       if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
     }
     if (newUrls.length === 0) return;
-    const ticket = tickets.find(t => t.id === ticketId);
     const updated = [...(ticket?.photos || []), ...newUrls];
     await supabase.from("maintenance_logs").update({ photos: updated }).eq("id", ticketId);
     setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, photos: updated } : t));
@@ -350,19 +377,13 @@ export default function CampoTicketsPage() {
   async function handleCreate() {
     if (!user?.company_id) return;
     if (!form.title.trim()) { setCreateError("Escribe un título."); return; }
+    if (cPhotos.some(p => p.uploading)) { setCreateError("Espera a que terminen de subir las fotos."); return; }
     setCreateError("");
     setSaving(true);
 
-    const photoUrls: string[] = [];
-    for (const file of cPhotoFiles) {
-      const ext  = file.name.split(".").pop() || "jpg";
-      const path = `maintenance/${user.company_id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("maintenance-photos").upload(path, file);
-      if (!uploadErr) {
-        const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
-        if (urlData?.publicUrl) photoUrls.push(urlData.publicUrl);
-      }
-    }
+    const photoUrls: string[] = cPhotos
+      .filter(p => p.publicUrl)
+      .map(p => p.publicUrl as string);
 
     const isFixedArea = FIXED_AREA_VALUES.has(form.area);
     const unitId      = !isFixedArea && form.area ? form.area : null;
@@ -831,12 +852,21 @@ export default function CampoTicketsPage() {
 
                 <div>
                   <label style={labelStyle}>Fotos (opcional)</label>
-                  {cPhotoUrls.length > 0 && (
+                  {cPhotos.length > 0 && (
                     <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 8 }}>
-                      {cPhotoUrls.map((url, i) => (
-                        <div key={i} style={{ position: "relative" }}>
-                          <img src={url} alt={`Foto ${i + 1}`} style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-default)" }} />
-                          <button type="button" onClick={() => removeCreatePhoto(i)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
+                      {cPhotos.map((p, i) => (
+                        <div key={p.id} style={{ position: "relative" }}>
+                          <img
+                            src={p.publicUrl || p.localUrl}
+                            alt={`Foto ${i + 1}`}
+                            style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: 8, border: "1px solid var(--border-default)", opacity: p.uploading ? 0.5 : 1 }}
+                          />
+                          {p.uploading && (
+                            <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", borderRadius: 8 }}>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>Subiendo...</span>
+                            </div>
+                          )}
+                          <button type="button" onClick={() => removeCreatePhoto(p.id)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
                             <X size={12} />
                           </button>
                         </div>
@@ -845,7 +875,7 @@ export default function CampoTicketsPage() {
                   )}
                   <button type="button" onClick={() => setPhotoPicker("create")} style={{ width: "100%", padding: "12px", borderRadius: 10, border: "1.5px dashed var(--border-strong)", background: "var(--bg-page)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
                     <Camera size={18} />
-                    {cPhotoUrls.length > 0 ? "Agregar otra foto" : "Agregar foto"}
+                    {cPhotos.length > 0 ? "Agregar otra foto" : "Agregar foto"}
                   </button>
                 </div>
 
