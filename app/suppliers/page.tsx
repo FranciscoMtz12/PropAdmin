@@ -58,6 +58,7 @@ type Supplier = {
   id:             string;
   company_id:     string;
   name:           string;
+  prefix:         string | null;          /* Prefijo usado en folio de OC (p.ej. HD, LC) */
   client_number:  string | null;
   contact_name:   string | null;
   contact_email:  string | null;
@@ -73,6 +74,7 @@ type Supplier = {
 
 type FormState = {
   name:           string;
+  prefix:         string;
   client_number:  string;
   contact_name:   string;
   contact_email:  string;
@@ -112,7 +114,7 @@ const CFDI_USES = [
 ];
 
 const EMPTY_FORM: FormState = {
-  name: "", client_number: "", contact_name: "",
+  name: "", prefix: "", client_number: "", contact_name: "",
   contact_email: "", contact_phone: "",
   tax_id: "", cfdi_use: DEFAULT_CFDI_USE,
   notes: "", active: true,
@@ -210,6 +212,7 @@ export default function SuppliersPage() {
     setEditingId(s.id);
     setForm({
       name:          s.name,
+      prefix:        s.prefix        || "",
       client_number: s.client_number || "",
       contact_name:  s.contact_name  || "",
       contact_email: s.contact_email || "",
@@ -247,6 +250,7 @@ export default function SuppliersPage() {
 
     const payload = {
       name:          form.name.trim(),
+      prefix:        form.prefix.trim().toUpperCase() || null,
       client_number: form.client_number.trim() || null,
       contact_name:  form.contact_name.trim()  || null,
       contact_email: form.contact_email.trim() || null,
@@ -501,8 +505,23 @@ export default function SuppliersPage() {
               {/* Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {s.name}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {s.name}
+                    </div>
+                    {s.prefix ? (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700,
+                        fontFamily: "monospace",
+                        padding: "2px 6px", borderRadius: 4,
+                        background: "var(--bg-input)",
+                        color: "var(--text-secondary)",
+                        border: "1px solid var(--border-default)",
+                        flexShrink: 0,
+                      }}>
+                        {s.prefix}
+                      </span>
+                    ) : null}
                   </div>
                   {s.tax_id ? (
                     <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>
@@ -690,14 +709,30 @@ export default function SuppliersPage() {
             />
           </AppFormField>
 
-          <AppFormField label="Número de cliente">
-            <input
-              style={INPUT_STYLE}
-              value={form.client_number}
-              onChange={(e) => setForm({ ...form, client_number: e.target.value })}
-              placeholder="Nuestro número con el proveedor"
-            />
-          </AppFormField>
+          {/* Prefijo OC + Número de cliente en grid de 2 columnas */}
+          <div style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 16 }}>
+            <AppFormField
+              label="Prefijo OC"
+              helperText="Se usa en el folio de órdenes de compra."
+            >
+              <input
+                style={{ ...INPUT_STYLE, fontFamily: "monospace", textTransform: "uppercase" }}
+                value={form.prefix}
+                onChange={(e) => setForm({ ...form, prefix: e.target.value.toUpperCase() })}
+                placeholder="Ej. HD, LC, AM"
+                maxLength={4}
+              />
+            </AppFormField>
+
+            <AppFormField label="Número de cliente">
+              <input
+                style={INPUT_STYLE}
+                value={form.client_number}
+                onChange={(e) => setForm({ ...form, client_number: e.target.value })}
+                placeholder="Nuestro número con el proveedor"
+              />
+            </AppFormField>
+          </div>
 
           {/* Toggle activo */}
           <div style={{

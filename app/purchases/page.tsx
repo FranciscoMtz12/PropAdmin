@@ -27,18 +27,23 @@
       created_at, deleted_at
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CSSProperties, FormEvent } from "react";
 import {
+  CheckCircle2,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   ChevronUp,
   Edit3,
+  ExternalLink,
   FileText,
   Plus,
   Search,
   ShoppingCart,
   Trash2,
+  Upload,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -71,6 +76,7 @@ type SupplierBranchOption = {
 type SupplierOption = {
   id: string;
   name: string;
+  prefix?: string | null;
   tax_id: string | null;
   contact_name: string | null;
   contact_email: string | null;
@@ -111,6 +117,7 @@ type PurchaseOrder = {
   folio:                string;
   supplier_id:          string;
   supplier_branch_id:   string | null;
+  supplier_prefix:      string | null;
   maintenance_log_id:   string | null;
   building_id:          string | null;
   project_description:  string | null;
@@ -120,6 +127,8 @@ type PurchaseOrder = {
   status:               Status;
   notes:                string | null;
   total_estimated:      number | null;
+  pdf_url:              string | null;
+  sent_at:              string | null;
   created_at:           string;
   /* Derivados */
   supplier_name?:       string;
@@ -150,6 +159,11 @@ const STATUS_VARIANT: Record<Status, "amber" | "blue" | "green" | "red"> = {
 };
 
 const UNITS = ["Pieza", "Metro", "Litro", "Tubo", "Caja", "Rollo", "Bolsa", "Otro"];
+
+const MONTH_LABELS_LONG = [
+  "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+  "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre",
+];
 
 const EMPTY_ITEM: ItemDraft = { description: "", quantity: "1", unit: "Pieza", unit_price: "" };
 
@@ -188,11 +202,26 @@ export default function PurchasesPage() {
   const [companyName, setCompanyName] = useState("");
   const [companyLogoPrint, setCompanyLogoPrint] = useState("");
   const [companyLogoUrl,   setCompanyLogoUrl]   = useState("");
+  const [companyInitials, setCompanyInitials]   = useState("");
 
   /* Filtros */
   const [filterSupplier, setFilterSupplier] = useState("ALL");
   const [filterStatus,   setFilterStatus]   = useState<"ALL" | Status>("ALL");
   const [search,         setSearch]         = useState("");
+
+  /* Vista por mes (igual que /collections) */
+  const now = new Date();
+  const [selectedYear,  setSelectedYear]  = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1);
+
+  /* Combobox de proveedor */
+  const [supplierSearch,       setSupplierSearch]       = useState("");
+  const [showSupplierDropdown, setShowSupplierDropdown] = useState(false);
+
+  /* Subida de PDF firmado */
+  const [uploadingId,   setUploadingId]   = useState<string | null>(null);
+  const [uploadTargetId, setUploadTargetId] = useState<string | null>(null);
+  const pdfFileInputRef = useRef<HTMLInputElement>(null);
 
   /* Expansión inline de OC */
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
@@ -240,7 +269,8 @@ export default function PurchasesPage() {
           total_estimated, notes, project_description,
           responsible_name, responsible_phone, signer_name,
           maintenance_log_id, building_id,
-          supplier_id, supplier_branch_id,
+          supplier_id, supplier_branch_id, supplier_prefix,
+          pdf_url, sent_at,
           suppliers(id, name, contact_email, contact_phone, tax_id),
           buildings(id, name)
         `)
@@ -256,7 +286,7 @@ export default function PurchasesPage() {
       supabase
         .from("suppliers")
         .select(`
-          id, name, tax_id, contact_name, contact_email, contact_phone,
+          id, name, prefix, tax_id, contact_name, contact_email, contact_phone,
           client_number, cfdi_use,
           supplier_branches(id, name, address, email, phone, active)
         `)
@@ -274,7 +304,7 @@ export default function PurchasesPage() {
 
       supabase
         .from("companies")
-        .select("name, logo_url, logo_print_url")
+        .select("name, logo_url, logo_print_url, initials")
         .eq("id", companyId)
         .single(),
 
@@ -304,11 +334,13 @@ export default function PurchasesPage() {
     type OCRow = {
       id: string; folio: string; supplier_id: string;
       supplier_branch_id: string | null;
+      supplier_prefix: string | null;
       maintenance_log_id: string | null; building_id: string | null;
       project_description: string | null;
       responsible_name: string | null; responsible_phone: string | null;
       signer_name: string | null;
       status: Status; notes: string | null; total_estimated: number | null;
+      pdf_url: string | null; sent_at: string | null;
       created_at: string;
       suppliers: { id: string; name: string; contact_email: string | null; contact_phone: string | null; tax_id: string | null } | null;
       buildings: { id: string; name: string } | null;
@@ -348,6 +380,7 @@ export default function PurchasesPage() {
         folio:                r.folio,
         supplier_id:          r.supplier_id,
         supplier_branch_id:   r.supplier_branch_id,
+        supplier_prefix:      r.supplier_prefix,
         maintenance_log_id:   r.maintenance_log_id,
         building_id:          r.building_id,
         project_description:  r.project_description,
@@ -357,6 +390,8 @@ export default function PurchasesPage() {
         status:               r.status,
         notes:                r.notes,
         total_estimated:      r.total_estimated ?? (agg?.total || 0),
+        pdf_url:              r.pdf_url,
+        sent_at:              r.sent_at,
         created_at:           r.created_at,
         supplier_name:        r.suppliers?.name,
         ticket_number:        r.maintenance_log_id ? ticketMap.get(r.maintenance_log_id) ?? null : null,
@@ -368,7 +403,7 @@ export default function PurchasesPage() {
     setOrders(enriched);
 
     type SupplierRow = {
-      id: string; name: string; tax_id: string | null;
+      id: string; name: string; prefix: string | null; tax_id: string | null;
       contact_name: string | null; contact_email: string | null; contact_phone: string | null;
       client_number: string | null; cfdi_use: string | null;
       supplier_branches: Array<SupplierBranchOption & { active: boolean }> | null;
@@ -376,6 +411,7 @@ export default function PurchasesPage() {
     const suppliersMapped: SupplierOption[] = ((supplierData || []) as unknown as SupplierRow[]).map((s) => ({
       id:            s.id,
       name:          s.name,
+      prefix:        s.prefix,
       tax_id:        s.tax_id,
       contact_name:  s.contact_name,
       contact_email: s.contact_email,
@@ -393,10 +429,13 @@ export default function PurchasesPage() {
     setCollectors((collectorData as Collector[]) || []);
 
     if (companyData && "name" in companyData) {
-      const cd = companyData as { name: string; logo_url?: string; logo_print_url?: string };
+      const cd = companyData as { name: string; logo_url?: string; logo_print_url?: string; initials?: string };
       setCompanyName(cd.name || "");
       setCompanyLogoUrl(cd.logo_url || "");
       setCompanyLogoPrint(cd.logo_print_url || "");
+      /* Fallback: 2 primeras letras del nombre si no hay iniciales en DB */
+      const fallbackInitials = (cd.name || "").replace(/[^A-Za-z]/g, "").slice(0, 2).toUpperCase();
+      setCompanyInitials((cd.initials || fallbackInitials || "CO").toUpperCase());
     }
 
     setLoading(false);
@@ -412,11 +451,33 @@ export default function PurchasesPage() {
     return { total, pending, sent, cancelled };
   }, [orders]);
 
+  /* ── Supplier combobox — lista filtrada por el search ──────────── */
+  const filteredSuppliers = useMemo(() => {
+    const q = supplierSearch.trim().toLowerCase();
+    if (!q) return suppliers;
+    return suppliers.filter((s) => s.name.toLowerCase().includes(q));
+  }, [suppliers, supplierSearch]);
+
+  /* ── Navegación de mes ─────────────────────────────────────────── */
+
+  function prevMonth() {
+    if (selectedMonth === 1) { setSelectedYear((y) => y - 1); setSelectedMonth(12); }
+    else setSelectedMonth((m) => m - 1);
+  }
+  function nextMonth() {
+    if (selectedMonth === 12) { setSelectedYear((y) => y + 1); setSelectedMonth(1); }
+    else setSelectedMonth((m) => m + 1);
+  }
+
   /* ── Filter ────────────────────────────────────────────────────── */
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
+      /* Filtro por mes (created_at) */
+      const d = new Date(o.created_at);
+      if (d.getFullYear() !== selectedYear || d.getMonth() + 1 !== selectedMonth) return false;
+
       if (filterSupplier !== "ALL" && o.supplier_id !== filterSupplier) return false;
       if (filterStatus   !== "ALL" && o.status !== filterStatus) return false;
       if (q) {
@@ -431,27 +492,43 @@ export default function PurchasesPage() {
       }
       return true;
     });
-  }, [orders, filterSupplier, filterStatus, search]);
+  }, [orders, filterSupplier, filterStatus, search, selectedYear, selectedMonth]);
 
   /* ── Folio generation ──────────────────────────────────────────── */
 
-  async function generateNextFolio(companyId: string): Promise<string> {
+  /* Prefijo del proveedor: usa supplier.prefix si existe; si no, las 2 primeras letras del nombre */
+  function computeSupplierPrefix(s: SupplierOption | undefined): string {
+    if (s?.prefix && s.prefix.trim()) return s.prefix.trim().toUpperCase();
+    const clean = (s?.name || "").replace(/[^A-Za-z]/g, "");
+    return (clean.slice(0, 2).toUpperCase() || "XX");
+  }
+
+  /* Folio compuesto: {companyInitials}-{supplierPrefix}-{YYYY}-{NNNN}
+     NNNN es correlativo por company+year (sin importar proveedor). */
+  async function generateNextFolio(
+    companyId: string,
+    initials:  string,
+    supplierPrefix: string,
+  ): Promise<string> {
     const year = new Date().getFullYear();
-    const prefix = `OC-${year}-`;
     const { data } = await supabase
       .from("purchase_orders")
       .select("folio")
       .eq("company_id", companyId)
-      .like("folio", `${prefix}%`)
-      .order("folio", { ascending: false })
-      .limit(1);
-    const last = (data as { folio: string }[] | null)?.[0]?.folio;
-    let n = 1;
-    if (last) {
-      const m = last.match(/OC-\d{4}-(\d+)/);
-      if (m) n = parseInt(m[1], 10) + 1;
-    }
-    return `${prefix}${String(n).padStart(4, "0")}`;
+      .ilike("folio", `%-${year}-%`)
+      .is("deleted_at", null);
+
+    let maxN = 0;
+    ((data as { folio: string }[] | null) || []).forEach((row) => {
+      /* Tomar el último segmento numérico del folio */
+      const parts = row.folio.split("-");
+      const last  = parts[parts.length - 1];
+      const n     = parseInt(last, 10);
+      if (!Number.isNaN(n) && n > maxN) maxN = n;
+    });
+
+    const next = maxN + 1;
+    return `${initials}-${supplierPrefix}-${year}-${String(next).padStart(4, "0")}`;
   }
 
   /* ── Create manual OC ──────────────────────────────────────────── */
@@ -462,6 +539,8 @@ export default function PurchasesPage() {
     setFormError("");
     setCustomCollectorMode(false);
     setCustomSignerMode(false);
+    setSupplierSearch("");
+    setShowSupplierDropdown(false);
     setShowCreateModal(true);
   }
 
@@ -472,6 +551,8 @@ export default function PurchasesPage() {
     setFormError("");
     setCustomCollectorMode(false);
     setCustomSignerMode(false);
+    setSupplierSearch("");
+    setShowSupplierDropdown(false);
   }
 
   function updateItem(idx: number, patch: Partial<ItemDraft>) {
@@ -508,9 +589,14 @@ export default function PurchasesPage() {
     setSaving(true);
     setFormError("");
 
+    /* Prefijo del proveedor (persiste en la OC — se usa en folio y en lectura) */
+    const selectedSupplier = suppliers.find((s) => s.id === manualForm.supplierId);
+    const supplierPrefix   = computeSupplierPrefix(selectedSupplier);
+
     const payload = {
       supplier_id:          manualForm.supplierId,
       supplier_branch_id:   manualForm.supplierBranchId || null,
+      supplier_prefix:      supplierPrefix,
       building_id:          manualForm.buildingId || null,
       project_description:  manualForm.projectDescription.trim() || null,
       responsible_name:     manualForm.responsibleName.trim()   || null,
@@ -549,8 +635,12 @@ export default function PurchasesPage() {
         .select();
       console.log("[purchases] soft-delete items result:", { data: delData, error: delErr });
     } else {
-      /* CREAR: generar folio + INSERT purchase_orders */
-      const folio = await generateNextFolio(user.company_id);
+      /* CREAR: generar folio compuesto + INSERT purchase_orders */
+      const folio = await generateNextFolio(
+        user.company_id,
+        companyInitials || "CO",
+        supplierPrefix,
+      );
       const insertBody = {
         company_id: user.company_id,
         folio,
@@ -715,6 +805,10 @@ export default function PurchasesPage() {
     setFormError("");
     setCustomCollectorMode(false);
     setCustomSignerMode(false);
+    /* Precarga el texto del combobox con el nombre del proveedor actual */
+    const preSupplier = suppliers.find((s) => s.id === order.supplier_id);
+    setSupplierSearch(preSupplier?.name || "");
+    setShowSupplierDropdown(false);
     setShowCreateModal(true);
   }
 
@@ -730,6 +824,66 @@ export default function PurchasesPage() {
     if (error) { setMsg("No se pudo archivar."); return; }
     setMsg("OC archivada correctamente.");
     void loadAll(user.company_id);
+  }
+
+  /* ── Subir PDF firmado ────────────────────────────────────────── */
+
+  function triggerSignedPdfUpload(orderId: string) {
+    setUploadTargetId(orderId);
+    /* pequeño timeout para que React termine de actualizar antes de abrir el picker */
+    setTimeout(() => pdfFileInputRef.current?.click(), 30);
+  }
+
+  async function handleSignedPdfUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file    = e.target.files?.[0];
+    const orderId = uploadTargetId;
+    e.target.value = ""; /* permite volver a subir el mismo archivo luego */
+    if (!file || !orderId || !user?.company_id) { setUploadTargetId(null); return; }
+
+    const order = orders.find((o) => o.id === orderId);
+    if (!order) { setUploadTargetId(null); return; }
+
+    setUploadingId(orderId);
+
+    const path = `${user.company_id}/${order.folio}.pdf`;
+    const { error: upErr } = await supabase.storage
+      .from("purchase-orders")
+      .upload(path, file, { upsert: true, contentType: "application/pdf" });
+
+    if (upErr) {
+      console.error("upload pdf error:", upErr);
+      setMsg(`No se pudo subir el PDF: ${upErr.message}`);
+      setUploadingId(null);
+      setUploadTargetId(null);
+      return;
+    }
+
+    const { data: urlData } = supabase.storage.from("purchase-orders").getPublicUrl(path);
+    const pdfUrl = urlData?.publicUrl || null;
+    const nowIso = new Date().toISOString();
+
+    const { error: updErr } = await supabase
+      .from("purchase_orders")
+      .update({ pdf_url: pdfUrl, status: "sent", sent_at: nowIso, updated_at: nowIso })
+      .eq("id", orderId);
+
+    if (updErr) {
+      console.error("update pdf_url error:", updErr);
+      setMsg(`PDF subido pero no se pudo actualizar la OC: ${updErr.message}`);
+      setUploadingId(null);
+      setUploadTargetId(null);
+      return;
+    }
+
+    /* Refrescar en memoria */
+    setOrders((prev) => prev.map((o) =>
+      o.id === orderId
+        ? { ...o, pdf_url: pdfUrl, status: "sent" as Status, sent_at: nowIso }
+        : o
+    ));
+    setUploadingId(null);
+    setUploadTargetId(null);
+    setMsg("PDF firmado subido correctamente. OC marcada como enviada.");
   }
 
   /* ── PDF generation ────────────────────────────────────────────── */
@@ -821,8 +975,19 @@ export default function PurchasesPage() {
     return <PageContainer><p style={{ color: "var(--text-muted)" }}>Cargando...</p></PageContainer>;
   }
 
+  const monthLabel = `${MONTH_LABELS_LONG[selectedMonth - 1]} ${selectedYear}`;
+
   return (
     <PageContainer>
+      {/* Input oculto para subir PDF firmado — fuera del loop para un único ref */}
+      <input
+        ref={pdfFileInputRef}
+        type="file"
+        accept="application/pdf,.pdf"
+        style={{ display: "none" }}
+        onChange={handleSignedPdfUpload}
+      />
+
       <PageHeader
         title="Compras"
         titleIcon={<ShoppingCart size={18} />}
@@ -833,6 +998,19 @@ export default function PurchasesPage() {
           </UiButton>
         }
       />
+
+      {/* Navegador de mes (igual que /collections) */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
+        <div style={monthNavStyle}>
+          <button type="button" onClick={prevMonth} style={monthNavBtnStyle} aria-label="Mes anterior">
+            <ChevronLeft size={16} />
+          </button>
+          <span style={monthNavLabelStyle}>{monthLabel}</span>
+          <button type="button" onClick={nextMonth} style={monthNavBtnStyle} aria-label="Mes siguiente">
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
 
       {msg ? (
         <AppCard style={{ marginBottom: 16 }}>
@@ -906,7 +1084,7 @@ export default function PurchasesPage() {
           <p style={{ margin: 0, color: "var(--text-muted)" }}>
             {orders.length === 0
               ? "No hay órdenes de compra. Crea la primera con el botón de arriba."
-              : "No hay órdenes con los filtros seleccionados."}
+              : `No hay órdenes de compra en ${monthLabel} con los filtros seleccionados.`}
           </p>
         </AppCard>
       ) : (
@@ -1126,6 +1304,65 @@ export default function PurchasesPage() {
                           Editar OC
                         </button>
 
+                        {/* PDF firmado */}
+                        {o.pdf_url ? (
+                          <>
+                            <a
+                              href={o.pdf_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "9px 14px", borderRadius: 8,
+                                border: "1px solid var(--metric-border-green)",
+                                background: "var(--metric-bg-green)",
+                                color: "var(--metric-value-green)",
+                                fontSize: 13, fontWeight: 600,
+                                textDecoration: "none",
+                              }}
+                            >
+                              <CheckCircle2 size={14} />
+                              Ver PDF firmado
+                              <ExternalLink size={12} />
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => triggerSignedPdfUpload(o.id)}
+                              disabled={uploadingId === o.id}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "9px 14px", borderRadius: 8,
+                                border: "1px solid var(--border-default)",
+                                background: "var(--bg-card)", color: "var(--text-primary)",
+                                fontSize: 13, fontWeight: 600,
+                                cursor: uploadingId === o.id ? "wait" : "pointer",
+                                opacity: uploadingId === o.id ? 0.7 : 1,
+                              }}
+                            >
+                              <Upload size={14} />
+                              {uploadingId === o.id ? "Subiendo..." : "Reemplazar"}
+                            </button>
+                          </>
+                        ) : (o.status !== "sent" && o.status !== "cancelled") ? (
+                          <button
+                            type="button"
+                            onClick={() => triggerSignedPdfUpload(o.id)}
+                            disabled={uploadingId === o.id}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "9px 14px", borderRadius: 8,
+                              border: "1px solid var(--accent)",
+                              background: "var(--accent)", color: "#fff",
+                              fontSize: 13, fontWeight: 700,
+                              cursor: uploadingId === o.id ? "wait" : "pointer",
+                              opacity: uploadingId === o.id ? 0.7 : 1,
+                            }}
+                          >
+                            <Upload size={14} />
+                            {uploadingId === o.id ? "Subiendo..." : "Subir PDF firmado"}
+                          </button>
+                        ) : null}
+
                         <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
                             Cambiar estado:
@@ -1187,20 +1424,80 @@ export default function PurchasesPage() {
         <form onSubmit={handleCreate}>
 
           <AppFormField label="Proveedor" required>
-            <select
-              style={INPUT_STYLE}
-              value={manualForm.supplierId}
-              onChange={(e) => setManualForm({
-                ...manualForm,
-                supplierId:       e.target.value,
-                supplierBranchId: "",
-              })}
-            >
-              <option value="">Selecciona un proveedor...</option>
-              {suppliers.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
+            <div style={{ position: "relative" }}>
+              <input
+                style={INPUT_STYLE}
+                placeholder="Buscar proveedor..."
+                value={supplierSearch}
+                onFocus={() => setShowSupplierDropdown(true)}
+                onChange={(e) => {
+                  setSupplierSearch(e.target.value);
+                  setShowSupplierDropdown(true);
+                  /* Al editar el texto, invalidamos la selección previa */
+                  if (manualForm.supplierId) {
+                    setManualForm({ ...manualForm, supplierId: "", supplierBranchId: "" });
+                  }
+                }}
+                /* onBlur diferido para permitir click en el dropdown */
+                onBlur={() => setTimeout(() => setShowSupplierDropdown(false), 150)}
+                autoComplete="off"
+              />
+              {showSupplierDropdown && filteredSuppliers.length > 0 ? (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                  maxHeight: 220, overflowY: "auto",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-default)",
+                  borderRadius: 10,
+                  boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                  zIndex: 20,
+                }}>
+                  {filteredSuppliers.map((s) => (
+                    <div
+                      key={s.id}
+                      onMouseDown={(e) => e.preventDefault()} /* evita perder foco antes del click */
+                      onClick={() => {
+                        setManualForm({
+                          ...manualForm,
+                          supplierId:       s.id,
+                          supplierBranchId: "",
+                        });
+                        setSupplierSearch(s.name);
+                        setShowSupplierDropdown(false);
+                      }}
+                      style={{
+                        padding: "10px 12px",
+                        cursor: "pointer",
+                        fontSize: 14,
+                        color: "var(--text-primary)",
+                        borderBottom: "1px solid var(--border-default)",
+                        background: manualForm.supplierId === s.id ? "var(--bg-input)" : "transparent",
+                      }}
+                    >
+                      {s.name}
+                      {s.prefix ? (
+                        <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                          [{s.prefix}]
+                        </span>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {showSupplierDropdown && filteredSuppliers.length === 0 && supplierSearch.trim() ? (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+                  padding: "10px 12px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-default)",
+                  borderRadius: 10,
+                  fontSize: 13, color: "var(--text-muted)",
+                  zIndex: 20,
+                }}>
+                  Sin resultados.
+                </div>
+              ) : null}
+            </div>
           </AppFormField>
 
           {manualForm.supplierId ? (() => {
@@ -1485,5 +1782,39 @@ const thStyle: CSSProperties = {
 const tdStyle: CSSProperties = {
   padding: "10px 12px",
   color: "var(--text-primary)",
+  textAlign: "center",
+};
+
+/* ── Estilos del navegador de mes (idem a /collections) ────────── */
+
+const monthNavStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
+  padding: "6px 12px",
+  borderRadius: 12,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
+};
+
+const monthNavBtnStyle: CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 28,
+  height: 28,
+  borderRadius: 8,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-page)",
+  color: "var(--text-secondary)",
+  cursor: "pointer",
+  flexShrink: 0,
+};
+
+const monthNavLabelStyle: CSSProperties = {
+  fontSize: 14,
+  fontWeight: 700,
+  color: "var(--text-primary)",
+  minWidth: 140,
   textAlign: "center",
 };
