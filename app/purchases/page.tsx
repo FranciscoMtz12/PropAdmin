@@ -175,7 +175,7 @@ const EMPTY_MANUAL_FORM: ManualForm = {
 export default function PurchasesPage() {
   const { user, loading: userLoading } = useCurrentUser();
   const router = useRouter();
-  const { legalName, companyAddress, companyTaxId, companyPhone, companyEmail, logoGroupUrl } = useTheme();
+  const { legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, logoGroupUrl } = useTheme();
 
   const [orders,     setOrders]     = useState<PurchaseOrder[]>([]);
   const [suppliers,  setSuppliers]  = useState<SupplierOption[]>([]);
@@ -790,7 +790,7 @@ export default function PurchasesPage() {
         signerName:         order.signer_name       || "",
         logoPrint,
         logoGroup,
-        company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail },
+        company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
       });
 
       doc.save(`${order.folio}.pdf`);

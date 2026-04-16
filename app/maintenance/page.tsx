@@ -485,7 +485,7 @@ type OCPageParams = {
   signerName:         string;
   logoPrint:          PreparedLogo | null;
   logoGroup:          PreparedLogo | null;
-  company: { legalName: string; address: string; taxId: string; phone: string; email: string };
+  company: { legalName: string; address: string; taxId: string; phone: string; email: string; zipCode: string };
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -555,6 +555,13 @@ export function renderPurchaseOrderPage(doc: any, p: OCPageParams) {
       cursorY += 9;
     });
   }
+  if (p.company.zipCode) {
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text(`C.P. ${p.company.zipCode}`, marginL, cursorY);
+    cursorY += 9;
+  }
   if (p.company.taxId) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
@@ -617,12 +624,13 @@ export function renderPurchaseOrderPage(doc: any, p: OCPageParams) {
   doc.line(marginL, cursorY, rightX, cursorY);
   cursorY += 6;
 
-  /* ── TABLA desde cursorY ── */
+  /* ── TABLA desde cursorY (estilo UI: claro, minimalista) ── */
   const col1W = 60;
   const col2W = 80;
   const col3W = contentW - col1W - col2W;
-  const headerH = 20;
-  const rowH    = 18;
+  const headerH    = 20;
+  const rowH       = 18;
+  const footerRowH = 18;
 
   /* Renglones: items reales + 5 vacíos (si <5) o 3 (si ≥5), máx 20 */
   const nItems     = p.items.length;
@@ -631,60 +639,97 @@ export function renderPurchaseOrderPage(doc: any, p: OCPageParams) {
 
   const tableStartY = cursorY;
 
-  /* Encabezado */
-  doc.setFillColor(26, 26, 26);
+  /* === 1. FILLS === */
+
+  /* Header fondo #F8FAFC */
+  doc.setFillColor(248, 250, 252);
   doc.rect(marginL, cursorY, contentW, headerH, "F");
+  const headerEndY = cursorY + headerH;
+
+  /* Filas de datos → blancas (sin fill explícito) */
+  const rowsStartY = headerEndY;
+  const rowsEndY   = rowsStartY + totalRows * rowH;
+
+  /* Footer rows: fondo #F1F5F9 */
+  const footerStartY = rowsEndY;
+  doc.setFillColor(241, 245, 249);
+  doc.rect(marginL, footerStartY, contentW, footerRowH * 2, "F");
+  const tableEndY = footerStartY + footerRowH * 2;
+
+  /* === 2. TEXTO === */
+
+  /* Texto del header */
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
-  doc.setTextColor(255, 255, 255);
-  doc.text("CANT.",       marginL + col1W / 2,                 cursorY + 13, { align: "center" });
-  doc.text("UNIDAD",      marginL + col1W + col2W / 2,         cursorY + 13, { align: "center" });
-  doc.text("DESCRIPCIÓN", marginL + col1W + col2W + col3W / 2, cursorY + 13, { align: "center" });
-  cursorY += headerH;
+  doc.setTextColor(55, 65, 81);          // #374151
+  doc.text("CANT.",       marginL + col1W / 2,                 tableStartY + 13, { align: "center" });
+  doc.text("UNIDAD",      marginL + col1W + col2W / 2,         tableStartY + 13, { align: "center" });
+  doc.text("DESCRIPCIÓN", marginL + col1W + col2W + col3W / 2, tableStartY + 13, { align: "center" });
 
-  /* Filas (dinámico, alternadas blanco / #fafafa) */
+  /* Texto de filas */
   const padded: { quantity: number | string; unit: string; description: string }[] = [...p.items];
   while (padded.length < totalRows) padded.push({ quantity: "", unit: "", description: "" });
 
-  doc.setDrawColor(229, 231, 235);       // #e5e7eb
-  doc.setLineWidth(0.3);
-
-  for (let i = 0; i < padded.length; i++) {
-    const it = padded[i];
-    if (i % 2 === 1) {
-      doc.setFillColor(250, 250, 250);   // #fafafa
-      doc.rect(marginL, cursorY, contentW, rowH, "F");
-    }
-    doc.rect(marginL,                 cursorY, col1W, rowH, "S");
-    doc.rect(marginL + col1W,         cursorY, col2W, rowH, "S");
-    doc.rect(marginL + col1W + col2W, cursorY, col3W, rowH, "S");
+  let rowY = rowsStartY;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
+  doc.setTextColor(55, 65, 81);
+  for (const it of padded) {
     if (it.description) {
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.setTextColor(55, 65, 81);
-      doc.text(String(it.quantity || ""),           marginL + col1W / 2,       cursorY + 12, { align: "center" });
-      doc.text(String(it.unit || "").toUpperCase(), marginL + col1W + col2W / 2, cursorY + 12, { align: "center" });
+      doc.text(String(it.quantity || ""),           marginL + col1W / 2,       rowY + 12, { align: "center" });
+      doc.text(String(it.unit || "").toUpperCase(), marginL + col1W + col2W / 2, rowY + 12, { align: "center" });
       const descLines = doc.splitTextToSize(String(it.description || "").toUpperCase(), col3W - 8);
-      doc.text(descLines[0] || "", marginL + col1W + col2W + 4, cursorY + 12);
+      doc.text(descLines[0] || "", marginL + col1W + col2W + 4, rowY + 12);
     }
-    cursorY += rowH;
+    rowY += rowH;
   }
 
-  const tableEndY = tableStartY + headerH + (totalRows * rowH);
-
-  /* ── PROYECTO y PASA POR MATERIAL (fuera de la tabla) ── */
-  cursorY = tableEndY + 20;
-
+  /* Texto del footer */
   doc.setFont("helvetica", "bold");
   doc.setFontSize(9);
   doc.setTextColor(55, 65, 81);
   const projectText = `PROYECTO: ${p.buildingName || ""}${p.projectDescription ? " " + p.projectDescription : ""}`;
-  doc.text(projectText.toUpperCase(), marginL, cursorY);
-  cursorY += 12;
-
+  doc.text(projectText.toUpperCase(), marginL + 6, footerStartY + 12);
   const pasa = `PASA POR MATERIAL ${p.responsibleName || ""} CEL.: ${p.responsiblePhone || ""}`;
-  doc.text(pasa.toUpperCase(), marginL, cursorY);
-  cursorY += 12;
+  doc.text(pasa.toUpperCase(), marginL + 6, footerStartY + footerRowH + 12);
+
+  /* === 3. BORDES (al final, encima de los fills) === */
+
+  doc.setDrawColor(226, 232, 240);       // #E2E8F0
+
+  /* Línea bajo el header (1pt) */
+  doc.setLineWidth(1);
+  doc.line(marginL, headerEndY, marginL + contentW, headerEndY);
+
+  /* Líneas divisorias entre filas de datos (0.5pt) */
+  doc.setLineWidth(0.5);
+  for (let i = 1; i < totalRows; i++) {
+    const y = rowsStartY + i * rowH;
+    doc.line(marginL, y, marginL + contentW, y);
+  }
+
+  /* Línea sobre el footer (1pt #CBD5E1) */
+  doc.setDrawColor(203, 213, 225);       // #CBD5E1
+  doc.setLineWidth(1);
+  doc.line(marginL, footerStartY, marginL + contentW, footerStartY);
+
+  /* Línea entre las 2 filas del footer (sutil) */
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(marginL, footerStartY + footerRowH, marginL + contentW, footerStartY + footerRowH);
+
+  /* Separadores verticales de columnas (header + filas de datos, no footer) */
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.line(marginL + col1W,         tableStartY, marginL + col1W,         rowsEndY);
+  doc.line(marginL + col1W + col2W, tableStartY, marginL + col1W + col2W, rowsEndY);
+
+  /* Rect exterior (0.5pt #E2E8F0) */
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.5);
+  doc.rect(marginL, tableStartY, contentW, tableEndY - tableStartY, "S");
+
+  cursorY = tableEndY;
 
   /* ── FIRMA ── */
   cursorY += 32;
@@ -718,7 +763,7 @@ export function renderPurchaseOrderPage(doc: any, p: OCPageParams) {
 
 export default function MaintenancePage() {
   const { user, loading } = useCurrentUser();
-  const { logoUrl, logoGroupUrl, legalName, companyAddress, companyTaxId, companyPhone, companyEmail } = useTheme();
+  const { logoUrl, logoGroupUrl, legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1533,7 +1578,7 @@ export default function MaintenancePage() {
           signerName:         defaultSignerName,
           logoPrint,
           logoGroup,
-          company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail },
+          company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
         });
 
         doc.save(`${folio}.pdf`);
