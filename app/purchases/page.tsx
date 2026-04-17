@@ -926,16 +926,13 @@ export default function PurchasesPage() {
         }
       }
 
-      const { default: jsPDF } = await import("jspdf");
-
       /* Preparar ambos logos con aspect ratio correcto */
       const printSrc = companyLogoPrint || companyLogoUrl;
       const logoPrint = printSrc    ? await prepareLogoForPDF(printSrc,    110, 45) : null;
       const logoGroup = logoGroupUrl ? await prepareLogoForPDF(logoGroupUrl, 80, 45) : null;
 
-      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-
-      renderPurchaseOrderPage(doc, {
+      /* renderPurchaseOrderPage ahora es async y se auto-descarga vía html2pdf */
+      await renderPurchaseOrderPage(null, {
         folio:              order.folio,
         date:               new Date(order.created_at),
         supplierName:       supplier?.name || "",
@@ -953,8 +950,6 @@ export default function PurchasesPage() {
         logoGroup,
         company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
       });
-
-      doc.save(`${order.folio}.pdf`);
     } catch (err) {
       console.error("OC PDF error:", err);
       setMsg("Error al generar el PDF.");

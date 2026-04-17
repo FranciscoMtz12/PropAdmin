@@ -38,7 +38,6 @@ import {
   ChevronRight,
   ChevronUp,
   Edit3,
-  ExternalLink,
   FileText,
   Plus,
   ShoppingCart,
@@ -48,7 +47,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { prepareLogoForPDF } from "@/app/maintenance/page";
+import { generateReportePdf } from "@/lib/pdfTemplates";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -103,6 +102,7 @@ type AvailableOC = {
   supplier_name:       string | null;
   project_description: string | null;
   building_name:       string | null;
+  created_at:          string;
 };
 
 type ReportItemRow = {
@@ -209,9 +209,9 @@ export default function ReportePagosPage() {
       supabase
         .from("purchase_orders")
         .select(`
-          id, folio, project_description,
-          buildings(name),
-          suppliers(name)
+          id, folio, project_description, created_at, supplier_prefix,
+          suppliers(name),
+          buildings(name)
         `)
         .eq("company_id", companyId)
         .eq("status", "sent")
@@ -288,6 +288,7 @@ export default function ReportePagosPage() {
     /* OCs disponibles (sent) con info mínima */
     type OCRaw = {
       id: string; folio: string; project_description: string | null;
+      created_at: string; supplier_prefix: string | null;
       buildings: { name: string } | null;
       suppliers: { name: string } | null;
     };
@@ -297,6 +298,7 @@ export default function ReportePagosPage() {
       supplier_name:       o.suppliers?.name || null,
       project_description: o.project_description,
       building_name:       o.buildings?.name || null,
+      created_at:          o.created_at,
     }));
     setAllSentOCs(ocs);
 
@@ -345,6 +347,11 @@ export default function ReportePagosPage() {
   const week  = useMemo(() => getISOWeek(new Date(reportDate + "T00:00:00")), [reportDate]);
   const year  = useMemo(() => new Date(reportDate + "T00:00:00").getFullYear(), [reportDate]);
   const folio = useMemo(() => `REP-S${week}-${year}`, [week, year]);
+
+  /** OCs enviadas que aún no están en ningún reporte */
+  const unreportedOCs = useMemo(() => {
+    return allSentOCs.filter((o) => !claimedByReport.has(o.id));
+  }, [allSentOCs, claimedByReport]);
 
   /** Filtro por mes seleccionado (sobre report_date) */
   const filteredReports = useMemo(() => {
@@ -483,102 +490,68 @@ export default function ReportePagosPage() {
     setError("");
 
     try {
-      /* ────────── PASO 1: inicio y snapshot de variables ────────── */
-      console.log("PASO 1 - inicio handleSave");
-      const elaboratedBy = signerName.trim();
-      const selectedItems = Array.from(itemDrafts.entries());
-      console.log("PASO 1 - elaboratedBy:", elaboratedBy);
-      console.log("PASO 1 - reportDate:", reportDate);
-      console.log("PASO 1 - selectedItems count:", selectedItems?.length);
-      console.log("PASO 1 - user:", user?.id, user?.company_id);
-
       const payload = {
         company_id:    user.company_id,
         folio,
-        elaborated_by: elaboratedBy,
+        elaborated_by: signerName.trim(),
         report_date:   reportDate,
         week_number:   week,
         year:          year,
       };
-      console.log("[handleSave] payload payment_reports:", JSON.stringify(payload, null, 2));
 
       let targetId: string | null = null;
 
       if (editingReportId) {
-        console.log("[handleSave] branch: EDIT — UPDATE + DELETE items + INSERT items");
-
-        /* UPDATE + DELETE items existentes + INSERT items nuevos */
-        const updateBody = { ...payload, updated_at: new Date().toISOString() };
-        console.log("[handleSave] UPDATE body:", JSON.stringify(updateBody, null, 2));
-        console.log("PASO 2 - antes de UPDATE payment_reports");
-        const { data, error } = await supabase
+        /* UPDATE reporte existente */
+        const { error } = await supabase
           .from("payment_reports")
-          .update(updateBody)
-          .eq("id", editingReportId)
-          .select();
-        console.log("PASO 3 - resultado UPDATE:", JSON.stringify({ data, error }, null, 2));
+          .update({ ...payload, updated_at: new Date().toISOString() })
+          .eq("id", editingReportId);
         if (error) throw error;
         targetId = editingReportId;
 
-        const { data: delData, error: delErr } = await supabase
+        /* Borrar items existentes para reinsertar */
+        const { error: delErr } = await supabase
           .from("payment_report_items")
           .delete()
-          .eq("payment_report_id", editingReportId)
-          .select();
-        console.log("[handleSave] DELETE items result:", JSON.stringify({ data: delData, error: delErr }, null, 2));
+          .eq("payment_report_id", editingReportId);
         if (delErr) throw delErr;
       } else {
-        console.log("[handleSave] branch: CREATE — INSERT payment_reports");
-
-        /* INSERT */
-        const insertBody = { ...payload, pdf_url: null };
-        console.log("[handleSave] INSERT body:", JSON.stringify(insertBody, null, 2));
-        console.log("PASO 2 - antes de INSERT payment_reports");
+        /* INSERT nuevo reporte */
         const { data, error } = await supabase
           .from("payment_reports")
-          .insert(insertBody)
+          .insert(payload)
           .select("id")
           .single();
-        console.log("PASO 3 - resultado INSERT:", JSON.stringify({ data, error }, null, 2));
-        if (error || !data) {
-          throw error || new Error("No se pudo crear el reporte (sin data devuelta).");
-        }
+        if (error || !data) throw error || new Error("No se pudo crear el reporte.");
         targetId = data.id;
       }
 
       /* INSERT de items */
-      const itemsPayload = selectedItems.map(([ocId, draft]) => ({
+      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId, draft]) => ({
         payment_report_id: targetId,
         purchase_order_id: ocId,
         invoice_date:      draft.invoice_date || null,
         invoice_number:    draft.invoice_number.trim() || null,
       }));
-      console.log("[handleSave] INSERT items body:", JSON.stringify(itemsPayload, null, 2));
-      console.log("PASO 4 - antes de INSERT items");
-      const { data: data2, error: error2 } = await supabase
+      const { error: itemsErr } = await supabase
         .from("payment_report_items")
-        .insert(itemsPayload)
-        .select();
-      console.log("PASO 5 - resultado items:", JSON.stringify({ data2, error: error2 }, null, 2));
-      if (error2) throw error2;
+        .insert(itemsPayload);
+      if (itemsErr) throw itemsErr;
 
-      /* Persistir firmante nuevo (mismo patrón que purchases/page.tsx) */
+      /* Persistir firmante nuevo si no estaba en el catálogo */
       const trimmedSigner = signerName.trim();
       if (trimmedSigner) {
         const signerExists = signers.some(
           (s) => s.name.toLowerCase() === trimmedSigner.toLowerCase()
         );
         if (!signerExists) {
-          const { data: signerIns, error: signerInsErr } = await supabase
-            .from("purchase_order_signers")
-            .insert({
-              company_id: user.company_id,
-              name:       trimmedSigner,
-              is_default: false,
-              role:       "payer",
-            })
-            .select();
-          console.log("[reporte-pagos] new payer INSERT result:", { data: signerIns, error: signerInsErr });
+          await supabase.from("purchase_order_signers").insert({
+            company_id: user.company_id,
+            name:       trimmedSigner,
+            is_default: false,
+            role:       "payer",
+          });
         }
       }
 
@@ -590,8 +563,6 @@ export default function ReportePagosPage() {
       setItemDrafts(new Map());
       void loadAll(user.company_id);
     } catch (err) {
-      console.log("error guardar reporte:", JSON.stringify(err, null, 2));
-      console.error("save report error (raw):", err);
       const m = err instanceof Error ? err.message : "Error desconocido.";
       setError(`No se pudo guardar el reporte: ${m}`);
     }
@@ -630,195 +601,35 @@ export default function ReportePagosPage() {
 
   /* ── Generar PDF ────────────────────────────────────────────── */
 
-  /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-  async function buildReportDoc(report: PaymentReport, items: ReportItemRow[]): Promise<any> {
-    const { default: jsPDF } = await import("jspdf");
-    const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-    const pageW    = 612;
-    const marginL  = 36;
-    const marginR  = 36;
-    const rightX   = pageW - marginR;       // 576
-    const contentW = pageW - marginL - marginR;
-
-    /* Logo FRA-MAR */
-    const printSrc = companyLogoPrint || companyLogoUrl;
-    const logoPrint = printSrc ? await prepareLogoForPDF(printSrc, 110, 45) : null;
-
-    /* Banda vino */
-    doc.setFillColor(139, 34, 82);
-    doc.rect(0, 0, pageW, 4, "F");
-
-    /* Logo izquierda */
-    if (logoPrint) {
-      try {
-        doc.addImage(
-          logoPrint.data, "PNG",
-          marginL, 12,
-          logoPrint.displayWidth, logoPrint.displayHeight,
-        );
-      } catch { /* sin logo */ }
-    }
-
-    /* Título + semana + folio a la derecha */
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.setTextColor(17, 24, 39);
-    doc.text("REPORTE DE ENVÍO A PAGOS", rightX, 26, { align: "right" });
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-    doc.setTextColor(107, 114, 128);
-    const weekStr = report.week_number != null && report.year != null
-      ? `Semana ${report.week_number} · ${report.year}`
-      : "";
-    if (weekStr) doc.text(weekStr, rightX, 42, { align: "right" });
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(17, 24, 39);
-    doc.text(report.folio, rightX, 56, { align: "right" });
-
-    /* Línea separadora */
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(0.5);
-    doc.line(marginL, 70, rightX, 70);
-
-    /* Datos 3 columnas */
-    const dataY = 82;
-    const dataH = 48;
-    doc.setFillColor(248, 250, 252);
-    doc.rect(marginL, dataY, contentW, dataH, "F");
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(0.5);
-    doc.rect(marginL, dataY, contentW, dataH, "S");
-
-    const colW = contentW / 3;
-    const labels = ["ELABORÓ", "EMPRESA", "FECHA"];
-    const values = [
-      report.elaborated_by || "—",
-      (legalName || companyName || shortName || "").toString() || "—",
-      formatDateEs(report.report_date),
-    ];
-    labels.forEach((label, i) => {
-      const cx = marginL + i * colW;
-      if (i > 0) {
-        doc.setDrawColor(229, 231, 235);
-        doc.setLineWidth(0.5);
-        doc.line(cx, dataY + 6, cx, dataY + dataH - 6);
-      }
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(107, 114, 128);
-      doc.text(label, cx + 12, dataY + 16);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(17, 24, 39);
-      const line = doc.splitTextToSize(values[i] || "—", colW - 24) as string[];
-      doc.text(line[0] || "—", cx + 12, dataY + 34);
-    });
-
-    /* Tabla */
-    let cursorY = dataY + dataH + 20;
-    const tableStartY = cursorY;
-    const c1 = 90;   // FOLIO OC
-    const c2 = 80;   // FECHA FACTURA
-    const c3 = 80;   // NO. FACTURA
-    const c4 = 130;  // PROYECTO
-    const c5 = contentW - c1 - c2 - c3 - c4;  // FIRMA DE RECIBIDO
-    const headerH = 22;
-    const rowH    = 28;
-
-    doc.setFillColor(248, 250, 252);
-    doc.rect(marginL, cursorY, contentW, headerH, "F");
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(55, 65, 81);
-    let x = marginL;
-    doc.text("FOLIO OC",          x + c1 / 2, cursorY + 14, { align: "center" }); x += c1;
-    doc.text("FECHA FACTURA",     x + c2 / 2, cursorY + 14, { align: "center" }); x += c2;
-    doc.text("NO. FACTURA",       x + c3 / 2, cursorY + 14, { align: "center" }); x += c3;
-    doc.text("PROYECTO",          x + c4 / 2, cursorY + 14, { align: "center" }); x += c4;
-    doc.text("FIRMA DE RECIBIDO", x + c5 / 2, cursorY + 14, { align: "center" });
-    cursorY += headerH;
-
-    /* Filas */
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(55, 65, 81);
-
-    for (const it of items) {
-      let xi = marginL;
-      doc.text(it.oc_folio || "", xi + c1 / 2, cursorY + 17, { align: "center" });
-      xi += c1;
-      doc.text(it.invoice_date ? formatDateEs(it.invoice_date) : "", xi + c2 / 2, cursorY + 17, { align: "center" });
-      xi += c2;
-      doc.text(it.invoice_number || "", xi + c3 / 2, cursorY + 17, { align: "center" });
-      xi += c3;
-      const proj = it.oc_building_name
-        ? (it.oc_project_description ? `${it.oc_building_name} · ${it.oc_project_description}` : it.oc_building_name)
-        : (it.oc_project_description || "—");
-      const projLine = doc.splitTextToSize(proj, c4 - 8) as string[];
-      doc.text(projLine[0] || "—", xi + 4, cursorY + 17);
-      xi += c4;
-      /* Línea en blanco para firma manual */
-      doc.setDrawColor(156, 163, 175);
-      doc.setLineWidth(0.5);
-      doc.line(xi + 8, cursorY + rowH - 6, xi + c5 - 8, cursorY + rowH - 6);
-      cursorY += rowH;
-    }
-
-    /* Bordes tabla */
-    const tableEndY = cursorY;
-    doc.setDrawColor(229, 231, 235);
-    doc.setLineWidth(0.5);
-    doc.rect(marginL, tableStartY, contentW, tableEndY - tableStartY, "S");
-    doc.line(marginL, tableStartY + headerH, marginL + contentW, tableStartY + headerH);
-    for (let i = 1; i <= items.length; i++) {
-      const y = tableStartY + headerH + i * rowH;
-      if (y < tableEndY) doc.line(marginL, y, marginL + contentW, y);
-    }
-    let lx = marginL;
-    [c1, c2, c3, c4].forEach((w) => {
-      lx += w;
-      doc.line(lx, tableStartY, lx, tableEndY);
-    });
-
-    /* Firmas al pie */
-    cursorY += 70;
-    const centerL = marginL + contentW * 0.25;
-    const centerR = marginL + contentW * 0.75;
-    const lineLen = 180;
-
-    doc.setDrawColor(55, 65, 81);
-    doc.setLineWidth(0.6);
-    doc.line(centerL - lineLen / 2, cursorY, centerL + lineLen / 2, cursorY);
-    doc.line(centerR - lineLen / 2, cursorY, centerR + lineLen / 2, cursorY);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(9);
-    doc.setTextColor(55, 65, 81);
-    const signerLines = doc.splitTextToSize((report.elaborated_by || "").toUpperCase(), 200) as string[];
-    signerLines.forEach((line: string, i: number) => {
-      doc.text(line, centerL, cursorY + 14 + i * 11, { align: "center" });
-    });
-
-    const labelY = cursorY + 14 + Math.max(1, signerLines.length) * 11 + 6;
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    doc.text("ELABORÓ", centerL, labelY, { align: "center" });
-    doc.text("RECIBIÓ EN ÁREA DE PAGOS", centerR, labelY, { align: "center" });
-
-    return doc;
-  }
-
+  /**
+   * Genera y descarga el PDF de un reporte de envío a pagos usando html2pdf.
+   * Mantiene la firma original para compatibilidad con callers existentes.
+   */
   async function handleGeneratePDF(report: PaymentReport) {
     setGeneratingPdfId(report.id);
     try {
       const items = itemsByReportId.get(report.id) || [];
-      const doc   = await buildReportDoc(report, items);
-      doc.save(`${report.folio}.pdf`);
+
+      await generateReportePdf({
+        folio:        report.folio,
+        weekNumber:   report.week_number ?? 0,
+        year:         report.year ?? new Date().getFullYear(),
+        elaboratedBy: report.elaborated_by || "—",
+        companyName:  (legalName || companyName || shortName || "").toString(),
+        reportDate:   formatDateEs(report.report_date),
+        items: items.map((it) => {
+          const proj = it.oc_building_name
+            ? (it.oc_project_description ? `${it.oc_building_name} · ${it.oc_project_description}` : it.oc_building_name)
+            : (it.oc_project_description || "—");
+          return {
+            folio:         it.oc_folio || "",
+            invoiceDate:   it.invoice_date ? formatDateEs(it.invoice_date) : "",
+            invoiceNumber: it.invoice_number || "",
+            project:       proj,
+          };
+        }),
+        logoUrl: companyLogoPrint || companyLogoUrl || undefined,
+      });
     } catch (err) {
       console.error("generate pdf error:", err);
       setError("Error al generar el PDF.");
@@ -928,6 +739,55 @@ export default function ReportePagosPage() {
           icon={<ShoppingCart size={18} />}
         />
       </AppGrid>
+
+      {/* ── OCs enviadas sin reportar ─────────────────────────── */}
+      <AppCard style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+          OCs enviadas sin reportar a pagos ({unreportedOCs.length})
+        </div>
+
+        {unreportedOCs.length === 0 ? (
+          <p style={{ margin: 0, fontSize: 13, color: "var(--metric-value-green)", fontWeight: 600 }}>
+            Todas las OCs enviadas ya están reportadas ✓
+          </p>
+        ) : (
+          <div style={{
+            border: "1px solid var(--border-default)",
+            borderRadius: 10,
+            overflow: "hidden",
+            maxHeight: 300,
+            overflowY: "auto",
+          }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <thead>
+                <tr>
+                  <th style={{ ...thStyle, width: 36 }}>#</th>
+                  <th style={{ ...thStyle, width: 140 }}>Folio</th>
+                  <th style={{ ...thStyle, textAlign: "left" }}>Proveedor</th>
+                  <th style={{ ...thStyle, textAlign: "left" }}>Proyecto</th>
+                  <th style={{ ...thStyle, width: 110 }}>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {unreportedOCs.map((o, idx) => {
+                  const project = o.building_name
+                    ? (o.project_description ? `${o.building_name} · ${o.project_description}` : o.building_name)
+                    : (o.project_description || "—");
+                  return (
+                    <tr key={o.id} style={{ borderTop: "1px solid var(--border-default)" }}>
+                      <td style={tdStyle}>{idx + 1}</td>
+                      <td style={{ ...tdStyle, fontFamily: "monospace", fontWeight: 700 }}>{o.folio}</td>
+                      <td style={{ ...tdStyle, textAlign: "left" }}>{o.supplier_name || "—"}</td>
+                      <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)" }}>{project}</td>
+                      <td style={tdStyle}>{formatDateShortEs(o.created_at)}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </AppCard>
 
       {/* Lista de reportes */}
       {filteredReports.length === 0 ? (
@@ -1108,27 +968,6 @@ export default function ReportePagosPage() {
                           <Edit3 size={14} />
                           Editar reporte
                         </button>
-
-                        {r.pdf_url ? (
-                          <a
-                            href={r.pdf_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "9px 14px", borderRadius: 8,
-                              border: "1px solid var(--metric-border-green)",
-                              background: "var(--metric-bg-green)",
-                              color: "var(--metric-value-green)",
-                              fontSize: 13, fontWeight: 600,
-                              textDecoration: "none",
-                            }}
-                          >
-                            <CheckCircle2 size={14} />
-                            Ver PDF
-                            <ExternalLink size={12} />
-                          </a>
-                        ) : null}
 
                         <button
                           type="button"

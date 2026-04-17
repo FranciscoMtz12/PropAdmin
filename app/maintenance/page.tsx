@@ -49,6 +49,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { generateOCPdf, generateOMPdf } from "@/lib/pdfTemplates";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -489,272 +490,38 @@ type OCPageParams = {
 };
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-export function renderPurchaseOrderPage(doc: any, p: OCPageParams) {
-  const pageW    = 612;
-  const marginL  = 36;
-  const marginR  = 36;
-  const rightX   = pageW - marginR;   // 576
-  const contentW = pageW - marginL - marginR;
+/**
+ * Genera y descarga el PDF de una Orden de Compra usando html2pdf.js.
+ * Mantiene la firma exportada para compatibilidad con purchases/page.tsx.
+ * El parámetro `doc` ya NO se usa — se mantiene para no romper callers existentes.
+ */
+export async function renderPurchaseOrderPage(_doc: any, p: OCPageParams) {
+  const dateStr = p.date.toLocaleDateString("es-MX", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+  });
 
-  /* ── Banda de acento 4pt (y=0, vino FRA-MAR) ── */
-  doc.setFillColor(139, 34, 82);
-  doc.rect(0, 0, pageW, 4, "F");
-
-  let cursorY = 12;
-
-  /* ── Logos lado a lado (cursorY=12) ── */
-  if (p.logoPrint) {
-    try {
-      doc.addImage(
-        p.logoPrint.data, "PNG",
-        marginL, cursorY,
-        p.logoPrint.displayWidth, p.logoPrint.displayHeight,
-      );
-    } catch { /* sin logo */ }
-  }
-  if (p.logoGroup) {
-    try {
-      const gx = rightX - p.logoGroup.displayWidth;
-      doc.addImage(
-        p.logoGroup.data, "PNG",
-        gx, cursorY,
-        p.logoGroup.displayWidth, p.logoGroup.displayHeight,
-      );
-    } catch { /* sin logo */ }
-  }
-
-  cursorY += 50;  /* espacio después de logos → cursorY = 62 */
-
-  /* ── Fecha y folio (alineados derecha, Y fijos 62/74 arriba a la derecha) ── */
-  const dateStr = p.date.toLocaleDateString("es-MX", { day: "2-digit", month: "2-digit", year: "numeric" });
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(107, 114, 128);       // #6b7280
-  doc.text(dateStr, rightX, 62, { align: "right" });
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(17, 24, 39);          // #111827
-  doc.text(`Folio: ${p.folio}`, rightX, 74, { align: "right" });
-
-  /* ── Datos empresa (desde cursorY) ── */
-  if (p.company.legalName) {
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(17, 24, 39);
-    doc.text(p.company.legalName, marginL, cursorY);
-    cursorY += 12;
-  }
-  if (p.company.address) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    const addrLines = doc.splitTextToSize(p.company.address, 280) as string[];
-    addrLines.forEach((line: string) => {
-      doc.text(line, marginL, cursorY);
-      cursorY += 9;
-    });
-  }
-  if (p.company.zipCode) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    doc.text(`C.P. ${p.company.zipCode}`, marginL, cursorY);
-    cursorY += 9;
-  }
-  if (p.company.taxId) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    doc.text(`RFC: ${p.company.taxId}`, marginL, cursorY);
-    cursorY += 9;
-  }
-
-  cursorY += 8;  /* espacio extra */
-
-  /* ── Línea separadora ── */
-  doc.setDrawColor(229, 231, 235);       // #e5e7eb
-  doc.setLineWidth(0.5);
-  doc.line(marginL, cursorY, rightX, cursorY);
-  cursorY += 10;
-
-  /* ── Destinatario ── */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);          // #374151
-  doc.text("A QUIEN CORRESPONDA.-", marginL, cursorY);
-  cursorY += 11;
-
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(11);
-  doc.setTextColor(17, 24, 39);
-  doc.text((p.supplierName || "").toUpperCase(), marginL, cursorY);
-  cursorY += 13;
-
-  if (p.branchName) {
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    doc.setTextColor(107, 114, 128);
-    doc.text(p.branchName, marginL, cursorY);
-    cursorY += 10;
-  }
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(8);
-  doc.setTextColor(107, 114, 128);
-  doc.text(`USO DE CFDI: ${p.cfdiUse || "—"}`, marginL, cursorY);
-  cursorY += 9;
-
-  if (p.clientNumber) {
-    doc.text(`NÚMERO DE CLIENTE ${p.clientNumber}`, marginL, cursorY);
-    cursorY += 9;
-  }
-
-  cursorY += 10;
-
-  /* ── Título ORDEN DE COMPRA ── */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(10);
-  doc.setTextColor(55, 65, 81);
-  doc.text("ORDEN DE COMPRA", marginL, cursorY);
-  cursorY += 10;
-
-  doc.setDrawColor(55, 65, 81);
-  doc.setLineWidth(0.5);
-  doc.line(marginL, cursorY, rightX, cursorY);
-  cursorY += 6;
-
-  /* ── TABLA desde cursorY (estilo UI: claro, minimalista) ── */
-  const col1W = 60;
-  const col2W = 80;
-  const col3W = contentW - col1W - col2W;
-  const headerH    = 20;
-  const rowH       = 18;
-  const footerRowH = 18;
-
-  /* Renglones: items reales + 5 vacíos (si <5) o 3 (si ≥5), máx 20 */
-  const nItems     = p.items.length;
-  const emptyRows  = nItems < 5 ? 5 : 3;
-  const totalRows  = Math.min(nItems + emptyRows, 20);
-
-  const tableStartY = cursorY;
-
-  /* === 1. FILLS === */
-
-  /* Header fondo #F8FAFC */
-  doc.setFillColor(248, 250, 252);
-  doc.rect(marginL, cursorY, contentW, headerH, "F");
-  const headerEndY = cursorY + headerH;
-
-  /* Filas de datos → blancas (sin fill explícito) */
-  const rowsStartY = headerEndY;
-  const rowsEndY   = rowsStartY + totalRows * rowH;
-
-  /* Footer rows: fondo #F1F5F9 */
-  const footerStartY = rowsEndY;
-  doc.setFillColor(241, 245, 249);
-  doc.rect(marginL, footerStartY, contentW, footerRowH * 2, "F");
-  const tableEndY = footerStartY + footerRowH * 2;
-
-  /* === 2. TEXTO === */
-
-  /* Texto del header */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);          // #374151
-  doc.text("CANT.",       marginL + col1W / 2,                 tableStartY + 13, { align: "center" });
-  doc.text("UNIDAD",      marginL + col1W + col2W / 2,         tableStartY + 13, { align: "center" });
-  doc.text("DESCRIPCIÓN", marginL + col1W + col2W + col3W / 2, tableStartY + 13, { align: "center" });
-
-  /* Texto de filas */
-  const padded: { quantity: number | string; unit: string; description: string }[] = [...p.items];
-  while (padded.length < totalRows) padded.push({ quantity: "", unit: "", description: "" });
-
-  let rowY = rowsStartY;
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);
-  for (const it of padded) {
-    if (it.description) {
-      doc.text(String(it.quantity || ""),           marginL + col1W / 2,       rowY + 12, { align: "center" });
-      doc.text(String(it.unit || "").toUpperCase(), marginL + col1W + col2W / 2, rowY + 12, { align: "center" });
-      const descLines = doc.splitTextToSize(String(it.description || "").toUpperCase(), col3W - 8);
-      doc.text(descLines[0] || "", marginL + col1W + col2W + 4, rowY + 12);
-    }
-    rowY += rowH;
-  }
-
-  /* Texto del footer */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);
-  const projectText = `PROYECTO: ${p.buildingName || ""}${p.projectDescription ? " " + p.projectDescription : ""}`;
-  doc.text(projectText.toUpperCase(), marginL + 6, footerStartY + 12);
-  const pasa = `PASA POR MATERIAL ${p.responsibleName || ""} CEL.: ${p.responsiblePhone || ""}`;
-  doc.text(pasa.toUpperCase(), marginL + 6, footerStartY + footerRowH + 12);
-
-  /* === 3. BORDES (al final, encima de los fills) === */
-
-  doc.setDrawColor(226, 232, 240);       // #E2E8F0
-
-  /* Línea bajo el header (1pt) */
-  doc.setLineWidth(1);
-  doc.line(marginL, headerEndY, marginL + contentW, headerEndY);
-
-  /* Líneas divisorias entre filas de datos (0.5pt) */
-  doc.setLineWidth(0.5);
-  for (let i = 1; i < totalRows; i++) {
-    const y = rowsStartY + i * rowH;
-    doc.line(marginL, y, marginL + contentW, y);
-  }
-
-  /* Línea sobre el footer (1pt #CBD5E1) */
-  doc.setDrawColor(203, 213, 225);       // #CBD5E1
-  doc.setLineWidth(1);
-  doc.line(marginL, footerStartY, marginL + contentW, footerStartY);
-
-  /* Línea entre las 2 filas del footer (sutil) */
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.5);
-  doc.line(marginL, footerStartY + footerRowH, marginL + contentW, footerStartY + footerRowH);
-
-  /* Separadores verticales de columnas (header + filas de datos, no footer) */
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.5);
-  doc.line(marginL + col1W,         tableStartY, marginL + col1W,         rowsEndY);
-  doc.line(marginL + col1W + col2W, tableStartY, marginL + col1W + col2W, rowsEndY);
-
-  /* Rect exterior (0.5pt #E2E8F0) */
-  doc.setDrawColor(226, 232, 240);
-  doc.setLineWidth(0.5);
-  doc.rect(marginL, tableStartY, contentW, tableEndY - tableStartY, "S");
-
-  cursorY = tableEndY;
-
-  /* ── FIRMA ── */
-  cursorY += 32;
-
-  doc.setFont("helvetica", "normal");
-  doc.setFontSize(9);
-  doc.setTextColor(156, 163, 175);       // #9ca3af
-  doc.text("ATENTAMENTE", pageW / 2, cursorY, { align: "center" });
-  cursorY += 18;
-
-  /* Línea de firma */
-  const lineLen = 180;
-  const lineX   = (pageW - lineLen) / 2;
-  doc.setDrawColor(55, 65, 81);
-  doc.setLineWidth(0.6);
-  doc.line(lineX, cursorY, lineX + lineLen, cursorY);
-  cursorY += 8;
-
-  /* Nombre del firmante — splitTextToSize(200) para 1 o 2 líneas */
-  doc.setFont("helvetica", "bold");
-  doc.setFontSize(9);
-  doc.setTextColor(55, 65, 81);
-  const signerLines = doc.splitTextToSize((p.signerName || "").toUpperCase(), 200) as string[];
-  signerLines.forEach((line: string, i: number) => {
-    doc.text(line, pageW / 2, cursorY + i * 11, { align: "center" });
+  await generateOCPdf({
+    folio:              p.folio,
+    date:               dateStr,
+    legalName:          p.company.legalName,
+    address:            p.company.address,
+    zipCode:            p.company.zipCode || "",
+    rfc:                p.company.taxId,
+    supplierName:       p.supplierName,
+    supplierBranch:     p.branchName || undefined,
+    cfdiUse:            p.cfdiUse || undefined,
+    clientNumber:       p.clientNumber || undefined,
+    items:              p.items.map((i) => ({
+      quantity: Number(i.quantity) || 0,
+      unit:     String(i.unit || ""),
+      description: String(i.description || ""),
+    })),
+    projectDescription: [p.buildingName, p.projectDescription].filter(Boolean).join(" ") || undefined,
+    responsibleName:    p.responsibleName || undefined,
+    responsiblePhone:   p.responsiblePhone || undefined,
+    signerName:         p.signerName || undefined,
+    logoUrl:            p.logoPrint?.data || undefined,
+    logoMatzUrl:        p.logoGroup?.data || undefined,
   });
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -1253,39 +1020,7 @@ export default function MaintenancePage() {
     const mats = materialsByTicket[ticket.id] || [];
     setGeneratingPdfId(ticket.id);
 
-    /* Comprime el logo usando canvas antes de insertarlo en el PDF */
-    async function compressLogoForPDF(imgUrl: string): Promise<string> {
-      return new Promise((resolve) => {
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          const maxW = 300, maxH = 100;
-          const ratio = Math.min(maxW / img.width, maxH / img.height);
-          const w = img.width * ratio;
-          const h = img.height * ratio;
-          const canvas = document.createElement("canvas");
-          canvas.width  = w;
-          canvas.height = h;
-          const ctx = canvas.getContext("2d")!;
-          ctx.drawImage(img, 0, 0, w, h);
-          resolve(canvas.toDataURL("image/png"));
-        };
-        img.onerror = () => resolve("");
-        img.src = imgUrl;
-      });
-    }
-
     try {
-      const { default: jsPDF }     = await import("jspdf");
-      const { default: autoTable } = await import("jspdf-autotable");
-
-      /* Letter: 612 x 792 pt */
-      const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-      const pageW   = 612;
-      const marginL = 40;
-      const marginR = 40;
-      const contentW = pageW - marginL - marginR;
-
       const year  = new Date().getFullYear();
       const folio = `OM-${year}-${String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase()}`;
       const fechaStr = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
@@ -1295,194 +1030,26 @@ export default function MaintenancePage() {
       const unitLabel       = ticket.units
         ? `${ticket.units.display_code || ticket.units.unit_number}`
         : "—";
-      const categoryLabel = ticket.category_name_snapshot || "—";
-      const priorityLabel = getPriorityLabel(ticket.priority);
 
-      /* ── HEADER ──────────────────────────────────────────────────── */
-      let cursorY = 40;
-      let logoBottomY = cursorY;
-
-      /* Logo comprimido — logo_print_url tiene prioridad sobre logo_url */
-      const pdfLogoSrc = companyLogoPrint || companyLogoUrl;
-      if (pdfLogoSrc) {
-        try {
-          const compressed = await compressLogoForPDF(pdfLogoSrc);
-          if (compressed) {
-            const tmpImg = new Image();
-            await new Promise<void>((res) => { tmpImg.onload = () => res(); tmpImg.onerror = () => res(); tmpImg.src = compressed; });
-            const logoMaxW = 120, logoMaxH = 60;
-            const logoRatio = Math.min(logoMaxW / (tmpImg.width || 1), logoMaxH / (tmpImg.height || 1));
-            const logoW = (tmpImg.width || logoMaxW) * logoRatio;
-            const logoH = (tmpImg.height || logoMaxH) * logoRatio;
-            doc.addImage(compressed, "PNG", marginL, cursorY, logoW, logoH);
-            logoBottomY = cursorY + logoH + 6;
-          }
-        } catch { /* sin logo */ }
-      }
-
-      /* Datos de la empresa debajo del logo (lado izquierdo) */
-      let companyInfoY = logoBottomY;
-      if (legalName) {
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(11);
-        doc.setTextColor(15, 23, 42);
-        doc.text(legalName, marginL, companyInfoY + 10);
-        companyInfoY += 14;
-      }
-      if (companyAddress) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
-        doc.text(companyAddress, marginL, companyInfoY + 10);
-        companyInfoY += 12;
-      }
-      if (companyTaxId) {
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(9);
-        doc.setTextColor(80, 80, 80);
-        doc.text(`RFC: ${companyTaxId}`, marginL, companyInfoY + 10);
-        companyInfoY += 12;
-      }
-
-      /* Título + folio + fecha (columna derecha del header) */
-      const headerRightX = pageW - marginR - 200;
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(18);
-      doc.setTextColor(15, 23, 42);
-      doc.text("Orden de Materiales", headerRightX, cursorY + 14);
-
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(100, 116, 139);
-      doc.text(`Folio: ${folio}`, headerRightX, cursorY + 30);
-      doc.text(`Fecha: ${fechaStr}`, headerRightX, cursorY + 44);
-
-      cursorY = Math.max(companyInfoY + 8, cursorY + 72);
-
-      /* Línea separadora */
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.75);
-      doc.line(marginL, cursorY, pageW - marginR, cursorY);
-      cursorY += 16;
-
-      /* ── GRID DE DATOS (2 columnas) ──────────────────────────────── */
-      const colW    = (contentW - 8) / 2;
-      const cellH   = 36;
-      const cellPad = 8;
-      const col2X   = marginL + colW + 8;
-
-      function drawCell(x: number, y: number, w: number, label: string, value: string, fullWidth = false) {
-        const cellWidth = fullWidth ? contentW : w;
-        /* Fondo */
-        doc.setFillColor(248, 249, 250);
-        doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "F");
-        /* Borde */
-        doc.setDrawColor(229, 231, 235);
-        doc.setLineWidth(0.5);
-        doc.roundedRect(x, y, cellWidth, cellH, 4, 4, "S");
-        /* Label */
-        doc.setFont("helvetica", "bold");
-        doc.setFontSize(8);
-        doc.setTextColor(148, 163, 184);
-        doc.text(label.toUpperCase(), x + cellPad, y + cellPad + 7);
-        /* Valor */
-        doc.setFont("helvetica", "normal");
-        doc.setFontSize(10);
-        doc.setTextColor(15, 23, 42);
-        const maxValueW = cellWidth - cellPad * 2;
-        const valueLines = doc.splitTextToSize(value || "—", maxValueW) as string[];
-        doc.text(valueLines[0] ?? "—", x + cellPad, y + cellPad + 20);
-      }
-
-      const rowGap = cellH + 6;
-
-      /* Fila 1 */
-      drawCell(marginL, cursorY, colW, "Edificio",   buildingName);
-      drawCell(col2X,   cursorY, colW, "Ticket #",   getTicketNumber(ticket));
-      cursorY += rowGap;
-
-      /* Fila 2 */
-      drawCell(marginL, cursorY, colW, "Dirección",  buildingAddress || "—");
-      drawCell(col2X,   cursorY, colW, "Categoría",  categoryLabel);
-      cursorY += rowGap;
-
-      /* Fila 3 */
-      drawCell(marginL, cursorY, colW, "Departamento", unitLabel);
-      drawCell(col2X,   cursorY, colW, "Prioridad",    priorityLabel);
-      cursorY += rowGap;
-
-      /* Fila 4 — descripción, ancho completo */
-      const descText  = ticket.description || ticket.title;
-      const descLines = doc.splitTextToSize(descText, contentW - cellPad * 2) as string[];
-      const descCellH = Math.max(cellH, cellPad * 2 + descLines.length * 12);
-
-      doc.setFillColor(248, 249, 250);
-      doc.roundedRect(marginL, cursorY, contentW, descCellH, 4, 4, "F");
-      doc.setDrawColor(229, 231, 235);
-      doc.setLineWidth(0.5);
-      doc.roundedRect(marginL, cursorY, contentW, descCellH, 4, 4, "S");
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(8);
-      doc.setTextColor(148, 163, 184);
-      doc.text("DESCRIPCIÓN DEL PROBLEMA", marginL + cellPad, cursorY + cellPad + 7);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.setTextColor(15, 23, 42);
-      doc.text(descLines, marginL + cellPad, cursorY + cellPad + 20);
-
-      cursorY += descCellH + 16;
-
-      /* ── TABLA DE MATERIALES ─────────────────────────────────────── */
-      type DocWithAutoTable = typeof doc & { lastAutoTable?: { finalY: number } };
-
-      autoTable(doc, {
-        startY: cursorY,
-        margin: { left: marginL, right: marginR },
-        head: [["#", "Material", "Cantidad", "Unidad"]],
-        body: mats.length > 0
-          ? mats.map((m, i) => [String(i + 1), m.description, String(m.quantity), m.unit])
-          : [["—", "Sin materiales registrados", "", ""]],
-        theme: "plain",
-        headStyles: {
-          fillColor: [15, 23, 42],
-          textColor: [255, 255, 255],
-          fontSize: 9,
-          fontStyle: "bold",
-          cellPadding: 8,
-        },
-        bodyStyles: {
-          fontSize: 10,
-          cellPadding: 8,
-          textColor: [15, 23, 42],
-        },
-        alternateRowStyles: { fillColor: [248, 249, 250] },
-        styles: {
-          lineColor: [229, 231, 235],
-          lineWidth: 0.5,
-        },
-        columnStyles: {
-          0: { cellWidth: 24 },
-          2: { cellWidth: 60, halign: "center" },
-          3: { cellWidth: 60 },
-        },
+      /* Generar vía html2pdf template */
+      await generateOMPdf({
+        folio,
+        date:               fechaStr,
+        legalName:          legalName || companyName || "",
+        address:            companyAddress || "",
+        rfc:                companyTaxId || "",
+        buildingName,
+        ticketNumber:       getTicketNumber(ticket),
+        buildingAddress:    buildingAddress || undefined,
+        category:           ticket.category_name_snapshot || undefined,
+        unitNumber:         unitLabel,
+        priority:           getPriorityLabel(ticket.priority),
+        problemDescription: ticket.description || ticket.title || undefined,
+        materials:          mats.length > 0
+          ? mats.map((m, i) => ({ index: i + 1, description: m.description, quantity: m.quantity, unit: m.unit }))
+          : [{ index: 1, description: "Sin materiales registrados", quantity: 0, unit: "—" }],
+        logoUrl:            companyLogoPrint || companyLogoUrl || undefined,
       });
-
-      /* ── FOOTER ──────────────────────────────────────────────────── */
-      const finalY = (doc as DocWithAutoTable).lastAutoTable?.finalY ?? cursorY + 40;
-      const footerY = finalY + 20;
-
-      doc.setDrawColor(226, 232, 240);
-      doc.setLineWidth(0.75);
-      doc.line(marginL, footerY, pageW - marginR, footerY);
-
-      doc.setFontSize(8);
-      doc.setFont("helvetica", "normal");
-      doc.setTextColor(148, 163, 184);
-      const legalFooter = [legalName, companyTaxId ? `RFC: ${companyTaxId}` : ""]
-        .filter(Boolean).join(" · ");
-      doc.text(legalFooter || `${companyName || ""}`, marginL, footerY + 14);
-
-      doc.save(`orden-materiales-${folio}.pdf`);
     } catch {
       setMsg("Error al generar el PDF.");
     }
@@ -1560,9 +1127,8 @@ export default function MaintenancePage() {
           .slice(0, 6) || supplier.id.slice(0, 6).toUpperCase();
         const folio = `OC-${year}-${ticketNumRaw}-${supplierCode}`;
 
-        const doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "letter" });
-
-        renderPurchaseOrderPage(doc, {
+        /* renderPurchaseOrderPage ahora es async y se auto-descarga vía html2pdf */
+        await renderPurchaseOrderPage(null, {
           folio,
           date:               new Date(),
           supplierName:       supplier.name,
@@ -1580,8 +1146,6 @@ export default function MaintenancePage() {
           logoGroup,
           company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
         });
-
-        doc.save(`${folio}.pdf`);
       }
 
       setMsg(`Se generaron ${entries.length} orden(es) de compra.`);
