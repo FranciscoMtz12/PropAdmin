@@ -48,7 +48,7 @@ function createStyles(accent = "#8B2252") {
     companyInfo: { fontSize: 7.5, color: "#374151", lineHeight: 1.6, maxWidth: 300 },
     docInfo: { alignItems: "flex-end", minWidth: 130, maxWidth: 150 },
     docTitle: { fontSize: 10, fontFamily: "Montserrat", fontWeight: 700, color: accent, marginBottom: 3 },
-    docFolio: { fontSize: 9, fontFamily: "Montserrat", fontWeight: 700, color: "#111827", textAlign: "right", flexWrap: "wrap" },
+    docFolio: { fontSize: 10, fontFamily: "Montserrat", fontWeight: 700, color: "#111827" },
     docDate: { fontSize: 8, color: "#374151", marginBottom: 3 },
     matzImg: { height: 44, marginBottom: 4, maxWidth: 70 },
     /* Separador */
@@ -108,11 +108,12 @@ export interface OCTemplateData {
   supplierBranch?: string;
   cfdiUse?: string;
   clientNumber?: string;
-  items: { quantity: number; unit: string; description: string }[];
+  items: { quantity: number; unit: string; description: string; unitPrice?: number }[];
   projectDescription?: string;
   responsibleName?: string;
   responsiblePhone?: string;
   signerName?: string;
+  totalEstimated?: number;
   accentColor?: string;
   logoUrl?: string;
   logoMatzUrl?: string;
@@ -143,7 +144,7 @@ export interface ReporteTemplateData {
   elaboratedBy: string;
   companyName: string;
   reportDate: string;
-  items: { folio: string; invoiceDate?: string; invoiceNumber?: string; project: string }[];
+  items: { folio: string; sentAt?: string; invoiceDate?: string; invoiceNumber?: string; project: string }[];
   accentColor?: string;
   logoUrl?: string;
 }
@@ -170,6 +171,10 @@ async function savePdf(element: React.ReactElement<any>, filename: string) {
 
 function OCDocument({ data }: { data: OCTemplateData }) {
   const S = createStyles(data.accentColor);
+  const hasPrices = data.items.some((i) => (i.unitPrice || 0) > 0);
+  const totalEstimated = data.totalEstimated ?? data.items.reduce(
+    (sum, item) => sum + (item.unitPrice || 0) * item.quantity, 0
+  );
 
   return (
     <Document>
@@ -229,23 +234,51 @@ function OCDocument({ data }: { data: OCTemplateData }) {
 
           <Text style={S.sectionTitle}>Orden de Compra</Text>
 
-          {/* Tabla items */}
+          {/* Tabla items — columnas P. Unit. y Total solo si hay precios */}
           <View style={S.tableWrap}>
             <View style={S.tableHeader}>
-              <Text style={[S.tableHeaderCell, { width: 55, textAlign: "center" }]}>Cant.</Text>
-              <Text style={[S.tableHeaderCell, { width: 80, textAlign: "center" }]}>Unidad</Text>
+              <Text style={[S.tableHeaderCell, { width: 45, textAlign: "center" }]}>Cant.</Text>
+              <Text style={[S.tableHeaderCell, { width: 65, textAlign: "center" }]}>Unidad</Text>
               <Text style={[S.tableHeaderCell, { flex: 1 }]}>Descripción</Text>
+              {hasPrices ? (
+                <Text style={[S.tableHeaderCell, { width: 70, textAlign: "right" }]}>P. Unit.</Text>
+              ) : null}
+              {hasPrices ? (
+                <Text style={[S.tableHeaderCell, { width: 80, textAlign: "right" }]}>Total</Text>
+              ) : null}
             </View>
             {data.items.map((item, i) => {
-              const isLast = i === data.items.length - 1 && !data.projectDescription && !data.responsibleName;
+              const isLast = i === data.items.length - 1
+                && !data.projectDescription && !data.responsibleName && (!hasPrices || totalEstimated <= 0);
+              const rowTotal = (item.unitPrice || 0) * item.quantity;
               return (
                 <View key={i} style={isLast ? S.tableRowLast : S.tableRow}>
-                  <Text style={[S.tableCell, { width: 55, textAlign: "center" }]}>{item.quantity}</Text>
-                  <Text style={[S.tableCell, { width: 80, textAlign: "center" }]}>{item.unit}</Text>
+                  <Text style={[S.tableCell, { width: 45, textAlign: "center" }]}>{item.quantity}</Text>
+                  <Text style={[S.tableCell, { width: 65, textAlign: "center" }]}>{item.unit}</Text>
                   <Text style={[S.tableCell, { flex: 1 }]}>{item.description}</Text>
+                  {hasPrices ? (
+                    <Text style={[S.tableCell, { width: 70, textAlign: "right" }]}>
+                      {item.unitPrice ? `$${item.unitPrice.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}
+                    </Text>
+                  ) : null}
+                  {hasPrices ? (
+                    <Text style={[S.tableCell, { width: 80, textAlign: "right" }]}>
+                      {item.unitPrice ? `$${rowTotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}
+                    </Text>
+                  ) : null}
                 </View>
               );
             })}
+            {hasPrices && totalEstimated > 0 ? (
+              <View style={{ flexDirection: "row", backgroundColor: "#E8EDF2", borderTopWidth: 1, borderTopColor: "#374151" }}>
+                <Text style={{ flex: 1, paddingHorizontal: 8, paddingVertical: 6, fontSize: 8, fontFamily: "Montserrat", fontWeight: 700, textAlign: "right", color: "#1F2937" }}>
+                  Total neto:
+                </Text>
+                <Text style={{ width: 80, paddingHorizontal: 8, paddingVertical: 6, fontSize: 9, fontFamily: "Montserrat", fontWeight: 700, textAlign: "right", color: "#1F2937" }}>
+                  ${totalEstimated.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                </Text>
+              </View>
+            ) : null}
             {(data.projectDescription || data.responsibleName) ? (
               <View style={S.tableFooter}>
                 <View style={S.tableFooterCell}>
@@ -412,22 +445,24 @@ function ReporteDocument({ data }: { data: ReporteTemplateData }) {
 
           <Text style={S.sectionTitle}>Órdenes de compra incluidas</Text>
 
-          {/* Tabla OCs */}
+          {/* Tabla OCs — 6 columnas */}
           <View style={S.tableWrap}>
             <View style={S.tableHeader}>
-              <Text style={[S.tableHeaderCell, { width: 105 }]}>Folio OC</Text>
-              <Text style={[S.tableHeaderCell, { width: 72, textAlign: "center" }]}>Fecha factura</Text>
-              <Text style={[S.tableHeaderCell, { width: 72, textAlign: "center" }]}>No. factura</Text>
+              <Text style={[S.tableHeaderCell, { width: 65, textAlign: "center" }]}>Fecha OC</Text>
+              <Text style={[S.tableHeaderCell, { width: 95 }]}>Folio OC</Text>
+              <Text style={[S.tableHeaderCell, { width: 65, textAlign: "center" }]}>Fecha factura</Text>
+              <Text style={[S.tableHeaderCell, { width: 65, textAlign: "center" }]}>No. factura</Text>
               <Text style={[S.tableHeaderCell, { flex: 1 }]}>Proyecto</Text>
-              <Text style={[S.tableHeaderCell, { width: 85, textAlign: "center" }]}>Firma de recibido</Text>
+              <Text style={[S.tableHeaderCell, { width: 75, textAlign: "center" }]}>Firma de recibido</Text>
             </View>
             {data.items.map((item, i) => (
               <View key={i} style={i === data.items.length - 1 ? S.tableRowLast : S.tableRow}>
-                <Text style={[S.tableCellMono, { width: 105 }]}>{item.folio}</Text>
-                <Text style={[S.tableCell, { width: 72, textAlign: "center" }]}>{item.invoiceDate || ""}</Text>
-                <Text style={[S.tableCell, { width: 72, textAlign: "center" }]}>{item.invoiceNumber || ""}</Text>
+                <Text style={[S.tableCell, { width: 65, textAlign: "center" }]}>{item.sentAt || "—"}</Text>
+                <Text style={[S.tableCell, { width: 95 }]}>{item.folio}</Text>
+                <Text style={[S.tableCell, { width: 65, textAlign: "center" }]}>{item.invoiceDate || ""}</Text>
+                <Text style={[S.tableCell, { width: 65, textAlign: "center" }]}>{item.invoiceNumber || ""}</Text>
                 <Text style={[S.tableCell, { flex: 1 }]}>{item.project}</Text>
-                <View style={[S.tableCell, { width: 85, justifyContent: "flex-end", paddingBottom: 8 }]}>
+                <View style={[S.tableCell, { width: 75, justifyContent: "flex-end", paddingBottom: 8 }]}>
                   <View style={{ height: 0.5, backgroundColor: "#9CA3AF", width: "80%", alignSelf: "center" }} />
                 </View>
               </View>

@@ -866,7 +866,7 @@ export default function PurchasesPage() {
     }
 
     const { data: urlData } = supabase.storage.from("purchase-orders").getPublicUrl(path);
-    const pdfUrl = urlData?.publicUrl || null;
+    const pdfUrl = urlData?.publicUrl ? urlData.publicUrl + "?t=" + Date.now() : null;
     const nowIso = new Date().toISOString();
 
     const { error: updErr } = await supabase
@@ -931,6 +931,14 @@ export default function PurchasesPage() {
       const logoPrint = printSrc    ? await prepareLogoForPDF(printSrc,    110, 45) : null;
       const logoGroup = logoGroupUrl ? await prepareLogoForPDF(logoGroupUrl, 80, 45) : null;
 
+      console.log("items con precios:", JSON.stringify(
+        items.map((it) => ({
+          desc: it.description,
+          unit_price: it.unit_price,
+          mapped: it.unit_price || 0,
+        })), null, 2
+      ));
+
       /* renderPurchaseOrderPage ahora es async y se auto-descarga vía html2pdf */
       await renderPurchaseOrderPage(null, {
         folio:              order.folio,
@@ -940,7 +948,13 @@ export default function PurchasesPage() {
         cfdiUse:            supplier?.cfdi_use || null,
         clientNumber:       supplier?.client_number || null,
         branchName,
-        items:              items.map((it) => ({ quantity: it.quantity, unit: it.unit, description: it.description })),
+        items:              (() => {
+          console.log("items para PDF:", JSON.stringify(items.map((i) => ({
+            description: i.description,
+            unit_price: i.unit_price,
+          })), null, 2));
+          return items.map((it) => ({ quantity: it.quantity, unit: it.unit, description: it.description, unitPrice: it.unit_price || 0 }));
+        })(),
         buildingName:       building?.name || "",
         projectDescription: order.project_description || "",
         responsibleName:    order.responsible_name  || "",
@@ -1319,7 +1333,7 @@ export default function PurchasesPage() {
                         {o.pdf_url ? (
                           <>
                             <a
-                              href={o.pdf_url}
+                              href={o.pdf_url + (o.pdf_url.includes("?") ? "" : "?t=" + Date.now())}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{

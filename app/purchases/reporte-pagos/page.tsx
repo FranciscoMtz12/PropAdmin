@@ -103,6 +103,7 @@ type AvailableOC = {
   project_description: string | null;
   building_name:       string | null;
   created_at:          string;
+  sent_at:             string | null;
 };
 
 type ReportItemRow = {
@@ -115,6 +116,7 @@ type ReportItemRow = {
   oc_supplier_name:  string | null;
   oc_project_description: string | null;
   oc_building_name:  string | null;
+  oc_sent_at:        string | null;
 };
 
 type PaymentReport = {
@@ -209,7 +211,7 @@ export default function ReportePagosPage() {
       supabase
         .from("purchase_orders")
         .select(`
-          id, folio, project_description, created_at, supplier_prefix,
+          id, folio, project_description, created_at, sent_at, supplier_prefix,
           suppliers(name),
           buildings(name)
         `)
@@ -253,7 +255,7 @@ export default function ReportePagosPage() {
           id, payment_report_id, purchase_order_id,
           invoice_date, invoice_number,
           purchase_orders(
-            id, folio, project_description,
+            id, folio, project_description, sent_at,
             buildings(name),
             suppliers(name)
           )
@@ -265,6 +267,7 @@ export default function ReportePagosPage() {
         invoice_date: string | null; invoice_number: string | null;
         purchase_orders: {
           id: string; folio: string; project_description: string | null;
+          sent_at: string | null;
           buildings: { name: string } | null;
           suppliers: { name: string } | null;
         } | null;
@@ -279,6 +282,7 @@ export default function ReportePagosPage() {
         oc_supplier_name:       r.purchase_orders?.suppliers?.name || null,
         oc_project_description: r.purchase_orders?.project_description || null,
         oc_building_name:       r.purchase_orders?.buildings?.name || null,
+        oc_sent_at:             r.purchase_orders?.sent_at || null,
       }));
       setReportItems(mapped);
     } else {
@@ -288,7 +292,7 @@ export default function ReportePagosPage() {
     /* OCs disponibles (sent) con info mínima */
     type OCRaw = {
       id: string; folio: string; project_description: string | null;
-      created_at: string; supplier_prefix: string | null;
+      created_at: string; sent_at: string | null; supplier_prefix: string | null;
       buildings: { name: string } | null;
       suppliers: { name: string } | null;
     };
@@ -299,6 +303,7 @@ export default function ReportePagosPage() {
       project_description: o.project_description,
       building_name:       o.buildings?.name || null,
       created_at:          o.created_at,
+      sent_at:             o.sent_at,
     }));
     setAllSentOCs(ocs);
 
@@ -623,6 +628,7 @@ export default function ReportePagosPage() {
             : (it.oc_project_description || "—");
           return {
             folio:         it.oc_folio || "",
+            sentAt:        it.oc_sent_at ? new Date(it.oc_sent_at).toLocaleDateString("es-MX") : "",
             invoiceDate:   it.invoice_date ? formatDateEs(it.invoice_date) : "",
             invoiceNumber: it.invoice_number || "",
             project:       proj,
@@ -901,9 +907,10 @@ export default function ReportePagosPage() {
                             <thead>
                               <tr>
                                 <th style={{ ...thStyle, width: 36 }}>#</th>
-                                <th style={{ ...thStyle, width: 130 }}>Folio OC</th>
-                                <th style={{ ...thStyle, width: 110 }}>Fecha factura</th>
-                                <th style={{ ...thStyle, width: 110 }}>No. factura</th>
+                                <th style={{ ...thStyle, width: 100 }}>Fecha OC</th>
+                                <th style={{ ...thStyle, width: 120 }}>Folio OC</th>
+                                <th style={{ ...thStyle, width: 100 }}>Fecha factura</th>
+                                <th style={{ ...thStyle, width: 100 }}>No. factura</th>
                                 <th style={{ ...thStyle, textAlign: "left" }}>Proyecto</th>
                               </tr>
                             </thead>
@@ -915,7 +922,8 @@ export default function ReportePagosPage() {
                                 return (
                                   <tr key={it.id} style={{ borderTop: "1px solid var(--border-default)" }}>
                                     <td style={tdStyle}>{idx + 1}</td>
-                                    <td style={{ ...tdStyle, fontFamily: "monospace", fontWeight: 700 }}>
+                                    <td style={tdStyle}>{it.oc_sent_at ? new Date(it.oc_sent_at).toLocaleDateString("es-MX") : "—"}</td>
+                                    <td style={{ ...tdStyle, fontWeight: 700 }}>
                                       {it.oc_folio}
                                     </td>
                                     <td style={tdStyle}>{formatDateEs(it.invoice_date)}</td>

@@ -478,7 +478,7 @@ type OCPageParams = {
   cfdiUse:            string | null;
   clientNumber:       string | null;
   branchName:         string | null;
-  items:              { quantity: number | string; unit: string; description: string }[];
+  items:              { quantity: number | string; unit: string; description: string; unit_price?: number; unitPrice?: number }[];
   buildingName:       string;
   projectDescription: string;
   responsibleName:    string;
@@ -515,7 +515,11 @@ export async function renderPurchaseOrderPage(_doc: any, p: OCPageParams) {
       quantity: Number(i.quantity) || 0,
       unit:     String(i.unit || ""),
       description: String(i.description || ""),
+      unitPrice: i.unit_price || i.unitPrice || 0,
     })),
+    totalEstimated:     p.items.reduce((sum, i) =>
+      sum + ((i.unit_price || i.unitPrice || 0) * (Number(i.quantity) || 0)), 0
+    ),
     projectDescription: [p.buildingName, p.projectDescription].filter(Boolean).join(" ") || undefined,
     responsibleName:    p.responsibleName || undefined,
     responsiblePhone:   p.responsiblePhone || undefined,
@@ -1136,7 +1140,7 @@ export default function MaintenancePage() {
           cfdiUse:            supplier.cfdi_use,
           clientNumber:       supplier.client_number,
           branchName:         null,
-          items:              supplierMats.map((m) => ({ quantity: m.quantity, unit: m.unit, description: m.description })),
+          items:              supplierMats.map((m) => ({ quantity: m.quantity, unit: m.unit, description: m.description, unitPrice: 0, unit_price: 0 })),
           buildingName,
           projectDescription: ticket.title || "",
           responsibleName:    "",
