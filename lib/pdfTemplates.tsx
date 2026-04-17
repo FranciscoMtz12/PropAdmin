@@ -109,6 +109,9 @@ export interface OCTemplateData {
   cfdiUse?: string;
   clientNumber?: string;
   items: { quantity: number; unit: string; description: string; unitPrice?: number }[];
+  companyPhone?: string;
+  purchasesContactPhone?: string;
+  purchasesContactEmail?: string;
   projectDescription?: string;
   responsibleName?: string;
   responsiblePhone?: string;
@@ -190,7 +193,9 @@ function OCDocument({ data }: { data: OCTemplateData }) {
                 : <Text style={[S.companyName, { color: data.accentColor || "#8B2252" }]}>FRA-MAR</Text>}
               <Text style={S.companyName}>{data.legalName}</Text>
               <Text style={S.companyInfo}>{data.address}</Text>
-              <Text style={S.companyInfo}>C.P. {data.zipCode} · RFC: {data.rfc}</Text>
+              <Text style={S.companyInfo}>
+                C.P. {data.zipCode} · RFC: {data.rfc}{data.companyPhone ? ` · Tel: ${data.companyPhone}` : ""}
+              </Text>
             </View>
             <View style={S.docInfo}>
               {data.logoMatzUrl
@@ -200,6 +205,22 @@ function OCDocument({ data }: { data: OCTemplateData }) {
               <Text style={S.docFolio}>Folio: {data.folio}</Text>
             </View>
           </View>
+
+          {/* Contacto compras (antes del destinatario) */}
+          {(data.purchasesContactPhone || data.purchasesContactEmail) ? (
+            <View style={{ flexDirection: "row", gap: 16, marginBottom: 6 }}>
+              {data.purchasesContactPhone ? (
+                <Text style={{ fontSize: 8, color: "#374151" }}>
+                  Contacto compras: {data.purchasesContactPhone}
+                </Text>
+              ) : null}
+              {data.purchasesContactEmail ? (
+                <Text style={{ fontSize: 8, color: "#374151" }}>
+                  {data.purchasesContactEmail}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
 
           {/* Destinatario */}
           <View style={S.recipient}>

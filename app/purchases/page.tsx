@@ -190,7 +190,7 @@ const EMPTY_MANUAL_FORM: ManualForm = {
 export default function PurchasesPage() {
   const { user, loading: userLoading } = useCurrentUser();
   const router = useRouter();
-  const { legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, logoGroupUrl } = useTheme();
+  const { legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, logoGroupUrl, purchasesContactPhone, purchasesContactEmail } = useTheme();
 
   const [orders,     setOrders]     = useState<PurchaseOrder[]>([]);
   const [suppliers,  setSuppliers]  = useState<SupplierOption[]>([]);
@@ -963,6 +963,9 @@ export default function PurchasesPage() {
         logoPrint,
         logoGroup,
         company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
+        companyPhone,
+        purchasesContactPhone,
+        purchasesContactEmail,
       });
     } catch (err) {
       console.error("OC PDF error:", err);

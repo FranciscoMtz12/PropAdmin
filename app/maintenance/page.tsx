@@ -486,6 +486,9 @@ type OCPageParams = {
   signerName:         string;
   logoPrint:          PreparedLogo | null;
   logoGroup:          PreparedLogo | null;
+  companyPhone?:            string;
+  purchasesContactPhone?:   string;
+  purchasesContactEmail?:   string;
   company: { legalName: string; address: string; taxId: string; phone: string; email: string; zipCode: string };
 };
 
@@ -523,9 +526,12 @@ export async function renderPurchaseOrderPage(_doc: any, p: OCPageParams) {
     projectDescription: [p.buildingName, p.projectDescription].filter(Boolean).join(" ") || undefined,
     responsibleName:    p.responsibleName || undefined,
     responsiblePhone:   p.responsiblePhone || undefined,
-    signerName:         p.signerName || undefined,
-    logoUrl:            p.logoPrint?.data || undefined,
-    logoMatzUrl:        p.logoGroup?.data || undefined,
+    signerName:              p.signerName || undefined,
+    companyPhone:            p.companyPhone || undefined,
+    purchasesContactPhone:   p.purchasesContactPhone || undefined,
+    purchasesContactEmail:   p.purchasesContactEmail || undefined,
+    logoUrl:                 p.logoPrint?.data || undefined,
+    logoMatzUrl:             p.logoGroup?.data || undefined,
   });
 }
 /* eslint-enable @typescript-eslint/no-explicit-any */
@@ -534,7 +540,7 @@ export async function renderPurchaseOrderPage(_doc: any, p: OCPageParams) {
 
 export default function MaintenancePage() {
   const { user, loading } = useCurrentUser();
-  const { logoUrl, logoGroupUrl, legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode } = useTheme();
+  const { logoUrl, logoGroupUrl, legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, purchasesContactPhone, purchasesContactEmail } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -1149,6 +1155,9 @@ export default function MaintenancePage() {
           logoPrint,
           logoGroup,
           company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
+          companyPhone,
+          purchasesContactPhone,
+          purchasesContactEmail,
         });
       }
 

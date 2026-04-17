@@ -37,6 +37,10 @@ type ThemeContextType = {
   companyPhone: string;
   companyEmail: string;
   companyZipCode: string;
+  purchasesContactPhone: string;
+  purchasesContactEmail: string;
+  adminContactPhone: string;
+  adminContactEmail: string;
   isDark: boolean;
   toggleDark: () => void;
   showDescriptions: boolean;
@@ -59,6 +63,10 @@ const ThemeContext = createContext<ThemeContextType>({
   companyPhone: "",
   companyEmail: "",
   companyZipCode: "",
+  purchasesContactPhone: "",
+  purchasesContactEmail: "",
+  adminContactPhone: "",
+  adminContactEmail: "",
   isDark: false,
   toggleDark: () => {},
   showDescriptions: true,
@@ -92,6 +100,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [companyPhone, setCompanyPhone]     = useState("");
   const [companyEmail, setCompanyEmail]     = useState("");
   const [companyZipCode, setCompanyZipCode] = useState("");
+  const [purchasesContactPhone, setPurchasesContactPhone] = useState("");
+  const [purchasesContactEmail, setPurchasesContactEmail] = useState("");
+  const [adminContactPhone, setAdminContactPhone] = useState("");
+  const [adminContactEmail, setAdminContactEmail] = useState("");
   const [isDark, setIsDark] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true);
 
@@ -130,7 +142,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadCompanyBranding(companyId: string) {
     const { data } = await supabase
       .from("companies")
-      .select("brand_color, logo_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime")
+      .select("brand_color, logo_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email")
       .eq("id", companyId)
       .maybeSingle();
 
@@ -147,6 +159,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setCompanyPhone(data.phone        || "");
     setCompanyEmail(data.email        || "");
     setCompanyZipCode(data.zip_code   || "");
+    setPurchasesContactPhone(data.purchases_contact_phone || "");
+    setPurchasesContactEmail(data.purchases_contact_email || "");
+    setAdminContactPhone(data.admin_contact_phone || "");
+    setAdminContactEmail(data.admin_contact_email || "");
   }
 
   async function loadUserPreferences(userId: string) {
@@ -185,6 +201,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         companyPhone,
         companyEmail,
         companyZipCode,
+        purchasesContactPhone,
+        purchasesContactEmail,
+        adminContactPhone,
+        adminContactEmail,
         isDark,
         toggleDark,
         showDescriptions,
