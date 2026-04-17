@@ -44,6 +44,7 @@ import {
   ShoppingCart,
   Trash2,
   Upload,
+  XCircle,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -227,7 +228,10 @@ export default function PurchasesPage() {
   const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
   const [itemsByOrderId,  setItemsByOrderId]  = useState<Record<string, POItem[]>>({});
   const [loadingItemsFor, setLoadingItemsFor] = useState<string | null>(null);
-  const [savingStatusFor, setSavingStatusFor] = useState<string | null>(null);
+
+  /* Confirmación de cancelación */
+  const [cancelTarget, setCancelTarget] = useState<PurchaseOrder | null>(null);
+  const [cancelling,   setCancelling]   = useState(false);
 
   /* Modal crear / editar */
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -312,6 +316,7 @@ export default function PurchasesPage() {
         .from("purchase_order_signers")
         .select("id, name, is_default")
         .eq("company_id", companyId)
+        .eq("role", "signer")
         .is("deleted_at", null)
         .order("is_default", { ascending: false })
         .order("name", { ascending: true }),
@@ -680,15 +685,20 @@ export default function PurchasesPage() {
     /* Si es un firmante nuevo (no estaba en la lista), persistir para futuras OC */
     const trimmedSigner = manualForm.signerName.trim();
     if (trimmedSigner) {
-      const existsAlready = signers.some(
+      const signerExists = signers.some(
         (s) => s.name.toLowerCase() === trimmedSigner.toLowerCase()
       );
-      if (!existsAlready) {
-        await supabase.from("purchase_order_signers").insert({
-          company_id: user.company_id,
-          name:       trimmedSigner,
-          is_default: false,
-        });
+      if (!signerExists) {
+        const { data: signerIns, error: signerInsErr } = await supabase
+          .from("purchase_order_signers")
+          .insert({
+            company_id: user.company_id,
+            name:       trimmedSigner,
+            is_default: false,
+            role:       "signer",
+          })
+          .select();
+        console.log("[purchases] new signer INSERT result:", { data: signerIns, error: signerInsErr });
       }
     }
 
@@ -700,11 +710,15 @@ export default function PurchasesPage() {
         (c) => c.name.toLowerCase() === trimmedCollectorName.toLowerCase()
       );
       if (!collectorExists) {
-        await supabase.from("purchase_order_collectors").insert({
-          company_id: user.company_id,
-          name:       trimmedCollectorName,
-          phone:      trimmedCollectorPhone || null,
-        });
+        const { data: collectorIns, error: collectorInsErr } = await supabase
+          .from("purchase_order_collectors")
+          .insert({
+            company_id: user.company_id,
+            name:       trimmedCollectorName,
+            phone:      trimmedCollectorPhone || null,
+          })
+          .select();
+        console.log("[purchases] new collector INSERT result:", { data: collectorIns, error: collectorInsErr });
       }
     }
 
@@ -753,19 +767,26 @@ export default function PurchasesPage() {
     setLoadingItemsFor(null);
   }
 
-  /* ── Status change (inline) ───────────────────────────────────── */
+  /* ── Cancelar OC (con confirmación) ──────────────────────────── */
 
-  async function handleStatusChange(order: PurchaseOrder, status: Status) {
-    if (!user?.company_id || status === order.status) return;
-    setSavingStatusFor(order.id);
+  async function handleCancelOrder() {
+    if (!user?.company_id || !cancelTarget) return;
+    setCancelling(true);
+    const nowIso = new Date().toISOString();
     const { error } = await supabase
       .from("purchase_orders")
-      .update({ status, updated_at: new Date().toISOString() })
-      .eq("id", order.id);
-    setSavingStatusFor(null);
-    if (error) { setMsg("No se pudo actualizar el estado."); return; }
-    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status } : o)));
-    setMsg("Estado actualizado correctamente.");
+      .update({ status: "cancelled", updated_at: nowIso })
+      .eq("id", cancelTarget.id);
+    setCancelling(false);
+    if (error) {
+      setMsg(`No se pudo cancelar la OC: ${error.message}`);
+      return;
+    }
+    setOrders((prev) => prev.map((o) =>
+      o.id === cancelTarget.id ? { ...o, status: "cancelled" as Status } : o
+    ));
+    setMsg(`OC ${cancelTarget.folio} cancelada correctamente.`);
+    setCancelTarget(null);
   }
 
   /* ── Editar OC: abrir modal con datos precargados ─────────────── */
@@ -810,20 +831,6 @@ export default function PurchasesPage() {
     setSupplierSearch(preSupplier?.name || "");
     setShowSupplierDropdown(false);
     setShowCreateModal(true);
-  }
-
-  /* ── Archive ───────────────────────────────────────────────────── */
-
-  async function handleArchive(id: string) {
-    if (!user?.company_id) return;
-    if (!window.confirm("¿Archivar esta orden de compra?")) return;
-    const { error } = await supabase
-      .from("purchase_orders")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) { setMsg("No se pudo archivar."); return; }
-    setMsg("OC archivada correctamente.");
-    void loadAll(user.company_id);
   }
 
   /* ── Subir PDF firmado ────────────────────────────────────────── */
@@ -993,9 +1000,18 @@ export default function PurchasesPage() {
         titleIcon={<ShoppingCart size={18} />}
         subtitle="Órdenes de compra generadas manualmente o desde tickets de mantenimiento."
         actions={
-          <UiButton variant="primary" onClick={openCreateModal} icon={<Plus size={16} />}>
-            Nueva OC manual
-          </UiButton>
+          <>
+            <UiButton
+              variant="secondary"
+              onClick={() => router.push("/purchases/reporte-pagos")}
+              icon={<FileText size={16} />}
+            >
+              Reporte de pagos
+            </UiButton>
+            <UiButton variant="primary" onClick={openCreateModal} icon={<Plus size={16} />}>
+              Nueva OC manual
+            </UiButton>
+          </>
         }
       />
 
@@ -1343,7 +1359,7 @@ export default function PurchasesPage() {
                               {uploadingId === o.id ? "Subiendo..." : "Reemplazar"}
                             </button>
                           </>
-                        ) : (o.status !== "sent" && o.status !== "cancelled") ? (
+                        ) : (o.status !== "cancelled") ? (
                           <button
                             type="button"
                             onClick={() => triggerSignedPdfUpload(o.id)}
@@ -1363,45 +1379,25 @@ export default function PurchasesPage() {
                           </button>
                         ) : null}
 
-                        <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                          <label style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>
-                            Cambiar estado:
-                          </label>
-                          <select
-                            value={o.status}
-                            disabled={savingStatusFor === o.id}
-                            onChange={(e) => handleStatusChange(o, e.target.value as Status)}
+                        {/* Cancelar OC — visible en todos los estados excepto cancelled */}
+                        {o.status !== "cancelled" ? (
+                          <button
+                            type="button"
+                            onClick={() => setCancelTarget(o)}
                             style={{
-                              padding: "8px 12px", borderRadius: 8,
-                              border: "1px solid var(--border-default)",
-                              background: "var(--bg-card)", color: "var(--text-primary)",
-                              fontSize: 13, fontWeight: 600,
-                              cursor: savingStatusFor === o.id ? "wait" : "pointer",
-                              opacity: savingStatusFor === o.id ? 0.7 : 1,
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "9px 14px", borderRadius: 8,
+                              border: "1px solid var(--badge-text-red)",
+                              background: "transparent",
+                              color: "var(--badge-text-red)",
+                              fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              marginLeft: "auto",
                             }}
                           >
-                            <option value="pending">Pendiente</option>
-                            <option value="sent">Enviada</option>
-                            <option value="received">Recibida</option>
-                            <option value="cancelled">Cancelada</option>
-                          </select>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => handleArchive(o.id)}
-                          style={{
-                            display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "9px 14px", borderRadius: 8,
-                            border: "1px solid var(--border-default)",
-                            background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
-                            fontSize: 13, fontWeight: 600, cursor: "pointer",
-                            marginLeft: "auto",
-                          }}
-                        >
-                          <Trash2 size={14} />
-                          Archivar
-                        </button>
+                            <XCircle size={14} />
+                            Cancelar OC
+                          </button>
+                        ) : null}
                       </div>
                     </div>
 
@@ -1736,6 +1732,49 @@ export default function PurchasesPage() {
             </UiButton>
           </div>
         </form>
+      </Modal>
+
+      {/* ═══════════ Modal Confirmar cancelación ═══════════ */}
+      <Modal
+        open={cancelTarget !== null}
+        onClose={() => { if (!cancelling) setCancelTarget(null); }}
+        title="¿Cancelar orden de compra?"
+        maxWidth="460px"
+      >
+        {cancelTarget ? (
+          <>
+            <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              La OC <strong style={{ fontFamily: "monospace", color: "var(--text-primary)" }}>{cancelTarget.folio}</strong> será marcada como cancelada. Esta acción no se puede deshacer.
+            </p>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+              <UiButton
+                type="button"
+                variant="secondary"
+                onClick={() => setCancelTarget(null)}
+                disabled={cancelling}
+              >
+                No, mantener
+              </UiButton>
+              <button
+                type="button"
+                onClick={handleCancelOrder}
+                disabled={cancelling}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "11px 16px", borderRadius: 12,
+                  border: "1px solid var(--badge-text-red)",
+                  background: "var(--badge-text-red)",
+                  color: "#fff",
+                  fontSize: 14, fontWeight: 700,
+                  cursor: cancelling ? "wait" : "pointer",
+                  opacity: cancelling ? 0.7 : 1,
+                }}
+              >
+                {cancelling ? "Cancelando..." : "Sí, cancelar"}
+              </button>
+            </div>
+          </>
+        ) : null}
       </Modal>
 
     </PageContainer>
