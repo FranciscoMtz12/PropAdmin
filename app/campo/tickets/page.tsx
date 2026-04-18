@@ -25,6 +25,7 @@ type Ticket = {
   description: string | null;
   status: string;
   priority: string;
+  building_id: string | null;
   created_at: string;
   photos: string[] | null;
   buildings: { name: string } | null;
@@ -35,11 +36,21 @@ type Building = { id: string; name: string };
 type Unit     = { id: string; unit_number: string | null; display_code: string | null };
 type Asset    = { id: string; name: string; asset_type: string | null };
 
+type SupplierSimple = { id: string; name: string; prefix?: string | null };
+
 type MaterialRow = {
   id: string;
   description: string;
   quantity: string;
   unit: string;
+  supplier_id: string | null;
+  supplier_name: string;
+};
+
+type MaterialGroup = {
+  supplier_id: string | null;
+  supplier_name: string;
+  materials: MaterialRow[];
 };
 
 type CreatePhoto = {
@@ -97,6 +108,8 @@ const STATUS_BADGE: Record<string, { bg: string; text: string }> = {
   cancelled:   { bg: "var(--badge-bg-gray)",  text: "var(--badge-text-gray)"  },
 };
 
+const MATERIAL_UNITS = ["Pieza", "Metro", "Litro", "Tubo", "Caja", "Rollo", "Bolsa", "Otro"];
+
 const TABS: { key: StatusFilter; label: string }[] = [
   { key: "all", label: "Todos" },
   { key: "pending", label: "Pendiente" },
@@ -116,12 +129,16 @@ export default function CampoTicketsPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [expandedId,  setExpandedId]  = useState<string | null>(null);
 
-  /* Detail per ticket */
-  const [ticketMaterials,   setTicketMaterials]   = useState<Record<string, MaterialRow[]>>({});
+  /* Detail per ticket — materiales agrupados por proveedor */
+  const [ticketMaterialGroups, setTicketMaterialGroups] = useState<Record<string, MaterialGroup[]>>({});
   const [ticketMatsLoading, setTicketMatsLoading] = useState<Record<string, boolean>>({});
   const [savingMatsFor,     setSavingMatsFor]     = useState<string | null>(null);
   const [updatingStatusFor, setUpdatingStatusFor] = useState<string | null>(null);
   const addingPhotoForRef = useRef<string | null>(null);
+
+  /* Proveedores (para selector de grupo) */
+  const [suppliers, setSuppliers] = useState<SupplierSimple[]>([]);
+  const [showSupplierPicker, setShowSupplierPicker] = useState<string | null>(null); /* ticketId o null */
 
   /* Create form */
   const [createOpen,  setCreateOpen]  = useState(false);
@@ -155,11 +172,11 @@ export default function CampoTicketsPage() {
 
   async function loadData(companyId: string) {
     setLoadingData(true);
-    const [ticketsRes, buildingsRes] = await Promise.all([
+    const [ticketsRes, buildingsRes, suppliersRes] = await Promise.all([
       supabase
         .from("maintenance_logs")
         .select(`
-          id, ticket_number, title, description, status, priority, created_at, photos,
+          id, ticket_number, title, description, status, priority, building_id, created_at, photos,
           buildings(name),
           units(display_code, unit_number)
         `)
@@ -173,9 +190,17 @@ export default function CampoTicketsPage() {
         .eq("company_id", companyId)
         .is("deleted_at", null)
         .order("name"),
+      supabase
+        .from("suppliers")
+        .select("id, name, prefix")
+        .eq("company_id", companyId)
+        .eq("active", true)
+        .is("deleted_at", null)
+        .order("name"),
     ]);
     setTickets((ticketsRes.data as unknown as Ticket[]) || []);
     setBuildings(buildingsRes.data || []);
+    setSuppliers((suppliersRes.data as SupplierSimple[]) || []);
     setLoadingData(false);
   }
 
@@ -424,63 +449,291 @@ export default function CampoTicketsPage() {
   async function handleToggleExpand(ticketId: string) {
     if (expandedId === ticketId) { setExpandedId(null); return; }
     setExpandedId(ticketId);
-    if (!ticketMaterials[ticketId]) {
+    if (!ticketMaterialGroups[ticketId]) {
       setTicketMatsLoading(prev => ({ ...prev, [ticketId]: true }));
       const { data } = await supabase
         .from("maintenance_materials")
-        .select("id, description, quantity, unit")
+        .select("id, description, quantity, unit, supplier_id, suppliers(name)")
         .eq("maintenance_log_id", ticketId)
         .order("created_at");
-      setTicketMaterials(prev => ({
-        ...prev,
-        [ticketId]: (data || []).map(m => ({
-          id: m.id, description: m.description || "",
-          quantity: String(m.quantity || ""), unit: m.unit || "",
-        })),
-      }));
+
+      type MatRaw = {
+        id: string; description: string; quantity: number; unit: string;
+        supplier_id: string | null;
+        suppliers: { name: string } | null;
+      };
+
+      /* Agrupar por supplier_id */
+      const groupMap = new Map<string, MaterialGroup>();
+      for (const m of ((data || []) as unknown as MatRaw[])) {
+        const key = m.supplier_id || "__otro__";
+        if (!groupMap.has(key)) {
+          groupMap.set(key, {
+            supplier_id:   m.supplier_id,
+            supplier_name: m.suppliers?.name || "Otro",
+            materials:     [],
+          });
+        }
+        groupMap.get(key)!.materials.push({
+          id:            m.id,
+          description:   m.description || "",
+          quantity:      String(m.quantity || ""),
+          unit:          m.unit || "",
+          supplier_id:   m.supplier_id,
+          supplier_name: m.suppliers?.name || "Otro",
+        });
+      }
+
+      /* Si no hay materiales, crear grupo "Otro" vacío */
+      const groups = Array.from(groupMap.values());
+      if (groups.length === 0) {
+        groups.push({
+          supplier_id: null,
+          supplier_name: "Otro",
+          materials: [{ id: "", description: "", quantity: "1", unit: "Pieza", supplier_id: null, supplier_name: "Otro" }],
+        });
+      }
+
+      /* Mantener orden de inserción original (por created_at del query) */
+      setTicketMaterialGroups(prev => ({ ...prev, [ticketId]: groups }));
       setTicketMatsLoading(prev => ({ ...prev, [ticketId]: false }));
     }
   }
 
-  /* ── Materials ──────────────────────────────────────────────── */
+  /* ── Materials — operaciones por grupo ───────────────────────── */
 
-  function updateMaterial(tid: string, i: number, field: keyof MaterialRow, val: string) {
-    setTicketMaterials(prev => ({
-      ...prev,
-      [tid]: (prev[tid] || []).map((m, idx) => idx === i ? { ...m, [field]: val } : m),
-    }));
+  function updateMaterialInGroup(tid: string, groupIdx: number, matIdx: number, field: string, val: string) {
+    setTicketMaterialGroups(prev => {
+      const groups = [...(prev[tid] || [])];
+      const g = { ...groups[groupIdx], materials: [...groups[groupIdx].materials] };
+      g.materials[matIdx] = { ...g.materials[matIdx], [field]: val };
+      groups[groupIdx] = g;
+      return { ...prev, [tid]: groups };
+    });
   }
 
-  function addMaterialRow(tid: string) {
-    setTicketMaterials(prev => ({
-      ...prev,
-      [tid]: [...(prev[tid] || []), { id: "", description: "", quantity: "1", unit: "pza" }],
-    }));
+  function addMaterialToGroup(tid: string, groupIdx: number) {
+    setTicketMaterialGroups(prev => {
+      const groups = [...(prev[tid] || [])];
+      const g = groups[groupIdx];
+      groups[groupIdx] = {
+        ...g,
+        materials: [...g.materials, {
+          id: "", description: "", quantity: "1", unit: "Pieza",
+          supplier_id: g.supplier_id, supplier_name: g.supplier_name,
+        }],
+      };
+      return { ...prev, [tid]: groups };
+    });
   }
 
-  function removeMaterialRow(tid: string, i: number) {
-    setTicketMaterials(prev => ({
-      ...prev,
-      [tid]: (prev[tid] || []).filter((_, idx) => idx !== i),
-    }));
+  function removeMaterialFromGroup(tid: string, groupIdx: number, matIdx: number) {
+    setTicketMaterialGroups(prev => {
+      const groups = [...(prev[tid] || [])];
+      const g = groups[groupIdx];
+      const newMats = g.materials.filter((_, i) => i !== matIdx);
+      if (newMats.length === 0) {
+        /* Si se queda vacío el grupo, eliminarlo */
+        return { ...prev, [tid]: groups.filter((_, i) => i !== groupIdx) };
+      }
+      groups[groupIdx] = { ...g, materials: newMats };
+      return { ...prev, [tid]: groups };
+    });
   }
+
+  function removeGroup(tid: string, groupIdx: number) {
+    setTicketMaterialGroups(prev => {
+      const groups = (prev[tid] || []).filter((_, i) => i !== groupIdx);
+      return { ...prev, [tid]: groups };
+    });
+  }
+
+  function addSupplierGroup(tid: string, supplier: SupplierSimple | null) {
+    setTicketMaterialGroups(prev => {
+      const groups = [...(prev[tid] || [])];
+      const sid = supplier?.id || null;
+      /* No duplicar si ya existe un grupo para este proveedor */
+      if (groups.some(g => g.supplier_id === sid)) return prev;
+      /* Agregar al final — mantener orden de inserción */
+      groups.push({
+        supplier_id:   sid,
+        supplier_name: supplier?.name || "Otro",
+        materials:     [{ id: "", description: "", quantity: "1", unit: "Pieza", supplier_id: sid, supplier_name: supplier?.name || "Otro" }],
+      });
+      return { ...prev, [tid]: groups };
+    });
+    setShowSupplierPicker(null);
+  }
+
+  /* ── Guardar materiales + crear OCs por proveedor ──────────── */
 
   async function saveMaterials(tid: string) {
     if (!user?.company_id) return;
     setSavingMatsFor(tid);
-    await supabase.from("maintenance_materials").delete().eq("maintenance_log_id", tid);
-    const rows = (ticketMaterials[tid] || []).filter(r => r.description.trim());
-    if (rows.length > 0) {
-      await supabase.from("maintenance_materials").insert(
-        rows.map(r => ({
+
+    const ticket = tickets.find(t => t.id === tid);
+    const groups = ticketMaterialGroups[tid] || [];
+
+    /* 1. Flatten de todos los grupos */
+    const allMats = groups.flatMap(g =>
+      g.materials
+        .filter(m => m.description.trim())
+        .map(m => ({
           maintenance_log_id: tid,
-          description: r.description.trim(),
-          quantity: parseFloat(r.quantity) || 1,
-          unit: r.unit.trim() || null,
+          description:        m.description.trim(),
+          quantity:           parseFloat(m.quantity) || 1,
+          unit:               m.unit.trim() || null,
+          supplier_id:        g.supplier_id,
         }))
-      );
+    );
+
+    /* 2. DELETE existentes + INSERT nuevos con supplier_id */
+    await supabase.from("maintenance_materials").delete().eq("maintenance_log_id", tid);
+    if (allMats.length > 0) {
+      await supabase.from("maintenance_materials").insert(allMats);
     }
+
+    /* 3. Crear/actualizar OCs por proveedor */
+    let ocsCreated = 0;
+    let ocsUpdated = 0;
+    const year = new Date().getFullYear();
+
+    for (const g of groups) {
+      const groupMats = allMats.filter(m => m.supplier_id === g.supplier_id);
+      if (groupMats.length === 0) continue;
+
+      /* Buscar OC existente para este ticket + proveedor */
+      const { data: existingOCs } = await supabase
+        .from("purchase_orders")
+        .select("id, status")
+        .eq("maintenance_log_id", tid)
+        .eq("supplier_id", g.supplier_id || "")
+        .is("deleted_at", null)
+        .limit(1);
+
+      const existingOC = existingOCs?.[0] as { id: string; status: string } | undefined;
+
+      if (existingOC && existingOC.status === "pending") {
+        /* OC pending → actualizar items sin crear OC nueva */
+        await supabase.from("purchase_order_items").delete().eq("purchase_order_id", existingOC.id);
+        await supabase.from("purchase_order_items").insert(
+          groupMats.map(m => ({
+            purchase_order_id: existingOC.id,
+            description:       m.description,
+            quantity:          m.quantity,
+            unit:              m.unit,
+          }))
+        );
+        ocsUpdated++;
+        continue;
+      }
+
+      /* OC no existe O existe con status != pending */
+
+      /* Si existe OC no-pending, calcular solo materiales adicionales */
+      let itemsToInsert = groupMats;
+      if (existingOC && existingOC.status !== "pending") {
+        const { data: existingItems } = await supabase
+          .from("purchase_order_items")
+          .select("description, quantity, unit")
+          .eq("purchase_order_id", existingOC.id)
+          .is("deleted_at", null);
+
+        const existingMap = new Map<string, number>();
+        (existingItems || []).forEach((ei: { description: string; quantity: number }) => {
+          const key = ei.description.trim().toLowerCase();
+          existingMap.set(key, (existingMap.get(key) || 0) + Number(ei.quantity));
+        });
+
+        const additionalMaterials: MaterialRow[] = [];
+        for (const mat of g.materials) {
+          const desc = mat.description.trim();
+          if (!desc) continue;
+          const key    = desc.toLowerCase();
+          const newQty = parseFloat(mat.quantity) || 1;
+
+          if (!existingMap.has(key)) {
+            additionalMaterials.push({ ...mat, quantity: String(newQty) });
+          } else {
+            const existingQty = existingMap.get(key) || 0;
+            const diff = newQty - existingQty;
+            if (diff > 0) {
+              additionalMaterials.push({ ...mat, quantity: String(diff) });
+            }
+          }
+        }
+
+        if (additionalMaterials.length === 0) continue; /* nada nuevo que pedir */
+        itemsToInsert = additionalMaterials.map(m => ({
+          maintenance_log_id: tid,
+          description:        m.description.trim(),
+          quantity:           parseFloat(m.quantity) || 1,
+          unit:               m.unit.trim() || null,
+          supplier_id:        g.supplier_id,
+        }));
+      }
+
+      /* Crear OC nueva */
+      const supplierCode = g.supplier_id
+        ? (suppliers.find(s => s.id === g.supplier_id)?.prefix
+          || g.supplier_name.replace(/[^A-Za-z]/g, "").slice(0, 2)).toUpperCase()
+        : "OT";
+
+      /* Folio correlativo por proveedor: FM-{SP}-{YYYY}-{NNNN} */
+      const folioPattern = `FM-${supplierCode}-${year}-%`;
+      const { data: lastFolio } = await supabase
+        .from("purchase_orders")
+        .select("folio")
+        .eq("company_id", user.company_id)
+        .ilike("folio", folioPattern)
+        .is("deleted_at", null);
+      let maxN = 0;
+      if (lastFolio && lastFolio.length > 0) {
+        (lastFolio as { folio: string }[]).forEach(row => {
+          const parts = row.folio.split("-");
+          const n = parseInt(parts[parts.length - 1], 10);
+          if (!isNaN(n) && n > maxN) maxN = n;
+        });
+      }
+      const folio = `FM-${supplierCode}-${year}-${String(maxN + 1).padStart(4, "0")}`;
+
+      const { data: newOC } = await supabase
+        .from("purchase_orders")
+        .insert({
+          company_id:          user.company_id,
+          supplier_id:         g.supplier_id,
+          supplier_prefix:     supplierCode,
+          maintenance_log_id:  tid,
+          building_id:         ticket?.building_id || null,
+          project_description: ticket?.description || ticket?.title || null,
+          status:              "draft",
+          folio,
+        })
+        .select("id")
+        .single();
+
+      if (newOC) {
+        await supabase.from("purchase_order_items").insert(
+          itemsToInsert.map(m => ({
+            purchase_order_id: newOC.id,
+            description:       m.description,
+            quantity:          m.quantity,
+            unit:              m.unit,
+          }))
+        );
+        ocsCreated++;
+      }
+    }
+
     setSavingMatsFor(null);
+
+    /* 4. Toast de confirmación */
+    const matCount = allMats.length;
+    const msgParts: string[] = [];
+    msgParts.push(`${matCount} material${matCount === 1 ? "" : "es"} guardado${matCount === 1 ? "" : "s"}`);
+    if (ocsCreated > 0) msgParts.push(`${ocsCreated} OC${ocsCreated === 1 ? "" : "s"} creada${ocsCreated === 1 ? "" : "s"}`);
+    if (ocsUpdated > 0) msgParts.push(`${ocsUpdated} OC${ocsUpdated === 1 ? "" : "s"} actualizada${ocsUpdated === 1 ? "" : "s"}`);
+    alert(msgParts.join(" · "));
   }
 
   /* ── Status update ──────────────────────────────────────────── */
@@ -574,7 +827,7 @@ export default function CampoTicketsPage() {
               const bName   = t.buildings?.name;
               const uCode   = t.units?.display_code || t.units?.unit_number;
               const photos  = t.photos || [];
-              const mats    = ticketMaterials[t.id] || [];
+              const matGroups   = ticketMaterialGroups[t.id] || [];
               const matsLoading = ticketMatsLoading[t.id];
 
               return (
@@ -664,60 +917,130 @@ export default function CampoTicketsPage() {
                         </button>
                       </div>
 
-                      {/* Materials */}
+                      {/* Materials — agrupados por proveedor */}
                       <div>
                         <p style={sectionLabel}>Materiales</p>
                         {matsLoading ? (
                           <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando...</p>
                         ) : (
-                          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                            {mats.map((m, i) => (
-                              <div key={i} style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                                <input
-                                  value={m.description}
-                                  onChange={e => updateMaterial(t.id, i, "description", e.target.value)}
-                                  placeholder="Descripción"
-                                  style={{ ...inputStyle, flex: 3, padding: "8px 10px", fontSize: 13 }}
-                                />
-                                <input
-                                  value={m.quantity}
-                                  onChange={e => updateMaterial(t.id, i, "quantity", e.target.value)}
-                                  placeholder="Cant."
-                                  inputMode="decimal"
-                                  style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13, textAlign: "center" }}
-                                />
-                                <input
-                                  value={m.unit}
-                                  onChange={e => updateMaterial(t.id, i, "unit", e.target.value)}
-                                  placeholder="Unid."
-                                  style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13 }}
-                                />
-                                <button
-                                  type="button"
-                                  onClick={() => removeMaterialRow(t.id, i)}
-                                  style={{ background: "none", border: "none", color: "var(--badge-text-red)", cursor: "pointer", padding: 4, flexShrink: 0 }}
-                                >
-                                  <Trash2 size={14} />
-                                </button>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {matGroups.map((group, gIdx) => (
+                              <div key={group.supplier_id || "__otro__"} style={{
+                                border: "1px solid var(--border-default)",
+                                borderRadius: 10,
+                                overflow: "hidden",
+                              }}>
+                                {/* Header del grupo */}
+                                <div style={{
+                                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                                  padding: "8px 12px",
+                                  background: group.supplier_id ? "var(--bg-input)" : "transparent",
+                                  borderBottom: "1px solid var(--border-default)",
+                                }}>
+                                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                                    {group.supplier_name}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeGroup(t.id, gIdx)}
+                                    style={{ background: "none", border: "none", color: "var(--badge-text-red)", cursor: "pointer", padding: 2 }}
+                                  >
+                                    <X size={14} />
+                                  </button>
+                                </div>
+
+                                {/* Materiales del grupo */}
+                                <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+                                  {group.materials.map((m, mIdx) => (
+                                    <div key={mIdx} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                                      <input
+                                        value={m.description}
+                                        onChange={e => updateMaterialInGroup(t.id, gIdx, mIdx, "description", e.target.value)}
+                                        placeholder="Descripción"
+                                        style={{ ...inputStyle, flex: 3, padding: "8px 10px", fontSize: 13 }}
+                                      />
+                                      <input
+                                        value={m.quantity}
+                                        onChange={e => updateMaterialInGroup(t.id, gIdx, mIdx, "quantity", e.target.value)}
+                                        placeholder="Cant."
+                                        inputMode="decimal"
+                                        style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13, textAlign: "center" }}
+                                      />
+                                      <select
+                                        value={m.unit}
+                                        onChange={e => updateMaterialInGroup(t.id, gIdx, mIdx, "unit", e.target.value)}
+                                        style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13, appearance: "none", WebkitAppearance: "none" }}
+                                      >
+                                        {MATERIAL_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
+                                      </select>
+                                      <button
+                                        type="button"
+                                        onClick={() => removeMaterialFromGroup(t.id, gIdx, mIdx)}
+                                        style={{ background: "none", border: "none", color: "var(--badge-text-red)", cursor: "pointer", padding: 4, flexShrink: 0 }}
+                                      >
+                                        <Trash2 size={14} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                  <button
+                                    type="button"
+                                    onClick={() => addMaterialToGroup(t.id, gIdx)}
+                                    style={{ padding: "6px", borderRadius: 6, border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                                  >
+                                    <Plus size={12} /> Agregar material
+                                  </button>
+                                </div>
                               </div>
                             ))}
-                            <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+
+                            {/* Agregar proveedor */}
+                            {showSupplierPicker === t.id ? (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px", border: "1px solid var(--border-default)", borderRadius: 8, background: "var(--bg-input)" }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Selecciona proveedor:</span>
+                                <button
+                                  type="button"
+                                  onClick={() => addSupplierGroup(t.id, null)}
+                                  style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                                >
+                                  Otro (sin proveedor)
+                                </button>
+                                {suppliers.filter(s => !matGroups.some(g => g.supplier_id === s.id)).map(s => (
+                                  <button
+                                    key={s.id}
+                                    type="button"
+                                    onClick={() => addSupplierGroup(t.id, s)}
+                                    style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                                  >
+                                    {s.name}
+                                  </button>
+                                ))}
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSupplierPicker(null)}
+                                  style={{ padding: "6px", fontSize: 12, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
+                                >
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
                               <button
                                 type="button"
-                                onClick={() => addMaterialRow(t.id)}
-                                style={{ flex: 1, padding: "8px", borderRadius: 8, border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                                onClick={() => setShowSupplierPicker(t.id)}
+                                style={{ padding: "8px", borderRadius: 8, border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                               >
-                                <Plus size={14} /> Agregar
+                                <Plus size={14} /> Agregar proveedor
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => saveMaterials(t.id)}
-                                disabled={savingMatsFor === t.id}
-                                style={{ flex: 1, padding: "8px", borderRadius: 8, border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: 13, fontWeight: 700, cursor: savingMatsFor === t.id ? "wait" : "pointer", opacity: savingMatsFor === t.id ? 0.7 : 1 }}
-                              >
-                                {savingMatsFor === t.id ? "Guardando..." : "Guardar"}
-                              </button>
-                            </div>
+                            )}
+
+                            {/* Botón guardar */}
+                            <button
+                              type="button"
+                              onClick={() => saveMaterials(t.id)}
+                              disabled={savingMatsFor === t.id}
+                              style={{ padding: "10px", borderRadius: 8, border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: 14, fontWeight: 700, cursor: savingMatsFor === t.id ? "wait" : "pointer", opacity: savingMatsFor === t.id ? 0.7 : 1 }}
+                            >
+                              {savingMatsFor === t.id ? "Guardando y creando OCs..." : "Guardar materiales"}
+                            </button>
                           </div>
                         )}
                       </div>

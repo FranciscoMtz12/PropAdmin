@@ -44,6 +44,7 @@ import {
   ShoppingCart,
   Trash2,
   Upload,
+  Wrench,
   XCircle,
 } from "lucide-react";
 
@@ -64,7 +65,7 @@ import AppFormField from "@/components/AppFormField";
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
-type Status = "pending" | "sent" | "received" | "cancelled";
+type Status = "draft" | "pending" | "sent" | "received" | "cancelled";
 
 type SupplierBranchOption = {
   id: string;
@@ -146,13 +147,15 @@ type ItemDraft = {
 };
 
 const STATUS_LABEL: Record<Status, string> = {
-  pending:   "Pendiente",
+  draft:     "Borrador",
+  pending:   "Por enviar",
   sent:      "Enviada",
   received:  "Recibida",
   cancelled: "Cancelada",
 };
 
-const STATUS_VARIANT: Record<Status, "amber" | "blue" | "green" | "red"> = {
+const STATUS_VARIANT: Record<Status, "amber" | "blue" | "green" | "red" | "gray"> = {
+  draft:     "gray",
   pending:   "amber",
   sent:      "blue",
   received:  "green",
@@ -450,10 +453,11 @@ export default function PurchasesPage() {
 
   const metrics = useMemo(() => {
     const total     = orders.length;
+    const draft     = orders.filter(o => o.status === "draft").length;
     const pending   = orders.filter(o => o.status === "pending").length;
     const sent      = orders.filter(o => o.status === "sent").length;
     const cancelled = orders.filter(o => o.status === "cancelled").length;
-    return { total, pending, sent, cancelled };
+    return { total, draft, pending, sent, cancelled };
   }, [orders]);
 
   /* ── Supplier combobox — lista filtrada por el search ──────────── */
@@ -510,30 +514,33 @@ export default function PurchasesPage() {
 
   /* Folio compuesto: {companyInitials}-{supplierPrefix}-{YYYY}-{NNNN}
      NNNN es correlativo por company+year (sin importar proveedor). */
+  /* Folio correlativo por proveedor: {CI}-{SP}-{YYYY}-{NNNN} */
   async function generateNextFolio(
     companyId: string,
-    initials:  string,
+    companyInitials: string,
     supplierPrefix: string,
   ): Promise<string> {
-    const year = new Date().getFullYear();
+    const year    = new Date().getFullYear();
+    const pattern = `${companyInitials}-${supplierPrefix}-${year}-%`;
+
     const { data } = await supabase
       .from("purchase_orders")
       .select("folio")
       .eq("company_id", companyId)
-      .ilike("folio", `%-${year}-%`)
+      .ilike("folio", pattern)
       .is("deleted_at", null);
 
-    let maxN = 0;
-    ((data as { folio: string }[] | null) || []).forEach((row) => {
-      /* Tomar el último segmento numérico del folio */
-      const parts = row.folio.split("-");
-      const last  = parts[parts.length - 1];
-      const n     = parseInt(last, 10);
-      if (!Number.isNaN(n) && n > maxN) maxN = n;
-    });
+    let maxNum = 0;
+    if (data && data.length > 0) {
+      (data as { folio: string }[]).forEach((row) => {
+        const parts = row.folio.split("-");
+        const num   = parseInt(parts[parts.length - 1], 10);
+        if (!isNaN(num) && num > maxNum) maxNum = num;
+      });
+    }
 
-    const next = maxN + 1;
-    return `${initials}-${supplierPrefix}-${year}-${String(next).padStart(4, "0")}`;
+    const nextNum = String(maxNum + 1).padStart(4, "0");
+    return `${companyInitials}-${supplierPrefix}-${year}-${nextNum}`;
   }
 
   /* ── Create manual OC ──────────────────────────────────────────── */
@@ -1054,7 +1061,8 @@ export default function PurchasesPage() {
       {/* Métricas */}
       <AppGrid minWidth={200} style={{ marginBottom: 20 }}>
         <MetricCard label="Total OC"    value={metrics.total}     variant="neutral" icon={<ShoppingCart size={18} />} />
-        <MetricCard label="Pendientes"  value={metrics.pending}   variant="amber" />
+        <MetricCard label="Borradores"  value={metrics.draft}     variant="neutral" />
+        <MetricCard label="Por enviar"  value={metrics.pending}   variant="amber" />
         <MetricCard label="Enviadas"    value={metrics.sent}      variant="blue"  />
         <MetricCard label="Canceladas"  value={metrics.cancelled} variant="red"   />
       </AppGrid>
@@ -1079,7 +1087,8 @@ export default function PurchasesPage() {
             onChange={(e) => setFilterStatus(e.target.value as "ALL" | Status)}
           >
             <option value="ALL">Todos los estados</option>
-            <option value="pending">Pendiente</option>
+            <option value="draft">Borrador</option>
+            <option value="pending">Por enviar</option>
             <option value="sent">Enviada</option>
             <option value="received">Recibida</option>
             <option value="cancelled">Cancelada</option>
@@ -1120,7 +1129,7 @@ export default function PurchasesPage() {
           {filtered.map((o) => {
             const isExpanded = expandedOrderId === o.id;
             const items      = itemsByOrderId[o.id] || [];
-            const hasPrices  = items.some((it) => it.unit_price != null);
+            const hasPrices  = items.some((it) => it.unit_price != null && Number(it.unit_price) > 0);
             const supplier   = suppliers.find((s) => s.id === o.supplier_id);
             const branch     = o.supplier_branch_id
               ? (supplier?.branches || []).find((b) => b.id === o.supplier_branch_id) || null
@@ -1166,9 +1175,15 @@ export default function PurchasesPage() {
                           style={{ cursor: "pointer" }}
                           title="Ver ticket en Mantenimiento"
                         >
-                          <AppBadge variant="blue">
-                            Ticket: {o.ticket_number ? `MT-${o.ticket_number}` : "Ver ticket"}
-                          </AppBadge>
+                          <span style={{
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                            padding: "3px 8px", borderRadius: 20,
+                            background: "#EFF6FF", color: "#1D4ED8",
+                            fontSize: 11, fontWeight: 700,
+                          }}>
+                            <Wrench size={11} />
+                            {o.ticket_number ? `MT-${o.ticket_number}` : "Mantenimiento"}
+                          </span>
                         </span>
                       ) : (
                         <AppBadge variant="gray">Manual</AppBadge>
@@ -1179,12 +1194,17 @@ export default function PurchasesPage() {
                       </AppBadge>
                     </div>
 
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
                       {o.supplier_name || "Sin proveedor"}
                       {branch ? (
                         <span style={{ fontWeight: 500, color: "var(--text-secondary)" }}> · {branch.name}</span>
                       ) : null}
                     </div>
+                    {o.maintenance_log_id ? (
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
+                        De mantenimiento · Ticket: {o.ticket_number ? `MT-${o.ticket_number}` : o.maintenance_log_id.slice(0, 8)}
+                      </div>
+                    ) : null}
 
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
                       <span>{fechaCorta}</span>
@@ -1280,10 +1300,10 @@ export default function PurchasesPage() {
                                   {hasPrices ? (
                                     <>
                                       <td style={{ ...tdStyle, textAlign: "right" }}>
-                                        {it.unit_price != null ? `$${Number(it.unit_price).toFixed(2)}` : "—"}
+                                        {it.unit_price && Number(it.unit_price) > 0 ? `$${Number(it.unit_price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}
                                       </td>
                                       <td style={{ ...tdStyle, textAlign: "right" }}>
-                                        {it.unit_price != null ? `$${(Number(it.quantity || 0) * Number(it.unit_price)).toFixed(2)}` : "—"}
+                                        {it.unit_price && Number(it.unit_price) > 0 ? `$${(Number(it.quantity || 0) * Number(it.unit_price)).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"}
                                       </td>
                                     </>
                                   ) : null}
@@ -1299,6 +1319,34 @@ export default function PurchasesPage() {
                     <div>
                       <SectionLabel>Acciones</SectionLabel>
                       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+
+                        {/* Revisar y aprobar — solo para borradores */}
+                        {o.status === "draft" ? (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const { error: err } = await supabase
+                                .from("purchase_orders")
+                                .update({ status: "pending", updated_at: new Date().toISOString() })
+                                .eq("id", o.id);
+                              if (!err) {
+                                setOrders(prev => prev.map(x => x.id === o.id ? { ...x, status: "pending" as Status } : x));
+                                setMsg("OC aprobada y lista para enviar.");
+                              }
+                            }}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "9px 14px", borderRadius: 8,
+                              border: "1px solid var(--accent)",
+                              background: "var(--accent)", color: "#fff",
+                              fontSize: 13, fontWeight: 700, cursor: "pointer",
+                            }}
+                          >
+                            <CheckCircle2 size={14} />
+                            Revisar y aprobar
+                          </button>
+                        ) : null}
+
                         <button
                           type="button"
                           onClick={() => handleGeneratePDF(o)}
@@ -1371,7 +1419,7 @@ export default function PurchasesPage() {
                               {uploadingId === o.id ? "Subiendo..." : "Reemplazar"}
                             </button>
                           </>
-                        ) : (o.status !== "cancelled") ? (
+                        ) : (o.status !== "cancelled" && o.status !== "draft") ? (
                           <button
                             type="button"
                             onClick={() => triggerSignedPdfUpload(o.id)}
