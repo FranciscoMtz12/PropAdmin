@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
 import AppIconBox from "@/components/AppIconBox";
 import { useTheme } from "@/contexts/ThemeContext";
 
@@ -43,7 +44,11 @@ export default function PageHeader({
         marginBottom: "24px",
       }}
     >
-      <div>
+      <motion.div
+        initial={{ opacity: 0, x: -12 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ duration: 0.3 }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           {titleIcon ? <AppIconBox size={46} radius={14}>{titleIcon}</AppIconBox> : null}
 
@@ -81,7 +86,7 @@ export default function PageHeader({
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
       {actions ? (
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>

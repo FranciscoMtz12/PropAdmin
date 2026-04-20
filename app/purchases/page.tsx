@@ -49,8 +49,10 @@ import {
 } from "lucide-react";
 
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/lib/supabaseClient";
+import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
@@ -1132,7 +1134,7 @@ export default function PurchasesPage() {
         </AppCard>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {filtered.map((o) => {
+          {filtered.map((o, index) => {
             const isExpanded = expandedOrderId === o.id;
             const items      = itemsByOrderId[o.id] || [];
             const hasPrices  = items.some((it) => it.unit_price != null && Number(it.unit_price) > 0);
@@ -1140,11 +1142,17 @@ export default function PurchasesPage() {
             const branch     = o.supplier_branch_id
               ? (supplier?.branches || []).find((b) => b.id === o.supplier_branch_id) || null
               : null;
-            const fechaCorta = new Date(o.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" });
-            const fechaLarga = new Date(o.created_at).toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+            const fechaCorta = formatDateMedium(o.created_at);
+            const fechaLarga = formatDateLong(o.created_at);
 
             return (
-              <AppCard key={o.id} style={{ padding: 0, overflow: "hidden" }}>
+              <motion.div
+                key={o.id}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.05 }}
+              >
+              <AppCard style={{ padding: 0, overflow: "hidden" }}>
 
                 {/* ── Fila colapsada (clickeable) ────────────────── */}
                 <div
@@ -1239,8 +1247,15 @@ export default function PurchasesPage() {
                 </div>
 
                 {/* ── Vista expandida inline ─────────────────────── */}
+                <AnimatePresence initial={false}>
                 {isExpanded ? (
-                  <div style={{
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    style={{
+                    overflow: "hidden",
                     borderTop: "1px solid var(--border-default)",
                     padding: "16px 18px 20px",
                     display: "flex", flexDirection: "column", gap: 18,
@@ -1467,9 +1482,11 @@ export default function PurchasesPage() {
                       </div>
                     </div>
 
-                  </div>
+                  </motion.div>
                 ) : null}
+                </AnimatePresence>
               </AppCard>
+              </motion.div>
             );
           })}
         </div>

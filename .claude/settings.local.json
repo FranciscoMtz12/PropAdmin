@@ -5,7 +5,12 @@
       "Bash(curl -o public/fonts/Montserrat-Medium.ttf \"https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCtZ6Ew-.ttf\")",
       "Bash(curl -o public/fonts/Montserrat-Bold.ttf \"https://fonts.gstatic.com/s/montserrat/v31/JTUHjIg1_i6t8kCHKm4532VJOt5-QNFgpCuM70w-.ttf\")",
       "Bash(file public/fonts/Montserrat-*.ttf)",
-      "Bash(awk '/function OCDocument/,/^}/' lib/pdfTemplates.tsx)"
+      "Bash(awk '/function OCDocument/,/^}/' lib/pdfTemplates.tsx)",
+      "Bash(awk 'NR>=1242 && NR<=1520 {print NR\": \"$0}' app/purchases/page.tsx)",
+      "Bash(grep -E \"^\\\\s*[0-9]+:\\\\s*\\(\\\\}|\\\\\\)|<\\\\/AppCard>|;$\\)\")",
+      "Bash(awk 'NR>=876 && NR<=1200' app/campo/tickets/page.tsx)",
+      "Bash(awk 'NR>=658 && NR<=900' app/buildings/page.tsx)",
+      "Bash(grep -nE \"^\\\\s*\\\\\\);\\\\s*$\")"
     ]
   }
 }

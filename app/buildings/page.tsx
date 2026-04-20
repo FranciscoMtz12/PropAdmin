@@ -41,6 +41,7 @@ import {
   Trash2,
   Warehouse,
 } from "lucide-react";
+import { motion } from "framer-motion";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import BuildingCategoryBadge from "@/components/BuildingCategoryBadge";
@@ -649,16 +650,21 @@ export default function BuildingsPage() {
               gap: 16,
             }}
           >
-            {filteredBuildings.map((building) => {
+            {filteredBuildings.map((building, index) => {
               const totalUnits = unitCountByBuilding.get(building.id) || 0;
               const activeLeases = occupiedByBuilding.get(building.id) || 0;
               const freeUnits = vacantByBuilding.get(building.id) || 0;
               const isHovered = hoveredBuildingId === building.id;
 
               return (
-                /* Wrapper clickeable — toda la card navega al detalle */
-                <div
+                <motion.div
                   key={building.id}
+                  initial={{ opacity: 0, y: 16 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.06 }}
+                >
+                {/* Wrapper clickeable — toda la card navega al detalle */}
+                <div
                   onClick={() => router.push(`/buildings/${building.id}`)}
                   onMouseEnter={() => setHoveredBuildingId(building.id)}
                   onMouseLeave={() => setHoveredBuildingId(null)}
@@ -887,6 +893,7 @@ export default function BuildingsPage() {
                     </div>
                   </AppCard>
                 </div>
+                </motion.div>
               );
             })}
           </div>

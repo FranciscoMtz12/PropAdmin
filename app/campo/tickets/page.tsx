@@ -14,6 +14,7 @@ import type { CSSProperties } from "react";
 import { Building2, Calendar, Camera, Check, ChevronDown, ChevronUp, Image as ImageIcon, Play, Plus, Trash2, X } from "lucide-react";
 
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -873,8 +874,15 @@ export default function CampoTicketsPage() {
                   </button>
 
                   {/* Expanded detail */}
+                  <AnimatePresence initial={false}>
                   {isExpanded && (
-                    <div style={{ borderTop: "1px solid var(--border-default)", padding: "16px 16px 20px", display: "flex", flexDirection: "column", gap: 16 }}>
+                    <motion.div
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: "auto" }}
+                      exit={{ opacity: 0, height: 0 }}
+                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      style={{ overflow: "hidden", borderTop: "1px solid var(--border-default)", padding: "16px 16px 20px", display: "flex", flexDirection: "column", gap: 16 }}
+                    >
 
                       {/* Description */}
                       {t.description && (
@@ -1073,8 +1081,9 @@ export default function CampoTicketsPage() {
                         </div>
                       )}
 
-                    </div>
+                    </motion.div>
                   )}
+                  </AnimatePresence>
                 </div>
               );
             })}

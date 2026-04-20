@@ -2,6 +2,7 @@
 
 import type { CSSProperties, ReactNode } from "react";
 import { X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 /*
   Modal reutilizable del sistema.
@@ -31,38 +32,46 @@ export default function Modal({
   contentStyle?: CSSProperties;
   overlayStyle?: CSSProperties;
 }) {
-  if (!open) return null;
-
   return (
-    <div
-      style={{
-        position: "fixed",
-        inset: 0,
-        background: "rgba(15, 23, 42, 0.55)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "24px",
-        zIndex: 1000,
-        ...overlayStyle,
-      }}
-    >
-      <div
-        onClick={(event) => event.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth,
-          maxHeight,
-          overflowY: "auto",
-          background: "var(--bg-card)",
-          borderRadius: "22px",
-          border: "1px solid var(--border-default)",
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
-          padding: "24px",
-          color: "var(--text-primary)",
-          ...contentStyle,
-        }}
-      >
+    <AnimatePresence>
+      {open ? (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "24px",
+            zIndex: 1000,
+            ...overlayStyle,
+          }}
+        >
+          <motion.div
+            onClick={(event) => event.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.95, y: 8 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 8 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{
+              width: "100%",
+              maxWidth,
+              maxHeight,
+              overflowY: "auto",
+              background: "var(--bg-card)",
+              borderRadius: "22px",
+              border: "1px solid var(--border-default)",
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
+              padding: "24px",
+              color: "var(--text-primary)",
+              ...contentStyle,
+            }}
+          >
         <div
           style={{
             display: "flex",
@@ -109,8 +118,10 @@ export default function Modal({
           </button>
         </div>
 
-        {children}
-      </div>
-    </div>
+            {children}
+          </motion.div>
+        </motion.div>
+      ) : null}
+    </AnimatePresence>
   );
 }

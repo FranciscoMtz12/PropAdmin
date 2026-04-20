@@ -50,6 +50,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateReportePdf } from "@/lib/pdfTemplates";
+import { formatDateShort, getWeekNumber } from "@/lib/dateUtils";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -63,15 +64,6 @@ import AppFormField from "@/components/AppFormField";
 
 /* ── Helpers ──────────────────────────────────────────────────── */
 
-/** ISO week number (Monday-first, estándar ISO-8601) */
-function getISOWeek(date: Date): number {
-  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-  const dayNum = d.getUTCDay() || 7;
-  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-  return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
-}
-
 /** YYYY-MM-DD local (no UTC) */
 function todayIso(): string {
   const d = new Date();
@@ -79,19 +71,6 @@ function todayIso(): string {
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
-}
-
-function formatDateEs(iso: string | null | undefined): string {
-  if (!iso) return "—";
-  const [y, m, d] = iso.split("-");
-  return `${d}/${m}/${y}`;
-}
-
-function formatDateShortEs(iso: string): string {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleDateString("es-MX", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
 }
 
 /* ── Tipos ────────────────────────────────────────────────────── */
@@ -351,7 +330,7 @@ export default function ReportePagosPage() {
   }, [allSentOCs, claimedByReport, editingReportId]);
 
   /** Semana / año / folio — recalculan al cambiar report_date */
-  const week  = useMemo(() => getISOWeek(new Date(reportDate + "T00:00:00")), [reportDate]);
+  const week  = useMemo(() => getWeekNumber(new Date(reportDate + "T00:00:00")), [reportDate]);
   const year  = useMemo(() => new Date(reportDate + "T00:00:00").getFullYear(), [reportDate]);
   const folio = useMemo(() => `REP-S${week}-${year}`, [week, year]);
 
@@ -624,15 +603,15 @@ export default function ReportePagosPage() {
         year:         report.year ?? new Date().getFullYear(),
         elaboratedBy: report.elaborated_by || "—",
         companyName:  (legalName || companyName || shortName || "").toString(),
-        reportDate:   formatDateEs(report.report_date),
+        reportDate:   formatDateShort(report.report_date),
         items: items.map((it) => {
           const proj = it.oc_building_name
             ? (it.oc_project_description ? `${it.oc_building_name} · ${it.oc_project_description}` : it.oc_building_name)
             : (it.oc_project_description || "—");
           return {
             folio:         it.oc_folio || "",
-            sentAt:        it.oc_sent_at ? new Date(it.oc_sent_at).toLocaleDateString("es-MX") : "",
-            invoiceDate:   it.invoice_date ? formatDateEs(it.invoice_date) : "",
+            sentAt:        it.oc_sent_at ? formatDateShort(it.oc_sent_at) : "",
+            invoiceDate:   it.invoice_date ? formatDateShort(it.invoice_date) : "",
             invoiceNumber: it.invoice_number || "",
             project:       proj,
           };
@@ -791,7 +770,7 @@ export default function ReportePagosPage() {
                       <td style={{ ...tdStyle, fontFamily: "monospace", fontWeight: 700 }}>{o.folio}</td>
                       <td style={{ ...tdStyle, textAlign: "left" }}>{o.supplier_name || "—"}</td>
                       <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)" }}>{project}</td>
-                      <td style={tdStyle}>{formatDateShortEs(o.created_at)}</td>
+                      <td style={tdStyle}>{formatDateShort(o.created_at)}</td>
                     </tr>
                   );
                 })}
@@ -846,8 +825,8 @@ export default function ReportePagosPage() {
                     </div>
 
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
-                      <span>Fecha: {formatDateShortEs(r.report_date)}</span>
-                      <span>· Creado: {formatDateShortEs(r.created_at)}</span>
+                      <span>Fecha: {formatDateShort(r.report_date)}</span>
+                      <span>· Creado: {formatDateShort(r.created_at)}</span>
                     </div>
                   </div>
 
@@ -890,7 +869,7 @@ export default function ReportePagosPage() {
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                         <DetailRow label="Elaboró" value={r.elaborated_by || "—"} />
                         <DetailRow label="Empresa" value={legalName || companyName || shortName || "—"} />
-                        <DetailRow label="Fecha" value={formatDateEs(r.report_date)} />
+                        <DetailRow label="Fecha" value={formatDateShort(r.report_date)} />
                         <DetailRow
                           label="Semana"
                           value={r.week_number != null && r.year != null ? `S${r.week_number} · ${r.year}` : "—"}
@@ -928,11 +907,11 @@ export default function ReportePagosPage() {
                                 return (
                                   <tr key={it.id} style={{ borderTop: "1px solid var(--border-default)" }}>
                                     <td style={tdStyle}>{idx + 1}</td>
-                                    <td style={tdStyle}>{it.oc_sent_at ? new Date(it.oc_sent_at).toLocaleDateString("es-MX") : "—"}</td>
+                                    <td style={tdStyle}>{it.oc_sent_at ? formatDateShort(it.oc_sent_at) : "—"}</td>
                                     <td style={{ ...tdStyle, fontWeight: 700 }}>
                                       {it.oc_folio}
                                     </td>
-                                    <td style={tdStyle}>{formatDateEs(it.invoice_date)}</td>
+                                    <td style={tdStyle}>{formatDateShort(it.invoice_date)}</td>
                                     <td style={tdStyle}>{it.invoice_number || "—"}</td>
                                     <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)" }}>
                                       {proj}

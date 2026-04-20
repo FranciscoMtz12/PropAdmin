@@ -52,6 +52,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateOCPdf, generateOMPdf } from "@/lib/pdfTemplates";
+import { formatDateLong, formatDateMedium, formatDateShort } from "@/lib/dateUtils";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -279,10 +280,7 @@ function getTicketNumber(ticket: Ticket) {
 }
 
 function formatDate(dateValue: string | null) {
-  if (!dateValue) return "—";
-  return new Date(dateValue).toLocaleDateString("es-MX", {
-    year: "numeric", month: "short", day: "numeric",
-  });
+  return formatDateMedium(dateValue);
 }
 
 // ─── CALENDAR HELPERS — kept intact from v1 ──────────────────────────────────
@@ -501,9 +499,7 @@ type OCPageParams = {
  * El parámetro `doc` ya NO se usa — se mantiene para no romper callers existentes.
  */
 export async function renderPurchaseOrderPage(_doc: any, p: OCPageParams) {
-  const dateStr = p.date.toLocaleDateString("es-MX", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-  });
+  const dateStr = formatDateShort(p.date);
 
   await generateOCPdf({
     folio:              p.folio,
@@ -1036,7 +1032,7 @@ export default function MaintenancePage() {
     try {
       const year  = new Date().getFullYear();
       const folio = `OM-${year}-${String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase()}`;
-      const fechaStr = new Date().toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
+      const fechaStr = formatDateLong(new Date());
 
       const buildingName    = ticket.buildings?.name    || "Sin edificio";
       const buildingAddress = ticket.buildings?.address || "";
