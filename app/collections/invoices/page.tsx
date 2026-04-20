@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { removeInvoiceFile } from "@/lib/invoiceStorage";
 import { type InvoiceListRow, normalizeInvoiceRow } from "@/lib/normalizeInvoice";
 import { useCurrentUser } from "@/contexts/UserContext";
-import { useAppToast } from "@/components/AppToastProvider";
+import toast from "react-hot-toast";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -44,7 +44,6 @@ function formatCurrency(value: number) {
 export default function AdminInvoicesPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const { showToast } = useAppToast();
 
   const [pageLoading, setPageLoading] = useState(true);
   const [rows, setRows] = useState<InvoiceListRow[]>([]);
@@ -120,7 +119,7 @@ export default function AdminInvoicesPage() {
 
       if (error) {
         console.error(error);
-        showToast({ type: "error", message: "No pude cargar las facturas administrativas." });
+        toast.error("No pude cargar las facturas administrativas.");
         setRows([]);
         setBuildingOptions([]);
         setPageLoading(false);
@@ -152,7 +151,7 @@ export default function AdminInvoicesPage() {
     return () => {
       ignore = true;
     };
-  }, [loading, user, showToast]);
+  }, [loading, user]);
 
   const filteredRows = useMemo(() => {
     const normalizedSearch = searchTerm.trim().toLowerCase();
@@ -219,15 +218,13 @@ export default function AdminInvoicesPage() {
 
       setRows((prev) => prev.filter((row) => row.id !== deleteTarget.id));
       setDeleteTarget(null);
-      showToast({ type: "success", message: "La factura se eliminó correctamente." });
+      toast.success("La factura se eliminó correctamente.");
       router.refresh();
     } catch (error) {
       console.error(error);
-      showToast({
-        type: "error",
-        message:
-          error instanceof Error ? error.message : "Ocurrió un error al eliminar la factura.",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Ocurrió un error al eliminar la factura.",
+      );
     } finally {
       setDeleting(false);
     }

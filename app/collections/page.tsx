@@ -46,7 +46,7 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
-import { useAppToast } from "@/components/AppToastProvider";
+import toast from "react-hot-toast";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -277,7 +277,6 @@ function computeEstadoGeneral(records: CollectionRecord[]): CollectionStoredStat
 
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
-  const { showToast } = useAppToast();
 
   const now = new Date();
   const [selectedYear, setSelectedYear]   = useState(now.getFullYear());
@@ -347,7 +346,7 @@ export default function CollectionsPage() {
 
     for (const res of [buildingsRes, unitsRes, tenantsRes, leasesRes, schedulesRes, recordsRes]) {
       if (res.error) {
-        showToast({ type: "error", message: "Error cargando datos de cobranza." });
+        toast.error("Error cargando datos de cobranza.");
         setLoadingPage(false);
         return;
       }
@@ -391,7 +390,7 @@ export default function CollectionsPage() {
     );
 
     if (!activeSchedules.length) {
-      showToast({ type: "warning", message: "No hay configuraciones de cobro activas asociadas a contratos activos." });
+      toast("No hay configuraciones de cobro activas asociadas a contratos activos.", { icon: "⚠️" });
       setGenerating(false);
       return;
     }
@@ -435,7 +434,7 @@ export default function CollectionsPage() {
 
     if (!toInsert.length) {
       const monthLabel = `${MONTH_LABELS_LONG[month - 1]} ${year}`;
-      showToast({ type: "success", message: `Los cobros de ${monthLabel} ya están generados.` });
+      toast.success(`Los cobros de ${monthLabel} ya están generados.`);
       setGenerating(false);
       return;
     }
@@ -443,7 +442,7 @@ export default function CollectionsPage() {
     const { error } = await supabase.from("collection_records").insert(toInsert);
 
     if (error) {
-      showToast({ type: "error", message: `Error generando cobros: ${error.message}` });
+      toast.error(`Error generando cobros: ${error.message}`);
       setGenerating(false);
       return;
     }
@@ -451,7 +450,7 @@ export default function CollectionsPage() {
     await loadData();
     setGenerating(false);
     const monthLabel = `${MONTH_LABELS_LONG[month - 1]} ${year}`;
-    showToast({ type: "success", message: `${toInsert.length} cobro${toInsert.length === 1 ? "" : "s"} generado${toInsert.length === 1 ? "" : "s"} para ${monthLabel}.` });
+    toast.success(`${toInsert.length} cobro${toInsert.length === 1 ? "" : "s"} generado${toInsert.length === 1 ? "" : "s"} para ${monthLabel}.`);
   }
 
   // ── Registrar abono (parcial o total) ────────────────────────────────────────
@@ -472,7 +471,7 @@ export default function CollectionsPage() {
 
     setAbonoSaving(false);
     if (error) {
-      showToast({ type: "error", message: `No se pudo registrar el abono: ${error.message}` });
+      toast.error(`No se pudo registrar el abono: ${error.message}`);
       return;
     }
     setRecords((prev) =>
@@ -482,7 +481,7 @@ export default function CollectionsPage() {
       )
     );
     setAbonoModal(null);
-    showToast({ type: "success", message: newStatus === "collected" ? "Cobro marcado como pagado." : "Abono registrado." });
+    toast.success(newStatus === "collected" ? "Cobro marcado como pagado." : "Abono registrado.");
   }
 
   // ── Revertir cobro a pendiente ────────────────────────────────────────────────
@@ -500,13 +499,13 @@ export default function CollectionsPage() {
 
     setMarkingIds((prev) => { const next = new Set(prev); next.delete(record.id); return next; });
     if (error) {
-      showToast({ type: "error", message: `No se pudo revertir: ${error.message}` });
+      toast.error(`No se pudo revertir: ${error.message}`);
       return;
     }
     setRecords((prev) =>
       prev.map((r) => r.id === record.id ? { ...r, status: "pending", amount_collected: 0, collected_at: null } : r)
     );
-    showToast({ type: "success", message: "Cobro revertido a pendiente." });
+    toast.success("Cobro revertido a pendiente.");
   }
 
   // ── Cargo eventual (único, active=false) ──────────────────────────────────────
@@ -514,8 +513,8 @@ export default function CollectionsPage() {
   async function handleCreateEvento() {
     if (!eventoModal || !user?.company_id) return;
     const monto = parsePositiveNumber(eventoForm.monto);
-    if (!monto) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
-    if (!eventoForm.concepto.trim()) { showToast({ type: "error", message: "Escribe un concepto." }); return; }
+    if (!monto) { toast.error("Ingresa un monto válido."); return; }
+    if (!eventoForm.concepto.trim()) { toast.error("Escribe un concepto."); return; }
 
     setEventoSaving(true);
     const dueDay  = new Date().getDate();
@@ -539,7 +538,7 @@ export default function CollectionsPage() {
       .single();
 
     if (schedError || !schedData) {
-      showToast({ type: "error", message: `No se pudo crear el cargo: ${schedError?.message || "error desconocido"}` });
+      toast.error(`No se pudo crear el cargo: ${schedError?.message || "error desconocido"}`);
       setEventoSaving(false);
       return;
     }
@@ -563,7 +562,7 @@ export default function CollectionsPage() {
       .single();
 
     if (recError || !recData) {
-      showToast({ type: "error", message: `No se pudo crear el cobro: ${recError?.message || "error desconocido"}` });
+      toast.error(`No se pudo crear el cobro: ${recError?.message || "error desconocido"}`);
       setEventoSaving(false);
       return;
     }
@@ -584,7 +583,7 @@ export default function CollectionsPage() {
     setEventoModal(null);
     setEventoForm({ concepto: "", chargeType: "amenities", monto: "" });
     setEventoSaving(false);
-    showToast({ type: "success", message: "Cargo eventual registrado." });
+    toast.success("Cargo eventual registrado.");
   }
 
   // ── Capturar monto de servicio variable ───────────────────────────────────────
@@ -592,7 +591,7 @@ export default function CollectionsPage() {
   async function handleCaptura() {
     if (!capturaModal || !user?.company_id) return;
     const monto = parsePositiveNumber(capturaForm.monto);
-    if (!monto) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+    if (!monto) { toast.error("Ingresa un monto válido."); return; }
 
     const unitSuffix = capturaModal.chargeType === "electricity" ? "kWh" : "m³";
     const notesLine = capturaForm.unidades.trim()
@@ -610,14 +609,14 @@ export default function CollectionsPage() {
       .eq("company_id", user.company_id);
 
     setCapturaSaving(false);
-    if (error) { showToast({ type: "error", message: `Error: ${error.message}` }); return; }
+    if (error) { toast.error(`Error: ${error.message}`); return; }
 
     setRecords((prev) => prev.map((r) =>
       r.id === capturaModal.record.id ? { ...r, amount_due: monto, notes: notesLine, status: newStatus } : r
     ));
     setCapturaModal(null);
     setCapturaForm({ monto: "", unidades: "", notas: "" });
-    showToast({ type: "success", message: "Monto capturado correctamente." });
+    toast.success("Monto capturado correctamente.");
   }
 
   // ── Archivar cobro ────────────────────────────────────────────────────────────
@@ -636,12 +635,12 @@ export default function CollectionsPage() {
     setDeleteRecordId(null);
 
     if (error) {
-      showToast({ type: "error", message: `No se pudo archivar: ${error.message}` });
+      toast.error(`No se pudo archivar: ${error.message}`);
       return;
     }
 
     setRecords((prev) => prev.filter((r) => r.id !== deleteRecordId));
-    showToast({ type: "success", message: "Cobro archivado correctamente." });
+    toast.success("Cobro archivado correctamente.");
   }
 
   // ── Editar cobro ──────────────────────────────────────────────────────────────
@@ -659,7 +658,7 @@ export default function CollectionsPage() {
     if (!editRecordId || !user?.company_id) return;
     const nextAmount = parsePositiveNumber(editForm.amountDue);
     if (!nextAmount) {
-      showToast({ type: "error", message: "Ingresa un monto válido." });
+      toast.error("Ingresa un monto válido.");
       return;
     }
 
@@ -674,7 +673,7 @@ export default function CollectionsPage() {
     setEditingRecord(false);
 
     if (error) {
-      showToast({ type: "error", message: `No se pudo actualizar: ${error.message}` });
+      toast.error(`No se pudo actualizar: ${error.message}`);
       return;
     }
 
@@ -684,7 +683,7 @@ export default function CollectionsPage() {
       ),
     );
     setEditRecordId(null);
-    showToast({ type: "success", message: "Cobro actualizado." });
+    toast.success("Cobro actualizado.");
   }
 
   // ── Navegación de mes ─────────────────────────────────────────────────────────
@@ -1354,7 +1353,7 @@ export default function CollectionsPage() {
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
                     const m = parsePositiveNumber(abonoModal.monto);
-                    if (!m) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+                    if (!m) { toast.error("Ingresa un monto válido."); return; }
                     void handleAbono(abonoModal.record, m);
                   }
                 }}
@@ -1369,7 +1368,7 @@ export default function CollectionsPage() {
               <UiButton
                 onClick={() => {
                   const m = parsePositiveNumber(abonoModal.monto);
-                  if (!m) { showToast({ type: "error", message: "Ingresa un monto válido." }); return; }
+                  if (!m) { toast.error("Ingresa un monto válido."); return; }
                   void handleAbono(abonoModal.record, m);
                 }}
                 disabled={abonoSaving}

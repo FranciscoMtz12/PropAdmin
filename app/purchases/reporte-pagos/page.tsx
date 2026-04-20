@@ -44,6 +44,8 @@ import {
   Trash2,
 } from "lucide-react";
 
+import toast from "react-hot-toast";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -612,6 +614,7 @@ export default function ReportePagosPage() {
    */
   async function handleGeneratePDF(report: PaymentReport) {
     setGeneratingPdfId(report.id);
+    const toastId = toast.loading("Generando PDF...");
     try {
       const items = itemsByReportId.get(report.id) || [];
 
@@ -636,9 +639,12 @@ export default function ReportePagosPage() {
         }),
         logoUrl: companyLogoPrint || companyLogoUrl || undefined,
       });
+      toast.dismiss(toastId);
+      toast.success("PDF listo");
     } catch (err) {
       console.error("generate pdf error:", err);
-      setError("Error al generar el PDF.");
+      toast.dismiss(toastId);
+      toast.error("Error al generar el PDF.");
     }
     setGeneratingPdfId(null);
   }

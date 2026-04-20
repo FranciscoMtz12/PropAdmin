@@ -30,7 +30,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
-import { useAppToast } from "@/components/AppToastProvider";
+import toast from "react-hot-toast";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -457,7 +457,6 @@ function getMetricIconBoxStyle(background: string): CSSProperties {
 
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
-  const { showToast } = useAppToast();
 
   const [loadingPage, setLoadingPage] = useState(true);
   const [savingPayment, setSavingPayment] = useState(false);
@@ -582,7 +581,7 @@ export default function PaymentsPage() {
     if (buildingsRes.error) {
       const errorText = "No se pudieron cargar los edificios.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
       if (showLoader) setLoadingPage(false);
       return;
     }
@@ -590,7 +589,7 @@ export default function PaymentsPage() {
     if (unitsRes.error) {
       const errorText = "No se pudieron cargar las unidades.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
       if (showLoader) setLoadingPage(false);
       return;
     }
@@ -598,7 +597,7 @@ export default function PaymentsPage() {
     if (schedulesRes.error) {
       const errorText = "No se pudieron cargar las configuraciones de pagos.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
       if (showLoader) setLoadingPage(false);
       return;
     }
@@ -606,7 +605,7 @@ export default function PaymentsPage() {
     if (paymentsRes.error) {
       const errorText = "No se pudieron cargar los registros de pagos.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
       if (showLoader) setLoadingPage(false);
       return;
     }
@@ -740,10 +739,7 @@ export default function PaymentsPage() {
       const { error } = await supabase.from("expense_payments").insert(rowsToInsert);
 
       if (error) {
-        showToast({
-          type: "error",
-          message: "No se pudieron generar automáticamente algunos pagos del periodo actual.",
-        });
+        toast.error("No se pudieron generar automáticamente algunos pagos del periodo actual.");
         return;
       }
 
@@ -902,28 +898,28 @@ export default function PaymentsPage() {
     if (!createForm.buildingId) {
       const errorText = "Selecciona un edificio.";
       setMessage(errorText);
-      showToast({ type: "warning", message: errorText });
+      toast(errorText, { icon: "⚠️" });
       return;
     }
 
     if (createForm.appliesTo === "unit" && !createForm.unitId) {
       const errorText = "Selecciona una unidad.";
       setMessage(errorText);
-      showToast({ type: "warning", message: errorText });
+      toast(errorText, { icon: "⚠️" });
       return;
     }
 
     if (!createForm.title.trim()) {
       const errorText = "Escribe el concepto corto del servicio.";
       setMessage(errorText);
-      showToast({ type: "warning", message: errorText });
+      toast(errorText, { icon: "⚠️" });
       return;
     }
 
     if (!createForm.dueDate) {
       const errorText = "Selecciona la fecha límite de pago.";
       setMessage(errorText);
-      showToast({ type: "warning", message: errorText });
+      toast(errorText, { icon: "⚠️" });
       return;
     }
 
@@ -931,7 +927,7 @@ export default function PaymentsPage() {
     if (!dueDay) {
       const errorText = "No se pudo calcular el día de vencimiento.";
       setMessage(errorText);
-      showToast({ type: "warning", message: errorText });
+      toast(errorText, { icon: "⚠️" });
       return;
     }
 
@@ -1005,7 +1001,7 @@ export default function PaymentsPage() {
         throw new Error(paymentError.message || "No se pudo crear el registro del pago.");
       }
 
-      showToast({ type: "success", message: "Pago administrativo creado correctamente." });
+      toast.success("Pago administrativo creado correctamente.");
       setCreateForm(getDefaultCreateForm(createForm.buildingId));
       setShowCreateForm(false);
       await loadPaymentsData(false);
@@ -1013,7 +1009,7 @@ export default function PaymentsPage() {
       const errorText =
         error instanceof Error ? error.message : "Ocurrió un error creando el pago.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
     } finally {
       setSavingPayment(false);
     }
@@ -1026,7 +1022,7 @@ export default function PaymentsPage() {
     if (!payment || !schedule) {
       const errorText = "No se pudo abrir la edición del pago seleccionado.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
       return;
     }
 
@@ -1163,13 +1159,13 @@ export default function PaymentsPage() {
       setIsEditModalOpen(false);
       setEditingPayment(null);
 
-      showToast({ type: "success", message: "Pago actualizado correctamente." });
+      toast.success("Pago actualizado correctamente.");
       await loadPaymentsData(false);
     } catch (error) {
       const errorText =
         error instanceof Error ? error.message : "Ocurrió un error actualizando el pago.";
       setMessage(errorText);
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
     } finally {
       setSavingPayment(false);
     }
@@ -1203,10 +1199,10 @@ export default function PaymentsPage() {
           payment.id === row.id ? { ...payment, status: "paid", paid_at: new Date().toISOString() } : payment
         )
       );
-      showToast({ type: "success", message: "Pago marcado como pagado." });
+      toast.success("Pago marcado como pagado.");
     } catch (error) {
       const errorText = error instanceof Error ? error.message : "Ocurrió un error actualizando el estado.";
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
     } finally {
       setStatusUpdatingId(null);
     }
@@ -1226,10 +1222,10 @@ export default function PaymentsPage() {
       setExpensePayments((prev) =>
         prev.map((p) => p.id === row.id ? { ...p, status: nextStoredStatus, paid_at: null } : p)
       );
-      showToast({ type: "success", message: "El pago volvió a su estado real según la fecha." });
+      toast.success("El pago volvió a su estado real según la fecha.");
     } catch (error) {
       const errorText = error instanceof Error ? error.message : "Ocurrió un error.";
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
     } finally {
       setStatusUpdatingId(null);
     }
@@ -1274,12 +1270,12 @@ export default function PaymentsPage() {
         setIsEditModalOpen(false);
       }
 
-      showToast({ type: "success", message: "Pago archivado correctamente." });
+      toast.success("Pago archivado correctamente.");
       await loadPaymentsData(false);
     } catch (error) {
       const errorText =
         error instanceof Error ? error.message : "Ocurrió un error eliminando el pago.";
-      showToast({ type: "error", message: errorText });
+      toast.error(errorText);
     } finally {
       setDeletingScheduleId(null);
     }

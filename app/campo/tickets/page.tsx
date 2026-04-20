@@ -13,6 +13,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Building2, Calendar, Camera, Check, ChevronDown, ChevronUp, Image as ImageIcon, Play, Plus, Trash2, X } from "lucide-react";
 
+import toast from "react-hot-toast";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -357,7 +359,7 @@ export default function CampoTicketsPage() {
       console.log("Upload result:", { data, error: uploadErr, path, fileSize: file.size });
       if (uploadErr) {
         console.error("Upload error detail:", JSON.stringify(uploadErr));
-        alert("Error al subir: " + uploadErr.message);
+        toast.error("Error al subir: " + uploadErr.message);
         setCPhotos(prev => prev.filter(p => p.id !== id));
         continue;
       }
@@ -395,7 +397,7 @@ export default function CampoTicketsPage() {
       console.log("Upload result:", { data, error: uploadErr, path, fileSize: file.size });
       if (uploadErr) {
         console.error("Upload error detail:", JSON.stringify(uploadErr));
-        alert("Error al subir: " + uploadErr.message);
+        toast.error("Error al subir: " + uploadErr.message);
         continue;
       }
       const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
@@ -733,7 +735,7 @@ export default function CampoTicketsPage() {
     msgParts.push(`${matCount} material${matCount === 1 ? "" : "es"} guardado${matCount === 1 ? "" : "s"}`);
     if (ocsCreated > 0) msgParts.push(`${ocsCreated} OC${ocsCreated === 1 ? "" : "s"} creada${ocsCreated === 1 ? "" : "s"}`);
     if (ocsUpdated > 0) msgParts.push(`${ocsUpdated} OC${ocsUpdated === 1 ? "" : "s"} actualizada${ocsUpdated === 1 ? "" : "s"}`);
-    alert(msgParts.join(" · "));
+    toast.success(msgParts.join(" · "));
   }
 
   /* ── Status update ──────────────────────────────────────────── */

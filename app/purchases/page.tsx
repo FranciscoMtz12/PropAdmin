@@ -48,6 +48,8 @@ import {
   XCircle,
 } from "lucide-react";
 
+import toast from "react-hot-toast";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -904,6 +906,7 @@ export default function PurchasesPage() {
 
   async function handleGeneratePDF(order: PurchaseOrder) {
     setGeneratingPdfId(order.id);
+    const toastId = toast.loading("Generando PDF...");
     try {
       const supplier = suppliers.find((s) => s.id === order.supplier_id);
       const building = buildings.find((b) => b.id === order.building_id);
@@ -974,9 +977,12 @@ export default function PurchasesPage() {
         purchasesContactPhone,
         purchasesContactEmail,
       });
+      toast.dismiss(toastId);
+      toast.success("PDF listo");
     } catch (err) {
       console.error("OC PDF error:", err);
-      setMsg("Error al generar el PDF.");
+      toast.dismiss(toastId);
+      toast.error("Error al generar el PDF.");
     }
     setGeneratingPdfId(null);
   }

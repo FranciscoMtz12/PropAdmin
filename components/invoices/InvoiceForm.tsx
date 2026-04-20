@@ -13,7 +13,7 @@ import {
   normalizeCollectionRecordOption,
 } from "@/lib/normalizeInvoice";
 import { useCurrentUser } from "@/contexts/UserContext";
-import { useAppToast } from "@/components/AppToastProvider";
+import toast from "react-hot-toast";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -147,7 +147,6 @@ export default function InvoiceForm({
   const router = useRouter();
   const searchParams = useSearchParams();
   const { user, loading } = useCurrentUser();
-  const { showToast } = useAppToast();
 
   const [loadingRecords, setLoadingRecords] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -244,10 +243,7 @@ export default function InvoiceForm({
 
       if (error) {
         console.error(error);
-        showToast({
-          type: "error",
-          message: "No fue posible cargar los cobros disponibles para ligar la factura.",
-        });
+        toast.error("No fue posible cargar los cobros disponibles para ligar la factura.");
         setRecords([]);
         setLoadingRecords(false);
         return;
@@ -266,7 +262,7 @@ export default function InvoiceForm({
     return () => {
       ignore = true;
     };
-  }, [loading, user, showToast]);
+  }, [loading, user]);
 
   useEffect(() => {
     if (mode !== "create") return;
@@ -353,20 +349,16 @@ export default function InvoiceForm({
         }));
 
         setXmlAutofillStatus("XML leído correctamente. Se llenaron los campos detectados.");
-        showToast({
-          type: "success",
-          message: "Leí el XML y autocompleté la información principal de la factura.",
-        });
+        toast.success("Leí el XML y autocompleté la información principal de la factura.");
       } catch (error) {
         console.error(error);
         setXmlAutofillStatus("No fue posible leer automáticamente este XML.");
-        showToast({
-          type: "warning",
-          message:
-            error instanceof Error
-              ? error.message
-              : "No pude interpretar el XML automáticamente.",
-        });
+        toast(
+          error instanceof Error
+            ? error.message
+            : "No pude interpretar el XML automáticamente.",
+          { icon: "⚠️" },
+        );
       }
     }
 
@@ -375,7 +367,7 @@ export default function InvoiceForm({
     return () => {
       cancelled = true;
     };
-  }, [selectedXmlFile, showToast]);
+  }, [selectedXmlFile]);
 
   const totalPreview = useMemo(() => {
     const subtotal = Number(form.subtotal || 0);
@@ -395,29 +387,25 @@ export default function InvoiceForm({
     const currentUser = user;
 
     if (!form.collectionRecordId) {
-      showToast({ type: "warning", message: "Primero selecciona el cobro relacionado." });
+      toast("Primero selecciona el cobro relacionado.", { icon: "⚠️" });
       return;
     }
 
     if (!selectedRecord) {
-      showToast({
-        type: "warning",
-        message:
-          "El cobro seleccionado ya no está disponible. Recarga la página e intenta otra vez.",
-      });
+      toast(
+        "El cobro seleccionado ya no está disponible. Recarga la página e intenta otra vez.",
+        { icon: "⚠️" },
+      );
       return;
     }
 
     if (mode === "create" && (!selectedPdfFile || !selectedXmlFile)) {
-      showToast({
-        type: "warning",
-        message: "Para crear la factura necesito que subas tanto el PDF como el XML.",
-      });
+      toast("Para crear la factura necesito que subas tanto el PDF como el XML.", { icon: "⚠️" });
       return;
     }
 
     if (!form.invoiceUuid.trim()) {
-      showToast({ type: "warning", message: "Ingresa el UUID de la factura." });
+      toast("Ingresa el UUID de la factura.", { icon: "⚠️" });
       return;
     }
 
@@ -493,10 +481,7 @@ export default function InvoiceForm({
           );
         }
 
-        showToast({
-          type: "success",
-          message: "La factura se creó correctamente y ya quedó ligada a cobranza.",
-        });
+        toast.success("La factura se creó correctamente y ya quedó ligada a cobranza.");
 
         router.push(`/collections/invoices/${insertedData.id}`);
         router.refresh();
@@ -563,18 +548,16 @@ export default function InvoiceForm({
         throw new Error(updateError.message || "No fue posible guardar los cambios de la factura.");
       }
 
-      showToast({ type: "success", message: "La factura se actualizó correctamente." });
+      toast.success("La factura se actualizó correctamente.");
       router.push(`/collections/invoices/${invoiceId}`);
       router.refresh();
     } catch (error) {
       console.error(error);
-      showToast({
-        type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Ocurrió un error inesperado al guardar la factura.",
-      });
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Ocurrió un error inesperado al guardar la factura.",
+      );
     } finally {
       setSaving(false);
     }

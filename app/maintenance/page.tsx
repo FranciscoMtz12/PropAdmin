@@ -46,6 +46,8 @@ import {
   X,
 } from "lucide-react";
 
+import toast from "react-hot-toast";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -1029,6 +1031,7 @@ export default function MaintenancePage() {
   async function handleGeneratePDF(ticket: Ticket) {
     const mats = materialsByTicket[ticket.id] || [];
     setGeneratingPdfId(ticket.id);
+    const toastId = toast.loading("Generando PDF...");
 
     try {
       const year  = new Date().getFullYear();
@@ -1060,8 +1063,11 @@ export default function MaintenancePage() {
           : [{ index: 1, description: "Sin materiales registrados", quantity: 0, unit: "—" }],
         logoUrl:            companyLogoPrint || companyLogoUrl || undefined,
       });
+      toast.dismiss(toastId);
+      toast.success("PDF listo");
     } catch {
-      setMsg("Error al generar el PDF.");
+      toast.dismiss(toastId);
+      toast.error("Error al generar el PDF.");
     }
 
     setGeneratingPdfId(null);
@@ -1079,6 +1085,7 @@ export default function MaintenancePage() {
     }
 
     setGeneratingOcId(ticket.id);
+    const toastId = toast.loading("Generando órdenes de compra...");
 
     try {
       const supplierIds = Array.from(new Set(matsWithSupplier.map((m) => m.supplier_id!)));
@@ -1161,9 +1168,11 @@ export default function MaintenancePage() {
         });
       }
 
-      setMsg(`Se generaron ${entries.length} orden(es) de compra.`);
+      toast.dismiss(toastId);
+      toast.success(`Se generaron ${entries.length} orden(es) de compra.`);
     } catch {
-      setMsg("Error al generar las órdenes de compra.");
+      toast.dismiss(toastId);
+      toast.error("Error al generar las órdenes de compra.");
     }
 
     setGeneratingOcId(null);

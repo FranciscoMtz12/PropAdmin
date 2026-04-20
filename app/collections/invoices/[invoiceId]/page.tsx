@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { createInvoiceSignedUrl, removeInvoiceFile } from "@/lib/invoiceStorage";
 import { type InvoiceListRow, normalizeInvoiceRow } from "@/lib/normalizeInvoice";
 import { useCurrentUser } from "@/contexts/UserContext";
-import { useAppToast } from "@/components/AppToastProvider";
+import toast from "react-hot-toast";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -22,7 +22,6 @@ export default function InvoiceDetailPage() {
   const params = useParams();
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const { showToast } = useAppToast();
 
   const invoiceId = String(params?.invoiceId || "");
 
@@ -98,7 +97,7 @@ export default function InvoiceDetailPage() {
 
       if (error || !data) {
         console.error(error);
-        showToast({ type: "error", message: "No encontré la factura solicitada." });
+        toast.error("No encontré la factura solicitada.");
         setInvoice(null);
         setPageLoading(false);
         return;
@@ -119,10 +118,7 @@ export default function InvoiceDetailPage() {
         }
       } catch (signedUrlError) {
         console.error(signedUrlError);
-        showToast({
-          type: "warning",
-          message: "La factura cargó, pero no pude generar alguno de los accesos temporales a archivos.",
-        });
+        toast("La factura cargó, pero no pude generar alguno de los accesos temporales a archivos.", { icon: "⚠️" });
       }
 
       setPageLoading(false);
@@ -133,7 +129,7 @@ export default function InvoiceDetailPage() {
     return () => {
       ignore = true;
     };
-  }, [invoiceId, loading, user, showToast]);
+  }, [invoiceId, loading, user]);
 
   async function handleDelete() {
     if (!invoice) return;
@@ -154,16 +150,14 @@ export default function InvoiceDetailPage() {
         throw new Error(error.message || "No pude eliminar la factura.");
       }
 
-      showToast({ type: "success", message: "La factura se eliminó correctamente." });
+      toast.success("La factura se eliminó correctamente.");
       router.push("/collections/invoices");
       router.refresh();
     } catch (error) {
       console.error(error);
-      showToast({
-        type: "error",
-        message:
-          error instanceof Error ? error.message : "Ocurrió un error al eliminar la factura.",
-      });
+      toast.error(
+        error instanceof Error ? error.message : "Ocurrió un error al eliminar la factura.",
+      );
     } finally {
       setDeleting(false);
     }

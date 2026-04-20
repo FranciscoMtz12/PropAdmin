@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
-import { useAppToast } from "@/components/AppToastProvider";
+import toast from "react-hot-toast";
 import InvoiceForm from "@/components/invoices/InvoiceForm";
 import PageContainer from "@/components/PageContainer";
 import SectionCard from "@/components/SectionCard";
@@ -40,7 +40,6 @@ type ExistingInvoiceData = {
 export default function EditInvoicePage() {
   const params = useParams();
   const { user, loading } = useCurrentUser();
-  const { showToast } = useAppToast();
 
   const invoiceId = String(params?.invoiceId || "");
 
@@ -100,7 +99,7 @@ export default function EditInvoicePage() {
 
       if (error || !data) {
         console.error(error);
-        showToast({ type: "error", message: "No pude cargar la factura para edición." });
+        toast.error("No pude cargar la factura para edición.");
         setInvoice(null);
         setPageLoading(false);
         return;
@@ -141,7 +140,7 @@ export default function EditInvoicePage() {
     return () => {
       ignore = true;
     };
-  }, [invoiceId, loading, user, showToast]);
+  }, [invoiceId, loading, user]);
 
   if (pageLoading) {
     return (
