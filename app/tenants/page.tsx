@@ -20,6 +20,10 @@ import {
   User2,
 } from "lucide-react";
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -77,16 +81,17 @@ type Building = {
   name: string;
 };
 
-type TenantFormState = {
-  fullName: string;
-  email: string;
-  phone: string;
-  taxId: string;
-  billingName: string;
-  billingEmail: string;
-  status: "ACTIVE" | "INACTIVE";
-  notes: string;
-};
+const tenantSchema = z.object({
+  fullName: z.string().min(1, "El nombre completo es obligatorio"),
+  email: z.string().email("Email inválido").or(z.literal("")).optional(),
+  phone: z.string().optional(),
+  taxId: z.string().optional(),
+  billingName: z.string().optional(),
+  billingEmail: z.string().email("Email inválido").or(z.literal("")).optional(),
+  status: z.enum(["ACTIVE", "INACTIVE"]),
+  notes: z.string().optional(),
+});
+type TenantFormValues = z.infer<typeof tenantSchema>;
 
 type TenantRow = {
   id: string;
@@ -108,18 +113,16 @@ type TenantRow = {
   canDelete: boolean;
 };
 
-function emptyForm(): TenantFormState {
-  return {
-    fullName: "",
-    email: "",
-    phone: "",
-    taxId: "",
-    billingName: "",
-    billingEmail: "",
-    status: "ACTIVE",
-    notes: "",
-  };
-}
+const EMPTY_FORM: TenantFormValues = {
+  fullName: "",
+  email: "",
+  phone: "",
+  taxId: "",
+  billingName: "",
+  billingEmail: "",
+  status: "ACTIVE",
+  notes: "",
+};
 
 function formatDate(dateValue: string) {
   try {
@@ -180,6 +183,13 @@ const labelStyle: CSSProperties = {
   color: "var(--text-primary)",
 };
 
+const errorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
 export default function TenantsPage() {
   const { user, loading } = useCurrentUser();
   const router = useRouter();
@@ -200,8 +210,17 @@ export default function TenantsPage() {
 
   const [showModal, setShowModal] = useState(false);
   const [editingTenantId, setEditingTenantId] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState<TenantFormState>(emptyForm());
+  const [deleting, setDeleting] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<TenantFormValues>({
+    resolver: zodResolver(tenantSchema),
+    defaultValues: EMPTY_FORM,
+  });
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [tenantToDelete, setTenantToDelete] = useState<TenantRow | null>(null);
@@ -306,14 +325,14 @@ export default function TenantsPage() {
 
   function openCreateModal() {
     setEditingTenantId(null);
-    setForm(emptyForm());
+    reset(EMPTY_FORM);
     setShowModal(true);
     setMessage("");
   }
 
   function openEditModal(tenant: Tenant) {
     setEditingTenantId(tenant.id);
-    setForm({
+    reset({
       fullName: tenant.full_name || "",
       email: tenant.email || "",
       phone: tenant.phone || "",
@@ -329,14 +348,14 @@ export default function TenantsPage() {
   }
 
   function closeModal() {
-    if (saving) return;
+    if (isSubmitting) return;
     setShowModal(false);
     setEditingTenantId(null);
-    setForm(emptyForm());
+    reset(EMPTY_FORM);
   }
 
   function openDeleteModal(row: TenantRow) {
-    if (saving) return;
+    if (deleting) return;
     setTenantToDelete(row);
     setShowDeleteModal(true);
     setMessage("");
@@ -344,7 +363,7 @@ export default function TenantsPage() {
   }
 
   function closeDeleteModal() {
-    if (saving) return;
+    if (deleting) return;
     setShowDeleteModal(false);
     setTenantToDelete(null);
   }
@@ -359,8 +378,7 @@ export default function TenantsPage() {
     router.push(`/portal/invoices?tenantId=${encodeURIComponent(tenantId)}`);
   }
 
-  async function handleSaveTenant(e: React.FormEvent) {
-    e.preventDefault();
+  const onSubmitTenant = handleSubmit(async (data) => {
     setMessage("");
 
     if (!user?.company_id) {
@@ -368,65 +386,50 @@ export default function TenantsPage() {
       return;
     }
 
-    if (!form.fullName.trim()) {
-      setMessage("El nombre completo es obligatorio.");
-      return;
-    }
-
-    setSaving(true);
+    const payload = {
+      full_name: data.fullName.trim(),
+      email: data.email?.trim() || null,
+      phone: data.phone?.trim() || null,
+      tax_id: data.taxId?.trim() || null,
+      billing_name: data.billingName?.trim() || null,
+      billing_email: data.billingEmail?.trim() || null,
+      status: data.status,
+      notes: data.notes?.trim() || null,
+    };
 
     if (editingTenantId) {
       const { error } = await supabase
         .from("tenants")
-        .update({
-          full_name: form.fullName.trim(),
-          email: form.email.trim() || null,
-          phone: form.phone.trim() || null,
-          tax_id: form.taxId.trim() || null,
-          billing_name: form.billingName.trim() || null,
-          billing_email: form.billingEmail.trim() || null,
-          status: form.status,
-          notes: form.notes.trim() || null,
-        })
+        .update(payload)
         .eq("id", editingTenantId)
         .eq("company_id", user.company_id);
 
       if (error) {
-        setSaving(false);
         setMessage(error.message);
         return;
       }
     } else {
       const { error } = await supabase.from("tenants").insert({
         company_id: user.company_id,
-        full_name: form.fullName.trim(),
-        email: form.email.trim() || null,
-        phone: form.phone.trim() || null,
-        tax_id: form.taxId.trim() || null,
-        billing_name: form.billingName.trim() || null,
-        billing_email: form.billingEmail.trim() || null,
-        status: form.status,
-        notes: form.notes.trim() || null,
+        ...payload,
       });
 
       if (error) {
-        setSaving(false);
         setMessage(error.message);
         return;
       }
     }
 
-    setSaving(false);
     setShowModal(false);
     setEditingTenantId(null);
-    setForm(emptyForm());
+    reset(EMPTY_FORM);
     setMessage(
       editingTenantId
         ? "Inquilino actualizado correctamente."
         : "Inquilino creado correctamente."
     );
     await loadTenantsPage();
-  }
+  });
 
   const tenantRows = useMemo<TenantRow[]>(() => {
     const unitMap = new Map(units.map((unit) => [unit.id, unit]));
@@ -533,7 +536,7 @@ export default function TenantsPage() {
   async function handleDeleteTenantConfirmed() {
     if (!user?.company_id || !tenantToDelete) return;
 
-    setSaving(true);
+    setDeleting(true);
     setMessage("");
 
     // Soft delete: marca deleted_at en lugar de eliminar físicamente
@@ -544,7 +547,7 @@ export default function TenantsPage() {
       .eq("company_id", user.company_id);
 
     if (error) {
-      setSaving(false);
+      setDeleting(false);
       setMessage(`No se pudo archivar el inquilino. ${error.message}`);
       return;
     }
@@ -552,10 +555,10 @@ export default function TenantsPage() {
     if (editingTenantId === tenantToDelete.id) {
       setShowModal(false);
       setEditingTenantId(null);
-      setForm(emptyForm());
+      reset(EMPTY_FORM);
     }
 
-    setSaving(false);
+    setDeleting(false);
     setShowDeleteModal(false);
     setTenantToDelete(null);
     setMessage("Inquilino archivado correctamente.");
@@ -918,7 +921,7 @@ export default function TenantsPage() {
         onClose={closeModal}
         title={editingTenantId ? "Editar inquilino" : "Nuevo inquilino"}
       >
-        <form onSubmit={handleSaveTenant}>
+        <form onSubmit={onSubmitTenant}>
           <div style={{ display: "grid", gap: 16 }}>
             <div
               style={{
@@ -930,34 +933,31 @@ export default function TenantsPage() {
               <div>
                 <label style={labelStyle}>Nombre completo</label>
                 <input
-                  value={form.fullName}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, fullName: e.target.value }))
-                  }
+                  {...register("fullName")}
                   style={inputStyle}
                   placeholder="Nombre del inquilino"
                 />
+                {errors.fullName ? (
+                  <p style={errorTextStyle}>{errors.fullName.message}</p>
+                ) : null}
               </div>
 
               <div>
                 <label style={labelStyle}>Email</label>
                 <input
-                  value={form.email}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, email: e.target.value }))
-                  }
+                  {...register("email")}
                   style={inputStyle}
                   placeholder="correo@ejemplo.com"
                 />
+                {errors.email ? (
+                  <p style={errorTextStyle}>{errors.email.message}</p>
+                ) : null}
               </div>
 
               <div>
                 <label style={labelStyle}>Teléfono</label>
                 <input
-                  value={form.phone}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, phone: e.target.value }))
-                  }
+                  {...register("phone")}
                   style={inputStyle}
                   placeholder="Teléfono"
                 />
@@ -966,10 +966,7 @@ export default function TenantsPage() {
               <div>
                 <label style={labelStyle}>RFC</label>
                 <input
-                  value={form.taxId}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, taxId: e.target.value }))
-                  }
+                  {...register("taxId")}
                   style={inputStyle}
                   placeholder="RFC opcional"
                 />
@@ -978,10 +975,7 @@ export default function TenantsPage() {
               <div>
                 <label style={labelStyle}>Nombre de facturación</label>
                 <input
-                  value={form.billingName}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, billingName: e.target.value }))
-                  }
+                  {...register("billingName")}
                   style={inputStyle}
                   placeholder="Nombre fiscal si aplica"
                 />
@@ -990,26 +984,18 @@ export default function TenantsPage() {
               <div>
                 <label style={labelStyle}>Email de facturación</label>
                 <input
-                  value={form.billingEmail}
-                  onChange={(e) =>
-                    setForm((prev) => ({ ...prev, billingEmail: e.target.value }))
-                  }
+                  {...register("billingEmail")}
                   style={inputStyle}
                   placeholder="correo de facturación"
                 />
+                {errors.billingEmail ? (
+                  <p style={errorTextStyle}>{errors.billingEmail.message}</p>
+                ) : null}
               </div>
 
               <div>
                 <label style={labelStyle}>Estatus</label>
-                <AppSelect
-                  value={form.status}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      status: e.target.value as "ACTIVE" | "INACTIVE",
-                    }))
-                  }
-                >
+                <AppSelect {...register("status")}>
                   <option value="ACTIVE">Activo</option>
                   <option value="INACTIVE">Inactivo</option>
                 </AppSelect>
@@ -1019,10 +1005,7 @@ export default function TenantsPage() {
             <div>
               <label style={labelStyle}>Notas</label>
               <textarea
-                value={form.notes}
-                onChange={(e) =>
-                  setForm((prev) => ({ ...prev, notes: e.target.value }))
-                }
+                {...register("notes")}
                 rows={4}
                 style={textareaStyle}
                 placeholder="Notas internas del inquilino"
@@ -1057,8 +1040,8 @@ export default function TenantsPage() {
                 Cancelar
               </UiButton>
 
-              <UiButton type="submit" disabled={saving}>
-                {saving
+              <UiButton type="submit" disabled={isSubmitting}>
+                {isSubmitting
                   ? "Guardando..."
                   : editingTenantId
                     ? "Guardar inquilino"
@@ -1105,17 +1088,17 @@ export default function TenantsPage() {
               type="button"
               variant="secondary"
               onClick={closeDeleteModal}
-              disabled={saving}
+              disabled={deleting}
             >
               Cancelar
             </UiButton>
             <UiButton
               type="button"
               onClick={handleDeleteTenantConfirmed}
-              disabled={saving}
+              disabled={deleting}
             >
               <Trash2 size={16} />
-              {saving ? "Archivando..." : "Archivar inquilino"}
+              {deleting ? "Archivando..." : "Archivar inquilino"}
             </UiButton>
           </div>
         </div>
