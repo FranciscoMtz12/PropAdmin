@@ -1,6 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
   AlertTriangle,
@@ -72,6 +75,23 @@ type SelectableDebt = {
 };
 
 type AmountMode = "full" | "other";
+
+const portalReportSchema = z.object({
+  collectionRecordId: z.string().min(1, "Selecciona primero el adeudo que deseas reportar"),
+  amountMode: z.enum(["full", "other"]),
+  amountReported: z.string().min(1, "Ingresa un monto válido"),
+  paymentDate: z.string().min(1, "Selecciona la fecha del pago"),
+  notes: z.string().optional(),
+  allowSuperadminSubmission: z.boolean(),
+});
+type PortalReportFormValues = z.infer<typeof portalReportSchema>;
+
+const portalReportErrorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
 
 type TenantReportedPaymentRecord = {
   id: string;
@@ -338,17 +358,33 @@ export default function PortalReportPaymentPage() {
   const [pageLoading, setPageLoading] = useState(true);
   const [pageError, setPageError] = useState("");
 
-  const [collectionRecordId, setCollectionRecordId] = useState("");
-  const [amountMode, setAmountMode] = useState<AmountMode>("full");
-  const [amountReported, setAmountReported] = useState("");
-  const [paymentDate, setPaymentDate] = useState(getTodayDateOnlyKey());
-  const [notes, setNotes] = useState("");
   const [proofFile, setProofFile] = useState<File | null>(null);
-  const [allowSuperadminSubmission, setAllowSuperadminSubmission] = useState(false);
+
+  const {
+    register,
+    handleSubmit: rhfSubmit,
+    reset,
+    watch,
+    setValue,
+    getValues,
+    formState: { errors, isSubmitting },
+  } = useForm<PortalReportFormValues>({
+    resolver: zodResolver(portalReportSchema),
+    defaultValues: {
+      collectionRecordId: "",
+      amountMode: "full",
+      amountReported: "",
+      paymentDate: getTodayDateOnlyKey(),
+      notes: "",
+      allowSuperadminSubmission: false,
+    },
+  });
+  const collectionRecordId = watch("collectionRecordId");
+  const amountMode = watch("amountMode");
+  const allowSuperadminSubmission = watch("allowSuperadminSubmission");
 
   const [formError, setFormError] = useState("");
   const [formMessage, setFormMessage] = useState("");
-  const [saving, setSaving] = useState(false);
 
   const previewTenantId = searchParams.get("tenantId");
   const previewCollectionRecordId = searchParams.get("recordId");
@@ -602,41 +638,44 @@ export default function PortalReportPaymentPage() {
 
   useEffect(() => {
     if (!selectableDebts.length) {
-      setCollectionRecordId("");
+      setValue("collectionRecordId", "");
       return;
     }
+
+    const current = getValues("collectionRecordId");
 
     if (previewCollectionRecordId) {
       const preselectedDebt = selectableDebts.find((item) => item.id === previewCollectionRecordId);
       if (preselectedDebt) {
-        setCollectionRecordId((current) => (current ? current : preselectedDebt.id));
+        if (!current) setValue("collectionRecordId", preselectedDebt.id);
         return;
       }
     }
 
-    setCollectionRecordId((current) =>
-      current && selectableDebts.some((item) => item.id === current)
-        ? current
-        : selectableDebts[0]?.id || ""
-    );
-  }, [previewCollectionRecordId, selectableDebts]);
+    const next = current && selectableDebts.some((item) => item.id === current)
+      ? current
+      : selectableDebts[0]?.id || "";
+    setValue("collectionRecordId", next);
+  }, [previewCollectionRecordId, selectableDebts, setValue, getValues]);
 
   useEffect(() => {
     if (!selectedDebt) {
       if (amountMode === "full") {
-        setAmountReported("");
+        setValue("amountReported", "");
       }
       return;
     }
 
     if (amountMode === "full") {
-      setAmountReported(String(selectedDebt.pendingAmount));
+      setValue("amountReported", String(selectedDebt.pendingAmount));
     }
-  }, [amountMode, selectedDebt]);
+  }, [amountMode, selectedDebt, setValue]);
 
   useEffect(() => {
-    setPaymentDate((current) => current || getTodayDateOnlyKey());
-  }, []);
+    if (!getValues("paymentDate")) {
+      setValue("paymentDate", getTodayDateOnlyKey());
+    }
+  }, [setValue, getValues]);
 
   const totalPending = selectableDebts.reduce(
     (sum, item) => sum + item.pendingAmount,
@@ -684,10 +723,9 @@ export default function PortalReportPaymentPage() {
     router.push("/tenants");
   }
 
-  async function handleSubmit(event: React.FormEvent) {
-    event.preventDefault();
-
-    if (isSuperAdmin && !allowSuperadminSubmission) {
+  const handleSubmit = rhfSubmit(async (data) => {
+    /* Validaciones cross-field (requieren data externa o isSuperAdmin). */
+    if (isSuperAdmin && !data.allowSuperadminSubmission) {
       setFormError(
         "Activa el modo de prueba para enviar este reporte como superadmin."
       );
@@ -699,24 +737,14 @@ export default function PortalReportPaymentPage() {
       return;
     }
 
-    if (!collectionRecordId) {
-      setFormError("Selecciona primero el adeudo que deseas reportar.");
-      return;
-    }
-
-    const parsedAmount = Number(amountReported);
+    const parsedAmount = Number(data.amountReported);
 
     if (!parsedAmount || parsedAmount <= 0) {
       setFormError("Ingresa un monto válido mayor a cero.");
       return;
     }
 
-    if (!paymentDate) {
-      setFormError("Selecciona la fecha del pago.");
-      return;
-    }
-
-    const relatedDebt = selectableDebts.find((item) => item.id === collectionRecordId);
+    const relatedDebt = selectableDebts.find((item) => item.id === data.collectionRecordId);
 
     if (!relatedDebt) {
       setFormError("El adeudo seleccionado ya no está disponible.");
@@ -728,7 +756,6 @@ export default function PortalReportPaymentPage() {
       return;
     }
 
-    setSaving(true);
     setFormError("");
     setFormMessage("");
 
@@ -741,7 +768,7 @@ export default function PortalReportPaymentPage() {
       if (proofFile) {
         const ext = proofFile.name.split(".").pop() || "file";
         const safeExt = ext.toLowerCase();
-        const filePath = `tenant/${effectiveTenantId}/${collectionRecordId}/${Date.now()}.${safeExt}`;
+        const filePath = `tenant/${effectiveTenantId}/${data.collectionRecordId}/${Date.now()}.${safeExt}`;
 
         const { error: uploadError } = await supabase.storage
           .from("payment-proofs")
@@ -761,17 +788,19 @@ export default function PortalReportPaymentPage() {
         proofFileType = proofFile.type;
       }
 
+      const notesTrimmed = data.notes?.trim() || "";
+
       const payload = {
         company_id: selectedTenant?.company_id || user?.company_id || null,
         tenant_id: effectiveTenantId,
         lease_id: relatedDebt.leaseId,
-        collection_record_id: collectionRecordId,
+        collection_record_id: data.collectionRecordId,
         collection_invoice_id: null,
         amount_reported: parsedAmount,
-        payment_date: paymentDate,
+        payment_date: data.paymentDate,
         notes: isSuperAdmin
-          ? `[SIMULACIÓN SUPERADMIN] ${notes.trim() || "Reporte enviado en modo prueba."}`
-          : notes.trim() || null,
+          ? `[SIMULACIÓN SUPERADMIN] ${notesTrimmed || "Reporte enviado en modo prueba."}`
+          : notesTrimmed || null,
         proof_file_url: proofFileUrl,
         proof_file_path: proofFilePath,
         proof_file_name: proofFileName,
@@ -792,10 +821,14 @@ export default function PortalReportPaymentPage() {
           ? "Reporte de pago enviado en modo prueba para revisión administrativa."
           : "Tu reporte de pago quedó enviado para revisión administrativa."
       );
-      setAmountMode("full");
-      setAmountReported(relatedDebt ? String(relatedDebt.pendingAmount) : "");
-      setPaymentDate(getTodayDateOnlyKey());
-      setNotes("");
+      reset({
+        collectionRecordId: data.collectionRecordId,
+        amountMode: "full",
+        amountReported: relatedDebt ? String(relatedDebt.pendingAmount) : "",
+        paymentDate: getTodayDateOnlyKey(),
+        notes: "",
+        allowSuperadminSubmission: data.allowSuperadminSubmission,
+      });
       setProofFile(null);
 
       const { data: reportedData } = await supabase
@@ -826,10 +859,8 @@ export default function PortalReportPaymentPage() {
     } catch (error: any) {
       console.error("Error creando tenant_reported_payments:", error);
       setFormError(error?.message || "No se pudo registrar el reporte de pago.");
-    } finally {
-      setSaving(false);
     }
-  }
+  });
 
   const tenantName =
     selectedTenant?.full_name || selectedTenant?.email || "Inquilino";
@@ -1080,12 +1111,12 @@ export default function PortalReportPaymentPage() {
                 </label>
 
                 <select
-                  value={collectionRecordId}
-                  onChange={(event) => {
-                    setCollectionRecordId(event.target.value);
-                    setFormError("");
-                    setFormMessage("");
-                  }}
+                  {...register("collectionRecordId", {
+                    onChange: () => {
+                      setFormError("");
+                      setFormMessage("");
+                    },
+                  })}
                   style={inputStyle}
                   disabled={pageLoading || !selectableDebts.length}
                 >
@@ -1103,6 +1134,9 @@ export default function PortalReportPaymentPage() {
                     </option>
                   ))}
                 </select>
+                {errors.collectionRecordId ? (
+                  <p style={portalReportErrorTextStyle}>{errors.collectionRecordId.message}</p>
+                ) : null}
               </div>
 
               {selectedDebt ? (
@@ -1176,9 +1210,8 @@ export default function PortalReportPaymentPage() {
                   >
                     <input
                       type="radio"
-                      name="amountMode"
-                      checked={amountMode === "full"}
-                      onChange={() => setAmountMode("full")}
+                      value="full"
+                      {...register("amountMode")}
                     />
                     Reportar saldo completo
                   </label>
@@ -1199,9 +1232,8 @@ export default function PortalReportPaymentPage() {
                   >
                     <input
                       type="radio"
-                      name="amountMode"
-                      checked={amountMode === "other"}
-                      onChange={() => setAmountMode("other")}
+                      value="other"
+                      {...register("amountMode")}
                     />
                     Reportar otro monto
                   </label>
@@ -1222,10 +1254,10 @@ export default function PortalReportPaymentPage() {
                   <input
                     type="text"
                     inputMode="decimal"
-                    value={amountReported}
-                    onChange={(event) =>
-                      setAmountReported(formatDecimalInput(event.target.value))
-                    }
+                    {...register("amountReported", {
+                      onChange: (event) =>
+                        setValue("amountReported", formatDecimalInput(event.target.value)),
+                    })}
                     style={{
                       ...inputStyle,
                       background: amountMode === "full" ? "var(--bg-card-hover)" : "var(--bg-card)",
@@ -1233,6 +1265,9 @@ export default function PortalReportPaymentPage() {
                     placeholder="0.00"
                     disabled={(isSuperAdmin && !allowSuperadminSubmission) || amountMode === "full"}
                   />
+                  {errors.amountReported ? (
+                    <p style={portalReportErrorTextStyle}>{errors.amountReported.message}</p>
+                  ) : null}
                   {selectedDebt ? (
                     <div style={{ ...mutedTextStyle, fontSize: 13 }}>
                       Máximo permitido para este adeudo: <strong>{formatCurrency(selectedDebt.pendingAmount)}</strong>
@@ -1246,11 +1281,13 @@ export default function PortalReportPaymentPage() {
                   </label>
                   <input
                     type="date"
-                    value={paymentDate}
-                    onChange={(event) => setPaymentDate(event.target.value)}
+                    {...register("paymentDate")}
                     style={inputStyle}
                     disabled={isSuperAdmin && !allowSuperadminSubmission}
                   />
+                  {errors.paymentDate ? (
+                    <p style={portalReportErrorTextStyle}>{errors.paymentDate.message}</p>
+                  ) : null}
                   <div style={{ ...mutedTextStyle, fontSize: 13 }}>
                     La fecha se llena automáticamente con hoy, pero puedes ajustarla si el pago se hizo antes.
                   </div>
@@ -1262,8 +1299,7 @@ export default function PortalReportPaymentPage() {
                   Notas
                 </label>
                 <textarea
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
+                  {...register("notes")}
                   style={textareaStyle}
                   placeholder="Agrega un comentario opcional para administración."
                   disabled={isSuperAdmin && !allowSuperadminSubmission}
@@ -1331,8 +1367,7 @@ export default function PortalReportPaymentPage() {
                 >
                   <input
                     type="checkbox"
-                    checked={allowSuperadminSubmission}
-                    onChange={(event) => setAllowSuperadminSubmission(event.target.checked)}
+                    {...register("allowSuperadminSubmission")}
                   />
                   Permitir envío de prueba como superadmin para este inquilino
                 </label>
@@ -1381,9 +1416,9 @@ export default function PortalReportPaymentPage() {
 
                 <UiButton
                   type="submit"
-                  disabled={saving || (isSuperAdmin && !allowSuperadminSubmission) || !selectableDebts.length || !collectionRecordId}
+                  disabled={isSubmitting || (isSuperAdmin && !allowSuperadminSubmission) || !selectableDebts.length || !collectionRecordId}
                 >
-                  {saving ? "Enviando..." : "Enviar reporte"}
+                  {isSubmitting ? "Enviando..." : "Enviar reporte"}
                 </UiButton>
               </div>
             </form>

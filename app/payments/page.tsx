@@ -31,6 +31,9 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import toast from "react-hot-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -152,49 +155,42 @@ type PaymentRow = {
   billedMonthLabel: string;
 };
 
-type CreatePaymentForm = {
-  buildingId: string;
-  appliesTo: ExpenseAppliesToType;
-  unitId: string;
-  expenseType: ExpenseType;
-  title: string;
-  vendorName: string;
-  serviceIdentifier: string;
-  responsibilityType: "company" | "building";
-  frequencyType: ExpenseFrequencyType;
-  autoGenerate: boolean;
-  amountEstimated: string;
-  dueDate: string;
-  billedPeriodLabel: string;
-  consumptionPeriodLabel: string;
-  billedMonthLabel: string;
-  amountDue: string;
-  paymentReference: string;
-  notes: string;
-};
-
-type EditPaymentForm = {
-  paymentId: string;
-  scheduleId: string;
-  buildingId: string;
-  appliesTo: ExpenseAppliesToType;
-  unitId: string;
-  title: string;
-  vendorName: string;
-  serviceIdentifier: string;
-  expenseType: ExpenseType;
-  responsibilityType: "company" | "building";
-  frequencyType: ExpenseFrequencyType;
-  autoGenerate: boolean;
-  amountEstimated: string;
-  dueDate: string;
-  billedPeriodLabel: string;
-  consumptionPeriodLabel: string;
-  billedMonthLabel: string;
-  amountDue: string;
-  paymentReference: string;
-  notes: string;
-};
+const paymentFormSchema = z
+  .object({
+    buildingId: z.string().min(1, "Selecciona un edificio"),
+    appliesTo: z.enum(["building", "unit"]),
+    unitId: z.string().optional(),
+    expenseType: z.enum([
+      "electricity",
+      "water",
+      "gas",
+      "internet",
+      "phone",
+      "maintenance_service",
+      "security",
+      "cleaning_service",
+      "other",
+    ]),
+    title: z.string().min(1, "Escribe el concepto corto del servicio"),
+    vendorName: z.string().optional(),
+    serviceIdentifier: z.string().optional(),
+    responsibilityType: z.enum(["company", "building"]),
+    frequencyType: z.enum(["monthly", "bimonthly"]),
+    autoGenerate: z.boolean(),
+    amountEstimated: z.string().min(1, "El monto estimado es obligatorio"),
+    dueDate: z.string().min(1, "Selecciona la fecha límite de pago"),
+    billedPeriodLabel: z.string().optional(),
+    consumptionPeriodLabel: z.string().optional(),
+    billedMonthLabel: z.string().optional(),
+    amountDue: z.string().optional(),
+    paymentReference: z.string().optional(),
+    notes: z.string().optional(),
+  })
+  .refine(
+    (data) => data.appliesTo !== "unit" || !!data.unitId,
+    { message: "Selecciona una unidad", path: ["unitId"] }
+  );
+type PaymentFormValues = z.infer<typeof paymentFormSchema>;
 
 const MONTH_LABELS_SHORT = [
   "Ene",
@@ -388,7 +384,7 @@ function getStoredStatusFromDueDate(dueDate: string, todayKey: string): ExpenseS
   return "pending";
 }
 
-function getDefaultCreateForm(buildingId = ""): CreatePaymentForm {
+function getDefaultCreateForm(buildingId = ""): PaymentFormValues {
   return {
     buildingId,
     appliesTo: "building",
@@ -410,6 +406,13 @@ function getDefaultCreateForm(buildingId = ""): CreatePaymentForm {
     notes: "",
   };
 }
+
+const paymentErrorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
 
 function isScheduleActiveForCurrentPeriod(
   schedule: ExpenseSchedule,
@@ -459,7 +462,6 @@ export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
 
   const [loadingPage, setLoadingPage] = useState(true);
-  const [savingPayment, setSavingPayment] = useState(false);
   const [syncingCurrentPeriod, setSyncingCurrentPeriod] = useState(false);
   const [syncingStatuses, setSyncingStatuses] = useState(false);
   const [message, setMessage] = useState("");
@@ -473,9 +475,25 @@ export default function PaymentsPage() {
   const [selectedStatus, setSelectedStatus] = useState<PaymentStatusFilter>("all");
 
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createForm, setCreateForm] = useState<CreatePaymentForm>(getDefaultCreateForm());
 
-  const [editingPayment, setEditingPayment] = useState<EditPaymentForm | null>(null);
+  const createForm = useForm<PaymentFormValues>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: getDefaultCreateForm(),
+  });
+  const createBuildingId = createForm.watch("buildingId");
+  const createAppliesTo = createForm.watch("appliesTo");
+
+  const editForm = useForm<PaymentFormValues>({
+    resolver: zodResolver(paymentFormSchema),
+    defaultValues: getDefaultCreateForm(),
+  });
+  const editBuildingId = editForm.watch("buildingId");
+  const editAppliesTo = editForm.watch("appliesTo");
+
+  /* Ids del pago actualmente en edición — se guardan aparte del form. */
+  const [editingIds, setEditingIds] = useState<{ paymentId: string; scheduleId: string } | null>(
+    null
+  );
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const [openDetailPaymentId, setOpenDetailPaymentId] = useState<string | null>(null);
@@ -620,10 +638,9 @@ export default function PaymentsPage() {
     setExpenseSchedules(nextSchedules);
     setExpensePayments(nextPayments);
 
-    setCreateForm((prev) => ({
-      ...prev,
-      buildingId: prev.buildingId || nextBuildings[0]?.id || "",
-    }));
+    if (!createForm.getValues("buildingId") && nextBuildings[0]?.id) {
+      createForm.setValue("buildingId", nextBuildings[0].id);
+    }
 
     if (showLoader) setLoadingPage(false);
 
@@ -779,14 +796,14 @@ export default function PaymentsPage() {
   }
 
   const unitsForSelectedBuilding = useMemo(() => {
-    if (!createForm.buildingId) return [];
-    return units.filter((unit) => unit.building_id === createForm.buildingId);
-  }, [units, createForm.buildingId]);
+    if (!createBuildingId) return [];
+    return units.filter((unit) => unit.building_id === createBuildingId);
+  }, [units, createBuildingId]);
 
   const unitsForEditingBuilding = useMemo(() => {
-    if (!editingPayment?.buildingId) return [];
-    return units.filter((unit) => unit.building_id === editingPayment.buildingId);
-  }, [units, editingPayment?.buildingId]);
+    if (!editBuildingId) return [];
+    return units.filter((unit) => unit.building_id === editBuildingId);
+  }, [units, editBuildingId]);
 
   const paymentRows = useMemo<PaymentRow[]>(() => {
     const buildingMap = new Map<string, Building>();
@@ -876,54 +893,12 @@ export default function PaymentsPage() {
     return `${nextPending.title} · ${nextPending.dueDateLabel}`;
   }, [filteredRows]);
 
-  function updateCreateForm<K extends keyof CreatePaymentForm>(
-    key: K,
-    value: CreatePaymentForm[K]
-  ) {
-    setCreateForm((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function updateEditingForm<K extends keyof EditPaymentForm>(
-    key: K,
-    value: EditPaymentForm[K]
-  ) {
-    setEditingPayment((prev) => (prev ? { ...prev, [key]: value } : prev));
-  }
-
-  async function handleCreatePayment() {
+  const handleCreatePayment = createForm.handleSubmit(async (data) => {
     if (!user?.company_id) return;
 
     setMessage("");
 
-    if (!createForm.buildingId) {
-      const errorText = "Selecciona un edificio.";
-      setMessage(errorText);
-      toast(errorText, { icon: "⚠️" });
-      return;
-    }
-
-    if (createForm.appliesTo === "unit" && !createForm.unitId) {
-      const errorText = "Selecciona una unidad.";
-      setMessage(errorText);
-      toast(errorText, { icon: "⚠️" });
-      return;
-    }
-
-    if (!createForm.title.trim()) {
-      const errorText = "Escribe el concepto corto del servicio.";
-      setMessage(errorText);
-      toast(errorText, { icon: "⚠️" });
-      return;
-    }
-
-    if (!createForm.dueDate) {
-      const errorText = "Selecciona la fecha límite de pago.";
-      setMessage(errorText);
-      toast(errorText, { icon: "⚠️" });
-      return;
-    }
-
-    const dueDay = getDueDayFromDate(createForm.dueDate);
+    const dueDay = getDueDayFromDate(data.dueDate);
     if (!dueDay) {
       const errorText = "No se pudo calcular el día de vencimiento.";
       setMessage(errorText);
@@ -931,39 +906,38 @@ export default function PaymentsPage() {
       return;
     }
 
-    const dueDateObject = parseDateOnly(createForm.dueDate);
+    const dueDateObject = parseDateOnly(data.dueDate);
     const periodMonth = dueDateObject.getMonth() + 1;
     const periodYear = dueDateObject.getFullYear();
-    const amountEstimated = parseOptionalNumber(createForm.amountEstimated);
-    const amountDue = parseOptionalNumber(createForm.amountDue) ?? amountEstimated ?? 0;
-    const cutoffDate = getCutoffDateFromDueDate(createForm.dueDate);
-    const startsOn = getStartsOnFromDueDate(createForm.dueDate);
+    const amountEstimated = parseOptionalNumber(data.amountEstimated);
+    const amountDueRaw = data.amountDue?.trim() || "";
+    const amountDue = parseOptionalNumber(amountDueRaw) ?? amountEstimated ?? 0;
+    const cutoffDate = getCutoffDateFromDueDate(data.dueDate);
+    const startsOn = getStartsOnFromDueDate(data.dueDate);
     const storedStatus: ExpenseStoredStatus =
-      createForm.dueDate < todayKey ? "overdue" : "pending";
-
-    setSavingPayment(true);
+      data.dueDate < todayKey ? "overdue" : "pending";
 
     try {
       const { data: scheduleData, error: scheduleError } = await supabase
         .from("expense_schedules")
         .insert({
           company_id: user.company_id,
-          building_id: createForm.buildingId,
-          unit_id: createForm.appliesTo === "unit" ? createForm.unitId : null,
-          expense_type: createForm.expenseType,
-          title: createForm.title.trim(),
-          vendor_name: createForm.vendorName.trim() || null,
-          service_identifier: createForm.serviceIdentifier.trim() || null,
-          responsibility_type: createForm.responsibilityType,
-          applies_to: createForm.appliesTo,
+          building_id: data.buildingId,
+          unit_id: data.appliesTo === "unit" ? data.unitId : null,
+          expense_type: data.expenseType,
+          title: data.title.trim(),
+          vendor_name: data.vendorName?.trim() || null,
+          service_identifier: data.serviceIdentifier?.trim() || null,
+          responsibility_type: data.responsibilityType,
+          applies_to: data.appliesTo,
           amount_estimated: amountEstimated,
           due_day: dueDay,
           active: true,
-          notes: createForm.notes.trim() || null,
-          frequency_type: createForm.frequencyType,
+          notes: data.notes?.trim() || null,
+          frequency_type: data.frequencyType,
           starts_on: startsOn,
           ends_on: null,
-          auto_generate: createForm.autoGenerate,
+          auto_generate: data.autoGenerate,
           expected_issue_day: null,
           expected_cutoff_day: null,
         })
@@ -977,24 +951,24 @@ export default function PaymentsPage() {
       const { error: paymentError } = await supabase.from("expense_payments").insert({
         expense_schedule_id: scheduleData.id,
         company_id: user.company_id,
-        building_id: createForm.buildingId,
-        unit_id: createForm.appliesTo === "unit" ? createForm.unitId : null,
+        building_id: data.buildingId,
+        unit_id: data.appliesTo === "unit" ? data.unitId : null,
         period_year: periodYear,
         period_month: periodMonth,
-        due_date: createForm.dueDate,
+        due_date: data.dueDate,
         amount_due: amountDue,
         status: storedStatus,
         paid_at: null,
-        payment_reference: createForm.paymentReference.trim() || null,
-        notes: createForm.notes.trim() || null,
+        payment_reference: data.paymentReference?.trim() || null,
+        notes: data.notes?.trim() || null,
         billing_period_label: formatPeriod(periodYear, periodMonth),
-        is_generated_placeholder: !createForm.amountDue.trim(),
+        is_generated_placeholder: !amountDueRaw,
         amount_estimated_snapshot: amountEstimated,
         invoice_received_at: null,
         cutoff_date: cutoffDate || null,
-        billed_period_label: createForm.billedPeriodLabel.trim() || null,
-        consumption_period_label: createForm.consumptionPeriodLabel.trim() || null,
-        billed_month_label: createForm.billedMonthLabel.trim() || null,
+        billed_period_label: data.billedPeriodLabel?.trim() || null,
+        consumption_period_label: data.consumptionPeriodLabel?.trim() || null,
+        billed_month_label: data.billedMonthLabel?.trim() || null,
       });
 
       if (paymentError) {
@@ -1002,7 +976,7 @@ export default function PaymentsPage() {
       }
 
       toast.success("Pago administrativo creado correctamente.");
-      setCreateForm(getDefaultCreateForm(createForm.buildingId));
+      createForm.reset(getDefaultCreateForm(data.buildingId));
       setShowCreateForm(false);
       await loadPaymentsData(false);
     } catch (error) {
@@ -1010,10 +984,8 @@ export default function PaymentsPage() {
         error instanceof Error ? error.message : "Ocurrió un error creando el pago.";
       setMessage(errorText);
       toast.error(errorText);
-    } finally {
-      setSavingPayment(false);
     }
-  }
+  });
 
   function startEditingPayment(row: PaymentRow) {
     const payment = expensePayments.find((item) => item.id === row.id);
@@ -1026,9 +998,8 @@ export default function PaymentsPage() {
       return;
     }
 
-    setEditingPayment({
-      paymentId: payment.id,
-      scheduleId: schedule.id,
+    setEditingIds({ paymentId: payment.id, scheduleId: schedule.id });
+    editForm.reset({
       buildingId: schedule.building_id,
       appliesTo: schedule.applies_to,
       unitId: schedule.unit_id || "",
@@ -1057,71 +1028,59 @@ export default function PaymentsPage() {
     setOpenDetailPaymentId(row.id);
   }
 
-  async function handleSaveEditedPayment() {
-    if (!user?.company_id || !editingPayment) return;
+  const handleSaveEditedPayment = editForm.handleSubmit(async (data) => {
+    if (!user?.company_id || !editingIds) return;
 
-    setSavingPayment(true);
     setMessage("");
 
     try {
-      if (!editingPayment.buildingId) throw new Error("Selecciona un edificio.");
-      if (editingPayment.appliesTo === "unit" && !editingPayment.unitId) {
-        throw new Error("Selecciona una unidad.");
-      }
-      if (!editingPayment.title.trim()) {
-        throw new Error("Escribe el concepto corto del servicio.");
-      }
-      if (!editingPayment.dueDate) {
-        throw new Error("Selecciona la fecha límite de pago.");
-      }
-
-      const dueDay = getDueDayFromDate(editingPayment.dueDate);
+      const dueDay = getDueDayFromDate(data.dueDate);
       if (!dueDay) throw new Error("No se pudo calcular el día de vencimiento.");
 
-      const dueDateObject = parseDateOnly(editingPayment.dueDate);
+      const dueDateObject = parseDateOnly(data.dueDate);
       const periodMonth = dueDateObject.getMonth() + 1;
       const periodYear = dueDateObject.getFullYear();
-      const amountEstimated = parseOptionalNumber(editingPayment.amountEstimated);
-      const amountDue = parseOptionalNumber(editingPayment.amountDue) ?? 0;
-      const cutoffDate = getCutoffDateFromDueDate(editingPayment.dueDate);
-      const startsOn = getStartsOnFromDueDate(editingPayment.dueDate);
+      const amountEstimated = parseOptionalNumber(data.amountEstimated);
+      const amountDue = parseOptionalNumber(data.amountDue || "") ?? 0;
+      const cutoffDate = getCutoffDateFromDueDate(data.dueDate);
+      const startsOn = getStartsOnFromDueDate(data.dueDate);
 
       /**
        * Si el pago ya estaba pagado antes de editarlo, conservamos "paid".
        * Si no estaba pagado, recalculamos su estado real por fecha.
        */
       const currentlyPaid = expensePayments.find(
-        (payment) => payment.id === editingPayment.paymentId
+        (payment) => payment.id === editingIds.paymentId
       )?.status === "paid";
 
       const storedStatus: ExpenseStoredStatus = currentlyPaid
         ? "paid"
-        : getStoredStatusFromDueDate(editingPayment.dueDate, todayKey);
+        : getStoredStatusFromDueDate(data.dueDate, todayKey);
 
       const nextPaidAt = currentlyPaid
-        ? expensePayments.find((payment) => payment.id === editingPayment.paymentId)?.paid_at || null
+        ? expensePayments.find((payment) => payment.id === editingIds.paymentId)?.paid_at || null
         : null;
 
       const { error: scheduleError } = await supabase
         .from("expense_schedules")
         .update({
-          building_id: editingPayment.buildingId,
-          unit_id: editingPayment.appliesTo === "unit" ? editingPayment.unitId : null,
-          expense_type: editingPayment.expenseType,
-          title: editingPayment.title.trim(),
-          vendor_name: editingPayment.vendorName.trim() || null,
-          service_identifier: editingPayment.serviceIdentifier.trim() || null,
-          responsibility_type: editingPayment.responsibilityType,
-          applies_to: editingPayment.appliesTo,
+          building_id: data.buildingId,
+          unit_id: data.appliesTo === "unit" ? data.unitId : null,
+          expense_type: data.expenseType,
+          title: data.title.trim(),
+          vendor_name: data.vendorName?.trim() || null,
+          service_identifier: data.serviceIdentifier?.trim() || null,
+          responsibility_type: data.responsibilityType,
+          applies_to: data.appliesTo,
           amount_estimated: amountEstimated,
           due_day: dueDay,
-          notes: editingPayment.notes.trim() || null,
-          frequency_type: editingPayment.frequencyType,
+          notes: data.notes?.trim() || null,
+          frequency_type: data.frequencyType,
           starts_on: startsOn,
-          auto_generate: editingPayment.autoGenerate,
+          auto_generate: data.autoGenerate,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", editingPayment.scheduleId);
+        .eq("id", editingIds.scheduleId);
 
       if (scheduleError) {
         throw new Error(scheduleError.message || "No se pudo actualizar la configuración.");
@@ -1130,34 +1089,34 @@ export default function PaymentsPage() {
       const { error: paymentError } = await supabase
         .from("expense_payments")
         .update({
-          building_id: editingPayment.buildingId,
-          unit_id: editingPayment.appliesTo === "unit" ? editingPayment.unitId : null,
+          building_id: data.buildingId,
+          unit_id: data.appliesTo === "unit" ? data.unitId : null,
           period_year: periodYear,
           period_month: periodMonth,
-          due_date: editingPayment.dueDate,
+          due_date: data.dueDate,
           amount_due: amountDue,
           status: storedStatus,
           paid_at: nextPaidAt,
-          payment_reference: editingPayment.paymentReference.trim() || null,
-          notes: editingPayment.notes.trim() || null,
+          payment_reference: data.paymentReference?.trim() || null,
+          notes: data.notes?.trim() || null,
           billing_period_label: formatPeriod(periodYear, periodMonth),
           is_generated_placeholder: amountDue === 0,
           amount_estimated_snapshot: amountEstimated,
           invoice_received_at: null,
           cutoff_date: cutoffDate || null,
-          billed_period_label: editingPayment.billedPeriodLabel.trim() || null,
-          consumption_period_label: editingPayment.consumptionPeriodLabel.trim() || null,
-          billed_month_label: editingPayment.billedMonthLabel.trim() || null,
+          billed_period_label: data.billedPeriodLabel?.trim() || null,
+          consumption_period_label: data.consumptionPeriodLabel?.trim() || null,
+          billed_month_label: data.billedMonthLabel?.trim() || null,
           updated_at: new Date().toISOString(),
         })
-        .eq("id", editingPayment.paymentId);
+        .eq("id", editingIds.paymentId);
 
       if (paymentError) {
         throw new Error(paymentError.message || "No se pudo actualizar el pago.");
       }
 
       setIsEditModalOpen(false);
-      setEditingPayment(null);
+      setEditingIds(null);
 
       toast.success("Pago actualizado correctamente.");
       await loadPaymentsData(false);
@@ -1166,10 +1125,8 @@ export default function PaymentsPage() {
         error instanceof Error ? error.message : "Ocurrió un error actualizando el pago.";
       setMessage(errorText);
       toast.error(errorText);
-    } finally {
-      setSavingPayment(false);
     }
-  }
+  });
 
   async function handleCyclePaymentStatus(row: PaymentRow) {
     if (statusUpdatingId || deletingScheduleId) return;
@@ -1265,8 +1222,8 @@ export default function PaymentsPage() {
 
       setDeleteTargetRow(null);
       if (openDetailPaymentId === deleteTargetRow.id) setOpenDetailPaymentId(null);
-      if (editingPayment?.scheduleId === deleteTargetRow.scheduleId) {
-        setEditingPayment(null);
+      if (editingIds?.scheduleId === deleteTargetRow.scheduleId) {
+        setEditingIds(null);
         setIsEditModalOpen(false);
       }
 
@@ -1445,21 +1402,15 @@ export default function PaymentsPage() {
               </button>
             }
           >
-            <div style={simpleFormGridStyle}>
+            <form onSubmit={handleCreatePayment} style={simpleFormGridStyle}>
               <AppCard>
                 <div style={simpleFormFieldsStyle}>
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Edificio</span>
                     <AppSelect
-                      value={createForm.buildingId}
-                      onChange={(event) => {
-                        const nextBuildingId = event.target.value;
-                        setCreateForm((prev) => ({
-                          ...prev,
-                          buildingId: nextBuildingId,
-                          unitId: "",
-                        }));
-                      }}
+                      {...createForm.register("buildingId", {
+                        onChange: () => createForm.setValue("unitId", ""),
+                      })}
                     >
                       <option value="">Selecciona un edificio</option>
                       {buildings.map((building) => (
@@ -1468,32 +1419,33 @@ export default function PaymentsPage() {
                         </option>
                       ))}
                     </AppSelect>
+                    {createForm.formState.errors.buildingId ? (
+                      <p style={paymentErrorTextStyle}>
+                        {createForm.formState.errors.buildingId.message}
+                      </p>
+                    ) : null}
                   </label>
 
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Aplica a</span>
                     <AppSelect
-                      value={createForm.appliesTo}
-                      onChange={(event) =>
-                        setCreateForm((prev) => ({
-                          ...prev,
-                          appliesTo: event.target.value as ExpenseAppliesToType,
-                          unitId: event.target.value === "building" ? "" : prev.unitId,
-                        }))
-                      }
+                      {...createForm.register("appliesTo", {
+                        onChange: (event) => {
+                          if (event.target.value === "building") {
+                            createForm.setValue("unitId", "");
+                          }
+                        },
+                      })}
                     >
                       <option value="building">Edificio</option>
                       <option value="unit">Unidad</option>
                     </AppSelect>
                   </label>
 
-                  {createForm.appliesTo === "unit" ? (
+                  {createAppliesTo === "unit" ? (
                     <label style={fieldWrapStyle}>
                       <span style={fieldLabelStyle}>Unidad</span>
-                      <AppSelect
-                        value={createForm.unitId}
-                        onChange={(event) => updateCreateForm("unitId", event.target.value)}
-                      >
+                      <AppSelect {...createForm.register("unitId")}>
                         <option value="">Selecciona una unidad</option>
                         {unitsForSelectedBuilding.map((unit) => (
                           <option key={unit.id} value={unit.id}>
@@ -1501,17 +1453,17 @@ export default function PaymentsPage() {
                           </option>
                         ))}
                       </AppSelect>
+                      {createForm.formState.errors.unitId ? (
+                        <p style={paymentErrorTextStyle}>
+                          {createForm.formState.errors.unitId.message}
+                        </p>
+                      ) : null}
                     </label>
                   ) : null}
 
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Tipo de servicio</span>
-                    <AppSelect
-                      value={createForm.expenseType}
-                      onChange={(event) =>
-                        updateCreateForm("expenseType", event.target.value as ExpenseType)
-                      }
-                    >
+                    <AppSelect {...createForm.register("expenseType")}>
                       <option value="electricity">Electricidad</option>
                       <option value="water">Agua</option>
                       <option value="gas">Gas</option>
@@ -1527,18 +1479,21 @@ export default function PaymentsPage() {
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Concepto corto</span>
                     <input
-                      value={createForm.title}
-                      onChange={(event) => updateCreateForm("title", event.target.value)}
+                      {...createForm.register("title")}
                       placeholder="Ej. CFE, Agua y Drenaje, Telmex"
                       style={inputStyle}
                     />
+                    {createForm.formState.errors.title ? (
+                      <p style={paymentErrorTextStyle}>
+                        {createForm.formState.errors.title.message}
+                      </p>
+                    ) : null}
                   </label>
 
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Proveedor</span>
                     <input
-                      value={createForm.vendorName}
-                      onChange={(event) => updateCreateForm("vendorName", event.target.value)}
+                      {...createForm.register("vendorName")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1546,13 +1501,10 @@ export default function PaymentsPage() {
 
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>
-                      {getIdentifierLabel(createForm.expenseType)}
+                      {getIdentifierLabel(createForm.watch("expenseType"))}
                     </span>
                     <input
-                      value={createForm.serviceIdentifier}
-                      onChange={(event) =>
-                        updateCreateForm("serviceIdentifier", event.target.value)
-                      }
+                      {...createForm.register("serviceIdentifier")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1564,12 +1516,7 @@ export default function PaymentsPage() {
                 <div style={simpleFormFieldsStyle}>
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Frecuencia</span>
-                    <AppSelect
-                      value={createForm.frequencyType}
-                      onChange={(event) =>
-                        updateCreateForm("frequencyType", event.target.value as ExpenseFrequencyType)
-                      }
-                    >
+                    <AppSelect {...createForm.register("frequencyType")}>
                       <option value="monthly">Mensual</option>
                       <option value="bimonthly">Bimestral</option>
                     </AppSelect>
@@ -1577,15 +1524,7 @@ export default function PaymentsPage() {
 
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Quién paga</span>
-                    <AppSelect
-                      value={createForm.responsibilityType}
-                      onChange={(event) =>
-                        updateCreateForm(
-                          "responsibilityType",
-                          event.target.value as "company" | "building"
-                        )
-                      }
-                    >
+                    <AppSelect {...createForm.register("responsibilityType")}>
                       <option value="company">Empresa</option>
                       <option value="building">Edificio</option>
                     </AppSelect>
@@ -1595,17 +1534,21 @@ export default function PaymentsPage() {
                     <span style={fieldLabelStyle}>Fecha límite de pago</span>
                     <input
                       type="date"
-                      value={createForm.dueDate}
-                      onChange={(event) => updateCreateForm("dueDate", event.target.value)}
+                      {...createForm.register("dueDate")}
                       style={inputStyle}
                     />
+                    {createForm.formState.errors.dueDate ? (
+                      <p style={paymentErrorTextStyle}>
+                        {createForm.formState.errors.dueDate.message}
+                      </p>
+                    ) : null}
                   </label>
 
                   <div style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Fecha de corte</span>
                     <div style={readonlyFieldStyle}>
-                      {createForm.dueDate
-                        ? formatDate(getCutoffDateFromDueDate(createForm.dueDate))
+                      {createForm.watch("dueDate")
+                        ? formatDate(getCutoffDateFromDueDate(createForm.watch("dueDate")))
                         : "Sin fecha"}
                     </div>
                   </div>
@@ -1613,8 +1556,7 @@ export default function PaymentsPage() {
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Periodo facturado</span>
                     <input
-                      value={createForm.billedPeriodLabel}
-                      onChange={(event) => updateCreateForm("billedPeriodLabel", event.target.value)}
+                      {...createForm.register("billedPeriodLabel")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1623,10 +1565,7 @@ export default function PaymentsPage() {
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Periodo de consumo</span>
                     <input
-                      value={createForm.consumptionPeriodLabel}
-                      onChange={(event) =>
-                        updateCreateForm("consumptionPeriodLabel", event.target.value)
-                      }
+                      {...createForm.register("consumptionPeriodLabel")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1635,8 +1574,7 @@ export default function PaymentsPage() {
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Mes facturado</span>
                     <input
-                      value={createForm.billedMonthLabel}
-                      onChange={(event) => updateCreateForm("billedMonthLabel", event.target.value)}
+                      {...createForm.register("billedMonthLabel")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1648,11 +1586,15 @@ export default function PaymentsPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      value={createForm.amountEstimated}
-                      onChange={(event) => updateCreateForm("amountEstimated", event.target.value)}
-                      placeholder="Opcional"
+                      {...createForm.register("amountEstimated")}
+                      placeholder="0"
                       style={inputStyle}
                     />
+                    {createForm.formState.errors.amountEstimated ? (
+                      <p style={paymentErrorTextStyle}>
+                        {createForm.formState.errors.amountEstimated.message}
+                      </p>
+                    ) : null}
                   </label>
 
                   <label style={fieldWrapStyle}>
@@ -1661,8 +1603,7 @@ export default function PaymentsPage() {
                       type="number"
                       min="0"
                       step="0.01"
-                      value={createForm.amountDue}
-                      onChange={(event) => updateCreateForm("amountDue", event.target.value)}
+                      {...createForm.register("amountDue")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1671,8 +1612,7 @@ export default function PaymentsPage() {
                   <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <input
                       type="checkbox"
-                      checked={createForm.autoGenerate}
-                      onChange={(event) => updateCreateForm("autoGenerate", event.target.checked)}
+                      {...createForm.register("autoGenerate")}
                     />
                     <span style={fieldLabelStyle}>Generar automáticamente próximos periodos</span>
                   </label>
@@ -1680,8 +1620,7 @@ export default function PaymentsPage() {
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Referencia de pago</span>
                     <input
-                      value={createForm.paymentReference}
-                      onChange={(event) => updateCreateForm("paymentReference", event.target.value)}
+                      {...createForm.register("paymentReference")}
                       placeholder="Opcional"
                       style={inputStyle}
                     />
@@ -1690,8 +1629,7 @@ export default function PaymentsPage() {
                   <label style={fieldWrapStyle}>
                     <span style={fieldLabelStyle}>Notas / comentarios</span>
                     <textarea
-                      value={createForm.notes}
-                      onChange={(event) => updateCreateForm("notes", event.target.value)}
+                      {...createForm.register("notes")}
                       rows={4}
                       placeholder="Opcional"
                       style={textareaStyle}
@@ -1700,10 +1638,10 @@ export default function PaymentsPage() {
 
                   <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                     <UiButton
-                      onClick={handleCreatePayment}
-                      icon={savingPayment ? <Save size={16} /> : <Plus size={16} />}
+                      type="submit"
+                      icon={createForm.formState.isSubmitting ? <Save size={16} /> : <Plus size={16} />}
                     >
-                      {savingPayment ? "Guardando..." : "Crear pago"}
+                      {createForm.formState.isSubmitting ? "Guardando..." : "Crear pago"}
                     </UiButton>
 
                     <UiButton onClick={() => ensureCurrentPeriodPayments()} icon={<RotateCw size={16} />}>
@@ -1712,7 +1650,7 @@ export default function PaymentsPage() {
                   </div>
                 </div>
               </AppCard>
-            </div>
+            </form>
           </SectionCard>
           <div style={{ height: 16 }} />
         </>
@@ -1984,25 +1922,21 @@ export default function PaymentsPage() {
         title="Editar pago"
         subtitle="Actualiza los datos del servicio y del periodo sin expandir toda la página."
         onClose={() => {
-          if (!savingPayment) {
+          if (!editForm.formState.isSubmitting) {
             setIsEditModalOpen(false);
-            setEditingPayment(null);
+            setEditingIds(null);
           }
         }}
       >
-        {editingPayment ? (
-          <div style={{ display: "grid", gap: 16 }}>
+        {editingIds ? (
+          <form onSubmit={handleSaveEditedPayment} style={{ display: "grid", gap: 16 }}>
             <div style={simpleFormGridStyle}>
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Edificio</span>
                 <AppSelect
-                  value={editingPayment.buildingId}
-                  onChange={(event) => {
-                    const nextBuildingId = event.target.value;
-                    setEditingPayment((prev) =>
-                      prev ? { ...prev, buildingId: nextBuildingId, unitId: "" } : prev
-                    );
-                  }}
+                  {...editForm.register("buildingId", {
+                    onChange: () => editForm.setValue("unitId", ""),
+                  })}
                 >
                   <option value="">Selecciona un edificio</option>
                   {buildings.map((building) => (
@@ -2011,28 +1945,33 @@ export default function PaymentsPage() {
                     </option>
                   ))}
                 </AppSelect>
+                {editForm.formState.errors.buildingId ? (
+                  <p style={paymentErrorTextStyle}>
+                    {editForm.formState.errors.buildingId.message}
+                  </p>
+                ) : null}
               </label>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Aplica a</span>
                 <AppSelect
-                  value={editingPayment.appliesTo}
-                  onChange={(event) =>
-                    updateEditingForm("appliesTo", event.target.value as ExpenseAppliesToType)
-                  }
+                  {...editForm.register("appliesTo", {
+                    onChange: (event) => {
+                      if (event.target.value === "building") {
+                        editForm.setValue("unitId", "");
+                      }
+                    },
+                  })}
                 >
                   <option value="building">Edificio</option>
                   <option value="unit">Unidad</option>
                 </AppSelect>
               </label>
 
-              {editingPayment.appliesTo === "unit" ? (
+              {editAppliesTo === "unit" ? (
                 <label style={fieldWrapStyle}>
                   <span style={fieldLabelStyle}>Unidad</span>
-                  <AppSelect
-                    value={editingPayment.unitId}
-                    onChange={(event) => updateEditingForm("unitId", event.target.value)}
-                  >
+                  <AppSelect {...editForm.register("unitId")}>
                     <option value="">Selecciona una unidad</option>
                     {unitsForEditingBuilding.map((unit) => (
                       <option key={unit.id} value={unit.id}>
@@ -2040,17 +1979,17 @@ export default function PaymentsPage() {
                       </option>
                     ))}
                   </AppSelect>
+                  {editForm.formState.errors.unitId ? (
+                    <p style={paymentErrorTextStyle}>
+                      {editForm.formState.errors.unitId.message}
+                    </p>
+                  ) : null}
                 </label>
               ) : null}
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Tipo de servicio</span>
-                <AppSelect
-                  value={editingPayment.expenseType}
-                  onChange={(event) =>
-                    updateEditingForm("expenseType", event.target.value as ExpenseType)
-                  }
-                >
+                <AppSelect {...editForm.register("expenseType")}>
                   <option value="electricity">Electricidad</option>
                   <option value="water">Agua</option>
                   <option value="gas">Gas</option>
@@ -2065,39 +2004,27 @@ export default function PaymentsPage() {
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Concepto corto</span>
-                <input
-                  value={editingPayment.title}
-                  onChange={(event) => updateEditingForm("title", event.target.value)}
-                  style={inputStyle}
-                />
+                <input {...editForm.register("title")} style={inputStyle} />
+                {editForm.formState.errors.title ? (
+                  <p style={paymentErrorTextStyle}>
+                    {editForm.formState.errors.title.message}
+                  </p>
+                ) : null}
               </label>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Proveedor</span>
-                <input
-                  value={editingPayment.vendorName}
-                  onChange={(event) => updateEditingForm("vendorName", event.target.value)}
-                  style={inputStyle}
-                />
+                <input {...editForm.register("vendorName")} style={inputStyle} />
               </label>
 
               <label style={fieldWrapStyle}>
-                <span style={fieldLabelStyle}>{getIdentifierLabel(editingPayment.expenseType)}</span>
-                <input
-                  value={editingPayment.serviceIdentifier}
-                  onChange={(event) => updateEditingForm("serviceIdentifier", event.target.value)}
-                  style={inputStyle}
-                />
+                <span style={fieldLabelStyle}>{getIdentifierLabel(editForm.watch("expenseType"))}</span>
+                <input {...editForm.register("serviceIdentifier")} style={inputStyle} />
               </label>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Frecuencia</span>
-                <AppSelect
-                  value={editingPayment.frequencyType}
-                  onChange={(event) =>
-                    updateEditingForm("frequencyType", event.target.value as ExpenseFrequencyType)
-                  }
-                >
+                <AppSelect {...editForm.register("frequencyType")}>
                   <option value="monthly">Mensual</option>
                   <option value="bimonthly">Bimestral</option>
                 </AppSelect>
@@ -2105,15 +2032,7 @@ export default function PaymentsPage() {
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Quién paga</span>
-                <AppSelect
-                  value={editingPayment.responsibilityType}
-                  onChange={(event) =>
-                    updateEditingForm(
-                      "responsibilityType",
-                      event.target.value as "company" | "building"
-                    )
-                  }
-                >
+                <AppSelect {...editForm.register("responsibilityType")}>
                   <option value="company">Empresa</option>
                   <option value="building">Edificio</option>
                 </AppSelect>
@@ -2121,50 +2040,36 @@ export default function PaymentsPage() {
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Fecha límite de pago</span>
-                <input
-                  type="date"
-                  value={editingPayment.dueDate}
-                  onChange={(event) => updateEditingForm("dueDate", event.target.value)}
-                  style={inputStyle}
-                />
+                <input type="date" {...editForm.register("dueDate")} style={inputStyle} />
+                {editForm.formState.errors.dueDate ? (
+                  <p style={paymentErrorTextStyle}>
+                    {editForm.formState.errors.dueDate.message}
+                  </p>
+                ) : null}
               </label>
 
               <div style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Fecha de corte</span>
                 <div style={readonlyFieldStyle}>
-                  {editingPayment.dueDate
-                    ? formatDate(getCutoffDateFromDueDate(editingPayment.dueDate))
+                  {editForm.watch("dueDate")
+                    ? formatDate(getCutoffDateFromDueDate(editForm.watch("dueDate")))
                     : "Sin fecha"}
                 </div>
               </div>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Periodo facturado</span>
-                <input
-                  value={editingPayment.billedPeriodLabel}
-                  onChange={(event) => updateEditingForm("billedPeriodLabel", event.target.value)}
-                  style={inputStyle}
-                />
+                <input {...editForm.register("billedPeriodLabel")} style={inputStyle} />
               </label>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Periodo de consumo</span>
-                <input
-                  value={editingPayment.consumptionPeriodLabel}
-                  onChange={(event) =>
-                    updateEditingForm("consumptionPeriodLabel", event.target.value)
-                  }
-                  style={inputStyle}
-                />
+                <input {...editForm.register("consumptionPeriodLabel")} style={inputStyle} />
               </label>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Mes facturado</span>
-                <input
-                  value={editingPayment.billedMonthLabel}
-                  onChange={(event) => updateEditingForm("billedMonthLabel", event.target.value)}
-                  style={inputStyle}
-                />
+                <input {...editForm.register("billedMonthLabel")} style={inputStyle} />
               </label>
 
               <label style={fieldWrapStyle}>
@@ -2173,10 +2078,14 @@ export default function PaymentsPage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={editingPayment.amountEstimated}
-                  onChange={(event) => updateEditingForm("amountEstimated", event.target.value)}
+                  {...editForm.register("amountEstimated")}
                   style={inputStyle}
                 />
+                {editForm.formState.errors.amountEstimated ? (
+                  <p style={paymentErrorTextStyle}>
+                    {editForm.formState.errors.amountEstimated.message}
+                  </p>
+                ) : null}
               </label>
 
               <label style={fieldWrapStyle}>
@@ -2185,48 +2094,34 @@ export default function PaymentsPage() {
                   type="number"
                   min="0"
                   step="0.01"
-                  value={editingPayment.amountDue}
-                  onChange={(event) => updateEditingForm("amountDue", event.target.value)}
+                  {...editForm.register("amountDue")}
                   style={inputStyle}
                 />
               </label>
 
               <label style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <input
-                  type="checkbox"
-                  checked={editingPayment.autoGenerate}
-                  onChange={(event) => updateEditingForm("autoGenerate", event.target.checked)}
-                />
+                <input type="checkbox" {...editForm.register("autoGenerate")} />
                 <span style={fieldLabelStyle}>Generar automáticamente próximos periodos</span>
               </label>
 
               <label style={fieldWrapStyle}>
                 <span style={fieldLabelStyle}>Referencia de pago</span>
-                <input
-                  value={editingPayment.paymentReference}
-                  onChange={(event) => updateEditingForm("paymentReference", event.target.value)}
-                  style={inputStyle}
-                />
+                <input {...editForm.register("paymentReference")} style={inputStyle} />
               </label>
             </div>
 
             <label style={fieldWrapStyle}>
               <span style={fieldLabelStyle}>Notas / comentarios</span>
-              <textarea
-                value={editingPayment.notes}
-                onChange={(event) => updateEditingForm("notes", event.target.value)}
-                rows={4}
-                style={textareaStyle}
-              />
+              <textarea {...editForm.register("notes")} rows={4} style={textareaStyle} />
             </label>
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <button
                 type="button"
                 onClick={() => {
-                  if (!savingPayment) {
+                  if (!editForm.formState.isSubmitting) {
                     setIsEditModalOpen(false);
-                    setEditingPayment(null);
+                    setEditingIds(null);
                   }
                 }}
                 style={ghostButtonStyle}
@@ -2234,11 +2129,11 @@ export default function PaymentsPage() {
                 Cancelar
               </button>
 
-              <UiButton onClick={handleSaveEditedPayment} icon={<Save size={16} />}>
-                {savingPayment ? "Guardando..." : "Guardar cambios"}
+              <UiButton type="submit" icon={<Save size={16} />}>
+                {editForm.formState.isSubmitting ? "Guardando..." : "Guardar cambios"}
               </UiButton>
             </div>
-          </div>
+          </form>
         ) : null}
       </Modal>
 

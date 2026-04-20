@@ -47,6 +47,9 @@ import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import toast from "react-hot-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -138,11 +141,6 @@ type CollectionRecord = {
 
 type CollectionStatusFilter = "all" | "pending" | "partial" | "collected" | "overdue";
 
-type EditRecordForm = {
-  recordId: string;
-  amountDue: string;
-  notes: string;
-};
 
 type InquilinoRow = {
   groupKey: string; // lease_id o "unit-{unit_id}"
@@ -228,6 +226,46 @@ function parsePositiveNumber(value: string) {
   return parsed;
 }
 
+const positiveAmountString = () =>
+  z
+    .string()
+    .min(1, "Ingresa un monto válido")
+    .refine((v) => parsePositiveNumber(v) !== null, {
+      message: "Ingresa un monto válido",
+    });
+
+const collectionsErrorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
+const editRecordSchema = z.object({
+  amountDue: positiveAmountString(),
+  notes: z.string().optional(),
+});
+type EditRecordFormValues = z.infer<typeof editRecordSchema>;
+
+const abonoSchema = z.object({
+  monto: positiveAmountString(),
+});
+type AbonoFormValues = z.infer<typeof abonoSchema>;
+
+const eventoSchema = z.object({
+  concepto: z.string().min(1, "Escribe un concepto"),
+  chargeType: z.enum(["amenities", "parking", "penalty", "other"]),
+  monto: positiveAmountString(),
+});
+type EventoFormValues = z.infer<typeof eventoSchema>;
+
+const capturaSchema = z.object({
+  monto: positiveAmountString(),
+  unidades: z.string().optional(),
+  notas: z.string().optional(),
+});
+type CapturaFormValues = z.infer<typeof capturaSchema>;
+
 function getStatusLabel(status: CollectionStoredStatus) {
   if (status === "collected") return "Cobrado";
   if (status === "partial")   return "Parcial";
@@ -301,20 +339,31 @@ export default function CollectionsPage() {
   const [deletingRecord, setDeletingRecord]   = useState(false);
 
   const [editRecordId, setEditRecordId]     = useState<string | null>(null);
-  const [editForm, setEditForm]             = useState<EditRecordForm>({ recordId: "", amountDue: "", notes: "" });
-  const [editingRecord, setEditingRecord]   = useState(false);
+  const editForm = useForm<EditRecordFormValues>({
+    resolver: zodResolver(editRecordSchema),
+    defaultValues: { amountDue: "", notes: "" },
+  });
 
-  const [abonoModal, setAbonoModal]         = useState<{ record: CollectionRecord; monto: string } | null>(null);
-  const [abonoSaving, setAbonoSaving]       = useState(false);
+  /* Abono: contexto (qué registro se abona) separado del formulario (monto). */
+  const [abonoRecord, setAbonoRecord]       = useState<CollectionRecord | null>(null);
+  const abonoForm = useForm<AbonoFormValues>({
+    resolver: zodResolver(abonoSchema),
+    defaultValues: { monto: "" },
+  });
   const [revertConfirmId, setRevertConfirmId] = useState<string | null>(null);
 
   const [eventoModal, setEventoModal]       = useState<{ groupKey: string; leaseId: string | null; buildingId: string; unitId: string } | null>(null);
-  const [eventoForm, setEventoForm]         = useState({ concepto: "", chargeType: "amenities" as CollectionChargeType, monto: "" });
-  const [eventoSaving, setEventoSaving]     = useState(false);
+  const eventoForm = useForm<EventoFormValues>({
+    resolver: zodResolver(eventoSchema),
+    defaultValues: { concepto: "", chargeType: "amenities", monto: "" },
+  });
 
-  const [capturaModal, setCapturaModal]     = useState<{ record: CollectionRecord; chargeType: CollectionChargeType } | null>(null);
-  const [capturaForm, setCapturaForm]       = useState({ monto: "", unidades: "", notas: "" });
-  const [capturaSaving, setCapturaSaving]   = useState(false);
+  /* Captura: contexto (qué registro + charge_type) separado del formulario. */
+  const [capturaContext, setCapturaContext] = useState<{ record: CollectionRecord; chargeType: CollectionChargeType } | null>(null);
+  const capturaForm = useForm<CapturaFormValues>({
+    resolver: zodResolver(capturaSchema),
+    defaultValues: { monto: "", unidades: "", notas: "" },
+  });
 
   type SortMode = "building" | "due_date";
   const [sortMode, setSortMode]             = useState<SortMode>("building");
@@ -455,9 +504,8 @@ export default function CollectionsPage() {
 
   // ── Registrar abono (parcial o total) ────────────────────────────────────────
 
-  async function handleAbono(record: CollectionRecord, monto: number) {
+  async function applyAbono(record: CollectionRecord, monto: number) {
     if (!user?.company_id) return;
-    setAbonoSaving(true);
     const prevCollected = record.amount_collected || 0;
     const newCollected  = Math.min(prevCollected + monto, record.amount_due);
     const newStatus: CollectionStoredStatus = newCollected >= record.amount_due ? "collected" : "partial";
@@ -469,7 +517,6 @@ export default function CollectionsPage() {
       .eq("id", record.id)
       .eq("company_id", user.company_id);
 
-    setAbonoSaving(false);
     if (error) {
       toast.error(`No se pudo registrar el abono: ${error.message}`);
       return;
@@ -480,9 +527,19 @@ export default function CollectionsPage() {
         : r
       )
     );
-    setAbonoModal(null);
+    setAbonoRecord(null);
     toast.success(newStatus === "collected" ? "Cobro marcado como pagado." : "Abono registrado.");
   }
+
+  const handleAbonoSubmit = abonoForm.handleSubmit(async (data) => {
+    if (!abonoRecord) return;
+    const monto = parsePositiveNumber(data.monto);
+    if (!monto) {
+      toast.error("Ingresa un monto válido.");
+      return;
+    }
+    await applyAbono(abonoRecord, monto);
+  });
 
   // ── Revertir cobro a pendiente ────────────────────────────────────────────────
 
@@ -510,13 +567,11 @@ export default function CollectionsPage() {
 
   // ── Cargo eventual (único, active=false) ──────────────────────────────────────
 
-  async function handleCreateEvento() {
+  const handleCreateEvento = eventoForm.handleSubmit(async (data) => {
     if (!eventoModal || !user?.company_id) return;
-    const monto = parsePositiveNumber(eventoForm.monto);
+    const monto = parsePositiveNumber(data.monto);
     if (!monto) { toast.error("Ingresa un monto válido."); return; }
-    if (!eventoForm.concepto.trim()) { toast.error("Escribe un concepto."); return; }
 
-    setEventoSaving(true);
     const dueDay  = new Date().getDate();
     const dueDate = buildDateKey(selectedYear, selectedMonth, dueDay);
     const initialStatus: CollectionStoredStatus = dueDate < getTodayDateKey() ? "overdue" : "pending";
@@ -528,8 +583,8 @@ export default function CollectionsPage() {
         building_id:     eventoModal.buildingId,
         unit_id:         eventoModal.unitId,
         lease_id:        eventoModal.leaseId,
-        charge_type:     eventoForm.chargeType,
-        title:           eventoForm.concepto.trim(),
+        charge_type:     data.chargeType,
+        title:           data.concepto.trim(),
         amount_expected: monto,
         due_day:         dueDay,
         active:          false,
@@ -539,7 +594,6 @@ export default function CollectionsPage() {
 
     if (schedError || !schedData) {
       toast.error(`No se pudo crear el cargo: ${schedError?.message || "error desconocido"}`);
-      setEventoSaving(false);
       return;
     }
 
@@ -563,7 +617,6 @@ export default function CollectionsPage() {
 
     if (recError || !recData) {
       toast.error(`No se pudo crear el cobro: ${recError?.message || "error desconocido"}`);
-      setEventoSaving(false);
       return;
     }
 
@@ -572,8 +625,8 @@ export default function CollectionsPage() {
       building_id:     eventoModal.buildingId,
       unit_id:         eventoModal.unitId,
       lease_id:        eventoModal.leaseId,
-      charge_type:     eventoForm.chargeType,
-      title:           eventoForm.concepto.trim(),
+      charge_type:     data.chargeType,
+      title:           data.concepto.trim(),
       amount_expected: monto,
       due_day:         dueDay,
       active:          false,
@@ -581,43 +634,43 @@ export default function CollectionsPage() {
     }]);
     setRecords((prev) => [...prev, recData as CollectionRecord]);
     setEventoModal(null);
-    setEventoForm({ concepto: "", chargeType: "amenities", monto: "" });
-    setEventoSaving(false);
+    eventoForm.reset({ concepto: "", chargeType: "amenities", monto: "" });
     toast.success("Cargo eventual registrado.");
-  }
+  });
 
   // ── Capturar monto de servicio variable ───────────────────────────────────────
 
-  async function handleCaptura() {
-    if (!capturaModal || !user?.company_id) return;
-    const monto = parsePositiveNumber(capturaForm.monto);
+  const handleCaptura = capturaForm.handleSubmit(async (data) => {
+    if (!capturaContext || !user?.company_id) return;
+    const monto = parsePositiveNumber(data.monto);
     if (!monto) { toast.error("Ingresa un monto válido."); return; }
 
-    const unitSuffix = capturaModal.chargeType === "electricity" ? "kWh" : "m³";
-    const notesLine = capturaForm.unidades.trim()
-      ? `${capturaForm.unidades.trim()} ${unitSuffix}${capturaForm.notas.trim() ? ` · ${capturaForm.notas.trim()}` : ""}`
-      : capturaForm.notas.trim() || null;
+    const unitSuffix = capturaContext.chargeType === "electricity" ? "kWh" : "m³";
+    const unidades = data.unidades?.trim() || "";
+    const notas = data.notas?.trim() || "";
+    const notesLine = unidades
+      ? `${unidades} ${unitSuffix}${notas ? ` · ${notas}` : ""}`
+      : notas || null;
 
-    setCapturaSaving(true);
     const newStatus: CollectionStoredStatus =
-      capturaModal.record.due_date < getTodayDateKey() ? "overdue" : "pending";
+      capturaContext.record.due_date < getTodayDateKey() ? "overdue" : "pending";
 
     const { error } = await supabase
       .from("collection_records")
       .update({ amount_due: monto, notes: notesLine, status: newStatus })
-      .eq("id", capturaModal.record.id)
+      .eq("id", capturaContext.record.id)
       .eq("company_id", user.company_id);
 
-    setCapturaSaving(false);
     if (error) { toast.error(`Error: ${error.message}`); return; }
 
+    const recordId = capturaContext.record.id;
     setRecords((prev) => prev.map((r) =>
-      r.id === capturaModal.record.id ? { ...r, amount_due: monto, notes: notesLine, status: newStatus } : r
+      r.id === recordId ? { ...r, amount_due: monto, notes: notesLine, status: newStatus } : r
     ));
-    setCapturaModal(null);
-    setCapturaForm({ monto: "", unidades: "", notas: "" });
+    setCapturaContext(null);
+    capturaForm.reset({ monto: "", unidades: "", notas: "" });
     toast.success("Monto capturado correctamente.");
-  }
+  });
 
   // ── Archivar cobro ────────────────────────────────────────────────────────────
 
@@ -647,30 +700,25 @@ export default function CollectionsPage() {
 
   function openEditRecord(record: CollectionRecord) {
     setEditRecordId(record.id);
-    setEditForm({
-      recordId: record.id,
+    editForm.reset({
       amountDue: String(record.amount_due || ""),
       notes: record.notes || "",
     });
   }
 
-  async function handleSaveRecordEdits() {
+  const handleSaveRecordEdits = editForm.handleSubmit(async (data) => {
     if (!editRecordId || !user?.company_id) return;
-    const nextAmount = parsePositiveNumber(editForm.amountDue);
+    const nextAmount = parsePositiveNumber(data.amountDue);
     if (!nextAmount) {
       toast.error("Ingresa un monto válido.");
       return;
     }
 
-    setEditingRecord(true);
-
     const { error } = await supabase
       .from("collection_records")
-      .update({ amount_due: nextAmount, notes: editForm.notes.trim() || null })
+      .update({ amount_due: nextAmount, notes: data.notes?.trim() || null })
       .eq("id", editRecordId)
       .eq("company_id", user.company_id);
-
-    setEditingRecord(false);
 
     if (error) {
       toast.error(`No se pudo actualizar: ${error.message}`);
@@ -679,12 +727,12 @@ export default function CollectionsPage() {
 
     setRecords((prev) =>
       prev.map((r) =>
-        r.id === editRecordId ? { ...r, amount_due: nextAmount, notes: editForm.notes.trim() || null } : r,
+        r.id === editRecordId ? { ...r, amount_due: nextAmount, notes: data.notes?.trim() || null } : r,
       ),
     );
     setEditRecordId(null);
     toast.success("Cobro actualizado.");
-  }
+  });
 
   // ── Navegación de mes ─────────────────────────────────────────────────────────
 
@@ -1168,7 +1216,10 @@ export default function CollectionsPage() {
                                 {needsCaptura ? (
                                   <button
                                     type="button"
-                                    onClick={() => { setCapturaModal({ record, chargeType }); setCapturaForm({ monto: "", unidades: "", notas: "" }); }}
+                                    onClick={() => {
+                                      setCapturaContext({ record, chargeType });
+                                      capturaForm.reset({ monto: "", unidades: "", notas: "" });
+                                    }}
                                     disabled={isMarking}
                                     style={paidBtnStyle}
                                   >
@@ -1178,7 +1229,10 @@ export default function CollectionsPage() {
                                 ) : record.status !== "collected" ? (
                                   <button
                                     type="button"
-                                    onClick={() => setAbonoModal({ record, monto: String(Math.max(record.amount_due - (record.amount_collected || 0), 0)) })}
+                                    onClick={() => {
+                                      setAbonoRecord(record);
+                                      abonoForm.reset({ monto: String(Math.max(record.amount_due - (record.amount_collected || 0), 0)) });
+                                    }}
                                     disabled={isMarking}
                                     style={paidBtnStyle}
                                   >
@@ -1251,7 +1305,7 @@ export default function CollectionsPage() {
                           onClick={(e) => {
                             e.stopPropagation();
                             setEventoModal({ groupKey: row.groupKey, leaseId: row.leaseId, buildingId: row.buildingId, unitId: row.records[0]?.unit_id || "" });
-                            setEventoForm({ concepto: "", chargeType: "amenities", monto: "" });
+                            eventoForm.reset({ concepto: "", chargeType: "amenities", monto: "" });
                           }}
                           style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                         >
@@ -1273,35 +1327,38 @@ export default function CollectionsPage() {
       <Modal
         open={Boolean(editRecordId)}
         title="Editar cobro"
-        onClose={() => { if (!editingRecord) setEditRecordId(null); }}
+        onClose={() => { if (!editForm.formState.isSubmitting) setEditRecordId(null); }}
       >
-        <div style={{ display: "grid", gap: 16 }}>
+        <form onSubmit={handleSaveRecordEdits} style={{ display: "grid", gap: 16 }}>
           <label style={fieldStyle}>
             <span style={fieldLabelStyle}>Monto</span>
             <input
-              value={editForm.amountDue}
-              onChange={(e) => setEditForm((p) => ({ ...p, amountDue: formatDecimalInput(e.target.value) }))}
+              {...editForm.register("amountDue", {
+                onChange: (e) => editForm.setValue("amountDue", formatDecimalInput(e.target.value)),
+              })}
               style={inputStyle}
               inputMode="decimal"
               placeholder="0.00"
             />
+            {editForm.formState.errors.amountDue ? (
+              <p style={collectionsErrorTextStyle}>{editForm.formState.errors.amountDue.message}</p>
+            ) : null}
           </label>
           <label style={fieldStyle}>
             <span style={fieldLabelStyle}>Notas</span>
             <textarea
-              value={editForm.notes}
-              onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+              {...editForm.register("notes")}
               rows={3}
               style={textareaStyle}
             />
           </label>
           <div style={modalFooterStyle}>
-            <UiButton variant="secondary" onClick={() => { if (!editingRecord) setEditRecordId(null); }}>Cancelar</UiButton>
-            <UiButton onClick={handleSaveRecordEdits} disabled={editingRecord} icon={<Pencil size={15} />}>
-              {editingRecord ? "Guardando..." : "Guardar cambios"}
+            <UiButton variant="secondary" onClick={() => { if (!editForm.formState.isSubmitting) setEditRecordId(null); }}>Cancelar</UiButton>
+            <UiButton type="submit" disabled={editForm.formState.isSubmitting} icon={<Pencil size={15} />}>
+              {editForm.formState.isSubmitting ? "Guardando..." : "Guardar cambios"}
             </UiButton>
           </div>
-        </div>
+        </form>
       </Modal>
 
       {/* ── Modal: Archivar cobro ── */}
@@ -1330,83 +1387,86 @@ export default function CollectionsPage() {
 
       {/* ── Modal: Registrar abono ── */}
       <Modal
-        open={Boolean(abonoModal)}
+        open={Boolean(abonoRecord)}
         title="Registrar abono"
-        onClose={() => { if (!abonoSaving) setAbonoModal(null); }}
+        onClose={() => { if (!abonoForm.formState.isSubmitting) setAbonoRecord(null); }}
       >
-        {abonoModal ? (
-          <div style={{ display: "grid", gap: 16 }}>
+        {abonoRecord ? (
+          <form onSubmit={handleAbonoSubmit} style={{ display: "grid", gap: 16 }}>
             <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
               Total del cobro:{" "}
-              <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(abonoModal.record.amount_due)}</strong>
-              {(abonoModal.record.amount_collected || 0) > 0 ? (
+              <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(abonoRecord.amount_due)}</strong>
+              {(abonoRecord.amount_collected || 0) > 0 ? (
                 <> · Ya abonado:{" "}
-                  <strong style={{ color: "#10B981" }}>{formatCurrency(abonoModal.record.amount_collected || 0)}</strong>
+                  <strong style={{ color: "#10B981" }}>{formatCurrency(abonoRecord.amount_collected || 0)}</strong>
                 </>
               ) : null}
             </p>
             <label style={fieldStyle}>
               <span style={fieldLabelStyle}>Monto a abonar</span>
               <input
-                value={abonoModal.monto}
-                onChange={(e) => setAbonoModal((p) => p ? { ...p, monto: formatDecimalInput(e.target.value) } : p)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    const m = parsePositiveNumber(abonoModal.monto);
-                    if (!m) { toast.error("Ingresa un monto válido."); return; }
-                    void handleAbono(abonoModal.record, m);
-                  }
-                }}
+                {...abonoForm.register("monto", {
+                  onChange: (e) => abonoForm.setValue("monto", formatDecimalInput(e.target.value)),
+                })}
                 style={inputStyle}
                 inputMode="decimal"
                 placeholder="0.00"
                 autoFocus
               />
+              {abonoForm.formState.errors.monto ? (
+                <p style={collectionsErrorTextStyle}>{abonoForm.formState.errors.monto.message}</p>
+              ) : null}
             </label>
             <div style={modalFooterStyle}>
-              <UiButton variant="secondary" onClick={() => { if (!abonoSaving) setAbonoModal(null); }}>Cancelar</UiButton>
+              <UiButton variant="secondary" onClick={() => { if (!abonoForm.formState.isSubmitting) setAbonoRecord(null); }}>Cancelar</UiButton>
               <UiButton
-                onClick={() => {
-                  const m = parsePositiveNumber(abonoModal.monto);
-                  if (!m) { toast.error("Ingresa un monto válido."); return; }
-                  void handleAbono(abonoModal.record, m);
-                }}
-                disabled={abonoSaving}
+                type="submit"
+                disabled={abonoForm.formState.isSubmitting}
                 icon={<CheckCircle2 size={15} />}
               >
-                {abonoSaving ? "Guardando..." : "Confirmar abono"}
+                {abonoForm.formState.isSubmitting ? "Guardando..." : "Confirmar abono"}
               </UiButton>
             </div>
-          </div>
+          </form>
         ) : null}
       </Modal>
 
       {/* ── Modal: Capturar monto variable ── */}
       <Modal
-        open={Boolean(capturaModal)}
-        title={`Capturar monto — ${capturaModal ? getChargeTypeLabel(capturaModal.chargeType) : ""}`}
-        onClose={() => { if (!capturaSaving) { setCapturaModal(null); setCapturaForm({ monto: "", unidades: "", notas: "" }); } }}
+        open={Boolean(capturaContext)}
+        title={`Capturar monto — ${capturaContext ? getChargeTypeLabel(capturaContext.chargeType) : ""}`}
+        onClose={() => {
+          if (!capturaForm.formState.isSubmitting) {
+            setCapturaContext(null);
+            capturaForm.reset({ monto: "", unidades: "", notas: "" });
+          }
+        }}
       >
-        {capturaModal ? (
-          <div style={{ display: "grid", gap: 16 }}>
+        {capturaContext ? (
+          <form onSubmit={handleCaptura} style={{ display: "grid", gap: 16 }}>
             <label style={fieldStyle}>
               <span style={fieldLabelStyle}>Monto a cobrar</span>
               <input
-                value={capturaForm.monto}
-                onChange={(e) => setCapturaForm((p) => ({ ...p, monto: formatDecimalInput(e.target.value) }))}
+                {...capturaForm.register("monto", {
+                  onChange: (e) => capturaForm.setValue("monto", formatDecimalInput(e.target.value)),
+                })}
                 style={inputStyle}
                 inputMode="decimal"
                 placeholder="0.00"
                 autoFocus
               />
+              {capturaForm.formState.errors.monto ? (
+                <p style={collectionsErrorTextStyle}>{capturaForm.formState.errors.monto.message}</p>
+              ) : null}
             </label>
             <label style={fieldStyle}>
               <span style={fieldLabelStyle}>
-                Consumo ({capturaModal.chargeType === "electricity" ? "kWh" : "m³"})
+                Consumo ({capturaContext.chargeType === "electricity" ? "kWh" : "m³"})
               </span>
               <input
-                value={capturaForm.unidades}
-                onChange={(e) => setCapturaForm((p) => ({ ...p, unidades: formatDecimalInput(e.target.value) }))}
+                {...capturaForm.register("unidades", {
+                  onChange: (e) => capturaForm.setValue("unidades", formatDecimalInput(e.target.value)),
+                })}
                 style={inputStyle}
                 inputMode="decimal"
                 placeholder="0"
@@ -1415,19 +1475,23 @@ export default function CollectionsPage() {
             <label style={fieldStyle}>
               <span style={fieldLabelStyle}>Comentario (opcional)</span>
               <input
-                value={capturaForm.notas}
-                onChange={(e) => setCapturaForm((p) => ({ ...p, notas: e.target.value }))}
+                {...capturaForm.register("notas")}
                 style={inputStyle}
                 placeholder="Ej. Periodo 1-31 mar"
               />
             </label>
             <div style={modalFooterStyle}>
-              <UiButton variant="secondary" onClick={() => { if (!capturaSaving) { setCapturaModal(null); setCapturaForm({ monto: "", unidades: "", notas: "" }); } }}>Cancelar</UiButton>
-              <UiButton onClick={handleCaptura} disabled={capturaSaving} icon={<Zap size={15} />}>
-                {capturaSaving ? "Guardando..." : "Confirmar monto"}
+              <UiButton variant="secondary" onClick={() => {
+                if (!capturaForm.formState.isSubmitting) {
+                  setCapturaContext(null);
+                  capturaForm.reset({ monto: "", unidades: "", notas: "" });
+                }
+              }}>Cancelar</UiButton>
+              <UiButton type="submit" disabled={capturaForm.formState.isSubmitting} icon={<Zap size={15} />}>
+                {capturaForm.formState.isSubmitting ? "Guardando..." : "Confirmar monto"}
               </UiButton>
             </div>
-          </div>
+          </form>
         ) : null}
       </Modal>
 
@@ -1435,25 +1499,29 @@ export default function CollectionsPage() {
       <Modal
         open={Boolean(eventoModal)}
         title="Cargo eventual"
-        onClose={() => { if (!eventoSaving) { setEventoModal(null); setEventoForm({ concepto: "", chargeType: "amenities", monto: "" }); } }}
+        onClose={() => {
+          if (!eventoForm.formState.isSubmitting) {
+            setEventoModal(null);
+            eventoForm.reset({ concepto: "", chargeType: "amenities", monto: "" });
+          }
+        }}
       >
-        <div style={{ display: "grid", gap: 16 }}>
+        <form onSubmit={handleCreateEvento} style={{ display: "grid", gap: 16 }}>
           <label style={fieldStyle}>
             <span style={fieldLabelStyle}>Concepto</span>
             <input
-              value={eventoForm.concepto}
-              onChange={(e) => setEventoForm((p) => ({ ...p, concepto: e.target.value }))}
+              {...eventoForm.register("concepto")}
               style={inputStyle}
               placeholder="Ej. Limpieza de terraza"
               autoFocus
             />
+            {eventoForm.formState.errors.concepto ? (
+              <p style={collectionsErrorTextStyle}>{eventoForm.formState.errors.concepto.message}</p>
+            ) : null}
           </label>
           <label style={fieldStyle}>
             <span style={fieldLabelStyle}>Tipo</span>
-            <AppSelect
-              value={eventoForm.chargeType}
-              onChange={(e) => setEventoForm((p) => ({ ...p, chargeType: e.target.value as CollectionChargeType }))}
-            >
+            <AppSelect {...eventoForm.register("chargeType")}>
               <option value="amenities">Amenidades</option>
               <option value="parking">Estacionamiento</option>
               <option value="penalty">Penalización</option>
@@ -1463,20 +1531,29 @@ export default function CollectionsPage() {
           <label style={fieldStyle}>
             <span style={fieldLabelStyle}>Monto</span>
             <input
-              value={eventoForm.monto}
-              onChange={(e) => setEventoForm((p) => ({ ...p, monto: formatDecimalInput(e.target.value) }))}
+              {...eventoForm.register("monto", {
+                onChange: (e) => eventoForm.setValue("monto", formatDecimalInput(e.target.value)),
+              })}
               style={inputStyle}
               inputMode="decimal"
               placeholder="0.00"
             />
+            {eventoForm.formState.errors.monto ? (
+              <p style={collectionsErrorTextStyle}>{eventoForm.formState.errors.monto.message}</p>
+            ) : null}
           </label>
           <div style={modalFooterStyle}>
-            <UiButton variant="secondary" onClick={() => { if (!eventoSaving) { setEventoModal(null); setEventoForm({ concepto: "", chargeType: "amenities", monto: "" }); } }}>Cancelar</UiButton>
-            <UiButton onClick={handleCreateEvento} disabled={eventoSaving} icon={<Plus size={15} />}>
-              {eventoSaving ? "Guardando..." : "Agregar cargo"}
+            <UiButton variant="secondary" onClick={() => {
+              if (!eventoForm.formState.isSubmitting) {
+                setEventoModal(null);
+                eventoForm.reset({ concepto: "", chargeType: "amenities", monto: "" });
+              }
+            }}>Cancelar</UiButton>
+            <UiButton type="submit" disabled={eventoForm.formState.isSubmitting} icon={<Plus size={15} />}>
+              {eventoForm.formState.isSubmitting ? "Guardando..." : "Agregar cargo"}
             </UiButton>
           </div>
-        </div>
+        </form>
       </Modal>
     </PageContainer>
   );

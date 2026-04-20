@@ -48,6 +48,10 @@ import {
 
 import toast from "react-hot-toast";
 
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -411,7 +415,33 @@ function Badge({ label, style }: { label: string; style?: CSSProperties }) {
 
 // ─── CREATE FORM DEFAULT ──────────────────────────────────────────────────────
 
-const EMPTY_CREATE_FORM = {
+const createTicketSchema = z.object({
+  title: z.string().min(1, "El título es requerido"),
+  building_id: z.string().min(1, "Selecciona un edificio"),
+  unit_id: z.string().optional(),
+  category: z.string().min(1, "Selecciona una categoría"),
+  priority: z.enum(["urgent", "high", "medium", "normal", "low"]),
+  log_type: z.enum(["corrective", "preventive", "inspection", "replacement"]),
+  description: z.string().optional(),
+  reported_by: z.string().optional(),
+});
+type CreateTicketFormValues = z.infer<typeof createTicketSchema>;
+
+const changeStatusSchema = z
+  .object({
+    statusValue: z.enum(["open", "in_progress", "resolved"]),
+    resolvedAt: z.string().optional(),
+  })
+  .refine(
+    (data) => data.statusValue !== "resolved" || Boolean(data.resolvedAt && data.resolvedAt.trim()),
+    {
+      message: "Selecciona la fecha de resolución",
+      path: ["resolvedAt"],
+    },
+  );
+type ChangeStatusFormValues = z.infer<typeof changeStatusSchema>;
+
+const EMPTY_CREATE_FORM: CreateTicketFormValues = {
   title: "",
   building_id: "",
   unit_id: "",
@@ -420,6 +450,13 @@ const EMPTY_CREATE_FORM = {
   log_type: "corrective",
   description: "",
   reported_by: "",
+};
+
+const maintenanceErrorTextStyle: React.CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
 };
 
 // ─── OC PDF HELPERS ───────────────────────────────────────────────────────────
@@ -570,7 +607,6 @@ export default function MaintenancePage() {
   const [savingMaterialsId, setSavingMaterialsId] = useState<string | null>(null);
   const [uploadingPhotoId, setUploadingPhotoId]   = useState<string | null>(null);
   const [generatingPdfId, setGeneratingPdfId]     = useState<string | null>(null);
-  const [generatingOcId,  setGeneratingOcId]      = useState<string | null>(null);
 
   /* ── Filters ────────────────────────────────────────────────────── */
   const [filterBuilding,  setFilterBuilding]  = useState("ALL");
@@ -580,17 +616,24 @@ export default function MaintenancePage() {
 
   /* ── Create ticket modal ────────────────────────────────────────── */
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createForm, setCreateForm]           = useState(EMPTY_CREATE_FORM);
   const [createUnits, setCreateUnits]         = useState<UnitOption[]>([]);
-  const [creating, setCreating]               = useState(false);
   const [createError, setCreateError]         = useState("");
+
+  const createTicketForm = useForm<CreateTicketFormValues>({
+    resolver: zodResolver(createTicketSchema),
+    defaultValues: EMPTY_CREATE_FORM,
+  });
+  const createBuildingId = createTicketForm.watch("building_id");
 
   /* ── Change status modal ────────────────────────────────────────── */
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [statusTarget, setStatusTarget]       = useState<Ticket | null>(null);
-  const [statusValue, setStatusValue]         = useState("open");
-  const [resolvedAt, setResolvedAt]           = useState("");
-  const [changingStatus, setChangingStatus]   = useState(false);
+
+  const changeStatusForm = useForm<ChangeStatusFormValues>({
+    resolver: zodResolver(changeStatusSchema),
+    defaultValues: { statusValue: "open", resolvedAt: "" },
+  });
+  const statusValueWatched = changeStatusForm.watch("statusValue");
 
   /* ── Calendar state — intacto desde v1 ─────────────────────────── */
   const [recentLogs, setRecentLogs]           = useState<EnrichedRecentLogRow[]>([]);
@@ -852,49 +895,40 @@ export default function MaintenancePage() {
     setPurchaseOrdersByTicket((prev) => ({ ...prev, [ticketId]: rows }));
   }
 
-  async function handleCreateTicket(e: FormEvent) {
-    e.preventDefault();
+  const handleCreateTicket = createTicketForm.handleSubmit(async (data) => {
     if (!user?.company_id) return;
-    if (!createForm.title.trim())   { setCreateError("El título es requerido."); return; }
-    if (!createForm.building_id)    { setCreateError("Selecciona un edificio."); return; }
-    if (!createForm.category)       { setCreateError("Selecciona una categoría."); return; }
-
-    setCreating(true);
     setCreateError("");
 
     const { error } = await supabase.from("maintenance_logs").insert({
       company_id:              user.company_id,
-      title:                   createForm.title.trim(),
-      building_id:             createForm.building_id || null,
-      unit_id:                 createForm.unit_id     || null,
-      category_name_snapshot:  createForm.category    || null,
-      priority:                createForm.priority,
-      log_type:                createForm.log_type,
-      description:             createForm.description.trim() || null,
-      reported_by:             createForm.reported_by.trim() || null,
+      title:                   data.title.trim(),
+      building_id:             data.building_id || null,
+      unit_id:                 data.unit_id     || null,
+      category_name_snapshot:  data.category    || null,
+      priority:                data.priority,
+      log_type:                data.log_type,
+      description:             data.description?.trim() || null,
+      reported_by:             data.reported_by?.trim() || null,
       status:                  "open",
     });
 
     if (error) {
       setCreateError(error.message);
-      setCreating(false);
       return;
     }
 
     setShowCreateModal(false);
-    setCreateForm(EMPTY_CREATE_FORM);
+    createTicketForm.reset(EMPTY_CREATE_FORM);
     setCreateUnits([]);
-    setCreating(false);
     await loadPageData();
-  }
+  });
 
-  async function handleChangeStatus() {
+  const handleChangeStatus = changeStatusForm.handleSubmit(async (data) => {
     if (!statusTarget) return;
-    setChangingStatus(true);
 
-    const updateData: Record<string, string | null> = { status: statusValue };
-    if (statusValue === "resolved") {
-      updateData.resolved_at = resolvedAt || new Date().toISOString().slice(0, 10);
+    const updateData: Record<string, string | null> = { status: data.statusValue };
+    if (data.statusValue === "resolved") {
+      updateData.resolved_at = data.resolvedAt || new Date().toISOString().slice(0, 10);
     } else {
       updateData.resolved_at = null;
     }
@@ -908,7 +942,7 @@ export default function MaintenancePage() {
       setTickets((prev) =>
         prev.map((t) =>
           t.id === statusTarget.id
-            ? { ...t, status: statusValue, resolved_at: updateData.resolved_at ?? null }
+            ? { ...t, status: data.statusValue, resolved_at: updateData.resolved_at ?? null }
             : t
         )
       );
@@ -916,8 +950,7 @@ export default function MaintenancePage() {
 
     setShowStatusModal(false);
     setStatusTarget(null);
-    setChangingStatus(false);
-  }
+  });
 
   async function handleArchive(ticketId: string) {
     setOpenActionsId(null);
@@ -1069,134 +1102,37 @@ export default function MaintenancePage() {
     setGeneratingPdfId(null);
   }
 
-  /* ── Órdenes de compra — un PDF por proveedor ───────────────────── */
-  async function handleGeneratePurchaseOrders(ticket: Ticket) {
-    if (!user?.company_id) return;
-
-    const mats = materialsByTicket[ticket.id] || [];
-    const matsWithSupplier = mats.filter((m) => m.supplier_id);
-    if (matsWithSupplier.length === 0) {
-      setMsg("No hay materiales con proveedor asignado.");
+  /* Carga las unidades del edificio seleccionado cada vez que cambia el building_id del form. */
+  useEffect(() => {
+    if (!createBuildingId) {
+      setCreateUnits([]);
       return;
     }
-
-    setGeneratingOcId(ticket.id);
-    const toastId = toast.loading("Generando órdenes de compra...");
-
-    try {
-      const supplierIds = Array.from(new Set(matsWithSupplier.map((m) => m.supplier_id!)));
-      const { data: supplierRows } = await supabase
-        .from("suppliers")
-        .select("id, name, tax_id, cfdi_use, client_number, contact_email, contact_phone")
-        .in("id", supplierIds);
-
-      type SupplierFull = {
-        id: string; name: string;
-        tax_id: string | null; cfdi_use: string | null; client_number: string | null;
-        contact_email: string | null; contact_phone: string | null;
-      };
-      const supplierMap = new Map<string, SupplierFull>(
-        ((supplierRows || []) as SupplierFull[]).map((s) => [s.id, s])
-      );
-
-      /* Firmante por defecto */
-      const { data: signerRow } = await supabase
-        .from("purchase_order_signers")
-        .select("name")
-        .eq("company_id", user.company_id)
-        .eq("is_default", true)
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from("units")
+        .select("id, unit_number, display_code, building_id")
+        .eq("building_id", createBuildingId)
         .is("deleted_at", null)
-        .maybeSingle();
-      const defaultSignerName = (signerRow as { name: string } | null)?.name || "";
-
-      const groups = new Map<string, Material[]>();
-      for (const m of matsWithSupplier) {
-        const sid = m.supplier_id!;
-        if (!groups.has(sid)) groups.set(sid, []);
-        groups.get(sid)!.push(m);
+        .order("unit_number");
+      if (!cancelled) {
+        setCreateUnits((data as UnitOption[]) || []);
       }
-
-      const { default: jsPDF } = await import("jspdf");
-
-      const year = new Date().getFullYear();
-      const ticketNumRaw = String(ticket.ticket_number || ticket.id.slice(0, 6)).toUpperCase();
-
-      /* Preparar ambos logos una sola vez */
-      const printSrc = companyLogoPrint || companyLogoUrl;
-      const logoPrint = printSrc    ? await prepareLogoForPDF(printSrc,    110, 45) : null;
-      const logoGroup = logoGroupUrl ? await prepareLogoForPDF(logoGroupUrl, 80, 45) : null;
-
-      const buildingName = ticket.buildings?.name || "";
-
-      const entries = Array.from(groups.entries());
-      for (let i = 0; i < entries.length; i++) {
-        const [supplierId, supplierMats] = entries[i];
-        const supplier = supplierMap.get(supplierId);
-        if (!supplier) continue;
-
-        const supplierCode = supplier.name
-          .toUpperCase()
-          .replace(/[^A-Z0-9]/g, "")
-          .slice(0, 6) || supplier.id.slice(0, 6).toUpperCase();
-        const folio = `OC-${year}-${ticketNumRaw}-${supplierCode}`;
-
-        /* renderPurchaseOrderPage ahora es async y se auto-descarga vía html2pdf */
-        await renderPurchaseOrderPage(null, {
-          folio,
-          date:               new Date(),
-          supplierName:       supplier.name,
-          supplierTaxId:      supplier.tax_id,
-          cfdiUse:            supplier.cfdi_use,
-          clientNumber:       supplier.client_number,
-          branchName:         null,
-          items:              supplierMats.map((m) => ({ quantity: m.quantity, unit: m.unit, description: m.description, unitPrice: 0, unit_price: 0 })),
-          buildingName,
-          projectDescription: ticket.title || "",
-          responsibleName:    "",
-          responsiblePhone:   "",
-          signerName:         defaultSignerName,
-          logoPrint,
-          logoGroup,
-          company: { legalName, address: companyAddress, taxId: companyTaxId, phone: companyPhone, email: companyEmail, zipCode: companyZipCode },
-          companyPhone,
-          purchasesContactPhone,
-          purchasesContactEmail,
-        });
-      }
-
-      toast.dismiss(toastId);
-      toast.success(`Se generaron ${entries.length} orden(es) de compra.`);
-    } catch {
-      toast.dismiss(toastId);
-      toast.error("Error al generar las órdenes de compra.");
-    }
-
-    setGeneratingOcId(null);
-  }
-
-  async function handleCreateBuildingChange(buildingId: string) {
-    setCreateForm((prev) => ({ ...prev, building_id: buildingId, unit_id: "" }));
-    if (!buildingId) { setCreateUnits([]); return; }
-
-    const { data } = await supabase
-      .from("units")
-      .select("id, unit_number, display_code, building_id")
-      .eq("building_id", buildingId)
-      .is("deleted_at", null)
-      .order("unit_number");
-
-    setCreateUnits((data as UnitOption[]) || []);
-  }
+    })();
+    return () => { cancelled = true; };
+  }, [createBuildingId]);
 
   function openStatusModal(ticket: Ticket) {
     setOpenActionsId(null);
     setStatusTarget(ticket);
-    setStatusValue(ticket.status || "open");
-    setResolvedAt(
-      ticket.resolved_at
+    const currentStatus = (ticket.status as ChangeStatusFormValues["statusValue"]) || "open";
+    changeStatusForm.reset({
+      statusValue: currentStatus,
+      resolvedAt: ticket.resolved_at
         ? ticket.resolved_at.slice(0, 10)
-        : new Date().toISOString().slice(0, 10)
-    );
+        : new Date().toISOString().slice(0, 10),
+    });
     setShowStatusModal(true);
   }
 
@@ -1639,9 +1575,6 @@ export default function MaintenancePage() {
                     onGeneratePDF={() => handleGeneratePDF(ticket)}
                     generatingPdf={generatingPdfId === ticket.id}
                     suppliers={suppliers}
-                    materials={materialsByTicket[ticket.id] || []}
-                    onGeneratePurchaseOrders={() => handleGeneratePurchaseOrders(ticket)}
-                    generatingOc={generatingOcId === ticket.id}
                     purchaseOrders={purchaseOrdersByTicket[ticket.id] || []}
                     onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
                   />
@@ -1850,32 +1783,41 @@ export default function MaintenancePage() {
           <AppFormField label="Título del problema" required>
             <input
               style={INPUT_STYLE}
-              value={createForm.title}
-              onChange={(e) => setCreateForm((p) => ({ ...p, title: e.target.value }))}
+              {...createTicketForm.register("title")}
               placeholder="Ej. Fuga de agua en cocina"
             />
+            {createTicketForm.formState.errors.title ? (
+              <p style={maintenanceErrorTextStyle}>
+                {createTicketForm.formState.errors.title.message}
+              </p>
+            ) : null}
           </AppFormField>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <AppFormField label="Edificio" required>
               <select
                 style={INPUT_STYLE}
-                value={createForm.building_id}
-                onChange={(e) => handleCreateBuildingChange(e.target.value)}
+                {...createTicketForm.register("building_id", {
+                  onChange: () => createTicketForm.setValue("unit_id", ""),
+                })}
               >
                 <option value="">Seleccionar...</option>
                 {buildings.map((b) => (
                   <option key={b.id} value={b.id}>{b.name}</option>
                 ))}
               </select>
+              {createTicketForm.formState.errors.building_id ? (
+                <p style={maintenanceErrorTextStyle}>
+                  {createTicketForm.formState.errors.building_id.message}
+                </p>
+              ) : null}
             </AppFormField>
 
             <AppFormField label="Departamento">
               <select
                 style={INPUT_STYLE}
-                value={createForm.unit_id}
-                onChange={(e) => setCreateForm((p) => ({ ...p, unit_id: e.target.value }))}
-                disabled={!createForm.building_id}
+                {...createTicketForm.register("unit_id")}
+                disabled={!createBuildingId}
               >
                 <option value="">Sin departamento</option>
                 {createUnits.map((u) => (
@@ -1889,21 +1831,24 @@ export default function MaintenancePage() {
             <AppFormField label="Categoría" required>
               <select
                 style={INPUT_STYLE}
-                value={createForm.category}
-                onChange={(e) => setCreateForm((p) => ({ ...p, category: e.target.value }))}
+                {...createTicketForm.register("category")}
               >
                 <option value="">Seleccionar...</option>
                 {TICKET_CATEGORIES.map((c) => (
                   <option key={c} value={c}>{c}</option>
                 ))}
               </select>
+              {createTicketForm.formState.errors.category ? (
+                <p style={maintenanceErrorTextStyle}>
+                  {createTicketForm.formState.errors.category.message}
+                </p>
+              ) : null}
             </AppFormField>
 
             <AppFormField label="Prioridad" required>
               <select
                 style={INPUT_STYLE}
-                value={createForm.priority}
-                onChange={(e) => setCreateForm((p) => ({ ...p, priority: e.target.value }))}
+                {...createTicketForm.register("priority")}
               >
                 {PRIORITIES.map((p) => (
                   <option key={p.value} value={p.value}>{p.label}</option>
@@ -1916,8 +1861,7 @@ export default function MaintenancePage() {
             <AppFormField label="Tipo" required>
               <select
                 style={INPUT_STYLE}
-                value={createForm.log_type}
-                onChange={(e) => setCreateForm((p) => ({ ...p, log_type: e.target.value }))}
+                {...createTicketForm.register("log_type")}
               >
                 {LOG_TYPES.map((t) => (
                   <option key={t.value} value={t.value}>{t.label}</option>
@@ -1930,8 +1874,7 @@ export default function MaintenancePage() {
           <AppFormField label="Reportado por">
             <input
               style={INPUT_STYLE}
-              value={createForm.reported_by}
-              onChange={(e) => setCreateForm((p) => ({ ...p, reported_by: e.target.value }))}
+              {...createTicketForm.register("reported_by")}
               placeholder="Nombre de quien reporta"
             />
           </AppFormField>
@@ -1939,8 +1882,7 @@ export default function MaintenancePage() {
           <AppFormField label="Descripción">
             <textarea
               style={TEXTAREA_STYLE}
-              value={createForm.description}
-              onChange={(e) => setCreateForm((p) => ({ ...p, description: e.target.value }))}
+              {...createTicketForm.register("description")}
               placeholder="Descripción detallada del problema..."
             />
           </AppFormField>
@@ -1949,8 +1891,8 @@ export default function MaintenancePage() {
             <UiButton type="button" onClick={() => setShowCreateModal(false)}>
               Cancelar
             </UiButton>
-            <UiButton type="submit" disabled={creating}>
-              {creating ? "Creando..." : "Crear ticket"}
+            <UiButton type="submit" disabled={createTicketForm.formState.isSubmitting}>
+              {createTicketForm.formState.isSubmitting ? "Creando..." : "Crear ticket"}
             </UiButton>
           </div>
         </form>
@@ -1964,7 +1906,7 @@ export default function MaintenancePage() {
         maxWidth="400px"
       >
         {statusTarget ? (
-          <div style={{ display: "grid", gap: 16 }}>
+          <form onSubmit={handleChangeStatus} style={{ display: "grid", gap: 16 }}>
             <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
               Ticket:{" "}
               <strong style={{ color: "var(--text-primary)" }}>
@@ -1975,8 +1917,7 @@ export default function MaintenancePage() {
             <AppFormField label="Nuevo estado">
               <select
                 style={INPUT_STYLE}
-                value={statusValue}
-                onChange={(e) => setStatusValue(e.target.value)}
+                {...changeStatusForm.register("statusValue")}
               >
                 {TICKET_STATUSES.map((s) => (
                   <option key={s.value} value={s.value}>{s.label}</option>
@@ -1984,14 +1925,18 @@ export default function MaintenancePage() {
               </select>
             </AppFormField>
 
-            {statusValue === "resolved" ? (
+            {statusValueWatched === "resolved" ? (
               <AppFormField label="Fecha de resolución">
                 <input
                   type="date"
                   style={INPUT_STYLE}
-                  value={resolvedAt}
-                  onChange={(e) => setResolvedAt(e.target.value)}
+                  {...changeStatusForm.register("resolvedAt")}
                 />
+                {changeStatusForm.formState.errors.resolvedAt ? (
+                  <p style={maintenanceErrorTextStyle}>
+                    {changeStatusForm.formState.errors.resolvedAt.message}
+                  </p>
+                ) : null}
               </AppFormField>
             ) : null}
 
@@ -1999,11 +1944,11 @@ export default function MaintenancePage() {
               <UiButton type="button" onClick={() => setShowStatusModal(false)}>
                 Cancelar
               </UiButton>
-              <UiButton onClick={handleChangeStatus} disabled={changingStatus}>
-                {changingStatus ? "Guardando..." : "Confirmar"}
+              <UiButton type="submit" disabled={changeStatusForm.formState.isSubmitting}>
+                {changeStatusForm.formState.isSubmitting ? "Guardando..." : "Confirmar"}
               </UiButton>
             </div>
-          </div>
+          </form>
         ) : null}
       </Modal>
 
@@ -2032,9 +1977,6 @@ function TicketCard({
   onGeneratePDF,
   generatingPdf,
   suppliers,
-  materials,
-  onGeneratePurchaseOrders,
-  generatingOc,
   purchaseOrders,
   onOpenPurchaseOrder,
 }: {
@@ -2056,9 +1998,6 @@ function TicketCard({
   onGeneratePDF: () => Promise<void>;
   generatingPdf: boolean;
   suppliers: SupplierOption[];
-  materials: Material[];
-  onGeneratePurchaseOrders: () => Promise<void>;
-  generatingOc: boolean;
   purchaseOrders: TicketPurchaseOrder[];
   onOpenPurchaseOrder: (oc: TicketPurchaseOrder) => void;
 }) {
@@ -2453,25 +2392,6 @@ function TicketCard({
                 {generatingPdf ? "Generando..." : "Generar PDF"}
               </button>
 
-              {materials.some((m) => m.supplier_id) ? (
-                <button
-                  type="button"
-                  onClick={onGeneratePurchaseOrders}
-                  disabled={generatingOc}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "8px 14px", borderRadius: 8,
-                    border: "1px solid var(--border-default)",
-                    background: "var(--bg-card)", color: "var(--text-primary)",
-                    fontSize: 13, fontWeight: 600,
-                    cursor: generatingOc ? "wait" : "pointer",
-                    opacity: generatingOc ? 0.7 : 1,
-                  }}
-                >
-                  <FileText size={14} />
-                  {generatingOc ? "Generando..." : "Generar OC"}
-                </button>
-              ) : null}
             </div>
 
             {purchaseOrders.length > 0 ? (

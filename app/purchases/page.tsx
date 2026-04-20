@@ -29,7 +29,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties } from "react";
 import {
   CheckCircle2,
   ChevronDown,
@@ -50,6 +50,9 @@ import {
 
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
@@ -175,21 +178,44 @@ const MONTH_LABELS_LONG = [
 
 const EMPTY_ITEM: ItemDraft = { description: "", quantity: "1", unit: "Pieza", unit_price: "" };
 
-type ManualForm = {
-  supplierId:          string;
-  supplierBranchId:    string;
-  buildingId:          string;
-  projectDescription:  string;
-  responsibleName:     string;
-  responsiblePhone:    string;
-  signerName:          string;
-  items:               ItemDraft[];
-};
+const itemDraftSchema = z.object({
+  description: z.string(),
+  quantity:    z.string(),
+  unit:        z.string(),
+  unit_price:  z.string(),
+});
 
-const EMPTY_MANUAL_FORM: ManualForm = {
+const manualFormSchema = z.object({
+  supplierId:         z.string().min(1, "Selecciona un proveedor"),
+  supplierBranchId:   z.string().optional(),
+  buildingId:         z.string().optional(),
+  projectDescription: z.string().optional(),
+  responsibleName:    z.string().optional(),
+  responsiblePhone:   z.string().optional(),
+  signerName:         z.string().optional(),
+  items: z
+    .array(itemDraftSchema)
+    .refine(
+      (items) =>
+        items.some(
+          (it) => it.description.trim() !== "" && Number(it.quantity) > 0,
+        ),
+      { message: "Agrega al menos un material válido" },
+    ),
+});
+type ManualFormValues = z.infer<typeof manualFormSchema>;
+
+const EMPTY_MANUAL_FORM: ManualFormValues = {
   supplierId: "", supplierBranchId: "", buildingId: "", projectDescription: "",
   responsibleName: "", responsiblePhone: "", signerName: "",
   items: [{ ...EMPTY_ITEM }],
+};
+
+const purchasesErrorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
 };
 
 /* ── Component ─────────────────────────────────────────────────── */
@@ -245,9 +271,29 @@ export default function PurchasesPage() {
   const [editingOrderId,  setEditingOrderId]  = useState<string | null>(null);
 
   /* Form manual */
-  const [manualForm, setManualForm] = useState<ManualForm>(EMPTY_MANUAL_FORM);
-  const [saving,     setSaving]     = useState(false);
-  const [formError,  setFormError]  = useState("");
+  const {
+    register,
+    handleSubmit: rhfSubmit,
+    reset,
+    watch,
+    setValue,
+    control,
+    formState: { errors, isSubmitting },
+  } = useForm<ManualFormValues>({
+    resolver: zodResolver(manualFormSchema),
+    defaultValues: EMPTY_MANUAL_FORM,
+  });
+  const { fields: itemFields, append: appendItem, remove: removeItemField, update: updateItemField } = useFieldArray({
+    control,
+    name: "items",
+  });
+  const manualSupplierId       = watch("supplierId");
+  const manualSupplierBranchId = watch("supplierBranchId");
+  const manualResponsibleName  = watch("responsibleName");
+  const manualSignerName       = watch("signerName");
+  const manualItems            = watch("items");
+
+  const [formError, setFormError] = useState("");
   const [customCollectorMode, setCustomCollectorMode] = useState(false);
 
   /* PDF loading state */
@@ -551,7 +597,7 @@ export default function PurchasesPage() {
 
   function openCreateModal() {
     const defaultSigner = signers.find((s) => s.is_default)?.name || "";
-    setManualForm({ ...EMPTY_MANUAL_FORM, signerName: defaultSigner });
+    reset({ ...EMPTY_MANUAL_FORM, signerName: defaultSigner });
     setFormError("");
     setCustomCollectorMode(false);
     setCustomSignerMode(false);
@@ -563,7 +609,7 @@ export default function PurchasesPage() {
   function closeCreateModal() {
     setShowCreateModal(false);
     setEditingOrderId(null);
-    setManualForm(EMPTY_MANUAL_FORM);
+    reset(EMPTY_MANUAL_FORM);
     setFormError("");
     setCustomCollectorMode(false);
     setCustomSignerMode(false);
@@ -572,29 +618,24 @@ export default function PurchasesPage() {
   }
 
   function updateItem(idx: number, patch: Partial<ItemDraft>) {
-    setManualForm(prev => ({
-      ...prev,
-      items: prev.items.map((it, i) => i === idx ? { ...it, ...patch } : it),
-    }));
+    const current = manualItems[idx];
+    if (!current) return;
+    updateItemField(idx, { ...current, ...patch });
   }
 
   function addItem() {
-    setManualForm(prev => ({ ...prev, items: [...prev.items, { ...EMPTY_ITEM }] }));
+    appendItem({ ...EMPTY_ITEM });
   }
 
   function removeItem(idx: number) {
-    setManualForm(prev => ({
-      ...prev,
-      items: prev.items.length <= 1 ? prev.items : prev.items.filter((_, i) => i !== idx),
-    }));
+    if (itemFields.length <= 1) return;
+    removeItemField(idx);
   }
 
-  async function handleCreate(e: FormEvent) {
-    e.preventDefault();
+  const handleCreate = rhfSubmit(async (data) => {
     if (!user?.company_id) return;
-    if (!manualForm.supplierId) { setFormError("Selecciona un proveedor."); return; }
 
-    const validItems = manualForm.items.filter(
+    const validItems = data.items.filter(
       (it) => it.description.trim() && Number(it.quantity) > 0
     );
     if (validItems.length === 0) {
@@ -602,25 +643,24 @@ export default function PurchasesPage() {
       return;
     }
 
-    setSaving(true);
     setFormError("");
 
     /* Prefijo del proveedor (persiste en la OC — se usa en folio y en lectura) */
-    const selectedSupplier = suppliers.find((s) => s.id === manualForm.supplierId);
+    const selectedSupplier = suppliers.find((s) => s.id === data.supplierId);
     const supplierPrefix   = computeSupplierPrefix(selectedSupplier);
 
     const payload = {
-      supplier_id:          manualForm.supplierId,
-      supplier_branch_id:   manualForm.supplierBranchId || null,
+      supplier_id:          data.supplierId,
+      supplier_branch_id:   data.supplierBranchId || null,
       supplier_prefix:      supplierPrefix,
-      building_id:          manualForm.buildingId || null,
-      project_description:  manualForm.projectDescription.trim() || null,
-      responsible_name:     manualForm.responsibleName.trim()   || null,
-      responsible_phone:    manualForm.responsiblePhone.trim()  || null,
-      signer_name:          manualForm.signerName.trim()        || null,
+      building_id:          data.buildingId || null,
+      project_description:  data.projectDescription?.trim() || null,
+      responsible_name:     data.responsibleName?.trim()   || null,
+      responsible_phone:    data.responsiblePhone?.trim()  || null,
+      signer_name:          data.signerName?.trim()        || null,
     };
 
-    console.log("[purchases] manualForm snapshot:", manualForm);
+    console.log("[purchases] manualForm snapshot:", data);
     console.log("[purchases] payload:", payload);
     console.log("[purchases] editingOrderId:", editingOrderId);
 
@@ -636,7 +676,6 @@ export default function PurchasesPage() {
         .select();
       console.log("[purchases] UPDATE result:", { data: updData, error: updErr });
       if (updErr) {
-        setSaving(false);
         setFormError(`No se pudo actualizar: ${updErr.message}`);
         return;
       }
@@ -671,7 +710,6 @@ export default function PurchasesPage() {
         .single();
       console.log("[purchases] INSERT result:", { data: inserted, error: insertErr });
       if (insertErr || !inserted) {
-        setSaving(false);
         setFormError("No se pudo crear la orden de compra.");
         return;
       }
@@ -694,7 +732,7 @@ export default function PurchasesPage() {
     console.log("[purchases] items INSERT result:", { data: itemsIns, error: itemsErr });
 
     /* Si es un firmante nuevo (no estaba en la lista), persistir para futuras OC */
-    const trimmedSigner = manualForm.signerName.trim();
+    const trimmedSigner = data.signerName?.trim() || "";
     if (trimmedSigner) {
       const signerExists = signers.some(
         (s) => s.name.toLowerCase() === trimmedSigner.toLowerCase()
@@ -714,8 +752,8 @@ export default function PurchasesPage() {
     }
 
     /* Si es un responsable nuevo (no estaba en el historial), persistir */
-    const trimmedCollectorName  = manualForm.responsibleName.trim();
-    const trimmedCollectorPhone = manualForm.responsiblePhone.trim();
+    const trimmedCollectorName  = data.responsibleName?.trim() || "";
+    const trimmedCollectorPhone = data.responsiblePhone?.trim() || "";
     if (trimmedCollectorName) {
       const collectorExists = collectors.some(
         (c) => c.name.toLowerCase() === trimmedCollectorName.toLowerCase()
@@ -745,13 +783,12 @@ export default function PurchasesPage() {
       setItemsByOrderId((prev) => ({ ...prev, [tid]: (freshItems as POItem[]) || [] }));
     }
 
-    setSaving(false);
     const wasEdit = !!editingOrderId;
     closeCreateModal();
     setMsg(wasEdit ? "Orden de compra actualizada correctamente." : "Orden de compra creada correctamente.");
     /* Recargar lista completa para refrescar conteos, total, signer_name, etc. */
     await loadAll(user.company_id);
-  }
+  });
 
   /* ── Expand / load items ──────────────────────────────────────── */
 
@@ -817,7 +854,7 @@ export default function PurchasesPage() {
     }
 
     setEditingOrderId(order.id);
-    setManualForm({
+    reset({
       supplierId:          order.supplier_id,
       supplierBranchId:    order.supplier_branch_id || "",
       buildingId:          order.building_id || "",
@@ -1513,8 +1550,9 @@ export default function PurchasesPage() {
                   setSupplierSearch(e.target.value);
                   setShowSupplierDropdown(true);
                   /* Al editar el texto, invalidamos la selección previa */
-                  if (manualForm.supplierId) {
-                    setManualForm({ ...manualForm, supplierId: "", supplierBranchId: "" });
+                  if (manualSupplierId) {
+                    setValue("supplierId", "");
+                    setValue("supplierBranchId", "");
                   }
                 }}
                 /* onBlur diferido para permitir click en el dropdown */
@@ -1536,11 +1574,8 @@ export default function PurchasesPage() {
                       key={s.id}
                       onMouseDown={(e) => e.preventDefault()} /* evita perder foco antes del click */
                       onClick={() => {
-                        setManualForm({
-                          ...manualForm,
-                          supplierId:       s.id,
-                          supplierBranchId: "",
-                        });
+                        setValue("supplierId", s.id);
+                        setValue("supplierBranchId", "");
                         setSupplierSearch(s.name);
                         setShowSupplierDropdown(false);
                       }}
@@ -1550,7 +1585,7 @@ export default function PurchasesPage() {
                         fontSize: 14,
                         color: "var(--text-primary)",
                         borderBottom: "1px solid var(--border-default)",
-                        background: manualForm.supplierId === s.id ? "var(--bg-input)" : "transparent",
+                        background: manualSupplierId === s.id ? "var(--bg-input)" : "transparent",
                       }}
                     >
                       {s.name}
@@ -1577,10 +1612,13 @@ export default function PurchasesPage() {
                 </div>
               ) : null}
             </div>
+            {errors.supplierId ? (
+              <p style={purchasesErrorTextStyle}>{errors.supplierId.message}</p>
+            ) : null}
           </AppFormField>
 
-          {manualForm.supplierId ? (() => {
-            const selected  = suppliers.find(s => s.id === manualForm.supplierId);
+          {manualSupplierId ? (() => {
+            const selected  = suppliers.find(s => s.id === manualSupplierId);
             const branches  = selected?.branches || [];
             return (
               <AppFormField label="Sucursal">
@@ -1597,8 +1635,7 @@ export default function PurchasesPage() {
                 ) : (
                   <select
                     style={INPUT_STYLE}
-                    value={manualForm.supplierBranchId}
-                    onChange={(e) => setManualForm({ ...manualForm, supplierBranchId: e.target.value })}
+                    {...register("supplierBranchId")}
                   >
                     <option value="">Sin sucursal específica (datos generales)</option>
                     {branches.map(b => (
@@ -1613,8 +1650,7 @@ export default function PurchasesPage() {
           <AppFormField label="Proyecto / Edificio">
             <select
               style={INPUT_STYLE}
-              value={manualForm.buildingId}
-              onChange={(e) => setManualForm({ ...manualForm, buildingId: e.target.value })}
+              {...register("buildingId")}
             >
               <option value="">Sin edificio específico</option>
               {buildings.map(b => (
@@ -1626,8 +1662,7 @@ export default function PurchasesPage() {
           <AppFormField label="Descripción del proyecto">
             <textarea
               style={{ ...INPUT_STYLE, resize: "vertical", minHeight: 60 }}
-              value={manualForm.projectDescription}
-              onChange={(e) => setManualForm({ ...manualForm, projectDescription: e.target.value })}
+              {...register("projectDescription")}
               placeholder="Breve descripción del propósito de la compra..."
             />
           </AppFormField>
@@ -1637,30 +1672,30 @@ export default function PurchasesPage() {
               {customCollectorMode ? (
                 <input
                   style={INPUT_STYLE}
-                  value={manualForm.responsibleName}
-                  onChange={(e) => setManualForm({ ...manualForm, responsibleName: e.target.value })}
+                  {...register("responsibleName")}
                   placeholder="Nombre completo"
                   autoFocus
                 />
               ) : (
                 <select
                   style={INPUT_STYLE}
-                  value={manualForm.responsibleName}
+                  value={manualResponsibleName || ""}
                   onChange={(e) => {
                     const val = e.target.value;
                     if (val === "__OTHER__") {
                       setCustomCollectorMode(true);
-                      setManualForm({ ...manualForm, responsibleName: "", responsiblePhone: "" });
+                      setValue("responsibleName", "");
+                      setValue("responsiblePhone", "");
                     } else if (val === "") {
-                      setManualForm({ ...manualForm, responsibleName: "", responsiblePhone: "" });
+                      setValue("responsibleName", "");
+                      setValue("responsiblePhone", "");
                     } else {
                       /* Autocompletar teléfono del collector seleccionado */
                       const selected = collectors.find((c) => c.name === val);
-                      setManualForm({
-                        ...manualForm,
-                        responsibleName:  val,
-                        responsiblePhone: selected?.phone || manualForm.responsiblePhone,
-                      });
+                      setValue("responsibleName", val);
+                      if (selected?.phone) {
+                        setValue("responsiblePhone", selected.phone);
+                      }
                     }
                   }}
                 >
@@ -1676,8 +1711,7 @@ export default function PurchasesPage() {
             <AppFormField label="Teléfono del responsable">
               <input
                 style={INPUT_STYLE}
-                value={manualForm.responsiblePhone}
-                onChange={(e) => setManualForm({ ...manualForm, responsiblePhone: e.target.value })}
+                {...register("responsiblePhone")}
                 placeholder="+52 ..."
               />
             </AppFormField>
@@ -1687,21 +1721,20 @@ export default function PurchasesPage() {
             {customSignerMode ? (
               <input
                 style={INPUT_STYLE}
-                value={manualForm.signerName}
-                onChange={(e) => setManualForm({ ...manualForm, signerName: e.target.value })}
+                {...register("signerName")}
                 placeholder="Nombre del firmante"
                 autoFocus
               />
             ) : (
               <select
                 style={INPUT_STYLE}
-                value={manualForm.signerName}
+                value={manualSignerName || ""}
                 onChange={(e) => {
                   if (e.target.value === "__OTHER__") {
                     setCustomSignerMode(true);
-                    setManualForm({ ...manualForm, signerName: "" });
+                    setValue("signerName", "");
                   } else {
-                    setManualForm({ ...manualForm, signerName: e.target.value });
+                    setValue("signerName", e.target.value);
                   }
                 }}
               >
@@ -1731,28 +1764,25 @@ export default function PurchasesPage() {
             </div>
 
             <div style={{ display: "grid", gap: 8 }}>
-              {manualForm.items.map((it, idx) => (
-                <div key={idx} style={{ display: "grid", gridTemplateColumns: "80px 130px 1fr 120px 32px", gap: 8, alignItems: "center" }}>
+              {itemFields.map((field, idx) => (
+                <div key={field.id} style={{ display: "grid", gridTemplateColumns: "80px 130px 1fr 120px 32px", gap: 8, alignItems: "center" }}>
                   <input
                     type="number"
                     min="0"
                     step="any"
                     style={{ ...INPUT_STYLE, textAlign: "center" }}
-                    value={it.quantity}
-                    onChange={(e) => updateItem(idx, { quantity: e.target.value })}
+                    {...register(`items.${idx}.quantity` as const)}
                   />
                   <select
                     style={INPUT_STYLE}
-                    value={it.unit}
-                    onChange={(e) => updateItem(idx, { unit: e.target.value })}
+                    {...register(`items.${idx}.unit` as const)}
                   >
                     {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                   </select>
                   <input
                     style={INPUT_STYLE}
                     placeholder="Descripción del material"
-                    value={it.description}
-                    onChange={(e) => updateItem(idx, { description: e.target.value })}
+                    {...register(`items.${idx}.description` as const)}
                   />
                   <input
                     type="number"
@@ -1760,19 +1790,18 @@ export default function PurchasesPage() {
                     step="any"
                     style={INPUT_STYLE}
                     placeholder="$"
-                    value={it.unit_price}
-                    onChange={(e) => updateItem(idx, { unit_price: e.target.value })}
+                    {...register(`items.${idx}.unit_price` as const)}
                   />
                   <button
                     type="button"
                     onClick={() => removeItem(idx)}
-                    disabled={manualForm.items.length <= 1}
+                    disabled={itemFields.length <= 1}
                     style={{
                       width: 32, height: 32, borderRadius: 8,
                       border: "1px solid var(--border-default)",
                       background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
-                      cursor: manualForm.items.length <= 1 ? "not-allowed" : "pointer",
-                      opacity: manualForm.items.length <= 1 ? 0.4 : 1,
+                      cursor: itemFields.length <= 1 ? "not-allowed" : "pointer",
+                      opacity: itemFields.length <= 1 ? 0.4 : 1,
                       display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
                     }}
                   >
@@ -1781,6 +1810,11 @@ export default function PurchasesPage() {
                 </div>
               ))}
             </div>
+            {errors.items ? (
+              <p style={purchasesErrorTextStyle}>
+                {errors.items.message || errors.items.root?.message}
+              </p>
+            ) : null}
 
             <button
               type="button"
@@ -1808,8 +1842,8 @@ export default function PurchasesPage() {
             <UiButton type="button" variant="secondary" onClick={closeCreateModal}>
               Cancelar
             </UiButton>
-            <UiButton type="submit" variant="primary" disabled={saving}>
-              {saving
+            <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+              {isSubmitting
                 ? (editingOrderId ? "Guardando..." : "Creando...")
                 : (editingOrderId ? "Guardar cambios" : "Crear orden de compra")}
             </UiButton>

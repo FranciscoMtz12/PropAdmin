@@ -30,7 +30,10 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   CheckCircle2,
   ChevronDown,
@@ -116,6 +119,19 @@ type ItemDraft = {
   invoice_number: string;
 };
 
+const reporteSchema = z.object({
+  signerName: z.string().min(1, "Selecciona quién elaboró el reporte"),
+  reportDate: z.string().min(1, "Selecciona la fecha del reporte"),
+});
+type ReporteFormValues = z.infer<typeof reporteSchema>;
+
+const reporteErrorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
 /* ── Constantes ──────────────────────────────────────────────── */
 
 const MONTH_LABELS_LONG = [
@@ -154,14 +170,25 @@ export default function ReportePagosPage() {
   /* Modal crear / editar */
   const [showModal,        setShowModal]        = useState(false);
   const [editingReportId,  setEditingReportId]  = useState<string | null>(null);
-  const [signerName,       setSignerName]       = useState("");
   const [customSignerMode, setCustomSignerMode] = useState(false);
-  const [reportDate,       setReportDate]       = useState(todayIso());
+
+  const {
+    register,
+    handleSubmit: rhfSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<ReporteFormValues>({
+    resolver: zodResolver(reporteSchema),
+    defaultValues: { signerName: "", reportDate: todayIso() },
+  });
+  const signerName = watch("signerName");
+  const reportDate = watch("reportDate");
   /* Map<purchase_order_id, ItemDraft> con las OCs marcadas y sus datos de factura */
   const [itemDrafts,       setItemDrafts]       = useState<Map<string, ItemDraft>>(new Map());
 
   /* Flags */
-  const [saving,          setSaving]          = useState(false);
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   const [archivingId,     setArchivingId]     = useState<string | null>(null);
 
@@ -377,9 +404,8 @@ export default function ReportePagosPage() {
   function openCreateModal() {
     const defaultSigner = signers.find((s) => s.is_default);
     setEditingReportId(null);
-    setSignerName(defaultSigner?.name || "");
+    reset({ signerName: defaultSigner?.name || "", reportDate: todayIso() });
     setCustomSignerMode(false);
-    setReportDate(todayIso());
     setItemDrafts(new Map());
     setError("");
     setShowModal(true);
@@ -394,9 +420,11 @@ export default function ReportePagosPage() {
     const match = elaboratedBy
       ? signers.find((s) => s.name.toLowerCase() === elaboratedBy.toLowerCase())
       : null;
-    setSignerName(match ? match.name : elaboratedBy);
+    reset({
+      signerName: match ? match.name : elaboratedBy,
+      reportDate: report.report_date,
+    });
     setCustomSignerMode(!!elaboratedBy && !match);
-    setReportDate(report.report_date);
 
     /* Precargar drafts desde los items existentes */
     const drafts = new Map<string, ItemDraft>();
@@ -413,7 +441,7 @@ export default function ReportePagosPage() {
   }
 
   function closeModal() {
-    if (saving) return;
+    if (isSubmitting) return;
     setShowModal(false);
     setEditingReportId(null);
     setCustomSignerMode(false);
@@ -445,14 +473,12 @@ export default function ReportePagosPage() {
 
   /* ── Guardar (crear o editar) ───────────────────────────────── */
 
-  async function handleSave(e: FormEvent) {
-    e.preventDefault();
-
+  const handleSave = rhfSubmit(async (data) => {
     /* ── Logs de validación ────────────────────────────────────── */
     console.log("[handleSave] user:", user);
     console.log("[handleSave] editingReportId:", editingReportId);
-    console.log("[handleSave] elaboratedBy (signerName):", signerName);
-    console.log("[handleSave] reportDate:", reportDate);
+    console.log("[handleSave] elaboratedBy (signerName):", data.signerName);
+    console.log("[handleSave] reportDate:", data.reportDate);
     console.log("[handleSave] folio computed:", folio, "week:", week, "year:", year);
     console.log("[handleSave] itemDrafts size:", itemDrafts.size, "entries:", Array.from(itemDrafts.entries()));
     console.log("[handleSave] customSignerMode:", customSignerMode);
@@ -461,26 +487,20 @@ export default function ReportePagosPage() {
       console.log("[handleSave] ABORT: no company_id en user");
       return;
     }
-    if (!signerName.trim()) {
-      console.log("[handleSave] ABORT: signerName vacío");
-      setError("Selecciona quién elaboró el reporte.");
-      return;
-    }
     if (itemDrafts.size === 0) {
       console.log("[handleSave] ABORT: itemDrafts vacío");
       setError("Selecciona al menos una OC.");
       return;
     }
 
-    setSaving(true);
     setError("");
 
     try {
       const payload = {
         company_id:    user.company_id,
         folio,
-        elaborated_by: signerName.trim(),
-        report_date:   reportDate,
+        elaborated_by: data.signerName.trim(),
+        report_date:   data.reportDate,
         week_number:   week,
         year:          year,
       };
@@ -504,13 +524,13 @@ export default function ReportePagosPage() {
         if (delErr) throw delErr;
       } else {
         /* INSERT nuevo reporte */
-        const { data, error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("payment_reports")
           .insert(payload)
           .select("id")
           .single();
-        if (error || !data) throw error || new Error("No se pudo crear el reporte.");
-        targetId = data.id;
+        if (error || !inserted) throw error || new Error("No se pudo crear el reporte.");
+        targetId = inserted.id;
       }
 
       /* INSERT de items */
@@ -526,7 +546,7 @@ export default function ReportePagosPage() {
       if (itemsErr) throw itemsErr;
 
       /* Persistir firmante nuevo si no estaba en el catálogo */
-      const trimmedSigner = signerName.trim();
+      const trimmedSigner = data.signerName.trim();
       if (trimmedSigner) {
         const signerExists = signers.some(
           (s) => s.name.toLowerCase() === trimmedSigner.toLowerCase()
@@ -552,8 +572,7 @@ export default function ReportePagosPage() {
       const m = err instanceof Error ? err.message : "Error desconocido.";
       setError(`No se pudo guardar el reporte: ${m}`);
     }
-    setSaving(false);
-  }
+  });
 
   /* ── Archivar ──────────────────────────────────────────────── */
 
@@ -1012,21 +1031,20 @@ export default function ReportePagosPage() {
               {customSignerMode ? (
                 <input
                   style={INPUT_STYLE}
-                  value={signerName}
-                  onChange={(e) => setSignerName(e.target.value)}
+                  {...register("signerName")}
                   placeholder="Nombre del firmante"
                   autoFocus
                 />
               ) : (
                 <select
                   style={INPUT_STYLE}
-                  value={signerName}
+                  value={signerName || ""}
                   onChange={(e) => {
                     if (e.target.value === "__OTHER__") {
                       setCustomSignerMode(true);
-                      setSignerName("");
+                      setValue("signerName", "");
                     } else {
-                      setSignerName(e.target.value);
+                      setValue("signerName", e.target.value);
                     }
                   }}
                 >
@@ -1039,15 +1057,20 @@ export default function ReportePagosPage() {
                   <option value="__OTHER__">➕ Otro...</option>
                 </select>
               )}
+              {errors.signerName ? (
+                <p style={reporteErrorTextStyle}>{errors.signerName.message}</p>
+              ) : null}
             </AppFormField>
 
             <AppFormField label="Fecha del reporte" required>
               <input
                 type="date"
                 style={INPUT_STYLE}
-                value={reportDate}
-                onChange={(e) => setReportDate(e.target.value)}
+                {...register("reportDate")}
               />
+              {errors.reportDate ? (
+                <p style={reporteErrorTextStyle}>{errors.reportDate.message}</p>
+              ) : null}
             </AppFormField>
 
             <AppFormField label="Folio (automático)">
@@ -1229,11 +1252,11 @@ export default function ReportePagosPage() {
           ) : null}
 
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <UiButton type="button" variant="secondary" onClick={closeModal} disabled={saving}>
+            <UiButton type="button" variant="secondary" onClick={closeModal} disabled={isSubmitting}>
               Cancelar
             </UiButton>
-            <UiButton type="submit" variant="primary" disabled={saving}>
-              {saving
+            <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+              {isSubmitting
                 ? (editingReportId ? "Guardando..." : "Creando...")
                 : (editingReportId ? "Guardar cambios" : "Guardar reporte")}
             </UiButton>
