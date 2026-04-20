@@ -26,8 +26,11 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
-import type { CSSProperties, FormEvent } from "react";
+import type { CSSProperties } from "react";
 import { Edit3, MoreVertical, Package, Plus, Truck, X } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -72,18 +75,19 @@ type Supplier = {
   branches?:      SupplierBranch[];
 };
 
-type FormState = {
-  name:           string;
-  prefix:         string;
-  client_number:  string;
-  contact_name:   string;
-  contact_email:  string;
-  contact_phone:  string;
-  tax_id:         string;
-  cfdi_use:       string;
-  notes:          string;
-  active:         boolean;
-};
+const supplierSchema = z.object({
+  name: z.string().min(1, "El nombre es obligatorio"),
+  prefix: z.string().max(4, "Máximo 4 caracteres").optional(),
+  client_number: z.string().optional(),
+  contact_name: z.string().optional(),
+  contact_email: z.string().email("Email inválido").or(z.literal("")).optional(),
+  contact_phone: z.string().optional(),
+  tax_id: z.string().optional(),
+  cfdi_use: z.string().optional(),
+  notes: z.string().optional(),
+  active: z.boolean(),
+});
+type SupplierFormValues = z.infer<typeof supplierSchema>;
 
 type BranchDraft = {
   name:    string;
@@ -113,11 +117,18 @@ const CFDI_USES = [
   "CP01 Pagos",
 ];
 
-const EMPTY_FORM: FormState = {
+const EMPTY_FORM: SupplierFormValues = {
   name: "", prefix: "", client_number: "", contact_name: "",
   contact_email: "", contact_phone: "",
   tax_id: "", cfdi_use: DEFAULT_CFDI_USE,
   notes: "", active: true,
+};
+
+const errorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
 };
 
 /* ── Component ─────────────────────────────────────────────────────── */
@@ -132,9 +143,20 @@ export default function SuppliersPage() {
   /* Modal */
   const [showModal, setShowModal] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form,      setForm]      = useState<FormState>(EMPTY_FORM);
-  const [saving,    setSaving]    = useState(false);
   const [formError, setFormError] = useState("");
+
+  const {
+    register,
+    handleSubmit: rhfSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<SupplierFormValues>({
+    resolver: zodResolver(supplierSchema),
+    defaultValues: EMPTY_FORM,
+  });
+  const formActive = watch("active");
 
   /* Sucursales — formulario inline dentro del modal (editar) */
   const [branchDraft,   setBranchDraft]   = useState<BranchDraft>(EMPTY_BRANCH_DRAFT);
@@ -200,7 +222,7 @@ export default function SuppliersPage() {
 
   function openCreate() {
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    reset(EMPTY_FORM);
     setFormError("");
     setShowModal(true);
     setShowBranchForm(false);
@@ -210,7 +232,7 @@ export default function SuppliersPage() {
 
   function openEdit(s: Supplier) {
     setEditingId(s.id);
-    setForm({
+    reset({
       name:          s.name,
       prefix:        s.prefix        || "",
       client_number: s.client_number || "",
@@ -232,7 +254,7 @@ export default function SuppliersPage() {
   function closeModal() {
     setShowModal(false);
     setEditingId(null);
-    setForm(EMPTY_FORM);
+    reset(EMPTY_FORM);
     setFormError("");
     setShowBranchForm(false);
     setBranchDraft(EMPTY_BRANCH_DRAFT);
@@ -240,25 +262,21 @@ export default function SuppliersPage() {
     setEditingBranchForm(EMPTY_BRANCH_DRAFT);
   }
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  const handleSubmit = rhfSubmit(async (data) => {
     if (!user?.company_id) return;
-    if (!form.name.trim()) { setFormError("El nombre es requerido."); return; }
-
-    setSaving(true);
     setFormError("");
 
     const payload = {
-      name:          form.name.trim(),
-      prefix:        form.prefix.trim().toUpperCase() || null,
-      client_number: form.client_number.trim() || null,
-      contact_name:  form.contact_name.trim()  || null,
-      contact_email: form.contact_email.trim() || null,
-      contact_phone: form.contact_phone.trim() || null,
-      tax_id:        form.tax_id.trim()        || null,
-      cfdi_use:      form.cfdi_use.trim()      || DEFAULT_CFDI_USE,
-      notes:         form.notes.trim()         || null,
-      active:        form.active,
+      name:          data.name.trim(),
+      prefix:        data.prefix?.trim().toUpperCase() || null,
+      client_number: data.client_number?.trim() || null,
+      contact_name:  data.contact_name?.trim()  || null,
+      contact_email: data.contact_email?.trim() || null,
+      contact_phone: data.contact_phone?.trim() || null,
+      tax_id:        data.tax_id?.trim()        || null,
+      cfdi_use:      data.cfdi_use?.trim()      || DEFAULT_CFDI_USE,
+      notes:         data.notes?.trim()         || null,
+      active:        data.active,
     };
 
     if (editingId) {
@@ -266,8 +284,6 @@ export default function SuppliersPage() {
         .from("suppliers")
         .update({ ...payload, updated_at: new Date().toISOString() })
         .eq("id", editingId);
-
-      setSaving(false);
 
       if (error) {
         console.error("suppliers save error:", error);
@@ -279,29 +295,27 @@ export default function SuppliersPage() {
       setMsg("Proveedor actualizado correctamente.");
       void loadSuppliers(user.company_id);
     } else {
-      const { data, error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("suppliers")
         .insert({ ...payload, company_id: user.company_id })
         .select("id")
         .single();
-
-      setSaving(false);
 
       if (error) {
         console.error("suppliers save error:", error);
         setFormError(`No se pudo guardar el proveedor: ${error.message}`);
         return;
       }
-      if (!data) return;
+      if (!inserted) return;
 
       setMsg("Proveedor creado. Ahora puedes agregar sucursales.");
       /* Recargar y cambiar a modo editar sin cerrar el modal */
       await loadSuppliers(user.company_id);
-      setEditingId(data.id);
+      setEditingId(inserted.id);
       setShowBranchForm(false);
       setBranchDraft(EMPTY_BRANCH_DRAFT);
     }
-  }
+  });
 
   async function handleArchive(id: string) {
     if (!user?.company_id) return;
@@ -703,10 +717,10 @@ export default function SuppliersPage() {
           <AppFormField label="Nombre / Razón social" required>
             <input
               style={INPUT_STYLE}
-              value={form.name}
-              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              {...register("name")}
               placeholder="Nombre del proveedor"
             />
+            {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </AppFormField>
 
           {/* Prefijo OC + Número de cliente en grid de 2 columnas */}
@@ -717,18 +731,19 @@ export default function SuppliersPage() {
             >
               <input
                 style={{ ...INPUT_STYLE, fontFamily: "monospace", textTransform: "uppercase" }}
-                value={form.prefix}
-                onChange={(e) => setForm({ ...form, prefix: e.target.value.toUpperCase() })}
+                {...register("prefix", {
+                  onChange: (e) => setValue("prefix", e.target.value.toUpperCase()),
+                })}
                 placeholder="Ej. HD, LC, AM"
                 maxLength={4}
               />
+              {errors.prefix ? <p style={errorTextStyle}>{errors.prefix.message}</p> : null}
             </AppFormField>
 
             <AppFormField label="Número de cliente">
               <input
                 style={INPUT_STYLE}
-                value={form.client_number}
-                onChange={(e) => setForm({ ...form, client_number: e.target.value })}
+                {...register("client_number")}
                 placeholder="Nuestro número con el proveedor"
               />
             </AppFormField>
@@ -753,19 +768,18 @@ export default function SuppliersPage() {
             <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
               <input
                 type="checkbox"
-                checked={form.active}
-                onChange={(e) => setForm({ ...form, active: e.target.checked })}
+                {...register("active")}
                 style={{ opacity: 0, width: 0, height: 0 }}
               />
               <span style={{
                 position: "absolute", cursor: "pointer",
                 top: 0, left: 0, right: 0, bottom: 0,
-                background: form.active ? "var(--accent)" : "var(--border-default)",
+                background: formActive ? "var(--accent)" : "var(--border-default)",
                 borderRadius: 12, transition: "0.2s",
               }} />
               <span style={{
                 position: "absolute",
-                left: form.active ? 22 : 2, top: 2,
+                left: formActive ? 22 : 2, top: 2,
                 width: 20, height: 20,
                 background: "#fff", borderRadius: "50%",
                 transition: "0.2s",
@@ -783,8 +797,7 @@ export default function SuppliersPage() {
           >
             <input
               style={INPUT_STYLE}
-              value={form.contact_name}
-              onChange={(e) => setForm({ ...form, contact_name: e.target.value })}
+              {...register("contact_name")}
               placeholder="Persona de contacto"
             />
           </AppFormField>
@@ -794,17 +807,18 @@ export default function SuppliersPage() {
               <input
                 type="email"
                 style={INPUT_STYLE}
-                value={form.contact_email}
-                onChange={(e) => setForm({ ...form, contact_email: e.target.value })}
+                {...register("contact_email")}
                 placeholder="correo@ejemplo.com"
               />
+              {errors.contact_email ? (
+                <p style={errorTextStyle}>{errors.contact_email.message}</p>
+              ) : null}
             </AppFormField>
 
             <AppFormField label="Teléfono persona de contacto">
               <input
                 style={INPUT_STYLE}
-                value={form.contact_phone}
-                onChange={(e) => setForm({ ...form, contact_phone: e.target.value })}
+                {...register("contact_phone")}
                 placeholder="+52 ..."
               />
             </AppFormField>
@@ -813,8 +827,7 @@ export default function SuppliersPage() {
           <AppFormField label="Notas">
             <textarea
               style={{ ...INPUT_STYLE, resize: "vertical", minHeight: 70 }}
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
+              {...register("notes")}
               placeholder="Notas internas, especialidades, condiciones..."
             />
           </AppFormField>
@@ -1040,8 +1053,8 @@ export default function SuppliersPage() {
             <UiButton type="button" variant="secondary" onClick={closeModal}>
               Cancelar
             </UiButton>
-            <UiButton type="submit" variant="primary" disabled={saving}>
-              {saving ? "Guardando..." : editingId ? "Guardar cambios" : "Crear proveedor"}
+            <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+              {isSubmitting ? "Guardando..." : editingId ? "Guardar cambios" : "Crear proveedor"}
             </UiButton>
           </div>
         </form>

@@ -20,6 +20,9 @@ Importante:
 import { useEffect, useMemo, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Clock3, Home, Save } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -91,6 +94,38 @@ const checkboxRowStyle: CSSProperties = {
   color: "var(--text-secondary)",
 };
 
+const errorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
+const cleaningScheduleSchema = z.object({
+  dayOfWeek: z.enum([
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+  ]),
+  startTime: z.string().min(1, "Debes capturar una hora"),
+  durationHours: z
+    .number()
+    .positive("La duración debe ser mayor que 0")
+    .max(12, "La duración máxima es de 12 horas"),
+  active: z.boolean(),
+});
+type CleaningScheduleValues = z.infer<typeof cleaningScheduleSchema>;
+
+const CLEANING_SCHEDULE_DEFAULTS: CleaningScheduleValues = {
+  dayOfWeek: "monday",
+  startTime: "09:00",
+  durationHours: 1.5,
+  active: true,
+};
+
 export default function CleaningUnitDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -104,13 +139,17 @@ export default function CleaningUnitDetailPage() {
   const [unit, setUnit] = useState<Unit | null>(null);
   const [scheduleId, setScheduleId] = useState<string | null>(null);
 
-  const [dayOfWeek, setDayOfWeek] = useState("monday");
-  const [startTime, setStartTime] = useState("09:00");
-  const [durationHours, setDurationHours] = useState("1.5");
-  const [active, setActive] = useState(true);
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<CleaningScheduleValues>({
+    resolver: zodResolver(cleaningScheduleSchema),
+    defaultValues: CLEANING_SCHEDULE_DEFAULTS,
+  });
 
   const [loadingPage, setLoadingPage] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
 
   useEffect(() => {
@@ -178,52 +217,33 @@ export default function CleaningUnitDetailPage() {
 
     if (schedule) {
       setScheduleId(schedule.id);
-      setDayOfWeek(schedule.day_of_week || "monday");
-      setStartTime(schedule.start_time ? schedule.start_time.slice(0, 5) : "09:00");
-      setDurationHours(String(schedule.duration_hours ?? 1.5));
-      setActive(Boolean(schedule.active));
+      reset({
+        dayOfWeek: (schedule.day_of_week as CleaningScheduleValues["dayOfWeek"]) || "monday",
+        startTime: schedule.start_time ? schedule.start_time.slice(0, 5) : "09:00",
+        durationHours: schedule.duration_hours ?? 1.5,
+        active: Boolean(schedule.active),
+      });
     } else {
       setScheduleId(null);
-      setDayOfWeek("monday");
-      setStartTime("09:00");
-      setDurationHours("1.5");
-      setActive(true);
+      reset(CLEANING_SCHEDULE_DEFAULTS);
     }
 
     setLoadingPage(false);
   }
 
-  async function handleSave(e: React.FormEvent) {
-    e.preventDefault();
-
+  const handleSave = handleSubmit(async (data) => {
     if (!user?.company_id || !buildingId || !unitId) return;
 
-    if (!dayOfWeek) {
-      setMsg("Debes seleccionar un día.");
-      return;
-    }
-
-    if (!startTime) {
-      setMsg("Debes capturar una hora.");
-      return;
-    }
-
-    if (!durationHours.trim() || Number(durationHours) <= 0) {
-      setMsg("Debes capturar una duración válida.");
-      return;
-    }
-
-    setSaving(true);
     setMsg("");
 
     const payload = {
       company_id: user.company_id,
       building_id: buildingId,
       unit_id: unitId,
-      day_of_week: dayOfWeek,
-      start_time: startTime,
-      duration_hours: Number(durationHours),
-      active,
+      day_of_week: data.dayOfWeek,
+      start_time: data.startTime,
+      duration_hours: data.durationHours,
+      active: data.active,
     };
 
     let errorMessage = "";
@@ -241,7 +261,7 @@ export default function CleaningUnitDetailPage() {
         errorMessage = error.message;
       }
     } else {
-      const { data, error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("cleaning_unit_schedules")
         .insert(payload)
         .select("id")
@@ -249,12 +269,10 @@ export default function CleaningUnitDetailPage() {
 
       if (error) {
         errorMessage = error.message;
-      } else if (data?.id) {
-        setScheduleId(data.id);
+      } else if (inserted?.id) {
+        setScheduleId(inserted.id);
       }
     }
-
-    setSaving(false);
 
     if (errorMessage) {
       setMsg(errorMessage);
@@ -263,7 +281,7 @@ export default function CleaningUnitDetailPage() {
 
     setMsg("Programación guardada correctamente.");
     await loadPageData();
-  }
+  });
 
   const unitLabel = useMemo(() => {
     if (!unit) return "";
@@ -345,26 +363,27 @@ export default function CleaningUnitDetailPage() {
           <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             <AppGrid minWidth={240}>
               <AppFormField label="Día de limpieza" required>
-                <select
-                  value={dayOfWeek}
-                  onChange={(e) => setDayOfWeek(e.target.value)}
-                  style={inputStyle}
-                >
+                <select {...register("dayOfWeek")} style={inputStyle}>
                   {dayOptions.map((day) => (
                     <option key={day.value} value={day.value}>
                       {day.label}
                     </option>
                   ))}
                 </select>
+                {errors.dayOfWeek ? (
+                  <p style={errorTextStyle}>{errors.dayOfWeek.message}</p>
+                ) : null}
               </AppFormField>
 
               <AppFormField label="Hora de inicio" required>
                 <input
                   type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  {...register("startTime")}
                   style={inputStyle}
                 />
+                {errors.startTime ? (
+                  <p style={errorTextStyle}>{errors.startTime.message}</p>
+                ) : null}
               </AppFormField>
 
               <AppFormField
@@ -377,19 +396,17 @@ export default function CleaningUnitDetailPage() {
                   min="0.5"
                   max="12"
                   step="0.5"
-                  value={durationHours}
-                  onChange={(e) => setDurationHours(e.target.value)}
+                  {...register("durationHours", { valueAsNumber: true })}
                   style={inputStyle}
                 />
+                {errors.durationHours ? (
+                  <p style={errorTextStyle}>{errors.durationHours.message}</p>
+                ) : null}
               </AppFormField>
             </AppGrid>
 
             <label style={checkboxRowStyle}>
-              <input
-                type="checkbox"
-                checked={active}
-                onChange={(e) => setActive(e.target.checked)}
-              />
+              <input type="checkbox" {...register("active")} />
               Programación activa
             </label>
 
@@ -409,8 +426,8 @@ export default function CleaningUnitDetailPage() {
             ) : null}
 
             <div style={{ display: "flex", justifyContent: "flex-start" }}>
-              <UiButton icon={<Save size={16} />} type="submit" disabled={saving}>
-                {saving ? "Guardando..." : "Guardar programación"}
+              <UiButton icon={<Save size={16} />} type="submit" disabled={isSubmitting}>
+                {isSubmitting ? "Guardando..." : "Guardar programación"}
               </UiButton>
             </div>
           </form>

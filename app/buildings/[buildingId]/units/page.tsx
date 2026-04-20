@@ -15,6 +15,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import {
   Bath,
   BedDouble,
@@ -194,6 +197,33 @@ function MiniStatusRing({ status, occupiedRooms, totalRooms }: { status: string;
   );
 }
 
+const errorTextStyle: React.CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
+const createUnitSchema = z.object({
+  unitNumber: z.string().min(1, "El número del departamento es obligatorio"),
+  unitTypeId: z.string().min(1, "Debes seleccionar una tipología"),
+  floor: z.string().optional(),
+});
+type CreateUnitValues = z.infer<typeof createUnitSchema>;
+
+const editUnitSchema = z.object({
+  unitNumber: z.string().min(1, "El número del departamento es obligatorio"),
+  unitTypeId: z.string().optional(),
+  floor: z.string().optional(),
+});
+type EditUnitValues = z.infer<typeof editUnitSchema>;
+
+const CREATE_UNIT_DEFAULTS: CreateUnitValues = {
+  unitNumber: "",
+  unitTypeId: "",
+  floor: "",
+};
+
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
 export default function BuildingUnitsPage() {
@@ -212,11 +242,14 @@ export default function BuildingUnitsPage() {
   const [msg, setMsg]                 = useState("");
 
   /* Estado del formulario de creación */
-  const [unitNumber, setUnitNumber]               = useState("");
-  const [selectedUnitTypeId, setSelectedUnitTypeId] = useState("");
-  const [floor, setFloor]                         = useState("");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [saving, setSaving]                       = useState(false);
+
+  const createForm = useForm<CreateUnitValues>({
+    resolver: zodResolver(createUnitSchema),
+    defaultValues: CREATE_UNIT_DEFAULTS,
+  });
+  const createUnitNumber = createForm.watch("unitNumber");
+  const createUnitTypeId = createForm.watch("unitTypeId");
 
   /* Estado del modal de archivar */
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -227,9 +260,12 @@ export default function BuildingUnitsPage() {
   /* Estado del modal de edición */
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingUnit, setEditingUnit]         = useState<UnitRow | null>(null);
-  const [editUnitNumber, setEditUnitNumber]   = useState("");
-  const [editFloor, setEditFloor]             = useState("");
-  const [editUnitTypeId, setEditUnitTypeId]   = useState("");
+
+  const editForm = useForm<EditUnitValues>({
+    resolver: zodResolver(editUnitSchema),
+    defaultValues: { unitNumber: "", unitTypeId: "", floor: "" },
+  });
+  const editUnitTypeId = editForm.watch("unitTypeId");
 
   /* Control de dropdown por unidad */
   const [openActionsUnitId, setOpenActionsUnitId] = useState<string | null>(null);
@@ -432,39 +468,33 @@ export default function BuildingUnitsPage() {
 
   /* ── Handlers CRUD ───────────────────────────────────────────────── */
 
-  async function handleCreateUnit(e: React.FormEvent) {
-    e.preventDefault();
+  const onCreateUnit = createForm.handleSubmit(async (data) => {
     setMsg("");
     if (!user?.company_id)  { setMsg("No se encontró la empresa del usuario."); return; }
     if (!building)           { setMsg("No se encontró el edificio."); return; }
-    if (!unitNumber.trim())  { setMsg("El número del departamento es obligatorio."); return; }
-    if (!selectedUnitTypeId) { setMsg("Debes seleccionar una tipología."); return; }
 
-    const displayCode = generateDisplayCode(building.code, unitNumber);
-    setSaving(true);
+    const displayCode = generateDisplayCode(building.code, data.unitNumber);
 
     const { data: newUnit, error } = await supabase
       .from("units")
       .insert({
         company_id:   user.company_id,
         building_id:  building.id,
-        unit_type_id: selectedUnitTypeId,
-        unit_number:  unitNumber.trim(),
+        unit_type_id: data.unitTypeId,
+        unit_number:  data.unitNumber.trim(),
         display_code: displayCode,
-        floor:        floor.trim() ? Number(floor) : null,
+        floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
         status:       "VACANT",
       })
       .select("id")
       .single();
 
     if (error || !newUnit) {
-      setSaving(false);
       setMsg(error?.message || "No se pudo crear el departamento.");
       return;
     }
 
-    const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, selectedUnitTypeId);
-    setSaving(false);
+    const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
 
     if (cloneError) {
       setMsg(`El departamento se creó, pero hubo un problema al clonar los assets base: ${cloneError}`);
@@ -472,13 +502,11 @@ export default function BuildingUnitsPage() {
       return;
     }
 
-    setUnitNumber("");
-    setSelectedUnitTypeId("");
-    setFloor("");
+    createForm.reset(CREATE_UNIT_DEFAULTS);
     setIsCreateModalOpen(false);
     setMsg("Departamento guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente.");
     await loadPageData();
-  }
+  });
 
   function openDeleteModal(unit: UnitRow) {
     setUnitToDelete(unit);
@@ -490,45 +518,43 @@ export default function BuildingUnitsPage() {
 
   function openEditModal(unit: UnitRow) {
     setEditingUnit(unit);
-    setEditUnitNumber(unit.unit_number);
-    setEditFloor(unit.floor != null ? String(unit.floor) : "");
-    setEditUnitTypeId(unit.unit_type_id);
+    editForm.reset({
+      unitNumber: unit.unit_number,
+      unitTypeId: unit.unit_type_id,
+      floor: unit.floor != null ? String(unit.floor) : "",
+    });
     setIsEditModalOpen(true);
     setOpenActionsUnitId(null);
     setMsg("");
   }
 
   function closeEditModal() {
-    if (saving) return;
+    if (editForm.formState.isSubmitting) return;
     setIsEditModalOpen(false);
     setEditingUnit(null);
   }
 
-  async function handleUpdateUnit(e: React.FormEvent) {
-    e.preventDefault();
+  const onUpdateUnit = editForm.handleSubmit(async (data) => {
     if (!user?.company_id || !editingUnit || !building) return;
-    if (!editUnitNumber.trim()) { setMsg("El número del departamento es obligatorio."); return; }
 
-    setSaving(true);
-    const displayCode = generateDisplayCode(building.code, editUnitNumber);
+    const displayCode = generateDisplayCode(building.code, data.unitNumber);
     const { error } = await supabase
       .from("units")
       .update({
-        unit_number:  editUnitNumber.trim(),
+        unit_number:  data.unitNumber.trim(),
         display_code: displayCode,
-        floor:        editFloor.trim() ? Number(editFloor) : null,
-        unit_type_id: editUnitTypeId || editingUnit.unit_type_id,
+        floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
+        unit_type_id: data.unitTypeId || editingUnit.unit_type_id,
       })
       .eq("id", editingUnit.id)
       .eq("company_id", user.company_id);
-    setSaving(false);
 
     if (error) { setMsg(`No se pudo actualizar el departamento. ${error.message}`); return; }
     setIsEditModalOpen(false);
     setEditingUnit(null);
     setMsg("Departamento actualizado correctamente.");
     await loadPageData();
-  }
+  });
 
   function closeDeleteModal() {
     if (deleting) return;
@@ -574,7 +600,7 @@ export default function BuildingUnitsPage() {
 
   /* ── Tipología seleccionada (para preview en modales) ─────────────── */
 
-  const selectedTypeForCreate = unitTypes.find((ut) => ut.id === selectedUnitTypeId) ?? null;
+  const selectedTypeForCreate = unitTypes.find((ut) => ut.id === createUnitTypeId) ?? null;
   const selectedTypeForEdit   = unitTypes.find((ut) => ut.id === editUnitTypeId)     ?? null;
 
   /* ── Render ──────────────────────────────────────────────────────── */
@@ -763,26 +789,28 @@ export default function BuildingUnitsPage() {
 
       {/* ── Modal: editar ── */}
       <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar departamento">
-        <form onSubmit={handleUpdateUnit}>
+        <form onSubmit={onUpdateUnit}>
           <AppFormField label="Número de departamento" required>
             <input
-              value={editUnitNumber}
-              onChange={(e) => setEditUnitNumber(e.target.value)}
+              {...editForm.register("unitNumber")}
               placeholder="Ej. 101"
               style={INPUT_STYLE}
             />
+            {editForm.formState.errors.unitNumber ? (
+              <p style={errorTextStyle}>{editForm.formState.errors.unitNumber.message}</p>
+            ) : null}
           </AppFormField>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <AppFormField label="Tipología">
-              <AppSelect value={editUnitTypeId} onChange={(e) => setEditUnitTypeId(e.target.value)}>
+              <AppSelect {...editForm.register("unitTypeId")}>
                 {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
               </AppSelect>
             </AppFormField>
             <AppFormField label="Piso">
               <input
-                type="number" min={0} value={editFloor}
-                onChange={(e) => setEditFloor(e.target.value)}
+                type="number" min={0}
+                {...editForm.register("floor")}
                 placeholder="Ej. 1" style={INPUT_STYLE}
               />
             </AppFormField>
@@ -794,8 +822,8 @@ export default function BuildingUnitsPage() {
           ) : null}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">
-              {saving ? "Guardando..." : "Guardar cambios"}
+            <UiButton type="submit" disabled={editForm.formState.isSubmitting} variant="primary">
+              {editForm.formState.isSubmitting ? "Guardando..." : "Guardar cambios"}
             </UiButton>
             <UiButton type="button" onClick={closeEditModal}>Cancelar</UiButton>
           </div>
@@ -829,27 +857,32 @@ export default function BuildingUnitsPage() {
         title="Crear departamento"
         subtitle="Los assets base de la tipología se clonarán automáticamente al guardar."
       >
-        <form onSubmit={handleCreateUnit}>
+        <form onSubmit={onCreateUnit}>
           <AppFormField label="Número de departamento" required>
             <input
-              value={unitNumber}
-              onChange={(e) => setUnitNumber(e.target.value)}
+              {...createForm.register("unitNumber")}
               placeholder="Ej. 101"
               style={INPUT_STYLE}
             />
+            {createForm.formState.errors.unitNumber ? (
+              <p style={errorTextStyle}>{createForm.formState.errors.unitNumber.message}</p>
+            ) : null}
           </AppFormField>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
             <AppFormField label="Tipología" required>
-              <AppSelect value={selectedUnitTypeId} onChange={(e) => setSelectedUnitTypeId(e.target.value)}>
+              <AppSelect {...createForm.register("unitTypeId")}>
                 <option value="">Selecciona una tipología</option>
                 {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
               </AppSelect>
+              {createForm.formState.errors.unitTypeId ? (
+                <p style={errorTextStyle}>{createForm.formState.errors.unitTypeId.message}</p>
+              ) : null}
             </AppFormField>
             <AppFormField label="Piso">
               <input
-                type="number" min={0} value={floor}
-                onChange={(e) => setFloor(e.target.value)}
+                type="number" min={0}
+                {...createForm.register("floor")}
                 placeholder="Ej. 1" style={INPUT_STYLE}
               />
             </AppFormField>
@@ -860,15 +893,15 @@ export default function BuildingUnitsPage() {
             <TypePreview type={selectedTypeForCreate} />
           ) : null}
 
-          {building.code && unitNumber.trim() ? (
+          {building.code && createUnitNumber && createUnitNumber.trim() ? (
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 16 }}>
-              Código generado: <strong>{generateDisplayCode(building.code, unitNumber)}</strong>
+              Código generado: <strong>{generateDisplayCode(building.code, createUnitNumber)}</strong>
             </p>
           ) : null}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">
-              {saving ? "Guardando..." : "Guardar departamento"}
+            <UiButton type="submit" disabled={createForm.formState.isSubmitting} variant="primary">
+              {createForm.formState.isSubmitting ? "Guardando..." : "Guardar departamento"}
             </UiButton>
             <UiButton type="button" onClick={() => setIsCreateModalOpen(false)}>
               Cancelar

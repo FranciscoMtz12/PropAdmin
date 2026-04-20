@@ -42,6 +42,9 @@ import {
   Warehouse,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import BuildingCategoryBadge from "@/components/BuildingCategoryBadge";
@@ -172,6 +175,39 @@ function OccupancyDonut({
   );
 }
 
+const errorTextStyle: React.CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
+const buildingSchema = z
+  .object({
+    name: z.string().min(1, "El nombre del edificio es obligatorio"),
+    code: z.string().optional(),
+    address: z.string().optional(),
+    building_category: z.string().min(1, "Selecciona una categoría"),
+    building_subcategory: z.string().optional(),
+  })
+  .refine(
+    (data) =>
+      data.building_category !== "mixed_use" || !!data.building_subcategory,
+    {
+      message: "Debes seleccionar el tipo de uso mixto",
+      path: ["building_subcategory"],
+    }
+  );
+type BuildingFormValues = z.infer<typeof buildingSchema>;
+
+const BUILDING_DEFAULTS: BuildingFormValues = {
+  name: "",
+  code: "",
+  address: "",
+  building_category: "residential",
+  building_subcategory: "",
+};
+
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
 export default function BuildingsPage() {
@@ -200,12 +236,18 @@ export default function BuildingsPage() {
   const [deleting, setDeleting] = useState(false);
 
   /* Estado de formulario */
-  const [name, setName] = useState("");
-  const [code, setCode] = useState("");
-  const [address, setAddress] = useState("");
-  const [buildingCategory, setBuildingCategory] = useState("residential");
-  const [buildingSubcategory, setBuildingSubcategory] = useState("");
-  const [saving, setSaving] = useState(false);
+  const {
+    register,
+    handleSubmit: rhfSubmit,
+    reset,
+    watch,
+    setValue,
+    formState: { errors, isSubmitting },
+  } = useForm<BuildingFormValues>({
+    resolver: zodResolver(buildingSchema),
+    defaultValues: BUILDING_DEFAULTS,
+  });
+  const buildingCategory = watch("building_category");
 
   /* Hover + dropdown de acciones por card */
   const [hoveredBuildingId, setHoveredBuildingId] = useState<string | null>(null);
@@ -416,11 +458,7 @@ export default function BuildingsPage() {
   /* ── Handlers de formulario ─────────────────────────────────────── */
 
   function resetForm() {
-    setName("");
-    setCode("");
-    setAddress("");
-    setBuildingCategory("residential");
-    setBuildingSubcategory("");
+    reset(BUILDING_DEFAULTS);
   }
 
   function closeCreateModal() {
@@ -430,18 +468,20 @@ export default function BuildingsPage() {
 
   function openEditModal(building: Building) {
     setBuildingEditingId(building.id);
-    setName(building.name || "");
-    setCode(building.code || "");
-    setAddress(building.address || "");
-    setBuildingCategory(building.building_category || "residential");
-    setBuildingSubcategory(building.building_subcategory || "");
+    reset({
+      name: building.name || "",
+      code: building.code || "",
+      address: building.address || "",
+      building_category: building.building_category || "residential",
+      building_subcategory: building.building_subcategory || "",
+    });
     setIsEditModalOpen(true);
     setOpenActionsBuildingId(null);
     setMsg("");
   }
 
   function closeEditModal() {
-    if (saving) return;
+    if (isSubmitting) return;
     setIsEditModalOpen(false);
     setBuildingEditingId(null);
     resetForm();
@@ -462,61 +502,52 @@ export default function BuildingsPage() {
     setDeleteError(null);
   }
 
-  async function handleSubmitBuilding(e: React.FormEvent) {
-    e.preventDefault();
+  const handleSubmitBuilding = rhfSubmit(async (data) => {
     setMsg("");
     if (!user?.company_id) { setMsg("No se encontró la empresa del usuario."); return; }
-    if (!name.trim()) { setMsg("El nombre del edificio es obligatorio."); return; }
-    if (buildingCategory === "mixed_use" && !buildingSubcategory) {
-      setMsg("Debes seleccionar el tipo de uso mixto.");
-      return;
-    }
-    setSaving(true);
+
     const { error } = await supabase.from("buildings").insert({
       company_id: user.company_id,
-      name: name.trim(),
-      code: code.trim() || null,
-      address: address.trim() || null,
-      building_category: buildingCategory,
-      building_subcategory: buildingCategory === "mixed_use" ? buildingSubcategory || null : null,
+      name: data.name.trim(),
+      code: data.code?.trim() || null,
+      address: data.address?.trim() || null,
+      building_category: data.building_category,
+      building_subcategory:
+        data.building_category === "mixed_use"
+          ? data.building_subcategory || null
+          : null,
     });
-    setSaving(false);
     if (error) { setMsg(error.message); return; }
     setMsg("Edificio guardado correctamente.");
     closeCreateModal();
     await loadBuildings();
-  }
+  });
 
-  async function handleUpdateBuilding(e: React.FormEvent) {
-    e.preventDefault();
+  const handleUpdateBuilding = rhfSubmit(async (data) => {
     if (!user?.company_id || !buildingEditingId) {
       setMsg("No se encontró el edificio a editar.");
       return;
     }
-    if (!name.trim()) { setMsg("El nombre del edificio es obligatorio."); return; }
-    if (buildingCategory === "mixed_use" && !buildingSubcategory) {
-      setMsg("Debes seleccionar el tipo de uso mixto.");
-      return;
-    }
-    setSaving(true);
     setMsg("");
     const { error } = await supabase
       .from("buildings")
       .update({
-        name: name.trim(),
-        code: code.trim() || null,
-        address: address.trim() || null,
-        building_category: buildingCategory,
-        building_subcategory: buildingCategory === "mixed_use" ? buildingSubcategory || null : null,
+        name: data.name.trim(),
+        code: data.code?.trim() || null,
+        address: data.address?.trim() || null,
+        building_category: data.building_category,
+        building_subcategory:
+          data.building_category === "mixed_use"
+            ? data.building_subcategory || null
+            : null,
       })
       .eq("id", buildingEditingId)
       .eq("company_id", user.company_id);
-    setSaving(false);
     if (error) { setMsg(`No se pudo actualizar el edificio. ${error.message}`); return; }
     closeEditModal();
     await loadBuildings();
     setMsg("Edificio actualizado correctamente.");
-  }
+  });
 
   async function handleDeleteBuilding() {
     if (!user?.company_id || !buildingToDelete) return;
@@ -1007,11 +1038,11 @@ export default function BuildingsPage() {
         <form onSubmit={handleUpdateBuilding}>
           <AppFormField label="Nombre del edificio" required>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              {...register("name")}
               placeholder="Ej. Torre Central"
               style={INPUT_STYLE}
             />
+            {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </AppFormField>
 
           <div
@@ -1024,8 +1055,7 @@ export default function BuildingsPage() {
           >
             <AppFormField label="Código">
               <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+                {...register("code")}
                 placeholder="Ej. TC-001"
                 style={INPUT_STYLE}
               />
@@ -1033,11 +1063,13 @@ export default function BuildingsPage() {
 
             <AppFormField label="Categoría" required>
               <AppSelect
-                value={buildingCategory}
-                onChange={(e) => {
-                  setBuildingCategory(e.target.value);
-                  if (e.target.value !== "mixed_use") setBuildingSubcategory("");
-                }}
+                {...register("building_category", {
+                  onChange: (e) => {
+                    if (e.target.value !== "mixed_use") {
+                      setValue("building_subcategory", "");
+                    }
+                  },
+                })}
               >
                 {BUILDING_CATEGORIES.map((item, index) => (
                   <option key={`${item.key}-${index}`} value={item.key}>
@@ -1045,15 +1077,15 @@ export default function BuildingsPage() {
                   </option>
                 ))}
               </AppSelect>
+              {errors.building_category ? (
+                <p style={errorTextStyle}>{errors.building_category.message}</p>
+              ) : null}
             </AppFormField>
           </div>
 
           {buildingCategory === "mixed_use" ? (
             <AppFormField label="Subcategoría de uso mixto" required>
-              <AppSelect
-                value={buildingSubcategory}
-                onChange={(e) => setBuildingSubcategory(e.target.value)}
-              >
+              <AppSelect {...register("building_subcategory")}>
                 <option value="">Selecciona una subcategoría</option>
                 {MIXED_USE_SUBCATEGORIES.map((item, index) => (
                   <option key={`${item.value}-${index}`} value={item.value}>
@@ -1061,21 +1093,23 @@ export default function BuildingsPage() {
                   </option>
                 ))}
               </AppSelect>
+              {errors.building_subcategory ? (
+                <p style={errorTextStyle}>{errors.building_subcategory.message}</p>
+              ) : null}
             </AppFormField>
           ) : null}
 
           <AppFormField label="Dirección">
             <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              {...register("address")}
               placeholder="Ej. Av. Principal 123"
               style={INPUT_STYLE}
             />
           </AppFormField>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">
-              {saving ? "Guardando..." : "Guardar cambios"}
+            <UiButton type="submit" disabled={isSubmitting} variant="primary">
+              {isSubmitting ? "Guardando..." : "Guardar cambios"}
             </UiButton>
             <UiButton type="button" onClick={closeEditModal}>
               Cancelar
@@ -1132,11 +1166,11 @@ export default function BuildingsPage() {
         <form onSubmit={handleSubmitBuilding}>
           <AppFormField label="Nombre del edificio" required>
             <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              {...register("name")}
               placeholder="Ej. Torre Central"
               style={INPUT_STYLE}
             />
+            {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </AppFormField>
 
           <div
@@ -1149,8 +1183,7 @@ export default function BuildingsPage() {
           >
             <AppFormField label="Código">
               <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
+                {...register("code")}
                 placeholder="Ej. TC-001"
                 style={INPUT_STYLE}
               />
@@ -1158,11 +1191,13 @@ export default function BuildingsPage() {
 
             <AppFormField label="Categoría" required>
               <AppSelect
-                value={buildingCategory}
-                onChange={(e) => {
-                  setBuildingCategory(e.target.value);
-                  if (e.target.value !== "mixed_use") setBuildingSubcategory("");
-                }}
+                {...register("building_category", {
+                  onChange: (e) => {
+                    if (e.target.value !== "mixed_use") {
+                      setValue("building_subcategory", "");
+                    }
+                  },
+                })}
               >
                 {BUILDING_CATEGORIES.map((item, index) => (
                   <option key={`${item.key}-${index}`} value={item.key}>
@@ -1170,15 +1205,15 @@ export default function BuildingsPage() {
                   </option>
                 ))}
               </AppSelect>
+              {errors.building_category ? (
+                <p style={errorTextStyle}>{errors.building_category.message}</p>
+              ) : null}
             </AppFormField>
           </div>
 
           {buildingCategory === "mixed_use" ? (
             <AppFormField label="Subcategoría de uso mixto" required>
-              <AppSelect
-                value={buildingSubcategory}
-                onChange={(e) => setBuildingSubcategory(e.target.value)}
-              >
+              <AppSelect {...register("building_subcategory")}>
                 <option value="">Selecciona una subcategoría</option>
                 {MIXED_USE_SUBCATEGORIES.map((item, index) => (
                   <option key={`${item.value}-${index}`} value={item.value}>
@@ -1186,21 +1221,23 @@ export default function BuildingsPage() {
                   </option>
                 ))}
               </AppSelect>
+              {errors.building_subcategory ? (
+                <p style={errorTextStyle}>{errors.building_subcategory.message}</p>
+              ) : null}
             </AppFormField>
           ) : null}
 
           <AppFormField label="Dirección">
             <input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              {...register("address")}
               placeholder="Ej. Av. Principal 123"
               style={INPUT_STYLE}
             />
           </AppFormField>
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">
-              {saving ? "Guardando..." : "Guardar edificio"}
+            <UiButton type="submit" disabled={isSubmitting} variant="primary">
+              {isSubmitting ? "Guardando..." : "Guardar edificio"}
             </UiButton>
             <UiButton type="button" onClick={closeCreateModal}>
               Cancelar

@@ -3,7 +3,28 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LogIn, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
+
+const loginSchema = z.object({
+  email: z.string().min(1, "El email es obligatorio").email("Email inválido"),
+  password: z.string().min(1, "La contraseña es obligatoria"),
+});
+type LoginValues = z.infer<typeof loginSchema>;
+
+const activateSchema = z
+  .object({
+    email: z.string().min(1, "El email es obligatorio").email("Email inválido"),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+    confirmPassword: z.string().min(1, "Confirma la contraseña"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  });
+type ActivateValues = z.infer<typeof activateSchema>;
 
 type PortalTab = "login" | "activate";
 
@@ -44,6 +65,14 @@ const helperStyle: React.CSSProperties = {
   lineHeight: 1.5,
 };
 
+const fieldErrorStyle: React.CSSProperties = {
+  marginTop: 6,
+  marginBottom: 0,
+  fontSize: 12,
+  color: "#EF4444",
+  lineHeight: 1.4,
+};
+
 const buttonBaseStyle: React.CSSProperties = {
   width: "100%",
   borderRadius: 14,
@@ -59,17 +88,19 @@ export default function PortalLoginPage() {
 
   const [activeTab, setActiveTab] = useState<PortalTab>("login");
 
-  const [loginEmail, setLoginEmail] = useState("");
-  const [loginPassword, setLoginPassword] = useState("");
   const [loginMessage, setLoginMessage] = useState("");
-  const [loginLoading, setLoginLoading] = useState(false);
-
-  const [activateEmail, setActivateEmail] = useState("");
-  const [activatePassword, setActivatePassword] = useState("");
-  const [activateConfirmPassword, setActivateConfirmPassword] = useState("");
   const [activateMessage, setActivateMessage] = useState("");
   const [activateSuccess, setActivateSuccess] = useState(false);
-  const [activateLoading, setActivateLoading] = useState(false);
+
+  const loginForm = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const activateForm = useForm<ActivateValues>({
+    resolver: zodResolver(activateSchema),
+    defaultValues: { email: "", password: "", confirmPassword: "" },
+  });
 
   const tabButtonStyle = useMemo(
     () =>
@@ -91,17 +122,13 @@ export default function PortalLoginPage() {
     []
   );
 
-  async function handlePortalLogin(e: React.FormEvent) {
-    e.preventDefault();
-    setLoginLoading(true);
+  const onLogin = loginForm.handleSubmit(async (data) => {
     setLoginMessage("");
 
     const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail.trim().toLowerCase(),
-      password: loginPassword,
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
     });
-
-    setLoginLoading(false);
 
     if (error) {
       setLoginMessage(error.message);
@@ -109,24 +136,24 @@ export default function PortalLoginPage() {
     }
 
     router.push("/portal/dashboard");
-  }
+  });
 
-  async function handleActivateAccount(e: React.FormEvent) {
-    e.preventDefault();
-    setActivateLoading(true);
+  const onActivate = activateForm.handleSubmit(async (data) => {
     setActivateMessage("");
     setActivateSuccess(false);
 
     try {
+      const normalizedEmail = data.email.trim().toLowerCase();
+
       const response = await fetch("/api/portal/activate-account", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: activateEmail.trim().toLowerCase(),
-          password: activatePassword,
-          confirmPassword: activateConfirmPassword,
+          email: normalizedEmail,
+          password: data.password,
+          confirmPassword: data.confirmPassword,
         }),
       });
 
@@ -145,7 +172,6 @@ export default function PortalLoginPage() {
           payload?.error ||
             "El servidor devolvió un error inesperado. Revisa la terminal de Next para ver el detalle."
         );
-        setActivateLoading(false);
         return;
       }
 
@@ -156,19 +182,13 @@ export default function PortalLoginPage() {
       );
 
       setActiveTab("login");
-      setLoginEmail(activateEmail.trim().toLowerCase());
-      setLoginPassword("");
-
-      setActivateEmail("");
-      setActivatePassword("");
-      setActivateConfirmPassword("");
+      loginForm.reset({ email: normalizedEmail, password: "" });
+      activateForm.reset({ email: "", password: "", confirmPassword: "" });
     } catch (error) {
       console.error("Error activando cuenta:", error);
       setActivateMessage("Ocurrió un error inesperado.");
     }
-
-    setActivateLoading(false);
-  }
+  });
 
   return (
     <div
@@ -285,27 +305,35 @@ export default function PortalLoginPage() {
         </div>
 
         {activeTab === "login" ? (
-          <form onSubmit={handlePortalLogin} style={{ marginTop: 24 }}>
+          <form onSubmit={onLogin} style={{ marginTop: 24 }}>
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Correo electrónico</label>
               <input
                 type="email"
-                value={loginEmail}
-                onChange={(e) => setLoginEmail(e.target.value)}
                 placeholder="tuemail@dominio.com"
                 style={inputStyle}
+                {...loginForm.register("email")}
               />
+              {loginForm.formState.errors.email ? (
+                <p style={fieldErrorStyle}>
+                  {loginForm.formState.errors.email.message}
+                </p>
+              ) : null}
             </div>
 
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Contraseña</label>
               <input
                 type="password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="••••••••"
                 style={inputStyle}
+                {...loginForm.register("password")}
               />
+              {loginForm.formState.errors.password ? (
+                <p style={fieldErrorStyle}>
+                  {loginForm.formState.errors.password.message}
+                </p>
+              ) : null}
             </div>
 
             {loginMessage ? (
@@ -327,29 +355,35 @@ export default function PortalLoginPage() {
 
             <button
               type="submit"
-              disabled={loginLoading}
+              disabled={loginForm.formState.isSubmitting}
               style={{
                 ...buttonBaseStyle,
                 border: "1px solid #111827",
                 background: "#111827",
                 color: "#FFFFFF",
-                opacity: loginLoading ? 0.7 : 1,
+                opacity: loginForm.formState.isSubmitting ? 0.7 : 1,
               }}
             >
-              {loginLoading ? "Entrando..." : "Entrar al portal"}
+              {loginForm.formState.isSubmitting
+                ? "Iniciando sesión..."
+                : "Entrar al portal"}
             </button>
           </form>
         ) : (
-          <form onSubmit={handleActivateAccount} style={{ marginTop: 24 }}>
+          <form onSubmit={onActivate} style={{ marginTop: 24 }}>
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Correo electrónico registrado</label>
               <input
                 type="email"
-                value={activateEmail}
-                onChange={(e) => setActivateEmail(e.target.value)}
                 placeholder="Debe coincidir con el correo de tu perfil"
                 style={inputStyle}
+                {...activateForm.register("email")}
               />
+              {activateForm.formState.errors.email ? (
+                <p style={fieldErrorStyle}>
+                  {activateForm.formState.errors.email.message}
+                </p>
+              ) : null}
               <div style={helperStyle}>
                 Debe ser exactamente el mismo correo que administración usó al
                 crear tu perfil de inquilino.
@@ -360,22 +394,30 @@ export default function PortalLoginPage() {
               <label style={labelStyle}>Crear contraseña</label>
               <input
                 type="password"
-                value={activatePassword}
-                onChange={(e) => setActivatePassword(e.target.value)}
                 placeholder="Mínimo 8 caracteres"
                 style={inputStyle}
+                {...activateForm.register("password")}
               />
+              {activateForm.formState.errors.password ? (
+                <p style={fieldErrorStyle}>
+                  {activateForm.formState.errors.password.message}
+                </p>
+              ) : null}
             </div>
 
             <div style={{ marginBottom: 16 }}>
               <label style={labelStyle}>Confirmar contraseña</label>
               <input
                 type="password"
-                value={activateConfirmPassword}
-                onChange={(e) => setActivateConfirmPassword(e.target.value)}
                 placeholder="Vuelve a escribir tu contraseña"
                 style={inputStyle}
+                {...activateForm.register("confirmPassword")}
               />
+              {activateForm.formState.errors.confirmPassword ? (
+                <p style={fieldErrorStyle}>
+                  {activateForm.formState.errors.confirmPassword.message}
+                </p>
+              ) : null}
             </div>
 
             {activateMessage ? (
@@ -399,16 +441,18 @@ export default function PortalLoginPage() {
 
             <button
               type="submit"
-              disabled={activateLoading}
+              disabled={activateForm.formState.isSubmitting}
               style={{
                 ...buttonBaseStyle,
                 border: "1px solid #4338CA",
                 background: "#4338CA",
                 color: "#FFFFFF",
-                opacity: activateLoading ? 0.7 : 1,
+                opacity: activateForm.formState.isSubmitting ? 0.7 : 1,
               }}
             >
-              {activateLoading ? "Activando..." : "Activar cuenta"}
+              {activateForm.formState.isSubmitting
+                ? "Activando..."
+                : "Activar cuenta"}
             </button>
 
             <div

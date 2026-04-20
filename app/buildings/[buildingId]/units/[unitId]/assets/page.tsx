@@ -13,6 +13,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Edit3, MoreHorizontal, Plus, Tag, Trash2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -113,6 +116,37 @@ function StatusPill({ status }: { status: string }) {
   );
 }
 
+const assetSchema = z.object({
+  assetType: z.enum([
+    "MINISPLIT",
+    "CENTRAL_AC",
+    "FRIDGE",
+    "WASHER",
+    "DRYER",
+    "STOVE",
+    "FAN",
+    "OTHER",
+  ]),
+  assetName: z.string().min(1, "El nombre del asset es obligatorio"),
+  assetStatus: z.enum(["ACTIVE", "PENDING", "INACTIVE"]),
+  notes: z.string().optional(),
+});
+type AssetFormValues = z.infer<typeof assetSchema>;
+
+const ASSET_DEFAULTS: AssetFormValues = {
+  assetType: "MINISPLIT",
+  assetName: "",
+  assetStatus: "ACTIVE",
+  notes: "",
+};
+
+const errorTextStyle: CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
 export default function UnitAssetsPage() {
   const router = useRouter();
   const params = useParams();
@@ -126,14 +160,18 @@ export default function UnitAssetsPage() {
   const [unit, setUnit] = useState<UnitDetail | null>(null);
   const [assets, setAssets] = useState<AssetRow[]>([]);
 
-  const [assetType, setAssetType] = useState("MINISPLIT");
-  const [assetName, setAssetName] = useState("");
-  const [assetStatus, setAssetStatus] = useState("ACTIVE");
-  const [notes, setNotes] = useState("");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<AssetFormValues>({
+    resolver: zodResolver(assetSchema),
+    defaultValues: ASSET_DEFAULTS,
+  });
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -260,8 +298,7 @@ export default function UnitAssetsPage() {
     setLoadingData(false);
   }
 
-  async function handleCreateAsset(e: React.FormEvent) {
-    e.preventDefault();
+  const handleCreateAsset = handleSubmit(async (data) => {
     setMsg("");
 
     if (!user?.company_id) {
@@ -274,39 +311,27 @@ export default function UnitAssetsPage() {
       return;
     }
 
-    if (!assetName.trim()) {
-      setMsg("El nombre del asset es obligatorio.");
-      return;
-    }
-
-    setSaving(true);
-
     const { error } = await supabase.from("assets").insert({
       company_id: user.company_id,
       building_id: building.id,
       unit_id: unit.id,
-      asset_type: assetType,
-      name: assetName.trim(),
-      status: assetStatus,
-      notes: notes.trim() || null,
+      asset_type: data.assetType,
+      name: data.assetName.trim(),
+      status: data.assetStatus,
+      notes: data.notes?.trim() || null,
     });
-
-    setSaving(false);
 
     if (error) {
       setMsg(error.message);
       return;
     }
 
-    setAssetType("MINISPLIT");
-    setAssetName("");
-    setAssetStatus("ACTIVE");
-    setNotes("");
+    reset(ASSET_DEFAULTS);
     setIsCreateModalOpen(false);
     setMsg("Equipo guardado correctamente.");
 
     await loadPageData();
-  }
+  });
 
   if (loading || loadingData) {
     return (
@@ -549,11 +574,7 @@ export default function UnitAssetsPage() {
           <div style={{ display: "grid", gap: "16px" }}>
             <div>
               <label style={labelStyle}>Tipo de asset</label>
-              <select
-                value={assetType}
-                onChange={(e) => setAssetType(e.target.value)}
-                style={INPUT_STYLE}
-              >
+              <select {...register("assetType")} style={INPUT_STYLE}>
                 <option value="MINISPLIT">MINISPLIT</option>
                 <option value="CENTRAL_AC">CENTRAL_AC</option>
                 <option value="FRIDGE">FRIDGE</option>
@@ -568,20 +589,18 @@ export default function UnitAssetsPage() {
             <div>
               <label style={labelStyle}>Nombre</label>
               <input
-                value={assetName}
-                onChange={(e) => setAssetName(e.target.value)}
+                {...register("assetName")}
                 placeholder="Ej. Aire acondicionado sala"
                 style={INPUT_STYLE}
               />
+              {errors.assetName ? (
+                <p style={errorTextStyle}>{errors.assetName.message}</p>
+              ) : null}
             </div>
 
             <div>
               <label style={labelStyle}>Estado</label>
-              <select
-                value={assetStatus}
-                onChange={(e) => setAssetStatus(e.target.value)}
-                style={INPUT_STYLE}
-              >
+              <select {...register("assetStatus")} style={INPUT_STYLE}>
                 <option value="ACTIVE">ACTIVE</option>
                 <option value="PENDING">PENDING</option>
                 <option value="INACTIVE">INACTIVE</option>
@@ -591,8 +610,7 @@ export default function UnitAssetsPage() {
             <div>
               <label style={labelStyle}>Notas</label>
               <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
+                {...register("notes")}
                 placeholder="Notas opcionales"
                 style={TEXTAREA_STYLE}
               />
@@ -610,8 +628,8 @@ export default function UnitAssetsPage() {
                 Cancelar
               </UiButton>
 
-              <UiButton type="submit" variant="primary" disabled={saving}>
-                {saving ? "Guardando..." : "Guardar asset"}
+              <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? "Guardando..." : "Guardar asset"}
               </UiButton>
             </div>
           </div>

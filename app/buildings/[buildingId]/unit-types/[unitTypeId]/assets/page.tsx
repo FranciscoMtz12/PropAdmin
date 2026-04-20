@@ -17,6 +17,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
@@ -49,6 +52,40 @@ type UnitTypeAssetRow = {
   sort_order: number;
 };
 
+const templateAssetSchema = z.object({
+  assetType: z.enum([
+    "MINISPLIT",
+    "CENTRAL_AC",
+    "BOILER",
+    "FRIDGE",
+    "WASHER",
+    "DRYER",
+    "STOVE",
+    "FAN",
+    "OTHER",
+  ]),
+  assetName: z.string().min(1, "El nombre del asset base es obligatorio"),
+  assetStatus: z.enum(["ACTIVE", "INACTIVE"]),
+  notes: z.string().optional(),
+  sortOrder: z.string().optional(),
+});
+type TemplateAssetFormValues = z.infer<typeof templateAssetSchema>;
+
+const TEMPLATE_ASSET_DEFAULTS: TemplateAssetFormValues = {
+  assetType: "MINISPLIT",
+  assetName: "",
+  assetStatus: "ACTIVE",
+  notes: "",
+  sortOrder: "0",
+};
+
+const errorTextStyle: React.CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
 export default function UnitTypeAssetsPage() {
   const router = useRouter();
   const params = useParams();
@@ -63,17 +100,20 @@ export default function UnitTypeAssetsPage() {
   const [templateAssets, setTemplateAssets] = useState<UnitTypeAssetRow[]>([]);
 
   /*
-    Formulario para crear nuevo asset base.
+    Formulario para crear nuevo asset base (react-hook-form + zod).
   */
-  const [assetType, setAssetType] = useState("MINISPLIT");
-  const [assetName, setAssetName] = useState("");
-  const [assetStatus, setAssetStatus] = useState("ACTIVE");
-  const [notes, setNotes] = useState("");
-  const [sortOrder, setSortOrder] = useState("0");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<TemplateAssetFormValues>({
+    resolver: zodResolver(templateAssetSchema),
+    defaultValues: TEMPLATE_ASSET_DEFAULTS,
+  });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -199,8 +239,7 @@ export default function UnitTypeAssetsPage() {
     setLoadingData(false);
   }
 
-  async function handleCreateTemplateAsset(e: React.FormEvent) {
-    e.preventDefault();
+  const handleCreateTemplateAsset = handleSubmit(async (data) => {
     setMsg("");
 
     if (!unitType) {
@@ -208,39 +247,26 @@ export default function UnitTypeAssetsPage() {
       return;
     }
 
-    if (!assetName.trim()) {
-      setMsg("El nombre del asset base es obligatorio.");
-      return;
-    }
-
-    setSaving(true);
-
     const { error } = await supabase.from("unit_type_assets").insert({
       unit_type_id: unitType.id,
-      asset_type: assetType,
-      name: assetName.trim(),
-      status: assetStatus,
-      notes: notes.trim() || null,
-      sort_order: sortOrder.trim() ? Number(sortOrder) : 0,
+      asset_type: data.assetType,
+      name: data.assetName.trim(),
+      status: data.assetStatus,
+      notes: data.notes?.trim() || null,
+      sort_order: data.sortOrder && data.sortOrder.trim() ? Number(data.sortOrder) : 0,
     });
-
-    setSaving(false);
 
     if (error) {
       setMsg(error.message);
       return;
     }
 
-    setAssetType("MINISPLIT");
-    setAssetName("");
-    setAssetStatus("ACTIVE");
-    setNotes("");
-    setSortOrder("0");
+    reset(TEMPLATE_ASSET_DEFAULTS);
     setMsg("Equipo base guardado correctamente.");
     setIsCreateModalOpen(false);
 
     await loadPageData();
-  }
+  });
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -563,8 +589,7 @@ export default function UnitTypeAssetsPage() {
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Tipo de asset</label>
             <select
-              value={assetType}
-              onChange={(e) => setAssetType(e.target.value)}
+              {...register("assetType")}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -588,8 +613,7 @@ export default function UnitTypeAssetsPage() {
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Nombre</label>
             <input
-              value={assetName}
-              onChange={(e) => setAssetName(e.target.value)}
+              {...register("assetName")}
               placeholder="Ej. Boiler baño principal"
               style={{
                 width: "100%",
@@ -598,13 +622,15 @@ export default function UnitTypeAssetsPage() {
                 borderRadius: "10px",
               }}
             />
+            {errors.assetName ? (
+              <p style={errorTextStyle}>{errors.assetName.message}</p>
+            ) : null}
           </div>
 
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Estatus</label>
             <select
-              value={assetStatus}
-              onChange={(e) => setAssetStatus(e.target.value)}
+              {...register("assetStatus")}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -621,8 +647,7 @@ export default function UnitTypeAssetsPage() {
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Notas</label>
             <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              {...register("notes")}
               placeholder="Notas opcionales sobre este asset base"
               style={{
                 width: "100%",
@@ -639,8 +664,7 @@ export default function UnitTypeAssetsPage() {
             <label style={{ display: "block", marginBottom: "8px" }}>Orden visual</label>
             <input
               type="number"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value)}
+              {...register("sortOrder")}
               style={{
                 width: "100%",
                 padding: "12px",
@@ -651,8 +675,8 @@ export default function UnitTypeAssetsPage() {
           </div>
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">
-              {saving ? "Guardando..." : "Guardar asset base"}
+            <UiButton type="submit" disabled={isSubmitting} variant="primary">
+              {isSubmitting ? "Guardando..." : "Guardar asset base"}
             </UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(false)}>Cancelar</UiButton>
           </div>

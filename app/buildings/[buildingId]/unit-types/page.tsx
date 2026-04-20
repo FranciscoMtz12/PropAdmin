@@ -24,6 +24,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
@@ -94,6 +97,40 @@ const dropdownDeleteItemStyle: React.CSSProperties = {
   borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
+const errorTextStyle: React.CSSProperties = {
+  color: "#EF4444",
+  fontSize: 12,
+  marginTop: 4,
+  marginBottom: 0,
+};
+
+const unitTypeSchema = z.object({
+  name: z.string().min(1, "El nombre de la tipología es obligatorio"),
+  bedrooms: z.number().int().min(0, "No puede ser negativo"),
+  bathrooms: z.number().int().min(0, "No puede ser negativo"),
+  hasLivingRoom: z.boolean(),
+  hasDiningRoom: z.boolean(),
+  hasPatio: z.boolean(),
+  hasFridge: z.boolean(),
+  hasWasher: z.boolean(),
+  hasDryer: z.boolean(),
+  stoveType: z.enum(["NONE", "GAS", "ELECTRIC"]),
+});
+type UnitTypeFormValues = z.infer<typeof unitTypeSchema>;
+
+const UNIT_TYPE_DEFAULTS: UnitTypeFormValues = {
+  name: "",
+  bedrooms: 1,
+  bathrooms: 1,
+  hasLivingRoom: false,
+  hasDiningRoom: false,
+  hasPatio: false,
+  hasFridge: false,
+  hasWasher: false,
+  hasDryer: false,
+  stoveType: "NONE",
+};
+
 export default function BuildingUnitTypesPage() {
   /*
     Router para navegación interna.
@@ -121,19 +158,19 @@ export default function BuildingUnitTypesPage() {
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
 
   /*
-    Estados del formulario.
-    Se usan tanto para crear como para editar.
+    Formulario controlado por react-hook-form + zod.
+    Sirve tanto para crear como para editar (reset con valores del item).
   */
-  const [name, setName] = useState("");
-  const [bedrooms, setBedrooms] = useState(1);
-  const [bathrooms, setBathrooms] = useState(1);
-  const [hasLivingRoom, setHasLivingRoom] = useState(false);
-  const [hasDiningRoom, setHasDiningRoom] = useState(false);
-  const [hasPatio, setHasPatio] = useState(false);
-  const [hasFridge, setHasFridge] = useState(false);
-  const [hasWasher, setHasWasher] = useState(false);
-  const [hasDryer, setHasDryer] = useState(false);
-  const [stoveType, setStoveType] = useState("NONE");
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<UnitTypeFormValues>({
+    resolver: zodResolver(unitTypeSchema),
+    defaultValues: UNIT_TYPE_DEFAULTS,
+  });
+
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
 
   /*
@@ -160,7 +197,6 @@ export default function BuildingUnitTypesPage() {
     Estados auxiliares.
   */
   const [msg, setMsg] = useState("");
-  const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
 
   /*
@@ -298,16 +334,7 @@ export default function BuildingUnitTypesPage() {
     Resetea el formulario y vuelve al modo crear.
   */
   function resetForm() {
-    setName("");
-    setBedrooms(1);
-    setBathrooms(1);
-    setHasLivingRoom(false);
-    setHasDiningRoom(false);
-    setHasPatio(false);
-    setHasFridge(false);
-    setHasWasher(false);
-    setHasDryer(false);
-    setStoveType("NONE");
+    reset(UNIT_TYPE_DEFAULTS);
     setEditingUnitTypeId(null);
   }
 
@@ -316,16 +343,18 @@ export default function BuildingUnitTypesPage() {
     Llena el formulario con los datos de la tipología seleccionada.
   */
   function handleEditUnitType(unitType: UnitType) {
-    setName(unitType.name);
-    setBedrooms(unitType.bedrooms);
-    setBathrooms(unitType.bathrooms);
-    setHasLivingRoom(unitType.has_living_room);
-    setHasDiningRoom(unitType.has_dining_room);
-    setHasPatio(unitType.has_patio);
-    setHasFridge(unitType.has_fridge);
-    setHasWasher(unitType.has_washer);
-    setHasDryer(unitType.has_dryer);
-    setStoveType(unitType.stove_type || "NONE");
+    reset({
+      name: unitType.name,
+      bedrooms: unitType.bedrooms,
+      bathrooms: unitType.bathrooms,
+      hasLivingRoom: unitType.has_living_room,
+      hasDiningRoom: unitType.has_dining_room,
+      hasPatio: unitType.has_patio,
+      hasFridge: unitType.has_fridge,
+      hasWasher: unitType.has_washer,
+      hasDryer: unitType.has_dryer,
+      stoveType: (unitType.stove_type as "NONE" | "GAS" | "ELECTRIC") || "NONE",
+    });
     setEditingUnitTypeId(unitType.id);
     setMsg("");
     setIsFormModalOpen(true);
@@ -348,8 +377,7 @@ export default function BuildingUnitTypesPage() {
 
     Todo depende de si editingUnitTypeId tiene valor.
   */
-  async function handleSubmitUnitType(e: React.FormEvent) {
-    e.preventDefault();
+  const onSubmitUnitType = handleSubmit(async (data) => {
     setMsg("");
 
     if (!buildingId) {
@@ -357,35 +385,25 @@ export default function BuildingUnitTypesPage() {
       return;
     }
 
-    if (!name.trim()) {
-      setMsg("El nombre de la tipología es obligatorio.");
-      return;
-    }
+    const payload = {
+      name: data.name.trim(),
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+      has_living_room: data.hasLivingRoom,
+      has_dining_room: data.hasDiningRoom,
+      has_patio: data.hasPatio,
+      has_fridge: data.hasFridge,
+      has_washer: data.hasWasher,
+      has_dryer: data.hasDryer,
+      stove_type: data.stoveType,
+    };
 
-    setSaving(true);
-
-    /*
-      Si estamos editando, usamos UPDATE.
-    */
     if (editingUnitTypeId) {
       const { error } = await supabase
         .from("unit_types")
-        .update({
-          name: name.trim(),
-          bedrooms,
-          bathrooms,
-          has_living_room: hasLivingRoom,
-          has_dining_room: hasDiningRoom,
-          has_patio: hasPatio,
-          has_fridge: hasFridge,
-          has_washer: hasWasher,
-          has_dryer: hasDryer,
-          stove_type: stoveType,
-        })
+        .update(payload)
         .eq("id", editingUnitTypeId)
         .eq("building_id", buildingId);
-
-      setSaving(false);
 
       if (error) {
         setMsg(error.message);
@@ -398,24 +416,10 @@ export default function BuildingUnitTypesPage() {
       return;
     }
 
-    /*
-      Si no estamos editando, usamos INSERT.
-    */
     const { error } = await supabase.from("unit_types").insert({
       building_id: buildingId,
-      name: name.trim(),
-      bedrooms,
-      bathrooms,
-      has_living_room: hasLivingRoom,
-      has_dining_room: hasDiningRoom,
-      has_patio: hasPatio,
-      has_fridge: hasFridge,
-      has_washer: hasWasher,
-      has_dryer: hasDryer,
-      stove_type: stoveType,
+      ...payload,
     });
-
-    setSaving(false);
 
     if (error) {
       setMsg(error.message);
@@ -425,7 +429,7 @@ export default function BuildingUnitTypesPage() {
     setMsg("Tipología guardada correctamente.");
     resetForm();
     await loadPageData();
-  }
+  });
 
   function openDeleteModal(unitType: UnitType) {
     setUnitTypeToDelete(unitType);
@@ -610,35 +614,38 @@ export default function BuildingUnitTypesPage() {
         title={editingUnitTypeId ? "Editar tipología" : "Crear tipología"}
         subtitle="El formulario ya no ocupa espacio fijo en la página principal."
       >
-        <form onSubmit={handleSubmitUnitType}>
+        <form onSubmit={onSubmitUnitType}>
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Nombre de la tipología</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Tipo A" style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+            <input {...register("name")} placeholder="Ej. Tipo A" style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+            {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
             <div>
               <label style={{ display: "block", marginBottom: "8px" }}>Recámaras</label>
-              <input type="number" min={0} value={bedrooms} onChange={(e) => setBedrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+              <input type="number" min={0} {...register("bedrooms", { valueAsNumber: true })} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+              {errors.bedrooms ? <p style={errorTextStyle}>{errors.bedrooms.message}</p> : null}
             </div>
             <div>
               <label style={{ display: "block", marginBottom: "8px" }}>Baños</label>
-              <input type="number" min={0} value={bathrooms} onChange={(e) => setBathrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+              <input type="number" min={0} {...register("bathrooms", { valueAsNumber: true })} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+              {errors.bathrooms ? <p style={errorTextStyle}>{errors.bathrooms.message}</p> : null}
             </div>
           </div>
 
           <div style={{ display: "grid", gap: "10px", marginBottom: "16px" }}>
-            <label><input type="checkbox" checked={hasLivingRoom} onChange={(e) => setHasLivingRoom(e.target.checked)} /> Tiene sala</label>
-            <label><input type="checkbox" checked={hasDiningRoom} onChange={(e) => setHasDiningRoom(e.target.checked)} /> Tiene comedor</label>
-            <label><input type="checkbox" checked={hasPatio} onChange={(e) => setHasPatio(e.target.checked)} /> Tiene patio</label>
-            <label><input type="checkbox" checked={hasFridge} onChange={(e) => setHasFridge(e.target.checked)} /> Incluye refrigerador</label>
-            <label><input type="checkbox" checked={hasWasher} onChange={(e) => setHasWasher(e.target.checked)} /> Incluye lavadora</label>
-            <label><input type="checkbox" checked={hasDryer} onChange={(e) => setHasDryer(e.target.checked)} /> Incluye secadora</label>
+            <label><input type="checkbox" {...register("hasLivingRoom")} /> Tiene sala</label>
+            <label><input type="checkbox" {...register("hasDiningRoom")} /> Tiene comedor</label>
+            <label><input type="checkbox" {...register("hasPatio")} /> Tiene patio</label>
+            <label><input type="checkbox" {...register("hasFridge")} /> Incluye refrigerador</label>
+            <label><input type="checkbox" {...register("hasWasher")} /> Incluye lavadora</label>
+            <label><input type="checkbox" {...register("hasDryer")} /> Incluye secadora</label>
           </div>
 
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Tipo de estufa</label>
-            <select value={stoveType} onChange={(e) => setStoveType(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px", background: "var(--bg-card)" }}>
+            <select {...register("stoveType")} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px", background: "var(--bg-card)" }}>
               <option value="NONE">No tiene</option>
               <option value="GAS">Gas</option>
               <option value="ELECTRIC">Eléctrica</option>
@@ -646,8 +653,8 @@ export default function BuildingUnitTypesPage() {
           </div>
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">
-              {saving ? "Guardando..." : editingUnitTypeId ? "Actualizar tipología" : "Guardar tipología"}
+            <UiButton type="submit" disabled={isSubmitting} variant="primary">
+              {isSubmitting ? "Guardando..." : editingUnitTypeId ? "Actualizar tipología" : "Guardar tipología"}
             </UiButton>
             <UiButton onClick={() => { setIsFormModalOpen(false); if (editingUnitTypeId) { handleCancelEdit(); } }}>Cancelar</UiButton>
           </div>
