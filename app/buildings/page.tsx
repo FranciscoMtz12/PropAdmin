@@ -18,6 +18,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   LineChart,
   Line,
@@ -34,6 +35,7 @@ import {
   Edit3,
   Filter,
   Home,
+  Map as MapIcon,
   MoreHorizontal,
   Plus,
   Tags,
@@ -82,6 +84,8 @@ type Building = {
   code: string | null;
   building_category: string | null;
   building_subcategory: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type UnitForTrend = {
@@ -189,6 +193,11 @@ const buildingSchema = z
     address: z.string().optional(),
     building_category: z.string().min(1, "Selecciona una categoría"),
     building_subcategory: z.string().optional(),
+    /* Coordenadas opcionales para el mapa. Se guardan como string y
+       se convierten a number en el submit (evita incompatibilidades
+       de tipos entre zod preprocess y react-hook-form). */
+    latitude: z.string().optional(),
+    longitude: z.string().optional(),
   })
   .refine(
     (data) =>
@@ -206,7 +215,31 @@ const BUILDING_DEFAULTS: BuildingFormValues = {
   address: "",
   building_category: "residential",
   building_subcategory: "",
+  latitude: "",
+  longitude: "",
 };
+
+/* LocationPicker — importación dinámica (ssr: false) porque usa Leaflet. */
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        height: 340,
+        width: "100%",
+        borderRadius: 8,
+        background: "var(--bg-card-hover)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+        fontSize: 13,
+      }}
+    >
+      Cargando selector de ubicación...
+    </div>
+  ),
+});
 
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
@@ -242,12 +275,30 @@ export default function BuildingsPage() {
     reset,
     watch,
     setValue,
+    getValues,
     formState: { errors, isSubmitting },
   } = useForm<BuildingFormValues>({
     resolver: zodResolver(buildingSchema),
     defaultValues: BUILDING_DEFAULTS,
   });
   const buildingCategory = watch("building_category");
+  /* Coordenadas observadas como números (o null si están vacías/no válidas). */
+  const latitudeStr  = watch("latitude");
+  const longitudeStr = watch("longitude");
+  const latitudeNum  = latitudeStr  && latitudeStr.trim()  ? Number(latitudeStr)  : null;
+  const longitudeNum = longitudeStr && longitudeStr.trim() ? Number(longitudeStr) : null;
+  const latitudeForPicker  = latitudeNum  !== null && Number.isFinite(latitudeNum)  ? latitudeNum  : null;
+  const longitudeForPicker = longitudeNum !== null && Number.isFinite(longitudeNum) ? longitudeNum : null;
+
+  /* Callback del LocationPicker → sincroniza con el form. */
+  function handleLocationChange(lat: number, lng: number, address?: string) {
+    setValue("latitude", String(lat));
+    setValue("longitude", String(lng));
+    /* Sugerir la dirección sólo si el campo está vacío (no sobrescribir input del usuario). */
+    if (address && !getValues("address")?.trim()) {
+      setValue("address", address);
+    }
+  }
 
   /* Hover + dropdown de acciones por card */
   const [hoveredBuildingId, setHoveredBuildingId] = useState<string | null>(null);
@@ -285,7 +336,7 @@ export default function BuildingsPage() {
     /* 1. Edificios */
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude")
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -474,6 +525,8 @@ export default function BuildingsPage() {
       address: building.address || "",
       building_category: building.building_category || "residential",
       building_subcategory: building.building_subcategory || "",
+      latitude: building.latitude != null ? String(building.latitude) : "",
+      longitude: building.longitude != null ? String(building.longitude) : "",
     });
     setIsEditModalOpen(true);
     setOpenActionsBuildingId(null);
@@ -516,6 +569,8 @@ export default function BuildingsPage() {
         data.building_category === "mixed_use"
           ? data.building_subcategory || null
           : null,
+      latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
+      longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
     });
     if (error) { setMsg(error.message); return; }
     setMsg("Edificio guardado correctamente.");
@@ -540,6 +595,8 @@ export default function BuildingsPage() {
           data.building_category === "mixed_use"
             ? data.building_subcategory || null
             : null,
+        latitude: data.latitude || null,
+        longitude: data.longitude || null,
       })
       .eq("id", buildingEditingId)
       .eq("company_id", user.company_id);
@@ -584,6 +641,10 @@ export default function BuildingsPage() {
         actions={
           <>
             <UiButton href="/dashboard">Ir al dashboard</UiButton>
+            <UiButton href="/buildings/map">
+              <MapIcon size={16} />
+              Ver mapa
+            </UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
               <Plus size={16} />
               Nuevo edificio
@@ -1107,6 +1168,15 @@ export default function BuildingsPage() {
             />
           </AppFormField>
 
+          {/* Ubicación en el mapa — buscador + mini mapa interactivo */}
+          <AppFormField label="Ubicación en el mapa (opcional)">
+            <LocationPicker
+              latitude={latitudeForPicker}
+              longitude={longitudeForPicker}
+              onLocationChange={handleLocationChange}
+            />
+          </AppFormField>
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={isSubmitting} variant="primary">
               {isSubmitting ? "Guardando..." : "Guardar cambios"}
@@ -1232,6 +1302,15 @@ export default function BuildingsPage() {
               {...register("address")}
               placeholder="Ej. Av. Principal 123"
               style={INPUT_STYLE}
+            />
+          </AppFormField>
+
+          {/* Ubicación en el mapa — buscador + mini mapa interactivo */}
+          <AppFormField label="Ubicación en el mapa (opcional)">
+            <LocationPicker
+              latitude={latitudeForPicker}
+              longitude={longitudeForPicker}
+              onLocationChange={handleLocationChange}
             />
           </AppFormField>
 

@@ -16,6 +16,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
 import {
   BarChart, Bar,
   LineChart, Line,
@@ -81,6 +82,28 @@ import {
 import AssetTypeIcon from "@/components/AssetTypeIcon";
 import AppBadge from "@/components/AppBadge";
 
+/* Mini mapa — importación dinámica para evitar errores de SSR con Leaflet. */
+const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
+  ssr: false,
+  loading: () => (
+    <div
+      style={{
+        height: 220,
+        width: "100%",
+        borderRadius: 8,
+        background: "var(--bg-card-hover)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        color: "var(--text-muted)",
+        fontSize: 13,
+      }}
+    >
+      Cargando mapa...
+    </div>
+  ),
+});
+
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
 type Building = {
@@ -91,6 +114,8 @@ type Building = {
   code: string | null;
   building_category: string | null;
   building_subcategory: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 type BuildingFile = {
@@ -448,7 +473,7 @@ export default function BuildingDetailPage() {
 
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
@@ -810,6 +835,78 @@ export default function BuildingDetailPage() {
             />
           </div>
 
+          {/* ── Información general: 2 columnas — datos | mapa ── */}
+          <SectionCard
+            title="Información general"
+            subtitle="Datos base del edificio."
+            icon={<Building2 size={18} />}
+            action={
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <BuildingCategoryBadge category={building.building_category} />
+                {building.building_category === "mixed_use" && building.building_subcategory ? (
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+                    {getMixedUseSubcategoryLabel(building.building_subcategory)}
+                  </span>
+                ) : null}
+              </div>
+            }
+          >
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
+
+              {/* Columna izquierda — datos del edificio */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <SummaryItem label="Código"    value={building.code || "Sin código"}      icon={<Tags size={16} />} />
+                <SummaryItem label="Dirección" value={building.address || "Sin dirección"} icon={<MapPin size={16} />} />
+                <SummaryItem label="Categoría" value={categoryDefinition.label}            icon={<Building2 size={16} />} />
+                {building.building_category === "mixed_use" && building.building_subcategory ? (
+                  <SummaryItem
+                    label="Subcategoría"
+                    value={getMixedUseSubcategoryLabel(building.building_subcategory)}
+                    icon={<Home size={16} />}
+                  />
+                ) : null}
+              </div>
+
+              {/* Columna derecha — mapa o placeholder (se estira para igualar la columna izquierda) */}
+              <div style={{ height: "100%", alignSelf: "stretch" }}>
+                {building.latitude !== null && building.longitude !== null ? (
+                  <BuildingMiniMap
+                    latitude={building.latitude}
+                    longitude={building.longitude}
+                    name={building.name}
+                    address={building.address}
+                  />
+                ) : (
+                  <div
+                    style={{
+                      height: "100%",
+                      minHeight: 200,
+                      background: "var(--bg-card)",
+                      border: "0.5px dashed var(--border-default)",
+                      borderRadius: 8,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      flexDirection: "column",
+                      gap: 8,
+                    }}
+                  >
+                    <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
+                      Sin ubicación registrada
+                    </p>
+                    <a
+                      href="/buildings/map"
+                      style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}
+                    >
+                      Agregar en el mapa →
+                    </a>
+                  </div>
+                )}
+              </div>
+
+            </div>
+          </SectionCard>
+
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
 
@@ -933,32 +1030,8 @@ export default function BuildingDetailPage() {
             )}
           </SectionCard>
 
-          {/* ── Fila 4: Grid 3 columnas — Info | Facturación | Accesos ── */}
+          {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
-
-            {/* Info general */}
-            <SectionCard title="Información general" subtitle="Datos base del edificio." icon={<Building2 size={18} />}>
-              <AppGrid minWidth={180} gap={12}>
-                <SummaryItem label="Código"    value={building.code || "Sin código"}      icon={<Tags size={16} />} />
-                <SummaryItem label="Dirección" value={building.address || "Sin dirección"} icon={<MapPin size={16} />} />
-                <SummaryItem label="Categoría" value={categoryDefinition.label}            icon={<Building2 size={16} />} />
-                {building.building_category === "mixed_use" && building.building_subcategory ? (
-                  <SummaryItem
-                    label="Subcategoría"
-                    value={getMixedUseSubcategoryLabel(building.building_subcategory)}
-                    icon={<Home size={16} />}
-                  />
-                ) : null}
-              </AppGrid>
-              <div style={{ marginTop: 16, display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <BuildingCategoryBadge category={building.building_category} />
-                {building.building_category === "mixed_use" && building.building_subcategory ? (
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
-                    {getMixedUseSubcategoryLabel(building.building_subcategory)}
-                  </span>
-                ) : null}
-              </div>
-            </SectionCard>
 
             {/* Facturación */}
             <SectionCard title="Facturación" subtitle="Conceptos de la generación mensual." icon={<CreditCard size={18} />}>
