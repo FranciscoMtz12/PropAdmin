@@ -9,7 +9,7 @@ type AdminUser = {
   full_name: string;
   company_id: string;
   is_superadmin: boolean;
-  role: "admin";
+  role: "admin" | "field";
 };
 
 type TenantUser = {
@@ -59,7 +59,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // 1) Intentar resolver como admin
     const { data: adminData, error: adminError } = await supabase
       .from("app_users")
-      .select("id, email, full_name, company_id, is_superadmin")
+      .select("id, email, full_name, company_id, role, is_superadmin")
       .eq("id", authUserId)
       .maybeSingle();
 
@@ -70,7 +70,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         full_name: adminData.full_name || "",
         company_id: adminData.company_id || "",
         is_superadmin: Boolean(adminData.is_superadmin),
-        role: "admin",
+        role: adminData.role === "field" ? "field" : "admin",
       });
       setLoading(false);
       return;

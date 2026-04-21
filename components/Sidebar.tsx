@@ -244,7 +244,7 @@ export default function Sidebar() {
 
   const previewTenantId = searchParams.get("tenantId");
   const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
-  const isField = (user?.role as string) === "field";
+  const isField = user?.role === "field";
   const activeAdminItems = isField ? FIELD_ITEMS : ADMIN_ITEMS;
 
   if (isHiddenRoute) return null;

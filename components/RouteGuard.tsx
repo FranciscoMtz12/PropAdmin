@@ -100,7 +100,7 @@ export default function RouteGuard() {
     }
 
     // Campo: solo puede estar en /campo/*
-    if ((user.role as string) === "field") {
+    if (user.role === "field") {
       if (!pathname.startsWith("/campo")) {
         router.replace("/campo/dashboard");
         return;
