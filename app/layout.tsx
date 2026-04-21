@@ -10,6 +10,7 @@ import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import SidebarGate from "@/components/SidebarGate";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
+import SplashScreen from "@/components/SplashScreen";
 import MainContentWrapper from "@/components/MainContentWrapper";
 import { Toaster } from "react-hot-toast";
 
@@ -68,6 +69,9 @@ export default function RootLayout({
           <ThemeProvider>
             {/* Guard de navegación cliente */}
             <RouteGuard />
+
+            {/* Splash de bienvenida post-login (lee flag de sessionStorage) */}
+            <SplashScreen />
 
             {/* AppShell aplica el fondo dinámico según el modo activo */}
             <AppShell>

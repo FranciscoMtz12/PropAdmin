@@ -76,6 +76,7 @@ export default function PortalLoginPage() {
       password: data.password,
     });
     if (error) { setLoginMessage("Credenciales incorrectas"); return; }
+    sessionStorage.setItem("show_splash", "1");
     router.push("/portal/dashboard");
   });
 

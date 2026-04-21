@@ -35,6 +35,7 @@ export default function LoginPage() {
       setError("Credenciales incorrectas");
       return;
     }
+    sessionStorage.setItem("show_splash", "1");
     router.push("/dashboard");
   }
 

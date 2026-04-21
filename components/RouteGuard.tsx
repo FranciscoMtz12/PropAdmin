@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -48,12 +48,6 @@ export default function RouteGuard() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const [showSplash, setShowSplash] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setShowSplash(false), 2500);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     if (!pathname || loading) return;
@@ -127,7 +121,7 @@ export default function RouteGuard() {
     }
   }, [pathname, router, user, loading]);
 
-  if (loading || showSplash) return (
+  if (loading) return (
     <div style={{
       position: "fixed", inset: 0,
       background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
