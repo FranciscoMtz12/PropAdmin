@@ -1364,118 +1364,66 @@ export default function PaymentsPage() {
 
       {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Registros"
-          value={String(totalRecords)}
-          helper={selectedBuildingLabel}
-          icon={
-            <div style={getMetricIconBoxStyle("var(--icon-bg-blue)")}>
-              <ReceiptText size={18} color="#0284C7" />
-            </div>
-          }
-        />
+      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+        {[
+          { label:"Registros", value:totalRecords, sub:"total" },
+          { label:"Pendiente", value:`$${pendingAmount.toLocaleString("es-MX",{minimumFractionDigits:2})}`, sub:"no pagado", color:"#F59E0B" },
+          { label:"Pagados", value:paidCount, sub:"realizados", color:"#10B981" },
+          { label:"Pendientes", value:pendingCount, sub:"por pagar", color:"#F59E0B" },
+          { label:"Vence hoy", value:dueTodayCount, sub:"revisión", color:"#F97316" },
+          { label:"Vencidos", value:overdueCount, sub:"atención", color:"#EF4444" },
+        ].map((s, i, arr) => (
+          <div key={i} style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+            <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
+            <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+            <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
 
-        <MetricCard
-          label="Monto pendiente"
-          value={formatCurrency(pendingAmount)}
-          helper="No pagado"
-          icon={
-            <div style={getMetricIconBoxStyle("var(--icon-bg-blue)")}>
-              <CreditCard size={18} color="#2563EB" />
+      <div style={{ display:"flex", gap:"1rem", marginBottom:"1rem", alignItems:"stretch" }}>
+        {donutData.length > 0 && (
+          <div style={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1rem", width:240, flexShrink:0 }}>
+            <div style={{ fontSize:10, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:".75rem" }}>GASTO POR CATEGORÍA</div>
+            <div style={{ width:"100%", height:110 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={donutData} cx="50%" cy="50%" innerRadius={32} outerRadius={52} dataKey="value" strokeWidth={0}>
+                    {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                  </Pie>
+                  <Tooltip formatter={(v) => `$${Number(v).toLocaleString("es-MX", { minimumFractionDigits:2 })}`} />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
-          }
-        />
-
-        <MetricCard
-          label="Pagados"
-          value={String(paidCount)}
-          helper="Pagos realizados"
-          icon={
-            <div style={getMetricIconBoxStyle("var(--icon-bg-green)")}>
-              <CheckCircle2 size={18} color="#16A34A" />
+            <div style={{ display:"flex", flexDirection:"column", gap:"0.3rem", marginTop:".5rem" }}>
+              {donutData.map((entry, i) => (
+                <div key={i} style={{ display:"flex", alignItems:"center", gap:"0.4rem", fontSize:10 }}>
+                  <div style={{ width:7, height:7, borderRadius:1, background:entry.color, flexShrink:0 }} />
+                  <span style={{ color:"var(--text-secondary)", flex:1 }}>{entry.name}</span>
+                  <span style={{ color:"var(--text-primary)", fontWeight:500 }}>${entry.value.toLocaleString("es-MX", { minimumFractionDigits:2 })}</span>
+                </div>
+              ))}
             </div>
-          }
-        />
-
-        <MetricCard
-          label="Pendientes"
-          value={String(pendingCount)}
-          helper={nextPendingLabel}
-          icon={
-            <div style={getMetricIconBoxStyle("var(--icon-bg-amber)")}>
-              <Clock3 size={18} color="#D97706" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Vence hoy"
-          value={String(dueTodayCount)}
-          helper="Revisión inmediata"
-          icon={
-            <div style={getMetricIconBoxStyle("var(--metric-bg-amber)")}>
-              <AlertCircle size={18} color="#EA580C" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Vencidos"
-          value={String(overdueCount)}
-          helper="Requieren atención"
-          icon={
-            <div style={getMetricIconBoxStyle("var(--badge-bg-red)")}>
-              <AlertCircle size={18} color="#DC2626" />
-            </div>
-          }
-        />
-      </AppGrid>
-
-      {donutData.length > 0 && (
-        <div style={{ display:"flex", gap:"1.5rem", alignItems:"center", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1.25rem", marginTop:"1.25rem", marginBottom:"1rem", flexWrap:"wrap" }}>
-          <div style={{ width:160, height:160, flexShrink:0 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={donutData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
-                  {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                </Pie>
-                <Tooltip formatter={(v) => `$${Number(v).toLocaleString("es-MX", { minimumFractionDigits:2 })}`} />
-              </PieChart>
+          </div>
+        )}
+        {lineChartData.length > 0 && (
+          <div style={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1rem", flex:1 }}>
+            <div style={{ fontSize:10, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:".75rem" }}>TENDENCIA DE GASTO — ÚLTIMOS 6 MESES</div>
+            <ResponsiveContainer width="100%" height={180}>
+              <LineChart data={lineChartData} margin={{ top:4, right:12, left:0, bottom:4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                <XAxis dataKey="mes" tick={{ fontSize:10, fill:"var(--text-muted)" }} />
+                <YAxis tick={{ fontSize:10, fill:"var(--text-muted)" }} tickFormatter={v => `$${Number(v).toLocaleString("es-MX", { notation:"compact" })}`} />
+                <Tooltip formatter={(v) => `$${Number(v).toLocaleString("es-MX", { minimumFractionDigits:2 })}`} contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:8, fontSize:11 }} />
+                <Legend wrapperStyle={{ fontSize:10, paddingTop:6 }} />
+                {lineCategories.map(cat => (
+                  <Line key={cat} type="monotone" dataKey={cat} stroke={EXPENSE_TYPE_COLOR[cat] ?? "#94A3B8"} strokeWidth={2} dot={{ r:2.5 }} activeDot={{ r:4 }} />
+                ))}
+              </LineChart>
             </ResponsiveContainer>
           </div>
-          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:"0.5rem" }}>
-            <div style={{ fontSize:12, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:"0.25rem" }}>GASTO POR CATEGORÍA</div>
-            {donutData.map((entry, i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center", gap:"0.5rem", fontSize:12 }}>
-                <div style={{ width:10, height:10, borderRadius:2, background:entry.color, flexShrink:0 }} />
-                <span style={{ color:"var(--text-secondary)", flex:1 }}>{entry.name}</span>
-                <span style={{ color:"var(--text-primary)", fontWeight:500 }}>${entry.value.toLocaleString("es-MX", { minimumFractionDigits:2 })}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{ height: 16 }} />
-
-      {lineChartData.length > 0 && (
-        <div style={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1.25rem", marginBottom:"1rem" }}>
-          <div style={{ fontSize:11, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:"1rem" }}>TENDENCIA DE GASTO — ÚLTIMOS 6 MESES</div>
-          <ResponsiveContainer width="100%" height={220}>
-            <LineChart data={lineChartData} margin={{ top:4, right:16, left:0, bottom:4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-              <XAxis dataKey="mes" tick={{ fontSize:11, fill:"var(--text-muted)" }} />
-              <YAxis tick={{ fontSize:11, fill:"var(--text-muted)" }} tickFormatter={v => `$${Number(v).toLocaleString("es-MX", { notation:"compact" })}`} />
-              <Tooltip formatter={(v) => `$${Number(v).toLocaleString("es-MX", { minimumFractionDigits:2 })}`} contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:8, fontSize:12 }} />
-              <Legend wrapperStyle={{ fontSize:11, paddingTop:8 }} />
-              {lineCategories.map(cat => (
-                <Line key={cat} type="monotone" dataKey={cat} stroke={EXPENSE_TYPE_COLOR[cat] ?? "#94A3B8"} strokeWidth={2.5} dot={{ r:4 }} activeDot={{ r:6 }} />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+        )}
+      </div>
 
       <SectionCard title="Filtros" icon={<Filter size={18} />}>
         <div style={filtersGridStyle}>
