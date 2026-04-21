@@ -457,7 +457,7 @@ export default function BuildingDetailPage() {
   const [buildingSubcategory, setBuildingSubcategory] = useState("");
 
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
   useEffect(() => {

@@ -648,7 +648,7 @@ export default function MaintenancePage() {
 
   /* ── Router guard ───────────────────────────────────────────────── */
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
   useEffect(() => {

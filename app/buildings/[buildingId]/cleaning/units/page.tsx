@@ -103,7 +103,7 @@ export default function CleaningUnitsPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      router.push("/");
     }
   }, [loading, user, router]);
 

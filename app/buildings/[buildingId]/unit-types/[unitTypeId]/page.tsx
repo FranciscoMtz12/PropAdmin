@@ -100,7 +100,7 @@ export default function UnitTypeDetailPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      router.push("/");
     }
   }, [loading, user, router]);
 
@@ -313,7 +313,7 @@ export default function UnitTypeDetailPage() {
 
   async function handleLogout() {
     await supabase.auth.signOut();
-    router.push("/login");
+    router.push("/");
   }
 
   if (loading) {

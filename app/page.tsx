@@ -243,30 +243,41 @@ export default function LandingPage() {
 
       {/* CENTRO */}
       <div style={{ position: "relative", zIndex: 2, textAlign: "center" }}>
+        {/* Ícono SAPROA */}
+        <div style={{ marginBottom: "1rem", display: "flex", justifyContent: "center" }}>
+          <Image
+            src="/brands/saproa/saproa-icon-dark.png"
+            alt="SAPROA"
+            width={64}
+            height={64}
+            style={{ objectFit: "contain", filter: "drop-shadow(0 2px 8px rgba(0,0,0,.4))" }}
+          />
+        </div>
         <div
           style={{
-            fontSize: 10,
-            color: "rgba(255,255,255,.4)",
-            letterSpacing: "3px",
-            marginBottom: ".75rem",
+            fontSize: 11,
+            color: "rgba(255,255,255,.45)",
+            letterSpacing: "4px",
+            marginBottom: "1rem",
           }}
         >
           BIENVENIDO
         </div>
         <div
           style={{
-            fontSize: 32,
+            fontSize: "clamp(28px, 5vw, 52px)",
             fontWeight: 500,
             color: "#fff",
-            lineHeight: 1.2,
-            marginBottom: ".4rem",
+            lineHeight: 1.15,
+            marginBottom: ".6rem",
+            textShadow: "0 2px 12px rgba(0,0,0,.4)",
           }}
         >
           Gestión inmobiliaria
           <br />
           en un solo lugar
         </div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,.4)" }}>
+        <div style={{ fontSize: "clamp(12px, 1.5vw, 16px)", color: "rgba(255,255,255,.45)" }}>
           Selecciona tu área de acceso
         </div>
       </div>
@@ -279,7 +290,8 @@ export default function LandingPage() {
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
-          gap: ".85rem",
+          gap: "1rem",
+          paddingBottom: "2rem",
         }}
       >
         {/* Botones de rol */}
@@ -298,9 +310,9 @@ export default function LandingPage() {
                 type="button"
                 onClick={() => pick(r.id)}
                 style={{
-                  padding: ".5rem 1.3rem",
+                  padding: ".65rem 1.75rem",
                   borderRadius: 25,
-                  fontSize: 12,
+                  fontSize: 13,
                   fontWeight: 500,
                   cursor: "pointer",
                   letterSpacing: ".3px",
@@ -328,10 +340,10 @@ export default function LandingPage() {
         >
           {current && (
             <>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "#fff", marginBottom: 3 }}>
+              <div style={{ fontSize: "clamp(13px, 1.5vw, 16px)", fontWeight: 500, color: "#fff", marginBottom: 4 }}>
                 {current.d1}
               </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,.45)" }}>{current.d2}</div>
+              <div style={{ fontSize: "clamp(11px, 1.2vw, 14px)", color: "rgba(255,255,255,.5)" }}>{current.d2}</div>
             </>
           )}
         </div>

@@ -81,7 +81,7 @@ export default function UnitTypeAssetDetailPage() {
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
   useEffect(() => {

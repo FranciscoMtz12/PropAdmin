@@ -314,7 +314,7 @@ export default function DashboardPage() {
 
   /* Guard de autenticación */
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
   /* Carga inicial cuando el usuario está listo */

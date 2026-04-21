@@ -468,7 +468,7 @@ export default function UnitDetailPage() {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push("/login");
+      router.push("/");
     }
   }, [loading, user, router]);
 

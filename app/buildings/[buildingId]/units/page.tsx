@@ -272,7 +272,7 @@ export default function BuildingUnitsPage() {
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
   useEffect(() => {

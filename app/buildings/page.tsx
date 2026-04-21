@@ -307,7 +307,7 @@ export default function BuildingsPage() {
 
   /* Redirigir si no hay sesión */
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
   /* Cerrar dropdown al hacer click fuera */

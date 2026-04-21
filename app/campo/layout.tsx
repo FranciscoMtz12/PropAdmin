@@ -44,7 +44,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
   /* ── Protección de ruta ──────────────────────────────────────── */
   useEffect(() => {
     if (loading) return;
-    if (!user)                { router.replace("/login");            return; }
+    if (!user)                { router.replace("/");            return; }
     if (user.role === "tenant") { router.replace("/portal/dashboard"); return; }
   }, [loading, user, router]);
 
@@ -60,7 +60,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
   async function handleLogout() {
     setSidebarOpen(false);
     await supabase.auth.signOut();
-    router.replace("/login");
+    router.replace("/");
   }
 
   const displayLogo = isDark ? (logoDarkUrl || logoUrl) : logoUrl;

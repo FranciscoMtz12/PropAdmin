@@ -70,7 +70,7 @@ export default function RouteGuard() {
       }
 
       if (!portalPath && !adminPublic) {
-        router.replace("/login");
+        router.replace("/");
         return;
       }
 
