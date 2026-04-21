@@ -121,5 +121,20 @@ export default function RouteGuard() {
     }
   }, [pathname, router, user, loading]);
 
+  if (loading) return (
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 9999,
+    }}>
+      <img
+        src="/brands/saproa/saproa-icon-dark.png"
+        alt="SAPROA"
+        style={{ width: 56, height: 56, objectFit: "contain", opacity: 0.9 }}
+      />
+    </div>
+  );
+
   return null;
 }
