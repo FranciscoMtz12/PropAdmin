@@ -745,6 +745,7 @@ export default function DashboardPage() {
 
       {/* ══ FILA 1: TRES DONAS ════════════════════════════════════════ */}
       <div
+        className="dashboard-grid-3"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(3, 1fr)",
@@ -753,7 +754,7 @@ export default function DashboardPage() {
         }}
       >
         {/* ── Dona 1: Ocupación ─────────────────────────────────── */}
-        <AppCard style={{ padding: 24 }}>
+        <AppCard className="dashboard-card-mobile" style={{ padding: 24 }}>
           <p
             style={{
               fontSize: 11,
@@ -789,7 +790,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div style={{ position: "relative", height: 190 }}>
+              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -862,7 +863,7 @@ export default function DashboardPage() {
         </AppCard>
 
         {/* ── Dona 2: Cobranza del mes (siempre visible) ────────── */}
-        <AppCard style={{ padding: 24 }}>
+        <AppCard className="dashboard-card-mobile" style={{ padding: 24 }}>
           <p
             style={{
               fontSize: 11,
@@ -892,7 +893,7 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Dona siempre visible — gris si no hay datos */}
-              <div style={{ position: "relative", height: 190 }}>
+              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -1013,7 +1014,7 @@ export default function DashboardPage() {
         </AppCard>
 
         {/* ── Dona 3: Portafolio de edificios ───────────────────── */}
-        <AppCard style={{ padding: 24 }}>
+        <AppCard className="dashboard-card-mobile" style={{ padding: 24 }}>
           <p
             style={{
               fontSize: 11,
@@ -1049,7 +1050,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div style={{ position: "relative", height: 190 }}>
+              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -1173,6 +1174,7 @@ export default function DashboardPage() {
 
       {/* ══ FILA 3: AGENDA DE HOY + UNIDADES DISPONIBLES ════════════ */}
       <div
+        className="dashboard-grid-2"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(2, 1fr)",
@@ -1386,6 +1388,7 @@ export default function DashboardPage() {
         el grid cuando AppTable tiene contenido largo.
       */}
       <div
+        className="dashboard-grid-3"
         style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",

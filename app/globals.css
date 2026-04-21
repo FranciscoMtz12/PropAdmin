@@ -285,3 +285,18 @@ a {
 .splash-logo {
   animation: sapSplash 0.8s ease-out forwards;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Dashboard responsive — grids y cards colapsan en móvil
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  /* Grids de 3 columnas colapsan a 1 en móvil */
+  .dashboard-grid-3 { grid-template-columns: 1fr !important; }
+  /* Grids de 2 columnas colapsan a 1 en móvil */
+  .dashboard-grid-2 { grid-template-columns: 1fr !important; }
+  /* Reducir padding de cards en móvil */
+  .dashboard-card-mobile { padding: 16px !important; }
+  /* Donuts más pequeñas en móvil */
+  .dashboard-donut-wrap { height: 150px !important; }
+}
