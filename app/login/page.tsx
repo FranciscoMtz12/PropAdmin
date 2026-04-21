@@ -168,22 +168,14 @@ export default function LoginPage() {
       >
         {/* Logo + título */}
         <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <Image
-            src="/brands/saproa/saproa-icon-dark.png"
-            alt="SAPROA"
-            width={52}
-            height={52}
-            style={{ objectFit: "contain", marginBottom: "1rem" }}
-          />
-          <div
-            style={{
-              fontSize: 11,
-              color: "rgba(255,255,255,.4)",
-              letterSpacing: "3px",
-              marginBottom: ".4rem",
-            }}
-          >
-            SAPROA
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
+            <Image
+              src="/brands/saproa/saproa-stacked-dark.png"
+              alt="SAPROA"
+              width={140}
+              height={140}
+              style={{ objectFit: "contain" }}
+            />
           </div>
           <div style={{ fontSize: 20, fontWeight: 500, color: "#fff" }}>
             Iniciar sesión
@@ -310,7 +302,7 @@ export default function LoginPage() {
           letterSpacing: 1,
         }}
       >
-        GRUPO MATZ © {new Date().getFullYear()}
+        SAPROA © {new Date().getFullYear()}
       </div>
     </div>
   );
