@@ -289,6 +289,7 @@ export default function BuildingUnitTypesPage() {
       .order("created_at", { ascending: false });
 
     if (unitTypeError) {
+      console.error("unit_types fetch failed", unitTypeError);
       setMsg("No se pudieron cargar las tipologías.");
       setLoadingData(false);
       return;

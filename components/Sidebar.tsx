@@ -298,7 +298,7 @@ export default function Sidebar() {
       style={{
         display: "none",
         position: "fixed",
-        bottom: "1.5rem",
+        top: "1rem",
         left: "1rem",
         zIndex: 50,
         width: 44,
