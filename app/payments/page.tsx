@@ -31,7 +31,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import toast from "react-hot-toast";
-import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { CartesianGrid, Cell, Legend, Line, LineChart, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -570,6 +570,34 @@ export default function PaymentsPage() {
       color: EXPENSE_TYPE_COLOR[name] ?? "#94A3B8",
     }));
   }, [expensePayments, expenseSchedules, selectedYear, selectedMonth]);
+
+  const lineChartData = useMemo(() => {
+    const months: { year: number; month: number }[] = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(selectedYear, selectedMonth - 1 - i, 1);
+      months.push({ year: d.getFullYear(), month: d.getMonth() + 1 });
+    }
+    return months.map(({ year, month }) => {
+      const label = MONTH_LABELS_LONG[month - 1].slice(0, 3) + " " + String(year).slice(2);
+      const row: Record<string, string | number> = { mes: label };
+      const scheduleById = new Map(expenseSchedules.map(s => [s.id, s]));
+      expensePayments
+        .filter(p => p.period_year === year && p.period_month === month)
+        .forEach(p => {
+          const schedule = scheduleById.get(p.expense_schedule_id);
+          if (!schedule) return;
+          const cat = EXPENSE_TYPE_LABEL[schedule.expense_type as keyof typeof EXPENSE_TYPE_LABEL] ?? "Otros";
+          row[cat] = ((row[cat] as number) ?? 0) + Number(p.amount_due ?? 0);
+        });
+      return row;
+    });
+  }, [expensePayments, expenseSchedules, selectedYear, selectedMonth]);
+
+  const lineCategories = useMemo(() => {
+    const cats = new Set<string>();
+    lineChartData.forEach(row => Object.keys(row).filter(k => k !== "mes").forEach(k => cats.add(k)));
+    return Array.from(cats);
+  }, [lineChartData]);
 
   const prevMonth = () => {
     if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
@@ -1430,6 +1458,24 @@ export default function PaymentsPage() {
       )}
 
       <div style={{ height: 16 }} />
+
+      {lineChartData.length > 0 && (
+        <div style={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1.25rem", marginBottom:"1rem" }}>
+          <div style={{ fontSize:11, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:"1rem" }}>TENDENCIA DE GASTO — ÚLTIMOS 6 MESES</div>
+          <ResponsiveContainer width="100%" height={220}>
+            <LineChart data={lineChartData} margin={{ top:4, right:16, left:0, bottom:4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+              <XAxis dataKey="mes" tick={{ fontSize:11, fill:"var(--text-muted)" }} />
+              <YAxis tick={{ fontSize:11, fill:"var(--text-muted)" }} tickFormatter={v => `$${Number(v).toLocaleString("es-MX", { notation:"compact" })}`} />
+              <Tooltip formatter={(v) => `$${Number(v).toLocaleString("es-MX", { minimumFractionDigits:2 })}`} contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:8, fontSize:12 }} />
+              <Legend wrapperStyle={{ fontSize:11, paddingTop:8 }} />
+              {lineCategories.map(cat => (
+                <Line key={cat} type="monotone" dataKey={cat} stroke={EXPENSE_TYPE_COLOR[cat] ?? "#94A3B8"} strokeWidth={2.5} dot={{ r:4 }} activeDot={{ r:6 }} />
+              ))}
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       <SectionCard title="Filtros" icon={<Filter size={18} />}>
         <div style={filtersGridStyle}>
