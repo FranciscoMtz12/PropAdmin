@@ -7,7 +7,8 @@ import "./globals.css";
 import { UserProvider } from "@/contexts/UserContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
-import Sidebar from "@/components/Sidebar";
+import SidebarGate from "@/components/SidebarGate";
+import BgTexture from "@/components/BgTexture";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
 import MainContentWrapper from "@/components/MainContentWrapper";
@@ -71,19 +72,27 @@ export default function RootLayout({
 
             {/* AppShell aplica el fondo dinámico según el modo activo */}
             <AppShell>
+              {/* Textura decorativa de fondo — position: fixed con z-index: 0.
+                  El Sidebar y el contenido principal quedan por encima. */}
+              <BgTexture />
+
               {/* Sidebar global del sistema. Envuelto en Suspense porque usa
-                  useSearchParams(), que requiere un boundary para el prerender. */}
+                  useSearchParams(), que requiere un boundary para el prerender.
+                  SidebarGate decide si mostrarlo según la ruta (oculto en / y login). */}
               <Suspense fallback={null}>
-                <Sidebar />
+                <SidebarGate />
               </Suspense>
 
-              {/* Área principal del sistema */}
+              {/* Área principal del sistema — position: relative + z-index: 1
+                  para quedar por encima de BgTexture. */}
               <div
                 style={{
                   flex: 1,
                   minWidth: 0,
                   display: "flex",
                   flexDirection: "column",
+                  position: "relative",
+                  zIndex: 1,
                 }}
               >
                 {/* Breadcrumb global superior */}
