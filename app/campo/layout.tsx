@@ -44,8 +44,10 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
   /* ── Protección de ruta ──────────────────────────────────────── */
   useEffect(() => {
     if (loading) return;
-    if (!user)                { router.replace("/");            return; }
-    if (user.role === "tenant") { router.replace("/portal/dashboard"); return; }
+    if (!user) { router.replace("/"); return; }
+    const role = user.role;
+    if (role === "tenant") { router.replace("/portal/dashboard"); return; }
+    if (role !== "field" && !user.is_superadmin) { router.replace("/dashboard"); return; }
   }, [loading, user, router]);
 
   /* ── Bloquear scroll del body cuando el sidebar está abierto ─── */
@@ -67,7 +69,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
   const accent      = accentColor || "#8B2252";
   const accentBg    = accentColor ? `${accentColor}22` : "rgba(139,34,82,0.13)";
 
-  if (loading || !user || user.role === "tenant") return null;
+  if (loading || !user || user.role === "tenant" || (user.role !== "field" && !user.is_superadmin)) return null;
 
   return (
     <>
