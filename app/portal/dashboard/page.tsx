@@ -324,7 +324,7 @@ export default function PortalDashboardPage() {
       }
 
       const resolvedLease: PortalLeaseRecord | null = leaseData
-        ? (leaseData as PortalLeaseRecord)
+        ? (leaseData as unknown as PortalLeaseRecord)
         : null;
 
       setLease(resolvedLease);

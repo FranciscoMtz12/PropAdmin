@@ -11,7 +11,8 @@
       "Bash(awk 'NR>=876 && NR<=1200' app/campo/tickets/page.tsx)",
       "Bash(awk 'NR>=658 && NR<=900' app/buildings/page.tsx)",
       "Bash(grep -nE \"^\\\\s*\\\\\\);\\\\s*$\")",
-      "Bash(awk 'NR>=1980 && NR<=2420' app/maintenance/page.tsx)"
+      "Bash(awk 'NR>=1980 && NR<=2420' app/maintenance/page.tsx)",
+      "Bash(npx next *)"
     ]
   }
 }

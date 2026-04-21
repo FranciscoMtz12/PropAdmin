@@ -9,15 +9,17 @@
   - Expansión inline con fotos, materiales y botones de estado (FIX 6)
 */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Building2, Calendar, Camera, Check, ChevronDown, ChevronUp, Image as ImageIcon, Play, Plus, Trash2, X } from "lucide-react";
 
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
+import Webcam from "react-webcam";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import Modal from "@/components/Modal";
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -159,12 +161,14 @@ export default function CampoTicketsPage() {
   /* Foto picker — "create" | ticketId | null */
   const [photoPicker, setPhotoPicker] = useState<"create" | string | null>(null);
 
+  /* Webcam modal — "create" | ticketId | null. Reemplaza el capture nativo
+     de iOS que no se llevaba bien con el sheet del photo picker. */
+  const [webcamOpen, setWebcamOpen] = useState<"create" | string | null>(null);
+  const [webcamError, setWebcamError] = useState<string | null>(null);
+  const webcamRef = useRef<Webcam>(null);
+
   /* File refs — inputs FUERA de cualquier modal (evita dismiss en iOS) */
-  // TODO: fix iOS camera capture - temporalmente deshabilitado
-  // const createCamRef     = useRef<HTMLInputElement>(null); // crear ticket, cámara
   const createGalleryRef = useRef<HTMLInputElement>(null); // crear ticket, carrete
-  // TODO: fix iOS camera capture - temporalmente deshabilitado
-  // const detailCamRef     = useRef<HTMLInputElement>(null); // ticket existente, cámara
   const detailGalleryRef = useRef<HTMLInputElement>(null); // ticket existente, carrete
 
   /* ── Load ───────────────────────────────────────────────────── */
@@ -409,6 +413,39 @@ export default function CampoTicketsPage() {
     await supabase.from("maintenance_logs").update({ photos: updated }).eq("id", ticketId);
     setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, photos: updated } : t));
   }
+
+  /* ── Webcam: capturar foto y reutilizar los handlers de upload existentes ── */
+
+  const handleCapturePhoto = useCallback(async () => {
+    if (!webcamRef.current) return;
+    const imageSrc = webcamRef.current.getScreenshot();
+    if (!imageSrc) return;
+
+    /* Convertir el data URL base64 que devuelve react-webcam en un File
+       para reutilizar los handlers handleCreatePhoto/handleDetailPhoto. */
+    const res = await fetch(imageSrc);
+    const blob = await res.blob();
+    const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+
+    /* Capturar el destino antes de cerrar el modal (el setState es async). */
+    const target = webcamOpen;
+    setWebcamOpen(null);
+
+    if (target === "create") {
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const fakeEvent = { target: { files: dt.files, value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>;
+      void handleCreatePhoto(fakeEvent);
+    } else if (target) {
+      /* target es un ticketId */
+      addingPhotoForRef.current = target;
+      const dt = new DataTransfer();
+      dt.items.add(file);
+      const fakeEvent = { target: { files: dt.files, value: "" } } as unknown as React.ChangeEvent<HTMLInputElement>;
+      void handleDetailPhoto(fakeEvent);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [webcamOpen]);
 
   /* ── Create ─────────────────────────────────────────────────── */
 
@@ -1256,17 +1293,20 @@ export default function CampoTicketsPage() {
 
             <div style={{ height: 1, background: "var(--border-default)" }} />
 
-            {/* TODO: fix iOS camera capture - temporalmente deshabilitado
+            {/* Cámara: abre el modal de react-webcam (captura directa, sin picker nativo de iOS). */}
             <button
               type="button"
-              onClick={() => triggerInput(photoPicker === "create" ? createCamRef : detailCamRef)}
+              onClick={() => {
+                const target = photoPicker;
+                setPhotoPicker(null);
+                setTimeout(() => setWebcamOpen(target), 100);
+              }}
               style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--text-primary)", textAlign: "left" }}
             >
               <Camera size={20} /> Tomar foto
             </button>
 
             <div style={{ height: 1, background: "var(--border-default)" }} />
-            */}
 
             <button
               type="button"
@@ -1288,6 +1328,68 @@ export default function CampoTicketsPage() {
           </div>
         </div>
       )}
+
+      {/* ── Modal del Webcam — captura de foto desde la cámara del dispositivo ── */}
+      <Modal
+        open={webcamOpen !== null}
+        title="Tomar foto"
+        onClose={() => {
+          setWebcamOpen(null);
+          setWebcamError(null);
+        }}
+        maxWidth="420px"
+      >
+        {webcamError ? (
+          <div style={{ textAlign: "center", padding: 24 }}>
+            <p style={{ color: "#EF4444", marginBottom: 12, fontWeight: 600 }}>
+              {webcamError}
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              Verifica que el navegador tiene permiso para usar la cámara.
+            </p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <Webcam
+              ref={webcamRef}
+              audio={false}
+              screenshotFormat="image/jpeg"
+              screenshotQuality={0.92}
+              videoConstraints={{
+                facingMode: { ideal: "environment" },
+                width:  { ideal: 1280 },
+                height: { ideal: 720 },
+              }}
+              onUserMediaError={(err) => {
+                setWebcamError("No se pudo acceder a la cámara");
+                console.error("Webcam error:", err);
+              }}
+              style={{ width: "100%", borderRadius: 8 }}
+            />
+            <button
+              type="button"
+              onClick={handleCapturePhoto}
+              style={{
+                background: "#8B2252",
+                color: "white",
+                border: "none",
+                borderRadius: 8,
+                padding: "12px 0",
+                fontSize: 15,
+                fontWeight: 500,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: 8,
+              }}
+            >
+              <Camera size={18} />
+              Tomar foto
+            </button>
+          </div>
+        )}
+      </Modal>
     </>
   );
 }

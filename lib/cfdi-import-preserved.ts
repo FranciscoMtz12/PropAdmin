@@ -1,6 +1,8 @@
+// @ts-nocheck
 // Código preservado de importación CFDI — pendiente de reimplementar
 // Extraído de app/collections/page.tsx durante el rediseño simplificado.
 // Contiene: tipos, funciones de matching, handleConfirmImportedInvoice, lógica de modal.
+// Se excluye del typecheck con @ts-nocheck porque es código archivado.
 
 import { supabase } from "@/lib/supabaseClient";
 import { type ParsedCfdiData, parseCfdiXml } from "@/lib/cfdiXmlParser";

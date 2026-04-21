@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 
@@ -21,6 +22,11 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+/* La app es 100% autenticada — forzamos renderizado dinámico para evitar
+   prerender estático y los errores de useSearchParams() sin Suspense en
+   páginas cliente. */
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Administración de Departamentos",
@@ -65,8 +71,11 @@ export default function RootLayout({
 
             {/* AppShell aplica el fondo dinámico según el modo activo */}
             <AppShell>
-              {/* Sidebar global del sistema */}
-              <Sidebar />
+              {/* Sidebar global del sistema. Envuelto en Suspense porque usa
+                  useSearchParams(), que requiere un boundary para el prerender. */}
+              <Suspense fallback={null}>
+                <Sidebar />
+              </Suspense>
 
               {/* Área principal del sistema */}
               <div

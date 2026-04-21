@@ -455,7 +455,7 @@ export default function PortalInvoicesPage() {
       }
 
       const resolvedLeases: TenantLeaseRecord[] = Array.isArray(leaseData)
-        ? (leaseData as TenantLeaseRecord[])
+        ? (leaseData as unknown as TenantLeaseRecord[])
         : [];
 
       setLeases(resolvedLeases);

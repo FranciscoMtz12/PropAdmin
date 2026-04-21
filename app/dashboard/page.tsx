@@ -808,7 +808,7 @@ export default function DashboardPage() {
                       <Cell fill="#22c55e" />
                       <Cell fill={c.donutEmpty} />
                     </Pie>
-                    <Tooltip formatter={(v: number, n: string) => [v, n]} />
+                    <Tooltip formatter={(v, n) => [v, n]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div
@@ -910,7 +910,7 @@ export default function DashboardPage() {
                       ))}
                     </Pie>
                     {!collectionDonutIsEmpty && (
-                      <Tooltip formatter={(v: number, n: string) => [formatMXN(v), n]} />
+                      <Tooltip formatter={(v, n) => [formatMXN(Number(v)), n]} />
                     )}
                   </PieChart>
                 </ResponsiveContainer>
@@ -1066,7 +1066,7 @@ export default function DashboardPage() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(v: number, n: string) => [v, n]} />
+                    <Tooltip formatter={(v, n) => [v, n]} />
                   </PieChart>
                 </ResponsiveContainer>
                 <div
