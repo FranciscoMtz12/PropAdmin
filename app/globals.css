@@ -250,3 +250,25 @@ textarea {
 a {
   color: inherit;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Sidebar responsive — en pantallas ≤ 1024px se vuelve un drawer
+   off-canvas, controlado por la clase .sidebar-open.
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 1024px) {
+  .sidebar-hamburger {
+    display: flex !important;
+  }
+  aside {
+    position: fixed !important;
+    left: -280px !important;
+    top: 0 !important;
+    height: 100vh !important;
+    z-index: 45 !important;
+    transition: left 0.25s ease !important;
+  }
+  aside.sidebar-open {
+    left: 0 !important;
+  }
+}

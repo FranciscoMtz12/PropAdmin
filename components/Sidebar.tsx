@@ -11,7 +11,7 @@
   - Fondo: #0f1623 en dark mode, #1e2a3a en light mode
 */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -25,8 +25,10 @@ import {
   FileText,
   Home,
   KeyRound,
+  LayoutDashboard,
   LogOut,
   Moon,
+  Package,
   ReceiptText,
   Settings,
   ShoppingCart,
@@ -218,9 +220,18 @@ function SidebarSection({
 
 /* ─── Sidebar principal ──────────────────────────────────────────── */
 
+const FIELD_ITEMS: SidebarItem[] = [
+  { href: "/campo/dashboard", label: "Dashboard", icon: LayoutDashboard, status: "done" },
+  { href: "/campo/tickets",   label: "Tickets",   icon: Wrench,          status: "done" },
+  { href: "/campo/limpieza",  label: "Limpieza",  icon: Sparkles,        status: "done" },
+  { href: "/campo/assets",    label: "Assets",    icon: Package,         status: "done" },
+];
+
 export default function Sidebar() {
+  const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, logoUrl, logoDarkUrl, shortName, isDark, toggleDark } = useTheme();
@@ -233,6 +244,8 @@ export default function Sidebar() {
 
   const previewTenantId = searchParams.get("tenantId");
   const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const isField = (user?.role as string) === "field";
+  const activeAdminItems = isField ? FIELD_ITEMS : ADMIN_ITEMS;
 
   if (isHiddenRoute) return null;
 
@@ -262,7 +275,60 @@ export default function Sidebar() {
   const logoInitials = initials(shortName);
 
   return (
+    <>
+    {/* Overlay móvil */}
+    {mobileOpen && (
+      <div
+        onClick={() => setMobileOpen(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          background: "rgba(0,0,0,.55)",
+          zIndex: 40,
+          display: "block",
+        }}
+      />
+    )}
+    {/* Botón hamburger móvil — visible solo en @media (max-width: 1024px) vía CSS */}
+    <button
+      type="button"
+      onClick={() => setMobileOpen((o) => !o)}
+      className="sidebar-hamburger"
+      aria-label="Menú"
+      style={{
+        display: "none",
+        position: "fixed",
+        bottom: "1.5rem",
+        left: "1rem",
+        zIndex: 50,
+        width: 44,
+        height: 44,
+        borderRadius: "50%",
+        background: accentColor,
+        border: "none",
+        cursor: "pointer",
+        alignItems: "center",
+        justifyContent: "center",
+        boxShadow: "0 4px 16px rgba(0,0,0,.35)",
+      }}
+    >
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round">
+        {mobileOpen ? (
+          <>
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </>
+        ) : (
+          <>
+            <line x1="3" y1="6" x2="21" y2="6" />
+            <line x1="3" y1="12" x2="21" y2="12" />
+            <line x1="3" y1="18" x2="21" y2="18" />
+          </>
+        )}
+      </svg>
+    </button>
     <aside
+      className={mobileOpen ? "sidebar-open" : ""}
       style={{
         width: 280,
         minWidth: 280,
@@ -384,7 +450,7 @@ export default function Sidebar() {
             <>
               <SidebarSection
                 title="Administración"
-                items={ADMIN_ITEMS}
+                items={activeAdminItems}
                 pathname={pathname}
                 accentColor={accentColor}
               />
@@ -440,7 +506,7 @@ export default function Sidebar() {
           ) : (
             <SidebarSection
               title="Administración"
-              items={ADMIN_ITEMS}
+              items={activeAdminItems}
               pathname={pathname}
               accentColor={accentColor}
             />
@@ -575,5 +641,6 @@ export default function Sidebar() {
 
       <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </aside>
+    </>
   );
 }
