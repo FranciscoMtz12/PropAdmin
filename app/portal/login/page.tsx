@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogIn, Mail, ShieldCheck, UserRound } from "lucide-react";
+import Image from "next/image";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -20,74 +20,41 @@ const activateSchema = z
     password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
     confirmPassword: z.string().min(1, "Confirma la contraseña"),
   })
-  .refine((data) => data.password === data.confirmPassword, {
+  .refine((d) => d.password === d.confirmPassword, {
     message: "Las contraseñas no coinciden",
     path: ["confirmPassword"],
   });
 type ActivateValues = z.infer<typeof activateSchema>;
-
 type PortalTab = "login" | "activate";
-
-const cardStyle: React.CSSProperties = {
-  width: "100%",
-  maxWidth: 560,
-  border: "1px solid #E5E7EB",
-  borderRadius: 24,
-  padding: 28,
-  background: "#FFFFFF",
-  boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-};
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  border: "1px solid #D1D5DB",
-  borderRadius: 14,
-  padding: "14px 16px",
-  outline: "none",
+  padding: ".65rem .9rem",
+  background: "rgba(255,255,255,.08)",
+  border: "1px solid rgba(255,255,255,.15)",
+  borderRadius: 8,
+  color: "#fff",
   fontSize: 14,
-  color: "#111827",
-  background: "#FFFFFF",
+  outline: "none",
   boxSizing: "border-box",
 };
 
 const labelStyle: React.CSSProperties = {
+  fontSize: 12,
+  color: "rgba(255,255,255,.5)",
   display: "block",
-  marginBottom: 8,
-  fontSize: 13,
-  fontWeight: 600,
-  color: "#374151",
+  marginBottom: 6,
 };
 
-const helperStyle: React.CSSProperties = {
-  marginTop: 6,
-  fontSize: 12,
-  color: "#6B7280",
-  lineHeight: 1.5,
-};
-
-const fieldErrorStyle: React.CSSProperties = {
-  marginTop: 6,
-  marginBottom: 0,
-  fontSize: 12,
-  color: "#EF4444",
-  lineHeight: 1.4,
-};
-
-const buttonBaseStyle: React.CSSProperties = {
-  width: "100%",
-  borderRadius: 14,
-  padding: "14px 16px",
-  fontWeight: 700,
-  fontSize: 14,
-  cursor: "pointer",
-  transition: "all 0.2s ease",
+const errorStyle: React.CSSProperties = {
+  fontSize: 11,
+  color: "#f87171",
+  marginTop: 4,
 };
 
 export default function PortalLoginPage() {
   const router = useRouter();
-
   const [activeTab, setActiveTab] = useState<PortalTab>("login");
-
   const [loginMessage, setLoginMessage] = useState("");
   const [activateMessage, setActivateMessage] = useState("");
   const [activateSuccess, setActivateSuccess] = useState(false);
@@ -102,404 +69,199 @@ export default function PortalLoginPage() {
     defaultValues: { email: "", password: "", confirmPassword: "" },
   });
 
-  const tabButtonStyle = useMemo(
-    () =>
-      ({
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        gap: 8,
-        borderRadius: 14,
-        border: "1px solid #E5E7EB",
-        padding: "12px 16px",
-        fontSize: 14,
-        fontWeight: 700,
-        cursor: "pointer",
-        background: "#FFFFFF",
-        color: "#111827",
-        flex: 1,
-      }) satisfies React.CSSProperties,
-    []
-  );
-
   const onLogin = loginForm.handleSubmit(async (data) => {
     setLoginMessage("");
-
     const { error } = await supabase.auth.signInWithPassword({
       email: data.email.trim().toLowerCase(),
       password: data.password,
     });
-
-    if (error) {
-      setLoginMessage(error.message);
-      return;
-    }
-
+    if (error) { setLoginMessage("Credenciales incorrectas"); return; }
     router.push("/portal/dashboard");
   });
 
   const onActivate = activateForm.handleSubmit(async (data) => {
     setActivateMessage("");
     setActivateSuccess(false);
-
     try {
       const normalizedEmail = data.email.trim().toLowerCase();
-
       const response = await fetch("/api/portal/activate-account", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: normalizedEmail,
           password: data.password,
           confirmPassword: data.confirmPassword,
         }),
       });
-
       const rawText = await response.text();
-
-      let payload: any = null;
-
-      try {
-        payload = rawText ? JSON.parse(rawText) : null;
-      } catch {
-        payload = null;
-      }
-
+      let payload: { error?: string; message?: string } | null = null;
+      try { payload = rawText ? JSON.parse(rawText) : null; } catch { payload = null; }
       if (!response.ok) {
-        setActivateMessage(
-          payload?.error ||
-            "El servidor devolvió un error inesperado. Revisa la terminal de Next para ver el detalle."
-        );
+        setActivateMessage(payload?.error || "Error inesperado.");
         return;
       }
-
       setActivateSuccess(true);
-      setActivateMessage(
-        payload?.message ||
-          "Cuenta activada correctamente. Ya puedes iniciar sesión."
-      );
-
+      setActivateMessage(payload?.message || "Cuenta activada correctamente.");
       setActiveTab("login");
       loginForm.reset({ email: normalizedEmail, password: "" });
       activateForm.reset({ email: "", password: "", confirmPassword: "" });
-    } catch (error) {
-      console.error("Error activando cuenta:", error);
+    } catch {
       setActivateMessage("Ocurrió un error inesperado.");
     }
   });
 
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(180deg, #F8FAFC 0%, #EEF2FF 100%)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "32px 20px",
-      }}
-    >
-      <div style={cardStyle}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
-          <div
-            style={{
-              width: 52,
-              height: 52,
-              borderRadius: 18,
-              background: "#EEF2FF",
-              color: "#4338CA",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <UserRound size={22} />
+    <div style={{
+      position: "fixed", inset: 0,
+      background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
+      display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center",
+      fontFamily: "var(--font-sans, sans-serif)",
+      padding: "1rem",
+    }}>
+      {/* Textura */}
+      <svg style={{ position:"absolute", inset:0, width:"100%", height:"100%", opacity:.04, pointerEvents:"none" }}
+        viewBox="0 0 400 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <pattern id="lp2" x="0" y="0" width="110" height="110" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
+            <g fill="none" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="8" y="8" width="18" height="24"/><rect x="11" y="12" width="4" height="5"/><rect x="19" y="12" width="4" height="5"/><rect x="11" y="20" width="4" height="5"/><rect x="19" y="20" width="4" height="5"/><rect x="14" y="27" width="6" height="5"/>
+              <circle cx="55" cy="16" r="6"/><line x1="61" y1="16" x2="75" y2="16"/><line x1="72" y1="16" x2="72" y2="21"/><line x1="67" y1="16" x2="67" y2="20"/>
+              <rect x="8" y="55" width="22" height="28"/><line x1="13" y1="62" x2="26" y2="62"/><line x1="13" y1="68" x2="26" y2="68"/><line x1="13" y1="74" x2="20" y2="74"/>
+              <path d="M55 50 a8 8 0 0 1 16 0 c0 8-8 18-8 18 s-8-10-8-18z"/><circle cx="63" cy="50" r="4"/>
+              <rect x="82" y="8" width="22" height="20" rx="2"/><line x1="82" y1="16" x2="104" y2="16"/><line x1="89" y1="8" x2="89" y2="14"/><line x1="99" y1="8" x2="99" y2="14"/>
+              <rect x="82" y="88" width="18" height="14"/><line x1="91" y1="88" x2="91" y2="102"/><line x1="82" y1="95" x2="100" y2="95"/>
+            </g>
+          </pattern>
+        </defs>
+        <rect width="400" height="600" fill="url(#lp2)"/>
+      </svg>
+
+      {/* Overlay */}
+      <div style={{ position:"absolute", inset:0, background:"linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.2) 100%)", pointerEvents:"none" }}/>
+
+      {/* Botón volver */}
+      <button onClick={() => router.push("/")} style={{
+        position:"absolute", top:"1.5rem", left:"1.5rem",
+        background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.2)",
+        color:"rgba(255,255,255,.7)", borderRadius:20, padding:".4rem 1rem",
+        fontSize:12, cursor:"pointer", zIndex:2,
+      }}>
+        ← Volver
+      </button>
+
+      {/* Card */}
+      <div style={{
+        position:"relative", zIndex:2,
+        background:"rgba(255,255,255,.06)",
+        backdropFilter:"blur(20px)",
+        border:"1px solid rgba(255,255,255,.12)",
+        borderRadius:16, padding:"2.5rem 2rem",
+        width:"100%", maxWidth:400,
+        boxShadow:"0 8px 40px rgba(0,0,0,.4)",
+      }}>
+        {/* Logo */}
+        <div style={{ textAlign:"center", marginBottom:"1.75rem" }}>
+          <div style={{ display:"flex", justifyContent:"center", marginBottom:"1rem" }}>
+            <Image
+              src="/brands/saproa/saproa-stacked-dark.png"
+              alt="SAPROA"
+              width={120} height={120}
+              style={{ objectFit:"contain" }}
+            />
           </div>
-
-          <div>
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: 800,
-                letterSpacing: "0.06em",
-                textTransform: "uppercase",
-                color: "#6366F1",
-              }}
-            >
-              PropAdmin
-            </div>
-
-            <h1
-              style={{
-                margin: "6px 0 8px",
-                fontSize: 28,
-                fontWeight: 800,
-                color: "#111827",
-                letterSpacing: "-0.03em",
-              }}
-            >
-              Portal del inquilino
-            </h1>
-
-            <p
-              style={{
-                margin: 0,
-                fontSize: 14,
-                lineHeight: 1.6,
-                color: "#6B7280",
-              }}
-            >
-              Usa el mismo correo que registraste previamente con administración
-              para activar tu cuenta o iniciar sesión.
-            </p>
+          <div style={{ fontSize:12, color:"rgba(255,255,255,.4)", letterSpacing:"2px" }}>
+            PORTAL DE INQUILINOS
           </div>
         </div>
 
-        <div
-          style={{
-            marginTop: 24,
-            display: "flex",
-            gap: 10,
-            padding: 6,
-            borderRadius: 18,
-            background: "#F9FAFB",
-            border: "1px solid #E5E7EB",
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => setActiveTab("login")}
-            style={{
-              ...tabButtonStyle,
-              background: activeTab === "login" ? "#111827" : "#FFFFFF",
-              color: activeTab === "login" ? "#FFFFFF" : "#111827",
-              border:
-                activeTab === "login"
-                  ? "1px solid #111827"
-                  : "1px solid #E5E7EB",
-            }}
-          >
-            <LogIn size={16} />
-            Iniciar sesión
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab("activate")}
-            style={{
-              ...tabButtonStyle,
-              background: activeTab === "activate" ? "#111827" : "#FFFFFF",
-              color: activeTab === "activate" ? "#FFFFFF" : "#111827",
-              border:
-                activeTab === "activate"
-                  ? "1px solid #111827"
-                  : "1px solid #E5E7EB",
-            }}
-          >
-            <ShieldCheck size={16} />
-            Activar cuenta
-          </button>
+        {/* Tabs */}
+        <div style={{ display:"flex", gap:".5rem", marginBottom:"1.5rem" }}>
+          {(["login","activate"] as PortalTab[]).map(tab => (
+            <button key={tab} onClick={() => setActiveTab(tab)} style={{
+              flex:1, padding:".55rem", borderRadius:8, fontSize:12, fontWeight:500,
+              cursor:"pointer", transition:"all .2s",
+              background: activeTab === tab ? "rgba(255,255,255,.15)" : "transparent",
+              border: activeTab === tab ? "1px solid rgba(255,255,255,.25)" : "1px solid rgba(255,255,255,.08)",
+              color: activeTab === tab ? "#fff" : "rgba(255,255,255,.45)",
+            }}>
+              {tab === "login" ? "Iniciar sesión" : "Activar cuenta"}
+            </button>
+          ))}
         </div>
 
-        {activeTab === "login" ? (
-          <form onSubmit={onLogin} style={{ marginTop: 24 }}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Correo electrónico</label>
-              <input
-                type="email"
-                placeholder="tuemail@dominio.com"
-                style={inputStyle}
-                {...loginForm.register("email")}
-              />
-              {loginForm.formState.errors.email ? (
-                <p style={fieldErrorStyle}>
-                  {loginForm.formState.errors.email.message}
-                </p>
-              ) : null}
+        {/* Tab Login */}
+        {activeTab === "login" && (
+          <form onSubmit={onLogin} style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input {...loginForm.register("email")} type="email" placeholder="inquilino@empresa.com" style={inputStyle}/>
+              {loginForm.formState.errors.email && <p style={errorStyle}>{loginForm.formState.errors.email.message}</p>}
             </div>
-
-            <div style={{ marginBottom: 16 }}>
+            <div>
               <label style={labelStyle}>Contraseña</label>
-              <input
-                type="password"
-                placeholder="••••••••"
-                style={inputStyle}
-                {...loginForm.register("password")}
-              />
-              {loginForm.formState.errors.password ? (
-                <p style={fieldErrorStyle}>
-                  {loginForm.formState.errors.password.message}
-                </p>
-              ) : null}
+              <input {...loginForm.register("password")} type="password" placeholder="••••••••" style={inputStyle}/>
+              {loginForm.formState.errors.password && <p style={errorStyle}>{loginForm.formState.errors.password.message}</p>}
             </div>
-
-            {loginMessage ? (
-              <div
-                style={{
-                  marginBottom: 16,
-                  borderRadius: 14,
-                  padding: "12px 14px",
-                  background: "#FEF2F2",
-                  border: "1px solid #FECACA",
-                  color: "#B91C1C",
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                }}
-              >
+            {loginMessage && (
+              <div style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:".6rem .9rem", fontSize:13, color:"#fca5a5" }}>
                 {loginMessage}
               </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={loginForm.formState.isSubmitting}
-              style={{
-                ...buttonBaseStyle,
-                border: "1px solid #111827",
-                background: "#111827",
-                color: "#FFFFFF",
-                opacity: loginForm.formState.isSubmitting ? 0.7 : 1,
-              }}
-            >
-              {loginForm.formState.isSubmitting
-                ? "Iniciando sesión..."
-                : "Entrar al portal"}
+            )}
+            <button type="submit" disabled={loginForm.formState.isSubmitting} style={{
+              marginTop:".25rem", padding:".75rem",
+              background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              border:"none", borderRadius:8, color:"#fff",
+              fontSize:14, fontWeight:500, cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
+            }}>
+              {loginForm.formState.isSubmitting ? "Iniciando sesión..." : "Entrar al portal"}
             </button>
-          </form>
-        ) : (
-          <form onSubmit={onActivate} style={{ marginTop: 24 }}>
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Correo electrónico registrado</label>
-              <input
-                type="email"
-                placeholder="Debe coincidir con el correo de tu perfil"
-                style={inputStyle}
-                {...activateForm.register("email")}
-              />
-              {activateForm.formState.errors.email ? (
-                <p style={fieldErrorStyle}>
-                  {activateForm.formState.errors.email.message}
-                </p>
-              ) : null}
-              <div style={helperStyle}>
-                Debe ser exactamente el mismo correo que administración usó al
-                crear tu perfil de inquilino.
-              </div>
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Crear contraseña</label>
-              <input
-                type="password"
-                placeholder="Mínimo 8 caracteres"
-                style={inputStyle}
-                {...activateForm.register("password")}
-              />
-              {activateForm.formState.errors.password ? (
-                <p style={fieldErrorStyle}>
-                  {activateForm.formState.errors.password.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div style={{ marginBottom: 16 }}>
-              <label style={labelStyle}>Confirmar contraseña</label>
-              <input
-                type="password"
-                placeholder="Vuelve a escribir tu contraseña"
-                style={inputStyle}
-                {...activateForm.register("confirmPassword")}
-              />
-              {activateForm.formState.errors.confirmPassword ? (
-                <p style={fieldErrorStyle}>
-                  {activateForm.formState.errors.confirmPassword.message}
-                </p>
-              ) : null}
-            </div>
-
-            {activateMessage ? (
-              <div
-                style={{
-                  marginBottom: 16,
-                  borderRadius: 14,
-                  padding: "12px 14px",
-                  background: activateSuccess ? "#ECFDF5" : "#FEF2F2",
-                  border: activateSuccess
-                    ? "1px solid #A7F3D0"
-                    : "1px solid #FECACA",
-                  color: activateSuccess ? "#065F46" : "#B91C1C",
-                  fontSize: 13,
-                  lineHeight: 1.5,
-                }}
-              >
-                {activateMessage}
-              </div>
-            ) : null}
-
-            <button
-              type="submit"
-              disabled={activateForm.formState.isSubmitting}
-              style={{
-                ...buttonBaseStyle,
-                border: "1px solid #4338CA",
-                background: "#4338CA",
-                color: "#FFFFFF",
-                opacity: activateForm.formState.isSubmitting ? 0.7 : 1,
-              }}
-            >
-              {activateForm.formState.isSubmitting
-                ? "Activando..."
-                : "Activar cuenta"}
-            </button>
-
-            <div
-              style={{
-                marginTop: 18,
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                borderRadius: 16,
-                background: "#F9FAFB",
-                border: "1px solid #E5E7EB",
-                padding: 14,
-              }}
-            >
-              <Mail
-                size={16}
-                color="#6B7280"
-                style={{ flexShrink: 0, marginTop: 2 }}
-              />
-              <div
-                style={{
-                  fontSize: 13,
-                  lineHeight: 1.6,
-                  color: "#6B7280",
-                }}
-              >
-                Si tu correo no coincide con el que aparece en tu perfil de
-                inquilino, primero tendrás que solicitar a administración que lo
-                corrija dentro del sistema.
-              </div>
-            </div>
           </form>
         )}
 
-        <div
-          style={{
-            marginTop: 22,
-            paddingTop: 18,
-            borderTop: "1px solid #E5E7EB",
-            fontSize: 12,
-            color: "#6B7280",
-            lineHeight: 1.6,
-          }}
-        >
-          Este acceso es exclusivo para inquilinos registrados. El acceso
-          administrativo sigue viviendo fuera del portal.
-        </div>
+        {/* Tab Activar */}
+        {activeTab === "activate" && (
+          <form onSubmit={onActivate} style={{ display:"flex", flexDirection:"column", gap:"1rem" }}>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input {...activateForm.register("email")} type="email" placeholder="inquilino@empresa.com" style={inputStyle}/>
+              {activateForm.formState.errors.email && <p style={errorStyle}>{activateForm.formState.errors.email.message}</p>}
+            </div>
+            <div>
+              <label style={labelStyle}>Nueva contraseña</label>
+              <input {...activateForm.register("password")} type="password" placeholder="Mínimo 8 caracteres" style={inputStyle}/>
+              {activateForm.formState.errors.password && <p style={errorStyle}>{activateForm.formState.errors.password.message}</p>}
+            </div>
+            <div>
+              <label style={labelStyle}>Confirmar contraseña</label>
+              <input {...activateForm.register("confirmPassword")} type="password" placeholder="••••••••" style={inputStyle}/>
+              {activateForm.formState.errors.confirmPassword && <p style={errorStyle}>{activateForm.formState.errors.confirmPassword.message}</p>}
+            </div>
+            {activateMessage && (
+              <div style={{
+                background: activateSuccess ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)",
+                border: `1px solid ${activateSuccess ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"}`,
+                borderRadius:8, padding:".6rem .9rem", fontSize:13,
+                color: activateSuccess ? "#6ee7b7" : "#fca5a5",
+              }}>
+                {activateMessage}
+              </div>
+            )}
+            <button type="submit" disabled={activateForm.formState.isSubmitting} style={{
+              marginTop:".25rem", padding:".75rem",
+              background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              border:"none", borderRadius:8, color:"#fff",
+              fontSize:14, fontWeight:500, cursor: activateForm.formState.isSubmitting ? "not-allowed" : "pointer",
+            }}>
+              {activateForm.formState.isSubmitting ? "Activando..." : "Activar cuenta"}
+            </button>
+          </form>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div style={{ position:"relative", zIndex:2, marginTop:"1.5rem", fontSize:11, color:"rgba(255,255,255,.25)", letterSpacing:1 }}>
+        SAPROA © {new Date().getFullYear()}
       </div>
     </div>
   );
