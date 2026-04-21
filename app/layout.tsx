@@ -8,7 +8,6 @@ import { UserProvider } from "@/contexts/UserContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import SidebarGate from "@/components/SidebarGate";
-import BgTexture from "@/components/BgTexture";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
 import MainContentWrapper from "@/components/MainContentWrapper";
@@ -72,13 +71,9 @@ export default function RootLayout({
 
             {/* AppShell aplica el fondo dinámico según el modo activo */}
             <AppShell>
-              {/* Textura decorativa de fondo — position: fixed con z-index: 0.
-                  El Sidebar y el contenido principal quedan por encima. */}
-              <BgTexture />
-
-              {/* Sidebar global del sistema. Envuelto en Suspense porque usa
-                  useSearchParams(), que requiere un boundary para el prerender.
-                  SidebarGate decide si mostrarlo según la ruta (oculto en / y login). */}
+              {/* SidebarGate decide si mostrar Sidebar + BgTexture según la ruta
+                  (ambos ocultos en /, /login y /portal/login). Envuelto en
+                  Suspense porque Sidebar usa useSearchParams(). */}
               <Suspense fallback={null}>
                 <SidebarGate />
               </Suspense>

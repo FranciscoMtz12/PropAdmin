@@ -11,13 +11,19 @@
 
 import { usePathname } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import BgTexture from "@/components/BgTexture";
 
-/* Rutas donde el Sidebar no debe mostrarse. */
+/* Rutas donde el Sidebar y la textura no deben mostrarse. */
 const HIDDEN_PATHS = new Set(["/", "/login", "/portal/login"]);
 
 export default function SidebarGate() {
   const pathname = usePathname();
   if (!pathname) return null;
-  if (HIDDEN_PATHS.has(pathname)) return null;
-  return <Sidebar />;
+  const isHidden = HIDDEN_PATHS.has(pathname);
+  return (
+    <>
+      {!isHidden && <BgTexture />}
+      {!isHidden && <Sidebar />}
+    </>
+  );
 }
