@@ -481,6 +481,18 @@ const EXPENSE_TYPE_LABEL: Record<ExpenseType, string> = {
   other: "Otros",
 };
 
+const EXPENSE_TYPE_COLOR: Record<string, string> = {
+  "Electricidad": "#F59E0B",
+  "Agua": "#3B82F6",
+  "Gas": "#F97316",
+  "Internet": "#6366F1",
+  "Teléfono": "#8B5CF6",
+  "Mantenimiento": "#10B981",
+  "Seguridad": "#EF4444",
+  "Limpieza": "#14B8A6",
+  "Otros": "#94A3B8",
+};
+
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
 
@@ -550,10 +562,10 @@ export default function PaymentsPage() {
       const cat = schedule ? EXPENSE_TYPE_LABEL[schedule.expense_type] : "Sin categoría";
       totals[cat] = (totals[cat] ?? 0) + (p.amount_due ?? 0);
     });
-    return Object.entries(totals).map(([name, value], i) => ({
+    return Object.entries(totals).map(([name, value]) => ({
       name,
       value,
-      color: BUILDING_COLORS[i % BUILDING_COLORS.length],
+      color: EXPENSE_TYPE_COLOR[name] ?? "#94A3B8",
     }));
   }, [expensePayments, expenseSchedules, selectedYear, selectedMonth]);
 
@@ -1309,18 +1321,17 @@ export default function PaymentsPage() {
     <PageContainer>
       <PageHeader title="Pagos administrativos" titleIcon={<ReceiptText size={18} />} />
 
-      {/* Navegador de mes */}
-      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem", gap:"1rem", flexWrap:"wrap" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
-          <button onClick={prevMonth} style={{ background:"none", border:"1px solid var(--border-default)", borderRadius:8, padding:"6px 10px", cursor:"pointer", color:"var(--text-primary)", fontSize:16 }}>‹</button>
-          <span style={{ fontSize:15, fontWeight:500, color:"var(--text-primary)", minWidth:140, textAlign:"center" }}>{monthLabel}</span>
-          <button onClick={nextMonth} style={{ background:"none", border:"1px solid var(--border-default)", borderRadius:8, padding:"6px 10px", cursor:"pointer", color:"var(--text-primary)", fontSize:16 }}>›</button>
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1.25rem" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"0.25rem", border:"1px solid var(--border-default)", borderRadius:12, padding:"4px", background:"var(--bg-card)" }}>
+          <button onClick={prevMonth} style={{ background:"none", border:"none", borderRadius:8, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"var(--text-secondary)", fontSize:18, lineHeight:1 }}>‹</button>
+          <span style={{ fontSize:15, fontWeight:600, color:"var(--text-primary)", minWidth:130, textAlign:"center", padding:"0 8px" }}>{monthLabel}</span>
+          <button onClick={nextMonth} style={{ background:"none", border:"none", borderRadius:8, width:32, height:32, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color:"var(--text-secondary)", fontSize:18, lineHeight:1 }}>›</button>
         </div>
       </div>
 
       {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
-      <AppGrid minWidth={280}>
+      <AppGrid minWidth={220}>
         <MetricCard
           label="Registros"
           value={String(totalRecords)}
@@ -1342,11 +1353,7 @@ export default function PaymentsPage() {
             </div>
           }
         />
-      </AppGrid>
 
-      <div style={{ height: 12 }} />
-
-      <AppGrid minWidth={220}>
         <MetricCard
           label="Pagados"
           value={String(paidCount)}
