@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useCurrentUser } from "@/contexts/UserContext";
 
 const ROLES = [
   {
@@ -41,15 +42,17 @@ export default function LandingPage() {
   const [active, setActive] = useState<string | null>(null);
   const [fading, setFading] = useState(false);
 
-  // Si ya hay sesión activa, redirigir
+  const { user, loading } = useCurrentUser();
+
   useEffect(() => {
-    import("@/lib/supabaseClient").then(({ supabase }) => {
-      supabase.auth.getSession().then(({ data }) => {
-        if (!data.session) return;
-        // Tiene sesión — dejar que RouteGuard decida
-      });
-    });
-  }, []);
+    if (loading) return;
+    if (!user) return;
+    // Ya tiene sesión — redirigir según rol del UserContext
+    const role = user.role as string;
+    if (role === "tenant") { router.replace("/portal/dashboard"); return; }
+    if (role === "field")  { router.replace("/campo/dashboard");  return; }
+    router.replace("/dashboard");
+  }, [user, loading, router]);
 
   const current = ROLES.find((r) => r.id === active);
 
