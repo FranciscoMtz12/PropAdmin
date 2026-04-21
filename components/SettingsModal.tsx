@@ -122,10 +122,8 @@ export default function SettingsModal({
 
   const roleLabel =
     user?.role === "admin"
-      ? user.is_superadmin
-        ? "SUPERADMIN"
-        : "ADMIN"
-      : "TENANT";
+      ? user.is_superadmin ? "SUPERADMIN" : "ADMIN"
+      : user?.role === "field" ? "CAMPO" : "INQUILINO";
 
   if (!mounted || !open) return null;
 
