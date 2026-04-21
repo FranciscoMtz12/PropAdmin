@@ -31,6 +31,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import toast from "react-hot-toast";
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -458,6 +459,28 @@ function getMetricIconBoxStyle(background: string): CSSProperties {
   };
 }
 
+const BUILDING_COLORS = [
+  "#3B82F6","#10B981","#8B5CF6","#F59E0B","#EF4444",
+  "#EC4899","#14B8A6","#F97316","#6366F1","#84CC16","#06B6D4","#A855F7",
+];
+
+const MONTH_LABELS_LONG = [
+  "Enero","Febrero","Marzo","Abril","Mayo","Junio",
+  "Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre",
+];
+
+const EXPENSE_TYPE_LABEL: Record<ExpenseType, string> = {
+  electricity: "Electricidad",
+  water: "Agua",
+  gas: "Gas",
+  internet: "Internet",
+  phone: "Teléfono",
+  maintenance_service: "Mantenimiento",
+  security: "Seguridad",
+  cleaning_service: "Limpieza",
+  other: "Otros",
+};
+
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser();
 
@@ -473,6 +496,8 @@ export default function PaymentsPage() {
 
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState<PaymentStatusFilter>("all");
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -509,12 +534,38 @@ export default function PaymentsPage() {
     if (loading) return;
     if (!user?.company_id) return;
     void loadPaymentsData();
-  }, [loading, user?.company_id]);
+  }, [loading, user?.company_id, selectedMonth, selectedYear]);
 
   useEffect(() => {
     if (!expensePayments.length || !user?.company_id || syncingStatuses) return;
     void syncAutomaticOverdueStatuses();
   }, [expensePayments, user?.company_id]);
+
+  const donutData = useMemo(() => {
+    const scheduleById = new Map(expenseSchedules.map(s => [s.id, s]));
+    const totals: Record<string, number> = {};
+    expensePayments.forEach(p => {
+      if (p.period_year !== selectedYear || p.period_month !== selectedMonth) return;
+      const schedule = scheduleById.get(p.expense_schedule_id);
+      const cat = schedule ? EXPENSE_TYPE_LABEL[schedule.expense_type] : "Sin categoría";
+      totals[cat] = (totals[cat] ?? 0) + (p.amount_due ?? 0);
+    });
+    return Object.entries(totals).map(([name, value], i) => ({
+      name,
+      value,
+      color: BUILDING_COLORS[i % BUILDING_COLORS.length],
+    }));
+  }, [expensePayments, expenseSchedules, selectedYear, selectedMonth]);
+
+  const prevMonth = () => {
+    if (selectedMonth === 1) { setSelectedMonth(12); setSelectedYear(y => y - 1); }
+    else setSelectedMonth(m => m - 1);
+  };
+  const nextMonth = () => {
+    if (selectedMonth === 12) { setSelectedMonth(1); setSelectedYear(y => y + 1); }
+    else setSelectedMonth(m => m + 1);
+  };
+  const monthLabel = `${MONTH_LABELS_LONG[selectedMonth - 1]} ${selectedYear}`;
 
   async function loadPaymentsData(showLoader = true) {
     if (!user?.company_id) return;
@@ -694,8 +745,12 @@ export default function PaymentsPage() {
     const schedules = schedulesInput ?? expenseSchedules;
     const payments = paymentsInput ?? expensePayments;
 
-    const currentYear = Number(new Date().getFullYear());
-    const currentMonth = Number(new Date().getMonth() + 1);
+    const currentYear = selectedYear;
+    const currentMonth = selectedMonth;
+
+    const realToday = new Date();
+    const isCurrentPeriod = selectedYear === realToday.getFullYear() && selectedMonth === realToday.getMonth() + 1;
+    if (!isCurrentPeriod) return;
 
     const existingBySchedule = new Set(
       payments
@@ -1254,6 +1309,15 @@ export default function PaymentsPage() {
     <PageContainer>
       <PageHeader title="Pagos administrativos" titleIcon={<ReceiptText size={18} />} />
 
+      {/* Navegador de mes */}
+      <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:"1rem", gap:"1rem", flexWrap:"wrap" }}>
+        <div style={{ display:"flex", alignItems:"center", gap:"0.5rem" }}>
+          <button onClick={prevMonth} style={{ background:"none", border:"1px solid var(--border-default)", borderRadius:8, padding:"6px 10px", cursor:"pointer", color:"var(--text-primary)", fontSize:16 }}>‹</button>
+          <span style={{ fontSize:15, fontWeight:500, color:"var(--text-primary)", minWidth:140, textAlign:"center" }}>{monthLabel}</span>
+          <button onClick={nextMonth} style={{ background:"none", border:"1px solid var(--border-default)", borderRadius:8, padding:"6px 10px", cursor:"pointer", color:"var(--text-primary)", fontSize:16 }}>›</button>
+        </div>
+      </div>
+
       {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
       <AppGrid minWidth={280}>
@@ -1327,6 +1391,31 @@ export default function PaymentsPage() {
           }
         />
       </AppGrid>
+
+      {donutData.length > 0 && (
+        <div style={{ display:"flex", gap:"1.5rem", alignItems:"center", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1.25rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+          <div style={{ width:160, height:160, flexShrink:0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie data={donutData} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" strokeWidth={0}>
+                  {donutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+                <Tooltip formatter={(v) => `$${Number(v).toLocaleString("es-MX", { minimumFractionDigits:2 })}`} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div style={{ flex:1, display:"flex", flexDirection:"column", gap:"0.5rem" }}>
+            <div style={{ fontSize:12, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:"0.25rem" }}>GASTO POR CATEGORÍA</div>
+            {donutData.map((entry, i) => (
+              <div key={i} style={{ display:"flex", alignItems:"center", gap:"0.5rem", fontSize:12 }}>
+                <div style={{ width:10, height:10, borderRadius:2, background:entry.color, flexShrink:0 }} />
+                <span style={{ color:"var(--text-secondary)", flex:1 }}>{entry.name}</span>
+                <span style={{ color:"var(--text-primary)", fontWeight:500 }}>${entry.value.toLocaleString("es-MX", { minimumFractionDigits:2 })}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div style={{ height: 16 }} />
 
@@ -1715,6 +1804,8 @@ export default function PaymentsPage() {
                   const isOpen = openDetailPaymentId === row.id;
                   const isUpdating = statusUpdatingId === row.id;
                   const colors = getStatusColors(row.displayStatus);
+                  const buildingIdx = buildings.findIndex(b => b.id === row.buildingId);
+                  const buildingColor = BUILDING_COLORS[buildingIdx >= 0 ? buildingIdx % BUILDING_COLORS.length : 0];
 
                   return (
                     <FragmentLike key={row.id}>
@@ -1737,6 +1828,8 @@ export default function PaymentsPage() {
                             >
                               {serviceVisual.icon}
                             </div>
+
+                            <div style={{ width:3, height:32, borderRadius:2, background:buildingColor, flexShrink:0 }} />
 
                             <button
                               type="button"
