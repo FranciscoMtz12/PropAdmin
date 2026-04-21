@@ -138,6 +138,8 @@ type PaymentRow = {
   expenseType: ExpenseType;
   frequencyLabel: string;
   periodLabel: string;
+  periodYear: number;
+  periodMonth: number;
   dueDate: string;
   dueDateLabel: string;
   amountDue: number;
@@ -907,6 +909,8 @@ export default function PaymentsPage() {
           expenseType: schedule.expense_type,
           frequencyLabel: getFrequencyLabel(schedule.frequency_type || "monthly"),
           periodLabel: formatPeriod(payment.period_year, payment.period_month),
+          periodYear: payment.period_year,
+          periodMonth: payment.period_month,
           dueDate: payment.due_date,
           dueDateLabel: formatDate(payment.due_date),
           amountDue: payment.amount_due,
@@ -932,9 +936,10 @@ export default function PaymentsPage() {
     return paymentRows.filter((row) => {
       if (selectedBuildingId !== "all" && row.buildingId !== selectedBuildingId) return false;
       if (selectedStatus !== "all" && row.displayStatus !== selectedStatus) return false;
+      if (row.periodYear !== selectedYear || row.periodMonth !== selectedMonth) return false;
       return true;
     });
-  }, [paymentRows, selectedBuildingId, selectedStatus]);
+  }, [paymentRows, selectedBuildingId, selectedStatus, selectedYear, selectedMonth]);
 
   const totalRecords = filteredRows.length;
   const paidCount = filteredRows.filter((row) => row.displayStatus === "paid").length;
@@ -1400,7 +1405,7 @@ export default function PaymentsPage() {
       </AppGrid>
 
       {donutData.length > 0 && (
-        <div style={{ display:"flex", gap:"1.5rem", alignItems:"center", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1.25rem", marginBottom:"1rem", flexWrap:"wrap" }}>
+        <div style={{ display:"flex", gap:"1.5rem", alignItems:"center", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1.25rem", marginTop:"1.25rem", marginBottom:"1rem", flexWrap:"wrap" }}>
           <div style={{ width:160, height:160, flexShrink:0 }}>
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
