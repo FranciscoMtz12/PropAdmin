@@ -99,6 +99,15 @@ export default function RouteGuard() {
       return;
     }
 
+    // Campo: solo puede estar en /campo/*
+    if ((user.role as string) === "field") {
+      if (!pathname.startsWith("/campo")) {
+        router.replace("/campo/dashboard");
+        return;
+      }
+      return;
+    }
+
     if (user.role === "admin") {
       if (portalPath) {
         router.replace("/dashboard");
