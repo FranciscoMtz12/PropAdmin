@@ -90,7 +90,6 @@ export default function UsersPage() {
   const [loadingData, setLoadingData] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
   const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const isSuperadmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
@@ -119,7 +118,6 @@ export default function UsersPage() {
       supabase
         .from("app_users")
         .select("id, full_name, email, role, is_superadmin, company_id, created_at")
-        .is("deleted_at", null)
         .order("created_at", { ascending: false }),
       supabase
         .from("companies")
@@ -182,22 +180,8 @@ export default function UsersPage() {
     setRoleUpdatingId(null);
   }
 
-  async function deactivateUser(row: UserRow) {
-    if (!confirm(`¿Desactivar a ${row.full_name || row.email}?`)) return;
-    setDeletingId(row.id);
-    const { error } = await supabase
-      .from("app_users")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", row.id);
-    if (error) {
-      console.error("deactivate failed", error);
-      toast.error("No se pudo desactivar el usuario.");
-      setDeletingId(null);
-      return;
-    }
-    setRows((prev) => prev.filter((r) => r.id !== row.id));
-    toast.success("Usuario desactivado.");
-    setDeletingId(null);
+  async function deactivateUser(_row: UserRow) {
+    toast("Función no disponible aún");
   }
 
   const onCreateSubmit = createForm.handleSubmit(async (data) => {
@@ -375,7 +359,7 @@ export default function UsersPage() {
                   <button
                     type="button"
                     onClick={() => void deactivateUser(row)}
-                    disabled={deletingId === row.id || row.id === user.id}
+                    disabled={row.id === user.id}
                     title={row.id === user.id ? "No puedes desactivarte" : "Desactivar usuario"}
                     style={{
                       background: "transparent",
