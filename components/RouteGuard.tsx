@@ -90,6 +90,32 @@ export default function RouteGuard() {
       return;
     }
 
+    // Superadmin saltea el enforcement granular pero sigue con las redirecciones generales
+    const skipGranular = user.role === "superadmin" || user.is_superadmin;
+
+    if (!skipGranular) {
+      if (user.role === "compras") {
+        const allowed = ["/purchases", "/suppliers"]
+        if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/purchases"); return; }
+        return;
+      }
+      if (user.role === "mantenimiento") {
+        const allowed = ["/maintenance", "/cleaning"]
+        if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/maintenance"); return; }
+        return;
+      }
+      if (user.role === "administracion") {
+        const allowed = ["/dashboard", "/payments", "/collections", "/buildings", "/tenants", "/calendar"]
+        if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
+        return;
+      }
+      if (user.role === "directivo") {
+        const allowed = ["/dashboard", "/payments", "/collections", "/buildings", "/calendar"]
+        if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
+        return;
+      }
+    }
+
     // Todos los roles admin — no pueden estar en portal ni campo
     if (portalPath) { router.replace("/dashboard"); return; }
     if (pathname.startsWith("/campo")) { router.replace("/dashboard"); return; }
