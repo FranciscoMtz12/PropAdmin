@@ -77,48 +77,23 @@ export default function RouteGuard() {
       return;
     }
 
-    // Superadmin: acceso total al sistema.
-    if (user.role === "admin" && user.is_superadmin) {
-      if (adminPublic || portalPublic) {
-        router.replace("/dashboard");
-      }
-      return;
-    }
-
-    if (user.role === "tenant") {
-      if (!portalPath) {
-        router.replace("/portal/dashboard");
-        return;
-      }
-
-      if (portalPublic) {
-        router.replace("/portal/dashboard");
-        return;
-      }
-
-      return;
-    }
-
-    // Campo: solo puede estar en /campo/*
+    // Field: solo /campo/*
     if (user.role === "field") {
-      if (!pathname.startsWith("/campo")) {
-        router.replace("/campo/dashboard");
-        return;
-      }
+      if (!pathname.startsWith("/campo")) { router.replace("/campo/dashboard"); return; }
       return;
     }
 
-    if (user.role === "admin") {
-      if (portalPath) {
-        router.replace("/dashboard");
-        return;
-      }
-
-      if (adminPublic) {
-        router.replace("/dashboard");
-        return;
-      }
+    // Tenant: solo /portal/*
+    if (user.role === "tenant") {
+      if (!portalPath) { router.replace("/portal/dashboard"); return; }
+      if (portalPublic) { router.replace("/portal/dashboard"); return; }
+      return;
     }
+
+    // Todos los roles admin — no pueden estar en portal ni campo
+    if (portalPath) { router.replace("/dashboard"); return; }
+    if (pathname.startsWith("/campo")) { router.replace("/dashboard"); return; }
+    if (adminPublic) { router.replace("/dashboard"); return; }
   }, [pathname, router, user, loading]);
 
   if (loading) return (

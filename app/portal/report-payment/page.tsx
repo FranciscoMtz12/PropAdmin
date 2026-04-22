@@ -388,7 +388,7 @@ export default function PortalReportPaymentPage() {
 
   const previewTenantId = searchParams.get("tenantId");
   const previewCollectionRecordId = searchParams.get("recordId");
-  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
   const effectiveTenantId =
     user?.role === "tenant" ? user.tenant_id : previewTenantId;

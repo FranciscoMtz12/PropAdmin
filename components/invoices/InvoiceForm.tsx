@@ -199,7 +199,7 @@ export default function InvoiceForm({
   }, [initialData]);
 
   useEffect(() => {
-    if (loading || !user || user.role !== "admin") return;
+    if (loading || !user || user.role === "tenant" || user.role === "field") return;
 
     const currentUser = user;
     let ignore = false;
@@ -231,7 +231,7 @@ export default function InvoiceForm({
         .order("due_date", { ascending: false });
 
       const isCompanyAdmin =
-        currentUser.role === "admin" && !Boolean(currentUser.is_superadmin);
+        currentUser.role !== "superadmin" && !Boolean(currentUser.is_superadmin) && currentUser.role !== "field";
 
       if (isCompanyAdmin && currentUser.company_id) {
         query = query.eq("company_id", currentUser.company_id);
@@ -382,7 +382,7 @@ export default function InvoiceForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (!user || user.role !== "admin") return;
+    if (!user || user.role === "tenant" || user.role === "field") return;
 
     const currentUser = user;
 

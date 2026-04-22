@@ -33,7 +33,7 @@ export default function InvoiceDetailPage() {
   const [xmlSignedUrl, setXmlSignedUrl] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!invoiceId || loading || !user || user.role !== "admin") return;
+    if (!invoiceId || loading || !user || user.role === "tenant" || user.role === "field") return;
 
     const currentUser = user;
     let ignore = false;
@@ -85,7 +85,7 @@ export default function InvoiceDetailPage() {
         .is("deleted_at", null);
 
       const isCompanyAdmin =
-        currentUser.role === "admin" && !Boolean(currentUser.is_superadmin);
+        currentUser.role !== "superadmin" && !Boolean(currentUser.is_superadmin) && currentUser.role !== "field";
 
       if (isCompanyAdmin && currentUser.company_id) {
         query = query.eq("company_id", currentUser.company_id);

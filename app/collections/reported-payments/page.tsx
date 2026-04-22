@@ -181,7 +181,7 @@ export default function ReportedPaymentsPage() {
   const [savingRejection, setSavingRejection] = useState(false);
 
   const isCompanyAdmin =
-    user?.role === "admin" && !Boolean(user?.is_superadmin);
+    user?.role !== "superadmin" && !Boolean(user?.is_superadmin) && user?.role !== "tenant" && user?.role !== "field";
 
   async function loadPayments() {
     setLoading(true);

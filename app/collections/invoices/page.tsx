@@ -54,7 +54,7 @@ export default function AdminInvoicesPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (loading || !user || user.role !== "admin") return;
+    if (loading || !user || user.role === "tenant" || user.role === "field") return;
 
     const currentUser = user;
     let ignore = false;
@@ -107,7 +107,7 @@ export default function AdminInvoicesPage() {
         .order("created_at", { ascending: false });
 
       const isCompanyAdmin =
-        currentUser.role === "admin" && !Boolean(currentUser.is_superadmin);
+        currentUser.role !== "superadmin" && !Boolean(currentUser.is_superadmin) && currentUser.role !== "field";
 
       if (isCompanyAdmin && currentUser.company_id) {
         query = query.eq("company_id", currentUser.company_id);

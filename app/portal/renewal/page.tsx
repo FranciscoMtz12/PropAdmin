@@ -152,7 +152,7 @@ export default function PortalRenewalPage() {
   const [tenantSelectorValue, setTenantSelectorValue] = useState("");
 
   const previewTenantId = searchParams.get("tenantId");
-  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
   const effectiveTenantId =
     user?.role === "tenant" ? user.tenant_id : previewTenantId;
 

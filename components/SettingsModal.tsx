@@ -121,9 +121,13 @@ export default function SettingsModal({
   }
 
   const roleLabel =
-    user?.role === "admin"
-      ? user.is_superadmin ? "SUPERADMIN" : "ADMIN"
-      : user?.role === "field" ? "CAMPO" : "INQUILINO";
+    user?.role === "superadmin" || user?.is_superadmin ? "SUPERADMIN"
+      : user?.role === "administracion" ? "ADMINISTRACIÓN"
+      : user?.role === "directivo" ? "DIRECTIVO"
+      : user?.role === "compras" ? "COMPRAS"
+      : user?.role === "mantenimiento" ? "MANTENIMIENTO"
+      : user?.role === "field" ? "CAMPO"
+      : "INQUILINO";
 
   if (!mounted || !open) return null;
 

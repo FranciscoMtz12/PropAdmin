@@ -243,9 +243,19 @@ export default function Sidebar() {
     (pathname?.startsWith("/campo") ?? false);
 
   const previewTenantId = searchParams.get("tenantId");
-  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
   const isField = user?.role === "field";
-  const activeAdminItems = isField ? FIELD_ITEMS : ADMIN_ITEMS;
+
+  const activeAdminItems = (() => {
+    if (isField) return FIELD_ITEMS;
+    if (user?.role === "compras") return ADMIN_ITEMS.filter(i =>
+      ["/compras", "/suppliers"].some(p => i.href?.startsWith(p))
+    );
+    if (user?.role === "mantenimiento") return ADMIN_ITEMS.filter(i =>
+      ["/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
+    );
+    return ADMIN_ITEMS;
+  })();
 
   if (isHiddenRoute) return null;
 

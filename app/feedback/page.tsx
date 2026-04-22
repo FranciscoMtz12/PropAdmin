@@ -82,7 +82,7 @@ export default function FeedbackPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace("/"); return; }
-    if (user.role !== "admin" || !user.is_superadmin) { router.replace("/dashboard"); return; }
+    if (user.role !== "superadmin" && !user.is_superadmin) { router.replace("/dashboard"); return; }
     void loadFeedback();
   }, [loading, user, router]);
 
@@ -149,7 +149,7 @@ export default function FeedbackPage() {
     );
   }
 
-  if (!user || user.role !== "admin" || !user.is_superadmin) return null;
+  if (!user || (user.role !== "superadmin" && !user.is_superadmin)) return null;
 
   const total = rows.length;
   const pending = rows.filter((r) => r.status === "nuevo").length;

@@ -57,7 +57,7 @@ type BuildingRow = {
 
 export default function BuildingsMapPage() {
   const { user, loading: userLoading } = useCurrentUser();
-  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
   const [loadingPage, setLoadingPage] = useState(true);

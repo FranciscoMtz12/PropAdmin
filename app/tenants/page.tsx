@@ -228,7 +228,7 @@ export default function TenantsPage() {
   const [openActionsTenantId, setOpenActionsTenantId] = useState<string | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const isSuperAdmin = user?.role === "admin" && Boolean(user.is_superadmin);
+  const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
   useEffect(() => {
     if (loading) return;

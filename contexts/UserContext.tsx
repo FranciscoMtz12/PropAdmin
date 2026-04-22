@@ -9,7 +9,7 @@ type AdminUser = {
   full_name: string;
   company_id: string;
   is_superadmin: boolean;
-  role: "admin" | "field";
+  role: "superadmin" | "administracion" | "directivo" | "compras" | "mantenimiento" | "field";
 };
 
 type TenantUser = {
@@ -70,7 +70,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         full_name: adminData.full_name || "",
         company_id: adminData.company_id || "",
         is_superadmin: Boolean(adminData.is_superadmin),
-        role: adminData.role === "field" ? "field" : "admin",
+        role: adminData.role as AdminUser["role"],
       });
       setLoading(false);
       return;
