@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -48,6 +48,7 @@ export default function RouteGuard() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, loading } = useCurrentUser();
+  const [isValidating, setIsValidating] = useState(true);
 
   useEffect(() => {
     if (!pathname || loading) return;
@@ -120,9 +121,11 @@ export default function RouteGuard() {
     if (portalPath) { router.replace("/dashboard"); return; }
     if (pathname.startsWith("/campo")) { router.replace("/dashboard"); return; }
     if (adminPublic) { router.replace("/dashboard"); return; }
+
+    setIsValidating(false);
   }, [pathname, router, user, loading]);
 
-  if (loading) return (
+  if (loading || isValidating) return (
     <div style={{
       position: "fixed", inset: 0,
       background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
