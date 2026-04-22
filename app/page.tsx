@@ -43,6 +43,9 @@ export default function LandingPage() {
   const [fading, setFading] = useState(false);
 
   useEffect(() => {
+    const images = ['/brands/bg/admin.jpg', '/brands/bg/campo.jpg', '/brands/bg/inquilino.jpg']
+    images.forEach(src => { const img = new window.Image(); img.src = src; })
+
     const roles = ['admin', 'campo', 'inquilino']
     const interval = setInterval(() => {
       setActive(prev => {
@@ -52,7 +55,7 @@ export default function LandingPage() {
       })
       setFading(true)
       setTimeout(() => setFading(false), 250)
-    }, 4000)
+    }, 6000)
     return () => clearInterval(interval)
   }, [])
 
@@ -88,10 +91,7 @@ export default function LandingPage() {
       style={{
         position: "fixed",
         inset: 0,
-        backgroundImage: current ? current.bg : undefined,
         backgroundColor: current ? current.bgFallback : isDark ? "#0d1117" : "#1c2a3a",
-        backgroundSize: "cover",
-        backgroundPosition: "center",
         transition: "background-color .6s ease",
         display: "flex",
         flexDirection: "column",
@@ -111,6 +111,23 @@ export default function LandingPage() {
           zIndex: 1,
         }}
       />
+
+      {/* Capas de fondo con crossfade suave */}
+      {ROLES.map(r => (
+        <div
+          key={r.id}
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage: r.bg,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            opacity: active === r.id ? 1 : 0,
+            transition: 'opacity 0.8s ease-in-out',
+            zIndex: 0,
+          }}
+        />
+      ))}
 
       {/* TOP BAR */}
       <div
