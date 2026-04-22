@@ -247,12 +247,19 @@ export default function Sidebar() {
   const isField = user?.role === "field";
 
   const activeAdminItems = (() => {
+    if (isSuperAdmin) return ADMIN_ITEMS;
     if (isField) return FIELD_ITEMS;
     if (user?.role === "compras") return ADMIN_ITEMS.filter(i =>
-      ["/compras", "/suppliers"].some(p => i.href?.startsWith(p))
+      ["/purchases", "/suppliers"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "mantenimiento") return ADMIN_ITEMS.filter(i =>
       ["/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
+    );
+    if (user?.role === "administracion") return ADMIN_ITEMS.filter(i =>
+      ["/dashboard", "/payments", "/collections", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
+    );
+    if (user?.role === "directivo") return ADMIN_ITEMS.filter(i =>
+      ["/dashboard", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))
     );
     return ADMIN_ITEMS;
   })();
