@@ -230,11 +230,13 @@ export default function UnitTypeAssetsPage() {
       .order("created_at", { ascending: true });
 
     if (templateAssetError) {
+      console.error("unit_type_assets fetch failed", templateAssetError);
       setMsg("No se pudieron cargar los assets base.");
       setLoadingData(false);
       return;
     }
 
+    console.log("templateAssets loaded", templateAssetData?.length, templateAssetData);
     setTemplateAssets((templateAssetData as UnitTypeAssetRow[]) || []);
     setLoadingData(false);
   }
