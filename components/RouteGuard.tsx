@@ -52,6 +52,7 @@ export default function RouteGuard() {
 
   useEffect(() => {
     if (!pathname || loading) return;
+    setIsValidating(false);
 
     const portalPath = isPortalPath(pathname);
     const campoPath = isCampoPath(pathname);
@@ -121,8 +122,6 @@ export default function RouteGuard() {
     if (portalPath) { router.replace("/dashboard"); return; }
     if (pathname.startsWith("/campo")) { router.replace("/dashboard"); return; }
     if (adminPublic) { router.replace("/dashboard"); return; }
-
-    setIsValidating(false);
   }, [pathname, router, user, loading]);
 
   if (loading || isValidating) return (
