@@ -11,6 +11,7 @@ import SidebarGate from "@/components/SidebarGate";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
 import SplashScreen from "@/components/SplashScreen";
+import FeedbackButton from "@/components/FeedbackButton";
 import MainContentWrapper from "@/components/MainContentWrapper";
 import { Toaster } from "react-hot-toast";
 
@@ -72,6 +73,9 @@ export default function RootLayout({
 
             {/* Splash de bienvenida post-login (lee flag de sessionStorage) */}
             <SplashScreen />
+
+            {/* Botón flotante de feedback (se auto-oculta en rutas públicas) */}
+            <FeedbackButton />
 
             {/* AppShell aplica el fondo dinámico según el modo activo */}
             <AppShell>
