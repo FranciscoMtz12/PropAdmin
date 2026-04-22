@@ -27,6 +27,7 @@ import {
   KeyRound,
   LayoutDashboard,
   LogOut,
+  MessageSquare,
   Moon,
   Package,
   ReceiptText,
@@ -68,6 +69,7 @@ const ADMIN_ITEMS: SidebarItem[] = [
   { label: "Limpieza", href: "/cleaning", icon: Sparkles, status: "partial" },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench, status: "done" },
   { label: "Usuarios", href: "/users", icon: Users, status: "done" },
+  { href: '/feedback', label: 'Feedback', icon: MessageSquare, status: 'done' as const },
 ];
 
 const TENANT_ITEMS: SidebarItem[] = [
@@ -263,7 +265,7 @@ export default function Sidebar() {
       ["/dashboard", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))
     );
     // Fallback — oculta /users para cualquier rol que no sea superadmin
-    return ADMIN_ITEMS.filter(i => i.href !== "/users");
+    return ADMIN_ITEMS.filter(i => i.href !== "/users" && i.href !== "/feedback");
   })();
 
   if (isHiddenRoute) return null;

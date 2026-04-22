@@ -42,6 +42,20 @@ export default function LandingPage() {
   const [active, setActive] = useState<string | null>(null);
   const [fading, setFading] = useState(false);
 
+  useEffect(() => {
+    const roles = ['admin', 'campo', 'inquilino']
+    const interval = setInterval(() => {
+      setActive(prev => {
+        const currentIndex = roles.indexOf(prev ?? 'admin')
+        const nextIndex = (currentIndex + 1) % roles.length
+        return roles[nextIndex]
+      })
+      setFading(true)
+      setTimeout(() => setFading(false), 250)
+    }, 4000)
+    return () => clearInterval(interval)
+  }, [])
+
   const { user, loading } = useCurrentUser();
 
   useEffect(() => {
