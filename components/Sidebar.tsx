@@ -67,6 +67,7 @@ const ADMIN_ITEMS: SidebarItem[] = [
   { label: "Compras", href: "/purchases", icon: ShoppingCart, status: "done" },
   { label: "Limpieza", href: "/cleaning", icon: Sparkles, status: "partial" },
   { label: "Mantenimiento", href: "/maintenance", icon: Wrench, status: "done" },
+  { label: "Usuarios", href: "/users", icon: Users, status: "done" },
 ];
 
 const TENANT_ITEMS: SidebarItem[] = [
@@ -261,7 +262,8 @@ export default function Sidebar() {
     if (user?.role === "directivo") return ADMIN_ITEMS.filter(i =>
       ["/dashboard", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))
     );
-    return ADMIN_ITEMS;
+    // Fallback — oculta /users para cualquier rol que no sea superadmin
+    return ADMIN_ITEMS.filter(i => i.href !== "/users");
   })();
 
   if (isHiddenRoute) return null;
