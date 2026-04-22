@@ -21,7 +21,7 @@ export default function SplashScreen() {
 
     sessionStorage.removeItem("show_splash");
     setVisible(true);
-    const timer = setTimeout(() => setVisible(false), 1800);
+    const timer = setTimeout(() => setVisible(false), 2800);
     return () => clearTimeout(timer);
   }, []);
 
