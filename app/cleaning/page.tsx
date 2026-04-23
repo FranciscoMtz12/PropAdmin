@@ -86,6 +86,12 @@ type ChecklistItem = {
   sort_order: number;
 };
 
+type ChecklistResponse = {
+  cleaning_log_id: string;
+  checklist_item_id: string;
+  checked: boolean;
+};
+
 type WeekTask = {
   key: string;
   scheduleId: string;
@@ -216,6 +222,7 @@ export default function CleaningPage() {
   const [unitSchedules, setUnitSchedules] = useState<UnitSchedule[]>([]);
   const [logs, setLogs] = useState<CleaningLog[]>([]);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [checklistResponses, setChecklistResponses] = useState<ChecklistResponse[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   const [tab, setTab] = useState<TabKey>("week");
@@ -313,6 +320,21 @@ export default function CleaningPage() {
       ...c,
       cleaning_type: normalizeCleaningType(c.cleaning_type as string),
     })).sort((a, b) => a.sort_order - b.sort_order));
+
+    // Segunda pasada: responses de todos los logs visibles para la dona de progreso
+    const loadedLogs = (logsRes.data as CleaningLog[]) || [];
+    const logIds = loadedLogs.map((l) => l.id);
+    if (logIds.length > 0) {
+      const { data: respData, error: respError } = await supabase
+        .from("cleaning_checklist_responses")
+        .select("cleaning_log_id, checklist_item_id, checked")
+        .in("cleaning_log_id", logIds);
+      if (respError) console.error("checklist_responses batch fetch failed", respError);
+      setChecklistResponses((respData as ChecklistResponse[]) || []);
+    } else {
+      setChecklistResponses([]);
+    }
+
     setLoadingData(false);
   }
 
@@ -403,6 +425,29 @@ export default function CleaningPage() {
   function getLogForTask(task: WeekTask): CleaningLog | undefined {
     return logIndex.get(`${task.buildingId}|${task.unitId ?? ""}|${task.cleaningType}|${task.dateISO}`);
   }
+
+  // Progreso de checklist por tarea (para donuts del grid semanal)
+  const taskProgress = useMemo(() => {
+    const itemsByType = new Map<CleaningType, number>();
+    checklist.forEach((c) => {
+      itemsByType.set(c.cleaning_type, (itemsByType.get(c.cleaning_type) ?? 0) + 1);
+    });
+    const checkedByLog = new Map<string, number>();
+    checklistResponses.forEach((r) => {
+      if (!r.checked) return;
+      checkedByLog.set(r.cleaning_log_id, (checkedByLog.get(r.cleaning_log_id) ?? 0) + 1);
+    });
+
+    const m = new Map<string, { checked: number; total: number }>();
+    weekTasks.forEach((task) => {
+      const total = itemsByType.get(task.cleaningType) ?? 0;
+      const log = getLogForTask(task);
+      const checked = log ? (checkedByLog.get(log.id) ?? 0) : 0;
+      m.set(task.key, { checked, total });
+    });
+    return m;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [weekTasks, logIndex, checklist, checklistResponses]);
 
   // Cargar responses al abrir tarea
   useEffect(() => {
@@ -558,8 +603,21 @@ export default function CleaningPage() {
     if (error) {
       console.error("checklist_responses upsert failed", error);
       toast.error("No se pudo guardar el ítem.");
+      setIsSaving(false);
+      return;
     }
     setIsSaving(false);
+
+    // Auto-completar si todos los items están chequeados
+    const taskChecklist = checklist.filter((c) => c.cleaning_type === selectedTask.cleaningType);
+    if (taskChecklist.length === 0) return;
+    const nextSet = new Set(checkedItems);
+    if (nextChecked) nextSet.add(itemId);
+    else nextSet.delete(itemId);
+    const allChecked = taskChecklist.every((c) => nextSet.has(c.id));
+    if (allChecked) {
+      await completeTask();
+    }
   }
 
   async function completeTask() {
@@ -998,7 +1056,33 @@ export default function CleaningPage() {
                             {task.timeBlock ? TIME_BLOCK_LABEL[task.timeBlock] : (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
                         </div>
-                        {done && <CheckCircle2 size={12} color="#22c55e" style={{ flexShrink: 0 }} />}
+                        {(() => {
+                          const prog = taskProgress.get(task.key);
+                          if (prog && prog.total > 0) {
+                            const radius = 9;
+                            const circumference = 2 * Math.PI * radius;
+                            const progress = prog.checked / prog.total;
+                            const strokeDashoffset = circumference * (1 - progress);
+                            const strokeColor = progress >= 1 ? "#22c55e" : "#6b21a8";
+                            return (
+                              <svg width={24} height={24} style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
+                                <circle cx={12} cy={12} r={radius} fill="none" stroke="#e5e7eb" strokeWidth={3} />
+                                <circle
+                                  cx={12}
+                                  cy={12}
+                                  r={radius}
+                                  fill="none"
+                                  stroke={strokeColor}
+                                  strokeWidth={3}
+                                  strokeDasharray={circumference}
+                                  strokeDashoffset={strokeDashoffset}
+                                  strokeLinecap="round"
+                                />
+                              </svg>
+                            );
+                          }
+                          return done ? <CheckCircle2 size={12} color="#22c55e" style={{ flexShrink: 0 }} /> : null;
+                        })()}
                       </div>
                     </button>
                   );
