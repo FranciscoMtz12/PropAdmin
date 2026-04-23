@@ -95,6 +95,7 @@ type WeekTask = {
   cleaningType: CleaningType;
   dayOfWeek: DayOfWeek;
   dateISO: string;
+  timeBlock: TimeBlock | null;
 };
 
 /* ═══ Constantes ══════════════════════════════════════════════════ */
@@ -357,11 +358,18 @@ export default function CleaningPage() {
             cleaningType: s.cleaning_type,
             dayOfWeek,
             dateISO: iso,
+            timeBlock: s.time_block ?? null,
           });
         });
       unitSchedules
         .filter((s) => s.active && s.day_of_week === dayOfWeek)
         .forEach((s) => {
+          // Derivar time_block desde start_time si existe
+          let tb: TimeBlock | null = null;
+          if (s.start_time) {
+            const hour = parseInt(s.start_time.slice(0, 2), 10);
+            if (!isNaN(hour)) tb = hour < 12 ? "morning" : hour < 18 ? "afternoon" : "evening";
+          }
           tasks.push({
             key: `u-${s.id}-${iso}`,
             scheduleId: s.id,
@@ -371,6 +379,7 @@ export default function CleaningPage() {
             cleaningType: "unit_interior",
             dayOfWeek,
             dateISO: iso,
+            timeBlock: tb,
           });
         });
     });
@@ -850,10 +859,10 @@ export default function CleaningPage() {
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {unit ? (unit.display_code || unit.unit_number) : visuals.label}
+                            {building?.name ?? (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
                           <div style={{ fontSize: 11, color: done ? "#9ca3af" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {building?.name ?? ""}
+                            {task.timeBlock ? TIME_BLOCK_LABEL[task.timeBlock] : (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
                         </div>
                         {done && <CheckCircle2 size={12} color="#22c55e" style={{ flexShrink: 0 }} />}
@@ -866,56 +875,32 @@ export default function CleaningPage() {
           })}
         </div>
 
-        {/* Sección inferior 2 columnas: cumplimiento por edificio + checklist */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
-          <SectionCard title="Cumplimiento por edificio" subtitle="esta semana" icon={<Building2 size={18} />}>
+        {/* Cumplimiento por edificio — esta semana */}
+        <div style={{ marginTop: 20 }}>
+          <SectionCard title="Cumplimiento por edificio — esta semana" icon={<Building2 size={18} />}>
             {byBuildingStats.length === 0 ? (
               <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>No hay tareas programadas esta semana.</div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div>
                 {byBuildingStats.map((b) => {
-                  const color = b.rate >= 80 ? "#10B981" : b.rate >= 60 ? "#F59E0B" : "#EF4444";
+                  const pct = Math.round(b.rate);
+                  const color = pct >= 80 ? "#22c55e" : pct >= 60 ? "#f59e0b" : "#ef4444";
                   return (
-                    <div key={b.id}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
-                        <span style={{ fontSize: 13, fontWeight: 700, color }}>{b.rate.toFixed(0)}%</span>
+                    <div key={b.id} style={{ marginBottom: 16 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontWeight: 600, fontSize: 14 }}>{b.name}</span>
+                        <span style={{ fontWeight: 700, fontSize: 14, color }}>{pct}%</span>
                       </div>
-                      <div style={{ height: 6, background: "var(--divider)", borderRadius: 3, overflow: "hidden" }}>
-                        <div style={{ width: `${b.rate}%`, height: "100%", background: color, transition: "width .4s" }} />
+                      <div style={{ background: "#e5e7eb", borderRadius: 99, height: 8 }}>
+                        <div style={{ width: `${pct}%`, background: color, borderRadius: 99, height: 8, transition: "width 0.4s" }} />
                       </div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
-                        {b.completed} completadas · {b.pending} pendientes
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
+                        <span>{b.completed} completadas</span>
+                        <span>{b.total - b.completed} pendientes</span>
                       </div>
                     </div>
                   );
                 })}
-              </div>
-            )}
-          </SectionCard>
-
-          <SectionCard
-            title={selectedTask
-              ? `Checklist — ${selectedTask.unitId ? (unitById.get(selectedTask.unitId)?.display_code ?? unitById.get(selectedTask.unitId)?.unit_number ?? "Unidad") : (CLEANING_TYPE_COLORS[selectedTask.cleaningType]?.label ?? "Áreas comunes")}`
-              : "Checklist"}
-            icon={<CheckCircle2 size={18} />}
-          >
-            {!selectedTask ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
-                Selecciona una tarea para ver el checklist.
-              </p>
-            ) : selectedTaskChecklist.length === 0 ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
-                Sin checklist configurado para este tipo.
-              </p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {selectedTaskChecklist.map((item) => (
-                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13 }}>
-                    <div style={{ width: 14, height: 14, borderRadius: 3, border: "1.5px solid var(--border-strong)" }} />
-                    {item.label}
-                  </div>
-                ))}
               </div>
             )}
           </SectionCard>
