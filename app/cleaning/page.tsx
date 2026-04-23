@@ -8,6 +8,7 @@ import {
   Sparkles,
   Plus,
   CheckCircle2,
+  XCircle,
   Clock3,
   Building2,
   Home,
@@ -670,6 +671,27 @@ export default function CleaningPage() {
     await loadData();
   }
 
+  async function reopenTask() {
+    if (!selectedTask || !currentLogId) return;
+    setSubmittingCompletion(true);
+    const { error } = await supabase
+      .from("cleaning_logs")
+      .update({ status: "pending", completed_at: null, completed_by: null })
+      .eq("id", currentLogId);
+    if (error) {
+      console.error("cleaning_logs reopen failed", error);
+      toast.error("No se pudo reabrir la tarea.");
+      setSubmittingCompletion(false);
+      return;
+    }
+    toast.success("Tarea reabierta.");
+    setSelectedTask(null);
+    setCompletionNotes("");
+    setCurrentLogId(null);
+    setSubmittingCompletion(false);
+    await loadData();
+  }
+
   const onCreateSchedule = scheduleForm.handleSubmit(async (data) => {
     if (!user?.company_id) return;
 
@@ -723,6 +745,11 @@ export default function CleaningPage() {
   const selectedTaskChecklist = selectedTask
     ? checklist.filter((c) => c.cleaning_type === selectedTask.cleaningType)
     : [];
+
+  const canEdit =
+    user?.role === "superadmin" ||
+    user?.role === "mantenimiento" ||
+    Boolean(user?.is_superadmin);
 
   return (
     <PageContainer>
@@ -806,18 +833,31 @@ export default function CleaningPage() {
         maxWidth="540px"
       >
         {selectedTask && selectedTaskLog?.status === "completed" ? (
-          <div style={{ padding: 16, background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", borderRadius: 12, display: "flex", gap: 10, alignItems: "center" }}>
-            <CheckCircle2 size={24} color="#16A34A" />
-            <div>
-              <div style={{ fontWeight: 700, color: "var(--metric-value-green)" }}>Tarea completada</div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                {selectedTaskLog.completed_at ? new Date(selectedTaskLog.completed_at).toLocaleString("es-MX") : "Sin fecha"}
+          <>
+            <div style={{ padding: 16, background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", borderRadius: 12, display: "flex", gap: 10, alignItems: "center" }}>
+              <CheckCircle2 size={24} color="#16A34A" />
+              <div>
+                <div style={{ fontWeight: 700, color: "var(--metric-value-green)" }}>Completada</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  {selectedTaskLog.completed_at ? new Date(selectedTaskLog.completed_at).toLocaleString("es-MX") : "Sin fecha"}
+                </div>
+                {selectedTaskLog.notes && (
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{selectedTaskLog.notes}</div>
+                )}
               </div>
-              {selectedTaskLog.notes && (
-                <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{selectedTaskLog.notes}</div>
-              )}
             </div>
-          </div>
+            {canEdit && (
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 14 }}>
+                <UiButton
+                  variant="secondary"
+                  onClick={() => void reopenTask()}
+                  disabled={submittingCompletion}
+                >
+                  {submittingCompletion ? "Reabriendo..." : "Reabrir tarea"}
+                </UiButton>
+              </div>
+            )}
+          </>
         ) : (
           <>
             {selectedTaskChecklist.length > 0 ? (
@@ -846,17 +886,19 @@ export default function CleaningPage() {
                           border: "1px solid var(--border-default)",
                           borderRadius: 8,
                           fontSize: 13,
-                          cursor: "pointer",
+                          cursor: canEdit ? "pointer" : "default",
                           background: isChecked ? "var(--metric-bg-green)" : "transparent",
                           color: isChecked ? "var(--metric-value-green)" : "var(--text-primary)",
                           textDecoration: isChecked ? "line-through" : "none",
+                          opacity: canEdit ? 1 : 0.85,
                         }}
                       >
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          onChange={() => void toggleChecklistItem(item.id)}
-                          style={{ width: 14, height: 14, cursor: "pointer", accentColor: "#16A34A" }}
+                          disabled={!canEdit}
+                          onChange={() => { if (canEdit) void toggleChecklistItem(item.id); }}
+                          style={{ width: 14, height: 14, cursor: canEdit ? "pointer" : "not-allowed", accentColor: "#16A34A" }}
                         />
                         {item.label}
                       </label>
@@ -870,38 +912,48 @@ export default function CleaningPage() {
               </div>
             )}
 
-            <div style={{ marginBottom: 14 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
-                Notas (opcional)
-              </label>
-              <textarea
-                value={completionNotes}
-                onChange={(e) => setCompletionNotes(e.target.value)}
-                rows={3}
-                placeholder="Observaciones, materiales usados, etc."
-                style={{
-                  width: "100%",
-                  padding: 10,
-                  borderRadius: 8,
-                  fontSize: 13,
-                  background: "var(--bg-input)",
-                  border: "1px solid var(--border-default)",
-                  color: "var(--text-primary)",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  resize: "vertical",
-                  fontFamily: "inherit",
-                }}
-              />
-            </div>
+            {canEdit && (
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                  Notas (opcional)
+                </label>
+                <textarea
+                  value={completionNotes}
+                  onChange={(e) => setCompletionNotes(e.target.value)}
+                  rows={3}
+                  placeholder="Observaciones, materiales usados, etc."
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    fontSize: 13,
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-primary)",
+                    outline: "none",
+                    boxSizing: "border-box",
+                    resize: "vertical",
+                    fontFamily: "inherit",
+                  }}
+                />
+              </div>
+            )}
+
+            {!canEdit && (
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 14, padding: "10px 12px", background: "var(--bg-page)", borderRadius: 8 }}>
+                Solo lectura — contacta al equipo de mantenimiento.
+              </div>
+            )}
 
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
               <UiButton variant="secondary" onClick={() => { if (!submittingCompletion) { setSelectedTask(null); setCompletionNotes(""); } }}>
-                Cancelar
+                Cerrar
               </UiButton>
-              <UiButton onClick={() => void completeTask()} disabled={submittingCompletion} variant="primary" icon={<CheckCircle2 size={14} />}>
-                {submittingCompletion ? "Guardando..." : "Marcar completada"}
-              </UiButton>
+              {canEdit && (
+                <UiButton onClick={() => void completeTask()} disabled={submittingCompletion} variant="primary" icon={<CheckCircle2 size={14} />}>
+                  {submittingCompletion ? "Guardando..." : "Marcar completada"}
+                </UiButton>
+              )}
             </div>
           </>
         )}
@@ -1071,12 +1123,24 @@ export default function CleaningPage() {
                           </div>
                         </div>
                         {(() => {
+                          const todayDate = new Date();
+                          todayDate.setHours(0, 0, 0, 0);
+                          const taskDate = new Date(task.dateISO + "T00:00:00");
+                          const isPast = taskDate < todayDate;
+                          const isCompleted = done;
+                          const isOverdue = isPast && !isCompleted;
                           const prog = taskProgress.get(task.key);
-                          if (prog && prog.total > 0) {
-                            const progress = prog.checked / prog.total;
-                            if (progress >= 1) {
-                              return <CheckCircle2 size={20} style={{ color: "#22c55e", flexShrink: 0 }} />;
-                            }
+                          const total = prog?.total ?? 0;
+                          const checked = prog?.checked ?? 0;
+                          const progress = total > 0 ? checked / total : 0;
+
+                          if (isCompleted) {
+                            return <CheckCircle2 size={20} style={{ color: "#22c55e", flexShrink: 0 }} />;
+                          }
+                          if (isOverdue) {
+                            return <XCircle size={20} style={{ color: "#ef4444", flexShrink: 0 }} />;
+                          }
+                          if (progress > 0 && total > 0) {
                             const radius = 9;
                             const circumference = 2 * Math.PI * radius;
                             const strokeDashoffset = circumference * (1 - progress);
@@ -1097,7 +1161,9 @@ export default function CleaningPage() {
                               </svg>
                             );
                           }
-                          return done ? <CheckCircle2 size={12} color="#22c55e" style={{ flexShrink: 0 }} /> : null;
+                          return (
+                            <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #d1d5db", flexShrink: 0 }} />
+                          );
                         })()}
                       </div>
                     </button>
