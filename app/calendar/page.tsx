@@ -51,9 +51,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
-import MetricCard from "@/components/MetricCard";
 import AppCard from "@/components/AppCard";
-import AppGrid from "@/components/AppGrid";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
 
@@ -1477,46 +1475,6 @@ export default function CalendarPage() {
         </div>
       ) : null}
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Vista activa"
-          value={
-            viewMode === "week"
-              ? "Semana"
-              : viewMode === "month"
-              ? "Mes"
-              : "Año"
-          }
-          helper={currentLabel}
-          icon={<CalendarDays size={18} />}
-        />
-        <MetricCard
-          label="Limpieza"
-          value={String(totalCleaningEvents)}
-          helper={selectedBuildingName}
-          icon={<Sparkles size={18} />}
-        />
-        <MetricCard
-          label="Mantenimiento"
-          value={String(totalMaintenanceEvents)}
-          helper={selectedBuildingName}
-          icon={<Wrench size={18} />}
-        />
-        <MetricCard
-          label="Pagos"
-          value={String(totalPaymentsEvents)}
-          helper={selectedBuildingName}
-          icon={<CreditCard size={18} />}
-        />
-        <MetricCard
-          label="Cobranza"
-          value={String(totalCollectionsEvents)}
-          helper={selectedBuildingName}
-          icon={<Wallet size={18} />}
-        />
-      </AppGrid>
-
-      <div style={{ height: 16 }} />
 
       <SectionCard
         title="Calendario general"
@@ -1903,7 +1861,9 @@ export default function CalendarPage() {
                                 color: MODULE_COLORS[event.module]?.text ?? "#374151",
                                 border: "none",
                                 borderLeft: `3px solid ${MODULE_COLORS[event.module]?.border ?? "#d1d5db"}`,
-                                display: "block",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
                                 marginBottom: 2,
                                 whiteSpace: "nowrap",
                                 overflow: "hidden",
@@ -1918,6 +1878,7 @@ export default function CalendarPage() {
                                   display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
+                                  verticalAlign: "middle",
                                   flexShrink: 0,
                                 }}
                               >
@@ -2073,97 +2034,18 @@ export default function CalendarPage() {
 
       <div style={{ height: 16 }} />
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 16,
-        }}
-      >
-        <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 999,
-                background: "#10B981",
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-              Limpieza interior de unidad
-            </span>
+      <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap", padding:"1rem 0 .5rem" }}>
+        {[
+          { label:"Limpieza",      module:"cleaning" },
+          { label:"Mantenimiento", module:"maintenance" },
+          { label:"Pagos",         module:"payments" },
+          { label:"Cobranza",      module:"collections" },
+        ].map(item => (
+          <div key={item.module} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--text-secondary)" }}>
+            <div style={{ width:10, height:10, borderRadius:2, background:MODULE_COLORS[item.module]?.bg, border:`1.5px solid ${MODULE_COLORS[item.module]?.border}` }} />
+            {item.label}
           </div>
-        </AppCard>
-
-        <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 999,
-                background: "#F97316",
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-              Mantenimiento
-            </span>
-          </div>
-        </AppCard>
-
-        <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 999,
-                background: "var(--badge-text-blue)",
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-              Pagos reales
-            </span>
-          </div>
-        </AppCard>
-
-        <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 999,
-                background: "#93C5FD",
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-              Pagos proyectados
-            </span>
-          </div>
-        </AppCard>
-
-        <AppCard>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div
-              style={{
-                width: 14,
-                height: 14,
-                borderRadius: 999,
-                background: "#EAB308",
-                flexShrink: 0,
-              }}
-            />
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-              Cobranza
-            </span>
-          </div>
-        </AppCard>
+        ))}
       </div>
 
       {hoveredEvent ? (
