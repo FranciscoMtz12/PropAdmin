@@ -532,11 +532,11 @@ function getEventIcon(event: CalendarEvent) {
 }
 
 const MODULE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  collections:   { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }, // cobros
-  payments:      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" }, // pagos
-  maintenance:   { bg: "#ffedd5", text: "#9a3412", border: "#fdba74" }, // mantenimiento
-  cleaning:      { bg: "#ede9fe", text: "#5b21b6", border: "#c4b5fd" }, // limpieza
-  contratos:     { bg: "#fce7f3", text: "#9d174d", border: "#f9a8d4" },
+  collections:   { bg: "#dcfce7", text: "#16a34a", border: "#16a34a" },
+  payments:      { bg: "#dbeafe", text: "#2563eb", border: "#2563eb" },
+  maintenance:   { bg: "#ffedd5", text: "#ea580c", border: "#ea580c" },
+  cleaning:      { bg: "#f3e8ff", text: "#9333ea", border: "#9333ea" },
+  contratos:     { bg: "#fce7f3", text: "#db2777", border: "#db2777" },
 };
 
 function getModuleLabel(module: CalendarEvent["module"]) {
@@ -1880,21 +1880,7 @@ export default function CalendarPage() {
                         ) : null}
                       </div>
 
-                      {dayEvents.length === 0 ? (
-                        <div
-                          style={{
-                            borderRadius: 10,
-                            padding: "8px 8px",
-                            background: "var(--bg-card-hover)",
-                            border: "1px dashed #D1D5DB",
-                            fontSize: 11,
-                            color: "var(--text-muted)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Sin eventos
-                        </div>
-                      ) : (
+                      {dayEvents.length === 0 ? null : (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                           {visibleEvents.map((event) => (
                             <button
