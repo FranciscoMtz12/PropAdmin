@@ -10,6 +10,8 @@ import {
   CheckCircle2,
   Clock3,
   Building2,
+  Home,
+  Settings,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
@@ -104,6 +106,12 @@ const CLEANING_TYPE_COLORS: Record<CleaningType, { bg: string; text: string; bor
 };
 
 const DEFAULT_CLEANING_VISUALS = { bg: "#f3f4f6", text: "#374151", border: "#d1d5db", label: "Limpieza", icon: "🧹" };
+
+const CLEANING_TYPE_ICONS: Record<string, React.ReactNode> = {
+  common_area:   <Building2 size={10} />,
+  unit_exterior: <Home size={10} />,
+  unit_interior: <Sparkles size={10} />,
+};
 
 const normalizeCleaningType = (raw: string): CleaningType => {
   if (raw === "common") return "common_area";
@@ -534,7 +542,20 @@ export default function CleaningPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Limpieza" titleIcon={<Sparkles size={18} />} />
+      <PageHeader
+        title="Limpieza"
+        titleIcon={<Sparkles size={18} />}
+        actions={
+          <div style={{ display: "flex", gap: 8 }}>
+            <UiButton variant="secondary" icon={<Settings size={14} />} onClick={() => setTab("config")}>
+              Configurar horario
+            </UiButton>
+            <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => setShowCreateSchedule(true)}>
+              Nueva tarea
+            </UiButton>
+          </div>
+        }
+      />
 
       {/* Tabs */}
       <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid var(--border-default)" }}>
@@ -732,12 +753,17 @@ export default function CleaningPage() {
         {/* Stat bar */}
         <div style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden", marginBottom: "1rem" }}>
           {[
-            { label: "Cumplimiento", value: `${weekStats.compliance.toFixed(0)}%`, sub: "semanal", color: "#10B981" },
-            { label: "Hoy", value: weekStats.todayTotal, sub: "tareas" },
-            { label: "Completadas", value: weekStats.todayCompleted, sub: "hoy", color: "#10B981" },
-            { label: "Pendientes", value: weekStats.todayPending, sub: "hoy", color: "#F59E0B" },
-            { label: "Edificios", value: weekStats.activeBuildings, sub: "activos" },
-            { label: "Premium", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
+            {
+              label: "CUMPLIMIENTO SEMANAL",
+              value: `${weekStats.compliance.toFixed(0)}%`,
+              sub: "semanal",
+              color: weekStats.compliance >= 80 ? "#10B981" : weekStats.compliance >= 60 ? "#F59E0B" : "#EF4444",
+            },
+            { label: "TAREAS HOY", value: weekStats.todayTotal, sub: "total" },
+            { label: "COMPLETADAS HOY", value: weekStats.todayCompleted, sub: "terminadas", color: "#10B981" },
+            { label: "PENDIENTES HOY", value: weekStats.todayPending, sub: "por hacer", color: "#F59E0B" },
+            { label: "EDIFICIOS ACTIVOS", value: weekStats.activeBuildings, sub: "con horario" },
+            { label: "SERVICIO PREMIUM", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
           ].map((s, i, arr) => (
             <div key={i} style={{ flex: 1, padding: ".6rem .75rem", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
               <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>{s.label}</div>
@@ -813,7 +839,7 @@ export default function CleaningPage() {
                       }}
                       title={`${visuals.label} · ${building?.name ?? ""}`}
                     >
-                      {done ? <CheckCircle2 size={10} /> : <span>{visuals.icon}</span>}
+                      {done ? <CheckCircle2 size={10} /> : (CLEANING_TYPE_ICONS[task.cleaningType] ?? <Sparkles size={10} />)}
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                         {unit ? (unit.display_code || unit.unit_number) : building?.name ?? ""}
                       </span>
@@ -913,8 +939,8 @@ export default function CleaningPage() {
                       <tr key={r.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                         <td style={tdStyle}>{r.scheduled_date}</td>
                         <td style={tdStyle}>
-                          <span style={{ background: visuals.bg, color: visuals.text, borderRadius: 4, padding: "2px 6px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${visuals.border}` }}>
-                            {visuals.icon} {visuals.label}
+                          <span style={{ background: visuals.bg, color: visuals.text, borderRadius: 4, padding: "2px 6px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${visuals.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            {CLEANING_TYPE_ICONS[r.cleaning_type] ?? <Sparkles size={10} />} {visuals.label}
                           </span>
                         </td>
                         <td style={tdStyle}>{u ? (u.display_code || u.unit_number) : "Áreas comunes"}</td>
@@ -955,8 +981,8 @@ export default function CleaningPage() {
                     const v = CLEANING_TYPE_COLORS[s.cleaning_type] ?? DEFAULT_CLEANING_VISUALS;
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
-                        <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}` }}>
-                          {v.icon} {v.label}
+                        <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          {CLEANING_TYPE_ICONS[s.cleaning_type] ?? <Sparkles size={10} />} {v.label}
                         </span>
                         <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
@@ -970,8 +996,8 @@ export default function CleaningPage() {
                     const u = unitById.get(s.unit_id);
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
-                        <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}` }}>
-                          {v.icon} {u?.display_code || u?.unit_number || "Unidad"}
+                        <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          {CLEANING_TYPE_ICONS.unit_interior} {u?.display_code || u?.unit_number || "Unidad"}
                         </span>
                         <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
