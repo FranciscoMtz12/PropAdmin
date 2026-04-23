@@ -1915,7 +1915,6 @@ export default function CalendarPage() {
                             >
                               <span
                                 style={{
-                                  color: event.colorText,
                                   display: "inline-flex",
                                   alignItems: "center",
                                   justifyContent: "center",
@@ -1927,9 +1926,6 @@ export default function CalendarPage() {
 
                               <span
                                 style={{
-                                  fontSize: 10.5,
-                                  fontWeight: 800,
-                                  color: event.colorText,
                                   overflow: "hidden",
                                   textOverflow: "ellipsis",
                                   whiteSpace: "nowrap",
