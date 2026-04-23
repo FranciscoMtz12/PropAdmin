@@ -531,6 +531,14 @@ function getEventIcon(event: CalendarEvent) {
   return <Wallet size={11} />;
 }
 
+const MODULE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
+  collections:   { bg: "#d1fae5", text: "#065f46", border: "#6ee7b7" }, // cobros
+  payments:      { bg: "#dbeafe", text: "#1e40af", border: "#93c5fd" }, // pagos
+  maintenance:   { bg: "#ffedd5", text: "#9a3412", border: "#fdba74" }, // mantenimiento
+  cleaning:      { bg: "#ede9fe", text: "#5b21b6", border: "#c4b5fd" }, // limpieza
+  contratos:     { bg: "#fce7f3", text: "#9d174d", border: "#f9a8d4" },
+};
+
 function getModuleLabel(module: CalendarEvent["module"]) {
   if (module === "cleaning") return "Limpieza";
   if (module === "maintenance") return "Mantenimiento";
@@ -650,7 +658,7 @@ export default function CalendarPage() {
   const [msg, setMsg] = useState("");
 
   const [selectedBuildingId, setSelectedBuildingId] = useState("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("week");
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
   const [referenceDate, setReferenceDate] = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1270,22 +1278,32 @@ export default function CalendarPage() {
     const monthStart = getStartOfMonth(referenceDate);
     const monthEnd = getEndOfMonth(referenceDate);
 
-    const days: { isoDate: string; label: string; dayNumber: number }[] = [];
+    // Lunes = 0, Domingo = 6
+    const getMondayIndex = (d: Date) => (d.getDay() + 6) % 7;
+
+    const days: { isoDate: string; dayNumber: number; empty: boolean }[] = [];
+
+    // Padding inicial — celdas vacías hasta alinear día 1 con su columna
+    const leadingPad = getMondayIndex(monthStart);
+    for (let i = 0; i < leadingPad; i++) {
+      days.push({ isoDate: "", dayNumber: 0, empty: true });
+    }
+
+    // Días reales del mes
     let cursor = new Date(monthStart);
-
     while (cursor <= monthEnd) {
-      const isoDate = dateToIsoKey(cursor);
-      const dayKey = getDayKeyFromDateValue(isoDate);
-
-      if (dayKey !== "sunday") {
-        days.push({
-          isoDate,
-          label: DAY_LABELS[dayKey],
-          dayNumber: cursor.getDate(),
-        });
-      }
-
+      days.push({
+        isoDate: dateToIsoKey(cursor),
+        dayNumber: cursor.getDate(),
+        empty: false,
+      });
       cursor = addDays(cursor, 1);
+    }
+
+    // Padding final — completar última semana
+    const trailingPad = (7 - (days.length % 7)) % 7;
+    for (let i = 0; i < trailingPad; i++) {
+      days.push({ isoDate: "", dayNumber: 0, empty: true });
     }
 
     return days;
@@ -1372,12 +1390,6 @@ export default function CalendarPage() {
     }
 
     setReferenceDate((prev) => new Date(prev.getFullYear() - 1, 0, 1));
-  }
-
-  function goCurrent() {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    setReferenceDate(today);
   }
 
   function goNext() {
@@ -1544,13 +1556,21 @@ export default function CalendarPage() {
                     : "Año anterior"}
                 </UiButton>
 
-                <UiButton onClick={goCurrent}>
-                  {viewMode === "week"
-                    ? "Semana actual"
-                    : viewMode === "month"
-                    ? "Mes actual"
-                    : "Año actual"}
-                </UiButton>
+                <button
+                  onClick={() => setReferenceDate(new Date())}
+                  style={{
+                    padding: ".35rem .85rem",
+                    borderRadius: 8,
+                    border: "1px solid var(--border-default)",
+                    background: "var(--bg-card)",
+                    color: "var(--text-primary)",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    cursor: "pointer",
+                  }}
+                >
+                  Hoy
+                </button>
 
                 <UiButton onClick={goNext} icon={<ChevronRight size={16} />}>
                   {viewMode === "week"
@@ -1770,26 +1790,50 @@ export default function CalendarPage() {
             ) : null}
 
             {viewMode === "month" ? (
+              <>
+              <div style={{ display:"grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom:"1px solid var(--border-default)", marginBottom:4 }}>
+                {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+                  <div key={d} style={{ fontSize:11, fontWeight:600, color:"var(--text-muted)", letterSpacing:"0.5px", textAlign:"center", padding:".5rem 0", textTransform:"uppercase" }}>{d}</div>
+                ))}
+              </div>
               <div
                 style={{
                   display: "grid",
-                  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-                  gap: 16,
+                  gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
+                  gap: 2,
+                  border: "1px solid var(--border-default)",
+                  borderRadius: 8,
+                  overflow: "hidden",
                 }}
               >
-                {monthDays.map((day) => {
+                {monthDays.map((day, idx) => {
+                  if (day.empty) return (
+                    <div
+                      key={`empty-${idx}`}
+                      style={{
+                        minHeight: 100,
+                        background: "var(--bg-page)",
+                        borderRight: "1px solid var(--border-default)",
+                        borderBottom: "1px solid var(--border-default)",
+                      }}
+                    />
+                  );
                   const dayEvents = monthEventsByDate.get(day.isoDate) || [];
-                  const visibleEvents = dayEvents.slice(0, 5);
+                  const visibleEvents = dayEvents.slice(0, 4);
                   const isToday = day.isoDate === todayIsoKey;
 
                   return (
                     <div
                       key={day.isoDate}
                       style={{
-                        border: isToday ? "2px solid #2563EB" : "1px solid #E5E7EB",
-                        borderRadius: 16,
-                        padding: 12,
+                        border: "none",
+                        borderRight: "1px solid var(--border-default)",
+                        borderBottom: "1px solid var(--border-default)",
+                        borderRadius: 0,
+                        padding: "6px 8px",
                         background: isToday ? "var(--metric-bg-neutral)" : "var(--bg-card)",
+                        outline: isToday ? "2px solid #2563EB" : undefined,
+                        outlineOffset: isToday ? "-2px" : undefined,
                         display: "flex",
                         flexDirection: "column",
                         gap: 10,
@@ -1812,7 +1856,7 @@ export default function CalendarPage() {
                             color: isToday ? "#1D4ED8" : "#111827",
                           }}
                         >
-                          {day.dayNumber} · {day.label}
+                          {day.dayNumber}
                         </div>
 
                         {isToday ? (
@@ -1865,17 +1909,22 @@ export default function CalendarPage() {
                                 setSelectedEvent(event);
                               }}
                               style={{
-                                borderRadius: 10,
-                                padding: "6px 7px",
-                                background: event.colorBackground,
-                                border: `1px solid ${event.colorBorder}`,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 6,
-                                width: "100%",
+                                borderRadius: 4,
+                                padding: "2px 6px",
+                                fontSize: 10,
+                                fontWeight: 500,
+                                background: MODULE_COLORS[event.module]?.bg ?? "#f3f4f6",
+                                color: MODULE_COLORS[event.module]?.text ?? "#374151",
+                                border: "none",
+                                borderLeft: `3px solid ${MODULE_COLORS[event.module]?.border ?? "#d1d5db"}`,
+                                display: "block",
+                                marginBottom: 2,
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
                                 cursor: "pointer",
+                                width: "100%",
                                 textAlign: "left",
-                                minHeight: 30,
                               }}
                             >
                               <span
@@ -1912,7 +1961,7 @@ export default function CalendarPage() {
                               onClick={() =>
                                 openDayEventsModal(
                                   day.isoDate,
-                                  `${day.dayNumber} · ${day.label}`,
+                                  `${day.dayNumber}`,
                                   dayEvents
                                 )
                               }
@@ -1936,6 +1985,7 @@ export default function CalendarPage() {
                   );
                 })}
               </div>
+              </>
             ) : null}
 
             {viewMode === "year" ? (
