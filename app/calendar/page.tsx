@@ -603,18 +603,22 @@ function renderModuleToggle(
   label: string,
   active: boolean,
   onClick: () => void,
-  colors: { background: string; border: string; text: string }
+  moduleKey: string
 ) {
+  const palette = MODULE_COLORS[moduleKey];
   return (
     <button
       type="button"
       onClick={onClick}
       style={{
-        border: `1px solid ${colors.border}`,
+        border: active
+          ? `1.5px solid ${palette?.border ?? "var(--border-default)"}`
+          : "1.5px solid var(--border-default)",
         borderRadius: 999,
         padding: "8px 12px",
-        background: active ? colors.background : "var(--bg-card)",
-        color: colors.text,
+        background: active ? (palette?.bg ?? "var(--bg-card)") : "var(--bg-card)",
+        color: active ? (palette?.text ?? "var(--text-primary)") : "var(--text-muted)",
+        opacity: active ? 1 : 0.6,
         fontSize: 13,
         fontWeight: 700,
         cursor: "pointer",
@@ -628,7 +632,7 @@ function renderModuleToggle(
           width: 10,
           height: 10,
           borderRadius: 999,
-          background: colors.text,
+          background: palette?.border ?? "var(--border-default)",
           display: "inline-block",
           flexShrink: 0,
         }}
@@ -1594,33 +1598,10 @@ export default function CalendarPage() {
                 alignItems: "center",
               }}
             >
-              {renderModuleToggle(
-                "Limpieza",
-                showCleaning,
-                () => setShowCleaning((prev) => !prev),
-                CLEANING_COLORS
-              )}
-
-              {renderModuleToggle(
-                "Mantenimiento",
-                showMaintenance,
-                () => setShowMaintenance((prev) => !prev),
-                MAINTENANCE_COLORS
-              )}
-
-              {renderModuleToggle(
-                "Pagos",
-                showPayments,
-                () => setShowPayments((prev) => !prev),
-                PAYMENTS_COLORS
-              )}
-
-              {renderModuleToggle(
-                "Cobranza",
-                showCollections,
-                () => setShowCollections((prev) => !prev),
-                COLLECTIONS_COLORS
-              )}
+              {renderModuleToggle("Limpieza", showCleaning, () => setShowCleaning((prev) => !prev), "cleaning")}
+              {renderModuleToggle("Mantenimiento", showMaintenance, () => setShowMaintenance((prev) => !prev), "maintenance")}
+              {renderModuleToggle("Pagos", showPayments, () => setShowPayments((prev) => !prev), "payments")}
+              {renderModuleToggle("Cobranza", showCollections, () => setShowCollections((prev) => !prev), "collections")}
             </div>
 
             {viewMode === "week" ? (
@@ -2034,19 +2015,6 @@ export default function CalendarPage() {
 
       <div style={{ height: 16 }} />
 
-      <div style={{ display:"flex", gap:"1rem", flexWrap:"wrap", padding:"1rem 0 .5rem" }}>
-        {[
-          { label:"Limpieza",      module:"cleaning" },
-          { label:"Mantenimiento", module:"maintenance" },
-          { label:"Pagos",         module:"payments" },
-          { label:"Cobranza",      module:"collections" },
-        ].map(item => (
-          <div key={item.module} style={{ display:"flex", alignItems:"center", gap:6, fontSize:12, color:"var(--text-secondary)" }}>
-            <div style={{ width:10, height:10, borderRadius:2, background:MODULE_COLORS[item.module]?.bg, border:`1.5px solid ${MODULE_COLORS[item.module]?.border}` }} />
-            {item.label}
-          </div>
-        ))}
-      </div>
 
       {hoveredEvent ? (
         <div
