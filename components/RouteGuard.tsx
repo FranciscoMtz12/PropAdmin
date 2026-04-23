@@ -107,12 +107,12 @@ export default function RouteGuard() {
         return;
       }
       if (user.role === "administracion") {
-        const allowed = ["/dashboard", "/payments", "/collections", "/buildings", "/tenants", "/calendar"]
+        const allowed = ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/tenants", "/calendar"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }
       if (user.role === "directivo") {
-        const allowed = ["/dashboard", "/payments", "/collections", "/buildings", "/calendar"]
+        const allowed = ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/calendar"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }

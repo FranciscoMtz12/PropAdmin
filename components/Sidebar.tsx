@@ -17,6 +17,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
   BadgeCheck,
+  BarChart2,
   Building2,
   CalendarDays,
   CircleAlert,
@@ -59,6 +60,7 @@ type SidebarItem = {
 
 const ADMIN_ITEMS: SidebarItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home, status: "done" },
+  { label: "Analytics", href: "/analytics", icon: BarChart2, status: "done" },
   { label: "Calendario", href: "/calendar", icon: CalendarDays, status: "done" },
   { label: "Pagos", href: "/payments", icon: ReceiptText, status: "done" },
   { label: "Cobranza", href: "/collections", icon: Wallet, status: "partial" },
@@ -259,10 +261,10 @@ export default function Sidebar() {
       ["/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "administracion") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/payments", "/collections", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
+      ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "directivo") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))
+      ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))
     );
     // Fallback — oculta /users para cualquier rol que no sea superadmin
     return ADMIN_ITEMS.filter(i => i.href !== "/users" && i.href !== "/feedback");
