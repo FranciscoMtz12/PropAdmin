@@ -225,6 +225,12 @@ export default function CleaningPage() {
   const [selectedTask, setSelectedTask] = useState<WeekTask | null>(null);
   const [completionNotes, setCompletionNotes] = useState("");
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+
+  // Reset checklist al cambiar tarea
+  useEffect(() => {
+    setCheckedItems(new Set());
+  }, [selectedTask?.key]);
 
   // History filters
   const [historyBuildingId, setHistoryBuildingId] = useState("all");
@@ -651,12 +657,42 @@ export default function CleaningPage() {
                   CHECKLIST
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {selectedTaskChecklist.map((item) => (
-                    <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13 }}>
-                      <div style={{ width: 14, height: 14, borderRadius: 3, border: "1.5px solid var(--border-strong)" }} />
-                      {item.label}
-                    </div>
-                  ))}
+                  {selectedTaskChecklist.map((item) => {
+                    const isChecked = checkedItems.has(item.id);
+                    return (
+                      <label
+                        key={item.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "6px 10px",
+                          border: "1px solid var(--border-default)",
+                          borderRadius: 8,
+                          fontSize: 13,
+                          cursor: "pointer",
+                          background: isChecked ? "var(--metric-bg-green)" : "transparent",
+                          color: isChecked ? "var(--metric-value-green)" : "var(--text-primary)",
+                          textDecoration: isChecked ? "line-through" : "none",
+                        }}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() =>
+                            setCheckedItems((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(item.id)) next.delete(item.id);
+                              else next.add(item.id);
+                              return next;
+                            })
+                          }
+                          style={{ width: 14, height: 14, cursor: "pointer", accentColor: "#16A34A" }}
+                        />
+                        {item.label}
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             ) : (
