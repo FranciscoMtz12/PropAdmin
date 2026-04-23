@@ -226,11 +226,8 @@ export default function CleaningPage() {
   const [completionNotes, setCompletionNotes] = useState("");
   const [submittingCompletion, setSubmittingCompletion] = useState(false);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
-
-  // Reset checklist al cambiar tarea
-  useEffect(() => {
-    setCheckedItems(new Set());
-  }, [selectedTask?.key]);
+  const [currentLogId, setCurrentLogId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   // History filters
   const [historyBuildingId, setHistoryBuildingId] = useState("all");
@@ -407,6 +404,36 @@ export default function CleaningPage() {
     return logIndex.get(`${task.buildingId}|${task.unitId ?? ""}|${task.cleaningType}|${task.dateISO}`);
   }
 
+  // Cargar responses al abrir tarea
+  useEffect(() => {
+    if (!selectedTask) {
+      setCheckedItems(new Set());
+      setCurrentLogId(null);
+      return;
+    }
+    const existingLog = getLogForTask(selectedTask);
+    if (!existingLog) {
+      setCheckedItems(new Set());
+      setCurrentLogId(null);
+      return;
+    }
+    setCurrentLogId(existingLog.id);
+    void supabase
+      .from("cleaning_checklist_responses")
+      .select("checklist_item_id, checked")
+      .eq("cleaning_log_id", existingLog.id)
+      .then(({ data, error }) => {
+        if (error) {
+          console.error("checklist_responses fetch failed", error);
+          setCheckedItems(new Set());
+          return;
+        }
+        const rows = (data || []) as { checklist_item_id: string; checked: boolean }[];
+        setCheckedItems(new Set(rows.filter((r) => r.checked).map((r) => r.checklist_item_id)));
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTask?.key]);
+
   /* Stat bar semana */
   const weekStats = useMemo(() => {
     const total = weekTasks.length;
@@ -460,36 +487,105 @@ export default function CleaningPage() {
 
   /* ── Acciones ─────────────────────────────────────────────────── */
 
+  // Asegurar que exista un cleaning_log para la tarea seleccionada — devuelve el id.
+  async function ensureLog(status: CleaningStatus = "in_progress"): Promise<string | null> {
+    if (!selectedTask || !user?.company_id) return null;
+    if (currentLogId) return currentLogId;
+
+    const existingLog = getLogForTask(selectedTask);
+    if (existingLog) {
+      setCurrentLogId(existingLog.id);
+      return existingLog.id;
+    }
+
+    const { data, error } = await supabase
+      .from("cleaning_logs")
+      .insert({
+        company_id: user.company_id,
+        building_id: selectedTask.buildingId,
+        unit_id: selectedTask.unitId,
+        cleaning_type: selectedTask.cleaningType,
+        scheduled_date: selectedTask.dateISO,
+        status,
+      })
+      .select("id")
+      .single();
+
+    if (error || !data) {
+      console.error("cleaning_logs create failed", error);
+      return null;
+    }
+    setCurrentLogId(data.id as string);
+    return data.id as string;
+  }
+
+  async function toggleChecklistItem(itemId: string) {
+    const wasChecked = checkedItems.has(itemId);
+    const nextChecked = !wasChecked;
+
+    // Optimistic UI
+    setCheckedItems((prev) => {
+      const next = new Set(prev);
+      if (nextChecked) next.add(itemId);
+      else next.delete(itemId);
+      return next;
+    });
+
+    if (!selectedTask || !user?.company_id) return;
+
+    setIsSaving(true);
+    const logId = await ensureLog("in_progress");
+    if (!logId) {
+      toast.error("No se pudo guardar el progreso.");
+      // Revert
+      setCheckedItems((prev) => {
+        const next = new Set(prev);
+        if (wasChecked) next.add(itemId);
+        else next.delete(itemId);
+        return next;
+      });
+      setIsSaving(false);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("cleaning_checklist_responses")
+      .upsert(
+        { cleaning_log_id: logId, checklist_item_id: itemId, checked: nextChecked },
+        { onConflict: "cleaning_log_id,checklist_item_id" }
+      );
+
+    if (error) {
+      console.error("checklist_responses upsert failed", error);
+      toast.error("No se pudo guardar el ítem.");
+    }
+    setIsSaving(false);
+  }
+
   async function completeTask() {
     if (!selectedTask || !user?.company_id) return;
     setSubmittingCompletion(true);
 
-    const existingLog = getLogForTask(selectedTask);
-    if (existingLog && existingLog.status === "completed") {
-      toast("Esta tarea ya estaba completada.");
+    const logId = await ensureLog("completed");
+    if (!logId) {
+      toast.error("No se pudo registrar la limpieza.");
       setSubmittingCompletion(false);
       return;
     }
 
-    const payload = {
-      company_id: user.company_id,
-      building_id: selectedTask.buildingId,
-      unit_id: selectedTask.unitId,
-      cleaning_type: selectedTask.cleaningType,
-      scheduled_date: selectedTask.dateISO,
-      status: "completed" as CleaningStatus,
-      completed_at: new Date().toISOString(),
-      completed_by: user.id,
-      notes: completionNotes.trim() || null,
-    };
+    const { error } = await supabase
+      .from("cleaning_logs")
+      .update({
+        status: "completed",
+        completed_at: new Date().toISOString(),
+        completed_by: user.id,
+        notes: completionNotes.trim() || null,
+      })
+      .eq("id", logId);
 
-    const res = existingLog
-      ? await supabase.from("cleaning_logs").update(payload).eq("id", existingLog.id)
-      : await supabase.from("cleaning_logs").insert(payload);
-
-    if (res.error) {
-      console.error("cleaning_logs write failed", res.error);
-      toast.error("No se pudo registrar la limpieza.");
+    if (error) {
+      console.error("cleaning_logs complete failed", error);
+      toast.error("No se pudo marcar completada.");
       setSubmittingCompletion(false);
       return;
     }
@@ -497,6 +593,7 @@ export default function CleaningPage() {
     toast.success("Tarea registrada como completada.");
     setSelectedTask(null);
     setCompletionNotes("");
+    setCurrentLogId(null);
     setSubmittingCompletion(false);
     await loadData();
   }
@@ -653,8 +750,15 @@ export default function CleaningPage() {
           <>
             {selectedTaskChecklist.length > 0 ? (
               <div style={{ marginBottom: 14 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8, letterSpacing: "0.5px" }}>
-                  CHECKLIST
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px" }}>
+                    CHECKLIST
+                  </div>
+                  {isSaving && (
+                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                      Guardando...
+                    </span>
+                  )}
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {selectedTaskChecklist.map((item) => {
@@ -679,14 +783,7 @@ export default function CleaningPage() {
                         <input
                           type="checkbox"
                           checked={isChecked}
-                          onChange={() =>
-                            setCheckedItems((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(item.id)) next.delete(item.id);
-                              else next.add(item.id);
-                              return next;
-                            })
-                          }
+                          onChange={() => void toggleChecklistItem(item.id)}
                           style={{ width: 14, height: 14, cursor: "pointer", accentColor: "#16A34A" }}
                         />
                         {item.label}
