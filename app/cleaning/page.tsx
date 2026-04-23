@@ -386,6 +386,12 @@ export default function CleaningPage() {
     return tasks;
   }, [weekDays, buildingSchedules, unitSchedules]);
 
+  useEffect(() => {
+    console.log("building schedules raw:", buildingSchedules?.length, buildingSchedules?.[0]);
+    console.log("week tasks computed:", weekTasks?.length);
+    console.log("sample task:", weekTasks?.[0]);
+  }, [buildingSchedules, weekTasks]);
+
   /* Matchear logs contra tasks — una task se considera completada si existe un log con
      mismo building + unit + cleaning_type + scheduled_date + status 'completed'. */
   const logIndex = useMemo(() => {
