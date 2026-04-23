@@ -77,6 +77,20 @@ type Lease = {
   status: string;
   start_date: string | null;
   end_date: string | null;
+  rent_amount: number | null;
+};
+type CollectionRecord = {
+  id: string;
+  unit_id: string;
+  lease_id: string | null;
+  building_id: string;
+  period_year: number;
+  period_month: number;
+  due_date: string;
+  amount_due: number;
+  amount_collected: number | null;
+  status: string;
+  paid_at: string | null;
 };
 type Tenant = { id: string; full_name: string };
 type Building = { id: string; name: string };
@@ -183,6 +197,7 @@ export default function AnalyticsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
   const [expenseSchedules, setExpenseSchedules] = useState<ExpenseSchedule[]>([]);
+  const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   const allowedRoles = ["superadmin", "administracion", "directivo"];
@@ -205,8 +220,11 @@ export default function AnalyticsPage() {
     const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1)
       .toISOString()
       .slice(0, 10);
+    const twelveMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 11, 1)
+      .toISOString()
+      .slice(0, 10);
 
-    const [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, paymentsRes, schedulesRes] =
+    const [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, paymentsRes, schedulesRes, collectionsRes] =
       await Promise.all([
         supabase
           .from("units")
@@ -220,7 +238,7 @@ export default function AnalyticsPage() {
           .is("deleted_at", null),
         supabase
           .from("leases")
-          .select("id, unit_id, tenant_id, status, start_date, end_date")
+          .select("id, unit_id, tenant_id, status, start_date, end_date, rent_amount")
           .eq("company_id", user.company_id)
           .is("deleted_at", null),
         supabase
@@ -244,9 +262,15 @@ export default function AnalyticsPage() {
           .select("id, expense_type")
           .eq("company_id", user.company_id)
           .is("deleted_at", null),
+        supabase
+          .from("collection_records")
+          .select("id, unit_id, lease_id, building_id, period_year, period_month, due_date, amount_due, amount_collected, status, paid_at")
+          .eq("company_id", user.company_id)
+          .is("deleted_at", null)
+          .gte("due_date", twelveMonthsAgo),
       ]);
 
-    const errs = [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, paymentsRes, schedulesRes]
+    const errs = [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, paymentsRes, schedulesRes, collectionsRes]
       .filter((r) => r.error);
     if (errs.length) {
       errs.forEach((r) => console.error("analytics fetch failed", r.error));
@@ -259,6 +283,7 @@ export default function AnalyticsPage() {
     setBuildings((buildingsRes.data as Building[]) || []);
     setExpensePayments((paymentsRes.data as ExpensePayment[]) || []);
     setExpenseSchedules((schedulesRes.data as ExpenseSchedule[]) || []);
+    setCollectionRecords((collectionsRes.data as CollectionRecord[]) || []);
     setLoadingData(false);
   }
 
@@ -512,6 +537,141 @@ export default function AnalyticsPage() {
       return { mes: label, ocupacion: Math.round(rate), vacantes: vacant };
     });
   }, [leases, totalUnits]);
+
+  /* ── Eficiencia de cobro por edificio ──────────────────────────── */
+  const collectionEfficiency = useMemo(() => {
+    return buildings
+      .map((b) => {
+        const records = collectionRecords.filter((r) => r.building_id === b.id);
+        const totalDue = records.reduce((s, r) => s + (r.amount_due ?? 0), 0);
+        const totalCollected = records.reduce((s, r) => s + (r.amount_collected ?? 0), 0);
+        const rate = totalDue > 0 ? (totalCollected / totalDue) * 100 : 0;
+        const missing = Math.max(0, totalDue - totalCollected);
+        return { id: b.id, name: b.name, totalDue, totalCollected, rate, missing };
+      })
+      .filter((b) => b.totalDue > 0)
+      .sort((a, b) => b.rate - a.rate);
+  }, [buildings, collectionRecords]);
+
+  /* ── Comportamiento de pago por inquilino ──────────────────────── */
+  const tenantPaymentBehavior = useMemo(() => {
+    const byTenant = new Map<string, { due: number; collected: number; paid: number; late: number; lateDays: number[] }>();
+
+    collectionRecords.forEach((r) => {
+      const lease = r.lease_id ? leases.find((l) => l.id === r.lease_id) : null;
+      if (!lease) return;
+      const tenantId = lease.tenant_id;
+      if (!tenantId) return;
+      const prev = byTenant.get(tenantId) || { due: 0, collected: 0, paid: 0, late: 0, lateDays: [] };
+      prev.due += r.amount_due ?? 0;
+      prev.collected += r.amount_collected ?? 0;
+      if (r.paid_at) {
+        prev.paid += 1;
+        const lateBy = daysBetween(r.due_date, r.paid_at);
+        if (lateBy > 0) {
+          prev.late += 1;
+          prev.lateDays.push(lateBy);
+        }
+      }
+      byTenant.set(tenantId, prev);
+    });
+
+    return Array.from(byTenant.entries())
+      .map(([tenantId, data]) => {
+        const tenant = tenantById.get(tenantId);
+        // Buscar el edificio via su lease activo
+        const activeLease = activeLeases.find((l) => l.tenant_id === tenantId);
+        const unit = activeLease ? unitById.get(activeLease.unit_id) : null;
+        const building = unit ? buildingById.get(unit.building_id) : null;
+
+        const collectedRate = data.due > 0 ? (data.collected / data.due) * 100 : 0;
+        const punctualityRate = data.paid > 0 ? ((data.paid - data.late) / data.paid) * 100 : 0;
+        const avgLateDays = data.lateDays.length > 0
+          ? Math.round(data.lateDays.reduce((a, b) => a + b, 0) / data.lateDays.length)
+          : 0;
+
+        let evaluation: "excelente" | "bueno" | "regular" | "atencion";
+        if (collectedRate >= 95 && punctualityRate >= 80) evaluation = "excelente";
+        else if (collectedRate >= 80) evaluation = "bueno";
+        else if (collectedRate >= 60) evaluation = "regular";
+        else evaluation = "atencion";
+
+        return {
+          tenantId,
+          tenantName: tenant?.full_name || "—",
+          building: building?.name || "—",
+          collectedRate,
+          punctualityRate,
+          avgLateDays,
+          evaluation,
+          totalPayments: data.paid,
+        };
+      })
+      .filter((r) => r.totalPayments > 0)
+      .sort((a, b) => b.collectedRate - a.collectedRate);
+  }, [collectionRecords, leases, activeLeases, tenantById, unitById, buildingById]);
+
+  /* ── Historial de precios de renta ─────────────────────────────── */
+  const rentHistory = useMemo(() => {
+    return units
+      .filter((u) => isOccupiedStatus(u.status))
+      .map((u) => {
+        const unitLeases = leases.filter((l) => l.unit_id === u.id);
+        const activeLease = unitLeases.find((l) => l.status === "ACTIVE");
+        const currentRent = activeLease?.rent_amount ?? null;
+        const rentedLeases = unitLeases.filter((l) => (l.rent_amount ?? 0) > 0);
+        const avgRent = rentedLeases.length > 0
+          ? rentedLeases.reduce((s, l) => s + (l.rent_amount ?? 0), 0) / rentedLeases.length
+          : 0;
+        let trend: "up" | "down" | "flat" = "flat";
+        if (rentedLeases.length > 1 && currentRent != null) {
+          const diff = currentRent - avgRent;
+          if (diff > avgRent * 0.02) trend = "up";
+          else if (diff < -avgRent * 0.02) trend = "down";
+        }
+
+        // Duración promedio de contratos en esta unidad
+        const durations = unitLeases
+          .filter((l) => l.start_date && l.end_date)
+          .map((l) => monthsBetween(l.start_date!, l.end_date!))
+          .filter((m) => m > 0);
+        const avgDuration = durations.length > 0
+          ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
+          : null;
+
+        const b = buildingById.get(u.building_id);
+        const t = u.unit_type_id ? unitTypeById.get(u.unit_type_id) : null;
+
+        return {
+          unitId: u.id,
+          unitLabel: u.display_code || u.unit_number || "—",
+          building: b?.name || "—",
+          typology: t?.name || "—",
+          currentRent,
+          avgRent,
+          trend,
+          avgDuration,
+          leaseCount: unitLeases.length,
+        };
+      })
+      .sort((a, b) => (b.currentRent ?? 0) - (a.currentRent ?? 0));
+  }, [units, leases, buildingById, unitTypeById]);
+
+  /* ── Renta promedio por tipología ──────────────────────────────── */
+  const avgRentByTypology = useMemo(() => {
+    return unitTypes
+      .map((t) => {
+        const typeUnits = units.filter((u) => u.unit_type_id === t.id);
+        const typeLeases = leases.filter(
+          (l) => (l.rent_amount ?? 0) > 0 && typeUnits.some((u) => u.id === l.unit_id)
+        );
+        if (typeLeases.length === 0) return null;
+        const avg = typeLeases.reduce((s, l) => s + (l.rent_amount ?? 0), 0) / typeLeases.length;
+        return { id: t.id, name: t.name, avg, count: typeLeases.length };
+      })
+      .filter((r): r is { id: string; name: string; avg: number; count: number } => r !== null)
+      .sort((a, b) => b.avg - a.avg);
+  }, [unitTypes, units, leases]);
 
   /* ── Render ───────────────────────────────────────────────────── */
 
@@ -813,6 +973,161 @@ export default function AnalyticsPage() {
               <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
             </LineChart>
           </ResponsiveContainer>
+        )}
+      </SectionCard>
+
+      <div style={{ height:16 }} />
+
+      {/* ════ SECCIÓN 8: Eficiencia de cobro por edificio ═════════════════ */}
+      <SectionCard title="Eficiencia de cobro por edificio" icon={<Building2 size={18} />} subtitle="Últimos 12 meses · cobrado / esperado">
+        {collectionEfficiency.length === 0 ? (
+          <AppEmptyState title="Sin cobros" description="No hay datos de cobranza en el periodo." />
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+            {collectionEfficiency.map((b) => {
+              const color = b.rate >= 90 ? "#10B981" : b.rate >= 70 ? "#F59E0B" : "#EF4444";
+              return (
+                <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                  <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    {b.name}
+                  </div>
+                  <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius:5, overflow:"hidden" }}>
+                    <div style={{ width:`${Math.min(100, b.rate)}%`, height:"100%", background:color, transition:"width .4s" }} />
+                  </div>
+                  <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", minWidth:140, lineHeight:1.3 }}>
+                    <span style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)" }}>
+                      {b.rate.toFixed(0)}%
+                    </span>
+                    {b.missing > 0 && (
+                      <span style={{ fontSize:10, color:"#EF4444" }}>
+                        {formatCurrency(b.missing)} pendiente
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </SectionCard>
+
+      <div style={{ height:16 }} />
+
+      {/* ════ SECCIÓN 9: Comportamiento de pago de inquilinos ═════════════ */}
+      <SectionCard title="Comportamiento de pago" icon={<Users size={18} />} subtitle="Inquilinos con historial de cobros">
+        {tenantPaymentBehavior.length === 0 ? (
+          <AppEmptyState title="Sin historial" description="No hay pagos registrados por inquilino." />
+        ) : (
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+              <thead>
+                <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
+                  <th style={thStyle}>Inquilino</th>
+                  <th style={thStyle}>Edificio</th>
+                  <th style={thStyle}>% Cobrado</th>
+                  <th style={thStyle}>Puntualidad</th>
+                  <th style={thStyle}>Días retraso</th>
+                  <th style={thStyle}>Evaluación</th>
+                </tr>
+              </thead>
+              <tbody>
+                {tenantPaymentBehavior.map((r) => {
+                  const variant: "green" | "blue" | "amber" | "red" =
+                    r.evaluation === "excelente" ? "green" :
+                    r.evaluation === "bueno" ? "blue" :
+                    r.evaluation === "regular" ? "amber" : "red";
+                  const label =
+                    r.evaluation === "excelente" ? "Excelente" :
+                    r.evaluation === "bueno" ? "Bueno" :
+                    r.evaluation === "regular" ? "Regular" : "Atención";
+                  return (
+                    <tr key={r.tenantId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
+                      <td style={tdStyle}><strong>{r.tenantName}</strong></td>
+                      <td style={tdStyle}>{r.building}</td>
+                      <td style={tdStyle}>{r.collectedRate.toFixed(0)}%</td>
+                      <td style={tdStyle}>{r.punctualityRate.toFixed(0)}%</td>
+                      <td style={tdStyle}>{r.avgLateDays > 0 ? `${r.avgLateDays}d` : "—"}</td>
+                      <td style={tdStyle}>
+                        <AppBadge variant={variant}>{label}</AppBadge>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </SectionCard>
+
+      <div style={{ height:16 }} />
+
+      {/* ════ SECCIÓN 10: Historial de precios de renta ═══════════════════ */}
+      <SectionCard title="Historial de precios de renta" icon={<TrendingUp size={18} />} subtitle="Unidades ocupadas · tendencia vs. promedio histórico">
+        {rentHistory.length === 0 ? (
+          <AppEmptyState title="Sin histórico de rentas" description="No hay unidades con datos de renta." />
+        ) : (
+          <div style={{ overflowX:"auto" }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+              <thead>
+                <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
+                  <th style={thStyle}>Unidad</th>
+                  <th style={thStyle}>Edificio</th>
+                  <th style={thStyle}>Tipología</th>
+                  <th style={thStyle}>Renta actual</th>
+                  <th style={thStyle}>Promedio histórico</th>
+                  <th style={thStyle}>Tendencia</th>
+                  <th style={thStyle}>Duración promedio</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rentHistory.slice(0, 15).map((r) => {
+                  const trendIcon = r.trend === "up" ? "↑" : r.trend === "down" ? "↓" : "→";
+                  const trendColor = r.trend === "up" ? "#10B981" : r.trend === "down" ? "#EF4444" : "var(--text-muted)";
+                  return (
+                    <tr key={r.unitId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
+                      <td style={tdStyle}><strong>{r.unitLabel}</strong></td>
+                      <td style={tdStyle}>{r.building}</td>
+                      <td style={tdStyle}>{r.typology}</td>
+                      <td style={tdStyle}>{r.currentRent != null ? formatCurrency(r.currentRent) : "—"}</td>
+                      <td style={tdStyle}>{r.avgRent > 0 ? formatCurrency(r.avgRent) : "—"}</td>
+                      <td style={{ ...tdStyle, color: trendColor, fontWeight: 700, fontSize: 16 }}>
+                        {trendIcon}
+                      </td>
+                      <td style={tdStyle}>{r.avgDuration != null ? `${r.avgDuration} meses` : "—"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {avgRentByTypology.length > 0 && (
+          <div style={{ marginTop: 16, padding: 14, background: "var(--bg-page)", borderRadius: 10, border: "1px solid var(--border-default)" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px", marginBottom: 10 }}>
+              RENTA PROMEDIO POR TIPOLOGÍA
+            </div>
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              {avgRentByTypology.map((t, i) => (
+                <div key={t.id} style={{
+                  flex: "1 1 160px",
+                  padding: "10px 12px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-default)",
+                  borderLeft: `4px solid ${BUILDING_COLORS[i % BUILDING_COLORS.length]}`,
+                  borderRadius: 8,
+                }}>
+                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{t.name}</div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+                    {formatCurrency(t.avg)}
+                  </div>
+                  <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                    {t.count} contrato{t.count === 1 ? "" : "s"}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         )}
       </SectionCard>
     </PageContainer>
