@@ -30,8 +30,10 @@ import {
   CalendarClock,
   DoorOpen,
   LayoutDashboard,
+  ShoppingCart,
   Sparkles,
   TrendingUp,
+  Truck,
   Wrench,
   Wallet,
   Calendar,
@@ -296,6 +298,12 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { isDark } = useTheme();
+
+  const role = user?.role;
+  const isSuperOrAdmin = role === 'superadmin' || user?.is_superadmin || role === 'administracion' || role === 'directivo';
+  const isCompras = role === 'compras';
+  const isMantenimiento = role === 'mantenimiento';
+  void isSuperOrAdmin;
 
   const [loadingData, setLoadingData] = useState(true);
 
@@ -704,6 +712,9 @@ export default function DashboardPage() {
     );
   }
   if (!user) return null;
+
+  if (isCompras) return <DashboardCompras />;
+  if (isMantenimiento) return <DashboardMantenimiento />;
 
   /* Nombre del mes actual capitalizado para el título de la dona */
   const monthName = new Date().toLocaleDateString("es-MX", { month: "long" });
@@ -1651,6 +1662,304 @@ export default function DashboardPage() {
           </SectionCard>
         </div>
       </div>
+    </PageContainer>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DashboardCompras — panel reducido para el rol "compras".
+   Solo muestra órdenes de compra pendientes + acceso rápido.
+   ═══════════════════════════════════════════════════════════════════ */
+
+type POStatus = "draft" | "pending" | "sent" | "received" | "cancelled";
+type POItem = { id: string; folio: string | null; status: POStatus; created_at: string; supplier_name: string | null };
+
+function DashboardCompras() {
+  const { user } = useCurrentUser();
+  const [orders, setOrders] = useState<POItem[]>([]);
+  const [suppliersCount, setSuppliersCount] = useState(0);
+  const [loadingLocal, setLoadingLocal] = useState(true);
+
+  useEffect(() => {
+    if (!user?.company_id) return;
+    void load();
+    async function load() {
+      setLoadingLocal(true);
+      const [poRes, supRes] = await Promise.all([
+        supabase
+          .from("purchase_orders")
+          .select("id, folio, status, created_at, suppliers(name)")
+          .eq("company_id", user!.company_id)
+          .is("deleted_at", null)
+          .order("created_at", { ascending: false })
+          .limit(50),
+        supabase
+          .from("suppliers")
+          .select("id")
+          .eq("company_id", user!.company_id)
+          .is("deleted_at", null),
+      ]);
+      if (poRes.error) console.error("purchase_orders fetch failed", poRes.error);
+      if (supRes.error) console.error("suppliers fetch failed", supRes.error);
+
+      type Raw = { id: string; folio: string | null; status: POStatus; created_at: string; suppliers: { name: string } | { name: string }[] | null };
+      const mapped: POItem[] = ((poRes.data as unknown as Raw[]) || []).map((r) => {
+        const sup = Array.isArray(r.suppliers) ? r.suppliers[0] : r.suppliers;
+        return {
+          id: r.id,
+          folio: r.folio,
+          status: r.status,
+          created_at: r.created_at,
+          supplier_name: sup?.name ?? null,
+        };
+      });
+      setOrders(mapped);
+      setSuppliersCount((supRes.data as unknown as { id: string }[] || []).length);
+      setLoadingLocal(false);
+    }
+  }, [user?.company_id]);
+
+  if (loadingLocal || !user) {
+    return (
+      <PageContainer>
+        <p style={{ padding: "40px 0", color: "var(--text-muted)" }}>Cargando panel de compras...</p>
+      </PageContainer>
+    );
+  }
+
+  const draftCount = orders.filter((o) => o.status === "draft").length;
+  const pendingCount = orders.filter((o) => o.status === "pending").length;
+  const sentCount = orders.filter((o) => o.status === "sent").length;
+  const pendingList = orders.filter((o) => o.status === "pending" || o.status === "draft").slice(0, 8);
+
+  const statusLabel: Record<POStatus, string> = {
+    draft: "Borrador",
+    pending: "Pendiente",
+    sent: "Enviada",
+    received: "Recibida",
+    cancelled: "Cancelada",
+  };
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title={`Bienvenido, ${user.full_name || user.email}`}
+        titleIcon={<ShoppingCart size={18} />}
+        subtitle="Panel de Compras"
+      />
+
+      {/* Stat bar */}
+      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+        {[
+          { label:"Borradores", value:draftCount, sub:"OCs", color:"#94A3B8" },
+          { label:"Pendientes", value:pendingCount, sub:"por revisar", color:"#F59E0B" },
+          { label:"Enviadas", value:sentCount, sub:"al proveedor", color:"#3B82F6" },
+          { label:"Proveedores", value:suppliersCount, sub:"activos", color:"#10B981" },
+        ].map((s, i, arr) => (
+          <div key={i} style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+            <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
+            <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+            <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionCard title="OCs pendientes de revisión" icon={<ShoppingCart size={18} />}>
+        {pendingList.length === 0 ? (
+          <AppEmptyState title="Sin OCs pendientes" description="Todo al día." />
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {pendingList.map((o) => (
+              <div key={o.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius:8 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:"var(--text-primary)" }}>{o.folio || "Sin folio"}</span>
+                  <span style={{ fontSize:11, color:"var(--text-muted)" }}>{o.supplier_name || "Sin proveedor"}</span>
+                </div>
+                <AppBadge variant={o.status === "draft" ? "gray" : "amber"}>{statusLabel[o.status]}</AppBadge>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <div style={{ height:16 }} />
+
+      <SectionCard title="Accesos rápidos" icon={<ShoppingCart size={18} />}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:12 }}>
+          <UiButton href="/purchases" variant="primary" icon={<ShoppingCart size={16} />}>
+            Nueva OC
+          </UiButton>
+          <UiButton href="/suppliers" icon={<Truck size={16} />}>
+            Ver proveedores
+          </UiButton>
+        </div>
+      </SectionCard>
+    </PageContainer>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DashboardMantenimiento — panel reducido para el rol "mantenimiento".
+   ═══════════════════════════════════════════════════════════════════ */
+
+type MaintenanceItem = {
+  id: string;
+  title: string;
+  status: string;
+  priority: string | null;
+  scheduled_date: string | null;
+  ticket_number: string | null;
+};
+
+type CleaningItem = {
+  id: string;
+  building_id: string;
+  day_of_week: number;
+};
+
+function DashboardMantenimiento() {
+  const { user } = useCurrentUser();
+  const [logs, setLogs] = useState<MaintenanceItem[]>([]);
+  const [cleaningToday, setCleaningToday] = useState<CleaningItem[]>([]);
+  const [loadingLocal, setLoadingLocal] = useState(true);
+
+  useEffect(() => {
+    if (!user?.company_id) return;
+    void load();
+    async function load() {
+      setLoadingLocal(true);
+      const todayISO = new Date().toISOString().slice(0, 10);
+      const todayDow = new Date().getDay();
+
+      const [logsRes, cleaningRes] = await Promise.all([
+        supabase
+          .from("maintenance_logs")
+          .select("id, title, status, priority, scheduled_date, ticket_number")
+          .eq("company_id", user!.company_id)
+          .is("deleted_at", null)
+          .order("scheduled_date", { ascending: true })
+          .limit(50),
+        supabase
+          .from("cleaning_building_schedules")
+          .select("id, building_id, day_of_week")
+          .eq("company_id", user!.company_id)
+          .eq("day_of_week", todayDow)
+          .eq("active", true)
+          .is("deleted_at", null),
+      ]);
+      if (logsRes.error) console.error("maintenance_logs fetch failed", logsRes.error);
+      if (cleaningRes.error) console.error("cleaning_building_schedules fetch failed", cleaningRes.error);
+
+      setLogs(((logsRes.data as MaintenanceItem[]) || []).filter((l) => l.scheduled_date !== null || l.status));
+      setCleaningToday((cleaningRes.data as CleaningItem[]) || []);
+      setLoadingLocal(false);
+      void todayISO;
+    }
+  }, [user?.company_id]);
+
+  if (loadingLocal || !user) {
+    return (
+      <PageContainer>
+        <p style={{ padding: "40px 0", color: "var(--text-muted)" }}>Cargando panel de mantenimiento...</p>
+      </PageContainer>
+    );
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const openStatuses = new Set(["abierto", "open", "pending", "en_proceso", "in_progress"]);
+  const openLogs = logs.filter((l) => openStatuses.has((l.status || "").toLowerCase()));
+  const urgentLogs = openLogs.filter((l) => (l.priority || "").toLowerCase() === "urgent" || (l.priority || "").toLowerCase() === "high");
+  const todayLogs = logs.filter((l) => l.scheduled_date === today);
+
+  const priorityVariant = (p: string | null): "red" | "amber" | "blue" | "gray" => {
+    const v = (p || "").toLowerCase();
+    if (v === "urgent") return "red";
+    if (v === "high") return "amber";
+    if (v === "medium" || v === "normal") return "blue";
+    return "gray";
+  };
+
+  return (
+    <PageContainer>
+      <PageHeader
+        title={`Bienvenido, ${user.full_name || user.email}`}
+        titleIcon={<Wrench size={18} />}
+        subtitle="Panel de Mantenimiento"
+      />
+
+      {/* Stat bar */}
+      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+        {[
+          { label:"Tickets", value:openLogs.length, sub:"abiertos" },
+          { label:"Urgentes", value:urgentLogs.length, sub:"prioridad alta", color:"#EF4444" },
+          { label:"Hoy", value:todayLogs.length, sub:"mantenimientos", color:"#F59E0B" },
+          { label:"Limpieza", value:cleaningToday.length, sub:"hoy", color:"#10B981" },
+        ].map((s, i, arr) => (
+          <div key={i} style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+            <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
+            <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+            <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      <SectionCard title="Tickets urgentes" icon={<Wrench size={18} />}>
+        {urgentLogs.length === 0 ? (
+          <AppEmptyState title="Sin urgentes" description="No hay tickets de alta prioridad abiertos." />
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {urgentLogs.slice(0, 8).map((t) => (
+              <div key={t.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius:8 }}>
+                <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
+                  <span style={{ fontSize:13, fontWeight:600, color:"var(--text-primary)" }}>{t.title}</span>
+                  <span style={{ fontSize:11, color:"var(--text-muted)" }}>
+                    {t.ticket_number || "—"} · {t.scheduled_date || "Sin fecha"}
+                  </span>
+                </div>
+                <AppBadge variant={priorityVariant(t.priority)}>{(t.priority || "normal").toUpperCase()}</AppBadge>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <div style={{ height:16 }} />
+
+      <SectionCard title="Agenda de hoy" icon={<Wrench size={18} />}>
+        {todayLogs.length === 0 && cleaningToday.length === 0 ? (
+          <AppEmptyState title="Agenda libre" description="No hay tareas programadas para hoy." />
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {todayLogs.map((t) => (
+              <div key={`m-${t.id}`} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius:8 }}>
+                <Wrench size={14} color="#F59E0B" />
+                <span style={{ flex:1, fontSize:13, color:"var(--text-primary)" }}>{t.title}</span>
+                <AppBadge variant={priorityVariant(t.priority)}>{(t.priority || "normal").toUpperCase()}</AppBadge>
+              </div>
+            ))}
+            {cleaningToday.map((c) => (
+              <div key={`c-${c.id}`} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius:8 }}>
+                <Sparkles size={14} color="#10B981" />
+                <span style={{ flex:1, fontSize:13, color:"var(--text-primary)" }}>Limpieza programada</span>
+                <AppBadge variant="green">HOY</AppBadge>
+              </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
+
+      <div style={{ height:16 }} />
+
+      <SectionCard title="Accesos rápidos" icon={<Wrench size={18} />}>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:12 }}>
+          <UiButton href="/maintenance" variant="primary" icon={<Wrench size={16} />}>
+            Ver tickets
+          </UiButton>
+          <UiButton href="/cleaning" icon={<Sparkles size={16} />}>
+            Ver limpieza
+          </UiButton>
+        </div>
+      </SectionCard>
     </PageContainer>
   );
 }

@@ -255,10 +255,10 @@ export default function Sidebar() {
     if (isSuperAdmin) return ADMIN_ITEMS;
     if (isField) return FIELD_ITEMS;
     if (user?.role === "compras") return ADMIN_ITEMS.filter(i =>
-      ["/purchases", "/suppliers"].some(p => i.href?.startsWith(p))
+      ["/dashboard", "/purchases", "/suppliers"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "mantenimiento") return ADMIN_ITEMS.filter(i =>
-      ["/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
+      ["/dashboard", "/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "administracion") return ADMIN_ITEMS.filter(i =>
       ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
