@@ -105,6 +105,13 @@ const CLEANING_TYPE_COLORS: Record<CleaningType, { bg: string; text: string; bor
 
 const DEFAULT_CLEANING_VISUALS = { bg: "#f3f4f6", text: "#374151", border: "#d1d5db", label: "Limpieza", icon: "🧹" };
 
+const normalizeCleaningType = (raw: string): CleaningType => {
+  if (raw === "common") return "common_area";
+  if (raw === "exterior") return "unit_exterior";
+  if (raw === "interior") return "unit_interior";
+  return raw as CleaningType;
+};
+
 const DAY_ORDER: DayOfWeek[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT: Record<DayOfWeek, string> = {
   monday: "Lun", tuesday: "Mar", wednesday: "Mié", thursday: "Jue", friday: "Vie", saturday: "Sáb", sunday: "Dom",
@@ -281,10 +288,19 @@ export default function CleaningPage() {
 
     setBuildings((bRes.data as Building[]) || []);
     setUnits((uRes.data as Unit[]) || []);
-    setBuildingSchedules((bsRes.data as BuildingSchedule[]) || []);
+    setBuildingSchedules(((bsRes.data as BuildingSchedule[]) || []).map((s) => ({
+      ...s,
+      cleaning_type: normalizeCleaningType(s.cleaning_type as string),
+    })));
     setUnitSchedules((usRes.data as UnitSchedule[]) || []);
-    setLogs((logsRes.data as CleaningLog[]) || []);
-    setChecklist(((chkRes.data as ChecklistItem[]) || []).sort((a, b) => a.sort_order - b.sort_order));
+    setLogs(((logsRes.data as CleaningLog[]) || []).map((l) => ({
+      ...l,
+      cleaning_type: normalizeCleaningType(l.cleaning_type as string),
+    })));
+    setChecklist(((chkRes.data as ChecklistItem[]) || []).map((c) => ({
+      ...c,
+      cleaning_type: normalizeCleaningType(c.cleaning_type as string),
+    })).sort((a, b) => a.sort_order - b.sort_order));
     setLoadingData(false);
   }
 
@@ -747,7 +763,7 @@ export default function CleaningPage() {
 
         {/* Grid 7 días */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
-          {weekDays.map(({ dayOfWeek, iso }) => {
+          {weekDays.map(({ dayOfWeek, iso, date }) => {
             const dayTasks = weekTasks.filter((t) => t.dateISO === iso);
             const isCurrentDay = iso === todayISO;
             return (
@@ -765,7 +781,7 @@ export default function CleaningPage() {
                 }}
               >
                 <div style={{ fontSize: 11, fontWeight: 700, color: isCurrentDay ? "var(--accent)" : "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  {DAY_SHORT[dayOfWeek]} {new Date(iso).getDate()}
+                  {DAY_SHORT[dayOfWeek]} {date.getDate()}
                 </div>
                 {dayTasks.length === 0 ? null : dayTasks.map((task) => {
                   const visuals = CLEANING_TYPE_COLORS[task.cleaningType] ?? DEFAULT_CLEANING_VISUALS;
@@ -783,9 +799,9 @@ export default function CleaningPage() {
                         color: done ? "var(--metric-value-green)" : visuals.text,
                         border: "none",
                         borderLeft: `3px solid ${done ? "#16A34A" : visuals.border}`,
-                        borderRadius: 4,
-                        padding: "4px 6px",
-                        fontSize: 10,
+                        borderRadius: 6,
+                        padding: "4px 8px",
+                        fontSize: 11,
                         fontWeight: 500,
                         textAlign: "left",
                         cursor: "pointer",
@@ -793,6 +809,7 @@ export default function CleaningPage() {
                         display: "flex",
                         alignItems: "center",
                         gap: 4,
+                        marginBottom: 4,
                       }}
                       title={`${visuals.label} · ${building?.name ?? ""}`}
                     >
