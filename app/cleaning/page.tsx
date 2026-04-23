@@ -557,8 +557,8 @@ export default function CleaningPage() {
         }
       />
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, borderBottom: "1px solid var(--border-default)" }}>
+      {/* Tabs pills + navegador de semana */}
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 16, gap: 8 }}>
         {([
           { k: "week", label: "Semana" },
           { k: "by_building", label: "Por edificio" },
@@ -572,21 +572,32 @@ export default function CleaningPage() {
               type="button"
               onClick={() => setTab(t.k)}
               style={{
-                padding: "10px 14px",
-                background: "none",
+                padding: "8px 18px",
+                borderRadius: 20,
                 border: "none",
-                borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
-                color: active ? "var(--text-primary)" : "var(--text-muted)",
-                fontSize: 13,
-                fontWeight: active ? 700 : 500,
                 cursor: "pointer",
-                marginBottom: -1,
+                fontSize: 14,
+                fontWeight: 500,
+                background: active ? "#6b21a8" : "transparent",
+                color: active ? "#fff" : "var(--text-secondary)",
               }}
             >
               {t.label}
             </button>
           );
         })}
+        {tab === "week" && (
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
+            <button onClick={() => setWeekOffset((o) => o - 1)} style={navBtnStyle}><ChevronLeft size={16} /></button>
+            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)", minWidth: 200, textAlign: "center" }}>
+              {formatWeekRange(weekMonday)}
+            </span>
+            <button onClick={() => setWeekOffset((o) => o + 1)} style={navBtnStyle}><ChevronRight size={16} /></button>
+            <button onClick={() => setWeekOffset(0)} style={{ padding: ".4rem .9rem", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+              Hoy
+            </button>
+          </div>
+        )}
       </div>
 
       {tab === "week" && renderWeekTab()}
@@ -751,40 +762,41 @@ export default function CleaningPage() {
     return (
       <>
         {/* Stat bar */}
-        <div style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden", marginBottom: "1rem" }}>
+        <div style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 24, overflow: "hidden" }}>
           {[
             {
-              label: "CUMPLIMIENTO SEMANAL",
+              label: "Cumplimiento semanal",
               value: `${weekStats.compliance.toFixed(0)}%`,
-              sub: "semanal",
+              sub: "esta semana",
               color: weekStats.compliance >= 80 ? "#10B981" : weekStats.compliance >= 60 ? "#F59E0B" : "#EF4444",
             },
-            { label: "TAREAS HOY", value: weekStats.todayTotal, sub: "total" },
-            { label: "COMPLETADAS HOY", value: weekStats.todayCompleted, sub: "terminadas", color: "#10B981" },
-            { label: "PENDIENTES HOY", value: weekStats.todayPending, sub: "por hacer", color: "#F59E0B" },
-            { label: "EDIFICIOS ACTIVOS", value: weekStats.activeBuildings, sub: "con horario" },
-            { label: "SERVICIO PREMIUM", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
+            { label: "Tareas hoy", value: weekStats.todayTotal, sub: "programadas" },
+            { label: "Completadas hoy", value: weekStats.todayCompleted, sub: "terminadas", color: "#10B981" },
+            { label: "Pendientes hoy", value: weekStats.todayPending, sub: "por hacer", color: weekStats.todayPending > 0 ? "#F59E0B" : undefined },
+            { label: "Edificios activos", value: weekStats.activeBuildings, sub: "con horario" },
+            { label: "Servicio premium", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
           ].map((s, i, arr) => (
-            <div key={i} style={{ flex: 1, padding: ".6rem .75rem", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 2 }}>{s.label}</div>
-              <div style={{ fontSize: 16, fontWeight: 600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 1 }}>{s.sub}</div>
+            <div key={i} style={{ flex: 1, padding: "14px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
+              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
+              <div style={{ fontSize: 24, fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
             </div>
           ))}
         </div>
 
-        {/* Navegador de semana */}
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "1rem" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.25rem", border: "1px solid var(--border-default)", borderRadius: 12, padding: 4, background: "var(--bg-card)" }}>
-            <button onClick={() => setWeekOffset((o) => o - 1)} style={navBtnStyle}><ChevronLeft size={16} /></button>
-            <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", minWidth: 200, textAlign: "center", padding: "0 8px" }}>
-              {formatWeekRange(weekMonday)}
-            </span>
-            <button onClick={() => setWeekOffset((o) => o + 1)} style={navBtnStyle}><ChevronRight size={16} /></button>
-          </div>
-          <button onClick={() => setWeekOffset(0)} style={{ padding: ".4rem .9rem", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
-            Hoy
-          </button>
+        {/* Leyenda de colores */}
+        <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
+          {[
+            { label: "Áreas comunes", color: "#f97316", bg: "#fff7ed" },
+            { label: "Exterior unidad", color: "#22c55e", bg: "#f0fdf4" },
+            { label: "Interior premium", color: "#a855f7", bg: "#fdf4ff" },
+            { label: "Completada", color: "#6b7280", bg: "#f3f4f6" },
+          ].map((l) => (
+            <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+              <div style={{ width: 12, height: 12, borderRadius: 3, background: l.bg, border: `1.5px solid ${l.color}` }} />
+              {l.label}
+            </div>
+          ))}
         </div>
 
         {/* Grid 7 días */}
@@ -821,34 +833,92 @@ export default function CleaningPage() {
                       type="button"
                       onClick={() => setSelectedTask(task)}
                       style={{
-                        background: done ? "var(--metric-bg-green)" : visuals.bg,
-                        color: done ? "var(--metric-value-green)" : visuals.text,
+                        background: done ? "#f3f4f6" : visuals.bg,
+                        color: done ? "#6b7280" : visuals.text,
                         border: "none",
-                        borderLeft: `3px solid ${done ? "#16A34A" : visuals.border}`,
+                        borderLeft: `3px solid ${done ? "#6b7280" : visuals.border}`,
                         borderRadius: 6,
-                        padding: "4px 8px",
-                        fontSize: 11,
-                        fontWeight: 500,
+                        padding: "6px 8px",
                         textAlign: "left",
                         cursor: "pointer",
                         opacity: done ? 0.85 : 1,
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 4,
                         marginBottom: 4,
+                        width: "100%",
                       }}
                       title={`${visuals.label} · ${building?.name ?? ""}`}
                     >
-                      {done ? <CheckCircle2 size={10} /> : (CLEANING_TYPE_ICONS[task.cleaningType] ?? <Sparkles size={10} />)}
-                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                        {unit ? (unit.display_code || unit.unit_number) : building?.name ?? ""}
-                      </span>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <div style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {unit ? (unit.display_code || unit.unit_number) : visuals.label}
+                          </div>
+                          <div style={{ fontSize: 11, color: done ? "#9ca3af" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {building?.name ?? ""}
+                          </div>
+                        </div>
+                        {done && <CheckCircle2 size={12} color="#22c55e" style={{ flexShrink: 0 }} />}
+                      </div>
                     </button>
                   );
                 })}
               </div>
             );
           })}
+        </div>
+
+        {/* Sección inferior 2 columnas: cumplimiento por edificio + checklist */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, marginTop: 20 }}>
+          <SectionCard title="Cumplimiento por edificio" subtitle="esta semana" icon={<Building2 size={18} />}>
+            {byBuildingStats.length === 0 ? (
+              <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>No hay tareas programadas esta semana.</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {byBuildingStats.map((b) => {
+                  const color = b.rate >= 80 ? "#10B981" : b.rate >= 60 ? "#F59E0B" : "#EF4444";
+                  return (
+                    <div key={b.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700, color }}>{b.rate.toFixed(0)}%</span>
+                      </div>
+                      <div style={{ height: 6, background: "var(--divider)", borderRadius: 3, overflow: "hidden" }}>
+                        <div style={{ width: `${b.rate}%`, height: "100%", background: color, transition: "width .4s" }} />
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
+                        {b.completed} completadas · {b.pending} pendientes
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title={selectedTask
+              ? `Checklist — ${selectedTask.unitId ? (unitById.get(selectedTask.unitId)?.display_code ?? unitById.get(selectedTask.unitId)?.unit_number ?? "Unidad") : (CLEANING_TYPE_COLORS[selectedTask.cleaningType]?.label ?? "Áreas comunes")}`
+              : "Checklist"}
+            icon={<CheckCircle2 size={18} />}
+          >
+            {!selectedTask ? (
+              <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
+                Selecciona una tarea para ver el checklist.
+              </p>
+            ) : selectedTaskChecklist.length === 0 ? (
+              <p style={{ color: "var(--text-muted)", fontSize: 13, padding: "8px 0" }}>
+                Sin checklist configurado para este tipo.
+              </p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {selectedTaskChecklist.map((item) => (
+                  <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: 8, fontSize: 13 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: 3, border: "1.5px solid var(--border-strong)" }} />
+                    {item.label}
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
         </div>
       </>
     );
