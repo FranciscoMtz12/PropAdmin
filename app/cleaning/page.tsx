@@ -606,6 +606,20 @@ export default function CleaningPage() {
       setIsSaving(false);
       return;
     }
+
+    // Actualizar estado local para que taskProgress (y la dona) refleje el cambio
+    setChecklistResponses((prev) => {
+      const idx = prev.findIndex(
+        (r) => r.cleaning_log_id === logId && r.checklist_item_id === itemId
+      );
+      if (idx !== -1) {
+        const copy = prev.slice();
+        copy[idx] = { ...copy[idx], checked: nextChecked };
+        return copy;
+      }
+      return [...prev, { cleaning_log_id: logId, checklist_item_id: itemId, checked: nextChecked }];
+    });
+
     setIsSaving(false);
 
     // Auto-completar si todos los items están chequeados
@@ -1059,11 +1073,13 @@ export default function CleaningPage() {
                         {(() => {
                           const prog = taskProgress.get(task.key);
                           if (prog && prog.total > 0) {
+                            const progress = prog.checked / prog.total;
+                            if (progress >= 1) {
+                              return <CheckCircle2 size={20} style={{ color: "#22c55e", flexShrink: 0 }} />;
+                            }
                             const radius = 9;
                             const circumference = 2 * Math.PI * radius;
-                            const progress = prog.checked / prog.total;
                             const strokeDashoffset = circumference * (1 - progress);
-                            const strokeColor = progress >= 1 ? "#22c55e" : "#6b21a8";
                             return (
                               <svg width={24} height={24} style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
                                 <circle cx={12} cy={12} r={radius} fill="none" stroke="#e5e7eb" strokeWidth={3} />
@@ -1072,7 +1088,7 @@ export default function CleaningPage() {
                                   cy={12}
                                   r={radius}
                                   fill="none"
-                                  stroke={strokeColor}
+                                  stroke="#6b21a8"
                                   strokeWidth={3}
                                   strokeDasharray={circumference}
                                   strokeDashoffset={strokeDashoffset}
