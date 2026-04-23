@@ -103,6 +103,8 @@ const CLEANING_TYPE_COLORS: Record<CleaningType, { bg: string; text: string; bor
   unit_interior: { bg: "#fdf4ff", text: "#6b21a8", border: "#a855f7", label: "Interior premium", icon: "✨" },
 };
 
+const DEFAULT_CLEANING_VISUALS = { bg: "#f3f4f6", text: "#374151", border: "#d1d5db", label: "Limpieza", icon: "🧹" };
+
 const DAY_ORDER: DayOfWeek[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT: Record<DayOfWeek, string> = {
   monday: "Lun", tuesday: "Mar", wednesday: "Mié", thursday: "Jue", friday: "Vie", saturday: "Sáb", sunday: "Dom",
@@ -558,7 +560,7 @@ export default function CleaningPage() {
       {/* ── Modal de completar tarea ── */}
       <Modal
         open={!!selectedTask}
-        title={selectedTask ? CLEANING_TYPE_COLORS[selectedTask.cleaningType].label : ""}
+        title={selectedTask ? (CLEANING_TYPE_COLORS[selectedTask.cleaningType]?.label ?? "Limpieza") : ""}
         subtitle={
           selectedTask
             ? `${buildingById.get(selectedTask.buildingId)?.name ?? ""}${
@@ -661,7 +663,7 @@ export default function CleaningPage() {
           <Field label="Tipo de limpieza" error={scheduleForm.formState.errors.cleaning_type?.message}>
             <AppSelect {...scheduleForm.register("cleaning_type")}>
               {(Object.keys(CLEANING_TYPE_COLORS) as CleaningType[]).map((t) => (
-                <option key={t} value={t}>{CLEANING_TYPE_COLORS[t].label}</option>
+                <option key={t} value={t}>{CLEANING_TYPE_COLORS[t]?.label ?? "Limpieza"}</option>
               ))}
             </AppSelect>
           </Field>
@@ -766,7 +768,7 @@ export default function CleaningPage() {
                   {DAY_SHORT[dayOfWeek]} {new Date(iso).getDate()}
                 </div>
                 {dayTasks.length === 0 ? null : dayTasks.map((task) => {
-                  const visuals = CLEANING_TYPE_COLORS[task.cleaningType];
+                  const visuals = CLEANING_TYPE_COLORS[task.cleaningType] ?? DEFAULT_CLEANING_VISUALS;
                   const log = getLogForTask(task);
                   const done = log?.status === "completed";
                   const building = buildingById.get(task.buildingId);
@@ -860,7 +862,7 @@ export default function CleaningPage() {
               <AppSelect value={historyType} onChange={(e) => setHistoryType(e.target.value as "all" | CleaningType)}>
                 <option value="all">Todos</option>
                 {(Object.keys(CLEANING_TYPE_COLORS) as CleaningType[]).map((t) => (
-                  <option key={t} value={t}>{CLEANING_TYPE_COLORS[t].label}</option>
+                  <option key={t} value={t}>{CLEANING_TYPE_COLORS[t]?.label ?? "Limpieza"}</option>
                 ))}
               </AppSelect>
             </div>
@@ -887,7 +889,7 @@ export default function CleaningPage() {
                 </thead>
                 <tbody>
                   {historyRows.map((r) => {
-                    const visuals = CLEANING_TYPE_COLORS[r.cleaning_type];
+                    const visuals = CLEANING_TYPE_COLORS[r.cleaning_type] ?? DEFAULT_CLEANING_VISUALS;
                     const b = buildingById.get(r.building_id);
                     const u = r.unit_id ? unitById.get(r.unit_id) : null;
                     return (
@@ -933,7 +935,7 @@ export default function CleaningPage() {
               <SectionCard title={b.name} icon={<Building2 size={18} />} subtitle={`${bSch.length + uSch.length} horario${bSch.length + uSch.length === 1 ? "" : "s"}`}>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {bSch.map((s) => {
-                    const v = CLEANING_TYPE_COLORS[s.cleaning_type];
+                    const v = CLEANING_TYPE_COLORS[s.cleaning_type] ?? DEFAULT_CLEANING_VISUALS;
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
                         <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}` }}>
