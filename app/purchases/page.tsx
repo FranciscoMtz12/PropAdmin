@@ -102,11 +102,12 @@ type Signer = {
   is_default: boolean;
 };
 
-type Collector = {
+interface FieldUser {
   id: string;
-  name: string;
+  full_name: string;
   phone: string | null;
-};
+  email: string;
+}
 
 type BuildingOption = {
   id: string;
@@ -133,6 +134,7 @@ type PurchaseOrder = {
   project_description:  string | null;
   responsible_name:     string | null;
   responsible_phone:    string | null;
+  responsible_user_id:  string | null;
   signer_name:          string | null;
   status:               Status;
   notes:                string | null;
@@ -207,6 +209,7 @@ const manualFormSchema = z.object({
   projectDescription: z.string().optional(),
   responsibleName:    z.string().optional(),
   responsiblePhone:   z.string().optional(),
+  responsibleUserId:  z.string().optional(),
   signerName:         z.string().optional(),
   items: z
     .array(itemDraftSchema)
@@ -222,7 +225,7 @@ type ManualFormValues = z.infer<typeof manualFormSchema>;
 
 const EMPTY_MANUAL_FORM: ManualFormValues = {
   supplierId: "", supplierBranchId: "", buildingId: "", projectDescription: "",
-  responsibleName: "", responsiblePhone: "", signerName: "",
+  responsibleName: "", responsiblePhone: "", responsibleUserId: "", signerName: "",
   items: [{ ...EMPTY_ITEM }],
 };
 
@@ -245,7 +248,7 @@ export default function PurchasesPage() {
   const [buildings,  setBuildings]  = useState<BuildingOption[]>([]);
   const [signers,    setSigners]    = useState<Signer[]>([]);
   const [customSignerMode, setCustomSignerMode] = useState(false);
-  const [collectors, setCollectors] = useState<Collector[]>([]);
+  const [fieldUsers, setFieldUsers] = useState<FieldUser[]>([]);
   const [loading,    setLoading]    = useState(true);
   const [msg,        setMsg]        = useState("");
   const [companyName, setCompanyName] = useState("");
@@ -308,12 +311,10 @@ export default function PurchasesPage() {
   });
   const manualSupplierId       = watch("supplierId");
   const manualSupplierBranchId = watch("supplierBranchId");
-  const manualResponsibleName  = watch("responsibleName");
   const manualSignerName       = watch("signerName");
   const manualItems            = watch("items");
 
   const [formError, setFormError] = useState("");
-  const [customCollectorMode, setCustomCollectorMode] = useState(false);
 
   /* PDF loading state */
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
@@ -336,14 +337,14 @@ export default function PurchasesPage() {
       { data: buildingData                 },
       { data: companyData                  },
       { data: signerData                   },
-      { data: collectorData                },
+      { data: fieldUserData                },
     ] = await Promise.all([
       supabase
         .from("purchase_orders")
         .select(`
           id, folio, status, created_at, company_id,
           total_estimated, notes, project_description,
-          responsible_name, responsible_phone, signer_name,
+          responsible_name, responsible_phone, responsible_user_id, signer_name,
           maintenance_log_id, building_id,
           supplier_id, supplier_branch_id, supplier_prefix,
           pdf_url, sent_at,
@@ -394,10 +395,11 @@ export default function PurchasesPage() {
         .order("name", { ascending: true }),
 
       supabase
-        .from("purchase_order_collectors")
-        .select("id, name, phone")
-        .eq("company_id", companyId)
-        .order("name", { ascending: true }),
+        .from("app_users")
+        .select("id, full_name, phone, email")
+        .in("role", ["field", "mantenimiento"])
+        .is("deleted_at", null)
+        .order("full_name", { ascending: true }),
     ]);
 
     if (ocError) {
@@ -415,6 +417,7 @@ export default function PurchasesPage() {
       maintenance_log_id: string | null; building_id: string | null;
       project_description: string | null;
       responsible_name: string | null; responsible_phone: string | null;
+      responsible_user_id: string | null;
       signer_name: string | null;
       status: Status; notes: string | null; total_estimated: number | null;
       pdf_url: string | null; sent_at: string | null;
@@ -463,6 +466,7 @@ export default function PurchasesPage() {
         project_description:  r.project_description,
         responsible_name:     r.responsible_name,
         responsible_phone:    r.responsible_phone,
+        responsible_user_id:  r.responsible_user_id,
         signer_name:          r.signer_name,
         status:               r.status,
         notes:                r.notes,
@@ -503,7 +507,7 @@ export default function PurchasesPage() {
     setSuppliers(suppliersMapped);
     setBuildings((buildingData as BuildingOption[]) || []);
     setSigners((signerData as Signer[]) || []);
-    setCollectors((collectorData as Collector[]) || []);
+    setFieldUsers((fieldUserData as FieldUser[]) || []);
 
     if (companyData && "name" in companyData) {
       const cd = companyData as { name: string; logo_url?: string; logo_print_url?: string; initials?: string };
@@ -621,7 +625,6 @@ export default function PurchasesPage() {
     const defaultSigner = signers.find((s) => s.is_default)?.name || "";
     reset({ ...EMPTY_MANUAL_FORM, signerName: defaultSigner });
     setFormError("");
-    setCustomCollectorMode(false);
     setCustomSignerMode(false);
     setSupplierSearch("");
     setShowSupplierDropdown(false);
@@ -633,7 +636,6 @@ export default function PurchasesPage() {
     setEditingOrderId(null);
     reset(EMPTY_MANUAL_FORM);
     setFormError("");
-    setCustomCollectorMode(false);
     setCustomSignerMode(false);
     setSupplierSearch("");
     setShowSupplierDropdown(false);
@@ -679,6 +681,7 @@ export default function PurchasesPage() {
       project_description:  data.projectDescription?.trim() || null,
       responsible_name:     data.responsibleName?.trim()   || null,
       responsible_phone:    data.responsiblePhone?.trim()  || null,
+      responsible_user_id:  data.responsibleUserId || null,
       signer_name:          data.signerName?.trim()        || null,
     };
 
@@ -773,25 +776,6 @@ export default function PurchasesPage() {
       }
     }
 
-    /* Si es un responsable nuevo (no estaba en el historial), persistir */
-    const trimmedCollectorName  = data.responsibleName?.trim() || "";
-    const trimmedCollectorPhone = data.responsiblePhone?.trim() || "";
-    if (trimmedCollectorName) {
-      const collectorExists = collectors.some(
-        (c) => c.name.toLowerCase() === trimmedCollectorName.toLowerCase()
-      );
-      if (!collectorExists) {
-        const { data: collectorIns, error: collectorInsErr } = await supabase
-          .from("purchase_order_collectors")
-          .insert({
-            company_id: user.company_id,
-            name:       trimmedCollectorName,
-            phone:      trimmedCollectorPhone || null,
-          })
-          .select();
-        console.log("[purchases] new collector INSERT result:", { data: collectorIns, error: collectorInsErr });
-      }
-    }
 
     /* Refrescar items de la OC afectada (para que la vista expandida muestre los datos nuevos) */
     if (targetOrderId) {
@@ -973,6 +957,7 @@ export default function PurchasesPage() {
       projectDescription:  order.project_description || "",
       responsibleName:     order.responsible_name   || "",
       responsiblePhone:    order.responsible_phone  || "",
+      responsibleUserId:   order.responsible_user_id || "",
       signerName:          order.signer_name        || "",
       items: items.length > 0
         ? items.map((r) => ({
@@ -984,7 +969,6 @@ export default function PurchasesPage() {
         : [{ ...EMPTY_ITEM }],
     });
     setFormError("");
-    setCustomCollectorMode(false);
     setCustomSignerMode(false);
     /* Precarga el texto del combobox con el nombre del proveedor actual */
     const preSupplier = suppliers.find((s) => s.id === order.supplier_id);
@@ -1436,6 +1420,10 @@ export default function PurchasesPage() {
                         <DetailRow label="Edificio / Proyecto" value={o.building_name || "—"} />
                         <DetailRow label="Responsable a recoger" value={o.responsible_name || "—"} />
                         <DetailRow label="Teléfono del responsable" value={o.responsible_phone || "—"} />
+                        {o.responsible_user_id ? (() => {
+                          const fu = fieldUsers.find((u) => u.id === o.responsible_user_id);
+                          return fu ? <DetailRow label="Email del responsable" value={fu.email} /> : null;
+                        })() : null}
                         <DetailRow label="Quién autoriza" value={o.signer_name || "—"} />
                       </div>
                       {o.project_description ? (
@@ -1905,41 +1893,33 @@ export default function PurchasesPage() {
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <AppFormField label="Responsable a recoger">
-              {customCollectorMode ? (
-                <input
-                  style={INPUT_STYLE}
-                  {...register("responsibleName")}
-                  placeholder="Nombre completo"
-                  autoFocus
-                />
+              {fieldUsers.length === 0 ? (
+                <div style={{ ...INPUT_STYLE, color: "var(--text-muted)", fontStyle: "italic", fontSize: 13 }}>
+                  No hay usuarios de campo registrados
+                </div>
               ) : (
                 <select
                   style={INPUT_STYLE}
-                  value={manualResponsibleName || ""}
+                  value={watch("responsibleUserId") || ""}
                   onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === "__OTHER__") {
-                      setCustomCollectorMode(true);
+                    const userId = e.target.value;
+                    if (!userId) {
+                      setValue("responsibleUserId", "");
                       setValue("responsibleName", "");
                       setValue("responsiblePhone", "");
-                    } else if (val === "") {
-                      setValue("responsibleName", "");
-                      setValue("responsiblePhone", "");
-                    } else {
-                      /* Autocompletar teléfono del collector seleccionado */
-                      const selected = collectors.find((c) => c.name === val);
-                      setValue("responsibleName", val);
-                      if (selected?.phone) {
-                        setValue("responsiblePhone", selected.phone);
-                      }
+                      return;
                     }
+                    const u = fieldUsers.find((fu) => fu.id === userId);
+                    if (!u) return;
+                    setValue("responsibleUserId", u.id);
+                    setValue("responsibleName", u.full_name);
+                    setValue("responsiblePhone", u.phone ?? "");
                   }}
                 >
                   <option value="">Sin responsable asignado</option>
-                  {collectors.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
+                  {fieldUsers.map((u) => (
+                    <option key={u.id} value={u.id}>{u.full_name}</option>
                   ))}
-                  <option value="__OTHER__">+ Otro...</option>
                 </select>
               )}
             </AppFormField>
