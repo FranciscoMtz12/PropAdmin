@@ -31,6 +31,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
+  AlertCircle,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -72,7 +73,7 @@ import AppFormField from "@/components/AppFormField";
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
-type Status = "draft" | "pending" | "sent" | "received" | "cancelled";
+type Status = "draft" | "pending" | "sent" | "partial" | "received" | "invoiced" | "cancelled";
 
 type SupplierBranchOption = {
   id: string;
@@ -157,17 +158,31 @@ const STATUS_LABEL: Record<Status, string> = {
   draft:     "Borrador",
   pending:   "Por enviar",
   sent:      "Enviada",
+  partial:   "Surtido parcial",
   received:  "Recibida",
+  invoiced:  "Facturada",
   cancelled: "Cancelada",
 };
 
-const STATUS_VARIANT: Record<Status, "amber" | "blue" | "green" | "red" | "gray"> = {
+type StatusVariantValue = "amber" | "blue" | "green" | "red" | "gray" | "purple";
+const STATUS_VARIANT: Record<Status, StatusVariantValue> = {
   draft:     "gray",
   pending:   "amber",
   sent:      "blue",
+  partial:   "amber",
   received:  "green",
+  invoiced:  "purple",
   cancelled: "red",
 };
+
+// AppBadge no tiene "purple" como variant — fallback con colores custom.
+function getStatusBadgeProps(s: Status): { variant?: "amber" | "blue" | "green" | "red" | "gray"; backgroundColor?: string; textColor?: string; borderColor?: string } {
+  const v = STATUS_VARIANT[s];
+  if (v === "purple") {
+    return { backgroundColor: "#f3e8ff", textColor: "#7c3aed", borderColor: "#a855f7" };
+  }
+  return { variant: v };
+}
 
 const UNITS = ["Pieza", "Metro", "Litro", "Tubo", "Caja", "Rollo", "Bolsa", "Otro"];
 
@@ -264,6 +279,10 @@ export default function PurchasesPage() {
 
   /* Confirmación de cancelación */
   const [cancelTarget, setCancelTarget] = useState<PurchaseOrder | null>(null);
+  const [invoiceTarget, setInvoiceTarget] = useState<PurchaseOrder | null>(null);
+  const [invoiceForm, setInvoiceForm] = useState({ number: "", amount: "", date: "", notes: "" });
+  const [savingInvoice, setSavingInvoice] = useState(false);
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [cancelling,   setCancelling]   = useState(false);
 
   /* Modal crear / editar */
@@ -506,8 +525,11 @@ export default function PurchasesPage() {
     const draft     = orders.filter(o => o.status === "draft").length;
     const pending   = orders.filter(o => o.status === "pending").length;
     const sent      = orders.filter(o => o.status === "sent").length;
+    const partial   = orders.filter(o => o.status === "partial").length;
+    const received  = orders.filter(o => o.status === "received").length;
+    const invoiced  = orders.filter(o => o.status === "invoiced").length;
     const cancelled = orders.filter(o => o.status === "cancelled").length;
-    return { total, draft, pending, sent, cancelled };
+    return { total, draft, pending, sent, partial, received, invoiced, cancelled };
   }, [orders]);
 
   /* ── Supplier combobox — lista filtrada por el search ──────────── */
@@ -837,6 +859,96 @@ export default function PurchasesPage() {
     setCancelTarget(null);
   }
 
+  /* ── Cambio de status: marcar recibida / parcial ─────────────── */
+
+  async function markStatus(order: PurchaseOrder, status: Status) {
+    setUpdatingStatusId(order.id);
+    const nowIso = new Date().toISOString();
+    const patch: Record<string, unknown> = { status, updated_at: nowIso };
+    if (status === "received") patch.received_at = nowIso;
+    const { error } = await supabase.from("purchase_orders").update(patch).eq("id", order.id);
+    if (error) {
+      console.error("purchase_orders status update failed", error);
+      toast.error("No se pudo actualizar el estado.");
+      setUpdatingStatusId(null);
+      return;
+    }
+    setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status, ...(status === "received" ? { received_at: nowIso } : {}) } as PurchaseOrder : o)));
+    const labels: Record<Status, string> = {
+      draft: "como borrador",
+      pending: "por enviar",
+      sent: "enviada",
+      partial: "surtido parcial",
+      received: "completada",
+      invoiced: "facturada",
+      cancelled: "cancelada",
+    };
+    toast.success(`OC marcada ${labels[status]}.`);
+    setUpdatingStatusId(null);
+  }
+
+  /* ── Registrar factura ───────────────────────────────────────── */
+
+  async function saveInvoice() {
+    if (!invoiceTarget) return;
+    const num = invoiceForm.number.trim();
+    const amt = parseFloat(invoiceForm.amount);
+    const date = invoiceForm.date.trim();
+    if (!num || !isFinite(amt) || amt <= 0 || !date) {
+      toast.error("Completa número, monto y fecha de factura.");
+      return;
+    }
+    setSavingInvoice(true);
+
+    // Preservar notas previas intentando parsearlas como JSON.
+    let existing: Record<string, unknown> = {};
+    if (invoiceTarget.notes) {
+      try {
+        const parsed = JSON.parse(invoiceTarget.notes);
+        if (parsed && typeof parsed === "object") existing = parsed as Record<string, unknown>;
+        else existing = { text: invoiceTarget.notes };
+      } catch {
+        existing = { text: invoiceTarget.notes };
+      }
+    }
+
+    const newNotes = JSON.stringify({
+      ...existing,
+      invoice: { number: num, amount: amt, date, notes: invoiceForm.notes.trim() || null },
+    });
+
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase
+      .from("purchase_orders")
+      .update({ status: "invoiced", notes: newNotes, updated_at: nowIso })
+      .eq("id", invoiceTarget.id);
+    if (error) {
+      console.error("invoice save failed", error);
+      toast.error("No se pudo guardar la factura.");
+      setSavingInvoice(false);
+      return;
+    }
+    setOrders((prev) => prev.map((o) =>
+      o.id === invoiceTarget.id ? { ...o, status: "invoiced" as Status, notes: newNotes } : o
+    ));
+    toast.success("Factura registrada.");
+    setInvoiceTarget(null);
+    setInvoiceForm({ number: "", amount: "", date: "", notes: "" });
+    setSavingInvoice(false);
+  }
+
+  // Parsear metadata de factura guardada en notes (JSON)
+  function getInvoiceMeta(o: PurchaseOrder): { number?: string; amount?: number; date?: string; notes?: string | null } | null {
+    if (!o.notes) return null;
+    try {
+      const parsed = JSON.parse(o.notes);
+      if (parsed && typeof parsed === "object" && "invoice" in parsed) {
+        return (parsed as { invoice: { number?: string; amount?: number; date?: string; notes?: string | null } }).invoice;
+      }
+    } catch { /* notes es texto plano */ }
+    return null;
+  }
+
   /* ── Editar OC: abrir modal con datos precargados ─────────────── */
 
   async function handleStartEditOrder(order: PurchaseOrder) {
@@ -1103,14 +1215,25 @@ export default function PurchasesPage() {
         </AppCard>
       ) : null}
 
-      {/* Métricas */}
-      <AppGrid minWidth={200} style={{ marginBottom: 20 }}>
-        <MetricCard label="Total OC"    value={metrics.total}     variant="neutral" icon={<ShoppingCart size={18} />} />
-        <MetricCard label="Borradores"  value={metrics.draft}     variant="neutral" />
-        <MetricCard label="Por enviar"  value={metrics.pending}   variant="amber" />
-        <MetricCard label="Enviadas"    value={metrics.sent}      variant="blue"  />
-        <MetricCard label="Canceladas"  value={metrics.cancelled} variant="red"   />
-      </AppGrid>
+      {/* Métricas — stat bar compacta */}
+      <div style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 20, overflow: "hidden" }}>
+        {[
+          { label: "Total OC",        value: metrics.total,     sub: "todas" },
+          { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
+          { label: "Por enviar",      value: metrics.pending,   sub: "aprobadas", color: "#F59E0B" },
+          { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "#3B82F6" },
+          { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "#F59E0B" },
+          { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "#10B981" },
+          { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "#7c3aed" },
+          { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "#EF4444" },
+        ].map((s, i, arr) => (
+          <div key={i} style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
+            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+            <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
+          </div>
+        ))}
+      </div>
 
       {/* Filtros */}
       <AppCard style={{ marginBottom: 16 }}>
@@ -1135,7 +1258,9 @@ export default function PurchasesPage() {
             <option value="draft">Borrador</option>
             <option value="pending">Por enviar</option>
             <option value="sent">Enviada</option>
+            <option value="partial">Surtido parcial</option>
             <option value="received">Recibida</option>
+            <option value="invoiced">Facturada</option>
             <option value="cancelled">Cancelada</option>
           </select>
 
@@ -1240,7 +1365,7 @@ export default function PurchasesPage() {
                         <AppBadge variant="gray">Manual</AppBadge>
                       )}
 
-                      <AppBadge variant={STATUS_VARIANT[o.status]}>
+                      <AppBadge {...getStatusBadgeProps(o.status)}>
                         {STATUS_LABEL[o.status]}
                       </AppBadge>
                     </div>
@@ -1404,6 +1529,117 @@ export default function PurchasesPage() {
                             Revisar y aprobar
                           </button>
                         ) : null}
+
+                        {/* Botones de surtido — cuando sent */}
+                        {o.status === "sent" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void markStatus(o, "received")}
+                              disabled={updatingStatusId === o.id}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "9px 14px", borderRadius: 8,
+                                border: "1px solid #10B981", background: "#10B981", color: "#fff",
+                                fontSize: 13, fontWeight: 700, cursor: "pointer",
+                              }}
+                            >
+                              <CheckCircle2 size={14} />
+                              Marcar surtido completo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void markStatus(o, "partial")}
+                              disabled={updatingStatusId === o.id}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "9px 14px", borderRadius: 8,
+                                border: "1px solid #F59E0B", background: "transparent", color: "#b45309",
+                                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              }}
+                            >
+                              <AlertCircle size={14} />
+                              Surtido parcial
+                            </button>
+                          </>
+                        ) : null}
+
+                        {/* Botones de surtido — cuando partial */}
+                        {o.status === "partial" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => void markStatus(o, "received")}
+                              disabled={updatingStatusId === o.id}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "9px 14px", borderRadius: 8,
+                                border: "1px solid #10B981", background: "#10B981", color: "#fff",
+                                fontSize: 13, fontWeight: 700, cursor: "pointer",
+                              }}
+                            >
+                              <CheckCircle2 size={14} />
+                              Completar surtido
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => toast("Próximamente: generar OC por faltantes")}
+                              style={{
+                                display: "inline-flex", alignItems: "center", gap: 6,
+                                padding: "9px 14px", borderRadius: 8,
+                                border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
+                                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              }}
+                            >
+                              <Plus size={14} />
+                              Nueva OC por faltantes
+                            </button>
+                          </>
+                        ) : null}
+
+                        {/* Registrar factura — cuando received */}
+                        {o.status === "received" ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setInvoiceTarget(o);
+                              const meta = getInvoiceMeta(o);
+                              setInvoiceForm({
+                                number: meta?.number ?? "",
+                                amount: meta?.amount != null ? String(meta.amount) : "",
+                                date: meta?.date ?? "",
+                                notes: meta?.notes ?? "",
+                              });
+                            }}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "9px 14px", borderRadius: 8,
+                              border: "1px solid #7c3aed", background: "#7c3aed", color: "#fff",
+                              fontSize: 13, fontWeight: 700, cursor: "pointer",
+                            }}
+                          >
+                            <FileText size={14} />
+                            Registrar factura
+                          </button>
+                        ) : null}
+
+                        {/* Badge número de factura — cuando invoiced */}
+                        {o.status === "invoiced" ? (() => {
+                          const meta = getInvoiceMeta(o);
+                          if (!meta?.number) return null;
+                          return (
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "6px 12px", borderRadius: 999,
+                              background: "#f3e8ff", color: "#7c3aed",
+                              border: "1px solid #a855f7",
+                              fontSize: 12, fontWeight: 600,
+                            }}>
+                              <FileText size={12} />
+                              Factura #{meta.number}
+                            </span>
+                          );
+                        })() : null}
 
                         <button
                           type="button"
@@ -1891,6 +2127,109 @@ export default function PurchasesPage() {
               </button>
             </div>
           </>
+        ) : null}
+      </Modal>
+
+      {/* ═══════════ Modal Registrar factura ═══════════ */}
+      <Modal
+        open={invoiceTarget !== null}
+        onClose={() => { if (!savingInvoice) { setInvoiceTarget(null); setInvoiceForm({ number: "", amount: "", date: "", notes: "" }); } }}
+        title="Registrar factura"
+        subtitle={invoiceTarget ? `OC ${invoiceTarget.folio}` : undefined}
+        maxWidth="480px"
+      >
+        {invoiceTarget ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Número de factura *</label>
+              <input
+                type="text"
+                value={invoiceForm.number}
+                onChange={(e) => setInvoiceForm((f) => ({ ...f, number: e.target.value }))}
+                placeholder="A-1234"
+                style={{
+                  padding: 10, borderRadius: 8, fontSize: 13,
+                  background: "var(--bg-input)", border: "1px solid var(--border-default)",
+                  color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Monto real *</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={invoiceForm.amount}
+                onChange={(e) => setInvoiceForm((f) => ({ ...f, amount: e.target.value }))}
+                placeholder="0.00"
+                style={{
+                  padding: 10, borderRadius: 8, fontSize: 13,
+                  background: "var(--bg-input)", border: "1px solid var(--border-default)",
+                  color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Fecha de factura *</label>
+              <input
+                type="date"
+                value={invoiceForm.date}
+                onChange={(e) => setInvoiceForm((f) => ({ ...f, date: e.target.value }))}
+                style={{
+                  padding: 10, borderRadius: 8, fontSize: 13,
+                  background: "var(--bg-input)", border: "1px solid var(--border-default)",
+                  color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Notas (opcional)</label>
+              <textarea
+                rows={3}
+                value={invoiceForm.notes}
+                onChange={(e) => setInvoiceForm((f) => ({ ...f, notes: e.target.value }))}
+                placeholder="Observaciones, diferencias con la OC, etc."
+                style={{
+                  padding: 10, borderRadius: 8, fontSize: 13,
+                  background: "var(--bg-input)", border: "1px solid var(--border-default)",
+                  color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
+                  resize: "vertical", fontFamily: "inherit",
+                }}
+              />
+            </div>
+
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 4 }}>
+              <UiButton
+                type="button"
+                variant="secondary"
+                onClick={() => { setInvoiceTarget(null); setInvoiceForm({ number: "", amount: "", date: "", notes: "" }); }}
+                disabled={savingInvoice}
+              >
+                Cancelar
+              </UiButton>
+              <button
+                type="button"
+                onClick={() => void saveInvoice()}
+                disabled={savingInvoice}
+                style={{
+                  display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
+                  padding: "11px 16px", borderRadius: 12,
+                  border: "1px solid #7c3aed",
+                  background: "#7c3aed",
+                  color: "#fff",
+                  fontSize: 14, fontWeight: 700,
+                  cursor: savingInvoice ? "wait" : "pointer",
+                  opacity: savingInvoice ? 0.7 : 1,
+                }}
+              >
+                {savingInvoice ? "Guardando..." : "Guardar factura"}
+              </button>
+            </div>
+          </div>
         ) : null}
       </Modal>
 
