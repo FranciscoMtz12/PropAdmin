@@ -103,6 +103,7 @@ type WeekTask = {
   dayOfWeek: DayOfWeek;
   dateISO: string;
   timeBlock: TimeBlock | null;
+  startTime: string | null;
 };
 
 /* ═══ Constantes ══════════════════════════════════════════════════ */
@@ -127,6 +128,24 @@ const normalizeCleaningType = (raw: string): CleaningType => {
   if (raw === "interior") return "unit_interior";
   return raw as CleaningType;
 };
+
+const denormalizeCleaningType = (c: CleaningType): string => {
+  if (c === "common_area") return "common";
+  if (c === "unit_exterior") return "exterior";
+  if (c === "unit_interior") return "interior";
+  return c;
+};
+
+function formatTimeAmPm(t: string | null | undefined): string {
+  if (!t) return "—";
+  const [hStr, mStr] = t.split(":");
+  const h = Number(hStr);
+  const m = Number(mStr ?? "0");
+  if (isNaN(h)) return t;
+  const suffix = h >= 12 ? "PM" : "AM";
+  const h12 = h % 12 || 12;
+  return `${h12}:${String(m).padStart(2, "0")} ${suffix}`;
+}
 
 const DAY_ORDER: DayOfWeek[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 const DAY_SHORT: Record<DayOfWeek, string> = {
@@ -200,16 +219,34 @@ function formatWeekRange(monday: Date): string {
 const scheduleSchema = z
   .object({
     building_id: z.string().min(1, "Selecciona un edificio"),
-    cleaning_type: z.enum(["common_area", "unit_exterior", "unit_interior"]),
+    cleaning_type: z.enum(["common_area", "unit_interior"]),
     unit_id: z.string().optional(),
     day_of_week: z.enum(["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]),
-    time_block: z.enum(["morning", "afternoon", "evening"]),
+    time_block: z.enum(["morning", "afternoon"]).optional(),
+    start_time: z.string().optional(),
+    duration_hours: z.number().optional(),
+    frequency: z.enum(["weekly", "biweekly", "monthly"]).optional(),
   })
-  .refine(
-    (data) =>
-      data.cleaning_type === "common_area" || (data.unit_id && data.unit_id.length > 0),
-    { message: "Selecciona una unidad", path: ["unit_id"] }
-  );
+  .superRefine((data, ctx) => {
+    if (data.cleaning_type === "common_area") {
+      if (!data.time_block) {
+        ctx.addIssue({ code: "custom", path: ["time_block"], message: "Selecciona un horario" });
+      }
+    } else if (data.cleaning_type === "unit_interior") {
+      if (!data.unit_id) {
+        ctx.addIssue({ code: "custom", path: ["unit_id"], message: "Selecciona una unidad" });
+      }
+      if (!data.start_time) {
+        ctx.addIssue({ code: "custom", path: ["start_time"], message: "Ingresa hora de inicio" });
+      }
+      if (!data.duration_hours || data.duration_hours <= 0) {
+        ctx.addIssue({ code: "custom", path: ["duration_hours"], message: "Duración inválida" });
+      }
+      if (!data.frequency) {
+        ctx.addIssue({ code: "custom", path: ["frequency"], message: "Selecciona frecuencia" });
+      }
+    }
+  });
 type ScheduleValues = z.infer<typeof scheduleSchema>;
 
 /* ═══ Página ══════════════════════════════════════════════════════ */
@@ -251,6 +288,9 @@ export default function CleaningPage() {
       unit_id: "",
       day_of_week: "monday",
       time_block: "morning",
+      start_time: "10:00",
+      duration_hours: 2,
+      frequency: "weekly",
     },
   });
   const watchedType = scheduleForm.watch("cleaning_type");
@@ -385,6 +425,7 @@ export default function CleaningPage() {
             dayOfWeek,
             dateISO: iso,
             timeBlock: s.time_block ?? null,
+            startTime: null,
           });
         });
       unitSchedules
@@ -406,6 +447,7 @@ export default function CleaningPage() {
             dayOfWeek,
             dateISO: iso,
             timeBlock: tb,
+            startTime: s.start_time ?? null,
           });
         });
     });
@@ -699,7 +741,7 @@ export default function CleaningPage() {
       const { error } = await supabase.from("cleaning_building_schedules").insert({
         company_id: user.company_id,
         building_id: data.building_id,
-        cleaning_type: data.cleaning_type,
+        cleaning_type: denormalizeCleaningType(data.cleaning_type),
         day_of_week: data.day_of_week,
         time_block: data.time_block,
       });
@@ -714,8 +756,9 @@ export default function CleaningPage() {
         building_id: data.building_id,
         unit_id: data.unit_id,
         day_of_week: data.day_of_week,
-        start_time: TIME_BLOCK_TO_START[data.time_block],
-        duration_hours: 2,
+        start_time: data.start_time,
+        duration_hours: data.duration_hours,
+        frequency: data.frequency,
         active: true,
       });
       if (error) {
@@ -976,13 +1019,12 @@ export default function CleaningPage() {
 
           <Field label="Tipo de limpieza" error={scheduleForm.formState.errors.cleaning_type?.message}>
             <AppSelect {...scheduleForm.register("cleaning_type")}>
-              {(Object.keys(CLEANING_TYPE_COLORS) as CleaningType[]).map((t) => (
-                <option key={t} value={t}>{CLEANING_TYPE_COLORS[t]?.label ?? "Limpieza"}</option>
-              ))}
+              <option value="common_area">Área común</option>
+              <option value="unit_interior">Interior de unidad</option>
             </AppSelect>
           </Field>
 
-          {watchedType !== "common_area" && (
+          {watchedType === "unit_interior" && (
             <Field label="Unidad" error={scheduleForm.formState.errors.unit_id?.message}>
               <AppSelect {...scheduleForm.register("unit_id")}>
                 <option value="">Selecciona una unidad</option>
@@ -1001,13 +1043,64 @@ export default function CleaningPage() {
             </AppSelect>
           </Field>
 
-          <Field label="Hora aproximada">
-            <AppSelect {...scheduleForm.register("time_block")}>
-              {(Object.keys(TIME_BLOCK_LABEL) as TimeBlock[]).map((t) => (
-                <option key={t} value={t}>{TIME_BLOCK_LABEL[t]}</option>
-              ))}
-            </AppSelect>
-          </Field>
+          {watchedType === "common_area" && (
+            <Field label="Horario" error={scheduleForm.formState.errors.time_block?.message}>
+              <AppSelect {...scheduleForm.register("time_block")}>
+                <option value="morning">Mañana</option>
+                <option value="afternoon">Tarde</option>
+              </AppSelect>
+            </Field>
+          )}
+
+          {watchedType === "unit_interior" && (
+            <>
+              <Field label="Hora de inicio" error={scheduleForm.formState.errors.start_time?.message}>
+                <input
+                  type="time"
+                  {...scheduleForm.register("start_time")}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    fontSize: 13,
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-primary)",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </Field>
+
+              <Field label="Duración (horas)" error={scheduleForm.formState.errors.duration_hours?.message}>
+                <input
+                  type="number"
+                  step="0.5"
+                  min="0.5"
+                  {...scheduleForm.register("duration_hours", { valueAsNumber: true })}
+                  style={{
+                    width: "100%",
+                    padding: 10,
+                    borderRadius: 8,
+                    fontSize: 13,
+                    background: "var(--bg-input)",
+                    border: "1px solid var(--border-default)",
+                    color: "var(--text-primary)",
+                    outline: "none",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </Field>
+
+              <Field label="Frecuencia" error={scheduleForm.formState.errors.frequency?.message}>
+                <AppSelect {...scheduleForm.register("frequency")}>
+                  <option value="weekly">Semanal</option>
+                  <option value="biweekly">Quincenal</option>
+                  <option value="monthly">Mensual</option>
+                </AppSelect>
+              </Field>
+            </>
+          )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
             <UiButton variant="secondary" onClick={() => { if (!scheduleForm.formState.isSubmitting) { scheduleForm.reset(); setShowCreateSchedule(false); } }}>
@@ -1119,7 +1212,11 @@ export default function CleaningPage() {
                             {building?.name ?? (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
                           <div style={{ fontSize: 11, color: done ? "#9ca3af" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {task.timeBlock ? TIME_BLOCK_LABEL[task.timeBlock] : (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
+                            {task.source === "unit" && task.startTime
+                              ? `${unit ? (unit.display_code || unit.unit_number) : ""} · ${formatTimeAmPm(task.startTime)}`
+                              : task.timeBlock
+                                ? TIME_BLOCK_LABEL[task.timeBlock]
+                                : (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
                         </div>
                         {(() => {
