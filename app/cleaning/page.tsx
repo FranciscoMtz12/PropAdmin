@@ -108,9 +108,8 @@ type WeekTask = {
 
 /* ═══ Constantes ══════════════════════════════════════════════════ */
 
-const CLEANING_TYPE_COLORS: Record<CleaningType, { bg: string; text: string; border: string; label: string; icon: string }> = {
-  common_area:   { bg: "#fff7ed", text: "#9a3412", border: "#f97316", label: "Áreas comunes",  icon: "🏢" },
-  unit_exterior: { bg: "#f0fdf4", text: "#166534", border: "#22c55e", label: "Exterior unidad", icon: "🚪" },
+const CLEANING_TYPE_COLORS: Partial<Record<CleaningType, { bg: string; text: string; border: string; label: string; icon: string }>> = {
+  common_area:   { bg: "#fff7ed", text: "#9a3412", border: "#f97316", label: "Áreas comunes",     icon: "🏢" },
   unit_interior: { bg: "#fdf4ff", text: "#6b21a8", border: "#a855f7", label: "Interior premium", icon: "✨" },
 };
 
@@ -118,7 +117,6 @@ const DEFAULT_CLEANING_VISUALS = { bg: "#f3f4f6", text: "#374151", border: "#d1d
 
 const CLEANING_TYPE_ICONS: Record<string, React.ReactNode> = {
   common_area:   <Building2 size={10} />,
-  unit_exterior: <Home size={10} />,
   unit_interior: <Sparkles size={10} />,
 };
 
@@ -265,6 +263,9 @@ export default function CleaningPage() {
 
   const [tab, setTab] = useState<TabKey>("week");
   const [weekOffset, setWeekOffset] = useState(0);
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(
+    new Set(["common_area", "unit_interior", "completed"])
+  );
 
   // Completion modal
   const [selectedTask, setSelectedTask] = useState<WeekTask | null>(null);
@@ -1143,25 +1144,57 @@ export default function CleaningPage() {
           ))}
         </div>
 
-        {/* Leyenda de colores */}
-        <div style={{ display: "flex", gap: 16, marginBottom: 12, flexWrap: "wrap" }}>
+        {/* Leyenda / Filtros */}
+        <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
           {[
-            { label: "Áreas comunes", color: "#f97316", bg: "#fff7ed" },
-            { label: "Exterior unidad", color: "#22c55e", bg: "#f0fdf4" },
-            { label: "Interior premium", color: "#a855f7", bg: "#fdf4ff" },
-            { label: "Completada", color: "#6b7280", bg: "#f3f4f6" },
-          ].map((l) => (
-            <div key={l.label} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: l.bg, border: `1.5px solid ${l.color}` }} />
-              {l.label}
-            </div>
-          ))}
+            { label: "Áreas comunes",    type: "common_area",   color: "#f97316", bg: "#fff7ed" },
+            { label: "Interior premium", type: "unit_interior", color: "#a855f7", bg: "#fdf4ff" },
+            { label: "Completada",       type: "completed",     color: "#22c55e", bg: "#f0fdf4" },
+          ].map((l) => {
+            const active = activeFilters.has(l.type);
+            return (
+              <button
+                key={l.type}
+                type="button"
+                onClick={() =>
+                  setActiveFilters((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(l.type)) next.delete(l.type);
+                    else next.add(l.type);
+                    return next;
+                  })
+                }
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 10px",
+                  borderRadius: 999,
+                  background: active ? l.bg : "#f3f4f6",
+                  border: `1.5px solid ${active ? l.color : "#d1d5db"}`,
+                  color: active ? "var(--text-primary)" : "#9ca3af",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ width: 10, height: 10, borderRadius: 3, background: active ? l.color : "#d1d5db", flexShrink: 0 }} />
+                {l.label}
+              </button>
+            );
+          })}
         </div>
 
         {/* Grid 7 días */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
           {weekDays.map(({ dayOfWeek, iso, date }) => {
             const dayTasks = weekTasks.filter((t) => t.dateISO === iso);
+            const visibleTasks = dayTasks.filter((task) => {
+              const isCompleted = getLogForTask(task)?.status === "completed";
+              if (isCompleted && !activeFilters.has("completed")) return false;
+              if (!isCompleted && !activeFilters.has(task.cleaningType)) return false;
+              return true;
+            });
             const isCurrentDay = iso === todayISO;
             return (
               <div
@@ -1180,7 +1213,7 @@ export default function CleaningPage() {
                 <div style={{ fontSize: 11, fontWeight: 700, color: isCurrentDay ? "var(--accent)" : "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   {DAY_SHORT[dayOfWeek]} {date.getDate()}
                 </div>
-                {dayTasks.length === 0 ? null : dayTasks.map((task) => {
+                {visibleTasks.length === 0 ? null : visibleTasks.map((task) => {
                   const visuals = CLEANING_TYPE_COLORS[task.cleaningType] ?? DEFAULT_CLEANING_VISUALS;
                   const log = getLogForTask(task);
                   const done = log?.status === "completed";
@@ -1443,7 +1476,7 @@ export default function CleaningPage() {
                     );
                   })}
                   {uSch.map((s) => {
-                    const v = CLEANING_TYPE_COLORS.unit_interior;
+                    const v = CLEANING_TYPE_COLORS.unit_interior ?? DEFAULT_CLEANING_VISUALS;
                     const u = unitById.get(s.unit_id);
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
