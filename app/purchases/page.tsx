@@ -545,16 +545,20 @@ export default function PurchasesPage() {
   /* ── Metrics ───────────────────────────────────────────────────── */
 
   const metrics = useMemo(() => {
-    const total     = orders.length;
-    const draft     = orders.filter(o => o.status === "draft").length;
-    const pending   = orders.filter(o => o.status === "pending").length;
-    const sent      = orders.filter(o => o.status === "sent").length;
-    const partial   = orders.filter(o => o.status === "partial").length;
-    const received  = orders.filter(o => o.status === "received").length;
-    const invoiced  = orders.filter(o => o.status === "invoiced").length;
-    const cancelled = orders.filter(o => o.status === "cancelled").length;
+    const byMonth = orders.filter((o) => {
+      const d = new Date(o.created_at);
+      return d.getMonth() + 1 === selectedMonth && d.getFullYear() === selectedYear;
+    });
+    const total     = byMonth.length;
+    const draft     = byMonth.filter(o => o.status === "draft").length;
+    const pending   = byMonth.filter(o => o.status === "pending").length;
+    const sent      = byMonth.filter(o => o.status === "sent").length;
+    const partial   = byMonth.filter(o => o.status === "partial").length;
+    const received  = byMonth.filter(o => o.status === "received").length;
+    const invoiced  = byMonth.filter(o => o.status === "invoiced").length;
+    const cancelled = byMonth.filter(o => o.status === "cancelled").length;
     return { total, draft, pending, sent, partial, received, invoiced, cancelled };
-  }, [orders]);
+  }, [orders, selectedMonth, selectedYear]);
 
   /* ── Supplier combobox — lista filtrada por el search ──────────── */
   const filteredSuppliers = useMemo(() => {

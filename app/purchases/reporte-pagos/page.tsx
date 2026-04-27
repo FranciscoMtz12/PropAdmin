@@ -456,8 +456,8 @@ export default function ReportePagosPage() {
   function parseInvoice(notes: string | null): { number?: string; date?: string } | null {
     try {
       const parsed = JSON.parse(notes ?? "");
-      if (parsed && typeof parsed === "object" && ("number" in parsed || "amount" in parsed)) {
-        return parsed as { number?: string; date?: string };
+      if (parsed?.invoice && typeof parsed.invoice === "object") {
+        return parsed.invoice as { number?: string; date?: string };
       }
       return null;
     } catch { return null; }
