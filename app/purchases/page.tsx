@@ -1651,6 +1651,7 @@ export default function PurchasesPage() {
                     {/* ── Sección 2a: Conceptos facturados del XML ── */}
                     {o.status === "invoiced" ? (() => {
                       const meta = getInvoiceMeta(o);
+                      console.log('invoice meta:', meta);
                       const conceptos = meta && Array.isArray((meta as { conceptos?: unknown[] }).conceptos)
                         ? (meta as { conceptos: { descripcion: string; cantidad: string; valorUnitario: string; importe: string }[] }).conceptos
                         : [];
@@ -1662,8 +1663,8 @@ export default function PurchasesPage() {
                             <SectionLabel>Conceptos facturados</SectionLabel>
                             <span style={{
                               padding: "2px 8px", borderRadius: 999,
-                              background: "#f3e8ff", color: "#7c3aed",
-                              border: "1px solid #a855f7",
+                              background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)",
+                              border: "1px solid rgba(168, 85, 247, 0.4)",
                               fontSize: 10, fontWeight: 700,
                               letterSpacing: "0.04em",
                               marginTop: -8,
@@ -1672,13 +1673,13 @@ export default function PurchasesPage() {
                             </span>
                           </div>
                           <div style={{
-                            border: "1px solid #a855f7",
+                            border: "1px solid rgba(168, 85, 247, 0.4)",
                             borderRadius: 10, overflow: "hidden",
-                            background: "#faf5ff",
+                            background: "var(--bg-card)",
                           }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                               <thead>
-                                <tr style={{ background: "#f3e8ff" }}>
+                                <tr style={{ background: "var(--bg-table-header)" }}>
                                   <th style={{ ...thStyle, width: 36 }}>#</th>
                                   <th style={{ ...thStyle, textAlign: "left" }}>Descripción</th>
                                   <th style={thStyle}>Cantidad</th>
@@ -1688,16 +1689,16 @@ export default function PurchasesPage() {
                               </thead>
                               <tbody>
                                 {conceptos.map((c, idx) => (
-                                  <tr key={idx} style={{ borderTop: "1px solid #e9d5ff" }}>
+                                  <tr key={idx} style={{ borderTop: "1px solid var(--border-subtle)" }}>
                                     <td style={tdStyle}>{idx + 1}</td>
                                     <td style={{ ...tdStyle, textAlign: "left" }}>{c.descripcion}</td>
                                     <td style={tdStyle}>{c.cantidad}</td>
-                                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                                    <td style={{ ...tdStyle, textAlign: "right", color: "var(--text-secondary)" }}>
                                       {Number(c.valorUnitario) > 0
                                         ? `$${Number(c.valorUnitario).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
                                         : "—"}
                                     </td>
-                                    <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                                    <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600, color: "var(--text-primary)" }}>
                                       {Number(c.importe) > 0
                                         ? `$${Number(c.importe).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
                                         : "—"}
@@ -1705,11 +1706,11 @@ export default function PurchasesPage() {
                                   </tr>
                                 ))}
                                 {/* Fila total */}
-                                <tr style={{ borderTop: "2px solid #a855f7", background: "#f3e8ff" }}>
-                                  <td colSpan={4} style={{ ...tdStyle, textAlign: "right", fontWeight: 700, color: "#7c3aed", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                <tr style={{ borderTop: "2px solid rgba(168, 85, 247, 0.4)", background: "var(--bg-table-header)" }}>
+                                  <td colSpan={4} style={{ ...tdStyle, textAlign: "right", fontWeight: 700, color: "var(--icon-color-purple)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                     Total
                                   </td>
-                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, color: "#7c3aed", fontSize: 14 }}>
+                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, color: "var(--icon-color-purple)", fontSize: 14 }}>
                                     ${totalXml.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN
                                   </td>
                                 </tr>
@@ -1777,8 +1778,8 @@ export default function PurchasesPage() {
                             gap: 12,
                             padding: "14px 16px",
                             borderRadius: 10,
-                            border: "1px solid #a855f7",
-                            background: "#faf5ff",
+                            border: "1px solid rgba(168, 85, 247, 0.4)",
+                            background: "var(--bg-card)",
                           }}>
                             {meta.number ? (
                               <DetailRow label="Número de factura" value={meta.number} />
