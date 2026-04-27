@@ -365,7 +365,7 @@ export default function PurchasesPage() {
 
       supabase
         .from("purchase_order_items")
-        .select("id, purchase_order_id, description, quantity, unit, unit_price")
+        .select("id, purchase_order_id, description, quantity, unit, unit_price, quantity_received")
         .is("deleted_at", null),
 
       supabase
@@ -791,7 +791,7 @@ export default function PurchasesPage() {
       const tid = targetOrderId;
       const { data: freshItems } = await supabase
         .from("purchase_order_items")
-        .select("id, description, quantity, unit, unit_price")
+        .select("id, description, quantity, unit, unit_price, quantity_received")
         .eq("purchase_order_id", tid)
         .is("deleted_at", null)
         .order("created_at", { ascending: true });
@@ -1103,7 +1103,7 @@ export default function PurchasesPage() {
     if (!itemsByOrderId[order.id]) {
       const { data } = await supabase
         .from("purchase_order_items")
-        .select("id, description, quantity, unit, unit_price")
+        .select("id, description, quantity, unit, unit_price, quantity_received")
         .eq("purchase_order_id", order.id)
         .is("deleted_at", null)
         .order("created_at", { ascending: true });
@@ -1731,28 +1731,28 @@ export default function PurchasesPage() {
                         <div>
                           <SectionLabel>Faltantes</SectionLabel>
                           <div style={{
-                            border: "1px solid #F59E0B",
+                            border: "1px solid rgba(245, 158, 11, 0.3)",
                             borderRadius: 10, overflow: "hidden",
-                            background: "#fffbeb",
+                            background: "var(--bg-card)",
                           }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                               <thead>
-                                <tr style={{ background: "#fef3c7" }}>
-                                  <th style={{ ...thStyle, textAlign: "left" }}>Descripción</th>
-                                  <th style={thStyle}>Pedido</th>
-                                  <th style={thStyle}>Recibido</th>
-                                  <th style={{ ...thStyle, color: "#B45309" }}>Faltante</th>
+                                <tr style={{ background: "rgba(245, 158, 11, 0.1)" }}>
+                                  <th style={{ ...thStyle, textAlign: "left", color: "var(--text-secondary)" }}>Descripción</th>
+                                  <th style={{ ...thStyle, color: "var(--text-secondary)" }}>Pedido</th>
+                                  <th style={{ ...thStyle, color: "var(--text-secondary)" }}>Recibido</th>
+                                  <th style={{ ...thStyle, color: "var(--text-secondary)" }}>Faltante</th>
                                 </tr>
                               </thead>
                               <tbody>
                                 {faltantes.map((it) => {
                                   const diff = it.quantity - (it.quantity_received ?? 0);
                                   return (
-                                    <tr key={it.id} style={{ borderTop: "1px solid #fde68a" }}>
-                                      <td style={{ ...tdStyle, textAlign: "left" }}>{it.description}</td>
-                                      <td style={tdStyle}>{it.quantity} {it.unit}</td>
-                                      <td style={tdStyle}>{it.quantity_received ?? 0} {it.unit}</td>
-                                      <td style={{ ...tdStyle, color: "#B45309", fontWeight: 700 }}>
+                                    <tr key={it.id} style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                                      <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-primary)" }}>{it.description}</td>
+                                      <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{it.quantity} {it.unit}</td>
+                                      <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{it.quantity_received ?? 0} {it.unit}</td>
+                                      <td style={{ ...tdStyle, color: "#ef4444", fontWeight: 700 }}>
                                         -{diff} {it.unit}
                                       </td>
                                     </tr>
