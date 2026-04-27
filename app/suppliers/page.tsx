@@ -28,6 +28,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties } from "react";
 import { Edit3, MoreVertical, Package, Plus, Truck, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -513,8 +514,14 @@ export default function SuppliersPage() {
         </AppCard>
       ) : (
         <AppGrid minWidth={320}>
-          {suppliers.map((s) => (
-            <AppCard key={s.id} style={cardStyle}>
+          {suppliers.map((s, index) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+            >
+            <AppCard style={cardStyle}>
 
               {/* Header */}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
@@ -643,8 +650,15 @@ export default function SuppliersPage() {
                 )}
 
                 {/* Quick branch form */}
+                <AnimatePresence initial={false}>
                 {quickBranchForSupplier === s.id ? (
-                  <div style={{
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.25, ease: "easeInOut" }}
+                    style={{
+                    overflow: "hidden",
                     marginTop: 10, padding: 10,
                     background: "var(--bg-input)", borderRadius: 8,
                     border: "1px solid var(--border-default)",
@@ -694,10 +708,12 @@ export default function SuppliersPage() {
                         {savingQuickBranch ? "Guardando..." : "Guardar"}
                       </button>
                     </div>
-                  </div>
+                  </motion.div>
                 ) : null}
+                </AnimatePresence>
               </div>
             </AppCard>
+            </motion.div>
           ))}
         </AppGrid>
       )}

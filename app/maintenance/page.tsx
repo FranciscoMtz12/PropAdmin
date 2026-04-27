@@ -47,6 +47,7 @@ import {
 } from "lucide-react";
 
 import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -1550,9 +1551,14 @@ export default function MaintenancePage() {
               </AppCard>
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                {filteredTickets.map((ticket) => (
-                  <TicketCard
+                {filteredTickets.map((ticket, index) => (
+                  <motion.div
                     key={ticket.id}
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.05 }}
+                  >
+                  <TicketCard
                     ticket={ticket}
                     isExpanded={expandedId === ticket.id}
                     isMenuOpen={openActionsId === ticket.id}
@@ -1578,6 +1584,7 @@ export default function MaintenancePage() {
                     purchaseOrders={purchaseOrdersByTicket[ticket.id] || []}
                     onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
                   />
+                  </motion.div>
                 ))}
                 {tickets.length === 200 ? (
                   <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>
@@ -2118,9 +2125,15 @@ function TicketCard({
       </div>
 
       {/* ── Vista expandida ──────────────────────────────────────── */}
+      <AnimatePresence initial={false}>
       {isExpanded ? (
-        <div
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: "auto" }}
+          exit={{ opacity: 0, height: 0 }}
+          transition={{ duration: 0.25, ease: "easeInOut" }}
           style={{
+            overflow: "hidden",
             borderTop: "1px solid var(--border-default)",
             padding: "18px 16px",
             display: "grid",
@@ -2455,8 +2468,9 @@ function TicketCard({
             ) : null}
           </div>
 
-        </div>
+        </motion.div>
       ) : null}
+      </AnimatePresence>
     </AppCard>
   );
 }

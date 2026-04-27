@@ -51,6 +51,7 @@ import AppTable from "@/components/AppTable";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
 import UiButton from "@/components/UiButton";
+import { motion, AnimatePresence } from "framer-motion";
 
 /* ─── Types ───────────────────────────────────────────────────────── */
 
@@ -755,6 +756,7 @@ export default function DashboardPage() {
       />
 
       {/* ══ FILA 1: TRES DONAS ════════════════════════════════════════ */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div
         className="dashboard-grid-3"
         style={{
@@ -1127,7 +1129,10 @@ export default function DashboardPage() {
         </AppCard>
       </div>
 
+      </motion.div>
+
       {/* ══ FILA 2: BARCHART — Cobrado vs Pendiente ══════════════════ */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.08 }}>
       <div style={{ marginBottom: 24 }}>
         <SectionCard
           title="Cobranza — últimos 6 meses"
@@ -1182,8 +1187,10 @@ export default function DashboardPage() {
           )}
         </SectionCard>
       </div>
+      </motion.div>
 
       {/* ══ FILA 3: AGENDA DE HOY + UNIDADES DISPONIBLES ════════════ */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.16 }}>
       <div
         className="dashboard-grid-2"
         style={{
@@ -1392,12 +1399,15 @@ export default function DashboardPage() {
         </SectionCard>
       </div>
 
+      </motion.div>
+
       {/* ══ FILA 4: TRES TABLAS OPERATIVAS ═══════════════════════════ */}
       {/*
         Usamos minmax(0, 1fr) en lugar de 1fr para que cada columna
         pueda encogerse por debajo de su contenido mínimo y no rompa
         el grid cuando AppTable tiene contenido largo.
       */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.24 }}>
       <div
         className="dashboard-grid-3"
         style={{
@@ -1662,6 +1672,7 @@ export default function DashboardPage() {
           </SectionCard>
         </div>
       </div>
+      </motion.div>
     </PageContainer>
   );
 }

@@ -36,6 +36,7 @@ import AppTable from "@/components/AppTable";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
 import AppSelect from "@/components/AppSelect";
+import { motion, AnimatePresence } from "framer-motion";
 
 type Tenant = {
   id: string;
@@ -649,6 +650,7 @@ export default function TenantsPage() {
         </AppCard>
       ) : null}
 
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <AppGrid minWidth={220}>
         <AppCard>
           <div style={{ display: "grid", gap: 8 }}>
@@ -678,9 +680,11 @@ export default function TenantsPage() {
           </div>
         </AppCard>
       </AppGrid>
+      </motion.div>
 
       <div style={{ height: 16 }} />
 
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
       <SectionCard title="Filtros">
         <div
           style={{
@@ -749,9 +753,11 @@ export default function TenantsPage() {
           </AppCard>
         </div>
       </SectionCard>
+      </motion.div>
 
       <div style={{ height: 16 }} />
 
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
       <SectionCard title="Listado de inquilinos">
         <AppTable
           rows={filteredRows}
@@ -864,8 +870,15 @@ export default function TenantsPage() {
                       <ChevronDown size={14} />
                     </button>
 
+                    <AnimatePresence>
                     {isOpen ? (
-                      <div style={dropdownMenuStyle}>
+                      <motion.div
+                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                        transition={{ duration: 0.15 }}
+                        style={dropdownMenuStyle}
+                      >
                         {isSuperAdmin ? (
                           <>
                             <button
@@ -906,8 +919,9 @@ export default function TenantsPage() {
                           <Trash2 size={14} />
                           Archivar
                         </button>
-                      </div>
+                      </motion.div>
                     ) : null}
+                    </AnimatePresence>
                   </div>
                 );
               },
@@ -915,6 +929,7 @@ export default function TenantsPage() {
           ]}
         />
       </SectionCard>
+      </motion.div>
 
       <Modal
         open={showModal}

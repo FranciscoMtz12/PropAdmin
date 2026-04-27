@@ -30,6 +30,7 @@ import AppBadge from "@/components/AppBadge";
 import Modal from "@/components/Modal";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
+import { motion, AnimatePresence } from "framer-motion";
 
 /* ═══ Tipos ═══════════════════════════════════════════════════════ */
 
@@ -855,10 +856,20 @@ export default function CleaningPage() {
         )}
       </div>
 
-      {tab === "week" && renderWeekTab()}
-      {tab === "by_building" && renderByBuildingTab()}
-      {tab === "history" && renderHistoryTab()}
-      {tab === "config" && renderConfigTab()}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -8 }}
+          transition={{ duration: 0.2 }}
+        >
+          {tab === "week" && renderWeekTab()}
+          {tab === "by_building" && renderByBuildingTab()}
+          {tab === "history" && renderHistoryTab()}
+          {tab === "config" && renderConfigTab()}
+        </motion.div>
+      </AnimatePresence>
 
       {/* ── Modal de completar tarea ── */}
       <Modal
@@ -1187,7 +1198,7 @@ export default function CleaningPage() {
 
         {/* Grid 7 días */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
-          {weekDays.map(({ dayOfWeek, iso, date }) => {
+          {weekDays.map(({ dayOfWeek, iso, date }, index) => {
             const dayTasks = weekTasks.filter((t) => t.dateISO === iso);
             const visibleTasks = dayTasks.filter((task) => {
               const isCompleted = getLogForTask(task)?.status === "completed";
@@ -1197,8 +1208,11 @@ export default function CleaningPage() {
             });
             const isCurrentDay = iso === todayISO;
             return (
-              <div
+              <motion.div
                 key={iso}
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.06 }}
                 style={{
                   border: isCurrentDay ? "2px solid var(--accent)" : "1px solid var(--border-default)",
                   borderRadius: 10,
@@ -1299,7 +1313,7 @@ export default function CleaningPage() {
                     </button>
                   );
                 })}
-              </div>
+              </motion.div>
             );
           })}
         </div>
