@@ -1362,7 +1362,7 @@ export default function PurchasesPage() {
       ) : null}
 
       {/* Métricas — stat bar compacta */}
-      <div style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 20, overflow: "hidden" }}>
+      <div className="purchases-statbar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 20, overflow: "hidden" }}>
         {[
           { label: "Total OC",        value: metrics.total,     sub: "todas" },
           { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
@@ -1373,7 +1373,7 @@ export default function PurchasesPage() {
           { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "#7c3aed" },
           { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "#EF4444" },
         ].map((s, i, arr) => (
-          <div key={i} style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
+          <div key={i} className="purchases-statbar-cell" style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
             <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
             <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
@@ -1383,7 +1383,7 @@ export default function PurchasesPage() {
 
       {/* Filtros */}
       <AppCard style={{ marginBottom: 16 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12 }}>
+        <div className="purchases-filters" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12 }}>
           <select
             style={INPUT_STYLE}
             value={filterSupplier}
@@ -1573,7 +1573,7 @@ export default function PurchasesPage() {
                     {/* ── Sección 1: Datos generales ── */}
                     <div>
                       <SectionLabel>Datos generales</SectionLabel>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                      <div className="purchases-detail-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
                         <DetailRow label="Proveedor" value={o.supplier_name || "—"} />
                         {branch ? <DetailRow label="Sucursal" value={branch.name} /> : null}
                         <DetailRow label="RFC" value={supplier?.tax_id || "—"} />
@@ -1603,7 +1603,7 @@ export default function PurchasesPage() {
                       ) : items.length === 0 ? (
                         <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Sin materiales.</p>
                       ) : (
-                        <div style={{
+                        <div className="purchases-table-wrap" style={{
                           border: "1px solid var(--border-default)",
                           borderRadius: 10, overflow: "hidden",
                           background: "var(--bg-card)",
@@ -1806,7 +1806,7 @@ export default function PurchasesPage() {
                     {/* ── Sección 3: Acciones ── */}
                     <div>
                       <SectionLabel>Acciones</SectionLabel>
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <div className="purchases-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
 
                         {/* Revisar y aprobar — solo para borradores */}
                         {o.status === "draft" ? (

@@ -126,6 +126,7 @@ function SidebarSection({
           fontWeight: 800,
           padding: "0 4px",
         }}
+        className="sidebar-section-title"
       >
         {title}
       </div>
@@ -160,7 +161,7 @@ function SidebarSection({
           };
 
           const leftBlock = (
-            <div style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
+            <div className="sidebar-nav-item-left" style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
               <Icon
                 size={17}
                 color={
@@ -172,6 +173,7 @@ function SidebarSection({
                 }
               />
               <span
+                className="sidebar-nav-label"
                 style={{
                   color: item.disabled
                     ? "rgba(255,255,255,0.45)"
@@ -192,6 +194,7 @@ function SidebarSection({
 
           const rightBlock = (
             <div
+              className="sidebar-nav-status"
               title={statusVisual.label}
               style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
             >
@@ -437,7 +440,7 @@ export default function Sidebar() {
               </div>
             )}
 
-            <div style={{ minWidth: 0 }}>
+            <div className="sidebar-logo-text" style={{ minWidth: 0 }}>
               <div
                 style={{
                   fontSize: 15,
@@ -548,7 +551,7 @@ export default function Sidebar() {
           }}
         >
           {/* Datos de sesión */}
-          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+          <div className="sidebar-user-info" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
             <span
               style={{
                 fontSize: 11,
@@ -608,7 +611,7 @@ export default function Sidebar() {
             }}
           >
             <Settings size={15} />
-            Ajustes
+            <span className="sidebar-footer-text">Ajustes</span>
           </button>
 
           {/* Toggle dark/light mode */}
@@ -633,7 +636,7 @@ export default function Sidebar() {
             }}
           >
             {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            {isDark ? "Modo claro" : "Modo oscuro"}
+            <span className="sidebar-footer-text">{isDark ? "Modo claro" : "Modo oscuro"}</span>
           </button>
 
           {/* Cerrar sesión */}
@@ -657,7 +660,7 @@ export default function Sidebar() {
             }}
           >
             <LogOut size={15} />
-            Cerrar sesión
+            <span className="sidebar-footer-text">Cerrar sesión</span>
           </button>
         </div>
       </div>

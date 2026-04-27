@@ -252,11 +252,14 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   Sidebar responsive — en pantallas ≤ 1024px se vuelve un drawer
-   off-canvas, controlado por la clase .sidebar-open.
+   Sidebar responsive
+   Desktop (>1024px):  sidebar completo 280px
+   Tablet (768-1024px): sidebar colapsado, solo íconos (72px)
+   Mobile (<768px):    drawer off-canvas, botón hamburger
    ════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 1024px) {
+/* Mobile: drawer off-canvas */
+@media (max-width: 767px) {
   .sidebar-hamburger {
     display: flex !important;
   }
@@ -270,6 +273,106 @@ a {
   }
   aside.sidebar-open {
     left: 0 !important;
+  }
+}
+
+/* Tablet: icon-only collapsed */
+@media (min-width: 768px) and (max-width: 1024px) {
+  aside {
+    width: 72px !important;
+    min-width: 72px !important;
+  }
+  .sidebar-section-title,
+  .sidebar-nav-label,
+  .sidebar-nav-status,
+  .sidebar-logo-text,
+  .sidebar-user-info,
+  .sidebar-footer-text {
+    display: none !important;
+  }
+  .sidebar-nav-item-left {
+    justify-content: center !important;
+    gap: 0 !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   PageHeader responsive — en mobile los acciones bajan al título
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .ph-root {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+  }
+  .ph-actions {
+    width: 100% !important;
+  }
+  .main-content-wrapper {
+    padding: 16px 14px 24px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Módulo Compras — responsive
+   ════════════════════════════════════════════════════════════════════ */
+
+/* Stat bar: tablet 4 cols × 2 filas */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .purchases-statbar {
+    display: grid !important;
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+  .purchases-statbar-cell {
+    border-right: 1px solid var(--border-default) !important;
+    border-bottom: 1px solid var(--border-default) !important;
+  }
+  .purchases-statbar-cell:nth-child(4n) {
+    border-right: none !important;
+  }
+  .purchases-statbar-cell:nth-child(n+5) {
+    border-bottom: none !important;
+  }
+  .purchases-detail-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+  }
+}
+
+/* Mobile: 2 cols stat bar, filtros apilados, tabla scroll, acciones stack */
+@media (max-width: 767px) {
+  .purchases-statbar {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .purchases-statbar-cell {
+    border-right: 1px solid var(--border-default) !important;
+    border-bottom: 1px solid var(--border-default) !important;
+  }
+  .purchases-statbar-cell:nth-child(2n) {
+    border-right: none !important;
+  }
+  .purchases-statbar-cell:nth-child(n+7) {
+    border-bottom: none !important;
+  }
+  .purchases-filters {
+    grid-template-columns: 1fr !important;
+  }
+  .purchases-table-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .purchases-detail-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .purchases-actions {
+    flex-direction: column !important;
+    align-items: stretch !important;
+  }
+  .purchases-actions > * {
+    width: 100% !important;
+    justify-content: center !important;
+    box-sizing: border-box !important;
   }
 }
 

@@ -21,6 +21,7 @@ export default function MainContentWrapper({ children }: { children: ReactNode }
 
   return (
     <div
+      className="main-content-wrapper"
       style={{
         width: "100%",
         maxWidth: 1280,

@@ -35,6 +35,7 @@ export default function PageHeader({
 
   return (
     <div
+      className="ph-root"
       style={{
         display: "flex",
         justifyContent: "space-between",
@@ -89,7 +90,7 @@ export default function PageHeader({
       </motion.div>
 
       {actions ? (
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+        <div className="ph-actions" style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
           {actions}
         </div>
       ) : null}
