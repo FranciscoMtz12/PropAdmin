@@ -105,7 +105,6 @@ type Signer = {
 interface FieldUser {
   id: string;
   full_name: string;
-  phone: string | null;
   email: string;
 }
 
@@ -405,7 +404,7 @@ export default function PurchasesPage() {
 
       supabase
         .from("app_users")
-        .select("id, full_name, phone, email")
+        .select("id, full_name, email")
         .eq("company_id", companyId)
         .in("role", ["field", "mantenimiento"])
         .is("deleted_at", null)
@@ -2112,7 +2111,7 @@ export default function PurchasesPage() {
                     if (!u) return;
                     setValue("responsibleUserId", u.id);
                     setValue("responsibleName", u.full_name);
-                    setValue("responsiblePhone", u.phone ?? "");
+                    setValue("responsiblePhone", "");
                   }}
                 >
                   <option value="">Sin responsable asignado</option>
