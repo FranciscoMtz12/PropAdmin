@@ -377,6 +377,83 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   Laptop responsive — 1024px-1400px (sidebar 280px, contenido ~680-1056px)
+   Laptop pequeña — 768px-1024px  (sidebar 72px icon, contenido ~668-924px)
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── Dashboard: 3 cols → 2 cols en pantallas muy ajustadas ── */
+@media (min-width: 1024px) and (max-width: 1200px) {
+  .dashboard-grid-3 {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* ── Analytics: stat bar flex-wrap en pantallas ajustadas ── */
+@media (min-width: 1024px) and (max-width: 1200px) {
+  .analytics-stat-bar {
+    flex-wrap: wrap !important;
+  }
+  .analytics-stat-bar > * {
+    flex: 1 1 130px !important;
+    min-width: 110px !important;
+  }
+}
+
+/* ── Calendario semana: 6 cols → 3 en laptop/tablet ── */
+@media (min-width: 1024px) and (max-width: 1400px) {
+  .cal-week-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .cal-year-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  .cal-week-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+  .cal-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ── Calendario mes: scroll horizontal si no cabe ── */
+@media (max-width: 1400px) {
+  .cal-month-wrap {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .cal-month-header,
+  .cal-month-grid {
+    min-width: 560px !important;
+  }
+}
+
+/* ── Limpieza — grid semanal 7 cols → 4 cols ── */
+@media (min-width: 1024px) and (max-width: 1400px) {
+  .cleaning-week-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+@media (min-width: 768px) and (max-width: 1024px) {
+  .cleaning-week-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+}
+
+/* ── Inquilinos — grid de filtros 3 cols → 2 → 1 ── */
+@media (min-width: 1024px) and (max-width: 1300px) {
+  .tenants-filter-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+@media (max-width: 1024px) {
+  .tenants-filter-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Splash screen — animación del logo al cargar la app
    ════════════════════════════════════════════════════════════════════ */
 

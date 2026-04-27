@@ -1606,6 +1606,7 @@ export default function CalendarPage() {
 
             {viewMode === "week" ? (
               <div
+                className="cal-week-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
@@ -1729,13 +1730,14 @@ export default function CalendarPage() {
             ) : null}
 
             {viewMode === "month" ? (
-              <>
-              <div style={{ display:"grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom:"1px solid var(--border-default)", marginBottom:4 }}>
+              <div className="cal-month-wrap">
+              <div className="cal-month-header" style={{ display:"grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom:"1px solid var(--border-default)", marginBottom:4 }}>
                 {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
                   <div key={d} style={{ fontSize:11, fontWeight:600, color:"var(--text-muted)", letterSpacing:"0.5px", textAlign:"center", padding:".5rem 0", textTransform:"uppercase" }}>{d}</div>
                 ))}
               </div>
               <div
+                className="cal-month-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
@@ -1909,11 +1911,12 @@ export default function CalendarPage() {
                   );
                 })}
               </div>
-              </>
+              </div>
             ) : null}
 
             {viewMode === "year" ? (
               <div
+                className="cal-year-grid"
                 style={{
                   display: "grid",
                   gridTemplateColumns: "repeat(4, minmax(0, 1fr))",

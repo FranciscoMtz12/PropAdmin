@@ -692,7 +692,7 @@ export default function AnalyticsPage() {
       <PageHeader title="Analytics" titleIcon={<BarChart2 size={18} />} />
 
       {/* ════ SECCIÓN 1: Stat bar compacta ════════════════════════════ */}
-      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+      <div className="analytics-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
         {[
           { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"#10B981" },
           { label:"Personas", value:estimatedPeople, sub:"estimadas", color:"#3B82F6" },

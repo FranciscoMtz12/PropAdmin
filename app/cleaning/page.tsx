@@ -1197,7 +1197,7 @@ export default function CleaningPage() {
         </div>
 
         {/* Grid 7 días */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
+        <div className="cleaning-week-grid" style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", gap: 8 }}>
           {weekDays.map(({ dayOfWeek, iso, date }, index) => {
             const dayTasks = weekTasks.filter((t) => t.dateISO === iso);
             const visibleTasks = dayTasks.filter((task) => {
