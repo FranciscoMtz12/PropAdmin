@@ -166,6 +166,17 @@ const STATUS_LABEL: Record<Status, string> = {
   cancelled: "Cancelada",
 };
 
+const STATUS_FILTERS: { value: "ALL" | Status; label: string; color: string; bg: string }[] = [
+  { value: "ALL",       label: "Todos",            color: "#6b7280", bg: "#f3f4f6" },
+  { value: "draft",     label: "Borrador",          color: "#6b7280", bg: "#f3f4f6" },
+  { value: "pending",   label: "Pendiente firma",   color: "#d97706", bg: "#fffbeb" },
+  { value: "sent",      label: "Enviada",           color: "#2563eb", bg: "#eff6ff" },
+  { value: "partial",   label: "Surtido parcial",   color: "#d97706", bg: "#fffbeb" },
+  { value: "received",  label: "Completada",        color: "#16a34a", bg: "#f0fdf4" },
+  { value: "invoiced",  label: "Facturada",         color: "#7c3aed", bg: "#f5f3ff" },
+  { value: "cancelled", label: "Cancelada",         color: "#dc2626", bg: "#fef2f2" },
+];
+
 type StatusVariantValue = "amber" | "blue" | "green" | "red" | "gray" | "purple";
 const STATUS_VARIANT: Record<Status, StatusVariantValue> = {
   draft:     "gray",
@@ -1383,7 +1394,7 @@ export default function PurchasesPage() {
 
       {/* Filtros */}
       <AppCard style={{ marginBottom: 16 }}>
-        <div className="purchases-filters" style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12 }}>
+        <div className="purchases-filters" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 12, marginBottom: 12 }}>
           <select
             style={INPUT_STYLE}
             value={filterSupplier}
@@ -1393,21 +1404,6 @@ export default function PurchasesPage() {
             {suppliers.map(s => (
               <option key={s.id} value={s.id}>{s.name}</option>
             ))}
-          </select>
-
-          <select
-            style={INPUT_STYLE}
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value as "ALL" | Status)}
-          >
-            <option value="ALL">Todos los estados</option>
-            <option value="draft">Borrador</option>
-            <option value="pending">Por enviar</option>
-            <option value="sent">Enviada</option>
-            <option value="partial">Surtido parcial</option>
-            <option value="received">Recibida</option>
-            <option value="invoiced">Facturada</option>
-            <option value="cancelled">Cancelada</option>
           </select>
 
           <div style={{ position: "relative" }}>
@@ -1426,6 +1422,36 @@ export default function PurchasesPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
+        </div>
+
+        {/* Pills de estado */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {STATUS_FILTERS.map((f) => {
+            const active = filterStatus === f.value;
+            return (
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setFilterStatus(f.value)}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 20,
+                  fontSize: 12,
+                  fontWeight: active ? 600 : 400,
+                  cursor: "pointer",
+                  border: active
+                    ? `1.5px solid ${f.color}`
+                    : `1px solid ${f.color}4d`,
+                  background: active ? f.bg : `${f.bg}80`,
+                  color: active ? f.color : `${f.color}99`,
+                  transition: "all 0.15s ease",
+                  lineHeight: 1.4,
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
         </div>
       </AppCard>
 

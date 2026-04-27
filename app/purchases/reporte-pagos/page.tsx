@@ -26,7 +26,7 @@
 
   Lectura auxiliar:
     purchase_order_signers — dropdown de "Elaboró"
-    purchase_orders status='sent' — OCs disponibles para el reporte
+    purchase_orders status='invoiced' — OCs disponibles para el reporte
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -226,7 +226,7 @@ export default function ReportePagosPage() {
           buildings(name)
         `)
         .eq("company_id", companyId)
-        .eq("status", "sent")
+        .eq("status", "invoiced")
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
@@ -773,15 +773,15 @@ export default function ReportePagosPage() {
         />
       </AppGrid>
 
-      {/* ── OCs enviadas sin reportar ─────────────────────────── */}
+      {/* ── OCs facturadas pendientes de reportar ─────────────── */}
       <AppCard style={{ marginBottom: 16 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
-          OCs enviadas sin reportar a pagos ({unreportedOCs.length})
+          OCs facturadas pendientes de reportar a pagos ({unreportedOCs.length})
         </div>
 
         {unreportedOCs.length === 0 ? (
           <p style={{ margin: 0, fontSize: 13, color: "var(--metric-value-green)", fontWeight: 600 }}>
-            Todas las OCs enviadas ya están reportadas ✓
+            Todas las OCs facturadas ya están reportadas ✓
           </p>
         ) : (
           <div style={{
