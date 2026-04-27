@@ -1648,6 +1648,78 @@ export default function PurchasesPage() {
                       )}
                     </div>
 
+                    {/* ── Sección 2a: Conceptos facturados del XML ── */}
+                    {o.status === "invoiced" ? (() => {
+                      const meta = getInvoiceMeta(o);
+                      const conceptos = meta && Array.isArray((meta as { conceptos?: unknown[] }).conceptos)
+                        ? (meta as { conceptos: { descripcion: string; cantidad: string; valorUnitario: string; importe: string }[] }).conceptos
+                        : [];
+                      if (conceptos.length === 0) return null;
+                      const totalXml = conceptos.reduce((acc, c) => acc + (Number(c.importe) || 0), 0);
+                      return (
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                            <SectionLabel>Conceptos facturados</SectionLabel>
+                            <span style={{
+                              padding: "2px 8px", borderRadius: 999,
+                              background: "#f3e8ff", color: "#7c3aed",
+                              border: "1px solid #a855f7",
+                              fontSize: 10, fontWeight: 700,
+                              letterSpacing: "0.04em",
+                              marginTop: -8,
+                            }}>
+                              Del XML
+                            </span>
+                          </div>
+                          <div style={{
+                            border: "1px solid #a855f7",
+                            borderRadius: 10, overflow: "hidden",
+                            background: "#faf5ff",
+                          }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr style={{ background: "#f3e8ff" }}>
+                                  <th style={{ ...thStyle, width: 36 }}>#</th>
+                                  <th style={{ ...thStyle, textAlign: "left" }}>Descripción</th>
+                                  <th style={thStyle}>Cantidad</th>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>P. Unit.</th>
+                                  <th style={{ ...thStyle, textAlign: "right" }}>Total</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {conceptos.map((c, idx) => (
+                                  <tr key={idx} style={{ borderTop: "1px solid #e9d5ff" }}>
+                                    <td style={tdStyle}>{idx + 1}</td>
+                                    <td style={{ ...tdStyle, textAlign: "left" }}>{c.descripcion}</td>
+                                    <td style={tdStyle}>{c.cantidad}</td>
+                                    <td style={{ ...tdStyle, textAlign: "right" }}>
+                                      {Number(c.valorUnitario) > 0
+                                        ? `$${Number(c.valorUnitario).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                                        : "—"}
+                                    </td>
+                                    <td style={{ ...tdStyle, textAlign: "right", fontWeight: 600 }}>
+                                      {Number(c.importe) > 0
+                                        ? `$${Number(c.importe).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                                        : "—"}
+                                    </td>
+                                  </tr>
+                                ))}
+                                {/* Fila total */}
+                                <tr style={{ borderTop: "2px solid #a855f7", background: "#f3e8ff" }}>
+                                  <td colSpan={4} style={{ ...tdStyle, textAlign: "right", fontWeight: 700, color: "#7c3aed", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                    Total
+                                  </td>
+                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, color: "#7c3aed", fontSize: 14 }}>
+                                    ${totalXml.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN
+                                  </td>
+                                </tr>
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })() : null}
+
                     {/* ── Sección 2b: Faltantes — solo si partial ── */}
                     {o.status === "partial" ? (() => {
                       const faltantes = items.filter(
