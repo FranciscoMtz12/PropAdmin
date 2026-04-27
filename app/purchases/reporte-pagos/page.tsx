@@ -83,6 +83,7 @@ type Signer = { id: string; name: string; is_default: boolean };
 type AvailableOC = {
   id:                  string;
   folio:               string;
+  notes:               string | null;
   supplier_name:       string | null;
   project_description: string | null;
   building_name:       string | null;
@@ -117,6 +118,7 @@ type PaymentReport = {
 type ItemDraft = {
   invoice_date:   string;
   invoice_number: string;
+  fromXml?:       boolean;
 };
 
 const reporteSchema = z.object({
@@ -219,7 +221,7 @@ export default function ReportePagosPage() {
       supabase
         .from("purchase_orders")
         .select(`
-          id, folio, project_description, created_at, sent_at, supplier_prefix,
+          id, folio, project_description, notes, created_at, sent_at, supplier_prefix,
           suppliers(name),
           buildings(name)
         `)
@@ -300,6 +302,7 @@ export default function ReportePagosPage() {
     /* OCs disponibles (sent) con info mínima */
     type OCRaw = {
       id: string; folio: string; project_description: string | null;
+      notes: string | null;
       created_at: string; sent_at: string | null; supplier_prefix: string | null;
       buildings: { name: string } | null;
       suppliers: { name: string } | null;
@@ -307,6 +310,7 @@ export default function ReportePagosPage() {
     const ocs: AvailableOC[] = ((sentOCsData || []) as unknown as OCRaw[]).map((o) => ({
       id:                  o.id,
       folio:               o.folio,
+      notes:               o.notes,
       supplier_name:       o.suppliers?.name || null,
       project_description: o.project_description,
       building_name:       o.buildings?.name || null,
@@ -448,14 +452,32 @@ export default function ReportePagosPage() {
     setError("");
   }
 
-  /* Toggle OC en el form */
+  /* Extrae invoice.number y invoice.date desde el JSON de notes de la OC */
+  function parseInvoice(notes: string | null): { number?: string; date?: string } | null {
+    try {
+      const parsed = JSON.parse(notes ?? "");
+      if (parsed && typeof parsed === "object" && ("number" in parsed || "amount" in parsed)) {
+        return parsed as { number?: string; date?: string };
+      }
+      return null;
+    } catch { return null; }
+  }
+
+  /* Toggle OC en el form — auto-llena desde XML si está disponible */
   function toggleOCInForm(ocId: string) {
+    const oc = allSentOCs.find((o) => o.id === ocId);
     setItemDrafts((prev) => {
       const next = new Map(prev);
       if (next.has(ocId)) {
         next.delete(ocId);
       } else {
-        next.set(ocId, { invoice_date: "", invoice_number: "" });
+        const invoice = parseInvoice(oc?.notes ?? null);
+        const prefilled = !!(invoice?.number || invoice?.date);
+        next.set(ocId, {
+          invoice_date:   invoice?.date   ?? "",
+          invoice_number: invoice?.number ?? "",
+          fromXml: prefilled,
+        });
       }
       return next;
     });
@@ -466,7 +488,8 @@ export default function ReportePagosPage() {
       const cur = prev.get(ocId);
       if (!cur) return prev;
       const next = new Map(prev);
-      next.set(ocId, { ...cur, ...patch });
+      const clearsXml = "invoice_number" in patch || "invoice_date" in patch;
+      next.set(ocId, { ...cur, ...patch, ...(clearsXml ? { fromXml: false } : {}) });
       return next;
     });
   }
@@ -1212,6 +1235,16 @@ export default function ReportePagosPage() {
                               onChange={(e) => updateDraft(ocId, { invoice_number: e.target.value })}
                               placeholder="A-12345"
                             />
+                            {draft.fromXml ? (
+                              <span style={{
+                                display: "inline-flex", alignItems: "center",
+                                marginTop: 4, padding: "2px 7px", borderRadius: 999,
+                                background: "var(--icon-bg-green)", color: "var(--icon-color-green)",
+                                fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+                              }}>
+                                Del XML
+                              </span>
+                            ) : null}
                           </td>
                           <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)", padding: "8px 12px",
                             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
