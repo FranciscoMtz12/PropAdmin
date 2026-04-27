@@ -1075,12 +1075,21 @@ export default function PurchasesPage() {
   }
 
   // Parsear metadata de factura guardada en notes (JSON)
-  function getInvoiceMeta(o: PurchaseOrder): { number?: string; amount?: number; date?: string; notes?: string | null } | null {
+  type InvoiceMeta = {
+    number?: string;
+    amount?: number;
+    date?: string;
+    notes?: string | null;
+    rfc_emisor?: string;
+    nombre_emisor?: string;
+  };
+
+  function getInvoiceMeta(o: PurchaseOrder): InvoiceMeta | null {
     if (!o.notes) return null;
     try {
       const parsed = JSON.parse(o.notes);
       if (parsed && typeof parsed === "object" && "invoice" in parsed) {
-        return (parsed as { invoice: { number?: string; amount?: number; date?: string; notes?: string | null } }).invoice;
+        return (parsed as { invoice: InvoiceMeta }).invoice;
       }
     } catch { /* notes es texto plano */ }
     return null;
@@ -1683,6 +1692,45 @@ export default function PurchasesPage() {
                       );
                     })() : null}
 
+                    {/* ── Sección 2c: Factura — solo si invoiced ── */}
+                    {o.status === "invoiced" ? (() => {
+                      const meta = getInvoiceMeta(o);
+                      if (!meta) return null;
+                      return (
+                        <div>
+                          <SectionLabel>Factura</SectionLabel>
+                          <div style={{
+                            display: "grid",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                            gap: 12,
+                            padding: "14px 16px",
+                            borderRadius: 10,
+                            border: "1px solid #a855f7",
+                            background: "#faf5ff",
+                          }}>
+                            {meta.number ? (
+                              <DetailRow label="Número de factura" value={meta.number} />
+                            ) : null}
+                            {meta.amount != null ? (
+                              <DetailRow
+                                label="Monto total"
+                                value={`$${Number(meta.amount).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`}
+                              />
+                            ) : null}
+                            {meta.date ? (
+                              <DetailRow label="Fecha de factura" value={meta.date} />
+                            ) : null}
+                            {meta.rfc_emisor ? (
+                              <DetailRow label="RFC emisor" value={meta.rfc_emisor} />
+                            ) : null}
+                            {meta.nombre_emisor ? (
+                              <DetailRow label="Nombre emisor" value={meta.nombre_emisor} />
+                            ) : null}
+                          </div>
+                        </div>
+                      );
+                    })() : null}
+
                     {/* ── Sección 3: Acciones ── */}
                     <div>
                       <SectionLabel>Acciones</SectionLabel>
@@ -1808,21 +1856,47 @@ export default function PurchasesPage() {
                           </button>
                         ) : null}
 
-                        {/* Badge número de factura — cuando invoiced */}
+                        {/* Badge + reemplazar XML — cuando invoiced */}
                         {o.status === "invoiced" ? (() => {
                           const meta = getInvoiceMeta(o);
-                          if (!meta?.number) return null;
                           return (
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "6px 12px", borderRadius: 999,
-                              background: "#f3e8ff", color: "#7c3aed",
-                              border: "1px solid #a855f7",
-                              fontSize: 12, fontWeight: 600,
-                            }}>
-                              <FileText size={12} />
-                              Factura #{meta.number}
-                            </span>
+                            <>
+                              {meta?.number ? (
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: 6,
+                                  padding: "6px 12px", borderRadius: 999,
+                                  background: "#f3e8ff", color: "#7c3aed",
+                                  border: "1px solid #a855f7",
+                                  fontSize: 12, fontWeight: 600,
+                                }}>
+                                  <FileText size={12} />
+                                  Factura #{meta.number}
+                                </span>
+                              ) : null}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInvoiceTarget(o);
+                                  const m = getInvoiceMeta(o);
+                                  setInvoiceForm({
+                                    number: m?.number ?? "",
+                                    amount: m?.amount != null ? String(m.amount) : "",
+                                    date:   m?.date   ?? "",
+                                    notes:  m?.notes  ?? "",
+                                  });
+                                }}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", gap: 6,
+                                  padding: "9px 14px", borderRadius: 8,
+                                  border: "1px solid #a855f7", background: "transparent",
+                                  color: "#7c3aed",
+                                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                                }}
+                              >
+                                <Upload size={14} />
+                                Reemplazar XML
+                              </button>
+                            </>
                           );
                         })() : null}
 
