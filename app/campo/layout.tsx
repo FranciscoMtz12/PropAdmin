@@ -18,7 +18,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Grid2X2, LogOut, Menu, Settings, Sparkles, Ticket, Wrench, X } from "lucide-react";
+import { Grid2X2, LogOut, Menu, Settings, ShoppingCart, Sparkles, Ticket, Wrench, X } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -26,10 +26,11 @@ import { useTheme } from "@/contexts/ThemeContext";
 import SettingsModal from "@/components/SettingsModal";
 
 const NAV_ITEMS = [
-  { href: "/campo/dashboard", label: "Inicio",   icon: Grid2X2 },
-  { href: "/campo/tickets",   label: "Tickets",  icon: Wrench   },
-  { href: "/campo/limpieza",  label: "Limpieza", icon: Sparkles },
-  { href: "/campo/assets",    label: "Activos",  icon: Ticket   },
+  { href: "/campo/dashboard", label: "Inicio",   icon: Grid2X2     },
+  { href: "/campo/tickets",   label: "Tickets",  icon: Wrench      },
+  { href: "/campo/limpieza",  label: "Limpieza", icon: Sparkles    },
+  { href: "/campo/assets",    label: "Activos",  icon: Ticket      },
+  { href: "/campo/compras",   label: "Órdenes",  icon: ShoppingCart },
 ];
 
 export default function CampoLayout({ children }: { children: ReactNode }) {
@@ -47,7 +48,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
     if (!user) { router.replace("/"); return; }
     const role = user.role;
     if (role === "tenant") { router.replace("/portal/dashboard"); return; }
-    if (role !== "field" && !user.is_superadmin) { router.replace("/dashboard"); return; }
+    if (role !== "field" && role !== "mantenimiento" && !user.is_superadmin) { router.replace("/dashboard"); return; }
   }, [loading, user, router]);
 
   /* ── Bloquear scroll del body cuando el sidebar está abierto ─── */
@@ -69,7 +70,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
   const accent      = accentColor || "#8B2252";
   const accentBg    = accentColor ? `${accentColor}22` : "rgba(139,34,82,0.13)";
 
-  if (loading || !user || user.role === "tenant" || (user.role !== "field" && !user.is_superadmin)) return null;
+  if (loading || !user || user.role === "tenant" || (user.role !== "field" && user.role !== "mantenimiento" && !user.is_superadmin)) return null;
 
   return (
     <>

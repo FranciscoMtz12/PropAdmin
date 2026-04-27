@@ -121,6 +121,7 @@ type POItem = {
   quantity: number;
   unit: string;
   unit_price: number | null;
+  quantity_received?: number | null;
 };
 
 type PurchaseOrder = {
@@ -158,7 +159,7 @@ type ItemDraft = {
 
 const STATUS_LABEL: Record<Status, string> = {
   draft:     "Borrador",
-  pending:   "Por enviar",
+  pending:   "Pendiente firma",
   sent:      "Enviada",
   partial:   "Surtido parcial",
   received:  "Recibida",
@@ -285,6 +286,14 @@ export default function PurchasesPage() {
   const [invoiceTarget, setInvoiceTarget] = useState<PurchaseOrder | null>(null);
   const [invoiceForm, setInvoiceForm] = useState({ number: "", amount: "", date: "", notes: "" });
   const [savingInvoice, setSavingInvoice] = useState(false);
+
+  /* XML factura */
+  type XmlConcepto = { descripcion: string; cantidad: string; valorUnitario: string; importe: string };
+  const [xmlConceptos,    setXmlConceptos]    = useState<XmlConcepto[]>([]);
+  const [xmlRfcEmisor,    setXmlRfcEmisor]    = useState("");
+  const [xmlNombreEmisor, setXmlNombreEmisor] = useState("");
+  const [xmlUploaded,     setXmlUploaded]     = useState(false);
+  const xmlFileInputRef = useRef<HTMLInputElement>(null);
   const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null);
   const [cancelling,   setCancelling]   = useState(false);
 
@@ -809,7 +818,7 @@ export default function PurchasesPage() {
     setLoadingItemsFor(order.id);
     const { data, error } = await supabase
       .from("purchase_order_items")
-      .select("id, description, quantity, unit, unit_price")
+      .select("id, description, quantity, unit, unit_price, quantity_received")
       .eq("purchase_order_id", order.id)
       .is("deleted_at", null)
       .order("created_at", { ascending: true });
@@ -819,6 +828,58 @@ export default function PurchasesPage() {
     const rows = (data as POItem[]) || [];
     setItemsByOrderId((prev) => ({ ...prev, [order.id]: rows }));
     setLoadingItemsFor(null);
+  }
+
+  /* ── Crear OC borrador por faltantes ────────────────────────── */
+
+  async function createOCForFaltantes(order: PurchaseOrder) {
+    if (!user?.company_id) return;
+    const items = itemsByOrderId[order.id] ?? [];
+    const faltanteItems = items.filter(
+      (it) => it.quantity_received != null && it.quantity_received < it.quantity
+    );
+    if (faltanteItems.length === 0) {
+      toast.error("No hay faltantes registrados en esta OC.");
+      return;
+    }
+    const nowIso = new Date().toISOString();
+    const { data: newOC, error } = await supabase
+      .from("purchase_orders")
+      .insert({
+        company_id: user.company_id,
+        folio: `REPO-${order.folio}`,
+        supplier_id: order.supplier_id,
+        supplier_branch_id: order.supplier_branch_id,
+        supplier_prefix: order.supplier_prefix,
+        maintenance_log_id: order.maintenance_log_id,
+        building_id: order.building_id,
+        status: "draft",
+        project_description: `Reposición de faltantes de ${order.folio}`,
+        responsible_user_id: order.responsible_user_id,
+        responsible_name: order.responsible_name,
+        responsible_phone: order.responsible_phone,
+        signer_name: order.signer_name,
+        created_at: nowIso,
+        updated_at: nowIso,
+      })
+      .select("id")
+      .single();
+
+    if (error || !newOC) {
+      toast.error("No se pudo crear la OC por faltantes.");
+      return;
+    }
+    await supabase.from("purchase_order_items").insert(
+      faltanteItems.map((fi) => ({
+        purchase_order_id: (newOC as { id: string }).id,
+        description: fi.description,
+        quantity: fi.quantity - (fi.quantity_received ?? 0),
+        unit: fi.unit,
+        created_at: nowIso,
+      }))
+    );
+    void loadAll(user.company_id);
+    toast.success(`Borrador creado: REPO-${order.folio}`);
   }
 
   /* ── Cancelar OC (con confirmación) ──────────────────────────── */
@@ -896,10 +957,19 @@ export default function PurchasesPage() {
       }
     }
 
-    const newNotes = JSON.stringify({
-      ...existing,
-      invoice: { number: num, amount: amt, date, notes: invoiceForm.notes.trim() || null },
-    });
+    const invoicePayload: Record<string, unknown> = {
+      number: num,
+      amount: amt,
+      date,
+      notes: invoiceForm.notes.trim() || null,
+    };
+    if (xmlUploaded) {
+      invoicePayload.rfc_emisor     = xmlRfcEmisor;
+      invoicePayload.nombre_emisor  = xmlNombreEmisor;
+      invoicePayload.conceptos      = xmlConceptos;
+      invoicePayload.xml_uploaded   = true;
+    }
+    const newNotes = JSON.stringify({ ...existing, invoice: invoicePayload });
 
     const nowIso = new Date().toISOString();
     const { error } = await supabase
@@ -918,7 +988,90 @@ export default function PurchasesPage() {
     toast.success("Factura registrada.");
     setInvoiceTarget(null);
     setInvoiceForm({ number: "", amount: "", date: "", notes: "" });
+    resetXmlState();
     setSavingInvoice(false);
+  }
+
+  function resetXmlState() {
+    setXmlConceptos([]);
+    setXmlRfcEmisor("");
+    setXmlNombreEmisor("");
+    setXmlUploaded(false);
+  }
+
+  function handleXmlUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      try {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, "text/xml");
+        if (doc.querySelector("parsererror")) {
+          toast.error("El archivo XML no es válido.");
+          return;
+        }
+        const root = doc.documentElement;
+        const fecha   = root.getAttribute("Fecha") ?? "";
+        const total   = root.getAttribute("Total") ?? "";
+        const folio   = root.getAttribute("Folio") ?? "";
+        const serie   = root.getAttribute("Serie") ?? "";
+
+        const getFirst = (name: string): Element | null => {
+          for (const ns of [
+            "http://www.sat.gob.mx/cfd/4",
+            "http://www.sat.gob.mx/cfd/3",
+          ]) {
+            const els = doc.getElementsByTagNameNS(ns, name);
+            if (els.length > 0) return els[0];
+          }
+          const plain = doc.getElementsByTagName(name);
+          return plain.length > 0 ? plain[0] : null;
+        };
+
+        const getAll = (name: string): Element[] => {
+          for (const ns of [
+            "http://www.sat.gob.mx/cfd/4",
+            "http://www.sat.gob.mx/cfd/3",
+          ]) {
+            const els = doc.getElementsByTagNameNS(ns, name);
+            if (els.length > 0) return Array.from(els);
+          }
+          return Array.from(doc.getElementsByTagName(name));
+        };
+
+        const emisor        = getFirst("Emisor");
+        const rfcEmisor     = emisor?.getAttribute("Rfc") ?? "";
+        const nombreEmisor  = emisor?.getAttribute("Nombre") ?? "";
+
+        const conceptos = getAll("Concepto").map((c) => ({
+          descripcion:   c.getAttribute("Descripcion")   ?? "",
+          cantidad:      c.getAttribute("Cantidad")      ?? "",
+          valorUnitario: c.getAttribute("ValorUnitario") ?? "",
+          importe:       c.getAttribute("Importe")       ?? "",
+        }));
+
+        const facturaNum = [serie, folio].filter(Boolean).join("") || "";
+        const fechaDate  = fecha.substring(0, 10);
+
+        setInvoiceForm((f) => ({
+          ...f,
+          number: facturaNum || f.number,
+          amount: total      || f.amount,
+          date:   fechaDate  || f.date,
+        }));
+        setXmlConceptos(conceptos);
+        setXmlRfcEmisor(rfcEmisor);
+        setXmlNombreEmisor(nombreEmisor);
+        setXmlUploaded(true);
+        toast.success("XML procesado correctamente.");
+      } catch {
+        toast.error("No se pudo procesar el XML.");
+      }
+    };
+    reader.readAsText(file, "UTF-8");
   }
 
   // Parsear metadata de factura guardada en notes (JSON)
@@ -1486,6 +1639,50 @@ export default function PurchasesPage() {
                       )}
                     </div>
 
+                    {/* ── Sección 2b: Faltantes — solo si partial ── */}
+                    {o.status === "partial" ? (() => {
+                      const faltantes = items.filter(
+                        (it) => it.quantity_received != null && it.quantity_received < it.quantity
+                      );
+                      if (faltantes.length === 0) return null;
+                      return (
+                        <div>
+                          <SectionLabel>Faltantes</SectionLabel>
+                          <div style={{
+                            border: "1px solid #F59E0B",
+                            borderRadius: 10, overflow: "hidden",
+                            background: "#fffbeb",
+                          }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                              <thead>
+                                <tr style={{ background: "#fef3c7" }}>
+                                  <th style={{ ...thStyle, textAlign: "left" }}>Descripción</th>
+                                  <th style={thStyle}>Pedido</th>
+                                  <th style={thStyle}>Recibido</th>
+                                  <th style={{ ...thStyle, color: "#B45309" }}>Faltante</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {faltantes.map((it) => {
+                                  const diff = it.quantity - (it.quantity_received ?? 0);
+                                  return (
+                                    <tr key={it.id} style={{ borderTop: "1px solid #fde68a" }}>
+                                      <td style={{ ...tdStyle, textAlign: "left" }}>{it.description}</td>
+                                      <td style={tdStyle}>{it.quantity} {it.unit}</td>
+                                      <td style={tdStyle}>{it.quantity_received ?? 0} {it.unit}</td>
+                                      <td style={{ ...tdStyle, color: "#B45309", fontWeight: 700 }}>
+                                        -{diff} {it.unit}
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })() : null}
+
                     {/* ── Sección 3: Acciones ── */}
                     <div>
                       <SectionLabel>Acciones</SectionLabel>
@@ -1571,7 +1768,7 @@ export default function PurchasesPage() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => toast("Próximamente: generar OC por faltantes")}
+                              onClick={() => void createOCForFaltantes(o)}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: 8,
@@ -2111,15 +2308,132 @@ export default function PurchasesPage() {
       </Modal>
 
       {/* ═══════════ Modal Registrar factura ═══════════ */}
+      {/* Input oculto para XML */}
+      <input
+        ref={xmlFileInputRef}
+        type="file"
+        accept=".xml,text/xml,application/xml"
+        style={{ display: "none" }}
+        onChange={handleXmlUpload}
+      />
+
       <Modal
         open={invoiceTarget !== null}
-        onClose={() => { if (!savingInvoice) { setInvoiceTarget(null); setInvoiceForm({ number: "", amount: "", date: "", notes: "" }); } }}
+        onClose={() => {
+          if (!savingInvoice) {
+            setInvoiceTarget(null);
+            setInvoiceForm({ number: "", amount: "", date: "", notes: "" });
+            resetXmlState();
+          }
+        }}
         title="Registrar factura"
         subtitle={invoiceTarget ? `OC ${invoiceTarget.folio}` : undefined}
-        maxWidth="480px"
+        maxWidth="580px"
       >
         {invoiceTarget ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+
+            {/* ── Sección XML del SAT ── */}
+            <div style={{
+              padding: "12px 14px", borderRadius: 10,
+              background: xmlUploaded ? "#f0fdf4" : "var(--bg-input)",
+              border: `1px solid ${xmlUploaded ? "#86efac" : "var(--border-default)"}`,
+            }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                <div>
+                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                    {xmlUploaded ? "✓ XML procesado" : "Subir XML del SAT"}
+                  </p>
+                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                    {xmlUploaded
+                      ? "Los campos se pre-llenaron automáticamente."
+                      : "Opcional — pre-llena los campos desde el comprobante fiscal."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => xmlFileInputRef.current?.click()}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: 6,
+                    padding: "8px 14px", borderRadius: 8, flexShrink: 0,
+                    border: `1px solid ${xmlUploaded ? "#22c55e" : "var(--border-strong)"}`,
+                    background: xmlUploaded ? "#dcfce7" : "var(--bg-card)",
+                    color: xmlUploaded ? "#166534" : "var(--text-secondary)",
+                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                  }}
+                >
+                  <Upload size={13} />
+                  {xmlUploaded ? "Reemplazar" : "Seleccionar XML"}
+                </button>
+              </div>
+
+              {/* RFC del emisor */}
+              {xmlUploaded && xmlRfcEmisor ? (() => {
+                const supplier = suppliers.find((s) => s.id === invoiceTarget.supplier_id);
+                const rfcMatch = Boolean(
+                  supplier?.tax_id &&
+                  supplier.tax_id.toUpperCase() === xmlRfcEmisor.toUpperCase()
+                );
+                return (
+                  <div style={{
+                    marginTop: 10, padding: "8px 10px", borderRadius: 8,
+                    background: rfcMatch ? "#dcfce7" : "#fefce8",
+                    border: `1px solid ${rfcMatch ? "#86efac" : "#fde047"}`,
+                    fontSize: 12,
+                    color: rfcMatch ? "#166534" : "#92400e",
+                  }}>
+                    RFC Emisor: <strong>{xmlRfcEmisor}</strong>
+                    {xmlNombreEmisor ? ` — ${xmlNombreEmisor}` : ""}
+                    {rfcMatch
+                      ? " ✓ Coincide con el proveedor"
+                      : ` (proveedor tiene: ${supplier?.tax_id ?? "sin RFC"})`}
+                  </div>
+                );
+              })() : null}
+
+              {/* Tabla de conceptos */}
+              {xmlUploaded && xmlConceptos.length > 0 ? (
+                <div style={{ marginTop: 10 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Conceptos del XML ({xmlConceptos.length})
+                  </p>
+                  <div style={{ border: "1px solid #bbf7d0", borderRadius: 8, overflow: "hidden" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ background: "#dcfce7" }}>
+                          <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 700, color: "#166534" }}>Descripción</th>
+                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>Cant.</th>
+                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>P. Unit.</th>
+                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>Importe</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {xmlConceptos.map((c, i) => (
+                          <tr key={i} style={{ borderTop: "1px solid #bbf7d0" }}>
+                            <td style={{ padding: "6px 10px", color: "var(--text-primary)" }}>{c.descripcion}</td>
+                            <td style={{ padding: "6px 10px", textAlign: "right", color: "var(--text-secondary)" }}>{c.cantidad}</td>
+                            <td style={{ padding: "6px 10px", textAlign: "right", color: "var(--text-secondary)" }}>
+                              {Number(c.valorUnitario) > 0
+                                ? `$${Number(c.valorUnitario).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                                : "—"}
+                            </td>
+                            <td style={{ padding: "6px 10px", textAlign: "right", color: "var(--text-primary)", fontWeight: 600 }}>
+                              {Number(c.importe) > 0
+                                ? `$${Number(c.importe).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`
+                                : "—"}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Separador */}
+            <div style={{ borderTop: "1px solid var(--border-default)", margin: "0 -4px" }} />
+
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Número de factura *</label>
               <input
@@ -2186,7 +2500,11 @@ export default function PurchasesPage() {
               <UiButton
                 type="button"
                 variant="secondary"
-                onClick={() => { setInvoiceTarget(null); setInvoiceForm({ number: "", amount: "", date: "", notes: "" }); }}
+                onClick={() => {
+                  setInvoiceTarget(null);
+                  setInvoiceForm({ number: "", amount: "", date: "", notes: "" });
+                  resetXmlState();
+                }}
                 disabled={savingInvoice}
               >
                 Cancelar

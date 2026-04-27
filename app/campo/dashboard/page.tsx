@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Sparkles, Ticket, Wrench } from "lucide-react";
+import { ShoppingCart, Sparkles, Ticket, Wrench } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -31,8 +31,9 @@ export default function CampoDashboardPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
 
-  const [openTickets,   setOpenTickets]   = useState<number | null>(null);
+  const [openTickets,    setOpenTickets]    = useState<number | null>(null);
   const [todayCleanings, setTodayCleanings] = useState<number | null>(null);
+  const [pendingOCs,     setPendingOCs]     = useState<number | null>(null);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -45,7 +46,7 @@ export default function CampoDashboardPage() {
     setLoadingData(true);
     const todayKey = DAY_KEYS[new Date().getDay()];
 
-    const [ticketsRes, buildingCleanRes, unitCleanRes] = await Promise.all([
+    const [ticketsRes, buildingCleanRes, unitCleanRes, ocRes] = await Promise.all([
       supabase
         .from("maintenance_logs")
         .select("id", { count: "exact", head: true })
@@ -67,10 +68,20 @@ export default function CampoDashboardPage() {
         .eq("day_of_week", todayKey)
         .eq("active", true)
         .is("deleted_at", null),
+
+      user?.id
+        ? supabase
+            .from("purchase_orders")
+            .select("id", { count: "exact", head: true })
+            .eq("responsible_user_id", user.id)
+            .eq("status", "sent")
+            .is("deleted_at", null)
+        : Promise.resolve({ count: 0 }),
     ]);
 
     setOpenTickets(ticketsRes.count ?? 0);
     setTodayCleanings((buildingCleanRes.count ?? 0) + (unitCleanRes.count ?? 0));
+    setPendingOCs((ocRes as { count: number | null }).count ?? 0);
     setLoadingData(false);
   }
 
@@ -189,6 +200,25 @@ export default function CampoDashboardPage() {
           </div>
         </div>
 
+        <div
+          style={metricCardStyle("green", "var(--metric-bg-green)", "var(--metric-border-green)")}
+          onClick={() => router.push("/campo/compras")}
+          role="button"
+          tabIndex={0}
+        >
+          <div style={metricIconStyle("var(--icon-bg-green)", "var(--icon-color-green)")}>
+            <ShoppingCart size={22} />
+          </div>
+          <div>
+            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+              OC por surtir
+            </p>
+            <p style={{ margin: "2px 0 0", fontSize: 28, fontWeight: 800, color: "var(--metric-value-green)", lineHeight: 1 }}>
+              {loadingData ? "—" : pendingOCs}
+            </p>
+          </div>
+        </div>
+
       </div>
 
       {/* ── Accesos rápidos ─────────────────────────────────────── */}
@@ -196,7 +226,7 @@ export default function CampoDashboardPage() {
         <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
           Accesos rápidos
         </p>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
 
           <a href="/campo/tickets" style={quickCardStyle}>
             <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-amber)", color: "var(--icon-color-amber)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -222,6 +252,15 @@ export default function CampoDashboardPage() {
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               Activos
+            </span>
+          </a>
+
+          <a href="/campo/compras" style={quickCardStyle}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <ShoppingCart size={20} />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+              OC
             </span>
           </a>
 
