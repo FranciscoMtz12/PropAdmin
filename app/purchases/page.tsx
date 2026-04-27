@@ -346,7 +346,7 @@ export default function PurchasesPage() {
       { data: buildingData                 },
       { data: companyData                  },
       { data: signerData                   },
-      { data: fieldUserData                },
+      { data: fieldUserData, error: fieldUserError },
     ] = await Promise.all([
       supabase
         .from("purchase_orders")
@@ -406,6 +406,7 @@ export default function PurchasesPage() {
       supabase
         .from("app_users")
         .select("id, full_name, phone, email")
+        .eq("company_id", companyId)
         .in("role", ["field", "mantenimiento"])
         .is("deleted_at", null)
         .order("full_name", { ascending: true }),
@@ -516,6 +517,7 @@ export default function PurchasesPage() {
     setSuppliers(suppliersMapped);
     setBuildings((buildingData as BuildingOption[]) || []);
     setSigners((signerData as Signer[]) || []);
+    console.log("fieldUsers raw:", fieldUserData, "error:", fieldUserError);
     setFieldUsers((fieldUserData as FieldUser[]) || []);
 
     if (companyData && "name" in companyData) {
