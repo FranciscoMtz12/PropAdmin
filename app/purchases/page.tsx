@@ -407,7 +407,6 @@ export default function PurchasesPage() {
         .select("id, full_name, email")
         .eq("company_id", companyId)
         .in("role", ["field", "mantenimiento"])
-        .is("deleted_at", null)
         .order("full_name", { ascending: true }),
     ]);
 
