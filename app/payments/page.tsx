@@ -2473,6 +2473,7 @@ const tableStyle: CSSProperties = {
   width: "100%",
   borderCollapse: "separate",
   borderSpacing: 0,
+  minWidth: 540,
 };
 
 const thStyle: CSSProperties = {

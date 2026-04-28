@@ -1712,6 +1712,7 @@ const expandedBodyStyle: CSSProperties = {
 const conceptsTableStyle: CSSProperties = {
   display: "grid",
   gap: 0,
+  overflowX: "auto",
 };
 
 const conceptsHeaderRowStyle: CSSProperties = {
@@ -1720,6 +1721,7 @@ const conceptsHeaderRowStyle: CSSProperties = {
   gap: 12,
   padding: "6px 8px",
   marginBottom: 4,
+  minWidth: 480,
 };
 
 const thStyle: CSSProperties = {
@@ -1737,6 +1739,7 @@ const conceptRowStyle: CSSProperties = {
   alignItems: "center",
   padding: "10px 8px",
   borderRadius: 10,
+  minWidth: 480,
 };
 
 const chargeIconWrapStyle: CSSProperties = {
