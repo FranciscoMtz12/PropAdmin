@@ -426,13 +426,13 @@ export default function AdminInvoicesPage() {
 
       <DeleteConfirmModal
         open={Boolean(deleteTarget)}
-        title="Archivar factura"
+        title="Eliminar factura"
         description={
           deleteTarget
-            ? `¿Archivar la factura ${deleteTarget.label}? Se archivarán también sus archivos PDF y XML. Esta acción conservará toda la información.`
+            ? `¿Eliminar la factura ${deleteTarget.label}? Se eliminarán también sus archivos PDF y XML. Esta acción conservará toda la información.`
             : ""
         }
-        confirmText={deleting ? "Archivando..." : "Archivar factura"}
+        confirmText={deleting ? "Eliminando..." : "Eliminar factura"}
         onConfirm={handleDeleteInvoice}
         onCancel={() => {
           if (deleting) return;

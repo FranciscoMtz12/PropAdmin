@@ -296,13 +296,13 @@ export default function InvoiceDetailPage() {
 
       <DeleteConfirmModal
         open={deleteOpen}
-        title="Archivar factura"
+        title="Eliminar factura"
         description={
           invoice
-            ? `¿Archivar la factura ${invoice.invoiceSeries !== "—" ? `${invoice.invoiceSeries}-` : ""}${invoice.invoiceFolio}? Se archivarán sus archivos PDF y XML. Esta acción conservará toda la información.`
+            ? `¿Eliminar la factura ${invoice.invoiceSeries !== "—" ? `${invoice.invoiceSeries}-` : ""}${invoice.invoiceFolio}? Se eliminarán sus archivos PDF y XML. Esta acción conservará toda la información.`
             : ""
         }
-        confirmText={deleting ? "Archivando..." : "Archivar factura"}
+        confirmText={deleting ? "Eliminando..." : "Eliminar factura"}
         onConfirm={handleDelete}
         onCancel={() => {
           if (deleting) return;

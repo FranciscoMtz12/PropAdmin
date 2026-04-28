@@ -13,7 +13,7 @@
     · Total edificios · Edificios al ≥75% · Ocupación promedio · Unidades portafolio
   - Se cargan units + leases ACTIVE para calcular ocupación real
 
-  Funcionalidad CRUD intacta: crear / editar / archivar edificio.
+  Funcionalidad CRUD intacta: crear / editar / eliminar edificio.
 */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -322,7 +322,7 @@ export default function BuildingsPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  /* Limpiar elegibilidad cuando se cierra modal de archivar */
+  /* Limpiar elegibilidad cuando se cierra modal de eliminar */
   useEffect(() => {
     if (!buildingToDelete) setDeleteError(null);
   }, [buildingToDelete]);
@@ -616,7 +616,7 @@ export default function BuildingsPage() {
       .eq("id", buildingToDelete.id)
       .eq("company_id", user.company_id);
     if (error) {
-      setDeleteError(`No se pudo archivar el edificio. ${error.message}`);
+      setDeleteError(`No se pudo eliminar el edificio. ${error.message}`);
       setDeleting(false);
       return;
     }
@@ -792,11 +792,11 @@ export default function BuildingsPage() {
                       }}
                     >
                       {/* Izquierda: nombre + dirección + badge */}
-                      <div className="building-card-info" style={{ minWidth: 0 }}>
+                      <div className="building-card-info" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                         <p
                           style={{
                             fontSize: 15,
-                            fontWeight: 500,
+                            fontWeight: 700,
                             color: "var(--text-primary)",
                             marginBottom: 4,
                             overflow: "hidden",
@@ -809,7 +809,7 @@ export default function BuildingsPage() {
                         <p
                           className="building-card-addr"
                           style={{
-                            fontSize: 12,
+                            fontSize: 11,
                             color: "var(--text-muted)",
                             marginBottom: 8,
                             overflow: "hidden",
@@ -823,10 +823,12 @@ export default function BuildingsPage() {
                       </div>
 
                       {/* Derecha: dona de ocupación */}
-                      <OccupancyDonut
-                        totalUnits={totalUnits}
-                        activeLeases={activeLeases}
-                      />
+                      <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+                        <OccupancyDonut
+                          totalUnits={totalUnits}
+                          activeLeases={activeLeases}
+                        />
+                      </div>
                     </div>
 
                     {/* DIVISOR */}
@@ -979,7 +981,7 @@ export default function BuildingsPage() {
                                 style={dropdownDeleteItemStyle}
                               >
                                 <Trash2 size={14} />
-                                Archivar
+                                Eliminar
                               </button>
                             </div>
                           )}
@@ -1191,16 +1193,16 @@ export default function BuildingsPage() {
         </form>
       </Modal>
 
-      {/* ── Modal de archivar ── */}
+      {/* ── Modal de eliminar ── */}
       <Modal
         open={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        title="Archivar edificio"
+        title="Eliminar edificio"
         maxWidth="480px"
       >
         <div style={{ display: "grid", gap: 16 }}>
           <div style={warnBannerStyle}>
-            ¿Archivar el edificio <strong>{buildingToDelete?.name}</strong>? Esta
+            ¿Eliminar el edificio <strong>{buildingToDelete?.name}</strong>? Esta
             acción lo ocultará del sistema pero conservará toda su información.
           </div>
 
@@ -1228,7 +1230,7 @@ export default function BuildingsPage() {
               disabled={deleting}
             >
               <Trash2 size={16} />
-              {deleting ? "Archivando..." : "Archivar edificio"}
+              {deleting ? "Eliminando..." : "Eliminar edificio"}
             </UiButton>
           </div>
         </div>

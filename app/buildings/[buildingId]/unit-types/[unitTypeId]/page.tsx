@@ -302,7 +302,7 @@ export default function UnitTypeDetailPage() {
       .eq("id", unitType.id)
       .eq("building_id", buildingId);
     if (error) {
-      setDeleteError(`No se pudo archivar la tipología. ${error.message}`);
+      setDeleteError(`No se pudo eliminar la tipología. ${error.message}`);
       setDeleting(false);
       return;
     }
@@ -388,7 +388,7 @@ export default function UnitTypeDetailPage() {
                     style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   >
                     <Trash2 size={14} />
-                    Archivar
+                    Eliminar
                   </button>
                 </div>
               )}
@@ -441,10 +441,10 @@ export default function UnitTypeDetailPage() {
         </SectionCard>
       </div>
 
-      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar tipología" maxWidth="480px">
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
-            ¿Archivar la tipología <strong>{unitType?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
+            ¿Eliminar la tipología <strong>{unitType?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
             <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
@@ -453,7 +453,7 @@ export default function UnitTypeDetailPage() {
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
             <UiButton type="button" onClick={() => void handleDeleteUnitType()} disabled={deleting}>
               <Trash2 size={16} />
-              {deleting ? "Archivando..." : "Archivar tipología"}
+              {deleting ? "Eliminando..." : "Eliminar tipología"}
             </UiButton>
           </div>
         </div>

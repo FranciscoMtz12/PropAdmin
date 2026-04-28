@@ -172,7 +172,7 @@ export default function UnitTypeAssetsPage() {
       .eq("id", assetToDelete.id);
 
     if (error) {
-      setDeleteError(`No se pudo archivar el equipo base. ${error.message}`);
+      setDeleteError(`No se pudo eliminar el equipo base. ${error.message}`);
       setDeleting(false);
       return;
     }
@@ -517,7 +517,7 @@ export default function UnitTypeAssetsPage() {
                           }}
                         >
                           <Trash2 size={14} />
-                          Archivar
+                          Eliminar
                         </button>
                       </div>
                     )}
@@ -532,7 +532,7 @@ export default function UnitTypeAssetsPage() {
       <Modal
         open={isDeleteModalOpen}
         onClose={closeDeleteModal}
-        title="Archivar equipo base"
+        title="Eliminar equipo base"
         maxWidth="480px"
       >
         <div style={{ display: "grid", gap: 16 }}>
@@ -548,7 +548,7 @@ export default function UnitTypeAssetsPage() {
               lineHeight: 1.5,
             }}
           >
-            ¿Archivar el equipo base <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará
+            ¿Eliminar el equipo base <strong>{assetToDelete?.name}</strong>? Esta acción lo ocultará
             del sistema pero conservará toda su información.
           </div>
 
@@ -575,7 +575,7 @@ export default function UnitTypeAssetsPage() {
             </UiButton>
             <UiButton type="button" onClick={() => void handleDeleteAsset()} disabled={deleting}>
               <Trash2 size={16} />
-              {deleting ? "Archivando..." : "Archivar equipo base"}
+              {deleting ? "Eliminando..." : "Eliminar equipo base"}
             </UiButton>
           </div>
         </div>

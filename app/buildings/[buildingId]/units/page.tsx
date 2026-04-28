@@ -251,7 +251,7 @@ export default function BuildingUnitsPage() {
   const createUnitNumber = createForm.watch("unitNumber");
   const createUnitTypeId = createForm.watch("unitTypeId");
 
-  /* Estado del modal de archivar */
+  /* Estado del modal de eliminar */
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [unitToDelete, setUnitToDelete]           = useState<UnitRow | null>(null);
   const [deleteError, setDeleteError]             = useState<string | null>(null);
@@ -574,7 +574,7 @@ export default function BuildingUnitsPage() {
       .eq("company_id", user.company_id);
 
     if (error) {
-      setDeleteError(`No se pudo archivar el departamento. ${error.message}`);
+      setDeleteError(`No se pudo eliminar el departamento. ${error.message}`);
       setDeleting(false);
       return;
     }
@@ -781,7 +781,7 @@ export default function BuildingUnitsPage() {
                       {openActionsUnitId === unit.id && (
                         <div style={dropdownMenuStyle}>
                           <button type="button" onClick={() => openEditModal(unit)}   style={dropdownActionButtonStyle}><Edit3 size={14} /> Editar</button>
-                          <button type="button" onClick={() => openDeleteModal(unit)} style={dropdownDeleteItemStyle}><Trash2 size={14} /> Archivar</button>
+                          <button type="button" onClick={() => openDeleteModal(unit)} style={dropdownDeleteItemStyle}><Trash2 size={14} /> Eliminar</button>
                         </div>
                       )}
                     </div>
@@ -837,11 +837,11 @@ export default function BuildingUnitsPage() {
         </form>
       </Modal>
 
-      {/* ── Modal: archivar ── */}
-      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Archivar departamento" maxWidth="480px">
+      {/* ── Modal: eliminar ── */}
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar departamento" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
           <div style={warnBannerStyle}>
-            ¿Archivar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo
+            ¿Eliminar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo
             ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? <div style={errorBannerStyle}>{deleteError}</div> : null}
@@ -851,7 +851,7 @@ export default function BuildingUnitsPage() {
             </UiButton>
             <UiButton type="button" onClick={() => void handleDeleteUnit()} disabled={deleting}>
               <Trash2 size={16} />
-              {deleting ? "Archivando..." : "Archivar departamento"}
+              {deleting ? "Eliminando..." : "Eliminar departamento"}
             </UiButton>
           </div>
         </div>

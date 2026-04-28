@@ -597,11 +597,11 @@ export default function ReportePagosPage() {
     }
   });
 
-  /* ── Archivar ──────────────────────────────────────────────── */
+  /* ── Eliminar ──────────────────────────────────────────────── */
 
   async function handleArchive(report: PaymentReport) {
     if (!user?.company_id) return;
-    if (!window.confirm(`¿Archivar el reporte ${report.folio}? Esta acción libera las OCs incluidas para que puedan reportarse de nuevo.`)) return;
+    if (!window.confirm(`¿Eliminar el reporte ${report.folio}? Esta acción libera las OCs incluidas para que puedan reportarse de nuevo.`)) return;
 
     setArchivingId(report.id);
 
@@ -612,7 +612,7 @@ export default function ReportePagosPage() {
       .eq("id", report.id);
     if (err1) {
       setArchivingId(null);
-      setError(`No se pudo archivar: ${err1.message}`);
+      setError(`No se pudo eliminar: ${err1.message}`);
       return;
     }
 
@@ -1021,7 +1021,7 @@ export default function ReportePagosPage() {
                           }}
                         >
                           <Trash2 size={14} />
-                          {archivingId === r.id ? "Archivando..." : "Archivar"}
+                          {archivingId === r.id ? "Eliminando..." : "Eliminar"}
                         </button>
                       </div>
                     </div>

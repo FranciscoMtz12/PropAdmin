@@ -26,6 +26,7 @@ import {
 } from "recharts";
 import {
   Archive,
+  ArrowLeft,
   Building2,
   CreditCard,
   Droplets,
@@ -666,7 +667,7 @@ export default function BuildingDetailPage() {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", building.id)
       .eq("company_id", user.company_id);
-    if (error) { setMsg(`No se pudo archivar el edificio. ${error.message}`); setDeletingBuilding(false); return; }
+    if (error) { setMsg(`No se pudo eliminar el edificio. ${error.message}`); setDeletingBuilding(false); return; }
     setDeletingBuilding(false);
     setIsDeleteModalOpen(false);
     router.push("/buildings");
@@ -770,7 +771,7 @@ export default function BuildingDetailPage() {
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", selectedAsset.id);
     setSavingAsset(false);
-    if (error) { setAssetModalMsg(`Error al archivar el asset: ${error.message}`); return; }
+    if (error) { setAssetModalMsg(`Error al eliminar el asset: ${error.message}`); return; }
     setAssetArchiveOpen(false);
     await loadBuilding();
   }
@@ -791,12 +792,66 @@ export default function BuildingDetailPage() {
         titleIcon={<Building2 size={20} />}
         subtitle="Vista general del inmueble — ocupación, cobranza y tendencia."
         actions={
-          <>
-            <UiButton href="/buildings">Volver a edificios</UiButton>
-            <UiButton onClick={openEditModal}><Pencil size={16} /> Editar edificio</UiButton>
-            <UiButton onClick={() => setIsDeleteModalOpen(true)}><Trash2 size={16} /> Archivar edificio</UiButton>
-            <UiButton href={`/buildings/${building.id}/units`} variant="primary">Departamentos</UiButton>
-          </>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {/* Volver */}
+            <a
+              href="/buildings"
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 4, padding: "10px 12px", borderRadius: 10,
+                border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                color: "var(--text-primary)", cursor: "pointer", textDecoration: "none",
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <ArrowLeft size={18} />
+              <span>Volver</span>
+            </a>
+            {/* Editar */}
+            <button
+              type="button"
+              onClick={openEditModal}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 4, padding: "10px 12px", borderRadius: 10,
+                border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                color: "var(--text-primary)", cursor: "pointer",
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <Pencil size={18} />
+              <span>Editar</span>
+            </button>
+            {/* Departamentos */}
+            <a
+              href={`/buildings/${building.id}/units`}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 4, padding: "10px 12px", borderRadius: 10,
+                border: "1px solid var(--accent)", background: "var(--accent)",
+                color: "#ffffff", cursor: "pointer", textDecoration: "none",
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <Layers3 size={18} />
+              <span>Deptos</span>
+            </a>
+            {/* Eliminar */}
+            <button
+              type="button"
+              onClick={() => setIsDeleteModalOpen(true)}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 4, padding: "10px 12px", borderRadius: 10,
+                border: "1px solid #dc2626", background: "transparent",
+                color: "#dc2626", cursor: "pointer",
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <Trash2 size={18} />
+              <span>Eliminar</span>
+            </button>
+          </div>
         }
       />
 
@@ -1172,7 +1227,7 @@ export default function BuildingDetailPage() {
                                   <Edit3 size={14} /> Editar
                                 </button>
                                 <button type="button" style={dropdownDeleteItemStyle} onClick={() => openArchiveAssetModal(asset)}>
-                                  <Archive size={14} /> Archivar
+                                  <Archive size={14} /> Eliminar
                                 </button>
                               </div>
                             )}
@@ -1344,22 +1399,22 @@ export default function BuildingDetailPage() {
         </form>
       </Modal>
 
-      {/* ── Modal archivar asset ── */}
+      {/* ── Modal eliminar asset ── */}
       <DeleteConfirmModal
         open={assetArchiveOpen}
-        title="Archivar asset"
-        description={selectedAsset ? `¿Archivar "${selectedAsset.name}"? El registro se ocultará pero se conserva en la base de datos.` : "¿Archivar este asset?"}
-        confirmText={savingAsset ? "Archivando..." : "Archivar asset"}
+        title="Eliminar asset"
+        description={selectedAsset ? `¿Eliminar "${selectedAsset.name}"? El registro se ocultará pero se conserva en la base de datos.` : "¿Eliminar este asset?"}
+        confirmText={savingAsset ? "Eliminando..." : "Eliminar asset"}
         onConfirm={() => void handleArchiveAsset()}
         onCancel={() => { if (!savingAsset) setAssetArchiveOpen(false); }}
       />
 
-      {/* ── Modal archivar edificio ── */}
+      {/* ── Modal eliminar edificio ── */}
       <DeleteConfirmModal
         open={isDeleteModalOpen}
-        title="Archivar edificio"
-        description={building ? `¿Archivar ${building.name}? Esta acción lo ocultará del sistema pero conservará toda su información.` : "¿Archivar este edificio?"}
-        confirmText={deletingBuilding ? "Archivando..." : "Archivar edificio"}
+        title="Eliminar edificio"
+        description={building ? `¿Eliminar ${building.name}? Esta acción lo ocultará del sistema pero conservará toda su información.` : "¿Eliminar este edificio?"}
+        confirmText={deletingBuilding ? "Eliminando..." : "Eliminar edificio"}
         onConfirm={() => void handleDeleteBuilding()}
         onCancel={() => { if (!deletingBuilding) setIsDeleteModalOpen(false); }}
       />

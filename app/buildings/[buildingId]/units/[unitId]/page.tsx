@@ -1062,7 +1062,7 @@ export default function UnitDetailPage() {
 
     if (error) {
       setSaving(false);
-      setMsg(`No se pudo archivar el lease. ${error.message}`);
+      setMsg(`No se pudo eliminar el lease. ${error.message}`);
       return;
     }
 
@@ -1508,7 +1508,7 @@ export default function UnitDetailPage() {
                             onClick={() => openDeleteLeaseModal(lease)}
                             icon={<Trash2 size={16} />}
                           >
-                            Archivar lease
+                            Eliminar lease
                           </UiButton>
                         </div>
                       </div>
@@ -1663,7 +1663,7 @@ export default function UnitDetailPage() {
                             onClick={() => openDeleteLeaseModal(lease)}
                             icon={<Trash2 size={16} />}
                           >
-                            Archivar lease
+                            Eliminar lease
                           </UiButton>
                         </div>
                       </div>
@@ -2227,7 +2227,7 @@ export default function UnitDetailPage() {
       <Modal
         open={showDeleteLeaseModal}
         onClose={closeDeleteLeaseModal}
-        title="Archivar lease"
+        title="Eliminar lease"
       >
         <div style={{ display: "grid", gap: "16px" }}>
           <div
@@ -2243,12 +2243,12 @@ export default function UnitDetailPage() {
             }}
           >
             {leaseToDelete
-              ? `¿Archivar el lease de ${
+              ? `¿Eliminar el lease de ${
                   leaseToDelete.tenant_id
                     ? getTenantDisplayName(tenantsMap.get(leaseToDelete.tenant_id))
                     : "este inquilino"
                 } del cuarto ${leaseToDelete.room_number || "—"}? Esta acción lo ocultará del sistema pero conservará toda su información.`
-              : "¿Archivar este lease? Esta acción lo ocultará del sistema pero conservará toda su información."}
+              : "¿Eliminar este lease? Esta acción lo ocultará del sistema pero conservará toda su información."}
           </div>
 
           <div
@@ -2274,7 +2274,7 @@ export default function UnitDetailPage() {
               disabled={saving || !leaseToDelete}
             >
               <Trash2 size={16} />
-              {saving ? "Archivando..." : "Archivar lease"}
+              {saving ? "Eliminando..." : "Eliminar lease"}
             </UiButton>
           </div>
         </div>

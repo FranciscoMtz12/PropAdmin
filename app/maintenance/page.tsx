@@ -2115,7 +2115,7 @@ function TicketCard({
                     style={dropdownDeleteItemStyle}
                     onClick={(e) => { e.stopPropagation(); onArchive(ticket.id); }}
                   >
-                    <Trash2 size={14} /> Archivar
+                    <Trash2 size={14} /> Eliminar
                   </button>
                 </div>
               </>

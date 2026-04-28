@@ -334,14 +334,14 @@ export default function SuppliersPage() {
   async function handleArchive(id: string) {
     if (!user?.company_id) return;
     setOpenMenuId(null);
-    if (!window.confirm("¿Archivar este proveedor?")) return;
+    if (!window.confirm("¿Eliminar este proveedor?")) return;
 
     const { error } = await supabase
       .from("suppliers")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id);
 
-    if (error) { setMsg("No se pudo archivar el proveedor."); return; }
+    if (error) { setMsg("No se pudo eliminar el proveedor."); return; }
     setMsg("Proveedor archivado correctamente.");
     void loadSuppliers(user.company_id);
   }
@@ -367,12 +367,12 @@ export default function SuppliersPage() {
   }
 
   async function handleArchiveBranch(branchId: string) {
-    if (!window.confirm("¿Archivar esta sucursal?")) return;
+    if (!window.confirm("¿Eliminar esta sucursal?")) return;
     const { error } = await supabase
       .from("supplier_branches")
       .update({ active: false, deleted_at: new Date().toISOString() })
       .eq("id", branchId);
-    if (error) { setMsg("No se pudo archivar la sucursal."); return; }
+    if (error) { setMsg("No se pudo eliminar la sucursal."); return; }
     if (user?.company_id) void loadSuppliers(user.company_id);
   }
 
@@ -611,7 +611,7 @@ export default function SuppliersPage() {
                         </button>
                         <button type="button" onClick={() => handleArchive(s.id)}
                           style={menuBtnStyle(true)}>
-                          Archivar
+                          Eliminar
                         </button>
                       </div>
                     ) : null}
@@ -1046,7 +1046,7 @@ export default function SuppliersPage() {
                           <button
                             type="button"
                             onClick={() => handleArchiveBranch(b.id)}
-                            aria-label="Archivar sucursal"
+                            aria-label="Eliminar sucursal"
                             style={{
                               width: 28, height: 28, borderRadius: 6,
                               border: "1px solid var(--border-default)",

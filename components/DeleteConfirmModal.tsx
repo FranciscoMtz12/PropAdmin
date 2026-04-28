@@ -18,7 +18,7 @@ export default function DeleteConfirmModal({
   open,
   title,
   description,
-  confirmText = "Archivar",
+  confirmText = "Eliminar",
   cancelText = "Cancelar",
   onConfirm,
   onCancel,

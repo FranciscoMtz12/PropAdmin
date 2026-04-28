@@ -549,7 +549,7 @@ export default function TenantsPage() {
 
     if (error) {
       setDeleting(false);
-      setMessage(`No se pudo archivar el inquilino. ${error.message}`);
+      setMessage(`No se pudo eliminar el inquilino. ${error.message}`);
       return;
     }
 
@@ -919,7 +919,7 @@ export default function TenantsPage() {
                           style={dropdownDeleteItemStyle}
                         >
                           <Trash2 size={14} />
-                          Archivar
+                          Eliminar
                         </button>
                       </motion.div>
                     ) : null}
@@ -1073,7 +1073,7 @@ export default function TenantsPage() {
       <Modal
         open={showDeleteModal}
         onClose={closeDeleteModal}
-        title="Archivar inquilino"
+        title="Eliminar inquilino"
       >
         <div style={{ display: "grid", gap: 16 }}>
           <div
@@ -1088,7 +1088,7 @@ export default function TenantsPage() {
               lineHeight: 1.5,
             }}
           >
-            ¿Archivar a{" "}
+            ¿Eliminar a{" "}
             <strong>{tenantToDelete?.fullName ?? "este inquilino"}</strong>?
             Esta acción lo ocultará del sistema pero conservará toda su
             información.
@@ -1116,7 +1116,7 @@ export default function TenantsPage() {
               disabled={deleting}
             >
               <Trash2 size={16} />
-              {deleting ? "Archivando..." : "Archivar inquilino"}
+              {deleting ? "Eliminando..." : "Eliminar inquilino"}
             </UiButton>
           </div>
         </div>

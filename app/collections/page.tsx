@@ -672,7 +672,7 @@ export default function CollectionsPage() {
     toast.success("Monto capturado correctamente.");
   });
 
-  // ── Archivar cobro ────────────────────────────────────────────────────────────
+  // ── Eliminar cobro ────────────────────────────────────────────────────────────
 
   async function handleDeleteRecord() {
     if (!deleteRecordId || !user?.company_id) return;
@@ -688,7 +688,7 @@ export default function CollectionsPage() {
     setDeleteRecordId(null);
 
     if (error) {
-      toast.error(`No se pudo archivar: ${error.message}`);
+      toast.error(`No se pudo eliminar: ${error.message}`);
       return;
     }
 
@@ -1361,16 +1361,16 @@ export default function CollectionsPage() {
         </form>
       </Modal>
 
-      {/* ── Modal: Archivar cobro ── */}
+      {/* ── Modal: Eliminar cobro ── */}
       <Modal
         open={Boolean(deleteRecordId)}
-        title="Archivar cobro"
+        title="Eliminar cobro"
         onClose={() => { if (!deletingRecord) setDeleteRecordId(null); }}
       >
         {deleteRecord ? (
           <div style={{ display: "grid", gap: 16 }}>
             <div style={warningBoxStyle}>
-              ¿Archivar el cobro de{" "}
+              ¿Eliminar el cobro de{" "}
               <strong>{formatCurrency(deleteRecord.amount_due)}</strong> con vencimiento{" "}
               <strong>{formatDate(deleteRecord.due_date)}</strong>? Esta acción lo ocultará del
               sistema pero conservará su información.
@@ -1378,7 +1378,7 @@ export default function CollectionsPage() {
             <div style={modalFooterStyle}>
               <UiButton variant="secondary" onClick={() => setDeleteRecordId(null)} disabled={deletingRecord}>Cancelar</UiButton>
               <UiButton onClick={handleDeleteRecord} disabled={deletingRecord} icon={<Trash2 size={15} />}>
-                {deletingRecord ? "Archivando..." : "Archivar cobro"}
+                {deletingRecord ? "Eliminando..." : "Eliminar cobro"}
               </UiButton>
             </div>
           </div>
