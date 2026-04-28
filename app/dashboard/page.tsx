@@ -62,7 +62,7 @@ type Unit = {
   display_code: string | null;
   unit_type_id: string | null;
   status: string;
-  bedrooms: number | null;
+  unit_types: { bedrooms: number | null } | { bedrooms: number | null }[] | null;
 };
 
 type UnitType = {
@@ -362,7 +362,7 @@ export default function DashboardPage() {
       /* Unidades — incluye unit_type_id para card de disponibles */
       supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code, unit_type_id, status, bedrooms")
+        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)")
         .eq("company_id", user.company_id)
         .is("deleted_at", null),
 
@@ -608,7 +608,12 @@ export default function DashboardPage() {
         id: u.id,
         unitLabel: u.display_code ?? u.unit_number ?? "—",
         buildingName: buildingMap.get(u.building_id)?.name ?? "—",
-        bedroomsLabel: u.bedrooms === 0 || u.bedrooms === null ? "Studio" : `${u.bedrooms} rec.`,
+        bedroomsLabel: (() => {
+          const ut = Array.isArray(u.unit_types) ? u.unit_types[0] : u.unit_types;
+          if (!ut || ut.bedrooms === null) return "—";
+          if (ut.bedrooms === 0) return "Studio";
+          return `${ut.bedrooms} rec.`;
+        })(),
       }));
   }, [units, leases, buildingMap, unitTypeMap]);
 
