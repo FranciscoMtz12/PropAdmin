@@ -611,3 +611,71 @@ a {
     border-bottom: 1px solid var(--border-default);
   }
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   PageHeader — título responsive
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .ph-title {
+    font-size: 22px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Pagos — stat bar 6 celdas → 3×2 en móvil; gráficas apiladas
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .pay-stat-bar {
+    display: grid !important;
+    grid-template-columns: repeat(3, 1fr) !important;
+    overflow: visible !important;
+  }
+  .pay-stat-bar > div {
+    border-right: 1px solid var(--border-default) !important;
+    border-bottom: 1px solid var(--border-default) !important;
+    flex: none !important;
+  }
+  .pay-stat-bar > div:nth-child(3n) {
+    border-right: none !important;
+  }
+  .pay-stat-bar > div:nth-child(n+4) {
+    border-bottom: none !important;
+  }
+  .pay-charts-row {
+    flex-direction: column !important;
+  }
+  .pay-charts-row > div {
+    width: 100% !important;
+    flex-shrink: 1 !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Calendario — controles responsive
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .cal-controls-outer {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .cal-nav-btns {
+    flex-wrap: nowrap !important;
+  }
+  /* En móvil los UiButton de nav muestran solo el ícono */
+  .cal-nav-btns button span:last-child,
+  .cal-nav-btns a span:last-child {
+    display: none !important;
+  }
+  .cal-nav-btns button,
+  .cal-nav-btns a {
+    padding: 8px 10px !important;
+  }
+  .cal-building-select {
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+}

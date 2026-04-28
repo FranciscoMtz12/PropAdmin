@@ -37,6 +37,7 @@ export default function UiButton({
     alignItems: "center",
     justifyContent: "center",
     gap: "8px",
+    whiteSpace: "nowrap",
     border:
       variant === "primary"
         ? "1px solid var(--accent)"

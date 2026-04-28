@@ -1488,6 +1488,7 @@ export default function CalendarPage() {
         <AppCard>
           <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
             <div
+              className="cal-controls-outer"
               style={{
                 display: "flex",
                 flexWrap: "wrap",
@@ -1503,6 +1504,7 @@ export default function CalendarPage() {
               </div>
 
               <div
+                className="cal-nav-btns"
                 style={{
                   display: "flex",
                   flexWrap: "wrap",
@@ -1571,6 +1573,7 @@ export default function CalendarPage() {
               <select
                 value={selectedBuildingId}
                 onChange={(e) => setSelectedBuildingId(e.target.value)}
+                className="cal-building-select"
                 style={{
                   minWidth: 240,
                   padding: "10px 12px",

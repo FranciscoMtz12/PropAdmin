@@ -69,6 +69,7 @@ export default function PageHeader({
 
             <div>
               <h1
+                className="ph-title"
                 style={{
                   fontSize: "38px",
                   fontWeight: 700,

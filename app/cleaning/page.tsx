@@ -907,7 +907,7 @@ export default function CleaningPage() {
       />
 
       {/* Tabs pills + navegador de semana */}
-      <div style={{ display: "flex", alignItems: "center", marginBottom: 16, gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 16, gap: 8, flexWrap: "wrap" }}>
         {([
           { k: "week", label: "Semana" },
           { k: "by_building", label: "Por edificio" },
@@ -938,7 +938,7 @@ export default function CleaningPage() {
         {tab === "week" && (
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setWeekOffset((o) => o - 1)} style={navBtnStyle}><ChevronLeft size={16} /></button>
-            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)", minWidth: 200, textAlign: "center" }}>
+            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)", minWidth: 120, textAlign: "center" }}>
               {formatWeekRange(weekMonday)}
             </span>
             <button onClick={() => setWeekOffset((o) => o + 1)} style={navBtnStyle}><ChevronRight size={16} /></button>

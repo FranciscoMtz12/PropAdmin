@@ -1364,7 +1364,7 @@ export default function PaymentsPage() {
 
       {message ? <div style={inlineErrorStyle}>{message}</div> : null}
 
-      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+      <div className="pay-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
         {[
           { label:"Registros", value:totalRecords, sub:"total" },
           { label:"Pendiente", value:`$${pendingAmount.toLocaleString("es-MX",{minimumFractionDigits:2})}`, sub:"no pagado", color:"#F59E0B" },
@@ -1381,7 +1381,7 @@ export default function PaymentsPage() {
         ))}
       </div>
 
-      <div style={{ display:"flex", gap:"1rem", marginBottom:"1rem", alignItems:"stretch" }}>
+      <div className="pay-charts-row" style={{ display:"flex", gap:"1rem", marginBottom:"1rem", alignItems:"stretch" }}>
         {donutData.length > 0 && (
           <div style={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, padding:"1rem", width:240, flexShrink:0 }}>
             <div style={{ fontSize:10, fontWeight:600, color:"var(--text-secondary)", letterSpacing:"0.5px", marginBottom:".75rem" }}>GASTO POR CATEGORÍA</div>
