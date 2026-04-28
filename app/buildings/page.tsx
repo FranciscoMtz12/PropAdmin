@@ -766,8 +766,8 @@ export default function BuildingsPage() {
                     transform: isHovered ? "translateY(-2px)" : "translateY(0)",
                     transition: "transform 0.15s ease",
                     borderRadius: 16,
+                    overflow: "hidden",
                     position: "relative",
-                    /* Elevar sobre cards vecinas cuando el dropdown está abierto */
                     zIndex: openActionsBuildingId === building.id ? 100 : 1,
                   }}
                 >
@@ -806,8 +806,9 @@ export default function BuildingsPage() {
                           {building.name}
                         </p>
                         <p
+                          className="building-card-addr"
                           style={{
-                            fontSize: 11,
+                            fontSize: 12,
                             color: "var(--text-muted)",
                             marginBottom: 8,
                             overflow: "hidden",

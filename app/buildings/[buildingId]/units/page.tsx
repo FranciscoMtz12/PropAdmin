@@ -679,7 +679,12 @@ export default function BuildingUnitsPage() {
               const totalRooms    = isByRoom ? (typeInfo?.bedrooms ?? 1) : undefined;
 
               return (
-                <AppCard key={unit.id} style={{ padding: 16, position: "relative" }}>
+                <div
+                  key={unit.id}
+                  onClick={() => router.push(`/buildings/${building.id}/units/${unit.id}`)}
+                  style={{ cursor: "pointer" }}
+                >
+                <AppCard style={{ padding: 16, position: "relative" }}>
                   {/* Mini dona — esquina superior derecha */}
                   <div style={{ position: "absolute", top: 12, right: 12 }}>
                     <MiniStatusRing status={unit.status} occupiedRooms={occupiedRooms} totalRooms={totalRooms} />
@@ -757,7 +762,10 @@ export default function BuildingUnitsPage() {
                   <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
 
                   {/* Acciones */}
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <div
+                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     <UiButton href={`/buildings/${building.id}/units/${unit.id}`}>Ver</UiButton>
 
                     <div
@@ -781,6 +789,7 @@ export default function BuildingUnitsPage() {
                     </div>
                   </div>
                 </AppCard>
+                </div>
               );
             })}
           </div>

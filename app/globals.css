@@ -700,6 +700,28 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   AppTabs — scrollbar horizontal oculto (scroll suave sin barra)
+   ════════════════════════════════════════════════════════════════════ */
+
+.app-tabs-container::-webkit-scrollbar {
+  display: none;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Buildings — cards portafolio en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .buildings-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  .building-card-addr {
+    font-size: 12px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
    AppCard / SectionCard — padding lateral reducido en móvil
    ════════════════════════════════════════════════════════════════════ */
 

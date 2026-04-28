@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 /*
   Tabs horizontales reutilizables para PropAdmin.
@@ -33,13 +33,15 @@ export default function AppTabs({
 
   return (
     <div
+      className="app-tabs-container"
       style={{
         display: "flex",
         gap: "8px",
         borderBottom: "1px solid var(--border-default)",
         paddingBottom: "6px",
         overflowX: "auto",
-      }}
+        scrollbarWidth: "none",
+      } as CSSProperties}
     >
       {normalizedTabs.map((item) => {
         const isActive = item.key === activeKey;
