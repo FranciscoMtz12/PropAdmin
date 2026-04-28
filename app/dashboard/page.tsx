@@ -1161,8 +1161,16 @@ export default function DashboardPage() {
             />
           ) : (
             <div className="dashboard-chart-wrap">
+              <div className="dashboard-chart-legend">
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                  <span style={{ color: "#22c55e" }}>●</span> Cobrado
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                  <span style={{ color: "#f97316" }}>●</span> Pendiente
+                </span>
+              </div>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={barChartData} barGap={4} barCategoryGap="28%">
+                <BarChart data={barChartData} barGap={4} barCategoryGap="28%" margin={{ top: 5, right: 10, bottom: 20, left: 0 }}>
                   <CartesianGrid vertical={false} stroke={c.chartGrid} />
                   <XAxis
                     dataKey="mes"
@@ -1182,14 +1190,6 @@ export default function DashboardPage() {
                   <Bar dataKey="Pendiente" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
-              <div className="dashboard-chart-legend">
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-                  <span style={{ color: "#22c55e" }}>●</span> Cobrado
-                </span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-                  <span style={{ color: "#f97316" }}>●</span> Pendiente
-                </span>
-              </div>
             </div>
           )}
         </SectionCard>

@@ -507,10 +507,18 @@ a {
     border-bottom: 1px solid var(--border-default);
   }
   .dashboard-accesos { grid-template-columns: repeat(2, 1fr) !important; }
-  .dashboard-chart-wrap .recharts-responsive-container { height: 200px !important; }
+  .dashboard-chart-wrap { margin-bottom: 0; }
+  .dashboard-chart-wrap .recharts-responsive-container {
+    height: 220px !important;
+    min-height: 220px !important;
+  }
   .dashboard-chart-wrap .recharts-legend-wrapper {
     display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
     position: static !important; width: auto !important;
+  }
+  .dashboard-chart-legend {
+    margin-bottom: 8px;
+    margin-top: 0;
   }
   .dashboard-units-table { overflow-x: hidden !important; }
   .dashboard-units-table table { min-width: 0 !important; width: 100% !important; }
