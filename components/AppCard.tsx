@@ -21,7 +21,7 @@ export default function AppCard({
 }) {
   return (
     <div
-      className={className}
+      className={["app-card", className].filter(Boolean).join(" ")}
       style={{
         border: "1px solid var(--border-default)",
         borderRadius: 16,

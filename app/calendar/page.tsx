@@ -676,6 +676,14 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [dayEventsModal, setDayEventsModal] = useState<DayEventsModalState | null>(null);
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   useEffect(() => {
     if (loading) return;
     if (!user?.company_id) return;
@@ -1608,128 +1616,231 @@ export default function CalendarPage() {
             </div>
 
             {viewMode === "week" ? (
-              <div
-                className="cal-week-grid"
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
-                  gap: 16,
-                }}
-              >
-                {weekDays.map((day) => {
-                  const dayEvents = weekEventsByDay.get(day.key) || [];
-
-                  return (
-                    <div
-                      key={day.key}
-                      style={{
-                        border: "1px solid var(--border-default)",
-                        borderRadius: 16,
-                        padding: 14,
-                        background: "var(--bg-card)",
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 14,
-                        minHeight: 280,
-                      }}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+              isMobile ? (
+                /* ── Móvil: lista de días ────────────────────────────── */
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {weekDays.map((day) => {
+                    const dayEvents = weekEventsByDay.get(day.key) || [];
+                    const isToday = day.isoDate === todayIsoKey;
+                    return (
+                      <div
+                        key={day.key}
+                        style={{
+                          borderRadius: 12,
+                          border: `1px solid ${isToday ? "var(--accent)" : "var(--border-default)"}`,
+                          overflow: "hidden",
+                          background: "var(--bg-card)",
+                        }}
+                      >
+                        {/* Cabecera del día */}
                         <div
                           style={{
-                            fontSize: 14,
-                            fontWeight: 800,
-                            color: "var(--text-primary)",
+                            padding: "8px 12px",
+                            background: isToday ? "var(--accent)" : "var(--bg-table-header)",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
                           }}
                         >
-                          {day.label}
+                          <span
+                            style={{
+                              fontWeight: 700,
+                              fontSize: 13,
+                              color: isToday ? "#fff" : "var(--text-primary)",
+                            }}
+                          >
+                            {day.label}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: 12,
+                              color: isToday ? "rgba(255,255,255,0.75)" : "var(--text-muted)",
+                            }}
+                          >
+                            {day.shortDate}
+                          </span>
                         </div>
-
-                        <div
-                          style={{
-                            fontSize: 12,
-                            fontWeight: 600,
-                            color: "var(--text-muted)",
-                          }}
-                        >
-                          {day.shortDate}
-                        </div>
-                      </div>
-
-                      {dayEvents.length === 0 ? (
-                        <div
-                          style={{
-                            borderRadius: 12,
-                            padding: "10px 10px",
-                            background: "var(--bg-card-hover)",
-                            border: "1px dashed #D1D5DB",
-                            fontSize: 12,
-                            color: "var(--text-muted)",
-                            fontWeight: 600,
-                          }}
-                        >
-                          Sin eventos
-                        </div>
-                      ) : (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {dayEvents.map((event) => (
-                            <button
-                              key={`${event.id}-${day.isoDate}`}
-                              type="button"
-                              onMouseEnter={(e) =>
-                                handleEventMouseEnter(event, e.currentTarget)
-                              }
-                              onMouseLeave={handleEventMouseLeave}
-                              onClick={() => {
-                                setHoveredEvent(null);
-                                setSelectedEvent(event);
-                              }}
-                              style={{
-                                borderRadius: 10,
-                                padding: "7px 8px",
-                                background: event.colorBackground,
-                                border: `1px solid ${event.colorBorder}`,
-                                display: "flex",
-                                alignItems: "center",
-                                gap: 7,
-                                width: "100%",
-                                cursor: "pointer",
-                                textAlign: "left",
-                                minHeight: 34,
-                              }}
-                            >
-                              <span
+                        {/* Eventos del día */}
+                        {dayEvents.length === 0 ? (
+                          <div
+                            style={{
+                              padding: "8px 12px",
+                              fontSize: 12,
+                              color: "var(--text-muted)",
+                            }}
+                          >
+                            Sin eventos
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              padding: "8px 10px",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 5,
+                            }}
+                          >
+                            {dayEvents.map((event) => (
+                              <button
+                                key={`${event.id}-${day.isoDate}`}
+                                type="button"
+                                onClick={() => {
+                                  setHoveredEvent(null);
+                                  setSelectedEvent(event);
+                                }}
                                 style={{
-                                  color: event.colorText,
-                                  display: "inline-flex",
+                                  borderRadius: 8,
+                                  padding: "7px 10px",
+                                  background: event.colorBackground,
+                                  border: `1px solid ${event.colorBorder}`,
+                                  display: "flex",
                                   alignItems: "center",
-                                  justifyContent: "center",
-                                  flexShrink: 0,
+                                  gap: 7,
+                                  width: "100%",
+                                  cursor: "pointer",
+                                  textAlign: "left",
                                 }}
                               >
-                                {getEventIcon(event)}
-                              </span>
+                                <span
+                                  style={{
+                                    color: event.colorText,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {getEventIcon(event)}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                    color: event.colorText,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    flex: 1,
+                                  }}
+                                >
+                                  {event.compactLabel}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                /* ── Desktop: grid de columnas ───────────────────────── */
+                <div
+                  className="cal-week-grid"
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+                    gap: 16,
+                  }}
+                >
+                  {weekDays.map((day) => {
+                    const dayEvents = weekEventsByDay.get(day.key) || [];
 
-                              <span
+                    return (
+                      <div
+                        key={day.key}
+                        style={{
+                          border: "1px solid var(--border-default)",
+                          borderRadius: 16,
+                          padding: 14,
+                          background: "var(--bg-card)",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: 14,
+                          minHeight: 280,
+                        }}
+                      >
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>
+                            {day.label}
+                          </div>
+                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>
+                            {day.shortDate}
+                          </div>
+                        </div>
+
+                        {dayEvents.length === 0 ? (
+                          <div
+                            style={{
+                              borderRadius: 12,
+                              padding: "10px 10px",
+                              background: "var(--bg-card-hover)",
+                              border: "1px dashed #D1D5DB",
+                              fontSize: 12,
+                              color: "var(--text-muted)",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Sin eventos
+                          </div>
+                        ) : (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                            {dayEvents.map((event) => (
+                              <button
+                                key={`${event.id}-${day.isoDate}`}
+                                type="button"
+                                onMouseEnter={(e) => handleEventMouseEnter(event, e.currentTarget)}
+                                onMouseLeave={handleEventMouseLeave}
+                                onClick={() => {
+                                  setHoveredEvent(null);
+                                  setSelectedEvent(event);
+                                }}
                                 style={{
-                                  fontSize: 11,
-                                  fontWeight: 800,
-                                  color: event.colorText,
-                                  overflow: "hidden",
-                                  textOverflow: "ellipsis",
-                                  whiteSpace: "nowrap",
-                                  flex: 1,
+                                  borderRadius: 10,
+                                  padding: "7px 8px",
+                                  background: event.colorBackground,
+                                  border: `1px solid ${event.colorBorder}`,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 7,
+                                  width: "100%",
+                                  cursor: "pointer",
+                                  textAlign: "left",
+                                  minHeight: 34,
                                 }}
                               >
-                                {event.compactLabel}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+                                <span
+                                  style={{
+                                    color: event.colorText,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {getEventIcon(event)}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    fontWeight: 800,
+                                    color: event.colorText,
+                                    overflow: "hidden",
+                                    textOverflow: "ellipsis",
+                                    whiteSpace: "nowrap",
+                                    flex: 1,
+                                  }}
+                                >
+                                  {event.compactLabel}
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
             ) : null}
 
             {viewMode === "month" ? (

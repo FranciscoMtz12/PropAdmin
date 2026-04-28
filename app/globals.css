@@ -258,6 +258,16 @@ a {
    Mobile (<768px):    drawer off-canvas, botón hamburger
    ════════════════════════════════════════════════════════════════════ */
 
+/* Mobile: sin scrollbar horizontal + body overflow */
+@media (max-width: 767px) {
+  html, body {
+    overflow-x: hidden !important;
+  }
+  .main-content-wrapper {
+    overflow-x: hidden !important;
+  }
+}
+
 /* Mobile: drawer off-canvas */
 @media (max-width: 767px) {
   .sidebar-hamburger {
@@ -310,7 +320,7 @@ a {
     width: 100% !important;
   }
   .main-content-wrapper {
-    padding: 16px 14px 24px !important;
+    padding: 16px 6px 24px !important;
   }
 }
 
@@ -547,8 +557,8 @@ a {
     text-overflow: ellipsis;
   }
   .dashboard-grid-3,
-  .dashboard-grid-2 { gap: 12px !important; }
-  .main-content-wrapper { padding: 8px 8px 16px !important; }
+  .dashboard-grid-2 { gap: 8px !important; }
+  .main-content-wrapper { padding: 8px 6px 16px !important; }
 }
 
 /* Tablet */
@@ -677,5 +687,39 @@ a {
   .cal-building-select {
     min-width: 0 !important;
     width: 100% !important;
+  }
+  /* Mes: quitar min-width 560px en móvil */
+  .cal-month-wrap {
+    overflow-x: hidden !important;
+  }
+  .cal-month-header,
+  .cal-month-grid {
+    min-width: 0 !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   AppCard / SectionCard — padding lateral reducido en móvil
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .app-card {
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Gaps entre cards — 8px en móvil para todos los grids/flex
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .mod-grid-3,
+  .mod-grid-2 { gap: 8px !important; }
+  /* Grids genéricos con gap grande: reducir a 8px */
+  [style*="gap: 16px"],
+  [style*="gap: 24px"],
+  [style*="gap: 20px"] {
+    /* No sobrescribir con atributo selector — usar clases dedicadas */
   }
 }
