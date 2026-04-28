@@ -13,6 +13,8 @@ import {
   Building2,
   Home,
   Settings,
+  Trash2,
+  Edit3,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
@@ -282,6 +284,7 @@ export default function CleaningPage() {
 
   // Config: new schedule modal
   const [showCreateSchedule, setShowCreateSchedule] = useState(false);
+  const [editingSchedule, setEditingSchedule] = useState<{ id: string; source: "building" | "unit" } | null>(null);
   const scheduleForm = useForm<ScheduleValues>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: {
@@ -309,7 +312,9 @@ export default function CleaningPage() {
     setLoadingData(true);
 
     const today = new Date();
-    const monthStart = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().slice(0, 10);
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const historyStart = thirtyDaysAgo.toISOString().split("T")[0];
 
     const [bRes, uRes, bsRes, usRes, logsRes, chkRes] = await Promise.all([
       supabase
@@ -337,7 +342,7 @@ export default function CleaningPage() {
         .from("cleaning_logs")
         .select("id, building_id, unit_id, cleaning_type, scheduled_date, status, completed_at, completed_by, photo_url, notes")
         .eq("company_id", user.company_id)
-        .gte("scheduled_date", monthStart),
+        .gte("scheduled_date", historyStart),
       supabase
         .from("cleaning_checklist_items")
         .select("id, cleaning_type, label, sort_order")
@@ -739,6 +744,40 @@ export default function CleaningPage() {
   const onCreateSchedule = scheduleForm.handleSubmit(async (data) => {
     if (!user?.company_id) return;
 
+    if (editingSchedule) {
+      if (data.cleaning_type === "common_area") {
+        const { error } = await supabase
+          .from("cleaning_building_schedules")
+          .update({
+            building_id: data.building_id,
+            cleaning_type: denormalizeCleaningType(data.cleaning_type),
+            day_of_week: data.day_of_week,
+            time_block: data.time_block,
+          })
+          .eq("id", editingSchedule.id);
+        if (error) { console.error("schedule update failed", error); toast.error("No se pudo actualizar el horario."); return; }
+      } else {
+        const { error } = await supabase
+          .from("cleaning_unit_schedules")
+          .update({
+            building_id: data.building_id,
+            unit_id: data.unit_id,
+            day_of_week: data.day_of_week,
+            start_time: data.start_time,
+            duration_hours: data.duration_hours,
+            frequency: data.frequency,
+          })
+          .eq("id", editingSchedule.id);
+        if (error) { console.error("schedule update failed", error); toast.error("No se pudo actualizar el horario."); return; }
+      }
+      toast.success("Horario actualizado.");
+      scheduleForm.reset();
+      setShowCreateSchedule(false);
+      setEditingSchedule(null);
+      await loadData();
+      return;
+    }
+
     if (data.cleaning_type === "common_area") {
       const { error } = await supabase.from("cleaning_building_schedules").insert({
         company_id: user.company_id,
@@ -775,6 +814,60 @@ export default function CleaningPage() {
     setShowCreateSchedule(false);
     await loadData();
   });
+
+  async function deleteSchedule(id: string, source: "building" | "unit") {
+    if (!window.confirm("¿Eliminar este horario?")) return;
+    const table = source === "building" ? "cleaning_building_schedules" : "cleaning_unit_schedules";
+    const { error } = await supabase.from(table).delete().eq("id", id);
+    if (error) { console.error("schedule delete failed", error); toast.error("No se pudo eliminar el horario."); return; }
+    toast.success("Horario eliminado.");
+    await loadData();
+  }
+
+  function openEditSchedule(s: BuildingSchedule | UnitSchedule, source: "building" | "unit") {
+    setEditingSchedule({ id: s.id, source });
+    if (source === "building") {
+      const bs = s as BuildingSchedule;
+      scheduleForm.reset({
+        building_id: bs.building_id,
+        cleaning_type: bs.cleaning_type as "common_area" | "unit_interior",
+        day_of_week: bs.day_of_week,
+        time_block: (bs.time_block ?? "morning") as "morning" | "afternoon",
+        unit_id: "",
+        start_time: "10:00",
+        duration_hours: 2,
+        frequency: "weekly",
+      });
+    } else {
+      const us = s as UnitSchedule;
+      scheduleForm.reset({
+        building_id: us.building_id,
+        cleaning_type: "unit_interior",
+        unit_id: us.unit_id,
+        day_of_week: us.day_of_week,
+        time_block: "morning",
+        start_time: us.start_time ?? "10:00",
+        duration_hours: us.duration_hours ?? 2,
+        frequency: "weekly",
+      });
+    }
+    setShowCreateSchedule(true);
+  }
+
+  function openNewScheduleForBuilding(buildingId: string) {
+    setEditingSchedule(null);
+    scheduleForm.reset({
+      building_id: buildingId,
+      cleaning_type: "common_area",
+      unit_id: "",
+      day_of_week: "monday",
+      time_block: "morning",
+      start_time: "10:00",
+      duration_hours: 2,
+      frequency: "weekly",
+    });
+    setShowCreateSchedule(true);
+  }
 
   /* ── Render ───────────────────────────────────────────────────── */
 
@@ -1017,8 +1110,8 @@ export default function CleaningPage() {
       {/* ── Modal de nuevo horario ── */}
       <Modal
         open={showCreateSchedule}
-        title="Nuevo horario de limpieza"
-        onClose={() => { if (!scheduleForm.formState.isSubmitting) { scheduleForm.reset(); setShowCreateSchedule(false); } }}
+        title={editingSchedule ? "Editar horario" : "Nuevo horario de limpieza"}
+        onClose={() => { if (!scheduleForm.formState.isSubmitting) { scheduleForm.reset(); setShowCreateSchedule(false); setEditingSchedule(null); } }}
         maxWidth="480px"
       >
         <form onSubmit={onCreateSchedule} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -1115,11 +1208,13 @@ export default function CleaningPage() {
           )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
-            <UiButton variant="secondary" onClick={() => { if (!scheduleForm.formState.isSubmitting) { scheduleForm.reset(); setShowCreateSchedule(false); } }}>
+            <UiButton variant="secondary" onClick={() => { if (!scheduleForm.formState.isSubmitting) { scheduleForm.reset(); setShowCreateSchedule(false); setEditingSchedule(null); } }}>
               Cancelar
             </UiButton>
             <UiButton type="submit" variant="primary" disabled={scheduleForm.formState.isSubmitting}>
-              {scheduleForm.formState.isSubmitting ? "Creando..." : "Crear horario"}
+              {scheduleForm.formState.isSubmitting
+                ? (editingSchedule ? "Actualizando..." : "Creando...")
+                : (editingSchedule ? "Actualizar horario" : "Crear horario")}
             </UiButton>
           </div>
         </form>
@@ -1458,10 +1553,16 @@ export default function CleaningPage() {
   }
 
   function renderConfigTab() {
+    const buildingsWithSchedules = new Set([
+      ...buildingSchedules.map((s) => s.building_id),
+      ...unitSchedules.map((s) => s.building_id),
+    ]);
+    const buildingsWithoutSchedules = buildings.filter((b) => !buildingsWithSchedules.has(b.id));
+
     return (
       <>
         <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 12 }}>
-          <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => setShowCreateSchedule(true)}>
+          <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => { setEditingSchedule(null); scheduleForm.reset(); setShowCreateSchedule(true); }}>
             Nuevo horario
           </UiButton>
         </div>
@@ -1486,6 +1587,14 @@ export default function CleaningPage() {
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           {s.time_block ? TIME_BLOCK_LABEL[s.time_block] : "—"}
                         </span>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                          <button type="button" title="Editar" onClick={() => openEditSchedule(s, "building")} style={iconBtnStyle}>
+                            <Edit3 size={13} />
+                          </button>
+                          <button type="button" title="Eliminar" onClick={() => void deleteSchedule(s.id, "building")} style={{ ...iconBtnStyle, color: "#ef4444" }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1501,6 +1610,14 @@ export default function CleaningPage() {
                         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
                           {s.start_time || "—"} · {s.duration_hours ?? 0}h
                         </span>
+                        <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
+                          <button type="button" title="Editar" onClick={() => openEditSchedule(s, "unit")} style={iconBtnStyle}>
+                            <Edit3 size={13} />
+                          </button>
+                          <button type="button" title="Eliminar" onClick={() => void deleteSchedule(s.id, "unit")} style={{ ...iconBtnStyle, color: "#ef4444" }}>
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })}
@@ -1509,6 +1626,21 @@ export default function CleaningPage() {
             </div>
           );
         })}
+
+        {buildingsWithoutSchedules.length > 0 && (
+          <SectionCard title="Sin horario configurado" icon={<Clock3 size={18} />}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {buildingsWithoutSchedules.map((b) => (
+                <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", border: "1px dashed var(--border-default)", borderRadius: 8 }}>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{b.name}</span>
+                  <UiButton variant="secondary" icon={<Plus size={12} />} onClick={() => openNewScheduleForBuilding(b.id)}>
+                    Agregar horario
+                  </UiButton>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
       </>
     );
   }
@@ -1555,12 +1687,25 @@ const filterLabelStyle: React.CSSProperties = {
 
 const scheduleRowStyle: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "1.2fr 1fr 1fr",
+  gridTemplateColumns: "1.2fr 1fr 1fr auto",
   alignItems: "center",
   gap: 10,
   padding: "8px 10px",
   border: "1px solid var(--border-default)",
   borderRadius: 8,
+};
+
+const iconBtnStyle: React.CSSProperties = {
+  background: "none",
+  border: "1px solid var(--border-default)",
+  borderRadius: 6,
+  width: 28,
+  height: 28,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  cursor: "pointer",
+  color: "var(--text-secondary)",
 };
 
 function Field({
