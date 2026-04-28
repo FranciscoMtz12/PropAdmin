@@ -512,10 +512,24 @@ a {
     display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
     position: static !important; width: auto !important;
   }
-  .dashboard-units-table { overflow-x: auto; }
-  .dashboard-units-table table { min-width: 250px; width: 100%; }
+  .dashboard-units-table { overflow-x: hidden !important; }
+  .dashboard-units-table table { min-width: 0 !important; width: 100% !important; }
   .dashboard-units-table td,
-  .dashboard-units-table th { font-size: 12px; padding: 6px 8px; }
+  .dashboard-units-table th {
+    font-size: 12px;
+    padding: 6px 8px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 120px;
+  }
+  .dashboard-chart-legend {
+    width: 100%;
+    padding: 0 8px;
+    box-sizing: border-box;
+    justify-content: flex-start;
+    gap: 16px;
+  }
   .buildings-grid { grid-template-columns: 1fr !important; }
   .dashboard-contracts-table td:first-child {
     max-width: 120px;
@@ -525,7 +539,7 @@ a {
   }
   .dashboard-grid-3,
   .dashboard-grid-2 { gap: 12px !important; }
-  .main-content-wrapper { padding: 12px 10px 20px !important; }
+  .main-content-wrapper { padding: 8px 8px 16px !important; }
 }
 
 /* Tablet */
