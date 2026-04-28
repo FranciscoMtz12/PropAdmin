@@ -530,11 +530,11 @@ function getEventIcon(event: CalendarEvent) {
 }
 
 const MODULE_COLORS: Record<string, { bg: string; text: string; border: string }> = {
-  collections:   { bg: "#dcfce7", text: "#16a34a", border: "#16a34a" },
-  payments:      { bg: "#dbeafe", text: "#2563eb", border: "#2563eb" },
-  maintenance:   { bg: "#ffedd5", text: "#ea580c", border: "#ea580c" },
-  cleaning:      { bg: "#f3e8ff", text: "#9333ea", border: "#9333ea" },
-  contratos:     { bg: "#fce7f3", text: "#db2777", border: "#db2777" },
+  cleaning:    { bg: CLEANING_COLORS.background,    text: CLEANING_COLORS.text,    border: CLEANING_COLORS.border },
+  maintenance: { bg: MAINTENANCE_COLORS.background, text: MAINTENANCE_COLORS.text, border: MAINTENANCE_COLORS.border },
+  payments:    { bg: PAYMENTS_COLORS.background,    text: PAYMENTS_COLORS.text,    border: PAYMENTS_COLORS.border },
+  collections: { bg: COLLECTIONS_COLORS.background, text: COLLECTIONS_COLORS.text, border: COLLECTIONS_COLORS.border },
+  contratos:   { bg: "#fce7f3", text: "#db2777", border: "#db2777" },
 };
 
 function getModuleLabel(module: CalendarEvent["module"]) {
