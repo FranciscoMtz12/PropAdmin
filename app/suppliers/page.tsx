@@ -11,6 +11,8 @@
       contact_email text NULL, contact_phone text NULL,
       tax_id text NULL, cfdi_use text NULL, notes text NULL,
       active bool default true,
+      tiene_credito bool default false,
+      dias_credito integer default 30,
       created_at, updated_at, deleted_at
 
     supplier_branches
@@ -71,6 +73,8 @@ type Supplier = {
   cfdi_use:       string | null;
   notes:          string | null;
   active:         boolean;
+  tiene_credito:  boolean;
+  dias_credito:   number;
   created_at:     string;
   deleted_at:     string | null;
   branches?:      SupplierBranch[];
@@ -87,6 +91,8 @@ const supplierSchema = z.object({
   cfdi_use: z.string().optional(),
   notes: z.string().optional(),
   active: z.boolean(),
+  tiene_credito: z.boolean(),
+  dias_credito: z.number().int().min(1),
 });
 type SupplierFormValues = z.infer<typeof supplierSchema>;
 
@@ -123,6 +129,7 @@ const EMPTY_FORM: SupplierFormValues = {
   contact_email: "", contact_phone: "",
   tax_id: "", cfdi_use: DEFAULT_CFDI_USE,
   notes: "", active: true,
+  tiene_credito: false, dias_credito: 30,
 };
 
 const errorTextStyle: CSSProperties = {
@@ -157,7 +164,9 @@ export default function SuppliersPage() {
     resolver: zodResolver(supplierSchema),
     defaultValues: EMPTY_FORM,
   });
-  const formActive = watch("active");
+  const formActive       = watch("active");
+  const formTieneCredito = watch("tiene_credito");
+  const formDiasCredito  = watch("dias_credito");
 
   /* Sucursales — formulario inline dentro del modal (editar) */
   const [branchDraft,   setBranchDraft]   = useState<BranchDraft>(EMPTY_BRANCH_DRAFT);
@@ -244,6 +253,8 @@ export default function SuppliersPage() {
       cfdi_use:      s.cfdi_use      || DEFAULT_CFDI_USE,
       notes:         s.notes         || "",
       active:        s.active,
+      tiene_credito: s.tiene_credito ?? false,
+      dias_credito:  s.dias_credito  ?? 30,
     });
     setFormError("");
     setShowModal(true);
@@ -278,6 +289,8 @@ export default function SuppliersPage() {
       cfdi_use:      data.cfdi_use?.trim()      || DEFAULT_CFDI_USE,
       notes:         data.notes?.trim()         || null,
       active:        data.active,
+      tiene_credito: data.tiene_credito,
+      dias_credito:  data.tiene_credito ? (data.dias_credito ?? 30) : 0,
     };
 
     if (editingId) {
@@ -556,7 +569,12 @@ export default function SuppliersPage() {
                   ) : null}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                  {s.tiene_credito ? (
+                    <AppBadge variant="blue">
+                      Crédito {s.dias_credito}d
+                    </AppBadge>
+                  ) : null}
                   <AppBadge variant={s.active ? "green" : "amber"}>
                     {s.active ? "Activo" : "Inactivo"}
                   </AppBadge>
@@ -847,6 +865,80 @@ export default function SuppliersPage() {
               placeholder="Notas internas, especialidades, condiciones..."
             />
           </AppFormField>
+
+          {/* ─── Sección crédito ─── */}
+          <div style={sectionTitleStyle}>Condiciones de crédito</div>
+
+          <div style={{
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+            padding: "12px 14px", borderRadius: 10,
+            border: "1px solid var(--border-default)",
+            background: "var(--bg-input)",
+            marginBottom: formTieneCredito ? 12 : 16,
+          }}>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                ¿Tiene crédito?
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                El proveedor otorga crédito a pagar después de la factura.
+              </div>
+            </div>
+            <label style={{ position: "relative", display: "inline-block", width: 44, height: 24, flexShrink: 0 }}>
+              <input
+                type="checkbox"
+                {...register("tiene_credito")}
+                style={{ opacity: 0, width: 0, height: 0 }}
+              />
+              <span style={{
+                position: "absolute", cursor: "pointer",
+                top: 0, left: 0, right: 0, bottom: 0,
+                background: formTieneCredito ? "#16a34a" : "var(--border-default)",
+                borderRadius: 12, transition: "0.2s",
+              }} />
+              <span style={{
+                position: "absolute",
+                left: formTieneCredito ? 22 : 2, top: 2,
+                width: 20, height: 20,
+                background: "#fff", borderRadius: "50%",
+                transition: "0.2s",
+                boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+              }} />
+            </label>
+          </div>
+
+          {formTieneCredito ? (
+            <div style={{ marginBottom: 16 }}>
+              <AppFormField label="Días de crédito">
+                <input
+                  type="number"
+                  min={1}
+                  style={INPUT_STYLE}
+                  {...register("dias_credito", { valueAsNumber: true })}
+                  placeholder="30"
+                />
+              </AppFormField>
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {[15, 30, 45, 60].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setValue("dias_credito", d)}
+                    style={{
+                      padding: "5px 12px", borderRadius: 8, cursor: "pointer",
+                      fontSize: 12, fontWeight: 600,
+                      border: "1px solid var(--border-default)",
+                      background: formDiasCredito === d ? "var(--accent)" : "var(--bg-card)",
+                      color: formDiasCredito === d ? "#fff" : "var(--text-secondary)",
+                      transition: "0.15s",
+                    }}
+                  >
+                    {d} días
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           {/* ─── Sección 3: Sucursales (solo en editar) ─── */}
           {editingId ? (
