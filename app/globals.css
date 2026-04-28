@@ -508,9 +508,10 @@ a {
   }
   .dashboard-accesos { grid-template-columns: repeat(2, 1fr) !important; }
   .dashboard-chart-wrap { margin-bottom: 0; }
-  .dashboard-chart-wrap .recharts-responsive-container {
-    height: 220px !important;
-    min-height: 220px !important;
+  .dashboard-bar-container { height: 280px !important; }
+  .dashboard-bar-container .recharts-responsive-container {
+    height: 280px !important;
+    min-height: 280px !important;
   }
   .dashboard-chart-wrap .recharts-legend-wrapper {
     display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;

@@ -1169,8 +1169,9 @@ export default function DashboardPage() {
                   <span style={{ color: "#f97316" }}>●</span> Pendiente
                 </span>
               </div>
+              <div className="dashboard-bar-container">
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={barChartData} barGap={4} barCategoryGap="28%" margin={{ top: 5, right: 10, bottom: 20, left: 0 }}>
+                <BarChart data={barChartData} barGap={4} barCategoryGap="28%" margin={{ top: 5, right: 10, bottom: 30, left: 0 }}>
                   <CartesianGrid vertical={false} stroke={c.chartGrid} />
                   <XAxis
                     dataKey="mes"
@@ -1190,6 +1191,7 @@ export default function DashboardPage() {
                   <Bar dataKey="Pendiente" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
+              </div>
             </div>
           )}
         </SectionCard>
