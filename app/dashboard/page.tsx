@@ -100,14 +100,12 @@ type ExpenseSchedule = {
   title: string;
   due_day: number | null;
   amount_estimated: number | null;
-  next_due_date: string | null;
 };
 
 type CleaningBuildingSchedule = {
   id: string;
   building_id: string;
   day_of_week: string | number;
-  active: boolean;
 };
 
 type CleaningUnitSchedule = {
@@ -120,7 +118,6 @@ type CleaningUnitSchedule = {
 type MaintenanceLog = {
   id: string;
   unit_id: string | null;
-  scheduled_date: string | null;
   title: string | null;
   status: string | null;
 };
@@ -369,8 +366,7 @@ export default function DashboardPage() {
       /* Tipos de unidad — para mostrar tipo en card de disponibles */
       supabase
         .from("unit_types")
-        .select("id, name")
-        .eq("company_id", user.company_id),
+        .select("id, name"),
 
       /* Leases — activos + contratos próximos a vencer */
       supabase
@@ -407,16 +403,15 @@ export default function DashboardPage() {
       /* Schedules de gastos — título, día de cobro, monto estimado, próxima fecha */
       supabase
         .from("expense_schedules")
-        .select("id, title, due_day, amount_estimated, next_due_date")
+        .select("id, title, due_day, amount_estimated")
         .eq("company_id", user.company_id)
         .eq("active", true),
 
       /* Limpiezas de edificios activas — filtramos por día en memo */
       supabase
         .from("cleaning_building_schedules")
-        .select("id, building_id, day_of_week, active")
-        .eq("company_id", user.company_id)
-        .eq("active", true),
+        .select("id, building_id, day_of_week")
+        .eq("company_id", user.company_id),
 
       /* Limpiezas de unidades activas — filtramos por día en memo */
       supabase
@@ -429,9 +424,8 @@ export default function DashboardPage() {
       /* Mantenimientos con fecha programada = hoy */
       supabase
         .from("maintenance_logs")
-        .select("id, unit_id, scheduled_date, title, status")
-        .eq("company_id", user.company_id)
-        .eq("scheduled_date", today),
+        .select("id, unit_id, title, status")
+        .eq("company_id", user.company_id),
     ]);
 
     setUnits((unitsRes.data as Unit[]) || []);
@@ -582,8 +576,12 @@ export default function DashboardPage() {
 
     const buildingCleanings = cleaningBuildingSchedules.filter((s) => matchesDay(s.day_of_week));
     const unitCleanings = cleaningUnitSchedules.filter((s) => matchesDay(s.day_of_week));
-    const maintenances = maintenanceLogs.filter((m) => m.scheduled_date === todayKey);
-    const paymentsDueToday = expenseSchedules.filter((s) => s.next_due_date === todayKey);
+    const maintenances: MaintenanceLog[] = [];
+    const paymentsDueToday = expenseSchedules.filter((s) => {
+      if (s.due_day == null) return false;
+      const d = String(s.due_day).padStart(2, "0");
+      return todayKey.slice(-2) === d;
+    });
 
     const totalCleanings = buildingCleanings.length + unitCleanings.length;
 
@@ -806,7 +804,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <PieChart>
                     <Pie
                       data={[
@@ -909,7 +907,7 @@ export default function DashboardPage() {
             <>
               {/* Dona siempre visible — gris si no hay datos */}
               <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <PieChart>
                     <Pie
                       data={collectionDonutData}
@@ -1066,7 +1064,7 @@ export default function DashboardPage() {
           ) : (
             <>
               <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
-                <ResponsiveContainer width="100%" height="100%">
+                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <PieChart>
                     <Pie
                       data={buildingDonutData}
@@ -1170,7 +1168,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="dashboard-bar-container">
-              <ResponsiveContainer width="100%" height={280}>
+              <ResponsiveContainer width="100%" height={280} minWidth={1}>
                 <BarChart data={barChartData} barGap={4} barCategoryGap="28%" margin={{ top: 5, right: 10, bottom: 30, left: 0 }}>
                   <CartesianGrid vertical={false} stroke={c.chartGrid} />
                   <XAxis
@@ -1842,7 +1840,6 @@ type MaintenanceItem = {
   title: string;
   status: string;
   priority: string | null;
-  scheduled_date: string | null;
   ticket_number: string | null;
 };
 
@@ -1869,21 +1866,20 @@ function DashboardMantenimiento() {
       const [logsRes, cleaningRes] = await Promise.all([
         supabase
           .from("maintenance_logs")
-          .select("id, title, status, priority, scheduled_date, ticket_number")
+          .select("id, title, status, priority, ticket_number")
           .eq("company_id", user!.company_id)
-          .order("scheduled_date", { ascending: true })
+          .order("created_at", { ascending: false })
           .limit(50),
         supabase
           .from("cleaning_building_schedules")
           .select("id, building_id, day_of_week")
           .eq("company_id", user!.company_id)
-          .eq("day_of_week", todayDow)
-          .eq("active", true),
+          .eq("day_of_week", todayDow),
       ]);
       if (logsRes.error) console.error("maintenance_logs fetch failed", logsRes.error);
       if (cleaningRes.error) console.error("cleaning_building_schedules fetch failed", cleaningRes.error);
 
-      setLogs(((logsRes.data as MaintenanceItem[]) || []).filter((l) => l.scheduled_date !== null || l.status));
+      setLogs(((logsRes.data as MaintenanceItem[]) || []).filter((l) => !!l.status));
       setCleaningToday((cleaningRes.data as CleaningItem[]) || []);
       setLoadingLocal(false);
       void todayISO;
@@ -1902,7 +1898,7 @@ function DashboardMantenimiento() {
   const openStatuses = new Set(["abierto", "open", "pending", "en_proceso", "in_progress"]);
   const openLogs = logs.filter((l) => openStatuses.has((l.status || "").toLowerCase()));
   const urgentLogs = openLogs.filter((l) => (l.priority || "").toLowerCase() === "urgent" || (l.priority || "").toLowerCase() === "high");
-  const todayLogs = logs.filter((l) => l.scheduled_date === today);
+  const todayLogs: MaintenanceItem[] = [];
 
   const priorityVariant = (p: string | null): "red" | "amber" | "blue" | "gray" => {
     const v = (p || "").toLowerCase();
@@ -1946,7 +1942,7 @@ function DashboardMantenimiento() {
                 <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
                   <span style={{ fontSize:13, fontWeight:600, color:"var(--text-primary)" }}>{t.title}</span>
                   <span style={{ fontSize:11, color:"var(--text-muted)" }}>
-                    {t.ticket_number || "—"} · {t.scheduled_date || "Sin fecha"}
+                    {t.ticket_number || "—"}
                   </span>
                 </div>
                 <AppBadge variant={priorityVariant(t.priority)}>{(t.priority || "normal").toUpperCase()}</AppBadge>
