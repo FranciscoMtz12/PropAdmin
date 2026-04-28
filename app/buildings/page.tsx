@@ -766,7 +766,7 @@ export default function BuildingsPage() {
                     transform: isHovered ? "translateY(-2px)" : "translateY(0)",
                     transition: "transform 0.15s ease",
                     borderRadius: 16,
-                    overflow: "hidden",
+                    overflow: "visible",
                     position: "relative",
                     zIndex: openActionsBuildingId === building.id ? 100 : 1,
                   }}
@@ -786,9 +786,10 @@ export default function BuildingsPage() {
                       style={{
                         padding: "16px 16px 14px",
                         display: "flex",
-                        alignItems: "flex-start",
-                        justifyContent: "space-between",
+                        alignItems: "center",
                         gap: 12,
+                        overflow: "hidden",
+                        width: "100%",
                       }}
                     >
                       {/* Izquierda: nombre + dirección + badge */}
@@ -810,7 +811,7 @@ export default function BuildingsPage() {
                           className="building-card-addr"
                           style={{
                             fontSize: 11,
-                            color: "var(--text-muted)",
+                            color: "var(--text-secondary)",
                             marginBottom: 8,
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -823,7 +824,7 @@ export default function BuildingsPage() {
                       </div>
 
                       {/* Derecha: dona de ocupación */}
-                      <div style={{ width: 64, height: 64, flexShrink: 0 }}>
+                      <div style={{ flexShrink: 0, width: 72, height: 72 }}>
                         <OccupancyDonut
                           totalUnits={totalUnits}
                           activeLeases={activeLeases}
@@ -981,7 +982,7 @@ export default function BuildingsPage() {
                                 style={dropdownDeleteItemStyle}
                               >
                                 <Trash2 size={14} />
-                                Eliminar
+                                Eliminar edificio
                               </button>
                             </div>
                           )}
