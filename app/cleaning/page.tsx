@@ -1228,7 +1228,7 @@ export default function CleaningPage() {
     return (
       <>
         {/* Stat bar */}
-        <div style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 24, overflow: "hidden" }}>
+        <div className="mod-stat-bar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 24, overflow: "hidden" }}>
           {[
             {
               label: "Cumplimiento semanal",
@@ -1242,7 +1242,7 @@ export default function CleaningPage() {
             { label: "Edificios activos", value: weekStats.activeBuildings, sub: "con horario" },
             { label: "Servicio premium", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
           ].map((s, i, arr) => (
-            <div key={i} style={{ flex: 1, padding: "14px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
+            <div key={i} className="mod-stat-cell" style={{ flex: 1, padding: "14px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
               <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
               <div style={{ fontSize: 24, fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
               <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>

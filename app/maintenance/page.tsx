@@ -1447,7 +1447,7 @@ export default function MaintenancePage() {
 
             {/* Filtros */}
             <AppCard>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+              <div className="mod-filters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                 <div
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
@@ -1677,7 +1677,7 @@ export default function MaintenancePage() {
 
                   {/* Vista semana */}
                   {viewMode === "week" ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 16 }}>
+                    <div className="maint-cal-week" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 16 }}>
                       {weekDays.map((day) => {
                         const dayEvents = weekEventsByDay.get(day.key) || [];
                         return (
@@ -1706,7 +1706,7 @@ export default function MaintenancePage() {
 
                   {/* Vista mes */}
                   {viewMode === "month" ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 16 }}>
+                    <div className="maint-cal-month" style={{ display: "grid", gridTemplateColumns: "repeat(6, minmax(0, 1fr))", gap: 16 }}>
                       {monthDays.map((day) => {
                         const dayEvents    = monthEventsByDate.get(day.isoDate) || [];
                         const visibleEvents = dayEvents.slice(0, 3);
@@ -1736,7 +1736,7 @@ export default function MaintenancePage() {
 
                   {/* Vista año */}
                   {viewMode === "year" ? (
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
+                    <div className="maint-cal-year" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
                       {yearSummary.map((month) => (
                         <div key={month.monthLabel} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 150 }}>
                           <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{month.monthLabel}</div>

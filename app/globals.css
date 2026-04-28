@@ -416,6 +416,14 @@ a {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+@media (max-width: 767px) {
+  .cal-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .cal-year-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
 
 /* ── Calendario mes: scroll horizontal si no cabe ── */
 @media (max-width: 1400px) {
@@ -429,7 +437,7 @@ a {
   }
 }
 
-/* ── Limpieza — grid semanal 7 cols → 4 cols ── */
+/* ── Limpieza — grid semanal 7 cols → 4/2 cols ── */
 @media (min-width: 1024px) and (max-width: 1400px) {
   .cleaning-week-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
@@ -439,6 +447,13 @@ a {
   .cleaning-week-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
+}
+@media (max-width: 767px) {
+  .cleaning-week-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+  .maint-cal-week, .maint-cal-month { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .maint-cal-year { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 /* ── Inquilinos — grid de filtros 3 cols → 2 → 1 ── */
@@ -476,7 +491,7 @@ a {
   .dashboard-grid-3 { grid-template-columns: 1fr !important; }
   .dashboard-grid-2 { grid-template-columns: 1fr !important; }
   .dashboard-card-mobile { min-width: 0; padding: 16px !important; }
-  .dashboard-donut-wrap { height: 160px !important; }
+  .dashboard-donut-wrap { height: 180px !important; }
   .dashboard-stat-bar { flex-wrap: wrap; }
   .dashboard-stat-bar-cell {
     flex: 1 1 45%;
@@ -485,6 +500,13 @@ a {
   }
   .dashboard-accesos { grid-template-columns: repeat(2, 1fr) !important; }
   .dashboard-chart-wrap .recharts-responsive-container { height: 200px !important; }
+  .dashboard-chart-wrap .recharts-legend-wrapper {
+    display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
+    position: static !important; width: auto !important;
+  }
+  .dashboard-units-table table { min-width: 0; width: 100%; }
+  .dashboard-units-table td,
+  .dashboard-units-table th { font-size: 12px; padding: 8px 4px; }
 }
 
 /* Tablet */
@@ -492,4 +514,58 @@ a {
   .dashboard-grid-3 { grid-template-columns: repeat(2, 1fr) !important; }
   .dashboard-grid-2 { grid-template-columns: 1fr !important; }
   .dashboard-stat-bar-cell { flex: 1 1 30%; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Módulos responsive mobile — clases genéricas <768px
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  /* Stat bars */
+  .mod-stat-bar { flex-wrap: wrap; }
+  .mod-stat-cell {
+    flex: 1 1 45%;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-default);
+  }
+  /* Grids de cards */
+  .mod-grid-3, .mod-grid-2 { grid-template-columns: 1fr !important; }
+  /* Tablas */
+  .mod-table-wrap { overflow-x: auto; }
+  .mod-table-wrap table { font-size: 12px; }
+  /* Modales */
+  .mod-modal {
+    width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto !important;
+  }
+  /* Botones de acción */
+  .mod-actions { flex-wrap: wrap; gap: 8px; }
+  /* Filtros */
+  .mod-filters { flex-direction: column; }
+  /* Headers de página */
+  .mod-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .mod-header > * { width: 100%; }
+
+  /* Purchases — ya tiene clases propias */
+  .purchases-statbar { flex-wrap: wrap; }
+  .purchases-statbar > div {
+    flex: 1 1 45%;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .purchases-filters { grid-template-columns: 1fr !important; }
+  .purchases-actions { flex-wrap: wrap; gap: 8px; }
+
+  /* Analytics — stat bar específica */
+  .analytics-stat-bar { flex-wrap: wrap; }
+  .analytics-stat-bar > div {
+    flex: 1 1 30%;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-default);
+  }
 }

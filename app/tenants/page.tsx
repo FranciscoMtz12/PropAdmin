@@ -760,6 +760,7 @@ export default function TenantsPage() {
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
       <SectionCard title="Listado de inquilinos">
+        <div className="mod-table-wrap">
         <AppTable
           rows={filteredRows}
           emptyState="Todavía no hay inquilinos registrados."
@@ -929,6 +930,7 @@ export default function TenantsPage() {
             },
           ]}
         />
+        </div>
       </SectionCard>
       </motion.div>
 

@@ -1358,6 +1358,7 @@ export default function DashboardPage() {
               description="Todas las unidades tienen un lease activo."
             />
           ) : (
+            <div className="dashboard-units-table">
             <AppTable
               rows={availableUnitRows}
               columns={[
@@ -1393,6 +1394,7 @@ export default function DashboardPage() {
                 },
               ]}
             />
+            </div>
           )}
         </SectionCard>
       </div>

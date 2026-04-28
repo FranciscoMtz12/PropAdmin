@@ -701,7 +701,7 @@ export default function AnalyticsPage() {
           { label:"Vacantes", value:vacantUnits, sub:"unidades", color:"#EF4444" },
           { label:"Edificios", value:buildings.length, sub:"activos" },
         ].map((s, i, arr) => (
-          <div key={i} style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+          <div key={i} className="mod-stat-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
             <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
             <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
             <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
