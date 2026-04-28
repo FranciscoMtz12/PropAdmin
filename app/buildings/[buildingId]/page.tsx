@@ -825,7 +825,7 @@ export default function BuildingDetailPage() {
         <div style={{ display: "grid", gap: 24 }}>
 
           {/* ── Fila 1: 2 métricas ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <OccupancyDonutCard occupied={occupiedUnits} total={totalUnits} />
             <MetricCard
               label="Unidades"
@@ -851,7 +851,7 @@ export default function BuildingDetailPage() {
               </div>
             }
           >
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
+            <div className="building-detail-info" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24, alignItems: "stretch" }}>
 
               {/* Columna izquierda — datos del edificio */}
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

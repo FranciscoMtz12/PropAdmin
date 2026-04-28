@@ -782,6 +782,7 @@ export default function BuildingsPage() {
                   >
                     {/* TOP: info + dona */}
                     <div
+                      className="building-card-top"
                       style={{
                         padding: "16px 16px 14px",
                         display: "flex",
@@ -791,7 +792,7 @@ export default function BuildingsPage() {
                       }}
                     >
                       {/* Izquierda: nombre + dirección + badge */}
-                      <div style={{ minWidth: 0 }}>
+                      <div className="building-card-info" style={{ minWidth: 0 }}>
                         <p
                           style={{
                             fontSize: 15,

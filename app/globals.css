@@ -708,35 +708,59 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   AppTabs — tabs compactas y sin scrollbar en mobile
+   AppTabs — grid 2×2 en mobile (sin scroll horizontal)
    ════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 767px) {
   .app-tabs-container {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    overflow-x: hidden !important;
+    gap: 6px !important;
     scrollbar-width: none;
-    -webkit-overflow-scrolling: touch;
   }
   .app-tabs-container::-webkit-scrollbar {
     display: none;
   }
   .app-tab-item {
-    font-size: 13px !important;
-    padding: 8px 10px !important;
+    text-align: center;
+    justify-content: center !important;
+    font-size: 12px !important;
+    padding: 8px 4px !important;
     white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   Buildings — cards portafolio en mobile
+   Buildings — cards portafolio + detalle en mobile
    ════════════════════════════════════════════════════════════════════ */
 
 @media (max-width: 767px) {
+  /* Lista de edificios: 1 columna */
   .buildings-grid {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
   }
   .building-card-addr {
     font-size: 12px !important;
+  }
+  /* Card top: fila con dona a la derecha */
+  .building-card-top {
+    display: flex !important;
+    align-items: flex-start !important;
+    gap: 12px !important;
+    overflow: hidden;
+  }
+  .building-card-top > .building-card-info {
+    min-width: 0;
+    flex: 1 1 0%;
+  }
+  /* Detalle de edificio: grids 2-col → 1-col */
+  .building-detail-metrics,
+  .building-detail-info {
+    grid-template-columns: 1fr !important;
   }
 }
 
