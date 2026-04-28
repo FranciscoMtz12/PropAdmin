@@ -369,8 +369,7 @@ export default function DashboardPage() {
       supabase
         .from("unit_types")
         .select("id, name")
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
+        .eq("company_id", user.company_id),
 
       /* Leases — activos + contratos próximos a vencer */
       supabase
@@ -409,7 +408,6 @@ export default function DashboardPage() {
         .from("expense_schedules")
         .select("id, title, due_day, amount_estimated, next_due_date")
         .eq("company_id", user.company_id)
-        .is("deleted_at", null)
         .eq("active", true),
 
       /* Limpiezas de edificios activas — filtramos por día en memo */
@@ -417,7 +415,6 @@ export default function DashboardPage() {
         .from("cleaning_building_schedules")
         .select("id, building_id, day_of_week, active")
         .eq("company_id", user.company_id)
-        .is("deleted_at", null)
         .eq("active", true),
 
       /* Limpiezas de unidades activas — filtramos por día en memo */
@@ -433,7 +430,6 @@ export default function DashboardPage() {
         .from("maintenance_logs")
         .select("id, unit_id, scheduled_date, title, status")
         .eq("company_id", user.company_id)
-        .is("deleted_at", null)
         .eq("scheduled_date", today),
     ]);
 
@@ -1158,32 +1154,34 @@ export default function DashboardPage() {
               description="Cuando registres cobros aparecerá aquí la tendencia de los últimos 6 meses."
             />
           ) : (
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={barChartData} barGap={4} barCategoryGap="28%">
-                <CartesianGrid vertical={false} stroke={c.chartGrid} />
-                <XAxis
-                  dataKey="mes"
-                  tick={{ fontSize: 12, fill: c.chartAxis }}
-                  axisLine={false}
-                  tickLine={false}
-                />
-                <YAxis
-                  tickFormatter={yAxisFormatter}
-                  tick={{ fontSize: 12, fill: c.chartAxis }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={56}
-                />
-                <Tooltip content={<MXNTooltip isDark={isDark} />} />
-                <Legend
-                  iconType="circle"
-                  iconSize={8}
-                  wrapperStyle={{ fontSize: 13, paddingTop: 12 }}
-                />
-                <Bar dataKey="Cobrado" fill="#22c55e" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                <Bar dataKey="Pendiente" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
-              </BarChart>
-            </ResponsiveContainer>
+            <div className="dashboard-chart-wrap">
+              <ResponsiveContainer width="100%" height={280}>
+                <BarChart data={barChartData} barGap={4} barCategoryGap="28%">
+                  <CartesianGrid vertical={false} stroke={c.chartGrid} />
+                  <XAxis
+                    dataKey="mes"
+                    tick={{ fontSize: 12, fill: c.chartAxis }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tickFormatter={yAxisFormatter}
+                    tick={{ fontSize: 12, fill: c.chartAxis }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={56}
+                  />
+                  <Tooltip content={<MXNTooltip isDark={isDark} />} />
+                  <Legend
+                    iconType="circle"
+                    iconSize={8}
+                    wrapperStyle={{ fontSize: 13, paddingTop: 12 }}
+                  />
+                  <Bar dataKey="Cobrado" fill="#22c55e" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="Pendiente" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           )}
         </SectionCard>
       </div>
@@ -1431,6 +1429,7 @@ export default function DashboardPage() {
               description="No hay cobros vencidos. ¡Todo al corriente!"
             />
           ) : (
+            <div className="dashboard-table-mobile">
             <AppTable
               minWidth={0}
               rows={overdueRows}
@@ -1493,6 +1492,7 @@ export default function DashboardPage() {
                 },
               ]}
             />
+            </div>
           )}
         </SectionCard>
 
@@ -1510,6 +1510,7 @@ export default function DashboardPage() {
               description="No hay pagos administrativos en los próximos 7 días."
             />
           ) : (
+            <div className="dashboard-table-mobile">
             <AppTable
               minWidth={0}
               rows={upcomingPaymentRows}
@@ -1573,6 +1574,7 @@ export default function DashboardPage() {
                 },
               ]}
             />
+            </div>
           )}
         </SectionCard>
 
@@ -1581,7 +1583,7 @@ export default function DashboardPage() {
           overflow:hidden en el wrapper evita que la card se expanda horizontalmente
           cuando el contenido de la tabla es más ancho que 1/3 del grid.
         */}
-        <div style={{ overflow: "hidden", minWidth: 0 }}>
+        <div className="dashboard-table-mobile" style={{ overflow: "hidden", minWidth: 0 }}>
           <SectionCard
             title="Contratos por vencer"
             subtitle="Próximos 90 días · top 5"
@@ -1760,14 +1762,14 @@ function DashboardCompras() {
       />
 
       {/* Stat bar */}
-      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+      <div className="dashboard-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
         {[
           { label:"Borradores", value:draftCount, sub:"OCs", color:"#94A3B8" },
           { label:"Pendientes", value:pendingCount, sub:"por revisar", color:"#F59E0B" },
           { label:"Enviadas", value:sentCount, sub:"al proveedor", color:"#3B82F6" },
           { label:"Proveedores", value:suppliersCount, sub:"activos", color:"#10B981" },
         ].map((s, i, arr) => (
-          <div key={i} style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+          <div key={i} className="dashboard-stat-bar-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
             <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
             <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
             <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
@@ -1796,7 +1798,7 @@ function DashboardCompras() {
       <div style={{ height:16 }} />
 
       <SectionCard title="Accesos rápidos" icon={<ShoppingCart size={18} />}>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:12 }}>
+        <div className="dashboard-accesos" style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:12 }}>
           <UiButton href="/purchases" variant="primary" icon={<ShoppingCart size={16} />}>
             Nueva OC
           </UiButton>
@@ -1847,7 +1849,6 @@ function DashboardMantenimiento() {
           .from("maintenance_logs")
           .select("id, title, status, priority, scheduled_date, ticket_number")
           .eq("company_id", user!.company_id)
-          .is("deleted_at", null)
           .order("scheduled_date", { ascending: true })
           .limit(50),
         supabase
@@ -1855,8 +1856,7 @@ function DashboardMantenimiento() {
           .select("id, building_id, day_of_week")
           .eq("company_id", user!.company_id)
           .eq("day_of_week", todayDow)
-          .eq("active", true)
-          .is("deleted_at", null),
+          .eq("active", true),
       ]);
       if (logsRes.error) console.error("maintenance_logs fetch failed", logsRes.error);
       if (cleaningRes.error) console.error("cleaning_building_schedules fetch failed", cleaningRes.error);
@@ -1899,14 +1899,14 @@ function DashboardMantenimiento() {
       />
 
       {/* Stat bar */}
-      <div style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+      <div className="dashboard-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
         {[
           { label:"Tickets", value:openLogs.length, sub:"abiertos" },
           { label:"Urgentes", value:urgentLogs.length, sub:"prioridad alta", color:"#EF4444" },
           { label:"Hoy", value:todayLogs.length, sub:"mantenimientos", color:"#F59E0B" },
           { label:"Limpieza", value:cleaningToday.length, sub:"hoy", color:"#10B981" },
         ].map((s, i, arr) => (
-          <div key={i} style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+          <div key={i} className="dashboard-stat-bar-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
             <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
             <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
             <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
@@ -1962,7 +1962,7 @@ function DashboardMantenimiento() {
       <div style={{ height:16 }} />
 
       <SectionCard title="Accesos rápidos" icon={<Wrench size={18} />}>
-        <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:12 }}>
+        <div className="dashboard-accesos" style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:12 }}>
           <UiButton href="/maintenance" variant="primary" icon={<Wrench size={16} />}>
             Ver tickets
           </UiButton>
