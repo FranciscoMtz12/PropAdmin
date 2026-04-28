@@ -708,6 +708,25 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   AppTabs — tabs compactas y sin scrollbar en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .app-tabs-container {
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  .app-tabs-container::-webkit-scrollbar {
+    display: none;
+  }
+  .app-tab-item {
+    font-size: 13px !important;
+    padding: 8px 10px !important;
+    white-space: nowrap;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Buildings — cards portafolio en mobile
    ════════════════════════════════════════════════════════════════════ */
 

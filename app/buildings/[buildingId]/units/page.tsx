@@ -763,11 +763,9 @@ export default function BuildingUnitsPage() {
 
                   {/* Acciones */}
                   <div
-                    style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}
+                    style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <UiButton href={`/buildings/${building.id}/units/${unit.id}`}>Ver</UiButton>
-
                     <div
                       style={{ position: "relative" }}
                       ref={openActionsUnitId === unit.id ? actionsMenuRef : undefined}

@@ -1220,7 +1220,7 @@ export default function UnitDetailPage() {
             { key: "summary", label: "Resumen", icon: <Home size={16} /> },
             {
               key: "lease",
-              label: "Leases activos",
+              label: "Contratos activos",
               icon: <Users size={16} />,
               count: activeLeases.length,
             },
@@ -1337,7 +1337,7 @@ export default function UnitDetailPage() {
       {activeTab === "lease" ? (
         <div style={{ marginTop: "18px" }}>
           <SectionCard
-            title="Leases activos"
+            title="Contratos activos"
             icon={<Users size={18} />}
             action={
               <UiButton

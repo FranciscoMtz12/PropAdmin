@@ -50,6 +50,7 @@ export default function AppTabs({
           <button
             key={item.key}
             type="button"
+            className="app-tab-item"
             onClick={() => onChange(item.key)}
             style={{
               display: "inline-flex",
