@@ -58,7 +58,7 @@ export const dropdownMenuStyle: CSSProperties = {
   padding: 6,
   display: "grid",
   gap: 4,
-  zIndex: 200,
+  zIndex: 9999,
 };
 
 export const dropdownActionButtonStyle: CSSProperties = {
