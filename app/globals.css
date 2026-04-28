@@ -482,6 +482,14 @@ a {
   animation: sapSplash 2.8s cubic-bezier(0.25, 0.1, 0.25, 1) forwards;
 }
 
+.dashboard-chart-legend {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  padding-top: 10px;
+  color: var(--text-secondary);
+}
+
 /* ════════════════════════════════════════════════════════════════════
    Dashboard responsive — móvil <768px y tablet 768-1024px
    ════════════════════════════════════════════════════════════════════ */
@@ -504,9 +512,11 @@ a {
     display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;
     position: static !important; width: auto !important;
   }
-  .dashboard-units-table table { min-width: 0; width: 100%; }
+  .dashboard-units-table { overflow-x: auto; }
+  .dashboard-units-table table { min-width: 250px; width: 100%; }
   .dashboard-units-table td,
   .dashboard-units-table th { font-size: 12px; padding: 8px 4px; }
+  .buildings-grid { grid-template-columns: 1fr !important; }
 }
 
 /* Tablet */

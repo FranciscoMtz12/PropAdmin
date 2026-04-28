@@ -1172,15 +1172,18 @@ export default function DashboardPage() {
                     width={56}
                   />
                   <Tooltip content={<MXNTooltip isDark={isDark} />} />
-                  <Legend
-                    iconType="circle"
-                    iconSize={8}
-                    wrapperStyle={{ fontSize: 13, paddingTop: 12 }}
-                  />
                   <Bar dataKey="Cobrado" fill="#22c55e" radius={[6, 6, 0, 0]} maxBarSize={36} />
                   <Bar dataKey="Pendiente" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
+              <div className="dashboard-chart-legend">
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                  <span style={{ color: "#22c55e" }}>●</span> Cobrado
+                </span>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                  <span style={{ color: "#f97316" }}>●</span> Pendiente
+                </span>
+              </div>
             </div>
           )}
         </SectionCard>
@@ -1199,6 +1202,7 @@ export default function DashboardPage() {
         }}
       >
         {/* ── Card A: Agenda de hoy ─────────────────────────────── */}
+        <div style={{ overflow: "hidden", minWidth: 0 }}>
         <SectionCard
           title="Agenda de hoy"
           subtitle={new Date().toLocaleDateString("es-MX", {
@@ -1343,8 +1347,10 @@ export default function DashboardPage() {
             </div>
           )}
         </SectionCard>
+        </div>
 
         {/* ── Card B: Unidades disponibles ──────────────────────── */}
+        <div style={{ overflow: "hidden", minWidth: 0 }}>
         <SectionCard
           title="Unidades disponibles"
           subtitle="Sin lease activo · máximo 6"
@@ -1397,6 +1403,7 @@ export default function DashboardPage() {
             </div>
           )}
         </SectionCard>
+        </div>
       </div>
 
       </motion.div>

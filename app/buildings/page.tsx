@@ -736,6 +736,7 @@ export default function BuildingsPage() {
           />
         ) : (
           <div
+            className="buildings-grid"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
