@@ -515,8 +515,17 @@ a {
   .dashboard-units-table { overflow-x: auto; }
   .dashboard-units-table table { min-width: 250px; width: 100%; }
   .dashboard-units-table td,
-  .dashboard-units-table th { font-size: 12px; padding: 8px 4px; }
+  .dashboard-units-table th { font-size: 12px; padding: 6px 8px; }
   .buildings-grid { grid-template-columns: 1fr !important; }
+  .dashboard-contracts-table td:first-child {
+    max-width: 120px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .dashboard-grid-3,
+  .dashboard-grid-2 { gap: 12px !important; }
+  .main-content-wrapper { padding: 12px 10px 20px !important; }
 }
 
 /* Tablet */

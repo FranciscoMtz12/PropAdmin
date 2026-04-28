@@ -62,6 +62,7 @@ type Unit = {
   display_code: string | null;
   unit_type_id: string | null;
   status: string;
+  bedrooms: number | null;
 };
 
 type UnitType = {
@@ -290,7 +291,7 @@ type AvailableUnitRow = {
   id: string;
   unitLabel: string;
   buildingName: string;
-  unitTypeName: string;
+  bedroomsLabel: string;
 };
 
 /* ─── Componente principal ────────────────────────────────────────── */
@@ -361,7 +362,7 @@ export default function DashboardPage() {
       /* Unidades — incluye unit_type_id para card de disponibles */
       supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code, unit_type_id, status")
+        .select("id, building_id, unit_number, display_code, unit_type_id, status, bedrooms")
         .eq("company_id", user.company_id)
         .is("deleted_at", null),
 
@@ -607,7 +608,7 @@ export default function DashboardPage() {
         id: u.id,
         unitLabel: u.display_code ?? u.unit_number ?? "—",
         buildingName: buildingMap.get(u.building_id)?.name ?? "—",
-        unitTypeName: u.unit_type_id ? (unitTypeMap.get(u.unit_type_id)?.name ?? "—") : "—",
+        bedroomsLabel: u.bedrooms === 0 || u.bedrooms === null ? "Studio" : `${u.bedrooms} rec.`,
       }));
   }, [units, leases, buildingMap, unitTypeMap]);
 
@@ -1391,10 +1392,10 @@ export default function DashboardPage() {
                 },
                 {
                   key: "type",
-                  header: "Tipología",
+                  header: "Recámaras",
                   render: (row) => (
                     <span style={{ fontSize: 13, color: c.textSecondary }}>
-                      {row.unitTypeName}
+                      {row.bedroomsLabel}
                     </span>
                   ),
                 },
@@ -1606,6 +1607,7 @@ export default function DashboardPage() {
                 description="No hay contratos activos que venzan en los próximos 90 días."
               />
             ) : (
+              <div className="dashboard-contracts-table">
               <AppTable
                 minWidth={0}
                 rows={expiringLeaseRows}
@@ -1627,7 +1629,9 @@ export default function DashboardPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {row.tenantName}
+                          {row.tenantName.length > 15
+                            ? row.tenantName.slice(0, 15) + "..."
+                            : row.tenantName}
                         </span>
                         <span
                           style={{
@@ -1639,7 +1643,8 @@ export default function DashboardPage() {
                             whiteSpace: "nowrap",
                           }}
                         >
-                          {row.unitLabel} · {row.buildingName}
+                          {row.endDateLabel} · {row.daysLeft}{" "}
+                          {row.daysLeft === 1 ? "día" : "días"}
                         </span>
                       </div>
                     ),
@@ -1679,6 +1684,7 @@ export default function DashboardPage() {
                   },
                 ]}
               />
+              </div>
             )}
           </SectionCard>
         </div>
