@@ -14,6 +14,7 @@ export default function PageContainer({
 }) {
   return (
     <div
+      className="page-container"
       style={{
         padding: "24px 32px 40px 32px",
       }}
