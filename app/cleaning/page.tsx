@@ -599,7 +599,7 @@ export default function CleaningPage() {
         company_id: user.company_id,
         building_id: selectedTask.buildingId,
         unit_id: selectedTask.unitId,
-        cleaning_type: selectedTask.cleaningType,
+        cleaning_type: denormalizeCleaningType(selectedTask.cleaningType),
         scheduled_date: selectedTask.dateISO,
         status,
       })
