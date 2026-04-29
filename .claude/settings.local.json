@@ -14,7 +14,9 @@
       "Bash(awk 'NR>=1980 && NR<=2420' app/maintenance/page.tsx)",
       "Bash(npx next *)",
       "Bash(find app *)",
-      "Skill(gstack-design-review)"
+      "Skill(gstack-design-review)",
+      "Bash(node *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
