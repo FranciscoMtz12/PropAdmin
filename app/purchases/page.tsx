@@ -442,6 +442,7 @@ export default function PurchasesPage() {
       status: Status; notes: string | null; total_estimated: number | null;
       pdf_url: string | null; sent_at: string | null;
       created_at: string;
+      parent_order_id: string | null;
       suppliers: { id: string; name: string; contact_email: string | null; contact_phone: string | null; tax_id: string | null } | null;
       buildings: { id: string; name: string } | null;
     };
@@ -1629,6 +1630,60 @@ export default function PurchasesPage() {
                     display: "flex", flexDirection: "column", gap: 18,
                     background: "var(--bg-input)",
                   }}>
+
+                    {/* ── Sección 0: Relaciones de versión ── */}
+                    {(() => {
+                      const parentOrder = o.parent_order_id
+                        ? orders.find((ord) => ord.id === o.parent_order_id)
+                        : null;
+                      const childOrders = orders.filter((ord) => ord.parent_order_id === o.id);
+                      if (!parentOrder && childOrders.length === 0) return null;
+                      return (
+                        <div style={{
+                          display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center",
+                          padding: "10px 14px", borderRadius: 10,
+                          background: "var(--bg-card)", border: "1px solid var(--border-default)",
+                        }}>
+                          {parentOrder && (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
+                              <span style={{ fontWeight: 600 }}>Versión de:</span>
+                              <button
+                                onClick={(e) => { e.stopPropagation(); setSearch(parentOrder.folio); setExpandedOrderId(parentOrder.id); }}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", gap: 4,
+                                  padding: "2px 8px", borderRadius: 14,
+                                  background: "#EFF6FF", color: "#1D4ED8",
+                                  fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                                  border: "none", cursor: "pointer",
+                                }}
+                              >
+                                {parentOrder.folio}
+                              </button>
+                            </span>
+                          )}
+                          {childOrders.length > 0 && (
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13, color: "var(--text-secondary)" }}>
+                              <span style={{ fontWeight: 600 }}>Versiones:</span>
+                              {childOrders.map((child) => (
+                                <button
+                                  key={child.id}
+                                  onClick={(e) => { e.stopPropagation(); setSearch(child.folio); setExpandedOrderId(child.id); }}
+                                  style={{
+                                    display: "inline-flex", alignItems: "center", gap: 4,
+                                    padding: "2px 8px", borderRadius: 14,
+                                    background: "#F0FDF4", color: "#15803D",
+                                    fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                                    border: "none", cursor: "pointer",
+                                  }}
+                                >
+                                  {child.folio}
+                                </button>
+                              ))}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* ── Sección 1: Datos generales ── */}
                     <div>
