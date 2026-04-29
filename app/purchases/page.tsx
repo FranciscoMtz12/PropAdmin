@@ -142,6 +142,7 @@ type PurchaseOrder = {
   pdf_url:              string | null;
   sent_at:              string | null;
   created_at:           string;
+  parent_order_id:      string | null;
   /* Derivados */
   supplier_name?:       string;
   ticket_number?:       string | null;
@@ -366,7 +367,7 @@ export default function PurchasesPage() {
           responsible_name, responsible_phone, responsible_user_id, signer_name,
           maintenance_log_id, building_id,
           supplier_id, supplier_branch_id, supplier_prefix,
-          pdf_url, sent_at,
+          pdf_url, sent_at, parent_order_id,
           suppliers(id, name, contact_email, contact_phone, tax_id),
           buildings(id, name)
         `)
@@ -493,6 +494,7 @@ export default function PurchasesPage() {
         pdf_url:              r.pdf_url,
         sent_at:              r.sent_at,
         created_at:           r.created_at,
+        parent_order_id:      r.parent_order_id ?? null,
         supplier_name:        r.suppliers?.name,
         ticket_number:        r.maintenance_log_id ? ticketMap.get(r.maintenance_log_id) ?? null : null,
         building_name:        r.buildings?.name,
@@ -857,12 +859,39 @@ export default function PurchasesPage() {
       toast.error("No hay faltantes registrados en esta OC.");
       return;
     }
+
+    /* Determinar el folio raíz: si esta OC ya es una versión (tiene parent),
+       usar el folio raíz de la madre para construir la secuencia. */
+    const rootFolio = order.parent_order_id
+      ? orders.find((o) => o.id === order.parent_order_id)?.folio ?? order.folio
+      : order.folio;
+
+    /* Buscar versiones existentes para determinar el siguiente número */
+    const versionPattern = `${rootFolio}-V%`;
+    const { data: existingVersions } = await supabase
+      .from("purchase_orders")
+      .select("folio")
+      .eq("company_id", user.company_id)
+      .ilike("folio", versionPattern)
+      .is("deleted_at", null);
+
+    let maxVersion = 1;
+    (existingVersions ?? []).forEach((row: { folio: string }) => {
+      const match = row.folio.match(/-V(\d+)$/);
+      if (match) {
+        const v = parseInt(match[1], 10);
+        if (v > maxVersion) maxVersion = v;
+      }
+    });
+    const nextVersion = maxVersion + 1;
+    const newFolio = `${rootFolio}-V${nextVersion}`;
+
     const nowIso = new Date().toISOString();
     const { data: newOC, error } = await supabase
       .from("purchase_orders")
       .insert({
         company_id: user.company_id,
-        folio: `REPO-${order.folio}`,
+        folio: newFolio,
         supplier_id: order.supplier_id,
         supplier_branch_id: order.supplier_branch_id,
         supplier_prefix: order.supplier_prefix,
@@ -874,6 +903,7 @@ export default function PurchasesPage() {
         responsible_name: order.responsible_name,
         responsible_phone: order.responsible_phone,
         signer_name: order.signer_name,
+        parent_order_id: order.parent_order_id ?? order.id,
         created_at: nowIso,
         updated_at: nowIso,
       })
@@ -894,7 +924,7 @@ export default function PurchasesPage() {
       }))
     );
     void loadAll(user.company_id);
-    toast.success(`Borrador creado: REPO-${order.folio}`);
+    toast.success(`Borrador creado: ${newFolio}`);
   }
 
   /* ── Cancelar OC (con confirmación) ──────────────────────────── */
