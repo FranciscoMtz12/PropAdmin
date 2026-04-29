@@ -16,3 +16,11 @@ Key routing rules:
 - Ship/deploy/PR → invoke /ship or /land-and-deploy
 - Save progress → invoke /context-save
 - Resume context → invoke /context-restore
+
+## Reglas de layout mobile
+
+REGLA: Si un elemento existe pero no se ve en mobile,
+buscar min-width o minmax con valor fijo en el grid/flex
+contenedor. Cambiar minmax(Xpx) → minmax(0, 1fr).
+Siempre usar width:100%, maxWidth:100%, minWidth:0,
+boxSizing:border-box en contenedores de cards en mobile.
