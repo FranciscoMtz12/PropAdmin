@@ -774,49 +774,52 @@ export default function BuildingsPage() {
                   <AppCard
                     style={{
                       padding: 16,
-                      position: "relative",
                       boxShadow: isHovered
                         ? "0 8px 24px rgba(0,0,0,0.13)"
                         : "var(--shadow-card)",
                       transition: "box-shadow 0.15s ease",
                     }}
                   >
-                    {/* Dona — esquina superior derecha */}
-                    <div style={{ position: "absolute", top: 12, right: 12 }}>
-                      <OccupancyDonut
-                        totalUnits={totalUnits}
-                        activeLeases={activeLeases}
-                      />
-                    </div>
-
-                    {/* Contenido con margen derecho para no solaparse con dona */}
-                    <div style={{ paddingRight: 80 }}>
-                      <p
-                        style={{
-                          fontSize: 15,
-                          fontWeight: 700,
-                          color: "var(--text-primary)",
-                          marginBottom: 4,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {building.name}
-                      </p>
-                      <p
-                        style={{
-                          fontSize: 11,
-                          color: "var(--text-secondary)",
-                          marginBottom: 8,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {building.address || "Sin dirección registrada"}
-                      </p>
-                      <BuildingCategoryBadge category={building.building_category} />
+                    {/* Top: info + dona en fila */}
+                    <div
+                      className="building-card-top"
+                      style={{ display: "flex", alignItems: "flex-start", gap: 12, overflow: "hidden", marginBottom: 10 }}
+                    >
+                      <div className="building-card-info" style={{ flex: 1, minWidth: 0 }}>
+                        <p
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: "var(--text-primary)",
+                            marginBottom: 4,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {building.name}
+                        </p>
+                        <p
+                          className="building-card-addr"
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-secondary)",
+                            marginBottom: 8,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {building.address || "Sin dirección registrada"}
+                        </p>
+                        <BuildingCategoryBadge category={building.building_category} />
+                      </div>
+                      <div style={{ flexShrink: 0 }}>
+                        <OccupancyDonut
+                          totalUnits={totalUnits}
+                          activeLeases={activeLeases}
+                        />
+                      </div>
                     </div>
 
                     <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
