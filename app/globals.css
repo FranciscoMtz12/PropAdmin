@@ -550,7 +550,7 @@ a {
     justify-content: flex-start;
     gap: 16px;
   }
-  .buildings-grid { grid-template-columns: 1fr !important; }
+  .buildings-grid { grid-template-columns: 1fr !important; overflow: visible; }
   .dashboard-contracts-table td:first-child {
     max-width: 120px;
     white-space: nowrap;
@@ -742,6 +742,7 @@ a {
   .buildings-grid {
     grid-template-columns: 1fr !important;
     gap: 10px !important;
+    overflow: visible;
   }
   .building-card-addr {
     font-size: 12px !important;
