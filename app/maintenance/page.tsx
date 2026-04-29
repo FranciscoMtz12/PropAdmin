@@ -1550,7 +1550,7 @@ export default function MaintenancePage() {
                 </div>
               </AppCard>
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gap: 10, gridTemplateColumns: "minmax(0, 1fr)" }}>
                 {filteredTickets.map((ticket, index) => (
                   <motion.div
                     key={ticket.id}
@@ -2267,7 +2267,8 @@ function TicketCard({
                 Sin materiales. Agrega renglones con el botón +.
               </div>
             ) : (
-              <div style={{ display: "grid", gap: 8 }}>
+              <div className="mod-table-wrap">
+              <div style={{ display: "grid", gap: 8, minWidth: 420 }}>
                 {/* Encabezado */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 130px 160px 32px", gap: 8 }}>
                   <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Descripción</span>
@@ -2350,10 +2351,11 @@ function TicketCard({
                   </div>
                 ))}
               </div>
+              </div>
             )}
 
             {/* Acciones de materiales */}
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
+            <div className="maint-mat-actions" style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 4 }}>
               <button
                 type="button"
                 onClick={() =>

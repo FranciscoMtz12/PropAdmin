@@ -594,6 +594,9 @@ a {
   }
   /* Botones de acción */
   .mod-actions { flex-wrap: wrap; gap: 8px; }
+  /* Materiales — tabla scroll + botones apilados */
+  .maint-mat-actions { flex-direction: column !important; }
+  .maint-mat-actions > button { width: 100%; justify-content: center; }
   /* Filtros */
   .mod-filters { flex-direction: column; }
   /* Headers de página */
