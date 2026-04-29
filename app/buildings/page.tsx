@@ -729,8 +729,10 @@ export default function BuildingsPage() {
             className="buildings-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(0, 1fr))",
               gap: 16,
+              width: "100%",
+              maxWidth: "100%",
             }}
           >
             {filteredBuildings.map((building, index) => {
@@ -745,7 +747,7 @@ export default function BuildingsPage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.06 }}
-                  style={{ overflow: "visible", position: "relative" }}
+                  style={{ overflow: "visible", position: "relative", width: "100%", maxWidth: "100%", minWidth: 0 }}
                 >
                 {/* Wrapper clickeable — toda la card navega al detalle */}
                 <div
@@ -760,6 +762,9 @@ export default function BuildingsPage() {
                     overflow: "visible",
                     position: "relative",
                     zIndex: openActionsBuildingId === building.id ? 100 : 1,
+                    width: "100%",
+                    maxWidth: "100%",
+                    minWidth: 0,
                   }}
                 >
                   {/* Card — divs inline, sin CSS classes que pisen estilos */}
@@ -773,6 +778,10 @@ export default function BuildingsPage() {
                         ? "0 8px 24px rgba(0,0,0,0.13)"
                         : "var(--shadow-card)",
                       transition: "box-shadow 0.15s ease, background 0.2s, border-color 0.2s",
+                      width: "100%",
+                      maxWidth: "100%",
+                      minWidth: 0,
+                      boxSizing: "border-box",
                     }}
                   >
                     {/* Fila superior: info izq + dona der */}
