@@ -41,7 +41,7 @@ export default function EntityCard({
       {/* Top: info (flex:1) + status indicator (flexShrink:0) */}
       <div
         className="building-card-top"
-        style={{ display: "flex", alignItems: "flex-start", gap: 12, overflow: "hidden", marginBottom: 10 }}
+        style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", overflow: "visible", marginBottom: 10 }}
       >
         <div className="building-card-info" style={{ flex: 1, minWidth: 0 }}>
           <p
@@ -74,7 +74,11 @@ export default function EntityCard({
           )}
           {badge}
         </div>
-        {statusIndicator && <div style={{ flexShrink: 0 }}>{statusIndicator}</div>}
+        {statusIndicator && (
+          <div style={{ flexShrink: 0, width: 72, height: 72, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            {statusIndicator}
+          </div>
+        )}
       </div>
 
       {children}

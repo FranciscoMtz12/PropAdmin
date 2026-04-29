@@ -114,42 +114,40 @@ type TrendPoint = {
 function OccupancyDonut({
   totalUnits,
   activeLeases,
+  size = 64,
 }: {
   totalUnits: number;
   activeLeases: number;
+  size?: number;
 }) {
   const pct = totalUnits > 0 ? Math.round((activeLeases / totalUnits) * 100) : 0;
-  // Color semántico según nivel de ocupación
   const color =
     totalUnits === 0 ? "#E5E7EB"
     : pct >= 75 ? "#10B981"
     : pct >= 40 ? "#F59E0B"
     : "#EF4444";
 
-  const r = 24;
-  const circ = 2 * Math.PI * r; // ~150.8
+  const half = size / 2;
+  const r    = Math.round(size * 0.375); // 24 @ 64px
+  const sw   = Math.round(size * 0.125); // 8  @ 64px
+  const circ = 2 * Math.PI * r;
   const offset = totalUnits === 0 ? circ : circ - (pct / 100) * circ;
 
   return (
-    <div style={{ position: "relative", width: 64, height: 64, flexShrink: 0 }}>
-      <svg width="64" height="64">
-        {/* Círculo base (track) */}
-        <circle cx="32" cy="32" r={r} fill="none" stroke="#E5E7EB" strokeWidth="8" />
-        {/* Círculo de progreso — origen en la parte superior */}
+    <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size}>
+        <circle cx={half} cy={half} r={r} fill="none" stroke="#E5E7EB" strokeWidth={sw} />
         <circle
-          cx="32"
-          cy="32"
-          r={r}
+          cx={half} cy={half} r={r}
           fill="none"
           stroke={color}
-          strokeWidth="8"
+          strokeWidth={sw}
           strokeLinecap="round"
           strokeDasharray={circ}
           strokeDashoffset={offset}
-          style={{ transform: "rotate(-90deg)", transformOrigin: "32px 32px" }}
+          style={{ transform: "rotate(-90deg)", transformOrigin: `${half}px ${half}px` }}
         />
       </svg>
-      {/* Texto central */}
       <div
         style={{
           position: "absolute",
@@ -161,17 +159,10 @@ function OccupancyDonut({
           gap: 1,
         }}
       >
-        <span
-          style={{
-            fontSize: 13,
-            fontWeight: 600,
-            lineHeight: 1,
-            color: "var(--text-primary)",
-          }}
-        >
+        <span style={{ fontSize: Math.round(size * 0.2), fontWeight: 600, lineHeight: 1, color: "var(--text-primary)" }}>
           {pct}%
         </span>
-        <span style={{ fontSize: 9, color: "var(--text-muted)", lineHeight: 1.2 }}>
+        <span style={{ fontSize: Math.round(size * 0.14), color: "var(--text-muted)", lineHeight: 1.2 }}>
           ocup.
         </span>
       </div>
@@ -782,7 +773,7 @@ export default function BuildingsPage() {
                     subtitle={building.address || "Sin dirección registrada"}
                     badge={<BuildingCategoryBadge category={building.building_category} />}
                     statusIndicator={
-                      <OccupancyDonut totalUnits={totalUnits} activeLeases={activeLeases} />
+                      <OccupancyDonut totalUnits={totalUnits} activeLeases={activeLeases} size={72} />
                     }
                     metrics={[
                       { label: "Total",    value: totalUnits },
