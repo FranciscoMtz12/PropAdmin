@@ -56,7 +56,7 @@ import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
-import AppCard from "@/components/AppCard";
+import EntityCard from "@/components/EntityCard";
 import AppSelect from "@/components/AppSelect";
 import AppFormField from "@/components/AppFormField";
 import AppEmptyState from "@/components/AppEmptyState";
@@ -771,140 +771,26 @@ export default function BuildingsPage() {
                     zIndex: openActionsBuildingId === building.id ? 100 : 1,
                   }}
                 >
-                  <AppCard
+                  <EntityCard
                     style={{
-                      padding: 16,
                       boxShadow: isHovered
                         ? "0 8px 24px rgba(0,0,0,0.13)"
                         : "var(--shadow-card)",
                       transition: "box-shadow 0.15s ease",
                     }}
-                  >
-                    {/* Top: info + dona en fila */}
-                    <div
-                      className="building-card-top"
-                      style={{ display: "flex", alignItems: "flex-start", gap: 12, overflow: "hidden", marginBottom: 10 }}
-                    >
-                      <div className="building-card-info" style={{ flex: 1, minWidth: 0 }}>
-                        <p
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            color: "var(--text-primary)",
-                            marginBottom: 4,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {building.name}
-                        </p>
-                        <p
-                          className="building-card-addr"
-                          style={{
-                            fontSize: 11,
-                            color: "var(--text-secondary)",
-                            marginBottom: 8,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {building.address || "Sin dirección registrada"}
-                        </p>
-                        <BuildingCategoryBadge category={building.building_category} />
-                      </div>
-                      <div style={{ flexShrink: 0 }}>
-                        <OccupancyDonut
-                          totalUnits={totalUnits}
-                          activeLeases={activeLeases}
-                        />
-                      </div>
-                    </div>
-
-                    <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
-
-                    {/* Stats + acciones */}
-                    <div
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        gap: 12,
-                      }}
-                    >
-                      {/* Stats: Total / Ocupados / Libres */}
-                      <div style={{ display: "flex", gap: 20 }}>
-                        <div style={{ textAlign: "center" }}>
-                          <p
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color: "var(--text-primary)",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {totalUnits}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              color: "var(--text-muted)",
-                              marginTop: 3,
-                            }}
-                          >
-                            Total
-                          </p>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                          <p
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color: "#10B981",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {activeLeases}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              color: "var(--text-muted)",
-                              marginTop: 3,
-                            }}
-                          >
-                            Ocupados
-                          </p>
-                        </div>
-                        <div style={{ textAlign: "center" }}>
-                          <p
-                            style={{
-                              fontSize: 18,
-                              fontWeight: 700,
-                              color: "var(--text-muted)",
-                              lineHeight: 1,
-                            }}
-                          >
-                            {freeUnits}
-                          </p>
-                          <p
-                            style={{
-                              fontSize: 11,
-                              color: "var(--text-muted)",
-                              marginTop: 3,
-                            }}
-                          >
-                            Libres
-                          </p>
-                        </div>
-                      </div>
-
-                      {/* Acciones */}
-                      <div
-                        style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}
-                        onClick={(e) => e.stopPropagation()}
-                      >
+                    title={building.name}
+                    subtitle={building.address || "Sin dirección registrada"}
+                    badge={<BuildingCategoryBadge category={building.building_category} />}
+                    statusIndicator={
+                      <OccupancyDonut totalUnits={totalUnits} activeLeases={activeLeases} />
+                    }
+                    metrics={[
+                      { label: "Total",    value: totalUnits },
+                      { label: "Ocupados", value: activeLeases, color: "#10B981" },
+                      { label: "Libres",   value: freeUnits,    color: "var(--text-muted)" },
+                    ]}
+                    actions={
+                      <>
                         {isHovered && (
                           <span
                             style={{
@@ -939,7 +825,6 @@ export default function BuildingsPage() {
                           >
                             <MoreHorizontal size={16} />
                           </button>
-
                           {openActionsBuildingId === building.id && (
                             <div style={dropdownMenuStyle}>
                               <button
@@ -961,9 +846,9 @@ export default function BuildingsPage() {
                             </div>
                           )}
                         </div>
-                      </div>
-                    </div>
-                  </AppCard>
+                      </>
+                    }
+                  />
                 </div>
                 </motion.div>
               );

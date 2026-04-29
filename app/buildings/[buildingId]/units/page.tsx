@@ -41,7 +41,7 @@ import SectionCard from "@/components/SectionCard";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import MetricCard from "@/components/MetricCard";
-import AppCard from "@/components/AppCard";
+import EntityCard from "@/components/EntityCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
@@ -671,7 +671,7 @@ export default function BuildingUnitsPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
             {units.map((unit) => {
-              const badge         = getUnitStatusBadge(unit.status);
+              const unitBadge     = getUnitStatusBadge(unit.status);
               const tenantName    = tenantsByUnitId.get(unit.id);
               const typeInfo      = unit.unit_types;
               const isByRoom      = unit.rental_type === "by_room";
@@ -684,88 +684,33 @@ export default function BuildingUnitsPage() {
                   onClick={() => router.push(`/buildings/${building.id}/units/${unit.id}`)}
                   style={{ cursor: "pointer" }}
                 >
-                <AppCard style={{ padding: 16, position: "relative" }}>
-                  {/* Mini dona — esquina superior derecha */}
-                  <div style={{ position: "absolute", top: 12, right: 12 }}>
-                    <MiniStatusRing status={unit.status} occupiedRooms={occupiedRooms} totalRooms={totalRooms} />
-                  </div>
-
-                  {/* Contenido con margen derecho para no solaparse con dona */}
-                  <div style={{ paddingRight: 52 }}>
-                    <div style={{ display: "flex", gap: 14, alignItems: "flex-start", marginBottom: 10 }}>
-                      {/* Izquierda: número + código */}
-                      <div style={{ flexShrink: 0 }}>
-                        <p style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1, marginBottom: 3 }}>
-                          {unit.unit_number}
-                        </p>
-                        <p style={{ fontSize: 11, color: "var(--text-muted)", lineHeight: 1 }}>
-                          {unit.display_code || "—"}
-                        </p>
-                      </div>
-
-                      {/* Derecha: badges + detalles */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 6 }}>
-                          <AppBadge
-                            backgroundColor={badge.backgroundColor}
-                            textColor={badge.textColor}
-                            borderColor={badge.borderColor}
-                          >
-                            {badge.label}
-                          </AppBadge>
-                          {isByRoom && occupiedRooms !== undefined && totalRooms !== undefined ? (
-                            <AppBadge backgroundColor="var(--metric-bg-amber)" textColor="var(--badge-text-amber)" borderColor="var(--metric-border-amber)">
-                              {occupiedRooms}/{totalRooms} cuartos
-                            </AppBadge>
-                          ) : null}
-                          <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">
-                            <Layers3 size={12} />
-                            {typeInfo?.name || "Sin tipología"}
-                          </AppBadge>
-                        </div>
-
-                        {/* Piso + recámaras + baños (datos de la tipología) */}
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: 12 }}>
-                          {unit.floor != null ? (
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <Hash size={11} />
-                              Piso {unit.floor}
-                            </span>
-                          ) : null}
-                          {typeInfo?.bedrooms != null ? (
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <BedDouble size={11} />
-                              {typeInfo.bedrooms} rec.
-                            </span>
-                          ) : null}
-                          {typeInfo?.bathrooms != null ? (
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <Bath size={11} />
-                              {typeInfo.bathrooms} baño{typeInfo.bathrooms !== 1 ? "s" : ""}
-                            </span>
-                          ) : null}
-                        </div>
-                      </div>
+                <EntityCard
+                  title={unit.unit_number}
+                  subtitle={unit.display_code || "—"}
+                  badge={
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      <AppBadge
+                        backgroundColor={unitBadge.backgroundColor}
+                        textColor={unitBadge.textColor}
+                        borderColor={unitBadge.borderColor}
+                      >
+                        {unitBadge.label}
+                      </AppBadge>
+                      {isByRoom && occupiedRooms !== undefined && totalRooms !== undefined ? (
+                        <AppBadge backgroundColor="var(--metric-bg-amber)" textColor="var(--badge-text-amber)" borderColor="var(--metric-border-amber)">
+                          {occupiedRooms}/{totalRooms} cuartos
+                        </AppBadge>
+                      ) : null}
+                      <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">
+                        <Layers3 size={12} />
+                        {typeInfo?.name || "Sin tipología"}
+                      </AppBadge>
                     </div>
-
-                    {/* Inquilino activo */}
-                    {tenantName ? (
-                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 8 }}>
-                        <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {tenantName}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
-
-                  {/* Acciones */}
-                  <div
-                    style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 8 }}
-                    onClick={(e) => e.stopPropagation()}
-                  >
+                  }
+                  statusIndicator={
+                    <MiniStatusRing status={unit.status} occupiedRooms={occupiedRooms} totalRooms={totalRooms} />
+                  }
+                  actions={
                     <div
                       style={{ position: "relative" }}
                       ref={openActionsUnitId === unit.id ? actionsMenuRef : undefined}
@@ -785,8 +730,44 @@ export default function BuildingUnitsPage() {
                         </div>
                       )}
                     </div>
-                  </div>
-                </AppCard>
+                  }
+                >
+                  {/* Detalles tipología + inquilino */}
+                  {(unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null || tenantName) && (
+                    <div style={{ marginTop: 8 }}>
+                      {(unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null) && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: 12, marginBottom: tenantName ? 6 : 0 }}>
+                          {unit.floor != null && (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <Hash size={11} />
+                              Piso {unit.floor}
+                            </span>
+                          )}
+                          {typeInfo?.bedrooms != null && (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <BedDouble size={11} />
+                              {typeInfo.bedrooms} rec.
+                            </span>
+                          )}
+                          {typeInfo?.bathrooms != null && (
+                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                              <Bath size={11} />
+                              {typeInfo.bathrooms} baño{typeInfo.bathrooms !== 1 ? "s" : ""}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                      {tenantName && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                          <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {tenantName}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </EntityCard>
                 </div>
               );
             })}
