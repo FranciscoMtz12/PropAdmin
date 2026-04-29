@@ -773,78 +773,57 @@ export default function BuildingsPage() {
                 >
                   <AppCard
                     style={{
-                      padding: 0,
+                      padding: 16,
+                      position: "relative",
                       boxShadow: isHovered
                         ? "0 8px 24px rgba(0,0,0,0.13)"
                         : "var(--shadow-card)",
                       transition: "box-shadow 0.15s ease",
                     }}
                   >
-                    {/* TOP: info + dona */}
-                    <div
-                      className="building-card-top"
-                      style={{
-                        padding: "16px 16px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 12,
-                        overflow: "hidden",
-                        width: "100%",
-                      }}
-                    >
-                      {/* Izquierda: nombre + dirección + badge */}
-                      <div className="building-card-info" style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                        <p
-                          style={{
-                            fontSize: 15,
-                            fontWeight: 700,
-                            color: "var(--text-primary)",
-                            marginBottom: 4,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {building.name}
-                        </p>
-                        <p
-                          className="building-card-addr"
-                          style={{
-                            fontSize: 11,
-                            color: "var(--text-secondary)",
-                            marginBottom: 8,
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                            whiteSpace: "nowrap",
-                          }}
-                        >
-                          {building.address || "Sin dirección registrada"}
-                        </p>
-                        <BuildingCategoryBadge category={building.building_category} />
-                      </div>
-
-                      {/* Derecha: dona de ocupación */}
-                      <div style={{ flexShrink: 0, width: 72, height: 72 }}>
-                        <OccupancyDonut
-                          totalUnits={totalUnits}
-                          activeLeases={activeLeases}
-                        />
-                      </div>
+                    {/* Dona — esquina superior derecha */}
+                    <div style={{ position: "absolute", top: 12, right: 12 }}>
+                      <OccupancyDonut
+                        totalUnits={totalUnits}
+                        activeLeases={activeLeases}
+                      />
                     </div>
 
-                    {/* DIVISOR */}
-                    <div
-                      style={{
-                        height: "0.5px",
-                        background: "var(--border-default)",
-                        margin: "0 16px",
-                      }}
-                    />
+                    {/* Contenido con margen derecho para no solaparse con dona */}
+                    <div style={{ paddingRight: 80 }}>
+                      <p
+                        style={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          color: "var(--text-primary)",
+                          marginBottom: 4,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {building.name}
+                      </p>
+                      <p
+                        style={{
+                          fontSize: 11,
+                          color: "var(--text-secondary)",
+                          marginBottom: 8,
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        {building.address || "Sin dirección registrada"}
+                      </p>
+                      <BuildingCategoryBadge category={building.building_category} />
+                    </div>
 
-                    {/* BOTTOM: stats + acciones */}
+                    <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
+
+                    {/* Stats + acciones */}
                     <div
                       style={{
-                        padding: "12px 16px",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
@@ -918,16 +897,11 @@ export default function BuildingsPage() {
                         </div>
                       </div>
 
-                      {/* Acciones: hover label + dropdown */}
+                      {/* Acciones */}
                       <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          flexShrink: 0,
-                        }}
+                        style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}
+                        onClick={(e) => e.stopPropagation()}
                       >
-                        {/* "Ver detalle →" aparece solo en hover */}
                         {isHovered && (
                           <span
                             style={{
@@ -940,10 +914,7 @@ export default function BuildingsPage() {
                             Ver detalle →
                           </span>
                         )}
-
-                        {/* Dropdown (no propaga click al wrapper) */}
                         <div
-                          onClick={(e) => e.stopPropagation()}
                           style={{ position: "relative" }}
                           ref={
                             openActionsBuildingId === building.id

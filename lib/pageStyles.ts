@@ -49,8 +49,8 @@ export const dropdownTriggerStyle: CSSProperties = {
 export const dropdownMenuStyle: CSSProperties = {
   position: "absolute",
   right: 0,
-  bottom: "110%",
-  top: "auto",
+  top: "100%",
+  bottom: "auto",
   minWidth: 180,
   borderRadius: 12,
   border: "1px solid var(--border-default)",
