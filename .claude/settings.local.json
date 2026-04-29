@@ -13,7 +13,8 @@
       "Bash(grep -nE \"^\\\\s*\\\\\\);\\\\s*$\")",
       "Bash(awk 'NR>=1980 && NR<=2420' app/maintenance/page.tsx)",
       "Bash(npx next *)",
-      "Bash(find app *)"
+      "Bash(find app *)",
+      "Skill(gstack-design-review)"
     ]
   }
 }
