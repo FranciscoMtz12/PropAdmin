@@ -56,7 +56,6 @@ import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
-import EntityCard from "@/components/EntityCard";
 import AppSelect from "@/components/AppSelect";
 import AppFormField from "@/components/AppFormField";
 import AppEmptyState from "@/components/AppEmptyState";
@@ -762,26 +761,119 @@ export default function BuildingsPage() {
                     zIndex: openActionsBuildingId === building.id ? 100 : 1,
                   }}
                 >
-                  <EntityCard
+                  {/* Card — divs inline, sin CSS classes que pisen estilos */}
+                  <div
                     style={{
+                      border: "1px solid var(--border-default)",
+                      borderRadius: 16,
+                      padding: 16,
+                      background: "var(--bg-card)",
                       boxShadow: isHovered
                         ? "0 8px 24px rgba(0,0,0,0.13)"
                         : "var(--shadow-card)",
-                      transition: "box-shadow 0.15s ease",
+                      transition: "box-shadow 0.15s ease, background 0.2s, border-color 0.2s",
                     }}
-                    title={building.name}
-                    subtitle={building.address || "Sin dirección registrada"}
-                    badge={<BuildingCategoryBadge category={building.building_category} />}
-                    statusIndicator={
-                      <OccupancyDonut totalUnits={totalUnits} activeLeases={activeLeases} size={72} />
-                    }
-                    metrics={[
-                      { label: "Total",    value: totalUnits },
-                      { label: "Ocupados", value: activeLeases, color: "#10B981" },
-                      { label: "Libres",   value: freeUnits,    color: "var(--text-muted)" },
-                    ]}
-                    actions={
-                      <>
+                  >
+                    {/* Fila superior: info izq + dona der */}
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "row",
+                        alignItems: "center",
+                        gap: 12,
+                        width: "100%",
+                        overflow: "visible",
+                        marginBottom: 10,
+                      }}
+                    >
+                      {/* Info — flex:1 con truncado */}
+                      <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                        <p
+                          style={{
+                            fontSize: 15,
+                            fontWeight: 700,
+                            color: "var(--text-primary)",
+                            marginBottom: 4,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {building.name}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: 11,
+                            color: "var(--text-secondary)",
+                            marginBottom: 8,
+                            overflow: "hidden",
+                            textOverflow: "ellipsis",
+                            whiteSpace: "nowrap",
+                          }}
+                        >
+                          {building.address || "Sin dirección registrada"}
+                        </p>
+                        <BuildingCategoryBadge category={building.building_category} />
+                      </div>
+
+                      {/* Dona — tamaño fijo, no se encoge */}
+                      <div
+                        style={{
+                          flexShrink: 0,
+                          width: 72,
+                          height: 72,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                        }}
+                      >
+                        <OccupancyDonut
+                          totalUnits={totalUnits}
+                          activeLeases={activeLeases}
+                          size={72}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Divisor */}
+                    <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
+
+                    {/* Fila inferior: métricas izq + acciones der */}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                        gap: 12,
+                      }}
+                    >
+                      {/* Métricas */}
+                      <div style={{ display: "flex", gap: 20 }}>
+                        <div style={{ textAlign: "center" }}>
+                          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                            {totalUnits}
+                          </p>
+                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Total</p>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <p style={{ fontSize: 18, fontWeight: 700, color: "#10B981", lineHeight: 1 }}>
+                            {activeLeases}
+                          </p>
+                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p>
+                        </div>
+                        <div style={{ textAlign: "center" }}>
+                          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>
+                            {freeUnits}
+                          </p>
+                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
+                        </div>
+                      </div>
+
+                      {/* Acciones */}
+                      <div
+                        style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {isHovered && (
                           <span
                             style={{
@@ -837,9 +929,9 @@ export default function BuildingsPage() {
                             </div>
                           )}
                         </div>
-                      </>
-                    }
-                  />
+                      </div>
+                    </div>
+                  </div>
                 </div>
                 </motion.div>
               );
