@@ -881,7 +881,7 @@ export default function PurchasesPage() {
         .is("deleted_at", null),
       (() => {
         const ids = orders
-          .filter((ord) => ord.maintenance_log_id === mlId && ord.status !== "cancelled")
+          .filter((ord) => ord.maintenance_log_id === mlId && ["sent", "partial", "received", "invoiced"].includes(ord.status))
           .map((ord) => ord.id);
         if (ids.length === 0) return Promise.resolve({ data: [] });
         return supabase
@@ -907,6 +907,18 @@ export default function PurchasesPage() {
 
   async function createOCForFaltantes(order: PurchaseOrder) {
     if (!user?.company_id) return;
+
+    /* FIX 3 — Si ya existe una OC hija en draft, navegar a ella en vez de crear otra */
+    const existingChild = orders.find(
+      (ord) => ord.parent_order_id === order.id && ord.status === "draft"
+    );
+    if (existingChild) {
+      setSearch(existingChild.folio);
+      setExpandedOrderId(existingChild.id);
+      toast(`Ya existe una OC de faltantes: ${existingChild.folio}`);
+      return;
+    }
+
     const items = itemsByOrderId[order.id] ?? [];
     const faltanteItems = items.filter(
       (it) => it.quantity_received != null && it.quantity_received < it.quantity
@@ -1020,6 +1032,17 @@ export default function PurchasesPage() {
       return;
     }
     setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status, ...(status === "received" ? { received_at: nowIso } : {}) } as PurchaseOrder : o)));
+    /* Invalidar caché de progreso — las OCs del mismo ticket deben recalcular */
+    if (order.maintenance_log_id) {
+      const mlId = order.maintenance_log_id;
+      setTicketProgress((prev) => {
+        const next = { ...prev };
+        orders
+          .filter((ord) => ord.maintenance_log_id === mlId)
+          .forEach((ord) => { delete next[ord.id]; });
+        return next;
+      });
+    }
     const labels: Record<Status, string> = {
       draft: "como borrador",
       pending: "por enviar",
@@ -2088,41 +2111,40 @@ export default function PurchasesPage() {
                           </>
                         ) : null}
 
-                        {/* Botones de surtido — cuando partial */}
+                        {/* Botones — cuando partial: cerrada para surtido, solo faltantes y factura */}
                         {o.status === "partial" ? (
                           <>
-                            <button
-                              type="button"
-                              onClick={() => void markStatus(o, "received")}
-                              disabled={updatingStatusId === o.id}
-                              style={{
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "9px 14px", borderRadius: 8,
-                                border: "1px solid #10B981", background: "#10B981", color: "#fff",
-                                fontSize: 13, fontWeight: 700, cursor: "pointer",
-                              }}
-                            >
-                              <CheckCircle2 size={14} />
-                              Completar surtido
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => void createOCForFaltantes(o)}
-                              style={{
-                                display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "9px 14px", borderRadius: 8,
-                                border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
-                                fontSize: 13, fontWeight: 600, cursor: "pointer",
-                              }}
-                            >
-                              <Plus size={14} />
-                              Nueva OC por faltantes
-                            </button>
+                            {/* Badge indicando que está cerrada */}
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", gap: 5,
+                              padding: "6px 12px", borderRadius: 8,
+                              background: "#fffbeb", border: "1px solid #F59E0B",
+                              color: "#b45309", fontSize: 12, fontWeight: 600,
+                            }}>
+                              <AlertCircle size={13} />
+                              Surtido parcial — Cerrada
+                            </span>
+                            {/* "Nueva OC por faltantes" solo si no existe ya una OC hija draft */}
+                            {!orders.some((ord) => ord.parent_order_id === o.id && ord.status === "draft") ? (
+                              <button
+                                type="button"
+                                onClick={() => void createOCForFaltantes(o)}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", gap: 6,
+                                  padding: "9px 14px", borderRadius: 8,
+                                  border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
+                                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                                }}
+                              >
+                                <Plus size={14} />
+                                Nueva OC por faltantes
+                              </button>
+                            ) : null}
                           </>
                         ) : null}
 
-                        {/* Registrar factura — cuando received */}
-                        {o.status === "received" ? (
+                        {/* Registrar factura — cuando received o partial */}
+                        {(o.status === "received" || o.status === "partial") ? (
                           <button
                             type="button"
                             onClick={() => {
