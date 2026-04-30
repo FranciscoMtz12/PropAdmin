@@ -729,7 +729,7 @@ export default function BuildingsPage() {
             className="buildings-grid"
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(0, 1fr))",
+              gridTemplateColumns: "repeat(3, 1fr)",
               gap: 16,
               width: "100%",
               maxWidth: "100%",

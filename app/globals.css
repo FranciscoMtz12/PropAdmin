@@ -760,6 +760,12 @@ a {
    Buildings — cards portafolio + detalle en mobile
    ════════════════════════════════════════════════════════════════════ */
 
+@media (max-width: 1024px) {
+  .buildings-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
 @media (max-width: 767px) {
   /* Lista de edificios: 1 columna */
   .buildings-grid {
