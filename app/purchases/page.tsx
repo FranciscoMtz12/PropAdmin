@@ -928,11 +928,12 @@ export default function PurchasesPage() {
       return;
     }
 
-    /* Determinar el folio raíz: si esta OC ya es una versión (tiene parent),
-       usar el folio raíz de la madre para construir la secuencia. */
-    const rootFolio = order.parent_order_id
+    /* Determinar el folio raíz: quitar sufijo -Vn si existe (por si la OC ya es versión
+       o si el parent no está en memoria). */
+    const rawRoot = order.parent_order_id
       ? orders.find((o) => o.id === order.parent_order_id)?.folio ?? order.folio
       : order.folio;
+    const rootFolio = rawRoot.replace(/-V\d+$/, "");
 
     /* Buscar versiones existentes para determinar el siguiente número */
     const versionPattern = `${rootFolio}-V%`;
