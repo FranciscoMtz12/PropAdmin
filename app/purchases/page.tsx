@@ -162,7 +162,7 @@ const STATUS_LABEL: Record<Status, string> = {
   pending:   "Pendiente firma",
   sent:      "Enviada",
   partial:   "Surtido parcial",
-  received:  "Recibida",
+  received:  "Completada",
   invoiced:  "Facturada",
   cancelled: "Cancelada",
 };
@@ -895,8 +895,8 @@ export default function PurchasesPage() {
     let itemTotal = 0;
     let itemReceived = 0;
     ((ticketOCItems.data ?? []) as { quantity: number; quantity_received: number | null }[]).forEach((it) => {
-      itemTotal    += Number(it.quantity)          || 0;
-      itemReceived += Number(it.quantity_received) || 0;
+      itemTotal    += Number(it.quantity ?? 0);
+      itemReceived += Number(it.quantity_received ?? 0);
     });
 
     setTicketProgress((p) => ({ ...p, [order.id]: { matTotal: matTotal ?? 0, itemTotal, itemReceived } }));
@@ -1654,6 +1654,22 @@ export default function PurchasesPage() {
                       <AppBadge {...getStatusBadgeProps(o.status)}>
                         {STATUS_LABEL[o.status]}
                       </AppBadge>
+                      {(() => {
+                        if (o.status !== "partial") return null;
+                        const child = orders.find((ord) => ord.parent_order_id === o.id);
+                        if (!child) return null;
+                        const vMatch = child.folio.match(/-V(\d+)$/);
+                        const vNum = vMatch ? vMatch[1] : "?";
+                        return (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                            borderRadius: 20, background: "#eff6ff",
+                            color: "#2563eb", border: "1px solid #93c5fd",
+                          }}>
+                            V{vNum} activa
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
@@ -1725,7 +1741,7 @@ export default function PurchasesPage() {
                         }}>
                           {parentOrder && (
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
-                              <span style={{ fontWeight: 600 }}>Versión de:</span>
+                              <span style={{ fontWeight: 600 }}>Faltantes de:</span>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setSearch(parentOrder.folio); setExpandedOrderId(parentOrder.id); }}
                                 style={{
@@ -2125,22 +2141,42 @@ export default function PurchasesPage() {
                               <AlertCircle size={13} />
                               Surtido parcial — Cerrada
                             </span>
-                            {/* "Nueva OC por faltantes" solo si no existe ya una OC hija draft */}
-                            {!orders.some((ord) => ord.parent_order_id === o.id && ord.status === "draft") ? (
-                              <button
-                                type="button"
-                                onClick={() => void createOCForFaltantes(o)}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", gap: 6,
-                                  padding: "9px 14px", borderRadius: 8,
-                                  border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
-                                  fontSize: 13, fontWeight: 600, cursor: "pointer",
-                                }}
-                              >
-                                <Plus size={14} />
-                                Nueva OC por faltantes
-                              </button>
-                            ) : null}
+                            {(() => {
+                              const childDraft = orders.find((ord) => ord.parent_order_id === o.id && ord.status === "draft");
+                              if (!childDraft) {
+                                return (
+                                  <button
+                                    type="button"
+                                    onClick={() => void createOCForFaltantes(o)}
+                                    style={{
+                                      display: "inline-flex", alignItems: "center", gap: 6,
+                                      padding: "9px 14px", borderRadius: 8,
+                                      border: "1px solid #ea580c", background: "#ea580c", color: "#fff",
+                                      fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                    }}
+                                  >
+                                    <Plus size={14} />
+                                    Nueva OC por faltantes
+                                  </button>
+                                );
+                              }
+                              const vMatch = childDraft.folio.match(/-V(\d+)$/);
+                              const vNum = vMatch ? vMatch[1] : "?";
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); setSearch(childDraft.folio); setExpandedOrderId(childDraft.id); }}
+                                  style={{
+                                    display: "inline-flex", alignItems: "center", gap: 6,
+                                    padding: "9px 14px", borderRadius: 8,
+                                    border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
+                                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                                  }}
+                                >
+                                  Ver V{vNum} →
+                                </button>
+                              );
+                            })()}
                           </>
                         ) : null}
 
