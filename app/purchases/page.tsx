@@ -915,7 +915,9 @@ export default function PurchasesPage() {
     if (existingChild) {
       setSearch(existingChild.folio);
       setExpandedOrderId(existingChild.id);
-      toast(`Ya existe una OC de faltantes: ${existingChild.folio}`);
+      const vMatch = existingChild.folio.match(/-V(\d+)$/);
+      const vNum = vMatch ? vMatch[1] : "?";
+      toast(`Ya existe una V${vNum} en borrador: ${existingChild.folio}`);
       return;
     }
 

@@ -33,6 +33,7 @@ type POCampo = {
   supplier_prefix: string | null;
   building_id: string | null;
   maintenance_log_id: string | null;
+  parent_order_id: string | null;
   pdf_url: string | null;
   sent_at: string | null;
   created_at: string;
@@ -78,7 +79,7 @@ export default function CampoComprasPage() {
       .from("purchase_orders")
       .select(`
         id, folio, supplier_id, supplier_branch_id, supplier_prefix,
-        building_id, maintenance_log_id, pdf_url, sent_at, created_at,
+        building_id, maintenance_log_id, parent_order_id, pdf_url, sent_at, created_at,
         responsible_user_id, responsible_name, responsible_phone, signer_name,
         suppliers(id, name),
         buildings(id, name)
@@ -98,6 +99,7 @@ export default function CampoComprasPage() {
       id: string; folio: string; supplier_id: string;
       supplier_branch_id: string | null; supplier_prefix: string | null;
       building_id: string | null; maintenance_log_id: string | null;
+      parent_order_id: string | null;
       pdf_url: string | null; sent_at: string | null; created_at: string;
       responsible_user_id: string | null; responsible_name: string | null;
       responsible_phone: string | null; signer_name: string | null;
@@ -139,6 +141,7 @@ export default function CampoComprasPage() {
       supplier_prefix: o.supplier_prefix ?? null,
       building_id: o.building_id ?? null,
       maintenance_log_id: o.maintenance_log_id ?? null,
+      parent_order_id: o.parent_order_id ?? null,
       pdf_url: o.pdf_url ?? null,
       sent_at: o.sent_at ?? null,
       created_at: o.created_at,
@@ -240,11 +243,32 @@ export default function CampoComprasPage() {
 
     if (anyFaltante) {
       const faltanteItems = itemUpdates.filter((u) => u.hasFaltante);
+
+      /* Calcular folio versionado: raíz-V{n+1} */
+      const rootFolio = receptionOrder.folio.replace(/-V\d+$/, "");
+      const versionPattern = `${rootFolio}-V%`;
+      const { data: existingVersions } = await supabase
+        .from("purchase_orders")
+        .select("folio")
+        .eq("company_id", user.company_id)
+        .ilike("folio", versionPattern)
+        .is("deleted_at", null);
+      let maxVersion = 1;
+      ((existingVersions ?? []) as { folio: string }[]).forEach((row) => {
+        const match = row.folio.match(/-V(\d+)$/);
+        if (match) {
+          const v = parseInt(match[1], 10);
+          if (v > maxVersion) maxVersion = v;
+        }
+      });
+      const newFolio = `${rootFolio}-V${maxVersion + 1}`;
+      const parentOrderId = receptionOrder.parent_order_id ?? receptionOrder.id;
+
       const { data: newOC, error: newOCErr } = await supabase
         .from("purchase_orders")
         .insert({
           company_id: user.company_id,
-          folio: `REPO-${receptionOrder.folio}`,
+          folio: newFolio,
           supplier_id: receptionOrder.supplier_id,
           supplier_branch_id: receptionOrder.supplier_branch_id,
           supplier_prefix: receptionOrder.supplier_prefix,
@@ -256,6 +280,7 @@ export default function CampoComprasPage() {
           responsible_name: receptionOrder.responsible_name,
           responsible_phone: receptionOrder.responsible_phone,
           signer_name: receptionOrder.signer_name,
+          parent_order_id: parentOrderId,
           created_at: nowIso,
           updated_at: nowIso,
         })
