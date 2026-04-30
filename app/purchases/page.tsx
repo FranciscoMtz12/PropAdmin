@@ -873,37 +873,50 @@ export default function PurchasesPage() {
     if (!mlId || ticketProgress[order.id] !== undefined) return;
     setLoadingProgressFor((p) => ({ ...p, [order.id]: true }));
 
-    const confirmedStatuses = ["sent", "partial", "received", "invoiced"];
-    const allConfirmedIds = orders
-      .filter((ord) => ord.maintenance_log_id === mlId && confirmedStatuses.includes(ord.status))
-      .map((ord) => ord.id);
-    const rootConfirmedIds = orders
-      .filter((ord) => ord.maintenance_log_id === mlId && ord.parent_order_id === null && confirmedStatuses.includes(ord.status))
-      .map((ord) => ord.id);
+    /* Paso 1 — traer todas las OCs del ticket con status confirmado desde DB
+       (usamos DB en lugar de estado local para garantizar parent_order_id actualizado) */
+    const { data: ticketOCsRaw } = await supabase
+      .from("purchase_orders")
+      .select("id, parent_order_id, status, folio")
+      .eq("maintenance_log_id", mlId)
+      .not("status", "in", "(draft,cancelled)")
+      .is("deleted_at", null);
 
-    if (allConfirmedIds.length === 0) {
+    type OCMini = { id: string; parent_order_id: string | null; status: string; folio: string };
+    const ticketOCs = (ticketOCsRaw ?? []) as OCMini[];
+
+    if (ticketOCs.length === 0) {
       setTicketProgress((p) => ({ ...p, [order.id]: { itemTotal: 0, itemReceived: 0 } }));
       setLoadingProgressFor((p) => ({ ...p, [order.id]: false }));
       return;
     }
 
+    /* Paso 2 — IDs separados: raíces (para totalPedidas) vs todas (para totalSurtidas) */
+    const allIds  = ticketOCs.map((o) => o.id);
+    const rootIds = ticketOCs.filter((o) => o.parent_order_id === null).map((o) => o.id);
+
     const [rootItemsRes, allItemsRes] = await Promise.all([
-      rootConfirmedIds.length > 0
-        ? supabase.from("purchase_order_items").select("quantity").in("purchase_order_id", rootConfirmedIds).is("deleted_at", null)
+      rootIds.length > 0
+        ? supabase.from("purchase_order_items").select("quantity").in("purchase_order_id", rootIds).is("deleted_at", null)
         : Promise.resolve({ data: [] as { quantity: number }[] }),
-      supabase.from("purchase_order_items").select("quantity_received").in("purchase_order_id", allConfirmedIds).is("deleted_at", null),
+      supabase.from("purchase_order_items").select("quantity_received").in("purchase_order_id", allIds).is("deleted_at", null),
     ]);
 
-    let itemTotal = 0;
+    let totalPedidas = 0;
     ((rootItemsRes.data ?? []) as { quantity: number }[]).forEach((it) => {
-      itemTotal += Number(it.quantity ?? 0);
+      totalPedidas += Number(it.quantity ?? 0);
     });
-    let itemReceived = 0;
+    let totalSurtidas = 0;
     ((allItemsRes.data ?? []) as { quantity_received: number | null }[]).forEach((it) => {
-      itemReceived += Number(it.quantity_received ?? 0);
+      totalSurtidas += Number(it.quantity_received ?? 0);
     });
 
-    setTicketProgress((p) => ({ ...p, [order.id]: { itemTotal, itemReceived } }));
+    const totalPendientes = Math.max(0, totalPedidas - totalSurtidas);
+    const porcentaje = totalPedidas > 0
+      ? Math.min(100, Math.round((totalSurtidas / totalPedidas) * 100))
+      : 0;
+
+    setTicketProgress((p) => ({ ...p, [order.id]: { itemTotal: totalPedidas, itemReceived: totalSurtidas } }));
     setLoadingProgressFor((p) => ({ ...p, [order.id]: false }));
   }
 
