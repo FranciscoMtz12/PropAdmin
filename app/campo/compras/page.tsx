@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { type PurchaseReturnReason, RETURN_REASON_LABEL } from "@/lib/types";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 
@@ -34,6 +35,7 @@ type POCampo = {
   building_id: string | null;
   maintenance_log_id: string | null;
   parent_order_id: string | null;
+  version_type: string | null;
   pdf_url: string | null;
   sent_at: string | null;
   created_at: string;
@@ -55,6 +57,12 @@ type ItemReception = {
   cuantoFalto: string;
 };
 
+type ExchangeCtx = {
+  reason: PurchaseReturnReason;
+  reason_notes: string | null;
+  items: Array<{ quantity_returned: number; description: string; unit: string }>;
+};
+
 /* ── Component ──────────────────────────────────────────────────── */
 
 export default function CampoComprasPage() {
@@ -62,6 +70,7 @@ export default function CampoComprasPage() {
 
   const [orders, setOrders] = useState<POCampo[]>([]);
   const [itemsByOrderId, setItemsByOrderId] = useState<Record<string, POCampoItem[]>>({});
+  const [exchangeCtx, setExchangeCtx] = useState<Record<string, ExchangeCtx>>({});
   const [loadingData, setLoadingData] = useState(true);
 
   const [receptionOrder, setReceptionOrder] = useState<POCampo | null>(null);
@@ -79,7 +88,7 @@ export default function CampoComprasPage() {
       .from("purchase_orders")
       .select(`
         id, folio, supplier_id, supplier_branch_id, supplier_prefix,
-        building_id, maintenance_log_id, parent_order_id, pdf_url, sent_at, created_at,
+        building_id, maintenance_log_id, parent_order_id, version_type, pdf_url, sent_at, created_at,
         responsible_user_id, responsible_name, responsible_phone, signer_name,
         suppliers(id, name),
         buildings(id, name)
@@ -99,7 +108,7 @@ export default function CampoComprasPage() {
       id: string; folio: string; supplier_id: string;
       supplier_branch_id: string | null; supplier_prefix: string | null;
       building_id: string | null; maintenance_log_id: string | null;
-      parent_order_id: string | null;
+      parent_order_id: string | null; version_type: string | null;
       pdf_url: string | null; sent_at: string | null; created_at: string;
       responsible_user_id: string | null; responsible_name: string | null;
       responsible_phone: string | null; signer_name: string | null;
@@ -142,6 +151,7 @@ export default function CampoComprasPage() {
       building_id: o.building_id ?? null,
       maintenance_log_id: o.maintenance_log_id ?? null,
       parent_order_id: o.parent_order_id ?? null,
+      version_type:    o.version_type ?? null,
       pdf_url: o.pdf_url ?? null,
       sent_at: o.sent_at ?? null,
       created_at: o.created_at,
@@ -162,6 +172,49 @@ export default function CampoComprasPage() {
 
     setOrders(mapped);
     setItemsByOrderId(itemsMap);
+
+    /* Cargar contexto de cambio para OCs de tipo exchange */
+    const exchangeIds = mapped.filter((o) => o.version_type === "exchange").map((o) => o.id);
+    if (exchangeIds.length > 0) {
+      const { data: retData } = await supabase
+        .from("purchase_returns")
+        .select("replacement_order_id, reason, reason_notes, items:purchase_return_items(quantity_returned, purchase_order_item_id)")
+        .in("replacement_order_id", exchangeIds)
+        .is("deleted_at", null);
+
+      type RetRow = { replacement_order_id: string; reason: string; reason_notes: string | null; items: Array<{ quantity_returned: number; purchase_order_item_id: string }> };
+      const retRows = (retData ?? []) as unknown as RetRow[];
+
+      if (retRows.length > 0) {
+        const allPoiIds = retRows.flatMap((r) => r.items.map((i) => i.purchase_order_item_id));
+        const descMap: Record<string, { description: string; unit: string }> = {};
+        if (allPoiIds.length > 0) {
+          const { data: poiData } = await supabase
+            .from("purchase_order_items")
+            .select("id, description, unit")
+            .in("id", allPoiIds);
+          ((poiData ?? []) as { id: string; description: string; unit: string }[]).forEach((poi) => {
+            descMap[poi.id] = { description: poi.description, unit: poi.unit };
+          });
+        }
+        const ctxMap: Record<string, ExchangeCtx> = {};
+        retRows.forEach((r) => {
+          ctxMap[r.replacement_order_id] = {
+            reason:       r.reason as PurchaseReturnReason,
+            reason_notes: r.reason_notes,
+            items: r.items
+              .filter((i) => descMap[i.purchase_order_item_id])
+              .map((i) => ({
+                quantity_returned: i.quantity_returned,
+                description:       descMap[i.purchase_order_item_id]!.description,
+                unit:              descMap[i.purchase_order_item_id]!.unit,
+              })),
+          };
+        });
+        setExchangeCtx(ctxMap);
+      }
+    }
+
     setLoadingData(false);
   }
 
@@ -436,6 +489,48 @@ export default function CampoComprasPage() {
                     Enviada el {formatDate(order.sent_at ?? order.created_at)}
                   </p>
                 </div>
+
+                {/* Banner de cambio — solo para OCs de tipo exchange */}
+                {order.version_type === "exchange" && exchangeCtx[order.id] ? (() => {
+                  const ctx = exchangeCtx[order.id]!;
+                  return (
+                    <div style={{
+                      background: "#fef3c7", border: "2px solid #f59e0b",
+                      borderTop: "none",
+                      padding: "14px 16px",
+                    }}>
+                      <div style={{
+                        fontSize: 14, fontWeight: 700, color: "#92400e",
+                        marginBottom: 10, display: "flex", alignItems: "center", gap: 8,
+                      }}>
+                        🔄 ESTA ES UNA ORDEN DE CAMBIO
+                      </div>
+                      <div style={{ fontSize: 13, color: "#78350f", marginBottom: 10 }}>
+                        Al recoger el material nuevo, también debes{" "}
+                        <strong>ENTREGAR</strong> al proveedor:
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 20, color: "#78350f" }}>
+                        {ctx.items.map((it, idx) => (
+                          <li key={idx} style={{ marginBottom: 4, fontSize: 13 }}>
+                            <strong>{it.description}</strong> — {it.quantity_returned} {it.unit}
+                          </li>
+                        ))}
+                      </ul>
+                      <div style={{
+                        marginTop: 10, paddingTop: 10,
+                        borderTop: "1px solid #f59e0b",
+                        fontSize: 13, color: "#78350f",
+                      }}>
+                        <strong>Motivo:</strong> {RETURN_REASON_LABEL[ctx.reason]}
+                        {ctx.reason_notes ? (
+                          <div style={{ fontStyle: "italic", marginTop: 4 }}>
+                            &ldquo;{ctx.reason_notes}&rdquo;
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })() : null}
 
                 {/* Materiales */}
                 {items.length > 0 ? (

@@ -58,7 +58,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
-import { type PurchaseReturn, RETURN_REASON_LABEL } from "@/lib/types";
+import { type PurchaseReturn, type PurchaseOrderVersionType, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
@@ -146,6 +146,7 @@ type PurchaseOrder = {
   sent_at:              string | null;
   created_at:           string;
   parent_order_id:      string | null;
+  version_type:         PurchaseOrderVersionType;
   returns?:             PurchaseReturn[];
   /* Derivados */
   supplier_name?:       string;
@@ -378,7 +379,7 @@ export default function PurchasesPage() {
           responsible_name, responsible_phone, responsible_user_id, signer_name,
           maintenance_log_id, building_id,
           supplier_id, supplier_branch_id, supplier_prefix,
-          pdf_url, sent_at, parent_order_id,
+          pdf_url, sent_at, parent_order_id, version_type,
           suppliers(id, name, contact_email, contact_phone, tax_id),
           buildings(id, name)
         `)
@@ -454,6 +455,7 @@ export default function PurchasesPage() {
       pdf_url: string | null; sent_at: string | null;
       created_at: string;
       parent_order_id: string | null;
+      version_type: string | null;
       suppliers: { id: string; name: string; contact_email: string | null; contact_phone: string | null; tax_id: string | null } | null;
       buildings: { id: string; name: string } | null;
     };
@@ -507,6 +509,7 @@ export default function PurchasesPage() {
         sent_at:              r.sent_at,
         created_at:           r.created_at,
         parent_order_id:      r.parent_order_id ?? null,
+        version_type:         (r.version_type as PurchaseOrderVersionType) ?? null,
         supplier_name:        r.suppliers?.name,
         ticket_number:        r.maintenance_log_id ? ticketMap.get(r.maintenance_log_id) ?? null : null,
         building_name:        r.buildings?.name,
@@ -521,7 +524,7 @@ export default function PurchasesPage() {
     if (orderIds.length > 0) {
       const { data: returnsData } = await supabase
         .from("purchase_returns")
-        .select("id, company_id, purchase_order_id, reason, reason_notes, photo_url, created_by, created_at, deleted_at, items:purchase_return_items(id, return_id, purchase_order_item_id, quantity_returned)")
+        .select("id, company_id, purchase_order_id, type, reason, reason_notes, photo_url, replacement_order_id, created_by, created_at, deleted_at, items:purchase_return_items(id, return_id, purchase_order_item_id, quantity_returned)")
         .in("purchase_order_id", orderIds)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
@@ -1756,18 +1759,51 @@ export default function PurchasesPage() {
                         );
                       })()}
 
-                      {/* CAMBIO 3 — Badge "Con devolución" */}
-                      {o.returns && o.returns.length > 0 ? (
+                      {/* Badge "🔄 Cambio" — en cards que SON una Vn de cambio */}
+                      {o.version_type === "exchange" ? (
                         <span style={{
                           fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                          borderRadius: 20, background: "#fff7ed",
-                          color: "#c2410c", border: "1px solid #fdba74",
-                          display: "inline-flex", alignItems: "center", gap: 4,
+                          borderRadius: 20, background: "#eff6ff",
+                          color: "#1d4ed8", border: "1px solid #93c5fd",
                         }}>
-                          <RotateCcw size={10} />
-                          {o.returns.length === 1 ? "Con devolución" : `${o.returns.length} devoluciones`}
+                          🔄 Cambio
                         </span>
                       ) : null}
+
+                      {/* Badge "↩ Con devolución" — solo returns tipo 'return' */}
+                      {o.returns && o.returns.some((r) => r.type === "return") ? (() => {
+                        const count = o.returns!.filter((r) => r.type === "return").length;
+                        return (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                            borderRadius: 20, background: "#fff7ed",
+                            color: "#c2410c", border: "1px solid #fdba74",
+                            display: "inline-flex", alignItems: "center", gap: 4,
+                          }}>
+                            <RotateCcw size={10} />
+                            {count === 1 ? "Con devolución" : `${count} devoluciones`}
+                          </span>
+                        );
+                      })() : null}
+
+                      {/* Badge "🔄 Cambio pendiente" — si hay un exchange cuya Vn no está recibida */}
+                      {(() => {
+                        const exchRet = o.returns?.find(
+                          (r) => r.type === "exchange" && r.replacement_order_id != null
+                        );
+                        if (!exchRet) return null;
+                        const replOrder = orders.find((ord) => ord.id === exchRet.replacement_order_id);
+                        if (!replOrder || replOrder.status === "received") return null;
+                        return (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                            borderRadius: 20, background: "#eff6ff",
+                            color: "#1d4ed8", border: "1px solid #93c5fd",
+                          }}>
+                            🔄 Cambio pendiente
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
@@ -1839,7 +1875,7 @@ export default function PurchasesPage() {
                         }}>
                           {parentOrder && (
                             <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
-                              <span style={{ fontWeight: 600 }}>Faltantes de:</span>
+                              <span style={{ fontWeight: 600 }}>{o.version_type === "exchange" ? "Cambio de:" : "Faltantes de:"}</span>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setSearch(parentOrder.folio); setExpandedOrderId(parentOrder.id); }}
                                 style={{
@@ -2169,44 +2205,89 @@ export default function PurchasesPage() {
                       );
                     })() : null}
 
-                    {/* ── Sección 2d: Devoluciones ── */}
+                    {/* ── Sección 2d: Cambios y devoluciones ── */}
                     {o.returns && o.returns.length > 0 ? (
                       <div>
-                        <SectionLabel>Devoluciones ({o.returns.length})</SectionLabel>
+                        <SectionLabel>Cambios y devoluciones ({o.returns.length})</SectionLabel>
                         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                          {o.returns.map((ret, ri) => (
-                            <div key={ret.id} style={{
-                              border: "1px solid rgba(194, 65, 12, 0.3)",
-                              borderRadius: 10,
-                              padding: "12px 14px",
-                              background: "var(--bg-card)",
-                              display: "flex", flexDirection: "column", gap: 6,
-                            }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                                <span style={{
-                                  fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
-                                  background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74",
-                                }}>
-                                  Dev. #{ri + 1}
-                                </span>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                                  {RETURN_REASON_LABEL[ret.reason]}
-                                </span>
-                                <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
-                                  {new Date(ret.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
-                                </span>
+                          {o.returns.map((ret, ri) => {
+                            const isExchange = ret.type === "exchange";
+                            const replOrder  = isExchange && ret.replacement_order_id
+                              ? orders.find((ord) => ord.id === ret.replacement_order_id)
+                              : null;
+                            return (
+                              <div key={ret.id} style={{
+                                border:  isExchange ? "1px solid rgba(37, 99, 235, 0.3)"  : "1px solid rgba(194, 65, 12, 0.3)",
+                                borderRadius: 10,
+                                padding: "12px 14px",
+                                background: isExchange ? "#f8faff" : "var(--bg-card)",
+                                display: "flex", flexDirection: "column", gap: 6,
+                              }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                  <span style={{
+                                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+                                    background: isExchange ? "#eff6ff" : "#fff7ed",
+                                    color:      isExchange ? "#1d4ed8" : "#c2410c",
+                                    border:     isExchange ? "1px solid #93c5fd" : "1px solid #fdba74",
+                                  }}>
+                                    {isExchange ? "Cambio" : "Devolución"} #{ri + 1}
+                                  </span>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: isExchange ? "#1d4ed8" : "#c2410c" }}>
+                                    {isExchange ? "🔄" : "↩"} {RETURN_REASON_LABEL[ret.reason]}
+                                  </span>
+                                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
+                                    {new Date(ret.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                                  </span>
+                                </div>
+                                {ret.reason_notes ? (
+                                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>{ret.reason_notes}</p>
+                                ) : null}
+                                {ret.items && ret.items.length > 0 ? (
+                                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                                    {ret.items.length} material{ret.items.length !== 1 ? "es" : ""} ·{" "}
+                                    {ret.items.map((it) => it.quantity_returned).reduce((a, b) => a + b, 0)} unidades
+                                  </p>
+                                ) : null}
+                                {isExchange && ret.replacement_order_id ? (
+                                  <div style={{
+                                    marginTop: 4, paddingTop: 8,
+                                    borderTop: "1px solid #bfdbfe",
+                                    fontSize: 13, color: "#1d4ed8",
+                                    display: "flex", alignItems: "center", gap: 6,
+                                  }}>
+                                    <span>→ OC de cambio:</span>
+                                    {replOrder ? (
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setSearch(replOrder.folio); setExpandedOrderId(replOrder.id); }}
+                                        style={{
+                                          display: "inline-flex", alignItems: "center", gap: 4,
+                                          padding: "2px 8px", borderRadius: 14,
+                                          background: "#eff6ff", color: "#1d4ed8",
+                                          fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                                          border: "none", cursor: "pointer",
+                                        }}
+                                      >
+                                        {replOrder.folio}
+                                      </button>
+                                    ) : (
+                                      <span style={{ fontFamily: "monospace", fontSize: 12 }}>{ret.replacement_order_id.slice(0, 8)}…</span>
+                                    )}
+                                    {replOrder ? (
+                                      <span style={{
+                                        fontSize: 11, fontWeight: 600, padding: "2px 7px",
+                                        borderRadius: 20,
+                                        background: replOrder.status === "received" ? "#dcfce7" : "#eff6ff",
+                                        color:      replOrder.status === "received" ? "#15803d" : "#1d4ed8",
+                                        border:     replOrder.status === "received" ? "1px solid #86efac" : "1px solid #93c5fd",
+                                      }}>
+                                        {STATUS_LABEL[replOrder.status]}
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                ) : null}
                               </div>
-                              {ret.reason_notes ? (
-                                <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>{ret.reason_notes}</p>
-                              ) : null}
-                              {ret.items && ret.items.length > 0 ? (
-                                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
-                                  {ret.items.length} material{ret.items.length !== 1 ? "es" : ""} devuelto{ret.items.length !== 1 ? "s" : ""} ·&nbsp;
-                                  {ret.items.map((it) => it.quantity_returned).reduce((a, b) => a + b, 0)} unidades
-                                </p>
-                              ) : null}
-                            </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     ) : null}
@@ -2404,7 +2485,7 @@ export default function PurchasesPage() {
                             }}
                           >
                             <RotateCcw size={14} />
-                            Registrar devolución
+                            Cambios y devoluciones
                           </button>
                         ) : null}
 
@@ -3138,17 +3219,28 @@ export default function PurchasesPage() {
       {returnTarget ? (
         <ReturnModal
           oc={{
-            id:            returnTarget.id,
-            folio:         returnTarget.folio,
-            supplier_name: returnTarget.supplier_name,
-            ticket_number: returnTarget.ticket_number,
-            company_id:    user?.company_id,
+            id:                  returnTarget.id,
+            folio:               returnTarget.folio,
+            supplier_name:       returnTarget.supplier_name,
+            ticket_number:       returnTarget.ticket_number,
+            company_id:          user?.company_id,
+            parent_order_id:     returnTarget.parent_order_id,
+            maintenance_log_id:  returnTarget.maintenance_log_id,
+            supplier_id:         returnTarget.supplier_id,
+            supplier_branch_id:  returnTarget.supplier_branch_id,
+            building_id:         returnTarget.building_id,
+            responsible_name:    returnTarget.responsible_name,
+            responsible_phone:   returnTarget.responsible_phone,
+            responsible_user_id: returnTarget.responsible_user_id,
+            signer_name:         returnTarget.signer_name,
+            supplier_prefix:     returnTarget.supplier_prefix,
           }}
           items={(itemsByOrderId[returnTarget.id] || []).map((it) => ({
             id:                it.id,
             description:       it.description,
             quantity:          it.quantity,
             unit:              it.unit,
+            unit_price:        it.unit_price,
             quantity_received: it.quantity_received,
           }))}
           isOpen={true}

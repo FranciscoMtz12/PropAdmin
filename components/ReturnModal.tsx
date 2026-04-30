@@ -7,6 +7,7 @@ import UiButton from "@/components/UiButton";
 import { supabase } from "@/lib/supabaseClient";
 import {
   type PurchaseReturnReason,
+  type PurchaseReturnType,
   RETURN_REASON_LABEL,
 } from "@/lib/types";
 
@@ -15,6 +16,7 @@ type POItem = {
   description: string;
   quantity: number;
   unit: string;
+  unit_price?: number | null;
   quantity_received?: number | null;
 };
 
@@ -24,6 +26,16 @@ type ReturnableOC = {
   supplier_name?: string;
   ticket_number?: string | null;
   company_id?: string;
+  parent_order_id?: string | null;
+  maintenance_log_id?: string | null;
+  supplier_id?: string;
+  supplier_branch_id?: string | null;
+  building_id?: string | null;
+  responsible_name?: string | null;
+  responsible_phone?: string | null;
+  responsible_user_id?: string | null;
+  signer_name?: string | null;
+  supplier_prefix?: string | null;
 };
 
 type Props = {
@@ -36,13 +48,15 @@ type Props = {
 
 export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: Props) {
   const [returnedQuantities, setReturnedQuantities] = useState<Record<string, string>>({});
-  const [reason, setReason]   = useState<PurchaseReturnReason | "">("");
-  const [notes, setNotes]     = useState("");
+  const [type, setType]     = useState<PurchaseReturnType>("return");
+  const [reason, setReason] = useState<PurchaseReturnReason | "">("");
+  const [notes, setNotes]   = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClose() {
     if (isSubmitting) return;
     setReturnedQuantities({});
+    setType("return");
     setReason("");
     setNotes("");
     onClose();
@@ -52,10 +66,13 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
     if (!reason) { toast.error("Selecciona un motivo."); return; }
 
     const hasQty = items.some((it) => Number(returnedQuantities[it.id] || 0) > 0);
-    if (!hasQty) { toast.error("Ingresa al menos una cantidad a devolver."); return; }
+    if (!hasQty) {
+      toast.error(type === "exchange" ? "Debes especificar al menos un artículo a cambiar." : "Ingresa al menos una cantidad a devolver.");
+      return;
+    }
 
     for (const it of items) {
-      const qty = Number(returnedQuantities[it.id] || 0);
+      const qty    = Number(returnedQuantities[it.id] || 0);
       const maxQty = Number(it.quantity_received ?? 0);
       if (qty > maxQty) {
         toast.error(`No puedes devolver más de lo recibido en "${it.description}"`);
@@ -63,15 +80,91 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
       }
     }
 
+    if (type === "exchange" && (!oc.company_id || !oc.supplier_id)) {
+      toast.error("Datos de la OC incompletos para registrar cambio.");
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      let replacementOrderId: string | null = null;
+
+      if (type === "exchange") {
+        const rootFolio      = oc.folio.replace(/-V\d+$/, "");
+        const versionPattern = `${rootFolio}-V%`;
+
+        const { data: existingVersions } = await supabase
+          .from("purchase_orders")
+          .select("folio")
+          .eq("company_id", oc.company_id!)
+          .ilike("folio", versionPattern)
+          .is("deleted_at", null);
+
+        let maxVersion = 1;
+        ((existingVersions ?? []) as { folio: string }[]).forEach((row) => {
+          const match = row.folio.match(/-V(\d+)$/);
+          if (match) {
+            const v = parseInt(match[1], 10);
+            if (v > maxVersion) maxVersion = v;
+          }
+        });
+        const newFolio      = `${rootFolio}-V${maxVersion + 1}`;
+        const parentOrderId = oc.parent_order_id ?? oc.id;
+        const nowIso        = new Date().toISOString();
+
+        const { data: newOrder, error: ocErr } = await supabase
+          .from("purchase_orders")
+          .insert({
+            company_id:          oc.company_id,
+            folio:               newFolio,
+            maintenance_log_id:  oc.maintenance_log_id ?? null,
+            supplier_id:         oc.supplier_id,
+            supplier_branch_id:  oc.supplier_branch_id ?? null,
+            building_id:         oc.building_id ?? null,
+            status:              "sent",
+            parent_order_id:     parentOrderId,
+            version_type:        "exchange",
+            project_description: `Cambio de ${oc.folio}`,
+            responsible_name:    oc.responsible_name ?? null,
+            responsible_phone:   oc.responsible_phone ?? null,
+            responsible_user_id: oc.responsible_user_id ?? null,
+            signer_name:         oc.signer_name ?? null,
+            supplier_prefix:     oc.supplier_prefix ?? null,
+            sent_at:             nowIso,
+            created_at:          nowIso,
+            updated_at:          nowIso,
+          })
+          .select("id")
+          .single();
+        if (ocErr) throw ocErr;
+
+        replacementOrderId = (newOrder as { id: string }).id;
+
+        const versionItems = items
+          .filter((it) => Number(returnedQuantities[it.id] || 0) > 0)
+          .map((it) => ({
+            purchase_order_id: replacementOrderId!,
+            description:       it.description,
+            quantity:          Number(returnedQuantities[it.id]),
+            unit:              it.unit,
+            unit_price:        it.unit_price ?? null,
+          }));
+
+        const { error: viErr } = await supabase
+          .from("purchase_order_items")
+          .insert(versionItems);
+        if (viErr) throw viErr;
+      }
+
       const { data: returnRow, error: retErr } = await supabase
         .from("purchase_returns")
         .insert({
-          company_id:        oc.company_id,
-          purchase_order_id: oc.id,
+          company_id:           oc.company_id,
+          purchase_order_id:    oc.id,
+          type,
           reason,
-          reason_notes:      notes.trim() || null,
+          reason_notes:         notes.trim() || null,
+          replacement_order_id: replacementOrderId,
         })
         .select()
         .single();
@@ -80,9 +173,9 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
       const itemsToInsert = items
         .filter((it) => Number(returnedQuantities[it.id] || 0) > 0)
         .map((it) => ({
-          return_id:               (returnRow as { id: string }).id,
-          purchase_order_item_id:  it.id,
-          quantity_returned:       Number(returnedQuantities[it.id]),
+          return_id:              (returnRow as { id: string }).id,
+          purchase_order_item_id: it.id,
+          quantity_returned:      Number(returnedQuantities[it.id]),
         }));
 
       const { error: itemsErr } = await supabase
@@ -90,11 +183,11 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
         .insert(itemsToInsert);
       if (itemsErr) throw itemsErr;
 
-      toast.success("Devolución registrada");
+      toast.success(type === "exchange" ? "Cambio registrado. OC enviada a campo." : "Devolución registrada.");
       onSuccess();
       handleClose();
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Error al registrar la devolución";
+      const msg = err instanceof Error ? err.message : "Error al registrar el movimiento";
       toast.error(msg);
     } finally {
       setIsSubmitting(false);
@@ -112,21 +205,64 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
     borderBottom: "1px solid var(--border-default)",
   };
 
+  const colHeader = type === "exchange" ? "A cambiar" : "A devolver";
+
   return (
-    <Modal open={isOpen} onClose={handleClose} title="Registrar devolución" subtitle={subtitle} maxWidth="620px">
+    <Modal open={isOpen} onClose={handleClose} title="Cambios y devoluciones" subtitle={subtitle} maxWidth="640px">
       <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+        {/* Tipo de movimiento */}
+        <div>
+          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>
+            Tipo de movimiento *
+          </label>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <button
+              type="button"
+              onClick={() => setType("return")}
+              style={{
+                padding: 12, borderRadius: 8, cursor: "pointer", textAlign: "left",
+                border: type === "return" ? "2px solid #c2410c" : "1px solid var(--border-default)",
+                background: type === "return" ? "#fff7ed" : "var(--bg-input)",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 4, color: type === "return" ? "#c2410c" : "var(--text-primary)" }}>
+                ↩ Devolución
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                Regreso definitivo, no espero reposición
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => setType("exchange")}
+              style={{
+                padding: 12, borderRadius: 8, cursor: "pointer", textAlign: "left",
+                border: type === "exchange" ? "2px solid #2563eb" : "1px solid var(--border-default)",
+                background: type === "exchange" ? "#eff6ff" : "var(--bg-input)",
+              }}
+            >
+              <div style={{ fontWeight: 600, marginBottom: 4, color: type === "exchange" ? "#1d4ed8" : "var(--text-primary)" }}>
+                🔄 Cambio
+              </div>
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                El proveedor me repondrá los mismos artículos
+              </div>
+            </button>
+          </div>
+        </div>
 
         {/* Tabla de items */}
         <div>
           <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-            Items a devolver
+            {type === "exchange" ? "Artículos a cambiar" : "Items a devolver"}
           </p>
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr style={{ borderBottom: "2px solid var(--border-default)" }}>
-                  {["#", "Descripción", "Recibido", "A devolver", "Unidad"].map((h) => (
-                    <th key={h} style={{ ...tdStyle, fontWeight: 700, color: "var(--text-secondary)", textAlign: h === "A devolver" || h === "Recibido" ? "right" : "left" }}>
+                  {["#", "Descripción", "Recibido", colHeader, "Unidad"].map((h) => (
+                    <th key={h} style={{ ...tdStyle, fontWeight: 700, color: "var(--text-secondary)", textAlign: h === colHeader || h === "Recibido" ? "right" : "left" }}>
                       {h}
                     </th>
                   ))}
@@ -134,7 +270,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
               </thead>
               <tbody>
                 {items.map((it, idx) => {
-                  const maxQty = Number(it.quantity_received ?? 0);
+                  const maxQty    = Number(it.quantity_received ?? 0);
                   const noRecibido = maxQty === 0;
                   return (
                     <tr key={it.id}>
@@ -202,6 +338,17 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
           <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-muted)", textAlign: "right" }}>{notes.length}/500</p>
         </div>
 
+        {/* Aviso de cambio */}
+        {type === "exchange" ? (
+          <div style={{
+            padding: "10px 14px", borderRadius: 8,
+            background: "#eff6ff", border: "1px solid #93c5fd",
+            fontSize: 13, color: "#1d4ed8",
+          }}>
+            Se creará automáticamente una OC de cambio ya enviada a campo. El responsable verá un aviso indicando que debe entregar el material al proveedor al recoger el reemplazo.
+          </div>
+        ) : null}
+
         {/* Footer */}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--border-default)" }}>
           <UiButton type="button" variant="secondary" onClick={handleClose} disabled={isSubmitting}>
@@ -214,13 +361,15 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
               padding: "11px 16px", borderRadius: 12,
-              border: "1px solid #c2410c", background: "#c2410c", color: "#fff",
+              border:      type === "exchange" ? "1px solid #2563eb" : "1px solid #c2410c",
+              background:  type === "exchange" ? "#2563eb"           : "#c2410c",
+              color: "#fff",
               fontSize: 14, fontWeight: 700,
-              cursor: isSubmitting ? "wait" : "pointer",
-              opacity: isSubmitting ? 0.7 : 1,
+              cursor:  isSubmitting ? "wait"    : "pointer",
+              opacity: isSubmitting ? 0.7       : 1,
             }}
           >
-            {isSubmitting ? "Registrando..." : "Registrar devolución"}
+            {isSubmitting ? "Registrando..." : type === "exchange" ? "Registrar cambio" : "Registrar devolución"}
           </button>
         </div>
       </div>
