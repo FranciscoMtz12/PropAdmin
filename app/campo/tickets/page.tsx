@@ -290,7 +290,12 @@ export default function CampoTicketsPage() {
         .is("deleted_at", null)
         .order("name"),
     ]);
-    setBuildingUnits(unitsRes.data || []);
+    const sortedUnits = ((unitsRes.data || []) as Unit[]).sort((a, b) => {
+      const numA = parseInt(a.unit_number || "", 10) || 0;
+      const numB = parseInt(b.unit_number || "", 10) || 0;
+      return numA - numB;
+    });
+    setBuildingUnits(sortedUnits);
     setBuildingAssets(assetsRes.data || []);
     setLoadingDeps(false);
   }
@@ -524,15 +529,8 @@ export default function CampoTicketsPage() {
         });
       }
 
-      /* Si no hay materiales, crear grupo "Otro" vacío */
+      /* Si no hay materiales, dejar groups vacío — la UI mostrará el CTA "Crear lista" */
       const groups = Array.from(groupMap.values());
-      if (groups.length === 0) {
-        groups.push({
-          supplier_id: null,
-          supplier_name: "Otro",
-          materials: [{ id: "", description: "", quantity: "1", unit: "Pieza", supplier_id: null, supplier_name: "Otro" }],
-        });
-      }
 
       /* Mantener orden de inserción original (por created_at del query) */
       setTicketMaterialGroups(prev => ({ ...prev, [ticketId]: groups }));
@@ -969,6 +967,40 @@ export default function CampoTicketsPage() {
                         <p style={sectionLabel}>Materiales</p>
                         {matsLoading ? (
                           <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando...</p>
+                        ) : matGroups.length === 0 ? (
+                          /* Sin materiales: CTA grande centrado */
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 0" }}>
+                            {showSupplierPicker === t.id ? (
+                              <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6, padding: "8px", border: "1px solid var(--border-default)", borderRadius: 8, background: "var(--bg-input)" }}>
+                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Selecciona proveedor:</span>
+                                <button type="button" onClick={() => addSupplierGroup(t.id, null)} style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}>
+                                  Otro (sin proveedor)
+                                </button>
+                                {suppliers.map(s => (
+                                  <button key={s.id} type="button" onClick={() => addSupplierGroup(t.id, s)} style={{ padding: "8px 10px", borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}>
+                                    {s.name}
+                                  </button>
+                                ))}
+                                <button type="button" onClick={() => setShowSupplierPicker(null)} style={{ padding: "6px", fontSize: 12, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}>
+                                  Cancelar
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => setShowSupplierPicker(t.id)}
+                                style={{
+                                  padding: "16px 28px", borderRadius: 12,
+                                  border: "2px dashed var(--border-strong)",
+                                  background: "transparent", color: "var(--text-secondary)",
+                                  fontSize: 15, fontWeight: 700, cursor: "pointer",
+                                  display: "flex", alignItems: "center", gap: 8,
+                                }}
+                              >
+                                <Plus size={18} /> Crear lista de materiales
+                              </button>
+                            )}
+                          </div>
                         ) : (
                           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                             {matGroups.map((group, gIdx) => (
