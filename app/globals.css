@@ -307,6 +307,26 @@ a {
   }
 }
 
+/* Spacer del sidebar fijo — mantiene el contenido desplazado a la derecha */
+.sidebar-spacer {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+}
+
+@media (min-width: 768px) and (max-width: 1024px) {
+  .sidebar-spacer {
+    width: 72px !important;
+    min-width: 72px !important;
+  }
+}
+
+@media (max-width: 767px) {
+  .sidebar-spacer {
+    display: none !important;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════════
    PageHeader responsive — en mobile los acciones bajan al título
    ════════════════════════════════════════════════════════════════════ */

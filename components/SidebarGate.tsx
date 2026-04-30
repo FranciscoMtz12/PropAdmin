@@ -21,6 +21,8 @@ export default function SidebarGate() {
     <>
       <BgTexture />
       <Sidebar />
+      {/* Spacer que ocupa el espacio del sidebar fijo en el flex row */}
+      <div className="sidebar-spacer" />
     </>
   );
 }
