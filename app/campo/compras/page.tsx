@@ -184,6 +184,23 @@ export default function CampoComprasPage() {
     if (!savingReception) setReceptionOrder(null);
   }
 
+  async function completeParentChain(orderId: string): Promise<void> {
+    const { data: row } = await supabase
+      .from("purchase_orders")
+      .select("parent_order_id")
+      .eq("id", orderId)
+      .single();
+    const parentId = (row as { parent_order_id: string | null } | null)?.parent_order_id;
+    if (!parentId) return;
+    const nowIso = new Date().toISOString();
+    await supabase
+      .from("purchase_orders")
+      .update({ status: "received", received_at: nowIso, updated_at: nowIso })
+      .eq("id", parentId)
+      .neq("status", "received");
+    await completeParentChain(parentId);
+  }
+
   async function confirmReception() {
     if (!receptionOrder || !user?.company_id) return;
 
@@ -239,6 +256,11 @@ export default function CampoComprasPage() {
       toast.error("Error al actualizar la orden.");
       setSavingReception(false);
       return;
+    }
+
+    /* Cascada de completado hacia la madre — solo si recepción total */
+    if (!anyFaltante) {
+      await completeParentChain(receptionOrder.id);
     }
 
     if (anyFaltante) {

@@ -293,7 +293,7 @@ export default function PurchasesPage() {
   const [loadingItemsFor, setLoadingItemsFor] = useState<string | null>(null);
 
   /* Progreso del ticket ligado a la OC */
-  type TicketProgress = { matTotal: number; itemTotal: number; itemReceived: number };
+  type TicketProgress = { itemTotal: number; itemReceived: number };
   const [ticketProgress,     setTicketProgress]     = useState<Record<string, TicketProgress | null>>({});
   const [loadingProgressFor, setLoadingProgressFor] = useState<Record<string, boolean>>({});
 
@@ -873,33 +873,37 @@ export default function PurchasesPage() {
     if (!mlId || ticketProgress[order.id] !== undefined) return;
     setLoadingProgressFor((p) => ({ ...p, [order.id]: true }));
 
-    const [{ count: matTotal }, ticketOCItems] = await Promise.all([
-      supabase
-        .from("maintenance_materials")
-        .select("id", { count: "exact", head: true })
-        .eq("maintenance_log_id", mlId)
-        .is("deleted_at", null),
-      (() => {
-        const ids = orders
-          .filter((ord) => ord.maintenance_log_id === mlId && ["sent", "partial", "received", "invoiced"].includes(ord.status))
-          .map((ord) => ord.id);
-        if (ids.length === 0) return Promise.resolve({ data: [] });
-        return supabase
-          .from("purchase_order_items")
-          .select("quantity, quantity_received")
-          .in("purchase_order_id", ids)
-          .is("deleted_at", null);
-      })(),
+    const confirmedStatuses = ["sent", "partial", "received", "invoiced"];
+    const allConfirmedIds = orders
+      .filter((ord) => ord.maintenance_log_id === mlId && confirmedStatuses.includes(ord.status))
+      .map((ord) => ord.id);
+    const rootConfirmedIds = orders
+      .filter((ord) => ord.maintenance_log_id === mlId && ord.parent_order_id === null && confirmedStatuses.includes(ord.status))
+      .map((ord) => ord.id);
+
+    if (allConfirmedIds.length === 0) {
+      setTicketProgress((p) => ({ ...p, [order.id]: { itemTotal: 0, itemReceived: 0 } }));
+      setLoadingProgressFor((p) => ({ ...p, [order.id]: false }));
+      return;
+    }
+
+    const [rootItemsRes, allItemsRes] = await Promise.all([
+      rootConfirmedIds.length > 0
+        ? supabase.from("purchase_order_items").select("quantity").in("purchase_order_id", rootConfirmedIds).is("deleted_at", null)
+        : Promise.resolve({ data: [] as { quantity: number }[] }),
+      supabase.from("purchase_order_items").select("quantity_received").in("purchase_order_id", allConfirmedIds).is("deleted_at", null),
     ]);
 
     let itemTotal = 0;
+    ((rootItemsRes.data ?? []) as { quantity: number }[]).forEach((it) => {
+      itemTotal += Number(it.quantity ?? 0);
+    });
     let itemReceived = 0;
-    ((ticketOCItems.data ?? []) as { quantity: number; quantity_received: number | null }[]).forEach((it) => {
-      itemTotal    += Number(it.quantity ?? 0);
+    ((allItemsRes.data ?? []) as { quantity_received: number | null }[]).forEach((it) => {
       itemReceived += Number(it.quantity_received ?? 0);
     });
 
-    setTicketProgress((p) => ({ ...p, [order.id]: { matTotal: matTotal ?? 0, itemTotal, itemReceived } }));
+    setTicketProgress((p) => ({ ...p, [order.id]: { itemTotal, itemReceived } }));
     setLoadingProgressFor((p) => ({ ...p, [order.id]: false }));
   }
 
@@ -1020,6 +1024,26 @@ export default function PurchasesPage() {
     setCancelTarget(null);
   }
 
+  /* ── Cascada de completado hacia la OC madre ────────────────── */
+
+  async function completeParentChain(currentOrderId: string): Promise<void> {
+    const current = orders.find((o) => o.id === currentOrderId);
+    const parentId = current?.parent_order_id;
+    if (!parentId) return;
+    const nowIso = new Date().toISOString();
+    const { error } = await supabase
+      .from("purchase_orders")
+      .update({ status: "received", received_at: nowIso, updated_at: nowIso })
+      .eq("id", parentId)
+      .neq("status", "received");
+    if (!error) {
+      setOrders((prev) =>
+        prev.map((o) => o.id === parentId ? { ...o, status: "received" as Status } as PurchaseOrder : o)
+      );
+      await completeParentChain(parentId);
+    }
+  }
+
   /* ── Cambio de status: marcar recibida / parcial ─────────────── */
 
   async function markStatus(order: PurchaseOrder, status: Status) {
@@ -1035,6 +1059,8 @@ export default function PurchasesPage() {
       return;
     }
     setOrders((prev) => prev.map((o) => (o.id === order.id ? { ...o, status, ...(status === "received" ? { received_at: nowIso } : {}) } as PurchaseOrder : o)));
+    /* Cascada hacia la madre cuando se completa */
+    if (status === "received") await completeParentChain(order.id);
     /* Invalidar caché de progreso — las OCs del mismo ticket deben recalcular */
     if (order.maintenance_log_id) {
       const mlId = order.maintenance_log_id;
@@ -1672,6 +1698,26 @@ export default function PurchasesPage() {
                           </span>
                         );
                       })()}
+                      {(() => {
+                        if (o.status !== "received") return null;
+                        const children = orders.filter((ord) => ord.parent_order_id === o.id);
+                        if (children.length === 0) return null;
+                        let maxV = 0;
+                        children.forEach((c) => {
+                          const m = c.folio.match(/-V(\d+)$/);
+                          if (m) { const v = parseInt(m[1], 10); if (v > maxV) maxV = v; }
+                        });
+                        if (maxV === 0) return null;
+                        return (
+                          <span style={{
+                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                            borderRadius: 20, background: "#dcfce7",
+                            color: "#15803d", border: "1px solid #86efac",
+                          }}>
+                            Cerrada vía V{maxV}
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
@@ -1815,7 +1861,7 @@ export default function PurchasesPage() {
                           </div>
                           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13 }}>
                             <span style={{ color: "var(--text-secondary)" }}>
-                              <strong style={{ color: "var(--text-primary)" }}>{prog.matTotal}</strong> mat. en lista
+                              <strong style={{ color: "var(--text-primary)" }}>{prog.itemTotal}</strong> piezas pedidas
                             </span>
                             <span style={{ color: "#15803D" }}>
                               <strong>{prog.itemReceived.toFixed(0)}</strong> surtidos
