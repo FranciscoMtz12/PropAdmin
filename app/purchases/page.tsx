@@ -316,6 +316,7 @@ export default function PurchasesPage() {
   /* Modal crear / editar */
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingOrderId,  setEditingOrderId]  = useState<string | null>(null);
+  const saveAsPendingRef = useRef(false);
 
   /* Form manual */
   const {
@@ -726,9 +727,14 @@ export default function PurchasesPage() {
     if (editingOrderId) {
       /* EDITAR: UPDATE purchase_orders + DELETE+INSERT items */
       console.log("[purchases] UPDATE purchase_orders", { id: editingOrderId, payload });
+      const updPayload = {
+        ...payload,
+        updated_at: new Date().toISOString(),
+        ...(saveAsPendingRef.current ? { status: "pending" } : {}),
+      };
       const { data: updData, error: updErr } = await supabase
         .from("purchase_orders")
-        .update({ ...payload, updated_at: new Date().toISOString() })
+        .update(updPayload)
         .eq("id", editingOrderId)
         .select();
       console.log("[purchases] UPDATE result:", { data: updData, error: updErr });
@@ -821,9 +827,14 @@ export default function PurchasesPage() {
       setItemsByOrderId((prev) => ({ ...prev, [tid]: (freshItems as POItem[]) || [] }));
     }
 
-    const wasEdit = !!editingOrderId;
+    const wasEdit        = !!editingOrderId;
+    const markedPending  = wasEdit && saveAsPendingRef.current;
     closeCreateModal();
-    setMsg(wasEdit ? "Orden de compra actualizada correctamente." : "Orden de compra creada correctamente.");
+    setMsg(
+      wasEdit
+        ? (markedPending ? "OC guardada y marcada como Pendiente firma." : "Borrador guardado correctamente.")
+        : "Orden de compra creada correctamente."
+    );
     /* Recargar lista completa para refrescar conteos, total, signer_name, etc. */
     await loadAll(user.company_id);
   });
@@ -2025,20 +2036,11 @@ export default function PurchasesPage() {
                       <SectionLabel>Acciones</SectionLabel>
                       <div className="purchases-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
 
-                        {/* Revisar y aprobar — solo para borradores */}
+                        {/* Revisar y aprobar — solo para borradores: abre modal de edición */}
                         {o.status === "draft" ? (
                           <button
                             type="button"
-                            onClick={async () => {
-                              const { error: err } = await supabase
-                                .from("purchase_orders")
-                                .update({ status: "pending", updated_at: new Date().toISOString() })
-                                .eq("id", o.id);
-                              if (!err) {
-                                setOrders(prev => prev.map(x => x.id === o.id ? { ...x, status: "pending" as Status } : x));
-                                setMsg("OC aprobada y lista para enviar.");
-                              }
-                            }}
+                            onClick={() => handleStartEditOrder(o)}
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
                               padding: "9px 14px", borderRadius: 8,
@@ -2321,7 +2323,7 @@ export default function PurchasesPage() {
         subtitle={editingOrderId ? undefined : "Crear una OC manual sin ticket asociado."}
         maxWidth="800px"
       >
-        <form onSubmit={handleCreate}>
+        <form id="purchases-create-form" onSubmit={handleCreate}>
 
           <AppFormField label="Proveedor" required>
             <div style={{ position: "relative" }}>
@@ -2614,15 +2616,36 @@ export default function PurchasesPage() {
             </div>
           ) : null}
 
-          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeCreateModal}>
               Cancelar
             </UiButton>
-            <UiButton type="submit" variant="primary" disabled={isSubmitting}>
-              {isSubmitting
-                ? (editingOrderId ? "Guardando..." : "Creando...")
-                : (editingOrderId ? "Guardar cambios" : "Crear orden de compra")}
-            </UiButton>
+            {editingOrderId ? (
+              <>
+                <UiButton
+                  type="submit"
+                  form="purchases-create-form"
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  onClick={() => { saveAsPendingRef.current = false; }}
+                >
+                  {isSubmitting && !saveAsPendingRef.current ? "Guardando..." : "Guardar borrador"}
+                </UiButton>
+                <UiButton
+                  type="submit"
+                  form="purchases-create-form"
+                  variant="primary"
+                  disabled={isSubmitting}
+                  onClick={() => { saveAsPendingRef.current = true; }}
+                >
+                  {isSubmitting && saveAsPendingRef.current ? "Guardando..." : "Guardar y marcar Pendiente firma"}
+                </UiButton>
+              </>
+            ) : (
+              <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+                {isSubmitting ? "Creando..." : "Crear orden de compra"}
+              </UiButton>
+            )}
           </div>
         </form>
       </Modal>
