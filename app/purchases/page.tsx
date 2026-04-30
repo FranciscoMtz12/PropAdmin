@@ -292,6 +292,11 @@ export default function PurchasesPage() {
   const [itemsByOrderId,  setItemsByOrderId]  = useState<Record<string, POItem[]>>({});
   const [loadingItemsFor, setLoadingItemsFor] = useState<string | null>(null);
 
+  /* Progreso del ticket ligado a la OC */
+  type TicketProgress = { matTotal: number; itemTotal: number; itemReceived: number };
+  const [ticketProgress,     setTicketProgress]     = useState<Record<string, TicketProgress | null>>({});
+  const [loadingProgressFor, setLoadingProgressFor] = useState<Record<string, boolean>>({});
+
   /* Confirmación de cancelación */
   const [cancelTarget, setCancelTarget] = useState<PurchaseOrder | null>(null);
   const [invoiceTarget, setInvoiceTarget] = useState<PurchaseOrder | null>(null);
@@ -846,6 +851,45 @@ export default function PurchasesPage() {
     const rows = (data as POItem[]) || [];
     setItemsByOrderId((prev) => ({ ...prev, [order.id]: rows }));
     setLoadingItemsFor(null);
+
+    if (order.maintenance_log_id) void loadTicketProgress(order);
+  }
+
+  /* ── Progreso del ticket ligado ─────────────────────────────── */
+
+  async function loadTicketProgress(order: PurchaseOrder) {
+    const mlId = order.maintenance_log_id;
+    if (!mlId || ticketProgress[order.id] !== undefined) return;
+    setLoadingProgressFor((p) => ({ ...p, [order.id]: true }));
+
+    const [{ count: matTotal }, ticketOCItems] = await Promise.all([
+      supabase
+        .from("maintenance_materials")
+        .select("id", { count: "exact", head: true })
+        .eq("maintenance_log_id", mlId)
+        .is("deleted_at", null),
+      (() => {
+        const ids = orders
+          .filter((ord) => ord.maintenance_log_id === mlId && ord.status !== "cancelled")
+          .map((ord) => ord.id);
+        if (ids.length === 0) return Promise.resolve({ data: [] });
+        return supabase
+          .from("purchase_order_items")
+          .select("quantity, quantity_received")
+          .in("purchase_order_id", ids)
+          .is("deleted_at", null);
+      })(),
+    ]);
+
+    let itemTotal = 0;
+    let itemReceived = 0;
+    ((ticketOCItems.data ?? []) as { quantity: number; quantity_received: number | null }[]).forEach((it) => {
+      itemTotal    += Number(it.quantity)          || 0;
+      itemReceived += Number(it.quantity_received) || 0;
+    });
+
+    setTicketProgress((p) => ({ ...p, [order.id]: { matTotal: matTotal ?? 0, itemTotal, itemReceived } }));
+    setLoadingProgressFor((p) => ({ ...p, [order.id]: false }));
   }
 
   /* ── Crear OC borrador por faltantes ────────────────────────── */
@@ -1684,6 +1728,63 @@ export default function PurchasesPage() {
                         </div>
                       );
                     })()}
+
+                    {/* ── Sección 0b: Progreso del ticket ── */}
+                    {o.maintenance_log_id ? (() => {
+                      const prog = ticketProgress[o.id];
+                      const loading = loadingProgressFor[o.id];
+                      if (loading) return (
+                        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando progreso del ticket...</p>
+                      );
+                      if (!prog) return null;
+                      const pct = prog.itemTotal > 0
+                        ? Math.min(100, Math.round((prog.itemReceived / prog.itemTotal) * 100))
+                        : 0;
+                      const pendientes = Math.max(0, prog.itemTotal - prog.itemReceived);
+                      return (
+                        <div style={{
+                          padding: "12px 16px", borderRadius: 10,
+                          border: "1px solid var(--border-default)",
+                          background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10,
+                        }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                              Progreso del ticket
+                            </span>
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              padding: "2px 8px", borderRadius: 14,
+                              background: "#EFF6FF", color: "#1D4ED8",
+                              fontSize: 12, fontWeight: 700,
+                            }}>
+                              {o.ticket_number ? `MT-${o.ticket_number}` : "Ticket ligado"}
+                            </span>
+                          </div>
+                          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13 }}>
+                            <span style={{ color: "var(--text-secondary)" }}>
+                              <strong style={{ color: "var(--text-primary)" }}>{prog.matTotal}</strong> mat. en lista
+                            </span>
+                            <span style={{ color: "#15803D" }}>
+                              <strong>{prog.itemReceived.toFixed(0)}</strong> surtidos
+                            </span>
+                            <span style={{ color: pendientes > 0 ? "#B45309" : "var(--text-muted)" }}>
+                              <strong>{pendientes.toFixed(0)}</strong> pendientes
+                            </span>
+                          </div>
+                          <div style={{ height: 8, background: "var(--border-default)", borderRadius: 4, overflow: "hidden" }}>
+                            <div style={{
+                              height: "100%", borderRadius: 4,
+                              background: pct === 100 ? "#16a34a" : "#3B82F6",
+                              width: `${pct}%`,
+                              transition: "width 0.4s ease",
+                            }} />
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "right" }}>
+                            {pct}% surtido
+                          </div>
+                        </div>
+                      );
+                    })() : null}
 
                     {/* ── Sección 1: Datos generales ── */}
                     <div>
