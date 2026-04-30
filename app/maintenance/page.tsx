@@ -138,6 +138,16 @@ type TicketPurchaseOrder = {
   folio: string;
   status: "pending" | "sent" | "received" | "cancelled";
   supplier_name: string | null;
+  total_estimated: number | null;
+};
+
+type TicketOCItem = {
+  id: string;
+  oc_folio: string;
+  description: string;
+  quantity: number;
+  quantity_received: number | null;
+  unit: string;
 };
 
 type BuildingOption = {
@@ -604,6 +614,8 @@ export default function MaintenancePage() {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [purchaseOrdersByTicket, setPurchaseOrdersByTicket] =
     useState<Record<string, TicketPurchaseOrder[]>>({});
+  const [ocItemsByTicket, setOcItemsByTicket] =
+    useState<Record<string, TicketOCItem[]>>({});
 
   const [savingMaterialsId, setSavingMaterialsId] = useState<string | null>(null);
   const [uploadingPhotoId, setUploadingPhotoId]   = useState<string | null>(null);
@@ -876,7 +888,7 @@ export default function MaintenancePage() {
   async function loadPurchaseOrdersForTicket(ticketId: string) {
     const { data } = await supabase
       .from("purchase_orders")
-      .select("id, folio, status, suppliers(name)")
+      .select("id, folio, status, total_estimated, suppliers(name)")
       .eq("maintenance_log_id", ticketId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -885,15 +897,49 @@ export default function MaintenancePage() {
       id: string;
       folio: string;
       status: "pending" | "sent" | "received" | "cancelled";
+      total_estimated: number | null;
       suppliers: { name: string } | null;
     };
     const rows = ((data || []) as unknown as Row[]).map((r) => ({
-      id:            r.id,
-      folio:         r.folio,
-      status:        r.status,
-      supplier_name: r.suppliers?.name ?? null,
+      id:              r.id,
+      folio:           r.folio,
+      status:          r.status,
+      total_estimated: r.total_estimated ?? null,
+      supplier_name:   r.suppliers?.name ?? null,
     }));
     setPurchaseOrdersByTicket((prev) => ({ ...prev, [ticketId]: rows }));
+
+    /* Cargar items (quantity_received) para calcular pendientes */
+    const ocIds = rows.filter((r) => r.status !== "cancelled").map((r) => r.id);
+    if (ocIds.length > 0) {
+      const { data: itemData } = await supabase
+        .from("purchase_order_items")
+        .select("id, purchase_order_id, description, quantity, quantity_received, unit")
+        .in("purchase_order_id", ocIds)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true });
+
+      type ItemRow = {
+        id: string;
+        purchase_order_id: string;
+        description: string;
+        quantity: number;
+        quantity_received: number | null;
+        unit: string;
+      };
+      const folioMap = new Map(rows.map((r) => [r.id, r.folio]));
+      const ocItems: TicketOCItem[] = ((itemData ?? []) as unknown as ItemRow[]).map((it) => ({
+        id:                it.id,
+        oc_folio:          folioMap.get(it.purchase_order_id) ?? "",
+        description:       it.description,
+        quantity:          Number(it.quantity) || 0,
+        quantity_received: it.quantity_received != null ? Number(it.quantity_received) : null,
+        unit:              it.unit,
+      }));
+      setOcItemsByTicket((prev) => ({ ...prev, [ticketId]: ocItems }));
+    } else {
+      setOcItemsByTicket((prev) => ({ ...prev, [ticketId]: [] }));
+    }
   }
 
   const handleCreateTicket = createTicketForm.handleSubmit(async (data) => {
@@ -1582,6 +1628,7 @@ export default function MaintenancePage() {
                     generatingPdf={generatingPdfId === ticket.id}
                     suppliers={suppliers}
                     purchaseOrders={purchaseOrdersByTicket[ticket.id] || []}
+                    ocItems={ocItemsByTicket[ticket.id] || []}
                     onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
                   />
                   </motion.div>
@@ -1985,6 +2032,7 @@ function TicketCard({
   generatingPdf,
   suppliers,
   purchaseOrders,
+  ocItems,
   onOpenPurchaseOrder,
 }: {
   ticket: Ticket;
@@ -2006,6 +2054,7 @@ function TicketCard({
   generatingPdf: boolean;
   suppliers: SupplierOption[];
   purchaseOrders: TicketPurchaseOrder[];
+  ocItems: TicketOCItem[];
   onOpenPurchaseOrder: (oc: TicketPurchaseOrder) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -2466,6 +2515,61 @@ function TicketCard({
                     );
                   })}
                 </div>
+
+                {/* Resumen: total gastado + materiales pendientes */}
+                {(() => {
+                  const totalGastado = purchaseOrders
+                    .filter((oc) => oc.status === "received")
+                    .reduce((sum, oc) => sum + (oc.total_estimated ?? 0), 0);
+                  const pendingItems = ocItems.filter(
+                    (it) => it.quantity_received == null || it.quantity_received < it.quantity
+                  );
+                  if (totalGastado === 0 && pendingItems.length === 0) return null;
+                  return (
+                    <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+                      {totalGastado > 0 ? (
+                        <div style={{
+                          display: "flex", alignItems: "center", justifyContent: "space-between",
+                          padding: "8px 12px", borderRadius: 8,
+                          background: "#F0FDF4", border: "1px solid #BBF7D0",
+                        }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "#166534" }}>Total gastado (recibidas)</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: "#166534", fontFamily: "monospace" }}>
+                            ${totalGastado.toFixed(2)}
+                          </span>
+                        </div>
+                      ) : null}
+                      {pendingItems.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            Materiales pendientes de surtir
+                          </div>
+                          {pendingItems.map((it) => {
+                            const pend = it.quantity - (it.quantity_received ?? 0);
+                            return (
+                              <div key={it.id} style={{
+                                display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
+                                padding: "6px 10px", borderRadius: 6,
+                                background: "#FFFBEB", border: "1px solid #FDE68A",
+                                fontSize: 13,
+                              }}>
+                                <span style={{ flex: 1, minWidth: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                  {it.description}
+                                </span>
+                                <span style={{ color: "#B45309", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                  {pend} {it.unit} pendiente{pend !== 1 ? "s" : ""}
+                                </span>
+                                <span style={{ color: "var(--text-muted)", fontSize: 11, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                                  {it.oc_folio}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })()}
               </div>
             ) : null}
           </div>
