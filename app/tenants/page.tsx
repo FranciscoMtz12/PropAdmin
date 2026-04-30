@@ -17,6 +17,8 @@ import {
   Plus,
   Search,
   Trash2,
+  TrendingDown,
+  TrendingUp,
   User2,
 } from "lucide-react";
 
@@ -137,6 +139,11 @@ function formatDate(dateValue: string) {
   }
 }
 
+function formatCurrency(amount: number | null) {
+  if (amount == null) return "—";
+  return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN" }).format(amount);
+}
+
 function getStatusLabel(status: "ACTIVE" | "INACTIVE") {
   return status === "ACTIVE" ? "Activo" : "Inactivo";
 }
@@ -228,6 +235,8 @@ export default function TenantsPage() {
 
   const [openActionsTenantId, setOpenActionsTenantId] = useState<string | null>(null);
   const actionsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const [rentBuildingFilter, setRentBuildingFilter] = useState<string>("all");
 
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
@@ -533,6 +542,58 @@ export default function TenantsPage() {
   const activeCount = tenantRows.filter((row) => row.status === "ACTIVE").length;
   const inactiveCount = tenantRows.filter((row) => row.status === "INACTIVE").length;
   const withLeaseCount = tenantRows.filter((row) => row.hasActiveLease).length;
+
+  /* ── Historial de precios de renta por unidad ── */
+  const rentHistoryData = useMemo(() => {
+    const unitMap = new Map(units.map((u) => [u.id, u]));
+    const buildingMap = new Map(buildings.map((b) => [b.id, b]));
+
+    /* Agrupar leases por unit_id, solo los que tienen rent_amount */
+    const leasesByUnit = new Map<string, Lease[]>();
+    leases.forEach((lease) => {
+      if (!lease.unit_id || lease.rent_amount == null) return;
+      if (!leasesByUnit.has(lease.unit_id)) leasesByUnit.set(lease.unit_id, []);
+      leasesByUnit.get(lease.unit_id)!.push(lease);
+    });
+
+    /* Ordenar por start_date desc (más reciente primero) */
+    leasesByUnit.forEach((ls) => {
+      ls.sort((a, b) => {
+        const da = a.start_date || a.created_at;
+        const db = b.start_date || b.created_at;
+        return db.localeCompare(da);
+      });
+    });
+
+    /* Agrupar por edificio */
+    const byBuilding = new Map<string, { building: Building; entries: { unit: Unit; leases: Lease[] }[] }>();
+    leasesByUnit.forEach((ls, unitId) => {
+      const unit = unitMap.get(unitId);
+      if (!unit) return;
+      const building = buildingMap.get(unit.building_id);
+      if (!building) return;
+      if (!byBuilding.has(building.id)) byBuilding.set(building.id, { building, entries: [] });
+      byBuilding.get(building.id)!.entries.push({ unit, leases: ls });
+    });
+
+    /* Ordenar unidades dentro de cada edificio */
+    byBuilding.forEach((entry) => {
+      entry.entries.sort((a, b) => {
+        const la = a.unit.display_code || a.unit.unit_number || "";
+        const lb = b.unit.display_code || b.unit.unit_number || "";
+        return la.localeCompare(lb);
+      });
+    });
+
+    let result = Array.from(byBuilding.values()).sort((a, b) =>
+      a.building.name.localeCompare(b.building.name)
+    );
+
+    if (rentBuildingFilter !== "all") {
+      result = result.filter((e) => e.building.id === rentBuildingFilter);
+    }
+    return result;
+  }, [leases, units, buildings, rentBuildingFilter]);
 
   async function handleDeleteTenantConfirmed() {
     if (!user?.company_id || !tenantToDelete) return;
@@ -931,6 +992,133 @@ export default function TenantsPage() {
           ]}
         />
         </div>
+      </SectionCard>
+      </motion.div>
+
+      <div style={{ height: 16 }} />
+
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}>
+      <SectionCard title="Historial de precios de renta">
+        {/* Filtro por edificio */}
+        <div style={{ marginBottom: 18 }}>
+          <AppSelect
+            value={rentBuildingFilter}
+            onChange={(e) => setRentBuildingFilter(e.target.value)}
+            style={{ maxWidth: 280 }}
+          >
+            <option value="all">Todos los edificios</option>
+            {buildings.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </AppSelect>
+        </div>
+
+        {rentHistoryData.length === 0 ? (
+          <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No hay historial de precios registrado.</p>
+        ) : (
+          <div style={{ display: "grid", gap: 20 }}>
+            {rentHistoryData.map(({ building, entries }) => (
+              <div key={building.id}>
+                {/* Encabezado del edificio */}
+                <div style={{
+                  display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
+                  fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
+                }}>
+                  <Building2 size={15} style={{ color: "var(--text-muted)" }} />
+                  {building.name}
+                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>
+                    · {entries.length} unidad{entries.length !== 1 ? "es" : ""}
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                  {entries.map(({ unit, leases: unitLeases }) => {
+                    const currentLease  = unitLeases.find((l) => l.status === "ACTIVE");
+                    const currentRent   = currentLease?.rent_amount ?? null;
+                    const pastLeases    = unitLeases.filter((l) => l.status !== "ACTIVE" && l.rent_amount != null);
+                    const prevRent      = pastLeases[0]?.rent_amount ?? null;
+                    const direction =
+                      currentRent != null && prevRent != null
+                        ? currentRent > prevRent ? "up"
+                        : currentRent < prevRent ? "down"
+                        : "same"
+                        : null;
+
+                    return (
+                      <AppCard key={unit.id} style={{ padding: "12px 14px" }}>
+                        {/* Header: nombre unidad + precio actual */}
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
+                          <div>
+                            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                              {unit.display_code || unit.unit_number || "Unidad"}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                              {currentLease ? "Contrato activo" : "Sin contrato activo"}
+                            </div>
+                          </div>
+                          <div style={{ textAlign: "right", flexShrink: 0 }}>
+                            <div style={{ fontSize: 17, fontWeight: 800, color: currentRent ? "var(--text-primary)" : "var(--text-muted)" }}>
+                              {formatCurrency(currentRent)}
+                            </div>
+                            {direction === "up" ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 11, fontWeight: 700, color: "#16a34a" }}>
+                                <TrendingUp size={12} /> subió
+                              </div>
+                            ) : direction === "down" ? (
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 11, fontWeight: 700, color: "#DC2626" }}>
+                                <TrendingDown size={12} /> bajó
+                              </div>
+                            ) : null}
+                          </div>
+                        </div>
+
+                        {/* Historial de cambios */}
+                        {unitLeases.length > 0 ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                            {unitLeases.map((lease, idx) => {
+                              const prevAmount = idx + 1 < unitLeases.length ? unitLeases[idx + 1].rent_amount : null;
+                              const isActive = lease.status === "ACTIVE";
+                              const diff = prevAmount != null && lease.rent_amount != null
+                                ? lease.rent_amount - prevAmount : null;
+                              return (
+                                <div key={lease.id} style={{
+                                  display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                                  padding: "5px 8px", borderRadius: 8,
+                                  background: isActive ? "var(--icon-bg-green)" : "var(--bg-input)",
+                                  fontSize: 12,
+                                }}>
+                                  <span style={{ fontWeight: 700, color: "var(--text-primary)", minWidth: 80, fontFamily: "monospace" }}>
+                                    {formatCurrency(lease.rent_amount)}
+                                  </span>
+                                  <span style={{ color: "var(--text-muted)", flex: 1 }}>
+                                    {lease.start_date ? formatDate(lease.start_date) : "—"}
+                                    {lease.end_date ? ` → ${formatDate(lease.end_date)}` : ""}
+                                  </span>
+                                  {isActive ? (
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#15803D", background: "#D1FAE5", padding: "1px 6px", borderRadius: 10 }}>ACTIVO</span>
+                                  ) : null}
+                                  {diff != null && diff !== 0 ? (
+                                    <span style={{
+                                      fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 10,
+                                      color: diff > 0 ? "#15803D" : "#DC2626",
+                                      background: diff > 0 ? "#D1FAE5" : "#FEE2E2",
+                                    }}>
+                                      {diff > 0 ? "+" : ""}{formatCurrency(diff)}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : null}
+                      </AppCard>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </SectionCard>
       </motion.div>
 
