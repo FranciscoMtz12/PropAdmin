@@ -2205,11 +2205,6 @@ export default function PurchasesPage() {
                                   {ret.items.map((it) => it.quantity_returned).reduce((a, b) => a + b, 0)} unidades
                                 </p>
                               ) : null}
-                              {ret.photo_url ? (
-                                <a href={ret.photo_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                                  <ExternalLink size={11} /> Ver foto
-                                </a>
-                              ) : null}
                             </div>
                           ))}
                         </div>

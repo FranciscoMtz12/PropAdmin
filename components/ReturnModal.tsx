@@ -36,10 +36,8 @@ type Props = {
 
 export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: Props) {
   const [returnedQuantities, setReturnedQuantities] = useState<Record<string, string>>({});
-  const [reason, setReason]       = useState<PurchaseReturnReason | "">("");
-  const [notes, setNotes]         = useState("");
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [reason, setReason]   = useState<PurchaseReturnReason | "">("");
+  const [notes, setNotes]     = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   function handleClose() {
@@ -47,26 +45,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
     setReturnedQuantities({});
     setReason("");
     setNotes("");
-    setPhotoFile(null);
-    setPhotoPreview(null);
     onClose();
-  }
-
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0] ?? null;
-    setPhotoFile(file);
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
-      reader.readAsDataURL(file);
-    } else {
-      setPhotoPreview(null);
-    }
-  }
-
-  function removePhoto() {
-    setPhotoFile(null);
-    setPhotoPreview(null);
   }
 
   async function handleSubmit() {
@@ -86,26 +65,6 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
 
     setIsSubmitting(true);
     try {
-      let photoUrl: string | null = null;
-      if (photoFile) {
-        const ext = photoFile.name.split(".").pop() ?? "jpg";
-        const path = `${oc.id}/${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage
-          .from("purchase-returns")
-          .upload(path, photoFile);
-        if (upErr) {
-          throw new Error(
-            upErr.message.includes("Bucket not found") || upErr.message.includes("does not exist")
-              ? "Error al subir foto. Verifica que el bucket 'purchase-returns' exista en Supabase."
-              : upErr.message
-          );
-        }
-        const { data: urlData } = supabase.storage
-          .from("purchase-returns")
-          .getPublicUrl(path);
-        photoUrl = urlData.publicUrl;
-      }
-
       const { data: returnRow, error: retErr } = await supabase
         .from("purchase_returns")
         .insert({
@@ -113,7 +72,6 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
           purchase_order_id: oc.id,
           reason,
           reason_notes:      notes.trim() || null,
-          photo_url:         photoUrl,
         })
         .select()
         .single();
@@ -242,32 +200,6 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box" }}
           />
           <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-muted)", textAlign: "right" }}>{notes.length}/500</p>
-        </div>
-
-        {/* Foto */}
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-            Foto (opcional)
-          </label>
-          {photoPreview ? (
-            <div style={{ position: "relative", display: "inline-block" }}>
-              <img src={photoPreview} alt="Vista previa" style={{ maxWidth: "100%", maxHeight: 200, borderRadius: 8, border: "1px solid var(--border-default)", display: "block" }} />
-              <button
-                type="button"
-                onClick={removePhoto}
-                style={{ marginTop: 6, fontSize: 12, color: "#dc2626", background: "none", border: "none", cursor: "pointer", padding: 0, display: "block" }}
-              >
-                Quitar foto
-              </button>
-            </div>
-          ) : (
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handlePhotoChange}
-              style={{ fontSize: 13, color: "var(--text-secondary)" }}
-            />
-          )}
         </div>
 
         {/* Footer */}
