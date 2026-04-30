@@ -41,6 +41,7 @@ import {
   ExternalLink,
   FileText,
   Plus,
+  RotateCcw,
   Search,
   ShoppingCart,
   Trash2,
@@ -57,6 +58,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
+import { type PurchaseReturn, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
@@ -69,6 +71,7 @@ import AppBadge from "@/components/AppBadge";
 import MetricCard from "@/components/MetricCard";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
+import ReturnModal from "@/components/ReturnModal";
 import AppFormField from "@/components/AppFormField";
 
 /* ── Types ─────────────────────────────────────────────────────── */
@@ -143,6 +146,7 @@ type PurchaseOrder = {
   sent_at:              string | null;
   created_at:           string;
   parent_order_id:      string | null;
+  returns?:             PurchaseReturn[];
   /* Derivados */
   supplier_name?:       string;
   ticket_number?:       string | null;
@@ -300,6 +304,7 @@ export default function PurchasesPage() {
   /* Confirmación de cancelación */
   const [cancelTarget, setCancelTarget] = useState<PurchaseOrder | null>(null);
   const [invoiceTarget, setInvoiceTarget] = useState<PurchaseOrder | null>(null);
+  const [returnTarget, setReturnTarget] = useState<PurchaseOrder | null>(null);
   const [invoiceForm, setInvoiceForm] = useState({ number: "", amount: "", date: "", notes: "" });
   const [savingInvoice, setSavingInvoice] = useState(false);
 
@@ -510,6 +515,25 @@ export default function PurchasesPage() {
     });
 
     setOrders(enriched);
+
+    /* CAMBIO 2 — Cargar devoluciones y adjuntarlas a las OCs */
+    const orderIds = enriched.map((o) => o.id);
+    if (orderIds.length > 0) {
+      const { data: returnsData } = await supabase
+        .from("purchase_returns")
+        .select("id, company_id, purchase_order_id, reason, reason_notes, photo_url, created_by, created_at, deleted_at, items:purchase_return_items(id, return_id, purchase_order_item_id, quantity_returned)")
+        .in("purchase_order_id", orderIds)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      if (returnsData && returnsData.length > 0) {
+        setOrders((prev) =>
+          prev.map((o) => ({
+            ...o,
+            returns: (returnsData as PurchaseReturn[]).filter((r) => r.purchase_order_id === o.id),
+          }))
+        );
+      }
+    }
 
     type SupplierRow = {
       id: string; name: string; prefix: string | null; tax_id: string | null;
@@ -1731,6 +1755,19 @@ export default function PurchasesPage() {
                           </span>
                         );
                       })()}
+
+                      {/* CAMBIO 3 — Badge "Con devolución" */}
+                      {o.returns && o.returns.length > 0 ? (
+                        <span style={{
+                          fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                          borderRadius: 20, background: "#fff7ed",
+                          color: "#c2410c", border: "1px solid #fdba74",
+                          display: "inline-flex", alignItems: "center", gap: 4,
+                        }}>
+                          <RotateCcw size={10} />
+                          {o.returns.length === 1 ? "Con devolución" : `${o.returns.length} devoluciones`}
+                        </span>
+                      ) : null}
                     </div>
 
                     <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
@@ -2132,6 +2169,53 @@ export default function PurchasesPage() {
                       );
                     })() : null}
 
+                    {/* ── Sección 2d: Devoluciones ── */}
+                    {o.returns && o.returns.length > 0 ? (
+                      <div>
+                        <SectionLabel>Devoluciones ({o.returns.length})</SectionLabel>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                          {o.returns.map((ret, ri) => (
+                            <div key={ret.id} style={{
+                              border: "1px solid rgba(194, 65, 12, 0.3)",
+                              borderRadius: 10,
+                              padding: "12px 14px",
+                              background: "var(--bg-card)",
+                              display: "flex", flexDirection: "column", gap: 6,
+                            }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                                <span style={{
+                                  fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+                                  background: "#fff7ed", color: "#c2410c", border: "1px solid #fdba74",
+                                }}>
+                                  Dev. #{ri + 1}
+                                </span>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                                  {RETURN_REASON_LABEL[ret.reason]}
+                                </span>
+                                <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
+                                  {new Date(ret.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
+                                </span>
+                              </div>
+                              {ret.reason_notes ? (
+                                <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>{ret.reason_notes}</p>
+                              ) : null}
+                              {ret.items && ret.items.length > 0 ? (
+                                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                                  {ret.items.length} material{ret.items.length !== 1 ? "es" : ""} devuelto{ret.items.length !== 1 ? "s" : ""} ·&nbsp;
+                                  {ret.items.map((it) => it.quantity_returned).reduce((a, b) => a + b, 0)} unidades
+                                </p>
+                              ) : null}
+                              {ret.photo_url ? (
+                                <a href={ret.photo_url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#2563eb", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                                  <ExternalLink size={11} /> Ver foto
+                                </a>
+                              ) : null}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+
                     {/* ── Sección 3: Acciones ── */}
                     <div>
                       <SectionLabel>Acciones</SectionLabel>
@@ -2310,6 +2394,24 @@ export default function PurchasesPage() {
                             </>
                           );
                         })() : null}
+
+                        {/* CAMBIO 4 — Registrar devolución */}
+                        {(o.status === "received" || o.status === "invoiced") ? (
+                          <button
+                            type="button"
+                            onClick={() => setReturnTarget(o)}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 6,
+                              padding: "9px 14px", borderRadius: 8,
+                              border: "1px solid #c2410c", background: "transparent",
+                              color: "#c2410c",
+                              fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            }}
+                          >
+                            <RotateCcw size={14} />
+                            Registrar devolución
+                          </button>
+                        ) : null}
 
                         <button
                           type="button"
@@ -3036,6 +3138,31 @@ export default function PurchasesPage() {
           </div>
         ) : null}
       </Modal>
+
+      {/* ═══════════ Modal Devolución ═══════════ */}
+      {returnTarget ? (
+        <ReturnModal
+          oc={{
+            id:            returnTarget.id,
+            folio:         returnTarget.folio,
+            supplier_name: returnTarget.supplier_name,
+            ticket_number: returnTarget.ticket_number,
+            company_id:    user?.company_id,
+          }}
+          items={(itemsByOrderId[returnTarget.id] || []).map((it) => ({
+            id:                it.id,
+            description:       it.description,
+            quantity:          it.quantity,
+            unit:              it.unit,
+            quantity_received: it.quantity_received,
+          }))}
+          isOpen={true}
+          onClose={() => setReturnTarget(null)}
+          onSuccess={() => {
+            if (user?.company_id) void loadAll(user.company_id);
+          }}
+        />
+      ) : null}
 
     </PageContainer>
   );
