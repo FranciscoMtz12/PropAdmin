@@ -195,6 +195,15 @@ function formatCurrency(amount: number | null) {
   }).format(amount || 0);
 }
 
+function daysUntilEnd(endDate: string | null): number | null {
+  if (!endDate) return null;
+  const parsed = parseDateOnly(endDate);
+  if (!parsed) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return Math.round((parsed.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+}
+
 function getTodayDateInput() {
   const now = new Date();
   const year = now.getFullYear();
@@ -1404,6 +1413,20 @@ export default function UnitDetailPage() {
                   const responsiblePayer = lease.responsible_payer_id
                     ? tenantsMap.get(lease.responsible_payer_id)
                     : null;
+                  const days = daysUntilEnd(lease.end_date);
+                  const expiryBadge = days != null && days >= 0 ? (
+                    <span style={{
+                      padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+                      background: days < 30 ? "#FEE2E2" : days < 90 ? "#FEF3C7" : "#F3F4F6",
+                      color:      days < 30 ? "#DC2626" : days < 90 ? "#B45309" : "var(--text-muted)",
+                    }}>
+                      {days === 0 ? "Vence hoy" : `${days}d para vencer`}
+                    </span>
+                  ) : days != null && days < 0 ? (
+                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: "#FEE2E2", color: "#DC2626" }}>
+                      Vencido hace {Math.abs(days)}d
+                    </span>
+                  ) : null;
 
                   return (
                     <AppCard key={lease.id}>
@@ -1427,12 +1450,34 @@ export default function UnitDetailPage() {
                             Cuarto {lease.room_number || "—"}
                           </div>
 
-                          <LeaseStatusPill status={lease.status} />
+                          <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                            {expiryBadge}
+                            <LeaseStatusPill status={lease.status} />
+                          </div>
                         </div>
 
                         <div style={miniGroupStyle}>
                           <div style={miniLabelStyle}>Inquilino</div>
-                          <div style={miniValueStyle}>{getTenantDisplayName(tenant)}</div>
+                          <div style={miniValueStyle}>
+                            {tenant ? (
+                              <button
+                                type="button"
+                                onClick={() => router.push(`/tenants`)}
+                                style={{
+                                  background: "none", border: "none", padding: 0,
+                                  color: "var(--text-primary)", fontWeight: 600,
+                                  fontSize: "inherit", cursor: "pointer",
+                                  textDecoration: "underline", textDecorationColor: "var(--border-strong)",
+                                  textUnderlineOffset: 3,
+                                }}
+                                title="Ver en directorio de inquilinos"
+                              >
+                                {getTenantDisplayName(tenant)}
+                              </button>
+                            ) : (
+                              getTenantDisplayName(tenant)
+                            )}
+                          </div>
                         </div>
 
                         <div style={miniGroupStyle}>
@@ -1445,18 +1490,21 @@ export default function UnitDetailPage() {
                         </div>
 
                         <div style={miniGroupStyle}>
-                          <div style={miniLabelStyle}>Renta</div>
-                          <div style={miniValueStyle}>{formatCurrency(lease.rent_amount)}</div>
+                          <div style={miniLabelStyle}>Renta mensual</div>
+                          <div style={{ ...miniValueStyle, fontSize: "16px", fontWeight: 800, color: "var(--text-primary)" }}>
+                            {formatCurrency(lease.rent_amount)}
+                          </div>
                         </div>
 
-                        <div style={miniGroupStyle}>
-                          <div style={miniLabelStyle}>Inicio</div>
-                          <div style={miniValueStyle}>{formatDate(lease.start_date)}</div>
-                        </div>
-
-                        <div style={miniGroupStyle}>
-                          <div style={miniLabelStyle}>Fin</div>
-                          <div style={miniValueStyle}>{formatDate(lease.end_date)}</div>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div style={miniGroupStyle}>
+                            <div style={miniLabelStyle}>Inicio</div>
+                            <div style={miniValueStyle}>{formatDate(lease.start_date)}</div>
+                          </div>
+                          <div style={miniGroupStyle}>
+                            <div style={miniLabelStyle}>Fin</div>
+                            <div style={miniValueStyle}>{formatDate(lease.end_date)}</div>
+                          </div>
                         </div>
 
                         <div style={miniGroupStyle}>
