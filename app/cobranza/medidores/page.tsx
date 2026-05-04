@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -283,7 +283,7 @@ export default function CobranzaMedidoresPage() {
       ) : (
         <div style={{ display: "grid", gap: 24 }}>
           {groups.map(group => (
-            <SectionCard key={group.building_id} title={`📍 ${group.building_name}`} icon={<Zap size={18} />}>
+            <SectionCard key={group.building_id} title={group.building_name} icon={<MapPin size={18} />}>
               <div style={{ display: "grid", gap: 16 }}>
                 {group.cfe_meters.map(({ cfe_meter, internal_meters }) => {
                   const captured = internal_meters.filter(im => readings.some(r => r.internal_meter_id === im.id));
@@ -293,7 +293,7 @@ export default function CobranzaMedidoresPage() {
                   return (
                     <div key={cfe_meter.id}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
-                        <strong style={{ fontSize: 14 }}>🔌 Medidor {cfe_meter.meter_number}</strong>
+                        <strong style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Zap size={14} />Medidor {cfe_meter.meter_number}</strong>
                         {cfe_meter.description ? <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{cfe_meter.description}</span> : null}
                         <AppBadge variant={allDone ? "green" : "amber"}>
                           {allDone ? `✓ ${captured.length}/${total}` : `⏳ ${captured.length}/${total}`}

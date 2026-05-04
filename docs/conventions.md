@@ -49,3 +49,35 @@ const { data } = await supabase
 
 El valor del enum `lease_status` es `'ACTIVE'` (mayúsculas).
 Usar `'active'` (minúsculas) no retorna resultados.
+
+---
+
+## Íconos
+
+- **SIEMPRE** usar íconos de Lucide React (`import { X } from 'lucide-react'`)
+- **NUNCA** usar emojis como íconos en la UI (ni 📍 ni ⚡ ni 🔌 ni ningún otro)
+- Tamaño estándar: 14–16 px inline, 18–20 px en headers
+- Color: heredar del texto o usar variable CSS de tema
+
+### Equivalencias comunes
+
+| Emoji (obsoleto) | Ícono Lucide |
+|---|---|
+| 📍 | `MapPin` |
+| ⚡ / 🔌 | `Zap` |
+| ⚠️ | `AlertTriangle` |
+| 💡 | `Info` |
+| 📷 | `Camera` |
+| 👤 | `User` |
+| ⚙️ | `Settings2` |
+| 🚪 | eliminar o `Home` |
+
+### Patrón a seguir
+
+```tsx
+import { MapPin, Zap } from 'lucide-react'
+
+<span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+  <MapPin size={14} />{building.name}
+</span>
+```

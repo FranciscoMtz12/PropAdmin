@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { AlertTriangle, Camera, MapPin, User } from "lucide-react";
 import Modal from "@/components/Modal";
 import AppFormField from "@/components/AppFormField";
 import UiButton from "@/components/UiButton";
@@ -99,19 +100,19 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
   return (
     <Modal open onClose={onClose} title={`Depa ${internalMeter.unit_number || "—"} — Medidor ${internalMeter.cfe_meter_number || "—"}`}>
       {internalMeter.building_name && (
-        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-secondary)" }}>
-          📍 {internalMeter.building_name}
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 5 }}>
+          <MapPin size={13} />{internalMeter.building_name}
         </p>
       )}
 
-      {/* Inquilino o vacante — calculado automáticamente, sin checkbox */}
+      {/* Inquilino o vacante — calculado automáticamente */}
       {activeLease ? (
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
-          👤 {activeLease.tenant_name}
+        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+          <User size={14} />{activeLease.tenant_name}
         </p>
       ) : (
-        <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e" }}>
-          ⚠️ Este depa no tiene inquilino activo
+        <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e", display: "flex", alignItems: "center", gap: 8 }}>
+          <AlertTriangle size={14} />Este depa no tiene inquilino activo
         </div>
       )}
 
@@ -148,8 +149,8 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
         </AppFormField>
 
         {isAbnormal && (
-          <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e" }}>
-            ⚠️ Lectura más alta de lo normal. Verifica que sea correcta.
+          <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e", display: "flex", alignItems: "center", gap: 8 }}>
+            <AlertTriangle size={14} />Lectura más alta de lo normal. Verifica que sea correcta.
           </div>
         )}
 
@@ -171,9 +172,9 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
             }}
           >
             {photoFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 14 }}>📷 {photoFile.name}</p>
+              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Camera size={14} />{photoFile.name}</p>
             ) : (
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>📷 Toca para tomar foto del medidor</p>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}><Camera size={14} />Toca para tomar foto del medidor</p>
             )}
           </div>
         </AppFormField>

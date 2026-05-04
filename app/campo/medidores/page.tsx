@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, MapPin, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -260,7 +260,7 @@ export default function CampoMedidoresPage() {
             return (
               <div key={`${group.building_id}-${group.cfe_meter_id}`} style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#8B2252" }}>📍 {group.building_name}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#8B2252", display: "inline-flex", alignItems: "center", gap: 5 }}><MapPin size={14} />{group.building_name}</span>
                   <span style={{ fontSize: 13, color: "var(--text-muted)" }}>— Medidor {group.cfe_meter_number}</span>
                 </div>
                 <div style={{ display: "grid", gap: 10 }}>
@@ -280,7 +280,7 @@ export default function CampoMedidoresPage() {
                       >
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                           <div>
-                            <strong style={{ fontSize: 15 }}>🚪 Depa {im.unit_number}</strong>
+                            <strong style={{ fontSize: 15 }}>Depa {im.unit_number}</strong>
                             <p style={{ margin: "2px 0 0", fontSize: 13, color: im.active_lease ? "var(--text-secondary)" : "var(--text-muted)" }}>
                               {im.active_lease ? im.active_lease.tenant_name : "Vacante"}
                             </p>

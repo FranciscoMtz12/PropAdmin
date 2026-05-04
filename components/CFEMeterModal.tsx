@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Info } from "lucide-react";
 import Modal from "@/components/Modal";
 import AppFormField from "@/components/AppFormField";
 import AppSelect from "@/components/AppSelect";
@@ -158,8 +159,8 @@ export default function CFEMeterModal({ buildingId, companyId, units, existingCf
             </AppSelect>
           </AppFormField>
         ) : (
-          <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#1d4ed8" }}>
-            💡 Después de crear este medidor, configura los submedidores internos por unidad.
+          <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+            <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />Después de crear este medidor, configura los submedidores internos por unidad.
           </div>
         )}
 

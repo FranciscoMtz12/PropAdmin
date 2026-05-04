@@ -25,6 +25,7 @@ import {
   ResponsiveContainer, Legend,
 } from "recharts";
 import {
+  AlertTriangle,
   Archive,
   ArrowLeft,
   Building2,
@@ -44,6 +45,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Settings2,
   Tags,
   Trash2,
   Zap,
@@ -1450,7 +1452,7 @@ export default function BuildingDetailPage() {
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                            <strong style={{ fontSize: 15 }}>🔌 Medidor {meter.meter_number}</strong>
+                            <strong style={{ fontSize: 15, display: "inline-flex", alignItems: "center", gap: 6 }}><Zap size={14} />Medidor {meter.meter_number}</strong>
                             {isDedicated ? (
                               <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f3f4f6", color: "#374151", fontSize: 12, fontWeight: 700 }}>Dedicado</span>
                             ) : (
@@ -1484,8 +1486,8 @@ export default function BuildingDetailPage() {
                                   ))}
                                 </div>
                               ) : (
-                                <div style={{ marginTop: 6, padding: "8px 12px", background: "#fef3c7", borderRadius: 10, fontSize: 12, color: "#92400e" }}>
-                                  ⚠️ Falta configurar submedidores
+                                <div style={{ marginTop: 6, padding: "8px 12px", background: "#fef3c7", borderRadius: 10, fontSize: 12, color: "#92400e", display: "flex", alignItems: "center", gap: 6 }}>
+                                  <AlertTriangle size={12} />Falta configurar submedidores
                                 </div>
                               )}
                               <button
@@ -1493,7 +1495,7 @@ export default function BuildingDetailPage() {
                                 onClick={() => setInternalMetersModalFor(meter)}
                                 style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}
                               >
-                                ⚙️ Configurar submedidores
+                                <Settings2 size={13} />Configurar submedidores
                               </button>
                             </div>
                           )}

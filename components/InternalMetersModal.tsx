@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Info, MapPin } from "lucide-react";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import { supabase } from "@/lib/supabaseClient";
@@ -113,11 +114,11 @@ export default function InternalMetersModal({ cfeMeter, building, companyId, uni
 
   return (
     <Modal open onClose={onClose} title={`Submedidores — Medidor ${cfeMeter.meter_number}`}>
-      <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
-        📍 {building.name}
+      <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 5 }}>
+        <MapPin size={13} />{building.name}
       </p>
-      <div style={{ padding: "12px 16px", background: "#fef3c7", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#92400e" }}>
-        💡 Asigna qué unidades están conectadas a este medidor CFE. Para cada una, captura una lectura base inicial. Si no la conoces exacta, pon una aproximada — lo que importa son las diferencias mensuales.
+      <div style={{ padding: "12px 16px", background: "#fef3c7", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />Asigna qué unidades están conectadas a este medidor CFE. Para cada una, captura una lectura base inicial. Si no la conoces exacta, pon una aproximada — lo que importa son las diferencias mensuales.
       </div>
 
       <form onSubmit={handleSubmit}>
