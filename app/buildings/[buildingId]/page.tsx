@@ -48,6 +48,7 @@ import {
   Settings2,
   Tags,
   Trash2,
+  Wrench,
   Zap,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -86,6 +87,7 @@ import AssetTypeIcon from "@/components/AssetTypeIcon";
 import AppBadge from "@/components/AppBadge";
 import CFEMeterModal from "@/components/CFEMeterModal";
 import InternalMetersModal from "@/components/InternalMetersModal";
+import BuildingServicesTab from "@/components/BuildingServicesTab";
 import { sortByNatural } from "@/lib/sort-utils";
 
 /* Mini mapa — importación dinámica para evitar errores de SSR con Leaflet. */
@@ -980,6 +982,7 @@ export default function BuildingDetailPage() {
           { key: "documents", label: "Documentos",    icon: <FolderOpen size={16} />, count: documentFiles.length },
           { key: "gallery",   label: "Galería",       icon: <FileImage size={16} />,  count: imageFiles.length },
           { key: "meters",    label: "Medidores CFE", icon: <Zap size={16} />,        count: cfeMeders.length },
+          { key: "services",  label: "Servicios",     icon: <Wrench size={16} /> },
         ]}
       />
 
@@ -1524,6 +1527,17 @@ export default function BuildingDetailPage() {
             )}
           </SectionCard>
         </div>
+      ) : null}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: SERVICIOS DEL EDIFICIO
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "services" && building ? (
+        <BuildingServicesTab
+          buildingId={building.id}
+          companyId={building.company_id}
+          units={buildingUnits}
+        />
       ) : null}
 
       {/* ── Modal agregar/editar medidor CFE ── */}

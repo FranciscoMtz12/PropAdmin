@@ -31,6 +31,111 @@ export type PurchaseReturn = {
   items?: PurchaseReturnItem[];
 };
 
+// ── Servicios del edificio (genérico) ────────────────────────────────
+
+export type UtilityServiceType = 'electricity' | 'gas' | 'water' | 'internet' | 'other'
+export type UtilityMeterType   = 'dedicated' | 'shared'
+export type UtilityInvoiceStatus = 'draft' | 'distributed' | 'charged'
+
+export const SERVICE_TYPE_LABEL: Record<UtilityServiceType, string> = {
+  electricity: 'Electricidad',
+  gas:         'Gas',
+  water:       'Agua',
+  internet:    'Internet',
+  other:       'Otro',
+}
+
+export const SERVICE_TYPE_UNIT: Record<UtilityServiceType, string | null> = {
+  electricity: 'kWh',
+  gas:         'm³',
+  water:       'm³',
+  internet:    null,
+  other:       null,
+}
+
+export const UTILITY_INVOICE_STATUS_LABEL: Record<UtilityInvoiceStatus, string> = {
+  draft:       'Borrador',
+  distributed: 'Distribuida',
+  charged:     'Cobrada',
+}
+
+export type BuildingUtilityMeter = {
+  id: string
+  company_id: string
+  building_id: string
+  service_type: UtilityServiceType
+  meter_type: UtilityMeterType
+  unit_id: string | null
+  provider_name: string | null
+  meter_number: string | null
+  contract_number: string | null
+  description: string | null
+  active: boolean
+  created_at: string
+  deleted_at: string | null
+}
+
+export type BuildingUtilitySubMeter = {
+  id: string
+  building_utility_meter_id: string
+  unit_id: string
+  sub_meter_number: string | null
+  baseline_reading: number
+  active: boolean
+  created_at: string
+  deleted_at: string | null
+}
+
+export type BuildingUtilityReading = {
+  id: string
+  company_id: string
+  building_utility_meter_id: string | null
+  building_utility_sub_meter_id: string | null
+  period_year: number
+  period_month: number
+  previous_reading: number | null
+  current_reading: number | null
+  consumption: number | null
+  reading_date: string | null
+  photo_path: string | null
+  notes: string | null
+  created_by: string | null
+  created_at: string
+  deleted_at: string | null
+}
+
+export type BuildingUtilityInvoice = {
+  id: string
+  company_id: string
+  building_id: string
+  building_utility_meter_id: string
+  period_year: number
+  period_month: number
+  total_amount: number
+  total_consumption: number | null
+  consumption_unit: string | null
+  pdf_path: string | null
+  folio: string | null
+  status: UtilityInvoiceStatus
+  distributed_at: string | null
+  charged_at: string | null
+  created_by: string | null
+  created_at: string
+  deleted_at: string | null
+}
+
+export type BuildingUtilityInvoiceItem = {
+  id: string
+  invoice_id: string
+  building_utility_sub_meter_id: string | null
+  unit_id: string
+  consumption: number | null
+  percentage: number | null
+  amount_assigned: number
+  collection_record_id: string | null
+  created_at: string
+}
+
 // ── Medidores de luz CFE ─────────────────────────────────────────────
 
 export type CFEServiceType = 'dedicated' | 'shared'
@@ -72,6 +177,45 @@ export type InternalMeter = {
   unit_number?: string
   display_code?: string
   tenant_name?: string
+}
+
+export type ElectricityBillStatus = 'draft' | 'distributed' | 'charged'
+
+export type ElectricityBill = {
+  id: string
+  company_id: string
+  building_id: string
+  cfe_meter_id: string
+  period_year: number
+  period_month: number
+  total_amount: number
+  total_kwh: number
+  pdf_path: string | null
+  folio_cfe: string | null
+  status: ElectricityBillStatus
+  distributed_at: string | null
+  charged_at: string | null
+  created_by: string | null
+  created_at: string
+  deleted_at: string | null
+}
+
+export type ElectricityBillItem = {
+  id: string
+  bill_id: string
+  internal_meter_id: string
+  unit_id: string
+  consumption_kwh: number
+  percentage: number
+  amount_assigned: number
+  collection_record_id: string | null
+  created_at: string
+}
+
+export const ELECTRICITY_BILL_STATUS_LABEL: Record<ElectricityBillStatus, string> = {
+  draft: 'Borrador',
+  distributed: 'Distribuida',
+  charged: 'Cobrada',
 }
 
 export type ElectricityReading = {
