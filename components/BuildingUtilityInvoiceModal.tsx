@@ -160,9 +160,9 @@ export default function BuildingUtilityInvoiceModal({
       if (pdfFile) {
         const ext  = pdfFile.name.split(".").pop() || "pdf"
         const padMonth = String(period.month).padStart(2, "0")
-        const path = `${meter.id}/${period.year}-${padMonth}/${Date.now()}.${ext}`
+        const path = `${companyId}/${meter.service_type}/${meter.id}/${period.year}-${padMonth}.${ext}`
         const { error: uploadError } = await supabase.storage
-          .from("building-utility-invoices")
+          .from("utility-invoices")
           .upload(path, pdfFile, { upsert: false })
         if (uploadError) {
           if (
@@ -170,7 +170,7 @@ export default function BuildingUtilityInvoiceModal({
             uploadError.message?.includes("bucket")
           ) {
             setBucketMissing(true)
-            setMsg("El bucket 'building-utility-invoices' no existe aún. La factura se guardará sin PDF.")
+            setMsg("El bucket 'utility-invoices' no existe aún. La factura se guardará sin PDF.")
           } else {
             setMsg(`Error subiendo PDF: ${uploadError.message}`)
             setSaving(false)
@@ -460,7 +460,7 @@ export default function BuildingUtilityInvoiceModal({
           gap: 8,
         }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-          Crea el bucket <strong>building-utility-invoices</strong> en Supabase Storage para habilitar PDFs.
+          Crea el bucket <strong>utility-invoices</strong> en Supabase Storage para habilitar PDFs.
         </div>
       )}
 

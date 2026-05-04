@@ -45,14 +45,14 @@ export default function ElectricityBillModal({ cfeMeter, buildingName, companyId
 
       if (pdfFile) {
         const ext  = pdfFile.name.split(".").pop() || "pdf";
-        const path = `${cfeMeter.id}/${period.year}-${String(period.month).padStart(2, "0")}/factura-${Date.now()}.${ext}`;
+        const path = `${companyId}/electricity/${cfeMeter.id}/${period.year}-${String(period.month).padStart(2, "0")}.${ext}`;
         const { error: uploadError } = await supabase.storage
-          .from("electricity-bills")
+          .from("utility-invoices")
           .upload(path, pdfFile, { upsert: false });
         if (uploadError) {
           if (uploadError.message?.includes("Bucket not found") || uploadError.message?.includes("bucket")) {
             setBucketMissing(true);
-            setMsg("El bucket 'electricity-bills' no existe aún. La factura se guardará sin PDF.");
+            setMsg("El bucket 'utility-invoices' no existe aún. La factura se guardará sin PDF.");
           } else {
             setMsg(`Error subiendo PDF: ${uploadError.message}`);
             setSaving(false);
@@ -105,7 +105,7 @@ export default function ElectricityBillModal({ cfeMeter, buildingName, companyId
       {bucketMissing && (
         <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 14, fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-          Crea el bucket <strong>electricity-bills</strong> en Supabase Storage para habilitar PDFs.
+          Crea el bucket <strong>utility-invoices</strong> en Supabase Storage para habilitar PDFs.
         </div>
       )}
 

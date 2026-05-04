@@ -7,7 +7,7 @@ export async function getSignedBillUrl(
 ): Promise<string | null> {
   if (!path) return null;
   const { data, error } = await supabase.storage
-    .from("electricity-bills")
+    .from("utility-invoices")
     .createSignedUrl(path, expiresInSeconds);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;
