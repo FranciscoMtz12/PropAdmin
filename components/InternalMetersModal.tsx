@@ -5,6 +5,7 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT_STYLE, errorBannerStyle } from "@/lib/pageStyles";
+import { sortByNatural } from "@/lib/sort-utils";
 
 type UnitRow = { id: string; unit_number: string; display_code: string | null };
 type InternalMeterRow = {
@@ -123,7 +124,7 @@ export default function InternalMetersModal({ cfeMeter, building, companyId, uni
         {msg ? <p style={errorBannerStyle}>{msg}</p> : null}
 
         <div style={{ display: "grid", gap: 12, maxHeight: "50vh", overflowY: "auto", paddingRight: 4 }}>
-          {units.map(u => {
+          {sortByNatural(units, u => u.unit_number).map(u => {
             const s = unitStates[u.id];
             if (!s) return null;
             return (

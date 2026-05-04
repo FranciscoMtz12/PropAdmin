@@ -16,12 +16,20 @@ type InternalMeterWithJoins = {
   cfe_meter_number?: string;
 };
 
+export type ActiveLeaseInfo = {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  start_date: string;
+  end_date: string | null;
+};
+
 type Props = {
   internalMeter: InternalMeterWithJoins;
   period: { year: number; month: number };
   previousReading: number;
   averageConsumption: number | null;
-  isVacant?: boolean;
+  activeLease: ActiveLeaseInfo | null;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
@@ -29,15 +37,15 @@ type Props = {
 
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-export default function CaptureReadingModal({ internalMeter, period, previousReading, averageConsumption, isVacant, isOpen, onClose, onSuccess }: Props) {
+export default function CaptureReadingModal({ internalMeter, period, previousReading, averageConsumption, activeLease, isOpen, onClose, onSuccess }: Props) {
   const [currentReading, setCurrentReading] = useState("");
   const [notes, setNotes] = useState("");
-  const [hasNoTenant, setHasNoTenant] = useState(isVacant || false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const hasNoTenant = !activeLease;
   const current = parseFloat(currentReading) || 0;
   const consumption = current > 0 ? current - previousReading : 0;
   const isAbnormal = averageConsumption && consumption > 0 && consumption > averageConsumption * 5;
@@ -51,18 +59,18 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
 
     setSaving(true);
     try {
-      const ext = photoFile.name.split('.').pop() || 'jpg';
-      const path = `${internalMeter.cfe_meter_id}/${period.year}-${String(period.month).padStart(2,'0')}/${internalMeter.unit_id}-${Date.now()}.${ext}`;
+      const ext = photoFile.name.split(".").pop() || "jpg";
+      const path = `${internalMeter.cfe_meter_id}/${period.year}-${String(period.month).padStart(2, "0")}/${internalMeter.unit_id}-${Date.now()}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
-        .from('electricity-readings')
+        .from("electricity-readings")
         .upload(path, photoFile, { upsert: false });
 
       if (uploadError) { setMsg(`Error subiendo foto: ${uploadError.message}`); setSaving(false); return; }
 
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error: insertError } = await supabase.from('electricity_readings').insert({
+      const { error: insertError } = await supabase.from("electricity_readings").insert({
         internal_meter_id: internalMeter.id,
         unit_id: internalMeter.unit_id,
         cfe_meter_id: internalMeter.cfe_meter_id,
@@ -70,7 +78,7 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
         period_month: period.month,
         previous_reading: previousReading,
         current_reading: parseFloat(currentReading),
-        reading_date: new Date().toISOString().split('T')[0],
+        reading_date: new Date().toISOString().split("T")[0],
         photo_url: path,
         notes: notes.trim() || null,
         has_no_tenant: hasNoTenant,
@@ -91,12 +99,17 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
   return (
     <Modal open onClose={onClose} title={`Depa ${internalMeter.unit_number || "—"} — Medidor ${internalMeter.cfe_meter_number || "—"}`}>
       {internalMeter.building_name && (
-        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
+        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-secondary)" }}>
           📍 {internalMeter.building_name}
         </p>
       )}
 
-      {isVacant && (
+      {/* Inquilino o vacante — calculado automáticamente, sin checkbox */}
+      {activeLease ? (
+        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+          👤 {activeLease.tenant_name}
+        </p>
+      ) : (
         <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e" }}>
           ⚠️ Este depa no tiene inquilino activo
         </div>
@@ -104,7 +117,7 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
 
       <div style={{ padding: "10px 14px", background: "var(--bg-page)", borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
         <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-          <span>Lectura anterior: <strong>{previousReading.toLocaleString('es-MX')}</strong></span>
+          <span>Lectura anterior: <strong>{previousReading.toLocaleString("es-MX")}</strong></span>
           {averageConsumption !== null && (
             <span style={{ color: "var(--text-muted)" }}>Promedio histórico: <strong>{averageConsumption.toFixed(0)} kWh</strong></span>
           )}
@@ -152,7 +165,8 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
           <div
             onClick={() => fileRef.current?.click()}
             style={{
-              padding: "20px 16px", borderRadius: 12, border: `2px dashed ${photoFile ? "#15803d" : "var(--border-default)"}`,
+              padding: "20px 16px", borderRadius: 12,
+              border: `2px dashed ${photoFile ? "#15803d" : "var(--border-default)"}`,
               background: photoFile ? "#dcfce7" : "var(--bg-card)", cursor: "pointer", textAlign: "center",
             }}
           >
@@ -168,17 +182,7 @@ export default function CaptureReadingModal({ internalMeter, period, previousRea
           <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observaciones…" style={TEXTAREA_STYLE} />
         </AppFormField>
 
-        <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, cursor: "pointer", fontSize: 14 }}>
-          <input
-            type="checkbox"
-            checked={hasNoTenant}
-            onChange={e => setHasNoTenant(e.target.checked)}
-            style={{ width: 16, height: 16, accentColor: "#8B2252" }}
-          />
-          Este depa no tiene inquilino
-        </label>
-
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
           <UiButton type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</UiButton>
           <UiButton type="submit" variant="primary" disabled={saving}>{saving ? "Guardando..." : "Capturar lectura"}</UiButton>
         </div>

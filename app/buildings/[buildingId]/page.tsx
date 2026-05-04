@@ -84,6 +84,7 @@ import AssetTypeIcon from "@/components/AssetTypeIcon";
 import AppBadge from "@/components/AppBadge";
 import CFEMeterModal from "@/components/CFEMeterModal";
 import InternalMetersModal from "@/components/InternalMetersModal";
+import { sortByNatural } from "@/lib/sort-utils";
 
 /* Mini mapa — importación dinámica para evitar errores de SSR con Leaflet. */
 const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
@@ -1438,8 +1439,8 @@ export default function BuildingDetailPage() {
               />
             ) : (
               <div style={{ display: "grid", gap: 16 }}>
-                {cfeMeders.map((meter) => {
-                  const submeters = internalMetersMap[meter.id] || [];
+                {sortByNatural(cfeMeders, m => m.meter_number).map((meter) => {
+                  const submeters = sortByNatural(internalMetersMap[meter.id] || [], sm => sm.unit_number);
                   const isDedicated = meter.service_type === 'dedicated';
                   const assignedUnit = isDedicated
                     ? buildingUnits.find(u => u.id === meter.assigned_unit_id)

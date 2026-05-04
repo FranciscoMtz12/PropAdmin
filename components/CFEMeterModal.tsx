@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Modal from "@/components/Modal";
 import AppFormField from "@/components/AppFormField";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT_STYLE, TEXTAREA_STYLE, errorBannerStyle } from "@/lib/pageStyles";
+import { sortByNatural } from "@/lib/sort-utils";
 
 type UnitRow = { id: string; unit_number: string; display_code: string | null };
 type CFEMeterRow = {
@@ -149,7 +150,7 @@ export default function CFEMeterModal({ buildingId, companyId, units, existingCf
           <AppFormField label="Unidad asignada *">
             <AppSelect value={assignedUnitId} onChange={e => setAssignedUnitId(e.target.value)}>
               <option value="">Selecciona una unidad</option>
-              {units.map(u => {
+              {sortByNatural(units, u => u.unit_number).map(u => {
                 const alreadyAssigned = assignedUnitIds.has(u.id);
                 const label = `Depa ${u.unit_number}${alreadyAssigned ? " (ya asignada)" : ""}`;
                 return <option key={u.id} value={u.id} disabled={alreadyAssigned}>{label}</option>;
