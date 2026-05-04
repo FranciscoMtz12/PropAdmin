@@ -107,7 +107,7 @@ export default function RouteGuard() {
         return;
       }
       if (user.role === "administracion") {
-        const allowed = ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/tenants", "/calendar"]
+        const allowed = ["/dashboard", "/analytics", "/payments", "/collections", "/cobranza/medidores", "/buildings", "/tenants", "/calendar"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }

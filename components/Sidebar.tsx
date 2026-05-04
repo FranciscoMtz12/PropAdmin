@@ -41,6 +41,7 @@ import {
   Users,
   Wallet,
   Wrench,
+  Zap,
 } from "lucide-react";
 import SettingsModal from "@/components/SettingsModal";
 
@@ -64,6 +65,7 @@ const ADMIN_ITEMS: SidebarItem[] = [
   { label: "Calendario", href: "/calendar", icon: CalendarDays, status: "done" },
   { label: "Pagos", href: "/payments", icon: ReceiptText, status: "done" },
   { label: "Cobranza", href: "/collections", icon: Wallet, status: "partial" },
+  { label: "Medidores", href: "/cobranza/medidores", icon: Zap, status: "partial" },
   { label: "Edificios", href: "/buildings", icon: Building2, status: "done" },
   { label: "Inquilinos", href: "/tenants", icon: Users, status: "done" },
   { label: "Proveedores", href: "/suppliers", icon: Truck, status: "done" },
@@ -229,10 +231,11 @@ function SidebarSection({
 /* ─── Sidebar principal ──────────────────────────────────────────── */
 
 const FIELD_ITEMS: SidebarItem[] = [
-  { href: "/campo/dashboard", label: "Dashboard", icon: LayoutDashboard, status: "done" },
-  { href: "/campo/tickets",   label: "Tickets",   icon: Wrench,          status: "done" },
-  { href: "/campo/limpieza",  label: "Limpieza",  icon: Sparkles,        status: "done" },
-  { href: "/campo/assets",    label: "Assets",    icon: Package,         status: "done" },
+  { href: "/campo/dashboard",  label: "Dashboard",  icon: LayoutDashboard, status: "done" },
+  { href: "/campo/tickets",    label: "Tickets",    icon: Wrench,          status: "done" },
+  { href: "/campo/limpieza",   label: "Limpieza",   icon: Sparkles,        status: "done" },
+  { href: "/campo/assets",     label: "Assets",     icon: Package,         status: "done" },
+  { href: "/campo/medidores",  label: "Medidores",  icon: Zap,             status: "done" },
 ];
 
 export default function Sidebar() {
@@ -264,7 +267,7 @@ export default function Sidebar() {
       ["/dashboard", "/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "administracion") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
+      ["/dashboard", "/analytics", "/payments", "/collections", "/cobranza/medidores", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
     );
     if (user?.role === "directivo") return ADMIN_ITEMS.filter(i =>
       ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))

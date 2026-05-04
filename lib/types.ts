@@ -30,3 +30,39 @@ export type PurchaseReturn = {
   deleted_at: string | null;
   items?: PurchaseReturnItem[];
 };
+
+// ── Medidores de luz (CFE) ───────────────────────────────────────────
+
+export type ElectricityMeter = {
+  id: string;
+  company_id: string;
+  building_id: string;
+  meter_number: string;
+  description?: string | null;
+  created_at: string;
+  deleted_at?: string | null;
+};
+
+export type UnitMeterAssignment = {
+  id: string;
+  company_id: string;
+  meter_id: string;
+  unit_id: string;
+  assigned_at: string;
+  unassigned_at?: string | null;
+  meter?: ElectricityMeter;
+};
+
+export type ElectricityReading = {
+  id: string;
+  company_id: string;
+  meter_id: string;
+  unit_id: string;
+  reading_kwh: number;
+  reading_date: string;
+  photo_path?: string | null;
+  photo_url?: string | null;
+  notes?: string | null;
+  created_by?: string | null;
+  created_at: string;
+};

@@ -44,6 +44,7 @@ import {
   XCircle,
 } from "lucide-react";
 
+import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -991,6 +992,18 @@ export default function UnitDetailPage() {
         setSaving(false);
         setMsg(insertLeaseError.message);
         return;
+      }
+
+      const { data: activeMeter } = await supabase
+        .from("unit_meter_assignments")
+        .select("id, meter:electricity_meters(meter_number)")
+        .eq("unit_id", unit.id)
+        .eq("company_id", user.company_id)
+        .is("unassigned_at", null)
+        .maybeSingle();
+
+      if (activeMeter) {
+        toast("⚡ Recuerda capturar la lectura inicial del medidor en campo.", { duration: 6000 });
       }
     }
 
