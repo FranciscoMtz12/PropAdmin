@@ -48,6 +48,7 @@ import {
   Settings2,
   Tags,
   Trash2,
+  Wifi,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -85,9 +86,9 @@ import {
 } from "@/lib/pageStyles";
 import AssetTypeIcon from "@/components/AssetTypeIcon";
 import AppBadge from "@/components/AppBadge";
-import CFEMeterModal from "@/components/CFEMeterModal";
-import InternalMetersModal from "@/components/InternalMetersModal";
 import BuildingServicesTab from "@/components/BuildingServicesTab";
+import type { UtilityServiceType } from "@/lib/types";
+import { SERVICE_TYPE_LABEL } from "@/lib/types";
 import { sortByNatural } from "@/lib/sort-utils";
 
 /* Mini mapa — importación dinámica para evitar errores de SSR con Leaflet. */
@@ -187,27 +188,28 @@ type BuildingAssetRow = {
   created_at: string;
 };
 
-type CFEMeterRow = {
+type UtilityMeterForOverview = {
   id: string;
-  meter_number: string;
-  rpu: string | null;
-  description: string | null;
-  tariff_type: string | null;
-  service_type: 'dedicated' | 'shared';
-  assigned_unit_id: string | null;
-  notes: string | null;
-  created_at: string;
+  service_type: UtilityServiceType;
+  meter_type: "dedicated" | "shared";
+  billing_mode: "charged" | "included";
+  contract_holder: "tenant" | "company";
 };
 
-type InternalMeterRow = {
-  id: string;
-  cfe_meter_id: string;
-  unit_id: string;
-  internal_number: string | null;
-  baseline_reading: number;
-  active: boolean;
-  unit_number?: string;
-};
+function utilityMeterBillsTenant(m: UtilityMeterForOverview): boolean {
+  if (m.meter_type === "dedicated") return m.contract_holder === "company";
+  return m.billing_mode === "charged";
+}
+
+function UtilityServiceIcon({ type, size = 14 }: { type: UtilityServiceType; size?: number }) {
+  switch (type) {
+    case "electricity": return <Zap size={size} />;
+    case "gas":         return <Flame size={size} />;
+    case "water":       return <Droplets size={size} />;
+    case "internet":    return <Wifi size={size} />;
+    default:            return <Settings2 size={size} />;
+  }
+}
 
 type UnitRow = {
   id: string;
@@ -479,15 +481,11 @@ export default function BuildingDetailPage() {
   const [savingAsset, setSavingAsset]           = useState(false);
   const [assetModalMsg, setAssetModalMsg]       = useState("");
 
-  /* Estado de medidores CFE */
-  const [cfeMeders, setCfeMeders]               = useState<CFEMeterRow[]>([]);
-  const [internalMetersMap, setInternalMetersMap] = useState<Record<string, InternalMeterRow[]>>({});
-  const [buildingUnits, setBuildingUnits]         = useState<UnitRow[]>([]);
-  const [cfeMeterModalOpen, setCfeMeterModalOpen] = useState(false);
-  const [editingCfeMeter, setEditingCfeMeter]     = useState<CFEMeterRow | null>(null);
-  const [internalMetersModalFor, setInternalMetersModalFor] = useState<CFEMeterRow | null>(null);
-  const [deletingCfeMeter, setDeletingCfeMeter]   = useState<CFEMeterRow | null>(null);
-  const [confirmDeleteCfeMeterOpen, setConfirmDeleteCfeMeterOpen] = useState(false);
+  /* Unidades del edificio (para BuildingServicesTab) */
+  const [buildingUnits, setBuildingUnits] = useState<UnitRow[]>([]);
+
+  /* Servicios activos (para card en Resumen) */
+  const [utilityMeters, setUtilityMeters] = useState<UtilityMeterForOverview[]>([]);
 
   /* Formulario de asset */
   const [assetType, setAssetType]   = useState("ELEVATOR");
@@ -611,60 +609,23 @@ export default function BuildingDetailPage() {
       setLeasesForTrend([]);
     }
 
-    // Cargar medidores CFE del edificio
-    const { data: cfeMData } = await supabase
-      .from('cfe_meters')
-      .select('id, meter_number, rpu, description, tariff_type, service_type, assigned_unit_id, notes, created_at')
-      .eq('building_id', buildingId)
-      .is('deleted_at', null)
-      .order('meter_number');
-
-    const cfeMList = (cfeMData || []) as CFEMeterRow[];
-    setCfeMeders(cfeMList);
-
-    // Para cada medidor compartido, cargar sus submedidores
-    const sharedMeterIds = cfeMList.filter(m => m.service_type === 'shared').map(m => m.id);
-    if (sharedMeterIds.length > 0) {
-      const { data: imData } = await supabase
-        .from('internal_meters')
-        .select('id, cfe_meter_id, unit_id, internal_number, baseline_reading, active')
-        .in('cfe_meter_id', sharedMeterIds)
-        .eq('active', true)
-        .is('deleted_at', null);
-      const imMap: Record<string, InternalMeterRow[]> = {};
-      ((imData || []) as InternalMeterRow[]).forEach(im => {
-        if (!imMap[im.cfe_meter_id]) imMap[im.cfe_meter_id] = [];
-        imMap[im.cfe_meter_id].push(im);
-      });
-      // Enriquecer con unit_number
-      const unitIds = [...new Set(((imData || []) as InternalMeterRow[]).map(im => im.unit_id))];
-      if (unitIds.length > 0) {
-        const { data: uData } = await supabase
-          .from('units')
-          .select('id, unit_number, display_code')
-          .in('id', unitIds);
-        const uMap: Record<string, { unit_number: string; display_code: string | null }> = {};
-        ((uData || []) as UnitRow[]).forEach(u => { uMap[u.id] = u; });
-        Object.values(imMap).forEach(arr => {
-          arr.forEach(im => {
-            const u = uMap[im.unit_id];
-            if (u) im.unit_number = u.unit_number;
-          });
-        });
-      }
-      setInternalMetersMap(imMap);
-    } else {
-      setInternalMetersMap({});
-    }
-
-    // Cargar todas las units para el modal de CFE
-    const { data: allUnits } = await supabase
-      .from('units')
-      .select('id, unit_number, display_code')
-      .eq('building_id', buildingId)
-      .is('deleted_at', null)
-      .order('unit_number');
+    // Unidades del edificio para BuildingServicesTab
+    const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
+      supabase
+        .from("units")
+        .select("id, unit_number, display_code")
+        .eq("building_id", buildingId)
+        .is("deleted_at", null)
+        .order("unit_number"),
+      supabase
+        .from("building_utility_meters")
+        .select("id, service_type, meter_type, billing_mode, contract_holder")
+        .eq("building_id", buildingId)
+        .eq("active", true)
+        .is("deleted_at", null),
+    ]);
     setBuildingUnits((allUnits || []) as UnitRow[]);
+    setUtilityMeters((utilMetersData || []) as UtilityMeterForOverview[]);
 
     setLoadingBuilding(false);
   }
@@ -876,17 +837,6 @@ export default function BuildingDetailPage() {
     await loadBuilding();
   }
 
-  async function handleDeleteCfeMeter() {
-    if (!deletingCfeMeter || !user?.company_id) return;
-    await supabase.from('cfe_meters')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', deletingCfeMeter.id)
-      .eq('company_id', user.company_id);
-    setConfirmDeleteCfeMeterOpen(false);
-    setDeletingCfeMeter(null);
-    await loadBuilding();
-  }
-
   /* ── Render ──────────────────────────────────────────────────────── */
 
   if (loading)        return <PageContainer>Cargando usuario...</PageContainer>;
@@ -978,11 +928,10 @@ export default function BuildingDetailPage() {
         onChange={setActiveTab}
         items={[
           { key: "overview",  label: "Resumen",       icon: <Building2 size={16} /> },
-          { key: "assets",    label: "Assets",        icon: <Package size={16} />,    count: buildingAssets.length },
-          { key: "documents", label: "Documentos",    icon: <FolderOpen size={16} />, count: documentFiles.length },
-          { key: "gallery",   label: "Galería",       icon: <FileImage size={16} />,  count: imageFiles.length },
-          { key: "meters",    label: "Medidores CFE", icon: <Zap size={16} />,        count: cfeMeders.length },
-          { key: "services",  label: "Servicios",     icon: <Wrench size={16} /> },
+          { key: "assets",    label: "Assets",     icon: <Package size={16} />,    count: buildingAssets.length },
+          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: documentFiles.length },
+          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: imageFiles.length },
+          { key: "services",  label: "Servicios",  icon: <Wrench size={16} /> },
         ]}
       />
 
@@ -1201,40 +1150,47 @@ export default function BuildingDetailPage() {
           {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
 
-            {/* Facturación */}
-            <SectionCard title="Facturación" subtitle="Conceptos de la generación mensual." icon={<CreditCard size={18} />}>
-              <div style={{ display: "grid", gap: 14 }}>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {BILLING_CONCEPT_OPTIONS.map((option) => {
-                    const isActive = activeBillingConceptCodes.includes(option.code);
-                    const isSaving = savingBillingConcept === option.code;
-                    return (
-                      <button
-                        key={option.code} type="button"
-                        onClick={() => void toggleBillingConcept(option.code)}
-                        disabled={isSaving}
-                        style={{
-                          display: "inline-flex", alignItems: "center", gap: 8,
-                          padding: "9px 14px", borderRadius: 999,
-                          border: `1px solid ${isActive ? "var(--metric-border-green)" : "var(--border-default)"}`,
-                          background: isActive ? "var(--badge-bg-green)" : "var(--bg-card)",
-                          color: isActive ? "var(--badge-text-green)" : "var(--text-primary)",
-                          fontWeight: 700, fontSize: 13, cursor: isSaving ? "wait" : "pointer",
-                          opacity: isSaving ? 0.75 : 1,
-                        }}
-                      >
-                        {option.icon}
-                        {isSaving ? "Guardando..." : option.label}
-                      </button>
-                    );
-                  })}
+            {/* Servicios activos */}
+            <SectionCard title="Servicios activos" subtitle="Gestionado desde el tab Servicios." icon={<Wrench size={18} />}>
+              {utilityMeters.length === 0 ? (
+                <div>
+                  <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>
+                    Sin servicios configurados.{" "}
+                    <button
+                      type="button"
+                      onClick={() => setActiveTab("services")}
+                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, textDecoration: "underline" }}
+                    >
+                      Ir a Servicios →
+                    </button>
+                  </p>
                 </div>
-                <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6, margin: 0 }}>
-                  {activeBillingConceptCodes.length > 0
-                    ? `Activos: ${BILLING_CONCEPT_OPTIONS.filter((o) => activeBillingConceptCodes.includes(o.code)).map((o) => o.label).join(", ")}.`
-                    : "Sin conceptos activos."}
-                </p>
-              </div>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {utilityMeters.map((m) => (
+                    <div
+                      key={m.id}
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "8px 12px", borderRadius: 999,
+                        background: "var(--bg-page)",
+                        border: "1px solid var(--border-default)",
+                        fontSize: 13,
+                      }}
+                    >
+                      <UtilityServiceIcon type={m.service_type} size={14} />
+                      <span style={{ fontWeight: 600 }}>{SERVICE_TYPE_LABEL[m.service_type]}</span>
+                      <span style={{ color: "var(--text-muted)" }}>·</span>
+                      <span style={{
+                        fontSize: 12,
+                        color: utilityMeterBillsTenant(m) ? "var(--badge-text-green)" : "var(--text-muted)",
+                      }}>
+                        {utilityMeterBillsTenant(m) ? "Se cobra" : "Incluido"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </SectionCard>
 
             {/* Accesos rápidos */}
@@ -1420,114 +1376,6 @@ export default function BuildingDetailPage() {
         </SectionCard>
       ) : null}
 
-      {/* ══════════════════════════════════════════════════════════════
-          TAB: MEDIDORES CFE
-      ══════════════════════════════════════════════════════════════ */}
-      {activeTab === "meters" ? (
-        <div style={{ display: "grid", gap: 24 }}>
-          <SectionCard
-            title="Medidores CFE oficiales"
-            subtitle="Lista de medidores contratados por el edificio. Los compartidos generan lecturas mensuales de submedidores."
-            icon={<Zap size={18} />}
-            action={
-              <UiButton variant="primary" onClick={() => { setEditingCfeMeter(null); setCfeMeterModalOpen(true); }}>
-                + Agregar medidor CFE
-              </UiButton>
-            }
-          >
-            {cfeMeders.length === 0 ? (
-              <AppEmptyState
-                title="Sin medidores CFE registrados"
-                description="Este edificio no tiene medidores CFE registrados."
-                actionLabel="+ Agregar el primer medidor"
-                onAction={() => { setEditingCfeMeter(null); setCfeMeterModalOpen(true); }}
-              />
-            ) : (
-              <div style={{ display: "grid", gap: 16 }}>
-                {sortByNatural(cfeMeders, m => m.meter_number).map((meter) => {
-                  const submeters = sortByNatural(internalMetersMap[meter.id] || [], sm => sm.unit_number);
-                  const isDedicated = meter.service_type === 'dedicated';
-                  const assignedUnit = isDedicated
-                    ? buildingUnits.find(u => u.id === meter.assigned_unit_id)
-                    : null;
-                  return (
-                    <AppCard key={meter.id} style={{ padding: 16, borderRadius: 16 }}>
-                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
-                            <strong style={{ fontSize: 15, display: "inline-flex", alignItems: "center", gap: 6 }}><Zap size={14} />Medidor {meter.meter_number}</strong>
-                            {isDedicated ? (
-                              <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f3f4f6", color: "#374151", fontSize: 12, fontWeight: 700 }}>Dedicado</span>
-                            ) : (
-                              <span style={{ padding: "3px 10px", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 12, fontWeight: 700 }}>Compartido</span>
-                            )}
-                          </div>
-                          {(meter.description || meter.tariff_type) && (
-                            <p style={{ margin: "0 0 4px", fontSize: 13, color: "var(--text-secondary)" }}>
-                              {[meter.description, meter.tariff_type ? `Tarifa: ${meter.tariff_type}` : null].filter(Boolean).join(" · ")}
-                            </p>
-                          )}
-                          {meter.rpu && (
-                            <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-muted)" }}>RPU: {meter.rpu}</p>
-                          )}
-                          {isDedicated ? (
-                            <div style={{ fontSize: 13 }}>
-                              <span style={{ color: "var(--text-secondary)" }}>Sirve a: </span>
-                              <strong>{assignedUnit ? `Depa ${assignedUnit.unit_number}` : "Sin unidad"}</strong>
-                              <span style={{ marginLeft: 8, color: "var(--text-muted)", fontSize: 12 }}>El inquilino paga directamente a CFE</span>
-                            </div>
-                          ) : (
-                            <div style={{ fontSize: 13 }}>
-                              <span style={{ color: "var(--text-secondary)" }}>Submedidores internos: </span>
-                              <strong>{submeters.length}</strong>
-                              {submeters.length > 0 ? (
-                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
-                                  {submeters.map(sm => (
-                                    <span key={sm.id} style={{ padding: "2px 8px", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 12 }}>
-                                      Depa {sm.unit_number || sm.unit_id.slice(0,6)}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div style={{ marginTop: 6, padding: "8px 12px", background: "#fef3c7", borderRadius: 10, fontSize: 12, color: "#92400e", display: "flex", alignItems: "center", gap: 6 }}>
-                                  <AlertTriangle size={12} />Falta configurar submedidores
-                                </div>
-                              )}
-                              <button
-                                type="button"
-                                onClick={() => setInternalMetersModalFor(meter)}
-                                style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}
-                              >
-                                <Settings2 size={13} />Configurar submedidores
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-                          <button
-                            type="button"
-                            onClick={() => { setEditingCfeMeter(meter); setCfeMeterModalOpen(true); }}
-                            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => { setDeletingCfeMeter(meter); setConfirmDeleteCfeMeterOpen(true); }}
-                            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #dc2626", background: "transparent", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#dc2626" }}
-                          >
-                            Eliminar
-                          </button>
-                        </div>
-                      </div>
-                    </AppCard>
-                  );
-                })}
-              </div>
-            )}
-          </SectionCard>
-        </div>
-      ) : null}
 
       {/* ══════════════════════════════════════════════════════════════
           TAB: SERVICIOS DEL EDIFICIO
@@ -1536,45 +1384,10 @@ export default function BuildingDetailPage() {
         <BuildingServicesTab
           buildingId={building.id}
           companyId={building.company_id}
+          buildingName={building.name}
           units={buildingUnits}
         />
       ) : null}
-
-      {/* ── Modal agregar/editar medidor CFE ── */}
-      {cfeMeterModalOpen && building ? (
-        <CFEMeterModal
-          buildingId={building.id}
-          companyId={building.company_id}
-          units={buildingUnits}
-          existingCfeMeters={cfeMeders}
-          meter={editingCfeMeter}
-          onClose={() => setCfeMeterModalOpen(false)}
-          onSuccess={async () => { setCfeMeterModalOpen(false); await loadBuilding(); }}
-        />
-      ) : null}
-
-      {/* ── Modal configurar submedidores ── */}
-      {internalMetersModalFor && building ? (
-        <InternalMetersModal
-          cfeMeter={internalMetersModalFor}
-          building={building}
-          companyId={building.company_id}
-          units={buildingUnits}
-          existingInternalMeters={internalMetersMap[internalMetersModalFor.id] || []}
-          onClose={() => setInternalMetersModalFor(null)}
-          onSuccess={async () => { setInternalMetersModalFor(null); await loadBuilding(); }}
-        />
-      ) : null}
-
-      {/* ── Modal confirmar eliminar medidor CFE ── */}
-      <DeleteConfirmModal
-        open={confirmDeleteCfeMeterOpen}
-        title="Eliminar medidor CFE"
-        description={deletingCfeMeter ? `¿Eliminar el medidor ${deletingCfeMeter.meter_number}? Se ocultará del sistema.` : ""}
-        confirmText="Eliminar medidor"
-        onConfirm={() => void handleDeleteCfeMeter()}
-        onCancel={() => { setConfirmDeleteCfeMeterOpen(false); setDeletingCfeMeter(null); }}
-      />
 
       {/* ── Modal editar edificio ── */}
       <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar edificio">

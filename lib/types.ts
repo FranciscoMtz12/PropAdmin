@@ -70,9 +70,16 @@ export type BuildingUtilityMeter = {
   meter_number: string | null
   contract_number: string | null
   description: string | null
+  billing_mode: 'charged' | 'included'
+  contract_holder: 'tenant' | 'company'
   active: boolean
   created_at: string
   deleted_at: string | null
+}
+
+export function meterGeneratesCharge(meter: BuildingUtilityMeter): boolean {
+  if (meter.meter_type === 'dedicated') return meter.contract_holder === 'company'
+  return meter.billing_mode === 'charged'
 }
 
 export type BuildingUtilitySubMeter = {

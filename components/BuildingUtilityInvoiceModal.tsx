@@ -55,9 +55,10 @@ export default function BuildingUtilityInvoiceModal({
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const isShared   = meter.meter_type === "shared"
-  const isIncluded = meter.billing_mode === "included"
-  const isEdit     = !!existingInvoice
+  const isShared         = meter.meter_type === "shared"
+  const isIncluded       = meter.billing_mode === "included"
+  const isTenantContract = !isShared && meter.contract_holder === "tenant"
+  const isEdit           = !!existingInvoice
   const consumptionUnit = SERVICE_TYPE_UNIT[meter.service_type]
 
   // On mount: for shared charged meters, load sub-meters and active leases
@@ -219,8 +220,8 @@ export default function BuildingUtilityInvoiceModal({
       }
 
       // Post-upsert logic
-      if (isIncluded) {
-        onSuccess("Gasto registrado")
+      if (isIncluded || isTenantContract) {
+        onSuccess(isTenantContract ? "Servicio registrado como referencia" : "Gasto registrado")
         setSaving(false)
         return
       }
@@ -559,8 +560,27 @@ export default function BuildingUtilityInvoiceModal({
           </div>
         </AppFormField>
 
-        {/* Dedicated meter: info banner */}
-        {!isShared && amountValid && (
+        {/* Dedicated + tenant contract: informational banner */}
+        {isTenantContract && amountValid && (
+          <div style={{
+            padding: "12px 14px",
+            background: "var(--bg-page)",
+            borderRadius: 10,
+            marginBottom: 16,
+            fontSize: 13,
+            color: "var(--text-secondary)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            border: "1px solid var(--border-default)",
+          }}>
+            <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+            Este servicio es contrato directo del inquilino. No genera cobro desde la empresa — se registra solo como referencia.
+          </div>
+        )}
+
+        {/* Dedicated + company contract: info banner */}
+        {!isShared && !isTenantContract && amountValid && (
           <div style={{
             padding: "12px 14px",
             background: "#eff6ff",

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Info } from "lucide-react";
+import { Building2, Info, User } from "lucide-react";
 import Modal from "@/components/Modal";
 import AppFormField from "@/components/AppFormField";
 import AppSelect from "@/components/AppSelect";
@@ -53,8 +53,9 @@ export default function BuildingUtilityMeterModal({
   const [contractNumber, setContractNumber] = useState(existingMeter?.contract_number ?? "");
   const [description, setDescription]       = useState(existingMeter?.description ?? "");
   const [meterType, setMeterType]           = useState<UtilityMeterType | "">(existingMeter?.meter_type ?? "");
-  const [billingMode, setBillingMode]       = useState<'charged' | 'included'>(existingMeter?.billing_mode ?? 'charged');
-  const [unitId, setUnitId]                 = useState(existingMeter?.unit_id ?? "");
+  const [billingMode, setBillingMode]         = useState<'charged' | 'included'>(existingMeter?.billing_mode ?? 'charged');
+  const [contractHolder, setContractHolder]   = useState<'tenant' | 'company'>(existingMeter?.contract_holder ?? 'company');
+  const [unitId, setUnitId]                   = useState(existingMeter?.unit_id ?? "");
   const [saving, setSaving]                 = useState(false);
   const [msg, setMsg]                       = useState("");
 
@@ -79,6 +80,7 @@ export default function BuildingUtilityMeterModal({
       service_type:    serviceType,
       meter_type:      meterType as UtilityMeterType,
       billing_mode:    meterType === "dedicated" ? "charged" : billingMode,
+      contract_holder: meterType === "shared" ? "company" : contractHolder,
       unit_id:         meterType === "dedicated" ? unitId : null,
       provider_name:   providerName.trim() || null,
       meter_number:    meterNumber.trim() || null,
@@ -215,14 +217,68 @@ export default function BuildingUtilityMeterModal({
         </AppFormField>
 
         {meterType === "dedicated" && (
-          <AppFormField label="Unidad asignada *">
-            <AppSelect value={unitId} onChange={e => setUnitId(e.target.value)}>
-              <option value="">Selecciona una unidad</option>
-              {sortedUnits.map(u => (
-                <option key={u.id} value={u.id}>Depa {u.unit_number}</option>
-              ))}
-            </AppSelect>
-          </AppFormField>
+          <>
+            <AppFormField label="¿Quién tiene el contrato con el proveedor?">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+                <label
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 6,
+                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    border: `2px solid ${contractHolder === "company" ? "#8B2252" : "var(--border-default)"}`,
+                    background: contractHolder === "company" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="radio"
+                      value="company"
+                      checked={contractHolder === "company"}
+                      onChange={() => setContractHolder("company")}
+                      style={{ accentColor: "#8B2252" }}
+                    />
+                    <Building2 size={14} />
+                    <strong style={{ fontSize: 14 }}>La empresa paga y cobra</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    La empresa recibe la factura y genera un cobro mensual al inquilino.
+                  </p>
+                </label>
+
+                <label
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 6,
+                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    border: `2px solid ${contractHolder === "tenant" ? "#8B2252" : "var(--border-default)"}`,
+                    background: contractHolder === "tenant" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="radio"
+                      value="tenant"
+                      checked={contractHolder === "tenant"}
+                      onChange={() => setContractHolder("tenant")}
+                      style={{ accentColor: "#8B2252" }}
+                    />
+                    <User size={14} />
+                    <strong style={{ fontSize: 14 }}>El inquilino paga directo</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    Cada inquilino tiene su propio contrato. La empresa no interviene ni cobra.
+                  </p>
+                </label>
+              </div>
+            </AppFormField>
+
+            <AppFormField label="Unidad asignada *">
+              <AppSelect value={unitId} onChange={e => setUnitId(e.target.value)}>
+                <option value="">Selecciona una unidad</option>
+                {sortedUnits.map(u => (
+                  <option key={u.id} value={u.id}>Depa {u.unit_number}</option>
+                ))}
+              </AppSelect>
+            </AppFormField>
+          </>
         )}
 
         {meterType === "shared" && (
