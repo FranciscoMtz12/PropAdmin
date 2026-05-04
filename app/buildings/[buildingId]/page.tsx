@@ -82,6 +82,8 @@ import {
 } from "@/lib/pageStyles";
 import AssetTypeIcon from "@/components/AssetTypeIcon";
 import AppBadge from "@/components/AppBadge";
+import CFEMeterModal from "@/components/CFEMeterModal";
+import InternalMetersModal from "@/components/InternalMetersModal";
 
 /* Mini mapa — importación dinámica para evitar errores de SSR con Leaflet. */
 const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
@@ -178,6 +180,34 @@ type BuildingAssetRow = {
   status: string;
   notes: string | null;
   created_at: string;
+};
+
+type CFEMeterRow = {
+  id: string;
+  meter_number: string;
+  rpu: string | null;
+  description: string | null;
+  tariff_type: string | null;
+  service_type: 'dedicated' | 'shared';
+  assigned_unit_id: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+type InternalMeterRow = {
+  id: string;
+  cfe_meter_id: string;
+  unit_id: string;
+  internal_number: string | null;
+  baseline_reading: number;
+  active: boolean;
+  unit_number?: string;
+};
+
+type UnitRow = {
+  id: string;
+  unit_number: string;
+  display_code: string | null;
 };
 
 /* ─── Constantes ─────────────────────────────────────────────────────── */
@@ -444,6 +474,16 @@ export default function BuildingDetailPage() {
   const [savingAsset, setSavingAsset]           = useState(false);
   const [assetModalMsg, setAssetModalMsg]       = useState("");
 
+  /* Estado de medidores CFE */
+  const [cfeMeders, setCfeMeders]               = useState<CFEMeterRow[]>([]);
+  const [internalMetersMap, setInternalMetersMap] = useState<Record<string, InternalMeterRow[]>>({});
+  const [buildingUnits, setBuildingUnits]         = useState<UnitRow[]>([]);
+  const [cfeMeterModalOpen, setCfeMeterModalOpen] = useState(false);
+  const [editingCfeMeter, setEditingCfeMeter]     = useState<CFEMeterRow | null>(null);
+  const [internalMetersModalFor, setInternalMetersModalFor] = useState<CFEMeterRow | null>(null);
+  const [deletingCfeMeter, setDeletingCfeMeter]   = useState<CFEMeterRow | null>(null);
+  const [confirmDeleteCfeMeterOpen, setConfirmDeleteCfeMeterOpen] = useState(false);
+
   /* Formulario de asset */
   const [assetType, setAssetType]   = useState("ELEVATOR");
   const [assetName, setAssetName]   = useState("");
@@ -565,6 +605,61 @@ export default function BuildingDetailPage() {
     } else {
       setLeasesForTrend([]);
     }
+
+    // Cargar medidores CFE del edificio
+    const { data: cfeMData } = await supabase
+      .from('cfe_meters')
+      .select('id, meter_number, rpu, description, tariff_type, service_type, assigned_unit_id, notes, created_at')
+      .eq('building_id', buildingId)
+      .is('deleted_at', null)
+      .order('meter_number');
+
+    const cfeMList = (cfeMData || []) as CFEMeterRow[];
+    setCfeMeders(cfeMList);
+
+    // Para cada medidor compartido, cargar sus submedidores
+    const sharedMeterIds = cfeMList.filter(m => m.service_type === 'shared').map(m => m.id);
+    if (sharedMeterIds.length > 0) {
+      const { data: imData } = await supabase
+        .from('internal_meters')
+        .select('id, cfe_meter_id, unit_id, internal_number, baseline_reading, active')
+        .in('cfe_meter_id', sharedMeterIds)
+        .eq('active', true)
+        .is('deleted_at', null);
+      const imMap: Record<string, InternalMeterRow[]> = {};
+      ((imData || []) as InternalMeterRow[]).forEach(im => {
+        if (!imMap[im.cfe_meter_id]) imMap[im.cfe_meter_id] = [];
+        imMap[im.cfe_meter_id].push(im);
+      });
+      // Enriquecer con unit_number
+      const unitIds = [...new Set(((imData || []) as InternalMeterRow[]).map(im => im.unit_id))];
+      if (unitIds.length > 0) {
+        const { data: uData } = await supabase
+          .from('units')
+          .select('id, unit_number, display_code')
+          .in('id', unitIds);
+        const uMap: Record<string, { unit_number: string; display_code: string | null }> = {};
+        ((uData || []) as UnitRow[]).forEach(u => { uMap[u.id] = u; });
+        Object.values(imMap).forEach(arr => {
+          arr.forEach(im => {
+            const u = uMap[im.unit_id];
+            if (u) im.unit_number = u.unit_number;
+          });
+        });
+      }
+      setInternalMetersMap(imMap);
+    } else {
+      setInternalMetersMap({});
+    }
+
+    // Cargar todas las units para el modal de CFE
+    const { data: allUnits } = await supabase
+      .from('units')
+      .select('id, unit_number, display_code')
+      .eq('building_id', buildingId)
+      .is('deleted_at', null)
+      .order('unit_number');
+    setBuildingUnits((allUnits || []) as UnitRow[]);
 
     setLoadingBuilding(false);
   }
@@ -776,6 +871,17 @@ export default function BuildingDetailPage() {
     await loadBuilding();
   }
 
+  async function handleDeleteCfeMeter() {
+    if (!deletingCfeMeter || !user?.company_id) return;
+    await supabase.from('cfe_meters')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', deletingCfeMeter.id)
+      .eq('company_id', user.company_id);
+    setConfirmDeleteCfeMeterOpen(false);
+    setDeletingCfeMeter(null);
+    await loadBuilding();
+  }
+
   /* ── Render ──────────────────────────────────────────────────────── */
 
   if (loading)        return <PageContainer>Cargando usuario...</PageContainer>;
@@ -866,10 +972,11 @@ export default function BuildingDetailPage() {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
-          { key: "assets",    label: "Assets",     icon: <Package size={16} />,    count: buildingAssets.length },
-          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: documentFiles.length },
-          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: imageFiles.length },
+          { key: "overview",  label: "Resumen",       icon: <Building2 size={16} /> },
+          { key: "assets",    label: "Assets",        icon: <Package size={16} />,    count: buildingAssets.length },
+          { key: "documents", label: "Documentos",    icon: <FolderOpen size={16} />, count: documentFiles.length },
+          { key: "gallery",   label: "Galería",       icon: <FileImage size={16} />,  count: imageFiles.length },
+          { key: "meters",    label: "Medidores CFE", icon: <Zap size={16} />,        count: cfeMeders.length },
         ]}
       />
 
@@ -1306,6 +1413,151 @@ export default function BuildingDetailPage() {
           )}
         </SectionCard>
       ) : null}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: MEDIDORES CFE
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "meters" ? (
+        <div style={{ display: "grid", gap: 24 }}>
+          <SectionCard
+            title="Medidores CFE oficiales"
+            subtitle="Lista de medidores contratados por el edificio. Los compartidos generan lecturas mensuales de submedidores."
+            icon={<Zap size={18} />}
+            action={
+              <UiButton variant="primary" onClick={() => { setEditingCfeMeter(null); setCfeMeterModalOpen(true); }}>
+                + Agregar medidor CFE
+              </UiButton>
+            }
+          >
+            {cfeMeders.length === 0 ? (
+              <AppEmptyState
+                title="Sin medidores CFE registrados"
+                description="Este edificio no tiene medidores CFE registrados."
+                actionLabel="+ Agregar el primer medidor"
+                onAction={() => { setEditingCfeMeter(null); setCfeMeterModalOpen(true); }}
+              />
+            ) : (
+              <div style={{ display: "grid", gap: 16 }}>
+                {cfeMeders.map((meter) => {
+                  const submeters = internalMetersMap[meter.id] || [];
+                  const isDedicated = meter.service_type === 'dedicated';
+                  const assignedUnit = isDedicated
+                    ? buildingUnits.find(u => u.id === meter.assigned_unit_id)
+                    : null;
+                  return (
+                    <AppCard key={meter.id} style={{ padding: 16, borderRadius: 16 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 8 }}>
+                            <strong style={{ fontSize: 15 }}>🔌 Medidor {meter.meter_number}</strong>
+                            {isDedicated ? (
+                              <span style={{ padding: "3px 10px", borderRadius: 999, background: "#f3f4f6", color: "#374151", fontSize: 12, fontWeight: 700 }}>Dedicado</span>
+                            ) : (
+                              <span style={{ padding: "3px 10px", borderRadius: 999, background: "#eff6ff", color: "#1d4ed8", fontSize: 12, fontWeight: 700 }}>Compartido</span>
+                            )}
+                          </div>
+                          {(meter.description || meter.tariff_type) && (
+                            <p style={{ margin: "0 0 4px", fontSize: 13, color: "var(--text-secondary)" }}>
+                              {[meter.description, meter.tariff_type ? `Tarifa: ${meter.tariff_type}` : null].filter(Boolean).join(" · ")}
+                            </p>
+                          )}
+                          {meter.rpu && (
+                            <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-muted)" }}>RPU: {meter.rpu}</p>
+                          )}
+                          {isDedicated ? (
+                            <div style={{ fontSize: 13 }}>
+                              <span style={{ color: "var(--text-secondary)" }}>Sirve a: </span>
+                              <strong>{assignedUnit ? `Depa ${assignedUnit.unit_number}` : "Sin unidad"}</strong>
+                              <span style={{ marginLeft: 8, color: "var(--text-muted)", fontSize: 12 }}>El inquilino paga directamente a CFE</span>
+                            </div>
+                          ) : (
+                            <div style={{ fontSize: 13 }}>
+                              <span style={{ color: "var(--text-secondary)" }}>Submedidores internos: </span>
+                              <strong>{submeters.length}</strong>
+                              {submeters.length > 0 ? (
+                                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+                                  {submeters.map(sm => (
+                                    <span key={sm.id} style={{ padding: "2px 8px", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 12 }}>
+                                      Depa {sm.unit_number || sm.unit_id.slice(0,6)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div style={{ marginTop: 6, padding: "8px 12px", background: "#fef3c7", borderRadius: 10, fontSize: 12, color: "#92400e" }}>
+                                  ⚠️ Falta configurar submedidores
+                                </div>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setInternalMetersModalFor(meter)}
+                                style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}
+                              >
+                                ⚙️ Configurar submedidores
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                        <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingCfeMeter(meter); setCfeMeterModalOpen(true); }}
+                            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "var(--text-primary)" }}
+                          >
+                            Editar
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setDeletingCfeMeter(meter); setConfirmDeleteCfeMeterOpen(true); }}
+                            style={{ padding: "6px 12px", borderRadius: 8, border: "1px solid #dc2626", background: "transparent", fontSize: 12, fontWeight: 600, cursor: "pointer", color: "#dc2626" }}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </AppCard>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
+      {/* ── Modal agregar/editar medidor CFE ── */}
+      {cfeMeterModalOpen && building ? (
+        <CFEMeterModal
+          buildingId={building.id}
+          companyId={building.company_id}
+          units={buildingUnits}
+          existingCfeMeters={cfeMeders}
+          meter={editingCfeMeter}
+          onClose={() => setCfeMeterModalOpen(false)}
+          onSuccess={async () => { setCfeMeterModalOpen(false); await loadBuilding(); }}
+        />
+      ) : null}
+
+      {/* ── Modal configurar submedidores ── */}
+      {internalMetersModalFor && building ? (
+        <InternalMetersModal
+          cfeMeter={internalMetersModalFor}
+          building={building}
+          companyId={building.company_id}
+          units={buildingUnits}
+          existingInternalMeters={internalMetersMap[internalMetersModalFor.id] || []}
+          onClose={() => setInternalMetersModalFor(null)}
+          onSuccess={async () => { setInternalMetersModalFor(null); await loadBuilding(); }}
+        />
+      ) : null}
+
+      {/* ── Modal confirmar eliminar medidor CFE ── */}
+      <DeleteConfirmModal
+        open={confirmDeleteCfeMeterOpen}
+        title="Eliminar medidor CFE"
+        description={deletingCfeMeter ? `¿Eliminar el medidor ${deletingCfeMeter.meter_number}? Se ocultará del sistema.` : ""}
+        confirmText="Eliminar medidor"
+        onConfirm={() => void handleDeleteCfeMeter()}
+        onCancel={() => { setConfirmDeleteCfeMeterOpen(false); setDeletingCfeMeter(null); }}
+      />
 
       {/* ── Modal editar edificio ── */}
       <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar edificio">

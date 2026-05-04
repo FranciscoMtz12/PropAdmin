@@ -994,16 +994,17 @@ export default function UnitDetailPage() {
         return;
       }
 
-      const { data: activeMeter } = await supabase
-        .from("unit_meter_assignments")
-        .select("id, meter:electricity_meters(meter_number)")
-        .eq("unit_id", unit.id)
-        .eq("company_id", user.company_id)
-        .is("unassigned_at", null)
+      // Verificar si la unidad tiene submedidor activo
+      const { data: imCheck } = await supabase
+        .from('internal_meters')
+        .select('id')
+        .eq('unit_id', unit.id)
+        .eq('active', true)
+        .is('deleted_at', null)
         .maybeSingle();
 
-      if (activeMeter) {
-        toast("⚡ Recuerda capturar la lectura inicial del medidor en campo.", { duration: 6000 });
+      if (imCheck) {
+        toast("⚡ Este depa tiene submedidor de luz. Recuerda capturar lectura inicial al inicio del contrato.", { duration: 6000 });
       }
     }
 

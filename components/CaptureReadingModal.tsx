@@ -1,261 +1,188 @@
 "use client";
 
 import { useRef, useState } from "react";
-import toast from "react-hot-toast";
 import Modal from "@/components/Modal";
+import AppFormField from "@/components/AppFormField";
+import UiButton from "@/components/UiButton";
 import { supabase } from "@/lib/supabaseClient";
+import { INPUT_STYLE, TEXTAREA_STYLE, errorBannerStyle } from "@/lib/pageStyles";
+
+type InternalMeterWithJoins = {
+  id: string;
+  unit_id: string;
+  cfe_meter_id: string;
+  unit_number?: string;
+  building_name?: string;
+  cfe_meter_number?: string;
+};
 
 type Props = {
+  internalMeter: InternalMeterWithJoins;
+  period: { year: number; month: number };
+  previousReading: number;
+  averageConsumption: number | null;
+  isVacant?: boolean;
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  assignment: {
-    id: string;
-    meter_id: string;
-    unit_id: string;
-    meter_number: string;
-    unit_name: string;
-    building_name: string;
-  };
-  lastReading: { reading_kwh: number; reading_date: string } | null;
-  companyId: string;
-  userId: string;
 };
 
-const UNUSUAL_KWH_THRESHOLD = 500;
+const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-export default function CaptureReadingModal({
-  isOpen,
-  onClose,
-  onSuccess,
-  assignment,
-  lastReading,
-  companyId,
-  userId,
-}: Props) {
-  const [readingKwh, setReadingKwh] = useState("");
+export default function CaptureReadingModal({ internalMeter, period, previousReading, averageConsumption, isVacant, isOpen, onClose, onSuccess }: Props) {
+  const [currentReading, setCurrentReading] = useState("");
   const [notes, setNotes] = useState("");
+  const [hasNoTenant, setHasNoTenant] = useState(isVacant || false);
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
 
-  const readingNum = parseFloat(readingKwh);
-  const consumption =
-    lastReading && !isNaN(readingNum) ? readingNum - lastReading.reading_kwh : null;
-  const isUnusual =
-    consumption !== null &&
-    (consumption > UNUSUAL_KWH_THRESHOLD || consumption < 0);
+  const current = parseFloat(currentReading) || 0;
+  const consumption = current > 0 ? current - previousReading : 0;
+  const isAbnormal = averageConsumption && consumption > 0 && consumption > averageConsumption * 5;
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhotoFile(file);
-    const reader = new FileReader();
-    reader.onload = (ev) => setPhotoPreview(ev.target?.result as string);
-    reader.readAsDataURL(file);
-  }
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setMsg("");
+    if (!currentReading || isNaN(parseFloat(currentReading))) { setMsg("Ingresa la lectura actual."); return; }
+    if (parseFloat(currentReading) < previousReading) { setMsg("La lectura actual no puede ser menor que la anterior."); return; }
+    if (!photoFile) { setMsg("La foto del medidor es obligatoria."); return; }
 
-  function handleClose() {
-    if (isSubmitting) return;
-    setReadingKwh("");
-    setNotes("");
-    setPhotoFile(null);
-    setPhotoPreview(null);
-    onClose();
-  }
-
-  async function handleSubmit() {
-    if (!photoFile) { toast.error("La foto del medidor es obligatoria."); return; }
-    if (!readingKwh || isNaN(readingNum)) { toast.error("Ingresa la lectura en kWh."); return; }
-    if (readingNum < 0) { toast.error("La lectura no puede ser negativa."); return; }
-
-    setIsSubmitting(true);
+    setSaving(true);
     try {
-      const now = new Date();
-      const year = now.getFullYear();
-      const month = String(now.getMonth() + 1).padStart(2, "0");
-      const ext = photoFile.name.split(".").pop() ?? "jpg";
-      const path = `${assignment.meter_id}/${year}-${month}/${assignment.unit_id}-${Date.now()}.${ext}`;
+      const ext = photoFile.name.split('.').pop() || 'jpg';
+      const path = `${internalMeter.cfe_meter_id}/${period.year}-${String(period.month).padStart(2,'0')}/${internalMeter.unit_id}-${Date.now()}.${ext}`;
 
-      const { error: uploadErr } = await supabase.storage
-        .from("electricity-readings")
+      const { error: uploadError } = await supabase.storage
+        .from('electricity-readings')
         .upload(path, photoFile, { upsert: false });
-      if (uploadErr) throw uploadErr;
 
-      const { error: insertErr } = await supabase.from("electricity_readings").insert({
-        company_id: companyId,
-        meter_id: assignment.meter_id,
-        unit_id: assignment.unit_id,
-        reading_kwh: readingNum,
-        reading_date: now.toISOString().slice(0, 10),
-        photo_path: path,
+      if (uploadError) { setMsg(`Error subiendo foto: ${uploadError.message}`); setSaving(false); return; }
+
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error: insertError } = await supabase.from('electricity_readings').insert({
+        internal_meter_id: internalMeter.id,
+        unit_id: internalMeter.unit_id,
+        cfe_meter_id: internalMeter.cfe_meter_id,
+        period_year: period.year,
+        period_month: period.month,
+        previous_reading: previousReading,
+        current_reading: parseFloat(currentReading),
+        reading_date: new Date().toISOString().split('T')[0],
+        photo_url: path,
         notes: notes.trim() || null,
-        created_by: userId,
+        has_no_tenant: hasNoTenant,
+        read_by: user?.id || null,
       });
-      if (insertErr) throw insertErr;
 
-      toast.success("Lectura registrada.");
+      if (insertError) { setMsg(`Error guardando lectura: ${insertError.message}`); setSaving(false); return; }
       onSuccess();
-      handleClose();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al registrar lectura.");
+    } catch {
+      setMsg("Error inesperado.");
     } finally {
-      setIsSubmitting(false);
+      setSaving(false);
     }
   }
 
-  const subtitle = `${assignment.building_name} · ${assignment.unit_name} · Medidor ${assignment.meter_number}`;
+  if (!isOpen) return null;
 
   return (
-    <Modal open={isOpen} onClose={handleClose} title="Capturar lectura" subtitle={subtitle} maxWidth="520px">
-      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <Modal open onClose={onClose} title={`Depa ${internalMeter.unit_number || "—"} — Medidor ${internalMeter.cfe_meter_number || "—"}`}>
+      {internalMeter.building_name && (
+        <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-secondary)" }}>
+          📍 {internalMeter.building_name}
+        </p>
+      )}
 
-        {/* Foto */}
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>
-            Foto del medidor *
-          </label>
-          {photoPreview ? (
-            <div style={{ position: "relative", marginBottom: 8 }}>
-              <img
-                src={photoPreview}
-                alt="Foto medidor"
-                style={{ width: "100%", maxHeight: 220, objectFit: "cover", borderRadius: 10, border: "1px solid var(--border-default)" }}
-              />
-              <button
-                type="button"
-                onClick={() => { setPhotoFile(null); setPhotoPreview(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                style={{
-                  position: "absolute", top: 8, right: 8,
-                  background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%",
-                  width: 28, height: 28, cursor: "pointer",
-                  color: "#fff", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center",
-                }}
-              >
-                ×
-              </button>
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                width: "100%", padding: "32px 16px", borderRadius: 10,
-                border: "2px dashed var(--border-default)",
-                background: "var(--bg-input)", cursor: "pointer",
-                display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
-                color: "var(--text-muted)", fontSize: 13,
-              }}
-            >
-              <span style={{ fontSize: 28 }}>📷</span>
-              Toca para tomar o subir foto
-            </button>
+      {isVacant && (
+        <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e" }}>
+          ⚠️ Este depa no tiene inquilino activo
+        </div>
+      )}
+
+      <div style={{ padding: "10px 14px", background: "var(--bg-page)", borderRadius: 10, marginBottom: 16, fontSize: 13 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+          <span>Lectura anterior: <strong>{previousReading.toLocaleString('es-MX')}</strong></span>
+          {averageConsumption !== null && (
+            <span style={{ color: "var(--text-muted)" }}>Promedio histórico: <strong>{averageConsumption.toFixed(0)} kWh</strong></span>
           )}
+        </div>
+        <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 12 }}>
+          Período: {MONTH_NAMES[period.month - 1]} {period.year}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        {msg ? <p style={errorBannerStyle}>{msg}</p> : null}
+
+        <AppFormField label="Lectura actual *">
           <input
-            ref={fileInputRef}
+            type="number"
+            value={currentReading}
+            onChange={e => setCurrentReading(e.target.value)}
+            placeholder="0.00"
+            style={{ ...INPUT_STYLE, fontSize: 20, fontWeight: 700 }}
+            step="0.01"
+            autoFocus
+          />
+          {current > 0 && (
+            <p style={{ margin: "4px 0 0", fontSize: 13, color: consumption >= 0 ? "#15803d" : "#dc2626", fontWeight: 600 }}>
+              Consumo: {consumption.toFixed(2)} kWh
+            </p>
+          )}
+        </AppFormField>
+
+        {isAbnormal && (
+          <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e" }}>
+            ⚠️ Lectura más alta de lo normal. Verifica que sea correcta.
+          </div>
+        )}
+
+        <AppFormField label="Foto del medidor *">
+          <input
+            ref={fileRef}
             type="file"
             accept="image/*"
             capture="environment"
-            onChange={handlePhotoChange}
+            onChange={e => setPhotoFile(e.target.files?.[0] || null)}
             style={{ display: "none" }}
           />
-        </div>
+          <div
+            onClick={() => fileRef.current?.click()}
+            style={{
+              padding: "20px 16px", borderRadius: 12, border: `2px dashed ${photoFile ? "#15803d" : "var(--border-default)"}`,
+              background: photoFile ? "#dcfce7" : "var(--bg-card)", cursor: "pointer", textAlign: "center",
+            }}
+          >
+            {photoFile ? (
+              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 14 }}>📷 {photoFile.name}</p>
+            ) : (
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>📷 Toca para tomar foto del medidor</p>
+            )}
+          </div>
+        </AppFormField>
 
-        {/* Lectura kWh */}
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-            Lectura actual (kWh) *
-          </label>
+        <AppFormField label="Notas (opcional)">
+          <textarea value={notes} onChange={e => setNotes(e.target.value)} placeholder="Observaciones…" style={TEXTAREA_STYLE} />
+        </AppFormField>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16, cursor: "pointer", fontSize: 14 }}>
           <input
-            type="number"
-            min={0}
-            step="any"
-            value={readingKwh}
-            onChange={(e) => setReadingKwh(e.target.value)}
-            placeholder="Ej. 1254.8"
-            style={{
-              width: "100%", padding: "10px 12px", borderRadius: 8,
-              border: "1px solid var(--border-default)",
-              background: "var(--bg-input)", color: "var(--text-primary)",
-              fontSize: 16, boxSizing: "border-box",
-            }}
+            type="checkbox"
+            checked={hasNoTenant}
+            onChange={e => setHasNoTenant(e.target.checked)}
+            style={{ width: 16, height: 16, accentColor: "#8B2252" }}
           />
+          Este depa no tiene inquilino
+        </label>
 
-          {/* Consumo calculado */}
-          {lastReading && !isNaN(readingNum) && readingKwh !== "" && (
-            <div style={{
-              marginTop: 8, padding: "10px 12px", borderRadius: 8,
-              background: isUnusual ? "#fef3c7" : "#dcfce7",
-              border: `1px solid ${isUnusual ? "#fde68a" : "#86efac"}`,
-              fontSize: 13, color: isUnusual ? "#92400e" : "#15803d",
-            }}>
-              <strong>Consumo: {consumption! >= 0 ? "+" : ""}{consumption?.toFixed(1)} kWh</strong>
-              {" "}(anterior: {lastReading.reading_kwh} kWh el {lastReading.reading_date})
-              {isUnusual && (
-                <div style={{ marginTop: 4, fontWeight: 600 }}>
-                  ⚠️ Consumo {consumption! < 0 ? "negativo — verifica la lectura" : "inusualmente alto"}
-                </div>
-              )}
-            </div>
-          )}
-
-          {lastReading && (
-            <p style={{ margin: "6px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-              Última lectura: {lastReading.reading_kwh} kWh · {lastReading.reading_date}
-            </p>
-          )}
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 4 }}>
+          <UiButton type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</UiButton>
+          <UiButton type="submit" variant="primary" disabled={saving}>{saving ? "Guardando..." : "Capturar lectura"}</UiButton>
         </div>
-
-        {/* Notas */}
-        <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-            Notas (opcional)
-          </label>
-          <textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            maxLength={300}
-            rows={2}
-            placeholder="Observaciones del medidor..."
-            style={{
-              width: "100%", padding: "10px 12px", borderRadius: 8,
-              border: "1px solid var(--border-default)",
-              background: "var(--bg-input)", color: "var(--text-primary)",
-              fontSize: 14, resize: "vertical", boxSizing: "border-box",
-            }}
-          />
-        </div>
-
-        {/* Footer */}
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid var(--border-default)" }}>
-          <button
-            type="button"
-            onClick={handleClose}
-            disabled={isSubmitting}
-            style={{
-              padding: "10px 16px", borderRadius: 10, fontSize: 14, fontWeight: 600,
-              border: "1px solid var(--border-default)", background: "var(--bg-input)",
-              color: "var(--text-primary)", cursor: isSubmitting ? "wait" : "pointer",
-            }}
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            onClick={() => void handleSubmit()}
-            disabled={isSubmitting}
-            style={{
-              padding: "10px 20px", borderRadius: 10, fontSize: 14, fontWeight: 700,
-              border: "1px solid #15803d", background: "#15803d",
-              color: "#fff", cursor: isSubmitting ? "wait" : "pointer",
-              opacity: isSubmitting ? 0.7 : 1,
-            }}
-          >
-            {isSubmitting ? "Guardando..." : "Registrar lectura"}
-          </button>
-        </div>
-      </div>
+      </form>
     </Modal>
   );
 }

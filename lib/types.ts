@@ -31,38 +31,70 @@ export type PurchaseReturn = {
   items?: PurchaseReturnItem[];
 };
 
-// ── Medidores de luz (CFE) ───────────────────────────────────────────
+// ── Medidores de luz CFE ─────────────────────────────────────────────
 
-export type ElectricityMeter = {
-  id: string;
-  company_id: string;
-  building_id: string;
-  meter_number: string;
-  description?: string | null;
-  created_at: string;
-  deleted_at?: string | null;
-};
+export type CFEServiceType = 'dedicated' | 'shared'
 
-export type UnitMeterAssignment = {
-  id: string;
-  company_id: string;
-  meter_id: string;
-  unit_id: string;
-  assigned_at: string;
-  unassigned_at?: string | null;
-  meter?: ElectricityMeter;
-};
+export type CFEMeter = {
+  id: string
+  company_id: string
+  building_id: string
+  meter_number: string
+  rpu: string | null
+  description: string | null
+  tariff_type: string | null
+  service_type: CFEServiceType
+  assigned_unit_id: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  // joins computed
+  building_name?: string
+  assigned_unit_label?: string
+  internal_meters?: InternalMeter[]
+}
+
+export type InternalMeter = {
+  id: string
+  company_id: string
+  cfe_meter_id: string
+  unit_id: string
+  internal_number: string | null
+  baseline_reading: number
+  baseline_date: string
+  active: boolean
+  notes: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  // joins
+  unit_number?: string
+  display_code?: string
+  tenant_name?: string
+}
 
 export type ElectricityReading = {
-  id: string;
-  company_id: string;
-  meter_id: string;
-  unit_id: string;
-  reading_kwh: number;
-  reading_date: string;
-  photo_path?: string | null;
-  photo_url?: string | null;
-  notes?: string | null;
-  created_by?: string | null;
-  created_at: string;
-};
+  id: string
+  company_id: string
+  internal_meter_id: string
+  unit_id: string
+  cfe_meter_id: string
+  period_year: number
+  period_month: number
+  previous_reading: number
+  current_reading: number
+  consumption: number
+  reading_date: string
+  photo_url: string
+  notes: string | null
+  has_no_tenant: boolean
+  read_by: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+  // computed
+  photo_signed_url?: string
+  unit_number?: string
+  building_name?: string
+}
