@@ -53,6 +53,7 @@ export default function BuildingUtilityMeterModal({
   const [contractNumber, setContractNumber] = useState(existingMeter?.contract_number ?? "");
   const [description, setDescription]       = useState(existingMeter?.description ?? "");
   const [meterType, setMeterType]           = useState<UtilityMeterType | "">(existingMeter?.meter_type ?? "");
+  const [billingMode, setBillingMode]       = useState<'charged' | 'included'>(existingMeter?.billing_mode ?? 'charged');
   const [unitId, setUnitId]                 = useState(existingMeter?.unit_id ?? "");
   const [saving, setSaving]                 = useState(false);
   const [msg, setMsg]                       = useState("");
@@ -77,6 +78,7 @@ export default function BuildingUtilityMeterModal({
       building_id:     buildingId,
       service_type:    serviceType,
       meter_type:      meterType as UtilityMeterType,
+      billing_mode:    meterType === "dedicated" ? "charged" : billingMode,
       unit_id:         meterType === "dedicated" ? unitId : null,
       provider_name:   providerName.trim() || null,
       meter_number:    meterNumber.trim() || null,
@@ -224,22 +226,102 @@ export default function BuildingUtilityMeterModal({
         )}
 
         {meterType === "shared" && (
-          <div
-            style={{
-              padding: "12px 16px",
-              background: "#eff6ff",
-              borderRadius: 10,
-              marginBottom: 16,
-              fontSize: 13,
-              color: "#1d4ed8",
-              display: "flex",
-              alignItems: "flex-start",
-              gap: 8,
-            }}
-          >
-            <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
-            Configura los submedidores después de guardar.
-          </div>
+          <>
+            <AppFormField label="¿Cómo se maneja el costo?">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+                <label
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    border: `2px solid ${billingMode === "charged" ? "#8B2252" : "var(--border-default)"}`,
+                    background: billingMode === "charged" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="radio"
+                      value="charged"
+                      checked={billingMode === "charged"}
+                      onChange={() => setBillingMode("charged")}
+                      style={{ accentColor: "#8B2252" }}
+                    />
+                    <strong style={{ fontSize: 14 }}>Se cobra al inquilino</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    El costo se distribuye y genera cobros.
+                  </p>
+                </label>
+
+                <label
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                    padding: "14px 16px",
+                    borderRadius: 12,
+                    cursor: "pointer",
+                    border: `2px solid ${billingMode === "included" ? "#8B2252" : "var(--border-default)"}`,
+                    background: billingMode === "included" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="radio"
+                      value="included"
+                      checked={billingMode === "included"}
+                      onChange={() => setBillingMode("included")}
+                      style={{ accentColor: "#8B2252" }}
+                    />
+                    <strong style={{ fontSize: 14 }}>Incluido en renta</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    Solo registro de gasto — sin cobro.
+                  </p>
+                </label>
+              </div>
+            </AppFormField>
+
+            {billingMode === "charged" ? (
+              <div
+                style={{
+                  padding: "12px 16px",
+                  background: "#eff6ff",
+                  borderRadius: 10,
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "#1d4ed8",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                }}
+              >
+                <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                Configura los submedidores después de guardar.
+              </div>
+            ) : (
+              <div
+                style={{
+                  padding: "12px 16px",
+                  background: "var(--bg-page)",
+                  borderRadius: 10,
+                  marginBottom: 16,
+                  fontSize: 13,
+                  color: "var(--text-secondary)",
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: 8,
+                  border: "1px solid var(--border-default)",
+                }}
+              >
+                <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                Gasto del edificio — las facturas se registran sin generar cobros.
+              </div>
+            )}
+          </>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>

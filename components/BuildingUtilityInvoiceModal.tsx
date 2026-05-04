@@ -55,13 +55,14 @@ export default function BuildingUtilityInvoiceModal({
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const isShared = meter.meter_type === "shared"
-  const isEdit   = !!existingInvoice
+  const isShared   = meter.meter_type === "shared"
+  const isIncluded = meter.billing_mode === "included"
+  const isEdit     = !!existingInvoice
   const consumptionUnit = SERVICE_TYPE_UNIT[meter.service_type]
 
-  // On mount: for shared meters, load sub-meters and active leases
+  // On mount: for shared charged meters, load sub-meters and active leases
   useEffect(() => {
-    if (!isShared) return
+    if (!isShared || isIncluded) return
     void loadSharedData()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -218,6 +219,12 @@ export default function BuildingUtilityInvoiceModal({
       }
 
       // Post-upsert logic
+      if (isIncluded) {
+        onSuccess("Gasto registrado")
+        setSaving(false)
+        return
+      }
+
       if (meter.meter_type === "dedicated") {
         await handleDedicatedCharges(invoiceId, total, user?.id ?? null)
       } else {
@@ -572,7 +579,7 @@ export default function BuildingUtilityInvoiceModal({
         )}
 
         {/* Shared meter: distribution table or warning */}
-        {isShared && amountValid && !loadingLeases && (
+        {isShared && !isIncluded && amountValid && !loadingLeases && (
           <div style={{ marginBottom: 16 }}>
             {tenantedUnitIds.length === 0 ? (
               <div style={{
@@ -631,10 +638,28 @@ export default function BuildingUtilityInvoiceModal({
           </div>
         )}
 
-        {isShared && loadingLeases && (
+        {isShared && !isIncluded && loadingLeases && (
           <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
             Cargando inquilinos activos...
           </p>
+        )}
+
+        {isShared && isIncluded && amountValid && (
+          <div style={{
+            padding: "12px 14px",
+            background: "var(--bg-page)",
+            borderRadius: 10,
+            marginBottom: 16,
+            fontSize: 13,
+            color: "var(--text-secondary)",
+            display: "flex",
+            alignItems: "flex-start",
+            gap: 8,
+            border: "1px solid var(--border-default)",
+          }}>
+            <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+            Gasto del edificio — se registra sin generar cobros a inquilinos.
+          </div>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>

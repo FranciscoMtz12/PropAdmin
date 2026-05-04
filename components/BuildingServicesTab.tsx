@@ -1,6 +1,6 @@
 "use client"
 import { useEffect, useState } from "react"
-import { AlertTriangle, Droplets, Flame, Plus, Settings, Trash2, Wifi, Zap } from "lucide-react"
+import { AlertTriangle, Droplets, Flame, Info, Plus, Settings, Trash2, Wifi, Zap } from "lucide-react"
 import { supabase } from "@/lib/supabaseClient"
 import SectionCard from "@/components/SectionCard"
 import AppCard from "@/components/AppCard"
@@ -222,12 +222,18 @@ export default function BuildingServicesTab({ buildingId, companyId, units }: Pr
                         </span>
                       )}
 
-                      {/* Badge: Dedicado / Compartido */}
+                      {/* Badge: Dedicado / Compartido + billing mode */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                         {meter.meter_type === "dedicated" ? (
                           <AppBadge variant="gray">Dedicado</AppBadge>
                         ) : (
                           <AppBadge variant="blue">Compartido</AppBadge>
+                        )}
+
+                        {meter.meter_type === "shared" && (
+                          meter.billing_mode === "included"
+                            ? <AppBadge variant="gray">Incluido en renta</AppBadge>
+                            : <AppBadge variant="blue">Se cobra</AppBadge>
                         )}
 
                         {/* Dedicated: show unit */}
@@ -241,61 +247,83 @@ export default function BuildingServicesTab({ buildingId, companyId, units }: Pr
                       {/* Shared: sub-meters section */}
                       {meter.meter_type === "shared" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 4 }}>
-                          {subs.length > 0 ? (
-                            <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                              {subs.map((sm) => (
-                                <span
-                                  key={sm.id}
-                                  style={{
-                                    padding: "2px 8px",
-                                    background: "var(--bg-page)",
-                                    border: "1px solid var(--border-default)",
-                                    borderRadius: 999,
-                                    fontSize: 12,
-                                  }}
-                                >
-                                  Depa {sm.unit_number ?? sm.unit_id.slice(0, 6)}
-                                </span>
-                              ))}
-                            </div>
-                          ) : (
+                          {meter.billing_mode === "included" ? (
                             <div
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
                                 gap: 6,
-                                background: "#fef3c7",
-                                color: "#92400e",
+                                background: "var(--bg-page)",
+                                color: "var(--text-secondary)",
                                 borderRadius: 10,
                                 padding: "6px 10px",
                                 fontSize: 12,
                                 alignSelf: "flex-start",
+                                border: "1px solid var(--border-default)",
                               }}
                             >
-                              <AlertTriangle size={12} />
-                              Sin submedidores configurados
+                              <Info size={12} />
+                              Gasto del edificio — sin cobro al inquilino
                             </div>
-                          )}
+                          ) : (
+                            <>
+                              {subs.length > 0 ? (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                  {subs.map((sm) => (
+                                    <span
+                                      key={sm.id}
+                                      style={{
+                                        padding: "2px 8px",
+                                        background: "var(--bg-page)",
+                                        border: "1px solid var(--border-default)",
+                                        borderRadius: 999,
+                                        fontSize: 12,
+                                      }}
+                                    >
+                                      Depa {sm.unit_number ?? sm.unit_id.slice(0, 6)}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 6,
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                    borderRadius: 10,
+                                    padding: "6px 10px",
+                                    fontSize: 12,
+                                    alignSelf: "flex-start",
+                                  }}
+                                >
+                                  <AlertTriangle size={12} />
+                                  Sin submedidores configurados
+                                </div>
+                              )}
 
-                          {/* Configure sub-meters button */}
-                          <button
-                            onClick={() => setSubMetersModalFor(meter)}
-                            style={{
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                              fontSize: 12,
-                              padding: "5px 10px",
-                              borderRadius: 8,
-                              border: "1px solid var(--border-default)",
-                              background: "var(--bg-card)",
-                              cursor: "pointer",
-                              alignSelf: "flex-start",
-                            }}
-                          >
-                            <Settings size={12} />
-                            Configurar submedidores
-                          </button>
+                              {/* Configure sub-meters button */}
+                              <button
+                                onClick={() => setSubMetersModalFor(meter)}
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                  fontSize: 12,
+                                  padding: "5px 10px",
+                                  borderRadius: 8,
+                                  border: "1px solid var(--border-default)",
+                                  background: "var(--bg-card)",
+                                  cursor: "pointer",
+                                  alignSelf: "flex-start",
+                                }}
+                              >
+                                <Settings size={12} />
+                                Configurar submedidores
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
