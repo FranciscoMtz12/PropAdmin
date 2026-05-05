@@ -86,14 +86,14 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
     items: [
       { label: "Servicios",  href: "/servicios", icon: Layers,       status: "done" },
       { label: "Pagos",      href: "/payments",  icon: CreditCard,   status: "done" },
-      { label: "Cobranza",   href: "/cobranza",  icon: DollarSign,   status: "done" },
+      { label: "Cobranza",   href: "/collections", icon: DollarSign,   status: "done" },
       { label: "Inquilinos", href: "/tenants",   icon: Users,        status: "done" },
     ],
   },
   {
     label: "COMPRAS",
     items: [
-      { label: "Compras",      href: "/compras",   icon: ShoppingCart, status: "done" },
+      { label: "Compras",      href: "/purchases", icon: ShoppingCart, status: "done" },
       { label: "Proveedores",  href: "/suppliers", icon: Truck,        status: "done" },
     ],
   },
@@ -134,7 +134,7 @@ const FIELD_ITEMS: SidebarItem[] = [
 const ROLE_ALLOWED: Record<string, string[]> = {
   administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/cobranza", "/collections", "/tenants"],
   directivo:      ["/dashboard", "/buildings", "/analytics", "/cobranza", "/collections", "/tenants"],
-  compras:        ["/dashboard", "/compras", "/purchases", "/suppliers"],
+  compras:        ["/dashboard", "/purchases", "/suppliers"],
   mantenimiento:  ["/dashboard", "/maintenance", "/cleaning"],
 };
 

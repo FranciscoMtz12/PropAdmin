@@ -97,7 +97,7 @@ export default function RouteGuard() {
 
     if (!skipGranular) {
       if (user.role === "compras") {
-        const allowed = ["/dashboard", "/compras", "/purchases", "/suppliers"]
+        const allowed = ["/dashboard", "/purchases", "/suppliers"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/purchases"); return; }
         return;
       }
@@ -107,12 +107,12 @@ export default function RouteGuard() {
         return;
       }
       if (user.role === "administracion") {
-        const allowed = ["/dashboard", "/buildings", "/servicios", "/payments", "/cobranza", "/collections", "/tenants"]
+        const allowed = ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }
       if (user.role === "directivo") {
-        const allowed = ["/dashboard", "/buildings", "/analytics", "/cobranza", "/collections", "/tenants"]
+        const allowed = ["/dashboard", "/buildings", "/analytics", "/collections", "/cobranza", "/tenants"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }
