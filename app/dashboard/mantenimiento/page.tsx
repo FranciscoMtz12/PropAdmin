@@ -25,16 +25,29 @@ function timeAgo(isoString: string) {
   return `hace ${days} día${days === 1 ? "" : "s"}`;
 }
 
+function daysOpen(isoString: string) {
+  return Math.floor((Date.now() - new Date(isoString).getTime()) / 86_400_000);
+}
+
 /* ─── Types ──────────────────────────────────────────────────────── */
 
-type LogRow = {
+type WorkOrderRow = {
+  id: string;
+  work_order_number: string | null;
+  notes: string | null;
+  priority: string | null;
+  status: string;
+  created_at: string;
+  building_id: string | null;
+};
+
+type ActivityRow = {
   id: string;
   title: string | null;
-  status: string;
-  priority: string | null;
+  log_type: string | null;
   created_at: string;
-  updated_at: string;
   building_id: string | null;
+  building_name: string | null;
 };
 
 /* ─── Page ───────────────────────────────────────────────────────── */
@@ -50,12 +63,12 @@ export default function DashboardMantenimientoPage() {
     if (!ok) router.replace("/dashboard");
   }, [user, loading, router]);
 
-  const [pageLoading, setPageLoading] = useState(true);
-  const [openLogs, setOpenLogs]       = useState<LogRow[]>([]);
+  const [pageLoading, setPageLoading]     = useState(true);
+  const [openOrders, setOpenOrders]       = useState<(WorkOrderRow & { building_name: string | null })[]>([]);
   const [resolvedCount, setResolvedCount] = useState(0);
   const [cleaningToday, setCleaningToday] = useState(0);
   const [materialsPending, setMaterialsPending] = useState(0);
-  const [recentLogs, setRecentLogs]   = useState<(LogRow & { building_name: string | null })[]>([]);
+  const [recentActivity, setRecentActivity] = useState<ActivityRow[]>([]);
 
   useEffect(() => {
     if (user?.company_id) void loadData();
@@ -64,11 +77,10 @@ export default function DashboardMantenimientoPage() {
   async function loadData() {
     if (!user?.company_id) return;
     setPageLoading(true);
-    const cid = user.company_id;
-
-    const now            = new Date();
-    const todayDow       = DAY_NAMES_EN[now.getDay()];
-    const monthStart     = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const cid      = user.company_id;
+    const now      = new Date();
+    const todayDow = DAY_NAMES_EN[now.getDay()];
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
 
     try {
       const [
@@ -77,53 +89,59 @@ export default function DashboardMantenimientoPage() {
         buildingSchedRes,
         unitSchedRes,
         materialsRes,
-        recentRes,
+        activityRes,
         buildingsRes,
       ] = await Promise.all([
+        /* Open work orders */
         supabase
-          .from("maintenance_logs")
-          .select("id, title, status, priority, created_at, updated_at, building_id")
+          .from("work_orders")
+          .select("id, work_order_number, notes, priority, status, created_at, building_id")
           .eq("company_id", cid)
           .is("deleted_at", null)
-          .not("status", "in", '("completed","cancelled","resolved")')
+          .not("status", "in", '("completed","cancelled")')
           .order("created_at", { ascending: true }),
 
+        /* Resolved this month */
         supabase
-          .from("maintenance_logs")
+          .from("work_orders")
           .select("id", { count: "exact", head: true })
           .eq("company_id", cid)
           .is("deleted_at", null)
-          .in("status", ["completed","resolved"])
-          .gte("updated_at", monthStart),
+          .eq("status", "completed")
+          .gte("completed_at", monthStart),
 
+        /* Cleaning today — buildings */
         supabase
           .from("cleaning_building_schedules")
           .select("id", { count: "exact", head: true })
           .eq("company_id", cid)
           .eq("day_of_week", todayDow),
 
+        /* Cleaning today — units */
         supabase
           .from("cleaning_unit_schedules")
           .select("id", { count: "exact", head: true })
           .eq("company_id", cid)
           .eq("day_of_week", todayDow),
 
+        /* Pending purchase orders for the company */
         supabase
           .from("purchase_orders")
           .select("id", { count: "exact", head: true })
           .eq("company_id", cid)
           .is("deleted_at", null)
-          .not("maintenance_log_id", "is", null)
           .in("status", ["pending","sent","partial"]),
 
+        /* Recent maintenance_logs activity */
         supabase
           .from("maintenance_logs")
-          .select("id, title, status, priority, created_at, updated_at, building_id")
+          .select("id, title, log_type, created_at, building_id")
           .eq("company_id", cid)
           .is("deleted_at", null)
-          .order("updated_at", { ascending: false })
+          .order("created_at", { ascending: false })
           .limit(10),
 
+        /* Buildings for name lookup */
         supabase
           .from("buildings")
           .select("id, name")
@@ -132,23 +150,28 @@ export default function DashboardMantenimientoPage() {
       ]);
 
       if (openRes.error) throw openRes.error;
-      if (recentRes.error) throw recentRes.error;
-
-      setOpenLogs((openRes.data as LogRow[]) ?? []);
-      setResolvedCount(resolvedRes.count ?? 0);
-      setCleaningToday((buildingSchedRes.count ?? 0) + (unitSchedRes.count ?? 0));
-      setMaterialsPending(materialsRes.count ?? 0);
+      if (activityRes.error) throw activityRes.error;
 
       const buildingMap = new Map<string, string>();
       ((buildingsRes.data ?? []) as { id: string; name: string }[]).forEach(b => {
         buildingMap.set(b.id, b.name);
       });
 
-      const recent = ((recentRes.data as LogRow[]) ?? []).map(r => ({
+      const orders = ((openRes.data as WorkOrderRow[]) ?? []).map(r => ({
         ...r,
         building_name: r.building_id ? (buildingMap.get(r.building_id) ?? null) : null,
       }));
-      setRecentLogs(recent);
+
+      const activity = ((activityRes.data as Omit<ActivityRow, "building_name">[]) ?? []).map(r => ({
+        ...r,
+        building_name: r.building_id ? (buildingMap.get(r.building_id) ?? null) : null,
+      }));
+
+      setOpenOrders(orders);
+      setResolvedCount(resolvedRes.count ?? 0);
+      setCleaningToday((buildingSchedRes.count ?? 0) + (unitSchedRes.count ?? 0));
+      setMaterialsPending(materialsRes.count ?? 0);
+      setRecentActivity(activity);
 
     } catch (err) {
       console.error("Dashboard mantenimiento error", err);
@@ -160,13 +183,15 @@ export default function DashboardMantenimientoPage() {
 
   /* Priority sort: urgent=1 high=2 medium=3 low=4 */
   const PRIORITY_ORDER: Record<string, number> = { urgent: 1, high: 2, medium: 3, low: 4 };
-  const sortedOpen = [...openLogs].sort((a, b) =>
+  const sortedOpen = [...openOrders].sort((a, b) =>
     (PRIORITY_ORDER[a.priority ?? "low"] ?? 4) - (PRIORITY_ORDER[b.priority ?? "low"] ?? 4)
   );
   const openTable = sortedOpen.slice(0, 8);
 
-  const ticketsVariant = pageLoading ? "neutral" : openLogs.length > 5 ? "red" : openLogs.length > 0 ? "amber" : "green";
-  const resolvedVariant = pageLoading ? "neutral" : resolvedCount > 0 ? "green" : "neutral";
+  const ticketsVariant = pageLoading ? "neutral"
+    : openOrders.length > 5 ? "red"
+    : openOrders.length > 0 ? "amber"
+    : "green";
 
   return (
     <PageContainer>
@@ -180,7 +205,7 @@ export default function DashboardMantenimientoPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard
           label="Tickets abiertos"
-          value={pageLoading ? "…" : openLogs.length}
+          value={pageLoading ? "…" : openOrders.length}
           icon={<AlertTriangle size={18} />}
           variant={ticketsVariant}
         />
@@ -188,7 +213,7 @@ export default function DashboardMantenimientoPage() {
           label="Resueltos este mes"
           value={pageLoading ? "…" : resolvedCount}
           icon={<CheckCircle size={18} />}
-          variant={resolvedVariant}
+          variant={pageLoading ? "neutral" : resolvedCount > 0 ? "green" : "neutral"}
         />
         <MetricCard
           label="Limpieza hoy"
@@ -200,7 +225,7 @@ export default function DashboardMantenimientoPage() {
         <MetricCard
           label="Materiales pendientes"
           value={pageLoading ? "…" : materialsPending}
-          helper="OCs vinculadas a tickets"
+          helper="OCs pendientes / enviadas"
           icon={<ShoppingCart size={18} />}
           variant={pageLoading ? "neutral" : materialsPending > 0 ? "amber" : "green"}
         />
@@ -214,15 +239,15 @@ export default function DashboardMantenimientoPage() {
           {pageLoading ? (
             <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
           ) : openTable.length === 0 ? (
-            <AppEmptyState title="Sin tickets abiertos" description="No hay tickets de mantenimiento abiertos." />
+            <AppEmptyState title="Sin tickets abiertos" description="No hay órdenes de trabajo abiertas." />
           ) : (
             <AppTable
               minWidth={0}
               rows={openTable}
               columns={[
                 {
-                  key: "titulo",
-                  header: "Título",
+                  key: "orden",
+                  header: "Orden / Descripción",
                   render: (row) => {
                     const pMap: Record<string, { label: string; variant: "red"|"amber"|"gray" }> = {
                       urgent: { label: "Urgente", variant: "red" },
@@ -231,30 +256,41 @@ export default function DashboardMantenimientoPage() {
                       low:    { label: "Baja",    variant: "gray" },
                     };
                     const p = pMap[row.priority ?? "low"] ?? pMap.low;
+                    const notesPreview = row.notes
+                      ? row.notes.length > 48 ? row.notes.slice(0, 48) + "…" : row.notes
+                      : null;
                     return (
                       <div>
                         <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
-                          {row.title ?? "Sin título"}
+                          {row.work_order_number ?? "Sin número"}
                         </span>
-                        <AppBadge variant={p.variant}>{p.label}</AppBadge>
+                        {notesPreview && (
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", display: "block" }}>
+                            {notesPreview}
+                          </span>
+                        )}
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                          <AppBadge variant={p.variant}>{p.label}</AppBadge>
+                          {row.building_name && (
+                            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{row.building_name}</span>
+                          )}
+                        </div>
                       </div>
                     );
                   },
                 },
                 {
-                  key: "estado",
-                  header: "Estado",
+                  key: "dias",
+                  header: "Días",
                   align: "right",
-                  width: 110,
+                  width: 64,
                   render: (row) => {
-                    const STATUS_LABEL: Record<string, string> = {
-                      open: "Abierto", in_progress: "En progreso", pending: "Pendiente",
-                      on_hold: "En espera", draft: "Borrador",
-                    };
+                    const d = daysOpen(row.created_at);
+                    const v = d > 7 ? "red" : d > 3 ? "amber" : "gray";
                     return (
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                        {STATUS_LABEL[row.status] ?? row.status}
-                      </span>
+                      <AppBadge variant={v}>
+                        {d === 0 ? "Hoy" : `${d}d`}
+                      </AppBadge>
                     );
                   },
                 },
@@ -263,24 +299,24 @@ export default function DashboardMantenimientoPage() {
           )}
         </SectionCard>
 
-        {/* Actividad reciente */}
-        <SectionCard title="Actividad reciente" subtitle="Últimos 10 movimientos">
+        {/* Actividad reciente (maintenance_logs) */}
+        <SectionCard title="Actividad reciente" subtitle="Últimos 10 registros">
           {pageLoading ? (
             <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
-          ) : recentLogs.length === 0 ? (
+          ) : recentActivity.length === 0 ? (
             <AppEmptyState title="Sin actividad" description="No hay registros de mantenimiento recientes." />
           ) : (
             <AppTable
               minWidth={0}
-              rows={recentLogs}
+              rows={recentActivity}
               columns={[
                 {
                   key: "titulo",
-                  header: "Ticket",
+                  header: "Registro",
                   render: (row) => (
                     <div>
                       <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
-                        {row.title ?? "Sin título"}
+                        {row.title ?? row.log_type ?? "Sin título"}
                       </span>
                       <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                         {row.building_name ?? "Sin edificio"}
@@ -290,12 +326,12 @@ export default function DashboardMantenimientoPage() {
                 },
                 {
                   key: "tiempo",
-                  header: "Actualizado",
+                  header: "Hace",
                   align: "right",
-                  width: 110,
+                  width: 100,
                   render: (row) => (
                     <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-                      {timeAgo(row.updated_at)}
+                      {timeAgo(row.created_at)}
                     </span>
                   ),
                 },
