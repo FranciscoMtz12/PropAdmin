@@ -13,14 +13,14 @@ export async function getSignedBillUrl(
   return data.signedUrl;
 }
 
-export async function getSignedReadingUrl(
+export async function getSignedUtilityReadingUrl(
   supabase: SupabaseClient,
   path: string,
   expiresInSeconds = 3600,
 ): Promise<string | null> {
   if (!path) return null;
   const { data, error } = await supabase.storage
-    .from("electricity-readings")
+    .from("utility-readings")
     .createSignedUrl(path, expiresInSeconds);
   if (error || !data?.signedUrl) return null;
   return data.signedUrl;

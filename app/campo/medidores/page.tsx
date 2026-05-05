@@ -1,43 +1,48 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, MapPin, Zap } from "lucide-react";
+import { ChevronLeft, ChevronRight, Droplets, Flame, MapPin, Settings, Wifi, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
-import CaptureReadingModal, { type ActiveLeaseInfo } from "@/components/CaptureReadingModal";
+import CaptureUtilityReadingModal from "@/components/CaptureUtilityReadingModal";
 import { sortByNatural, sortByAlphabetic } from "@/lib/sort-utils";
+import type { BuildingUtilityMeter, BuildingUtilitySubMeter } from "@/lib/types";
+import { SERVICE_TYPE_LABEL } from "@/lib/types";
 
 const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
 
-type InternalMeterRow = {
-  id: string;
-  cfe_meter_id: string;
-  unit_id: string;
-  unit_number?: string;
-  building_name?: string;
-  building_id?: string;
-  cfe_meter_number?: string;
-  active_lease: ActiveLeaseInfo | null;
-  baseline_reading: number;
+type SubMeterRow = BuildingUtilitySubMeter & {
+  unit_number: string;
+  building_name: string;
+  active_lease: { tenant_name: string } | null;
 };
 
 type ReadingRow = {
   id: string;
-  internal_meter_id: string;
+  building_utility_sub_meter_id: string;
   current_reading: number;
   previous_reading: number;
-  consumption: number;
+  consumption: number | null;
 };
 
 type Group = {
-  building_name: string;
   building_id: string;
-  cfe_meter_id: string;
-  cfe_meter_number: string;
-  internal_meters: InternalMeterRow[];
+  building_name: string;
+  meter: BuildingUtilityMeter;
+  sub_meters: SubMeterRow[];
 };
+
+function ServiceIcon({ type, size = 20 }: { type: string; size?: number }) {
+  switch (type) {
+    case "electricity": return <Zap size={size} />;
+    case "gas":         return <Flame size={size} />;
+    case "water":       return <Droplets size={size} />;
+    case "internet":    return <Wifi size={size} />;
+    default:            return <Settings size={size} />;
+  }
+}
 
 export default function CampoMedidoresPage() {
   const { user, loading } = useCurrentUser();
@@ -49,7 +54,7 @@ export default function CampoMedidoresPage() {
   const [readings, setReadings]     = useState<ReadingRow[]>([]);
   const [pageLoading, setPageLoading] = useState(true);
   const [captureModal, setCaptureModal] = useState<{
-    internalMeter: InternalMeterRow;
+    subMeter: SubMeterRow;
     previousReading: number;
   } | null>(null);
 
@@ -61,120 +66,99 @@ export default function CampoMedidoresPage() {
     if (!user?.company_id) return;
     setPageLoading(true);
 
-    const { data: cfeMData } = await supabase
-      .from("cfe_meters")
-      .select("id, meter_number, building_id")
+    // Load shared meters that generate charge
+    const { data: mData } = await supabase
+      .from("building_utility_meters")
+      .select("*")
       .eq("company_id", user.company_id)
-      .eq("service_type", "shared")
-      .is("deleted_at", null);
-    const cfeMList = (cfeMData || []) as Array<{ id: string; meter_number: string; building_id: string }>;
-    if (cfeMList.length === 0) { setGroups([]); setReadings([]); setPageLoading(false); return; }
-
-    const buildingIds = [...new Set(cfeMList.map(m => m.building_id))];
-    const { data: bData } = await supabase.from("buildings").select("id, name").in("id", buildingIds);
-    const buildingMap: Record<string, string> = {};
-    ((bData || []) as Array<{ id: string; name: string }>).forEach(b => { buildingMap[b.id] = b.name; });
-
-    const cfeIds = cfeMList.map(m => m.id);
-    const { data: imData } = await supabase
-      .from("internal_meters")
-      .select("id, cfe_meter_id, unit_id, baseline_reading")
-      .in("cfe_meter_id", cfeIds)
+      .eq("meter_type", "shared")
+      .eq("billing_mode", "charged")
       .eq("active", true)
       .is("deleted_at", null);
-    const imList = (imData || []) as Array<{
-      id: string; cfe_meter_id: string; unit_id: string; baseline_reading: number;
-    }>;
 
-    const unitIds = [...new Set(imList.map(im => im.unit_id))];
+    const mList = (mData || []) as BuildingUtilityMeter[];
+    if (mList.length === 0) { setGroups([]); setReadings([]); setPageLoading(false); return; }
+
+    const buildingIds = [...new Set(mList.map(m => m.building_id))];
+    const mIds        = mList.map(m => m.id);
+
+    const [bRes, smRes] = await Promise.all([
+      supabase.from("buildings").select("id, name").in("id", buildingIds),
+      supabase
+        .from("building_utility_sub_meters")
+        .select("*")
+        .in("building_utility_meter_id", mIds)
+        .eq("active", true)
+        .is("deleted_at", null),
+    ]);
+
+    const buildingMap: Record<string, string> = {};
+    ((bRes.data || []) as Array<{ id: string; name: string }>).forEach(b => { buildingMap[b.id] = b.name; });
+
+    const smList = (smRes.data || []) as BuildingUtilitySubMeter[];
+    const unitIds = [...new Set(smList.map(sm => sm.unit_id))];
+
     const unitMap: Record<string, string> = {};
-    const leasesByUnit = new Map<string, ActiveLeaseInfo>();
+    const leasesByUnit = new Map<string, { tenant_name: string }>();
 
     if (unitIds.length > 0) {
-      const { data: uData } = await supabase
-        .from("units")
-        .select("id, unit_number")
-        .in("id", unitIds);
-      ((uData || []) as Array<{ id: string; unit_number: string }>).forEach(u => { unitMap[u.id] = u.unit_number; });
-
-      // Leases activos con filtro correcto de enum ACTIVE y fechas
       const today = new Date().toISOString().split("T")[0];
-      const { data: lData } = await supabase
-        .from("leases")
-        .select("id, unit_id, start_date, end_date, tenant:tenants(id, full_name)")
-        .in("unit_id", unitIds)
-        .eq("status", "ACTIVE")
-        .is("deleted_at", null)
-        .lte("start_date", today)
-        .or(`end_date.is.null,end_date.gte.${today}`);
+      const [uRes, lRes] = await Promise.all([
+        supabase.from("units").select("id, unit_number").in("id", unitIds),
+        supabase
+          .from("leases")
+          .select("id, unit_id, tenant:tenants(id, full_name)")
+          .in("unit_id", unitIds)
+          .eq("status", "ACTIVE")
+          .is("deleted_at", null)
+          .lte("start_date", today)
+          .or(`end_date.is.null,end_date.gte.${today}`),
+      ]);
 
-      ((lData || []) as unknown as Array<{
-        id: string;
-        unit_id: string;
-        start_date: string;
-        end_date: string | null;
-        tenant: { id: string; full_name: string } | null;
+      ((uRes.data || []) as Array<{ id: string; unit_number: string }>).forEach(u => { unitMap[u.id] = u.unit_number; });
+      ((lRes.data || []) as unknown as Array<{
+        id: string; unit_id: string; tenant: { id: string; full_name: string } | null
       }>).forEach(l => {
-        if (l.tenant) {
-          leasesByUnit.set(l.unit_id, {
-            id: l.id,
-            tenant_id: l.tenant.id,
-            tenant_name: l.tenant.full_name,
-            start_date: l.start_date,
-            end_date: l.end_date,
-          });
-        }
+        if (l.tenant) leasesByUnit.set(l.unit_id, { tenant_name: l.tenant.full_name });
       });
     }
 
-    const imIds = imList.map(im => im.id);
+    const smIds = smList.map(sm => sm.id);
     let periodReadings: ReadingRow[] = [];
-    if (imIds.length > 0) {
+    if (smIds.length > 0) {
       const { data: rData } = await supabase
-        .from("electricity_readings")
-        .select("id, internal_meter_id, current_reading, previous_reading, consumption")
-        .in("internal_meter_id", imIds)
+        .from("building_utility_readings")
+        .select("id, building_utility_sub_meter_id, current_reading, previous_reading, consumption")
+        .in("building_utility_sub_meter_id", smIds)
         .eq("period_year", year)
         .eq("period_month", month)
         .is("deleted_at", null);
       periodReadings = (rData || []) as ReadingRow[];
     }
 
-    // Enriquecer submedidores
-    const enrichedMeters: InternalMeterRow[] = imList.map(im => {
-      const cfe = cfeMList.find(m => m.id === im.cfe_meter_id);
+    // Build enriched sub_meters
+    const enrichedSubs: SubMeterRow[] = smList.map(sm => {
+      const meter = mList.find(m => m.id === sm.building_utility_meter_id)!;
       return {
-        id: im.id,
-        cfe_meter_id: im.cfe_meter_id,
-        unit_id: im.unit_id,
-        baseline_reading: im.baseline_reading,
-        unit_number: unitMap[im.unit_id],
-        building_id: cfe?.building_id,
-        building_name: cfe ? buildingMap[cfe.building_id] : undefined,
-        cfe_meter_number: cfe?.meter_number,
-        active_lease: leasesByUnit.get(im.unit_id) ?? null,
+        ...sm,
+        unit_number:  unitMap[sm.unit_id] ?? sm.unit_id.slice(0, 6),
+        building_name: buildingMap[meter.building_id] ?? meter.building_id,
+        active_lease: leasesByUnit.get(sm.unit_id) ?? null,
       };
     });
 
-    // Grupos: edificios alfabéticos → medidores naturales → depas naturales
+    // Build groups: one per meter
     const sortedBuildings = sortByAlphabetic(buildingIds, id => buildingMap[id]);
-    const grps: Group[] = [];
-    sortByNatural(cfeMList, m => m.meter_number).forEach(cfe => {
-      const meters = sortByNatural(
-        enrichedMeters.filter(im => im.cfe_meter_id === cfe.id),
-        im => im.unit_number,
-      );
-      if (meters.length === 0) return;
-      grps.push({
-        building_id: cfe.building_id,
-        building_name: buildingMap[cfe.building_id] || cfe.building_id,
-        cfe_meter_id: cfe.id,
-        cfe_meter_number: cfe.meter_number,
-        internal_meters: meters,
-      });
-    });
+    const grps: Group[] = sortByNatural(mList, m => m.provider_name ?? m.service_type).map(meter => ({
+      building_id:   meter.building_id,
+      building_name: buildingMap[meter.building_id] ?? meter.building_id,
+      meter,
+      sub_meters: sortByNatural(
+        enrichedSubs.filter(sm => sm.building_utility_meter_id === meter.id),
+        sm => sm.unit_number,
+      ),
+    })).filter(g => g.sub_meters.length > 0);
 
-    // Ordenar grupos por nombre de edificio
     grps.sort((a, b) =>
       sortedBuildings.indexOf(a.building_id) - sortedBuildings.indexOf(b.building_id),
     );
@@ -184,9 +168,9 @@ export default function CampoMedidoresPage() {
     setPageLoading(false);
   }
 
-  const totalMeters   = useMemo(() => groups.reduce((s, g) => s + g.internal_meters.length, 0), [groups]);
-  const capturedCount = readings.length;
-  const pendingCount  = totalMeters - capturedCount;
+  const totalSubMeters = useMemo(() => groups.reduce((s, g) => s + g.sub_meters.length, 0), [groups]);
+  const capturedCount  = readings.length;
+  const pendingCount   = totalSubMeters - capturedCount;
 
   function navMonth(delta: number) {
     let m = month + delta;
@@ -207,9 +191,8 @@ export default function CampoMedidoresPage() {
       <div style={{ padding: "16px 16px 0", background: "var(--bg-card)", borderBottom: "1px solid var(--border-default)", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
           <Zap size={20} color="#8B2252" />
-          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#8B2252" }}>Medidores de luz</h1>
+          <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#8B2252" }}>Lecturas de medidores</h1>
         </div>
-        {/* Selector de mes */}
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <button type="button" onClick={() => navMonth(-1)} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
             <ChevronLeft size={16} />
@@ -221,9 +204,12 @@ export default function CampoMedidoresPage() {
             <ChevronRight size={16} />
           </button>
         </div>
-        {/* Filter pills */}
         <div style={{ display: "flex", gap: 8, paddingBottom: 12 }}>
-          {([ ["all", "Todos", totalMeters], ["pending", "Pendientes", pendingCount], ["done", "Capturadas", capturedCount] ] as const).map(([key, label, count]) => (
+          {([
+            ["all",     "Todos",      totalSubMeters],
+            ["pending", "Pendientes", pendingCount],
+            ["done",    "Capturadas", capturedCount],
+          ] as const).map(([key, label, count]) => (
             <button
               key={key}
               type="button"
@@ -251,26 +237,39 @@ export default function CampoMedidoresPage() {
           </div>
         ) : (
           groups.map(group => {
-            const visibleMeters = group.internal_meters.filter(im => {
+            const visible = group.sub_meters.filter(sm => {
               if (filter === "all") return true;
-              const captured = readings.some(r => r.internal_meter_id === im.id);
+              const captured = readings.some(r => r.building_utility_sub_meter_id === sm.id);
               return filter === "done" ? captured : !captured;
             });
-            if (visibleMeters.length === 0) return null;
+            if (visible.length === 0) return null;
+
+            const meterLabel = group.meter.provider_name
+              ? `${group.meter.provider_name} · ${SERVICE_TYPE_LABEL[group.meter.service_type]}`
+              : SERVICE_TYPE_LABEL[group.meter.service_type];
+
             return (
-              <div key={`${group.building_id}-${group.cfe_meter_id}`} style={{ marginBottom: 24 }}>
+              <div key={group.meter.id} style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: "#8B2252", display: "inline-flex", alignItems: "center", gap: 5 }}><MapPin size={14} />{group.building_name}</span>
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>— Medidor {group.cfe_meter_number}</span>
+                  <span style={{ fontSize: 14, fontWeight: 700, color: "#8B2252", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                    <MapPin size={14} />{group.building_name}
+                  </span>
+                  <span style={{ fontSize: 13, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                    <ServiceIcon type={group.meter.service_type} size={13} /> — {meterLabel}
+                    {group.meter.meter_number ? ` · ${group.meter.meter_number}` : ""}
+                  </span>
                 </div>
                 <div style={{ display: "grid", gap: 10 }}>
-                  {visibleMeters.map(im => {
-                    const reading    = readings.find(r => r.internal_meter_id === im.id);
+                  {visible.map(sm => {
+                    const reading    = readings.find(r => r.building_utility_sub_meter_id === sm.id);
                     const isCaptured = !!reading;
                     return (
                       <div
-                        key={im.id}
-                        onClick={() => setCaptureModal({ internalMeter: im, previousReading: im.baseline_reading })}
+                        key={sm.id}
+                        onClick={() => {
+                          const prevReading = reading?.previous_reading ?? sm.baseline_reading;
+                          setCaptureModal({ subMeter: sm, previousReading: prevReading });
+                        }}
                         style={{
                           padding: "14px 16px", borderRadius: 14, cursor: "pointer",
                           background: "var(--bg-card)",
@@ -280,9 +279,12 @@ export default function CampoMedidoresPage() {
                       >
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
                           <div>
-                            <strong style={{ fontSize: 15 }}>Depa {im.unit_number}</strong>
-                            <p style={{ margin: "2px 0 0", fontSize: 13, color: im.active_lease ? "var(--text-secondary)" : "var(--text-muted)" }}>
-                              {im.active_lease ? im.active_lease.tenant_name : "Vacante"}
+                            <strong style={{ fontSize: 15 }}>Depa {sm.unit_number}</strong>
+                            {sm.sub_meter_number && (
+                              <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 6 }}>({sm.sub_meter_number})</span>
+                            )}
+                            <p style={{ margin: "2px 0 0", fontSize: 13, color: sm.active_lease ? "var(--text-secondary)" : "var(--text-muted)" }}>
+                              {sm.active_lease ? sm.active_lease.tenant_name : "Vacante"}
                             </p>
                           </div>
                           <span style={{
@@ -290,16 +292,17 @@ export default function CampoMedidoresPage() {
                             background: isCaptured ? "#dcfce7" : "#fff7ed",
                             color: isCaptured ? "#15803d" : "#c2410c",
                           }}>
-                            {isCaptured ? "✓ Capturado" : "⏳ Pendiente"}
+                            {isCaptured ? "Capturado" : "Pendiente"}
                           </span>
                         </div>
                         {isCaptured ? (
                           <p style={{ margin: "8px 0 0", fontSize: 13 }}>
-                            Anterior: {reading.previous_reading} | Actual: {reading.current_reading} | <strong>{reading.consumption} kWh</strong>
+                            Anterior: {reading.previous_reading} | Actual: {reading.current_reading}
+                            {reading.consumption != null ? ` | Consumo: ${reading.consumption}` : ""}
                           </p>
                         ) : (
                           <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
-                            Anterior: {im.baseline_reading}
+                            Anterior: {sm.baseline_reading}
                           </p>
                         )}
                       </div>
@@ -313,13 +316,13 @@ export default function CampoMedidoresPage() {
       </div>
 
       {captureModal && (
-        <CaptureReadingModal
-          internalMeter={captureModal.internalMeter}
+        <CaptureUtilityReadingModal
+          isOpen
+          subMeter={captureModal.subMeter}
+          meter={groups.find(g => g.sub_meters.some(sm => sm.id === captureModal.subMeter.id))!.meter}
+          activeLease={captureModal.subMeter.active_lease}
           period={{ year, month }}
           previousReading={captureModal.previousReading}
-          averageConsumption={null}
-          activeLease={captureModal.internalMeter.active_lease}
-          isOpen
           onClose={() => setCaptureModal(null)}
           onSuccess={async () => {
             setCaptureModal(null);

@@ -11,8 +11,8 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import {
-  type BuildingUtilityMeter, type ElectricityBill, type BuildingUtilityInvoice,
-  meterGeneratesCharge, BILLING_FREQUENCY_LABEL, SERVICE_TYPE_LABEL,
+  type BuildingUtilityMeter, type BuildingUtilityInvoice,
+  meterGeneratesCharge, SERVICE_TYPE_LABEL,
 } from "@/lib/types";
 import { shouldBillThisPeriod } from "@/lib/service-utils";
 import PageContainer from "@/components/PageContainer";
@@ -22,8 +22,7 @@ import SectionCard from "@/components/SectionCard";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
 import UiButton from "@/components/UiButton";
-import ElectricityBillModal from "@/components/ElectricityBillModal";
-import BuildingUtilityInvoiceModal from "@/components/BuildingUtilityInvoiceModal";
+import UtilityInvoiceModal from "@/components/UtilityInvoiceModal";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 
@@ -40,28 +39,20 @@ function formatMXN(n: number) {
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
-type CfeMeterRow = {
-  id: string;
-  meter_number: string;
-  building_id: string;
-  description: string | null;
-  meter_type: string;
-};
-
 type BuildingGroup = {
   building_id: string;
   building_name: string;
-  cfe_meters: CfeMeterRow[];
   utility_meters: BuildingUtilityMeter[];
-  bills: Map<string, ElectricityBill>;         // cfe_meter_id → bill
-  invoices: Map<string, BuildingUtilityInvoice>; // meter_id → invoice
+  invoices: Map<string, BuildingUtilityInvoice>;
   units: { id: string; unit_number: string }[];
 };
 
-type ActiveModal =
-  | { kind: "cfe"; meter: CfeMeterRow; building: { id: string; name: string }; existingBill: ElectricityBill | null }
-  | { kind: "utility"; meter: BuildingUtilityMeter; building: { id: string; name: string }; existingInvoice: BuildingUtilityInvoice | null; units: { id: string; unit_number: string }[] }
-  | null;
+type ActiveModal = {
+  meter: BuildingUtilityMeter;
+  building: { id: string; name: string };
+  existingInvoice: BuildingUtilityInvoice | null;
+  units: { id: string; unit_number: string }[];
+} | null;
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
@@ -96,6 +87,7 @@ function ServiceRow({
   name,
   providerLine,
   isbimonthly,
+  generatesCharge,
   invoice,
   amount,
   onAction,
@@ -104,6 +96,7 @@ function ServiceRow({
   name: string;
   providerLine: string | null;
   isbimonthly: boolean;
+  generatesCharge: boolean;
   invoice: { status: string; total_amount: number } | null;
   amount: number | null;
   onAction: () => void;
@@ -123,7 +116,6 @@ function ServiceRow({
         borderBottom: "1px solid var(--border-default)",
       }}
     >
-      {/* Icon */}
       <div
         style={{
           width: 34,
@@ -141,22 +133,21 @@ function ServiceRow({
         <ServiceIcon type={serviceType} size={15} />
       </div>
 
-      {/* Name + provider */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>
             {name}
           </span>
-          {isbimonthly && (
-            <AppBadge variant="gray">Bimestral</AppBadge>
-          )}
+          {isbimonthly && <AppBadge variant="gray">Bimestral</AppBadge>}
+          {generatesCharge
+            ? <AppBadge variant="blue">Genera cobro</AppBadge>
+            : <AppBadge variant="gray">Gasto del edificio</AppBadge>}
         </div>
         {providerLine && (
           <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{providerLine}</span>
         )}
       </div>
 
-      {/* Amount + badge + action */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
         {amount != null && (
           <span
@@ -274,11 +265,10 @@ export default function ServiciosPage() {
   async function loadData() {
     if (!user?.company_id) return;
     setPageLoading(true);
-    const cid          = user.company_id;
+    const cid = user.company_id;
     const { year, month } = period;
 
     try {
-      /* Step 1 — buildings */
       const { data: buildingsData, error: bErr } = await supabase
         .from("buildings")
         .select("id, name")
@@ -295,13 +285,7 @@ export default function ServiciosPage() {
 
       const bIds = (buildingsData as { id: string; name: string }[]).map(b => b.id);
 
-      /* Step 2 — parallel loads */
-      const [cfeRes, umRes, unitsRes, ebRes, uiRes] = await Promise.all([
-        supabase.from("cfe_meters")
-          .select("id, meter_number, building_id, description, meter_type")
-          .in("building_id", bIds)
-          .is("deleted_at", null),
-
+      const [umRes, unitsRes, uiRes] = await Promise.all([
         supabase.from("building_utility_meters")
           .select("*")
           .in("building_id", bIds)
@@ -313,13 +297,6 @@ export default function ServiciosPage() {
           .in("building_id", bIds)
           .is("deleted_at", null),
 
-        supabase.from("electricity_bills")
-          .select("*")
-          .in("building_id", bIds)
-          .eq("period_year", year)
-          .eq("period_month", month)
-          .is("deleted_at", null),
-
         supabase.from("building_utility_invoices")
           .select("*")
           .in("building_id", bIds)
@@ -328,20 +305,13 @@ export default function ServiciosPage() {
           .is("deleted_at", null),
       ]);
 
-      /* Build lookup maps */
-      const cfeMetersByBuilding = new Map<string, CfeMeterRow[]>();
       const utilMetersByBuilding = new Map<string, BuildingUtilityMeter[]>();
       const unitsByBuilding = new Map<string, { id: string; unit_number: string }[]>();
-      const billsByCfeMeter = new Map<string, ElectricityBill>();
       const invoicesByMeter = new Map<string, BuildingUtilityInvoice>();
 
-      ((cfeRes.data ?? []) as CfeMeterRow[]).forEach(m => {
-        const arr = cfeMetersByBuilding.get(m.building_id) ?? [];
-        arr.push(m);
-        cfeMetersByBuilding.set(m.building_id, arr);
-      });
-
       ((umRes.data ?? []) as BuildingUtilityMeter[]).forEach(m => {
+        // exclude dedicated meters where tenant pays directly
+        if (m.meter_type === "dedicated" && m.contract_holder === "tenant") return;
         const arr = utilMetersByBuilding.get(m.building_id) ?? [];
         arr.push(m);
         utilMetersByBuilding.set(m.building_id, arr);
@@ -353,38 +323,26 @@ export default function ServiciosPage() {
         unitsByBuilding.set(u.building_id, arr);
       });
 
-      ((ebRes.data ?? []) as ElectricityBill[]).forEach(b => {
-        billsByCfeMeter.set(b.cfe_meter_id, b);
-      });
-
       ((uiRes.data ?? []) as BuildingUtilityInvoice[]).forEach(i => {
         invoicesByMeter.set(i.building_utility_meter_id, i);
       });
 
-      /* Count all configured meters (before period filter) for empty-state detection */
-      const totalConfigured =
-        [...cfeMetersByBuilding.values()].reduce((n, arr) => n + arr.length, 0) +
-        [...utilMetersByBuilding.values()].reduce((n, arr) => n + arr.filter(meterGeneratesCharge).length, 0);
+      const totalConfigured = [...utilMetersByBuilding.values()].reduce((n, arr) => n + arr.length, 0);
       setHasAnyMeters(totalConfigured > 0);
 
-      /* Build per-building groups, filtering utility meters by period */
       const result: BuildingGroup[] = (buildingsData as { id: string; name: string }[])
         .map(b => {
-          const cfeMeters = cfeMetersByBuilding.get(b.id) ?? [];
           const utilMeters = (utilMetersByBuilding.get(b.id) ?? [])
-            .filter(m => meterGeneratesCharge(m))
             .filter(m => shouldBillThisPeriod(m, year, month));
           return {
-            building_id:   b.id,
-            building_name: b.name,
-            cfe_meters:    cfeMeters,
+            building_id:    b.id,
+            building_name:  b.name,
             utility_meters: utilMeters,
-            bills:    billsByCfeMeter,
-            invoices: invoicesByMeter,
-            units:    unitsByBuilding.get(b.id) ?? [],
+            invoices:       invoicesByMeter,
+            units:          unitsByBuilding.get(b.id) ?? [],
           };
         })
-        .filter(g => g.cfe_meters.length > 0 || g.utility_meters.length > 0);
+        .filter(g => g.utility_meters.length > 0);
 
       setGroups(result);
     } catch (err) {
@@ -397,34 +355,22 @@ export default function ServiciosPage() {
 
   /* ── Metrics ──────────────────────────────────────────────────── */
 
-  const pendingCount = groups.reduce((n, g) => {
-    const cfePend  = g.cfe_meters.filter(m => !g.bills.has(m.id)).length;
-    const utilPend = g.utility_meters.filter(m => !g.invoices.has(m.id)).length;
-    return n + cfePend + utilPend;
-  }, 0);
+  const pendingCount = groups.reduce((n, g) =>
+    n + g.utility_meters.filter(m => !g.invoices.has(m.id)).length, 0);
 
-  const registeredCount = groups.reduce((n, g) => {
-    const cfeDone  = [...g.bills.values()].filter(b => b.status !== "draft").length;
-    const utilDone = [...g.invoices.values()].filter(i => i.status !== "draft").length;
-    return n + cfeDone + utilDone;
-  }, 0);
+  const registeredCount = groups.reduce((n, g) =>
+    n + [...g.invoices.values()].filter(i => i.status !== "draft").length, 0);
 
-  const cobrosCount = groups.reduce((n, g) => {
-    const cfeCobros  = [...g.bills.values()].filter(b => b.status === "distributed" || b.status === "charged").length;
-    const utilCobros = [...g.invoices.values()].filter(i => i.status === "distributed" || i.status === "charged").length;
-    return n + cfeCobros + utilCobros;
-  }, 0);
+  const cobrosCount = groups.reduce((n, g) =>
+    n + [...g.invoices.values()].filter(i => i.status === "distributed" || i.status === "charged").length, 0);
 
-  const totalAmount = groups.reduce((sum, g) => {
-    const cfeSum  = [...g.bills.values()].reduce((s, b) => s + Number(b.total_amount), 0);
-    const utilSum = [...g.invoices.values()].reduce((s, i) => s + Number(i.total_amount), 0);
-    return sum + cfeSum + utilSum;
-  }, 0);
+  const totalAmount = groups.reduce((sum, g) =>
+    sum + [...g.invoices.values()].reduce((s, i) => s + Number(i.total_amount), 0), 0);
 
   /* ── Empty states ─────────────────────────────────────────────── */
 
-  const showNoServices    = !pageLoading && !hasAnyMeters;
-  const showNoPeriod      = !pageLoading && hasAnyMeters && groups.length === 0;
+  const showNoServices = !pageLoading && !hasAnyMeters;
+  const showNoPeriod   = !pageLoading && hasAnyMeters && groups.length === 0;
 
   return (
     <PageContainer>
@@ -441,7 +387,6 @@ export default function ServiciosPage() {
         onNext={nextPeriod}
       />
 
-      {/* ── Métricas ──────────────────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard
           label="Servicios pendientes"
@@ -469,7 +414,6 @@ export default function ServiciosPage() {
         />
       </div>
 
-      {/* ── Empty states ──────────────────────────────────────────── */}
       {showNoServices && (
         <SectionCard title="Sin servicios configurados">
           <AppEmptyState
@@ -491,16 +435,12 @@ export default function ServiciosPage() {
         </SectionCard>
       )}
 
-      {/* ── Loading ────────────────────────────────────────────────── */}
       {pageLoading && (
         <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando servicios...</p>
       )}
 
-      {/* ── Per-building cards ─────────────────────────────────────── */}
       {!pageLoading && groups.map(group => {
-        const bPend =
-          group.cfe_meters.filter(m => !group.bills.has(m.id)).length +
-          group.utility_meters.filter(m => !group.invoices.has(m.id)).length;
+        const bPend = group.utility_meters.filter(m => !group.invoices.has(m.id)).length;
 
         return (
           <div key={group.building_id} style={{ marginBottom: 20 }}>
@@ -508,38 +448,9 @@ export default function ServiciosPage() {
               title={group.building_name}
               subtitle={bPend === 0 ? "Todo facturado" : `${bPend} servicio${bPend > 1 ? "s" : ""} pendiente${bPend > 1 ? "s" : ""}`}
             >
-              {/* CFE meters */}
-              {group.cfe_meters.map(cfeMeter => {
-                const bill = group.bills.get(cfeMeter.id) ?? null;
-                const providerLine = cfeMeter.description
-                  ? `CFE · ${cfeMeter.description} · ${cfeMeter.meter_number}`
-                  : `CFE · ${cfeMeter.meter_number}`;
-                return (
-                  <ServiceRow
-                    key={cfeMeter.id}
-                    serviceType="electricity"
-                    name="Electricidad CFE"
-                    providerLine={providerLine}
-                    isbimonthly={false}
-                    invoice={bill}
-                    amount={bill ? Number(bill.total_amount) : null}
-                    onAction={() => setActiveModal({
-                      kind: "cfe",
-                      meter: cfeMeter,
-                      building: { id: group.building_id, name: group.building_name },
-                      existingBill: bill,
-                    })}
-                  />
-                );
-              })}
-
-              {/* Generic utility meters */}
               {group.utility_meters.map(meter => {
                 const invoice = group.invoices.get(meter.id) ?? null;
-                const parts = [
-                  meter.provider_name,
-                  meter.meter_number,
-                ].filter(Boolean);
+                const parts = [meter.provider_name, meter.meter_number].filter(Boolean);
                 const providerLine = parts.length > 0 ? parts.join(" · ") : null;
                 const svcName = SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type;
                 return (
@@ -549,10 +460,10 @@ export default function ServiciosPage() {
                     name={svcName}
                     providerLine={providerLine}
                     isbimonthly={meter.billing_frequency === "bimonthly"}
+                    generatesCharge={meterGeneratesCharge(meter)}
                     invoice={invoice}
                     amount={invoice ? Number(invoice.total_amount) : null}
                     onAction={() => setActiveModal({
-                      kind: "utility",
                       meter,
                       building: { id: group.building_id, name: group.building_name },
                       existingInvoice: invoice,
@@ -566,21 +477,9 @@ export default function ServiciosPage() {
         );
       })}
 
-      {/* ── Modals ───────────────────────────────────────────────────── */}
-      {activeModal?.kind === "cfe" && (
-        <ElectricityBillModal
-          cfeMeter={activeModal.meter}
-          buildingName={activeModal.building.name}
-          companyId={user.company_id}
-          period={period}
-          existingBill={activeModal.existingBill}
-          onClose={() => setActiveModal(null)}
-          onSuccess={() => { setActiveModal(null); void loadData(); }}
-        />
-      )}
-
-      {activeModal?.kind === "utility" && (
-        <BuildingUtilityInvoiceModal
+      {activeModal && (
+        <UtilityInvoiceModal
+          isOpen
           meter={activeModal.meter}
           building={activeModal.building}
           period={period}
