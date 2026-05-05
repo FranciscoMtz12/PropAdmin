@@ -120,6 +120,8 @@ export type BuildingUtilityReading = {
   deleted_at: string | null
 }
 
+export type PaymentStatus = 'unpaid' | 'paid'
+
 export type BuildingUtilityInvoice = {
   id: string
   company_id: string
@@ -133,8 +135,55 @@ export type BuildingUtilityInvoice = {
   pdf_path: string | null
   folio: string | null
   status: UtilityInvoiceStatus
+  payment_status: PaymentStatus
+  paid_at: string | null
   distributed_at: string | null
   charged_at: string | null
+  created_by: string | null
+  created_at: string
+  deleted_at: string | null
+}
+
+export type PaymentReport = {
+  id: string
+  company_id: string
+  folio: string | null
+  week_number: number | null
+  year: number | null
+  report_date: string | null
+  elaborated_by: string | null
+  signer_name: string | null
+  pdf_path: string | null
+  status: 'pending' | 'paid' | 'cancelled'
+  created_by: string | null
+  created_at: string
+  deleted_at: string | null
+}
+
+export type PaymentReportItem = {
+  id: string
+  payment_report_id: string
+  purchase_order_id: string | null
+  description: string
+  vendor_name: string | null
+  amount: number
+  payment_status: PaymentStatus
+  paid_at: string | null
+  notes: string | null
+  created_at: string
+}
+
+export type ManualPayment = {
+  id: string
+  company_id: string
+  building_id: string | null
+  title: string
+  amount: number
+  period_year: number
+  period_month: number
+  payment_status: PaymentStatus
+  paid_at: string | null
+  payment_report_id: string | null
   created_by: string | null
   created_at: string
   deleted_at: string | null
