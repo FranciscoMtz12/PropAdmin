@@ -70,11 +70,13 @@ export default function UtilityInvoiceModal({
 
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const isShared         = meter.meter_type === "shared"
-  const isIncluded       = meter.billing_mode === "included"
-  const isTenantContract = !isShared && meter.contract_holder === "tenant"
-  const isEdit           = !!existingInvoice
-  const consumptionUnit  = SERVICE_TYPE_UNIT[meter.service_type]
+  const isShared          = meter.meter_type === "shared"
+  const isIncluded        = meter.billing_mode === "included"
+  const isTenantContract  = !isShared && meter.contract_holder === "tenant"
+  const isEdit            = !!existingInvoice
+  const consumptionUnit   = SERVICE_TYPE_UNIT[meter.service_type]
+  // Required when shared+charged and a consumption unit exists (i.e. not internet)
+  const consumptionRequired = isShared && !isIncluded && consumptionUnit !== null
 
   useEffect(() => {
     if (!isOpen) return
@@ -275,6 +277,10 @@ export default function UtilityInvoiceModal({
     e.preventDefault()
     setMsg("")
     if (!totalAmount || isNaN(parseFloat(totalAmount))) { setMsg("El importe total es obligatorio."); return }
+    if (consumptionRequired && (!totalConsumption || parseFloat(totalConsumption) <= 0)) {
+      setMsg("El consumo total es requerido para calcular la distribución entre submedidores")
+      return
+    }
 
     setSaving(true)
     try {
@@ -472,7 +478,7 @@ export default function UtilityInvoiceModal({
         </AppFormField>
 
         {consumptionUnit !== null && (
-          <AppFormField label={`Consumo total (${consumptionUnit}) (opcional)`}>
+          <AppFormField label={consumptionRequired ? `Consumo total (${consumptionUnit}) *` : `Consumo total (${consumptionUnit}) (opcional)`}>
             <input
               type="number"
               value={totalConsumption}
@@ -611,7 +617,7 @@ export default function UtilityInvoiceModal({
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
           <UiButton type="button" variant="secondary" onClick={onClose} disabled={saving}>Cancelar</UiButton>
-          <UiButton type="submit" variant="primary" disabled={saving}>
+          <UiButton type="submit" variant="primary" disabled={saving || (consumptionRequired && (!totalConsumption || parseFloat(totalConsumption) <= 0))}>
             {saving ? "Guardando..." : isEdit ? "Guardar cambios" : "Registrar factura"}
           </UiButton>
         </div>
