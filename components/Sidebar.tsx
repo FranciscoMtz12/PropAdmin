@@ -23,23 +23,23 @@ import {
   CircleAlert,
   CircleX,
   CreditCard,
+  DollarSign,
   FileText,
-  Home,
   KeyRound,
+  Layers,
   LayoutDashboard,
   LogOut,
   MessageSquare,
   Moon,
   Package,
-  ReceiptText,
   Settings,
   ShoppingCart,
   Sparkles,
   Sun,
   Truck,
   User2,
+  UserCog,
   Users,
-  Wallet,
   Wrench,
   Zap,
 } from "lucide-react";
@@ -59,30 +59,97 @@ type SidebarItem = {
   disabled?: boolean;
 };
 
-const ADMIN_ITEMS: SidebarItem[] = [
-  { label: "Dashboard", href: "/dashboard", icon: Home, status: "done" },
-  { label: "Analytics", href: "/analytics", icon: BarChart2, status: "done" },
-  { label: "Calendario", href: "/calendar", icon: CalendarDays, status: "done" },
-  { label: "Pagos", href: "/payments", icon: ReceiptText, status: "done" },
-  { label: "Cobranza", href: "/collections", icon: Wallet, status: "partial" },
-  { label: "Medidores", href: "/cobranza/medidores", icon: Zap, status: "partial" },
-  { label: "Edificios", href: "/buildings", icon: Building2, status: "done" },
-  { label: "Inquilinos", href: "/tenants", icon: Users, status: "done" },
-  { label: "Proveedores", href: "/suppliers", icon: Truck, status: "done" },
-  { label: "Compras", href: "/purchases", icon: ShoppingCart, status: "done" },
-  { label: "Limpieza", href: "/cleaning", icon: Sparkles, status: "partial" },
-  { label: "Mantenimiento", href: "/maintenance", icon: Wrench, status: "done" },
-  { label: "Usuarios", href: "/users", icon: Users, status: "done" },
-  { href: '/feedback', label: 'Feedback', icon: MessageSquare, status: 'done' as const },
+type NavSection = {
+  label: string;
+  items: SidebarItem[];
+};
+
+/* ─── Admin sections ─────────────────────────────────────────────── */
+
+const ALL_ADMIN_SECTIONS: NavSection[] = [
+  {
+    label: "",
+    items: [
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, status: "done" },
+    ],
+  },
+  {
+    label: "GENERAL",
+    items: [
+      { label: "Edificios",  href: "/buildings", icon: Building2,    status: "done" },
+      { label: "Analytics",  href: "/analytics", icon: BarChart2,    status: "done" },
+      { label: "Calendario", href: "/calendar",  icon: CalendarDays, status: "done" },
+    ],
+  },
+  {
+    label: "ADMINISTRACIÓN",
+    items: [
+      { label: "Servicios",  href: "/servicios", icon: Layers,       status: "done" },
+      { label: "Pagos",      href: "/payments",  icon: CreditCard,   status: "done" },
+      { label: "Cobranza",   href: "/cobranza",  icon: DollarSign,   status: "done" },
+      { label: "Inquilinos", href: "/tenants",   icon: Users,        status: "done" },
+    ],
+  },
+  {
+    label: "COMPRAS",
+    items: [
+      { label: "Compras",      href: "/compras",   icon: ShoppingCart, status: "done" },
+      { label: "Proveedores",  href: "/suppliers", icon: Truck,        status: "done" },
+    ],
+  },
+  {
+    label: "MANTENIMIENTO",
+    items: [
+      { label: "Mantenimiento", href: "/maintenance", icon: Wrench,   status: "done" },
+      { label: "Limpieza",      href: "/cleaning",    icon: Sparkles, status: "done" },
+    ],
+  },
+  {
+    label: "SISTEMA",
+    items: [
+      { label: "Usuarios",  href: "/users",    icon: UserCog,      status: "done" },
+      { label: "Feedback",  href: "/feedback", icon: MessageSquare, status: "done" },
+    ],
+  },
 ];
 
 const TENANT_ITEMS: SidebarItem[] = [
-  { label: "Dashboard", href: "/portal/dashboard", icon: User2, status: "partial" },
-  { label: "Mi contrato", href: "/portal/contract", icon: KeyRound, status: "partial" },
-  { label: "Mis facturas / adeudos", href: "/portal/invoices", icon: FileText, status: "partial" },
-  { label: "Reportar pago", href: "/portal/report-payment", icon: CreditCard, status: "partial" },
-  { label: "Renovación de contrato", href: "/portal/renewal", icon: BadgeCheck, status: "partial" },
+  { label: "Dashboard",              href: "/portal/dashboard",       icon: User2,      status: "partial" },
+  { label: "Mi contrato",            href: "/portal/contract",        icon: KeyRound,   status: "partial" },
+  { label: "Mis facturas / adeudos", href: "/portal/invoices",        icon: FileText,   status: "partial" },
+  { label: "Reportar pago",          href: "/portal/report-payment",  icon: CreditCard, status: "partial" },
+  { label: "Renovación de contrato", href: "/portal/renewal",         icon: BadgeCheck, status: "partial" },
 ];
+
+const FIELD_ITEMS: SidebarItem[] = [
+  { href: "/campo/dashboard",  label: "Dashboard",  icon: LayoutDashboard, status: "done" },
+  { href: "/campo/tickets",    label: "Tickets",    icon: Wrench,          status: "done" },
+  { href: "/campo/limpieza",   label: "Limpieza",   icon: Sparkles,        status: "done" },
+  { href: "/campo/assets",     label: "Assets",     icon: Package,         status: "done" },
+  { href: "/campo/medidores",  label: "Medidores",  icon: Zap,             status: "done" },
+];
+
+/* ─── Role-based section filtering ──────────────────────────────── */
+
+const ROLE_ALLOWED: Record<string, string[]> = {
+  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/cobranza", "/collections", "/tenants"],
+  directivo:      ["/dashboard", "/buildings", "/analytics", "/cobranza", "/collections", "/tenants"],
+  compras:        ["/dashboard", "/compras", "/purchases", "/suppliers"],
+  mantenimiento:  ["/dashboard", "/maintenance", "/cleaning"],
+};
+
+function filterSections(sections: NavSection[], allowedPrefixes: string[]): NavSection[] {
+  return sections
+    .map(section => ({
+      ...section,
+      items: section.items.filter(
+        item => item.href && allowedPrefixes.some(p => item.href!.startsWith(p)),
+      ),
+    }))
+    .filter(section => section.items.length > 0);
+}
+
+/* ─── Helpers ────────────────────────────────────────────────────── */
 
 function getStatusVisual(status: NavStatus) {
   if (status === "done") return { icon: BadgeCheck, color: "#22C55E", label: "Listo" };
@@ -102,7 +169,102 @@ function isItemActive(pathname: string, itemHref?: string) {
   return pathname === itemHref || pathname.startsWith(`${itemHref}/`);
 }
 
-/* ─── SidebarSection ─────────────────────────────────────────────── */
+/* ─── NavItem ────────────────────────────────────────────────────── */
+
+function NavItem({
+  item,
+  pathname,
+  accentColor,
+  previewTenantId,
+}: {
+  item: SidebarItem;
+  pathname: string;
+  accentColor: string;
+  previewTenantId?: string | null;
+}) {
+  const Icon = item.icon;
+  const statusVisual = getStatusVisual(item.status);
+  const StatusIcon = statusVisual.icon;
+  const resolvedHref =
+    item.href && !item.disabled
+      ? appendTenantPreviewToHref(item.href, previewTenantId)
+      : undefined;
+  const active = isItemActive(pathname, item.href);
+
+  const commonStyle: CSSProperties = {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+    padding: "11px 14px 11px 11px",
+    borderRadius: 12,
+    textDecoration: "none",
+    background: active ? "rgba(255,255,255,0.10)" : "transparent",
+    borderLeft: active ? `3px solid ${accentColor}` : "3px solid transparent",
+    transition: "all 0.15s ease",
+    cursor: item.disabled ? "default" : "pointer",
+  };
+
+  const leftBlock = (
+    <div className="sidebar-nav-item-left" style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
+      <Icon
+        size={17}
+        color={
+          item.disabled
+            ? "rgba(255,255,255,0.35)"
+            : active
+              ? "#ffffff"
+              : "rgba(255,255,255,0.80)"
+        }
+      />
+      <span
+        className="sidebar-nav-label"
+        style={{
+          color: item.disabled
+            ? "rgba(255,255,255,0.45)"
+            : active
+              ? "#ffffff"
+              : "rgba(255,255,255,0.82)",
+          fontSize: 14,
+          fontWeight: active ? 700 : 500,
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {item.label}
+      </span>
+    </div>
+  );
+
+  const rightBlock = (
+    <div
+      className="sidebar-nav-status"
+      title={statusVisual.label}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+    >
+      <StatusIcon size={15} color={statusVisual.color} />
+    </div>
+  );
+
+  if (resolvedHref) {
+    return (
+      <Link href={resolvedHref} style={commonStyle}>
+        {leftBlock}
+        {rightBlock}
+      </Link>
+    );
+  }
+
+  return (
+    <div style={{ ...commonStyle, opacity: 0.7 }}>
+      {leftBlock}
+      {rightBlock}
+    </div>
+  );
+}
+
+/* ─── SidebarSection (portal / field) ───────────────────────────── */
 
 function SidebarSection({
   title,
@@ -119,124 +281,37 @@ function SidebarSection({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div
-        style={{
-          fontSize: 12,
-          color: "rgba(255,255,255,0.55)",
-          textTransform: "uppercase",
-          letterSpacing: "0.06em",
-          fontWeight: 800,
-          padding: "0 4px",
-        }}
-        className="sidebar-section-title"
-      >
-        {title}
-      </div>
-
+      {title && (
+        <div
+          style={{
+            fontSize: 12,
+            color: "rgba(255,255,255,0.55)",
+            textTransform: "uppercase",
+            letterSpacing: "0.06em",
+            fontWeight: 800,
+            padding: "0 4px",
+          }}
+          className="sidebar-section-title"
+        >
+          {title}
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {items.map((item) => {
-          const Icon = item.icon;
-          const statusVisual = getStatusVisual(item.status);
-          const StatusIcon = statusVisual.icon;
-          const resolvedHref =
-            item.href && !item.disabled
-              ? appendTenantPreviewToHref(item.href, previewTenantId)
-              : undefined;
-          const active = isItemActive(pathname, item.href);
-
-          /*
-            Ítem activo: borde izquierdo 3px con --accent + fondo sutil.
-            Ítem inactivo: sin borde, sin fondo.
-          */
-          const commonStyle: CSSProperties = {
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            padding: "11px 14px 11px 11px",
-            borderRadius: 12,
-            textDecoration: "none",
-            background: active ? "rgba(255,255,255,0.10)" : "transparent",
-            borderLeft: active ? `3px solid ${accentColor}` : "3px solid transparent",
-            transition: "all 0.15s ease",
-            cursor: item.disabled ? "default" : "pointer",
-          };
-
-          const leftBlock = (
-            <div className="sidebar-nav-item-left" style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
-              <Icon
-                size={17}
-                color={
-                  item.disabled
-                    ? "rgba(255,255,255,0.35)"
-                    : active
-                      ? "#ffffff"
-                      : "rgba(255,255,255,0.80)"
-                }
-              />
-              <span
-                className="sidebar-nav-label"
-                style={{
-                  color: item.disabled
-                    ? "rgba(255,255,255,0.45)"
-                    : active
-                      ? "#ffffff"
-                      : "rgba(255,255,255,0.82)",
-                  fontSize: 14,
-                  fontWeight: active ? 700 : 500,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {item.label}
-              </span>
-            </div>
-          );
-
-          const rightBlock = (
-            <div
-              className="sidebar-nav-status"
-              title={statusVisual.label}
-              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
-            >
-              <StatusIcon size={15} color={statusVisual.color} />
-            </div>
-          );
-
-          if (resolvedHref) {
-            return (
-              <Link key={`${title}-${item.label}`} href={resolvedHref} style={commonStyle}>
-                {leftBlock}
-                {rightBlock}
-              </Link>
-            );
-          }
-
-          return (
-            <div
-              key={`${title}-${item.label}`}
-              style={{ ...commonStyle, opacity: 0.7 }}
-            >
-              {leftBlock}
-              {rightBlock}
-            </div>
-          );
-        })}
+        {items.map(item => (
+          <NavItem
+            key={item.href ?? item.label}
+            item={item}
+            pathname={pathname}
+            accentColor={accentColor}
+            previewTenantId={previewTenantId}
+          />
+        ))}
       </div>
     </div>
   );
 }
 
 /* ─── Sidebar principal ──────────────────────────────────────────── */
-
-const FIELD_ITEMS: SidebarItem[] = [
-  { href: "/campo/dashboard",  label: "Dashboard",  icon: LayoutDashboard, status: "done" },
-  { href: "/campo/tickets",    label: "Tickets",    icon: Wrench,          status: "done" },
-  { href: "/campo/limpieza",   label: "Limpieza",   icon: Sparkles,        status: "done" },
-  { href: "/campo/assets",     label: "Assets",     icon: Package,         status: "done" },
-  { href: "/campo/medidores",  label: "Medidores",  icon: Zap,             status: "done" },
-];
 
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -257,23 +332,10 @@ export default function Sidebar() {
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
   const isField = user?.role === "field";
 
-  const activeAdminItems = (() => {
-    if (isSuperAdmin) return ADMIN_ITEMS;
-    if (isField) return FIELD_ITEMS;
-    if (user?.role === "compras") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/purchases", "/suppliers"].some(p => i.href?.startsWith(p))
-    );
-    if (user?.role === "mantenimiento") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/maintenance", "/cleaning"].some(p => i.href?.startsWith(p))
-    );
-    if (user?.role === "administracion") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/analytics", "/payments", "/collections", "/cobranza/medidores", "/buildings", "/tenants", "/calendar"].some(p => i.href?.startsWith(p))
-    );
-    if (user?.role === "directivo") return ADMIN_ITEMS.filter(i =>
-      ["/dashboard", "/analytics", "/payments", "/collections", "/buildings", "/calendar"].some(p => i.href?.startsWith(p))
-    );
-    // Fallback — oculta /users para cualquier rol que no sea superadmin
-    return ADMIN_ITEMS.filter(i => i.href !== "/users" && i.href !== "/feedback");
+  const activeSections: NavSection[] = (() => {
+    if (isSuperAdmin) return ALL_ADMIN_SECTIONS;
+    const allowed = ROLE_ALLOWED[user?.role ?? ""] ?? ["/dashboard"];
+    return filterSections(ALL_ADMIN_SECTIONS, allowed);
   })();
 
   if (isHiddenRoute) return null;
@@ -292,14 +354,7 @@ export default function Sidebar() {
   const sessionName = user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
   const sessionEmail = user?.email || "No autenticado";
 
-  /* Fondo del sidebar: siempre oscuro, más profundo en dark mode */
   const sidebarBg = isDark ? "#0f1623" : "#1e2a3a";
-
-  /*
-    Logo en el sidebar: el fondo siempre es oscuro, por lo que siempre
-    necesitamos la versión clara del logo (logo_dark_url).
-    Fallback: logo_url → iniciales con fondo --accent.
-  */
   const activeLogo = logoDarkUrl ?? logoUrl;
   const logoInitials = initials(shortName);
 
@@ -318,7 +373,7 @@ export default function Sidebar() {
         }}
       />
     )}
-    {/* Botón hamburger móvil — visible solo en @media (max-width: 1024px) vía CSS */}
+    {/* Botón hamburger móvil */}
     <button
       type="button"
       onClick={() => setMobileOpen((o) => !o)}
@@ -377,14 +432,7 @@ export default function Sidebar() {
       }}
     >
       {/* ── Barra de acento superior (3px) ──────────────────────── */}
-      <div
-        style={{
-          height: 3,
-          background: accentColor,
-          flexShrink: 0,
-          transition: "background 0.3s",
-        }}
-      />
+      <div style={{ height: 3, background: accentColor, flexShrink: 0, transition: "background 0.3s" }} />
 
       {/* ── Área scrollable ──────────────────────────────────────── */}
       <div
@@ -400,73 +448,31 @@ export default function Sidebar() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* ── Área de logo (altura fija 56px) ─────────────────── */}
-          <div
-            style={{
-              height: 56,
-              display: "flex",
-              alignItems: "center",
-              gap: 12,
-              paddingTop: 4,
-            }}
-          >
+          <div style={{ height: 56, display: "flex", alignItems: "center", gap: 12, paddingTop: 4 }}>
             {activeLogo ? (
-              /* Logo de la empresa — versión clara (dark url) para fondo oscuro del sidebar */
               <img
                 src={activeLogo}
                 alt={shortName}
-                style={{
-                  height: 36,
-                  width: "auto",
-                  objectFit: "contain",
-                  flexShrink: 0,
-                }}
+                style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
               />
             ) : (
-              /* Fallback: iniciales con fondo de acento */
               <div
                 style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 10,
+                  width: 38, height: 38, borderRadius: 10,
                   background: accentColor,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  fontWeight: 800,
-                  fontSize: 14,
-                  color: "#ffffff",
-                  letterSpacing: "0.04em",
-                  flexShrink: 0,
-                  transition: "background 0.3s",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 800, fontSize: 14, color: "#ffffff",
+                  letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
                 }}
               >
                 {logoInitials}
               </div>
             )}
-
             <div className="sidebar-logo-text" style={{ minWidth: 0 }}>
-              <div
-                style={{
-                  fontSize: 15,
-                  fontWeight: 800,
-                  color: "#ffffff",
-                  letterSpacing: "-0.01em",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <div style={{ fontSize: 15, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {shortName}
               </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  color: "rgba(255,255,255,0.52)",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.52)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {sidebarTitle}
               </div>
             </div>
@@ -475,56 +481,14 @@ export default function Sidebar() {
           {/* Separador debajo del logo */}
           <div style={{ height: 1, background: "rgba(255,255,255,0.08)", margin: "-10px 0 0" }} />
 
-          {/* ── Secciones de navegación ──────────────────────────── */}
-          {isSuperAdmin ? (
-            <>
-              <SidebarSection
-                title="Administración"
-                items={activeAdminItems}
-                pathname={pathname}
-                accentColor={accentColor}
-              />
-              <div style={{ height: 1, background: "rgba(255,255,255,0.08)" }} />
-              <SidebarSection
-                title="Vista portal"
-                items={TENANT_ITEMS}
-                pathname={pathname}
-                previewTenantId={previewTenantId}
-                accentColor={accentColor}
-              />
-              {previewTenantId ? (
-                <div
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.75)",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Vista previa activa:
-                  <div style={{ marginTop: 4, fontWeight: 700, color: "#FFFFFF", wordBreak: "break-word" }}>
-                    {previewTenantId}
-                  </div>
-                </div>
-              ) : (
-                <div
-                  style={{
-                    padding: "10px 12px",
-                    borderRadius: 12,
-                    background: "rgba(255,255,255,0.06)",
-                    border: "1px solid rgba(255,255,255,0.10)",
-                    fontSize: 12,
-                    color: "rgba(255,255,255,0.68)",
-                    lineHeight: 1.5,
-                  }}
-                >
-                  Entra al portal y elige un tenant para vista previa sin perder el acceso al sistema.
-                </div>
-              )}
-            </>
+          {/* ── Navegación ───────────────────────────────────────── */}
+          {isField ? (
+            <SidebarSection
+              title=""
+              items={FIELD_ITEMS}
+              pathname={pathname}
+              accentColor={accentColor}
+            />
           ) : isPortalPath ? (
             <SidebarSection
               title="Portal"
@@ -534,12 +498,37 @@ export default function Sidebar() {
               accentColor={accentColor}
             />
           ) : (
-            <SidebarSection
-              title="Administración"
-              items={activeAdminItems}
-              pathname={pathname}
-              accentColor={accentColor}
-            />
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {activeSections.map((section, idx) => (
+                <div key={idx}>
+                  {section.label && isSuperAdmin && (
+                    <div style={{ padding: "12px 4px 4px" }}>
+                      <span
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          letterSpacing: "0.10em",
+                          color: "rgba(255,255,255,0.38)",
+                          textTransform: "uppercase",
+                        }}
+                      >
+                        {section.label}
+                      </span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingBottom: section.label ? 4 : 0 }}>
+                    {section.items.map(item => (
+                      <NavItem
+                        key={item.href ?? item.label}
+                        item={item}
+                        pathname={pathname}
+                        accentColor={accentColor}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
           )}
         </div>
 
@@ -556,23 +545,11 @@ export default function Sidebar() {
         >
           {/* Datos de sesión */}
           <div className="sidebar-user-info" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span
-              style={{
-                fontSize: 11,
-                color: "rgba(255,255,255,0.50)",
-                textTransform: "uppercase",
-                letterSpacing: "0.04em",
-                fontWeight: 700,
-              }}
-            >
+            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>
               Sesión actual
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>
-              {sessionName}
-            </span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.58)" }}>
-              {sessionEmail}
-            </span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{sessionName}</span>
+            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.58)" }}>{sessionEmail}</span>
             {isSuperAdmin && (
               <span
                 style={{
@@ -599,18 +576,10 @@ export default function Sidebar() {
             type="button"
             onClick={() => setIsSettingsOpen(true)}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.78)",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
+              display: "inline-flex", alignItems: "center", gap: 10, width: "100%",
+              padding: "10px 12px", borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.78)", fontWeight: 600, fontSize: 13, cursor: "pointer",
               transition: "background 0.15s",
             }}
           >
@@ -624,18 +593,10 @@ export default function Sidebar() {
             onClick={toggleDark}
             title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 10,
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.78)",
-              fontWeight: 600,
-              fontSize: 13,
-              cursor: "pointer",
+              display: "inline-flex", alignItems: "center", gap: 10, width: "100%",
+              padding: "10px 12px", borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+              color: "rgba(255,255,255,0.78)", fontWeight: 600, fontSize: 13, cursor: "pointer",
               transition: "background 0.15s",
             }}
           >
@@ -648,19 +609,10 @@ export default function Sidebar() {
             type="button"
             onClick={handleLogout}
             style={{
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: 10,
-              width: "100%",
-              padding: "10px 12px",
-              borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)",
-              background: "rgba(255,255,255,0.05)",
-              color: "#FFFFFF",
-              fontWeight: 700,
-              fontSize: 13,
-              cursor: "pointer",
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
+              padding: "10px 12px", borderRadius: 12,
+              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+              color: "#FFFFFF", fontWeight: 700, fontSize: 13, cursor: "pointer",
             }}
           >
             <LogOut size={15} />
