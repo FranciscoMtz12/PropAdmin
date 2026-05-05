@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Info, User } from "lucide-react";
+import { Building2, Calendar, CalendarDays, Info, User } from "lucide-react";
 import Modal from "@/components/Modal";
 import AppFormField from "@/components/AppFormField";
 import AppSelect from "@/components/AppSelect";
@@ -9,7 +9,7 @@ import UiButton from "@/components/UiButton";
 import { supabase } from "@/lib/supabaseClient";
 import { INPUT_STYLE, errorBannerStyle } from "@/lib/pageStyles";
 import { sortByNatural } from "@/lib/sort-utils";
-import type { BuildingUtilityMeter, UtilityServiceType, UtilityMeterType } from "@/lib/types";
+import type { BuildingUtilityMeter, UtilityServiceType, UtilityMeterType, BillingFrequency } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
 
 type Props = {
@@ -54,8 +54,9 @@ export default function BuildingUtilityMeterModal({
   const [description, setDescription]       = useState(existingMeter?.description ?? "");
   const [meterType, setMeterType]           = useState<UtilityMeterType | "">(existingMeter?.meter_type ?? "");
   const [billingMode, setBillingMode]         = useState<'charged' | 'included'>(existingMeter?.billing_mode ?? 'charged');
-  const [contractHolder, setContractHolder]   = useState<'tenant' | 'company'>(existingMeter?.contract_holder ?? 'company');
-  const [unitId, setUnitId]                   = useState(existingMeter?.unit_id ?? "");
+  const [contractHolder, setContractHolder]     = useState<'tenant' | 'company'>(existingMeter?.contract_holder ?? 'company');
+  const [billingFrequency, setBillingFrequency] = useState<BillingFrequency>(existingMeter?.billing_frequency ?? 'monthly');
+  const [unitId, setUnitId]                     = useState(existingMeter?.unit_id ?? "");
   const [saving, setSaving]                 = useState(false);
   const [msg, setMsg]                       = useState("");
 
@@ -79,8 +80,9 @@ export default function BuildingUtilityMeterModal({
       building_id:     buildingId,
       service_type:    serviceType,
       meter_type:      meterType as UtilityMeterType,
-      billing_mode:    meterType === "dedicated" ? "charged" : billingMode,
-      contract_holder: meterType === "shared" ? "company" : contractHolder,
+      billing_mode:      meterType === "dedicated" ? "charged" : billingMode,
+      contract_holder:   meterType === "shared" ? "company" : contractHolder,
+      billing_frequency: billingFrequency,
       unit_id:         meterType === "dedicated" ? unitId : null,
       provider_name:   providerName.trim() || null,
       meter_number:    meterNumber.trim() || null,
@@ -378,6 +380,62 @@ export default function BuildingUtilityMeterModal({
               </div>
             )}
           </>
+        )}
+
+        {/* Frecuencia — solo cuando el servicio genera cobro */}
+        {((meterType === "dedicated" && contractHolder === "company") ||
+          (meterType === "shared" && billingMode === "charged")) && (
+          <AppFormField label="Frecuencia de cobro">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+              <label
+                style={{
+                  display: "flex", flexDirection: "column", gap: 6,
+                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  border: `2px solid ${billingFrequency === "monthly" ? "#8B2252" : "var(--border-default)"}`,
+                  background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="radio"
+                    value="monthly"
+                    checked={billingFrequency === "monthly"}
+                    onChange={() => setBillingFrequency("monthly")}
+                    style={{ accentColor: "#8B2252" }}
+                  />
+                  <CalendarDays size={14} />
+                  <strong style={{ fontSize: 14 }}>Mensual</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  Se cobra cada mes
+                </p>
+              </label>
+
+              <label
+                style={{
+                  display: "flex", flexDirection: "column", gap: 6,
+                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  border: `2px solid ${billingFrequency === "bimonthly" ? "#8B2252" : "var(--border-default)"}`,
+                  background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input
+                    type="radio"
+                    value="bimonthly"
+                    checked={billingFrequency === "bimonthly"}
+                    onChange={() => setBillingFrequency("bimonthly")}
+                    style={{ accentColor: "#8B2252" }}
+                  />
+                  <Calendar size={14} />
+                  <strong style={{ fontSize: 14 }}>Bimestral</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  Se cobra cada dos meses (ej. CFE)
+                </p>
+              </label>
+            </div>
+          </AppFormField>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>

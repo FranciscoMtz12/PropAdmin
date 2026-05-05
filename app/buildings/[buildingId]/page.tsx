@@ -486,6 +486,7 @@ export default function BuildingDetailPage() {
 
   /* Servicios activos (para card en Resumen) */
   const [utilityMeters, setUtilityMeters] = useState<UtilityMeterForOverview[]>([]);
+  const [hasCfeMeters, setHasCfeMeters]   = useState(false);
 
   /* Formulario de asset */
   const [assetType, setAssetType]   = useState("ELEVATOR");
@@ -609,8 +610,8 @@ export default function BuildingDetailPage() {
       setLeasesForTrend([]);
     }
 
-    // Unidades del edificio para BuildingServicesTab
-    const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
+    // Unidades del edificio para BuildingServicesTab + servicios para Resumen
+    const [{ data: allUnits }, { data: utilMetersData }, { data: cfeMData }] = await Promise.all([
       supabase
         .from("units")
         .select("id, unit_number, display_code")
@@ -623,9 +624,16 @@ export default function BuildingDetailPage() {
         .eq("building_id", buildingId)
         .eq("active", true)
         .is("deleted_at", null),
+      supabase
+        .from("cfe_meters")
+        .select("id")
+        .eq("building_id", buildingId)
+        .is("deleted_at", null)
+        .limit(1),
     ]);
     setBuildingUnits((allUnits || []) as UnitRow[]);
     setUtilityMeters((utilMetersData || []) as UtilityMeterForOverview[]);
+    setHasCfeMeters(!!cfeMData?.length);
 
     setLoadingBuilding(false);
   }
@@ -1152,7 +1160,7 @@ export default function BuildingDetailPage() {
 
             {/* Servicios activos */}
             <SectionCard title="Servicios activos" subtitle="Gestionado desde el tab Servicios." icon={<Wrench size={18} />}>
-              {utilityMeters.length === 0 ? (
+              {!hasCfeMeters && utilityMeters.length === 0 ? (
                 <div>
                   <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>
                     Sin servicios configurados.{" "}
@@ -1167,6 +1175,22 @@ export default function BuildingDetailPage() {
                 </div>
               ) : (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {hasCfeMeters && (
+                    <div
+                      style={{
+                        display: "inline-flex", alignItems: "center", gap: 6,
+                        padding: "8px 12px", borderRadius: 999,
+                        background: "var(--bg-page)",
+                        border: "1px solid var(--border-default)",
+                        fontSize: 13,
+                      }}
+                    >
+                      <Zap size={14} />
+                      <span style={{ fontWeight: 600 }}>Electricidad</span>
+                      <span style={{ color: "var(--text-muted)" }}>·</span>
+                      <span style={{ fontSize: 12, color: "var(--badge-text-green)" }}>CFE</span>
+                    </div>
+                  )}
                   {utilityMeters.map((m) => (
                     <div
                       key={m.id}

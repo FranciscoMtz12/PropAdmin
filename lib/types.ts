@@ -33,9 +33,15 @@ export type PurchaseReturn = {
 
 // ── Servicios del edificio (genérico) ────────────────────────────────
 
-export type UtilityServiceType = 'electricity' | 'gas' | 'water' | 'internet' | 'other'
-export type UtilityMeterType   = 'dedicated' | 'shared'
+export type UtilityServiceType  = 'electricity' | 'gas' | 'water' | 'internet' | 'other'
+export type UtilityMeterType    = 'dedicated' | 'shared'
 export type UtilityInvoiceStatus = 'draft' | 'distributed' | 'charged'
+export type BillingFrequency    = 'monthly' | 'bimonthly'
+
+export const BILLING_FREQUENCY_LABEL: Record<BillingFrequency, string> = {
+  monthly:   'Mensual',
+  bimonthly: 'Bimestral',
+}
 
 export const SERVICE_TYPE_LABEL: Record<UtilityServiceType, string> = {
   electricity: 'Electricidad',
@@ -72,6 +78,7 @@ export type BuildingUtilityMeter = {
   description: string | null
   billing_mode: 'charged' | 'included'
   contract_holder: 'tenant' | 'company'
+  billing_frequency: BillingFrequency
   active: boolean
   created_at: string
   deleted_at: string | null

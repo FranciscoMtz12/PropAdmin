@@ -17,7 +17,7 @@ import CFEMeterModal from "@/components/CFEMeterModal"
 import InternalMetersModal from "@/components/InternalMetersModal"
 import { sortByNatural } from "@/lib/sort-utils"
 import type { BuildingUtilityMeter, BuildingUtilitySubMeter, UtilityServiceType } from "@/lib/types"
-import { SERVICE_TYPE_LABEL, meterGeneratesCharge } from "@/lib/types"
+import { SERVICE_TYPE_LABEL, BILLING_FREQUENCY_LABEL, meterGeneratesCharge } from "@/lib/types"
 
 type Props = {
   buildingId: string
@@ -455,6 +455,11 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
                               ? <AppBadge variant="gray">Incluido en renta</AppBadge>
                               : <AppBadge variant="blue">Se cobra</AppBadge>}
                           </>
+                        )}
+                        {meterGeneratesCharge(meter) && (
+                          <AppBadge variant="gray">
+                            {BILLING_FREQUENCY_LABEL[meter.billing_frequency]}
+                          </AppBadge>
                         )}
                       </div>
 

@@ -450,7 +450,11 @@ export default function BuildingUtilityInvoiceModal({
           <MapPin size={13} />{building.name}
         </span>
         <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
-          {meter.provider_name || "Sin proveedor"} · {periodLabel}
+          {[
+            meter.provider_name || "Sin proveedor",
+            meter.billing_frequency === "bimonthly" ? "Bimestral" : null,
+            periodLabel,
+          ].filter(Boolean).join(" · ")}
         </span>
       </div>
 
