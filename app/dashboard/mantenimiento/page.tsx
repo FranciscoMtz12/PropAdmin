@@ -31,23 +31,15 @@ function daysOpen(isoString: string) {
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
-type WorkOrderRow = {
+type TicketRow = {
   id: string;
-  work_order_number: string | null;
-  notes: string | null;
+  ticket_number: string | null;
+  title: string | null;
   priority: string | null;
   status: string;
   created_at: string;
   building_id: string | null;
-};
-
-type ActivityRow = {
-  id: string;
-  title: string | null;
-  log_type: string | null;
-  created_at: string;
-  building_id: string | null;
-  building_name: string | null;
+  building_name?: string | null;
 };
 
 /* ─── Page ───────────────────────────────────────────────────────── */
@@ -64,11 +56,11 @@ export default function DashboardMantenimientoPage() {
   }, [user, loading, router]);
 
   const [pageLoading, setPageLoading]     = useState(true);
-  const [openOrders, setOpenOrders]       = useState<(WorkOrderRow & { building_name: string | null })[]>([]);
+  const [openTickets, setOpenTickets]     = useState<TicketRow[]>([]);
   const [resolvedCount, setResolvedCount] = useState(0);
   const [cleaningToday, setCleaningToday] = useState(0);
   const [materialsPending, setMaterialsPending] = useState(0);
-  const [recentActivity, setRecentActivity] = useState<ActivityRow[]>([]);
+  const [recentActivity, setRecentActivity] = useState<TicketRow[]>([]);
 
   useEffect(() => {
     if (user?.company_id) void loadData();
@@ -92,23 +84,23 @@ export default function DashboardMantenimientoPage() {
         activityRes,
         buildingsRes,
       ] = await Promise.all([
-        /* Open work orders */
+        /* Open tickets — maintenance_logs not completed/cancelled/resolved */
         supabase
-          .from("work_orders")
-          .select("id, work_order_number, notes, priority, status, created_at, building_id")
+          .from("maintenance_logs")
+          .select("id, ticket_number, title, priority, status, created_at, building_id")
           .eq("company_id", cid)
           .is("deleted_at", null)
-          .not("status", "in", '("completed","cancelled")')
+          .not("status", "in", '("completed","cancelled","resolved")')
           .order("created_at", { ascending: true }),
 
         /* Resolved this month */
         supabase
-          .from("work_orders")
+          .from("maintenance_logs")
           .select("id", { count: "exact", head: true })
           .eq("company_id", cid)
           .is("deleted_at", null)
-          .eq("status", "completed")
-          .gte("completed_at", monthStart),
+          .in("status", ["completed","resolved"])
+          .gte("resolved_at", monthStart),
 
         /* Cleaning today — buildings */
         supabase
@@ -124,7 +116,7 @@ export default function DashboardMantenimientoPage() {
           .eq("company_id", cid)
           .eq("day_of_week", todayDow),
 
-        /* Pending purchase orders for the company */
+        /* Pending purchase orders */
         supabase
           .from("purchase_orders")
           .select("id", { count: "exact", head: true })
@@ -132,10 +124,10 @@ export default function DashboardMantenimientoPage() {
           .is("deleted_at", null)
           .in("status", ["pending","sent","partial"]),
 
-        /* Recent maintenance_logs activity */
+        /* Recent activity feed */
         supabase
           .from("maintenance_logs")
-          .select("id, title, log_type, created_at, building_id")
+          .select("id, ticket_number, title, priority, status, created_at, building_id")
           .eq("company_id", cid)
           .is("deleted_at", null)
           .order("created_at", { ascending: false })
@@ -157,21 +149,14 @@ export default function DashboardMantenimientoPage() {
         buildingMap.set(b.id, b.name);
       });
 
-      const orders = ((openRes.data as WorkOrderRow[]) ?? []).map(r => ({
-        ...r,
-        building_name: r.building_id ? (buildingMap.get(r.building_id) ?? null) : null,
-      }));
+      const withBuilding = (rows: TicketRow[]) =>
+        rows.map(r => ({ ...r, building_name: r.building_id ? (buildingMap.get(r.building_id) ?? null) : null }));
 
-      const activity = ((activityRes.data as Omit<ActivityRow, "building_name">[]) ?? []).map(r => ({
-        ...r,
-        building_name: r.building_id ? (buildingMap.get(r.building_id) ?? null) : null,
-      }));
-
-      setOpenOrders(orders);
+      setOpenTickets(withBuilding((openRes.data as TicketRow[]) ?? []));
       setResolvedCount(resolvedRes.count ?? 0);
       setCleaningToday((buildingSchedRes.count ?? 0) + (unitSchedRes.count ?? 0));
       setMaterialsPending(materialsRes.count ?? 0);
-      setRecentActivity(activity);
+      setRecentActivity(withBuilding((activityRes.data as TicketRow[]) ?? []));
 
     } catch (err) {
       console.error("Dashboard mantenimiento error", err);
@@ -181,16 +166,16 @@ export default function DashboardMantenimientoPage() {
 
   if (loading || !user) return null;
 
-  /* Priority sort: urgent=1 high=2 medium=3 low=4 */
-  const PRIORITY_ORDER: Record<string, number> = { urgent: 1, high: 2, medium: 3, low: 4 };
-  const sortedOpen = [...openOrders].sort((a, b) =>
-    (PRIORITY_ORDER[a.priority ?? "low"] ?? 4) - (PRIORITY_ORDER[b.priority ?? "low"] ?? 4)
+  /* Priority sort: urgent=1 high=2 medium=3 normal/low=4 */
+  const PRIORITY_ORDER: Record<string, number> = { urgent: 1, high: 2, medium: 3, normal: 4, low: 4 };
+  const sortedOpen = [...openTickets].sort((a, b) =>
+    (PRIORITY_ORDER[a.priority ?? "normal"] ?? 4) - (PRIORITY_ORDER[b.priority ?? "normal"] ?? 4)
   );
   const openTable = sortedOpen.slice(0, 8);
 
   const ticketsVariant = pageLoading ? "neutral"
-    : openOrders.length > 5 ? "red"
-    : openOrders.length > 0 ? "amber"
+    : openTickets.length > 5 ? "red"
+    : openTickets.length > 0 ? "amber"
     : "green";
 
   return (
@@ -205,7 +190,7 @@ export default function DashboardMantenimientoPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard
           label="Tickets abiertos"
-          value={pageLoading ? "…" : openOrders.length}
+          value={pageLoading ? "…" : openTickets.length}
           icon={<AlertTriangle size={18} />}
           variant={ticketsVariant}
         />
@@ -253,20 +238,21 @@ export default function DashboardMantenimientoPage() {
                       urgent: { label: "Urgente", variant: "red" },
                       high:   { label: "Alta",    variant: "amber" },
                       medium: { label: "Media",   variant: "amber" },
+                      normal: { label: "Normal",  variant: "gray" },
                       low:    { label: "Baja",    variant: "gray" },
                     };
-                    const p = pMap[row.priority ?? "low"] ?? pMap.low;
-                    const notesPreview = row.notes
-                      ? row.notes.length > 48 ? row.notes.slice(0, 48) + "…" : row.notes
+                    const p = pMap[row.priority ?? "normal"] ?? pMap.normal;
+                    const titlePreview = row.title
+                      ? row.title.length > 48 ? row.title.slice(0, 48) + "…" : row.title
                       : null;
                     return (
                       <div>
                         <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
-                          {row.work_order_number ?? "Sin número"}
+                          {row.ticket_number ?? "Sin número"}
                         </span>
-                        {notesPreview && (
+                        {titlePreview && (
                           <span style={{ fontSize: 11, color: "var(--text-muted)", display: "block" }}>
-                            {notesPreview}
+                            {titlePreview}
                           </span>
                         )}
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
@@ -316,7 +302,7 @@ export default function DashboardMantenimientoPage() {
                   render: (row) => (
                     <div>
                       <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
-                        {row.title ?? row.log_type ?? "Sin título"}
+                        {row.title ?? row.ticket_number ?? "Sin título"}
                       </span>
                       <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
                         {row.building_name ?? "Sin edificio"}
