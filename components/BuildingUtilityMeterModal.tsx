@@ -37,6 +37,24 @@ const PROVIDER_PLACEHOLDER: Record<UtilityServiceType, string> = {
   other:       "Nombre del proveedor",
 };
 
+const MONTH_OPTIONS = [
+  { value: 1,  label: "Enero" },
+  { value: 2,  label: "Febrero" },
+  { value: 3,  label: "Marzo" },
+  { value: 4,  label: "Abril" },
+  { value: 5,  label: "Mayo" },
+  { value: 6,  label: "Junio" },
+  { value: 7,  label: "Julio" },
+  { value: 8,  label: "Agosto" },
+  { value: 9,  label: "Septiembre" },
+  { value: 10, label: "Octubre" },
+  { value: 11, label: "Noviembre" },
+  { value: 12, label: "Diciembre" },
+];
+
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = [CURRENT_YEAR - 1, CURRENT_YEAR, CURRENT_YEAR + 1];
+
 export default function BuildingUtilityMeterModal({
   buildingId,
   companyId,
@@ -56,6 +74,8 @@ export default function BuildingUtilityMeterModal({
   const [billingMode, setBillingMode]         = useState<'charged' | 'included'>(existingMeter?.billing_mode ?? 'charged');
   const [contractHolder, setContractHolder]     = useState<'tenant' | 'company'>(existingMeter?.contract_holder ?? 'company');
   const [billingFrequency, setBillingFrequency] = useState<BillingFrequency>(existingMeter?.billing_frequency ?? 'monthly');
+  const [cycleStartMonth, setCycleStartMonth]   = useState<number | "">(existingMeter?.cycle_start_month ?? "");
+  const [cycleStartYear, setCycleStartYear]     = useState<number | "">(existingMeter?.cycle_start_year ?? "");
   const [unitId, setUnitId]                     = useState(existingMeter?.unit_id ?? "");
   const [saving, setSaving]                 = useState(false);
   const [msg, setMsg]                       = useState("");
@@ -82,7 +102,9 @@ export default function BuildingUtilityMeterModal({
       meter_type:      meterType as UtilityMeterType,
       billing_mode:      meterType === "dedicated" ? "charged" : billingMode,
       contract_holder:   meterType === "shared" ? "company" : contractHolder,
-      billing_frequency: billingFrequency,
+      billing_frequency:  billingFrequency,
+      cycle_start_month:  billingFrequency === "bimonthly" ? (cycleStartMonth || null) : null,
+      cycle_start_year:   billingFrequency === "bimonthly" ? (cycleStartYear || null) : null,
       unit_id:         meterType === "dedicated" ? unitId : null,
       provider_name:   providerName.trim() || null,
       meter_number:    meterNumber.trim() || null,
@@ -385,57 +407,102 @@ export default function BuildingUtilityMeterModal({
         {/* Frecuencia — solo cuando el servicio genera cobro */}
         {((meterType === "dedicated" && contractHolder === "company") ||
           (meterType === "shared" && billingMode === "charged")) && (
-          <AppFormField label="Frecuencia de cobro">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
-              <label
-                style={{
-                  display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
-                  border: `2px solid ${billingFrequency === "monthly" ? "#8B2252" : "var(--border-default)"}`,
-                  background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input
-                    type="radio"
-                    value="monthly"
-                    checked={billingFrequency === "monthly"}
-                    onChange={() => setBillingFrequency("monthly")}
-                    style={{ accentColor: "#8B2252" }}
-                  />
-                  <CalendarDays size={14} />
-                  <strong style={{ fontSize: 14 }}>Mensual</strong>
-                </div>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
-                  Se cobra cada mes
-                </p>
-              </label>
+          <>
+            <AppFormField label="Frecuencia de cobro">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+                <label
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 6,
+                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    border: `2px solid ${billingFrequency === "monthly" ? "#8B2252" : "var(--border-default)"}`,
+                    background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="radio"
+                      value="monthly"
+                      checked={billingFrequency === "monthly"}
+                      onChange={() => setBillingFrequency("monthly")}
+                      style={{ accentColor: "#8B2252" }}
+                    />
+                    <CalendarDays size={14} />
+                    <strong style={{ fontSize: 14 }}>Mensual</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    Se cobra cada mes
+                  </p>
+                </label>
 
-              <label
-                style={{
-                  display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
-                  border: `2px solid ${billingFrequency === "bimonthly" ? "#8B2252" : "var(--border-default)"}`,
-                  background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input
-                    type="radio"
-                    value="bimonthly"
-                    checked={billingFrequency === "bimonthly"}
-                    onChange={() => setBillingFrequency("bimonthly")}
-                    style={{ accentColor: "#8B2252" }}
-                  />
-                  <Calendar size={14} />
-                  <strong style={{ fontSize: 14 }}>Bimestral</strong>
+                <label
+                  style={{
+                    display: "flex", flexDirection: "column", gap: 6,
+                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    border: `2px solid ${billingFrequency === "bimonthly" ? "#8B2252" : "var(--border-default)"}`,
+                    background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <input
+                      type="radio"
+                      value="bimonthly"
+                      checked={billingFrequency === "bimonthly"}
+                      onChange={() => setBillingFrequency("bimonthly")}
+                      style={{ accentColor: "#8B2252" }}
+                    />
+                    <Calendar size={14} />
+                    <strong style={{ fontSize: 14 }}>Bimestral</strong>
+                  </div>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    Se cobra cada dos meses (ej. CFE)
+                  </p>
+                </label>
+              </div>
+            </AppFormField>
+
+            {billingFrequency === "bimonthly" && (
+              <>
+                <AppFormField label="¿En qué mes inicia el ciclo de facturación?">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <AppSelect
+                      value={cycleStartMonth === "" ? "" : String(cycleStartMonth)}
+                      onChange={e => setCycleStartMonth(e.target.value === "" ? "" : Number(e.target.value))}
+                    >
+                      <option value="">Mes</option>
+                      {MONTH_OPTIONS.map(m => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                    </AppSelect>
+                    <AppSelect
+                      value={cycleStartYear === "" ? "" : String(cycleStartYear)}
+                      onChange={e => setCycleStartYear(e.target.value === "" ? "" : Number(e.target.value))}
+                    >
+                      <option value="">Año</option>
+                      {YEAR_OPTIONS.map(y => (
+                        <option key={y} value={y}>{y}</option>
+                      ))}
+                    </AppSelect>
+                  </div>
+                </AppFormField>
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    background: "#eff6ff",
+                    borderRadius: 10,
+                    marginBottom: 16,
+                    fontSize: 13,
+                    color: "#1d4ed8",
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 8,
+                  }}
+                >
+                  <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
+                  El mes de inicio determina en qué meses del año se genera la factura. El sistema calcula automáticamente los meses pares o impares del ciclo.
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
-                  Se cobra cada dos meses (ej. CFE)
-                </p>
-              </label>
-            </div>
-          </AppFormField>
+              </>
+            )}
+          </>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
