@@ -75,8 +75,8 @@ export default function UtilityInvoiceModal({
   const isTenantContract  = !isShared && meter.contract_holder === "tenant"
   const isEdit            = !!existingInvoice
   const consumptionUnit   = SERVICE_TYPE_UNIT[meter.service_type]
-  // Required when shared+charged and a consumption unit exists (i.e. not internet)
-  const consumptionRequired = isShared && !isIncluded && consumptionUnit !== null
+  // Required for all service types that have a consumption unit (i.e. not internet)
+  const consumptionRequired = consumptionUnit !== null
 
   useEffect(() => {
     if (!isOpen) return
