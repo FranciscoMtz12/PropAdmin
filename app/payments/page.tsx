@@ -182,6 +182,13 @@ const CARD: React.CSSProperties = {
   border: "1px solid var(--border-default)",
   borderRadius: 16,
   overflow: "hidden",
+  boxShadow: "var(--shadow-card)",
+}
+
+/* Row style — used for individual items inside CARD (no own full border) */
+const ITEM_ROW: React.CSSProperties = {
+  borderBottom: "1px solid var(--border-default)",
+  overflow: "hidden",
 }
 
 const CHEVRON_WRAP: React.CSSProperties = {
@@ -652,7 +659,7 @@ export default function PaymentsPage() {
                       const sub        = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
 
                       return (
-                        <div key={inv.id} style={{ background: "var(--bg-card)", borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", borderLeft: `4px solid ${barColor}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+                        <div key={inv.id} style={{ ...ITEM_ROW, borderLeft: `4px solid ${barColor}` }}>
                           {/* Main row */}
                           <div
                             onClick={() => toggleExpand(inv.id)}
@@ -784,14 +791,14 @@ export default function PaymentsPage() {
                       {report.items.length === 0 ? (
                         <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
                       ) : (
-                        <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
+                        <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow-card)" }}>
                           {report.items.map(item => {
                             const isExpanded = expanded.has(item.id)
                             const isLoading  = toggling.has(item.id)
                             const barColor   = statusBarColor(item.due_date ?? null, item.payment_status, todayStr)
 
                             return (
-                              <div key={item.id} style={{ background: "var(--bg-card)", borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", borderLeft: `4px solid ${barColor}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+                              <div key={item.id} style={{ ...ITEM_ROW, borderLeft: `4px solid ${barColor}` }}>
                                 {/* Main row */}
                                 <div
                                   onClick={() => toggleExpand(item.id)}
@@ -891,7 +898,7 @@ export default function PaymentsPage() {
                   const barColor   = statusBarColor(mp.due_date ?? null, mp.payment_status, todayStr)
 
                   return (
-                    <div key={mp.id} style={{ background: "var(--bg-card)", borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", borderLeft: `4px solid ${barColor}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
+                    <div key={mp.id} style={{ ...ITEM_ROW, borderLeft: `4px solid ${barColor}` }}>
                       {/* Main row */}
                       <div
                         onClick={() => toggleExpand(mp.id)}
