@@ -185,10 +185,19 @@ const CARD: React.CSSProperties = {
   boxShadow: "var(--shadow-card)",
 }
 
-/* Row style — used for individual items inside CARD (no own full border) */
-const ITEM_ROW: React.CSSProperties = {
-  borderBottom: "1px solid var(--border-default)",
+/* Individual payment item card — matches collections' tenantCardStyle */
+const ITEM_CARD: React.CSSProperties = {
+  borderRadius: 12,
+  border: "1px solid var(--border-default)",
+  background: "var(--bg-card)",
   overflow: "hidden",
+}
+
+/* Grid container for items inside CARD — padding + gap like collections */
+const ITEMS_GRID: React.CSSProperties = {
+  padding: "12px 16px",
+  display: "grid",
+  gap: 10,
 }
 
 const CHEVRON_WRAP: React.CSSProperties = {
@@ -652,6 +661,7 @@ export default function PaymentsPage() {
                     </div>
 
                     {/* Invoice rows */}
+                    <div style={ITEMS_GRID}>
                     {group.invoices.map(inv => {
                       const isExpanded = expanded.has(inv.id)
                       const isLoading  = toggling.has(inv.id)
@@ -659,11 +669,11 @@ export default function PaymentsPage() {
                       const sub        = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
 
                       return (
-                        <div key={inv.id} style={{ ...ITEM_ROW, borderLeft: `4px solid ${barColor}` }}>
+                        <div key={inv.id} style={ITEM_CARD}>
                           {/* Main row */}
                           <div
                             onClick={() => toggleExpand(inv.id)}
-                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer" }}
+                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
                             onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                           >
@@ -725,6 +735,7 @@ export default function PaymentsPage() {
                         </div>
                       )
                     })}
+                    </div>{/* /ITEMS_GRID */}
                   </div>
                 ))}
 
@@ -791,18 +802,19 @@ export default function PaymentsPage() {
                       {report.items.length === 0 ? (
                         <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
                       ) : (
-                        <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow-card)" }}>
+                        <>
+                        <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
                           {report.items.map(item => {
                             const isExpanded = expanded.has(item.id)
                             const isLoading  = toggling.has(item.id)
                             const barColor   = statusBarColor(item.due_date ?? null, item.payment_status, todayStr)
 
                             return (
-                              <div key={item.id} style={{ ...ITEM_ROW, borderLeft: `4px solid ${barColor}` }}>
+                              <div key={item.id} style={ITEM_CARD}>
                                 {/* Main row */}
                                 <div
                                   onClick={() => toggleExpand(item.id)}
-                                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer" }}
+                                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
                                   onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                                 >
@@ -858,12 +870,13 @@ export default function PaymentsPage() {
                             )
                           })}
 
-                          {/* Report total row */}
-                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, padding: "10px 20px", background: "var(--bg-page)", fontSize: 13 }}>
-                            <span style={{ color: "var(--text-muted)" }}>Total</span>
-                            <strong>{formatMXN(total)}</strong>
-                          </div>
                         </div>
+                        {/* Report total row */}
+                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, padding: "10px 20px", background: "var(--bg-page)", borderRadius: 10, fontSize: 13, border: "1px solid var(--border-default)" }}>
+                          <span style={{ color: "var(--text-muted)" }}>Total</span>
+                          <strong>{formatMXN(total)}</strong>
+                        </div>
+                        </>
                       )}
                     </SectionCard>
                   )
@@ -892,17 +905,18 @@ export default function PaymentsPage() {
               />
             ) : (
               <div style={CARD}>
+                <div style={ITEMS_GRID}>
                 {manualPayments.map(mp => {
                   const isExpanded = expanded.has(mp.id)
                   const isLoading  = toggling.has(mp.id)
                   const barColor   = statusBarColor(mp.due_date ?? null, mp.payment_status, todayStr)
 
                   return (
-                    <div key={mp.id} style={{ ...ITEM_ROW, borderLeft: `4px solid ${barColor}` }}>
+                    <div key={mp.id} style={ITEM_CARD}>
                       {/* Main row */}
                       <div
                         onClick={() => toggleExpand(mp.id)}
-                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer" }}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
                         onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
@@ -963,6 +977,7 @@ export default function PaymentsPage() {
                     </div>
                   )
                 })}
+                </div>{/* /ITEMS_GRID */}
 
                 {/* Totals */}
                 <div style={{ padding: "10px 20px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", background: "var(--bg-page)" }}>
