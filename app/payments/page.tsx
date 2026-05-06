@@ -54,6 +54,8 @@ type ManualPaymentRow = ManualPayment & { building_name: string | null }
 
 type ReportWithItems = PaymentReport & { items: PaymentReportItem[] }
 
+type PurchaseOrderSnap = { id: string; folio: string | null; status: string; total_estimated: number }
+
 type NewItemRow = { description: string; vendor_name: string; amount: string; due_date: string }
 
 /* ─── Scalar helpers ─────────────────────────────────────────────── */
@@ -101,6 +103,13 @@ const PILL_CONFIG: Record<PillStatus, { bg: string; text: string; border: string
 
 function statusBarColor(due_date: string | null, payment_status: string, todayStr: string): string {
   return PILL_CONFIG[getPillStatus(due_date, payment_status, todayStr)].text
+}
+
+function dueDateColor(due_date: string | null, payment_status: string, todayStr: string): string {
+  if (payment_status === "paid" || !due_date) return "var(--text-muted)"
+  if (due_date < todayStr) return "#dc2626"
+  if (due_date === todayStr) return "#EA580C"
+  return "var(--text-muted)"
 }
 
 /* ─── Concept icon ───────────────────────────────────────────────── */
@@ -229,6 +238,9 @@ export default function PaymentsPage() {
 
   // Toggle loading tracker
   const [toggling, setToggling] = useState<Set<string>>(new Set())
+
+  // Purchase orders map (id → snap) for report items
+  const [poMap, setPoMap] = useState<Record<string, PurchaseOrderSnap>>({})
 
   // New report modal
   const [reportModalOpen, setReportModalOpen]         = useState(false)
@@ -369,6 +381,19 @@ export default function PaymentsPage() {
       itemsByReport.set(item.payment_report_id, arr)
     })
     setReports(reportList.map(r => ({ ...r, items: itemsByReport.get(r.id) ?? [] })))
+
+    // Fetch purchase orders linked to report items
+    const poIds = [...new Set(((itemsRes.data || []) as PaymentReportItem[])
+      .map(i => i.purchase_order_id)
+      .filter((id): id is string => id != null))]
+    if (poIds.length > 0) {
+      const posRes = await supabase.from("purchase_orders")
+        .select("id, folio, status, total_estimated")
+        .in("id", poIds)
+      const newPoMap: Record<string, PurchaseOrderSnap> = {}
+      ;((posRes.data || []) as PurchaseOrderSnap[]).forEach(po => { newPoMap[po.id] = po })
+      setPoMap(newPoMap)
+    }
 
     setPageLoading(false)
   }
@@ -683,10 +708,24 @@ export default function PaymentsPage() {
                               </div>
                               {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{sub}</div>}
                             </div>
-                            <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                            {inv.due_date && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: dueDateColor(inv.due_date, inv.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
+                                <Calendar size={12} />
+                                {formatDueDateNatural(inv.due_date)}
+                              </span>
+                            )}
+                            <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
                               {formatMXN(Number(inv.total_amount))}
                             </span>
-                            <StatusPill due_date={inv.due_date ?? null} payment_status={inv.payment_status} todayStr={todayStr} />
+                            <span
+                              onClick={e => { e.stopPropagation(); if (!isLoading) void toggleInvoice(inv) }}
+                              style={{ cursor: isLoading ? "default" : "pointer", flexShrink: 0 }}
+                            >
+                              {isLoading
+                                ? <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 10px" }}><Loader2 size={13} style={{ color: "var(--text-muted)" }} /></span>
+                                : <StatusPill due_date={inv.due_date ?? null} payment_status={inv.payment_status} todayStr={todayStr} />
+                              }
+                            </span>
                             <span style={CHEVRON_WRAP}>
                               {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                             </span>
@@ -696,8 +735,32 @@ export default function PaymentsPage() {
                           {isExpanded && (
                             <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
-                                {inv.due_date && (
+                                {inv.provider_name && (
                                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                    Proveedor: {inv.provider_name}
+                                  </span>
+                                )}
+                                {inv.meter_number && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                    Medidor: {inv.meter_number}
+                                  </span>
+                                )}
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <Calendar size={12} />
+                                  Período: {MONTH_NAMES[inv.period_month - 1]} {inv.period_year}
+                                </span>
+                                {inv.total_consumption != null && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                    Consumo: {inv.total_consumption} {inv.consumption_unit ?? ""}
+                                  </span>
+                                )}
+                                {inv.folio && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                    Folio: {inv.folio}
+                                  </span>
+                                )}
+                                {inv.due_date && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: dueDateColor(inv.due_date, inv.payment_status, todayStr) }}>
                                     <Calendar size={12} />
                                     Fecha límite: {formatDueDateNatural(inv.due_date)}
                                   </span>
@@ -708,12 +771,8 @@ export default function PaymentsPage() {
                                     Pagado el: {formatDate(inv.paid_at)}
                                   </span>
                                 )}
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
-                                  <Calendar size={12} />
-                                  Período: {MONTH_NAMES[inv.period_month - 1]} {inv.period_year}
-                                </span>
                               </div>
-                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                 {isLoading ? (
                                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
                                     <Loader2 size={13} /> Actualizando...
@@ -727,6 +786,9 @@ export default function PaymentsPage() {
                                     <RotateCcw size={14} /> Deshacer pago
                                   </button>
                                 )}
+                                <a href="/servicios" style={{ ...ACT_GHOST, textDecoration: "none" }}>
+                                  Ver en Servicios →
+                                </a>
                               </div>
                             </div>
                           )}
@@ -819,10 +881,24 @@ export default function PaymentsPage() {
                                     <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{item.description}</div>
                                     {item.vendor_name && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{item.vendor_name}</div>}
                                   </div>
-                                  <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                                  {item.due_date && (
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: dueDateColor(item.due_date, item.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
+                                      <Calendar size={12} />
+                                      {formatDueDateNatural(item.due_date)}
+                                    </span>
+                                  )}
+                                  <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
                                     {formatMXN(Number(item.amount))}
                                   </span>
-                                  <StatusPill due_date={item.due_date ?? null} payment_status={item.payment_status} todayStr={todayStr} />
+                                  <span
+                                    onClick={e => { e.stopPropagation(); if (!isLoading) void toggleReportItem(item, report) }}
+                                    style={{ cursor: isLoading ? "default" : "pointer", flexShrink: 0 }}
+                                  >
+                                    {isLoading
+                                      ? <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 10px" }}><Loader2 size={13} style={{ color: "var(--text-muted)" }} /></span>
+                                      : <StatusPill due_date={item.due_date ?? null} payment_status={item.payment_status} todayStr={todayStr} />
+                                    }
+                                  </span>
                                   <span style={CHEVRON_WRAP}>
                                     {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                                   </span>
@@ -832,8 +908,13 @@ export default function PaymentsPage() {
                                 {isExpanded && (
                                   <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
-                                      {item.due_date && (
+                                      {item.vendor_name && (
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                          Proveedor: {item.vendor_name}
+                                        </span>
+                                      )}
+                                      {item.due_date && (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: dueDateColor(item.due_date, item.payment_status, todayStr) }}>
                                           <Calendar size={12} />
                                           Fecha límite: {formatDueDateNatural(item.due_date)}
                                         </span>
@@ -842,6 +923,16 @@ export default function PaymentsPage() {
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
                                           <CheckCircle2 size={12} />
                                           Pagado el: {formatDate(item.paid_at)}
+                                        </span>
+                                      )}
+                                      {item.purchase_order_id && poMap[item.purchase_order_id] && (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                          <ClipboardList size={12} />
+                                          OC {poMap[item.purchase_order_id].folio ?? item.purchase_order_id.slice(0, 8)}
+                                          {" — "}
+                                          {formatMXN(Number(poMap[item.purchase_order_id].total_estimated))}
+                                          {" — "}
+                                          {poMap[item.purchase_order_id].status}
                                         </span>
                                       )}
                                     </div>
@@ -919,10 +1010,24 @@ export default function PaymentsPage() {
                           <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{mp.title}</div>
                           {mp.building_name && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{mp.building_name}</div>}
                         </div>
-                        <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                        {mp.due_date && (
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: dueDateColor(mp.due_date, mp.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
+                            <Calendar size={12} />
+                            {formatDueDateNatural(mp.due_date)}
+                          </span>
+                        )}
+                        <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
                           {formatMXN(Number(mp.amount))}
                         </span>
-                        <StatusPill due_date={mp.due_date ?? null} payment_status={mp.payment_status} todayStr={todayStr} />
+                        <span
+                          onClick={e => { e.stopPropagation(); if (!isLoading) void toggleManual(mp) }}
+                          style={{ cursor: isLoading ? "default" : "pointer", flexShrink: 0 }}
+                        >
+                          {isLoading
+                            ? <span style={{ display: "inline-flex", alignItems: "center", padding: "5px 10px" }}><Loader2 size={13} style={{ color: "var(--text-muted)" }} /></span>
+                            : <StatusPill due_date={mp.due_date ?? null} payment_status={mp.payment_status} todayStr={todayStr} />
+                          }
+                        </span>
                         <span style={CHEVRON_WRAP}>
                           {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
                         </span>
@@ -932,8 +1037,18 @@ export default function PaymentsPage() {
                       {isExpanded && (
                         <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
-                            {mp.due_date && (
+                            {mp.building_name && (
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                <MapPin size={12} />
+                                Edificio: {mp.building_name}
+                              </span>
+                            )}
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                              <Calendar size={12} />
+                              Período: {MONTH_NAMES[mp.period_month - 1]} {mp.period_year}
+                            </span>
+                            {mp.due_date && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: dueDateColor(mp.due_date, mp.payment_status, todayStr) }}>
                                 <Calendar size={12} />
                                 Fecha límite: {formatDueDateNatural(mp.due_date)}
                               </span>
