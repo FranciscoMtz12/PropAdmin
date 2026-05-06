@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react"
 import {
   AlertCircle, CheckCircle, CheckCircle2, ChevronLeft, ChevronRight,
-  Circle, Clock, CreditCard, DollarSign, Droplets,
-  FileText, Flame, MapPin, Pencil, Plus, Settings, Trash2,
+  ClipboardList, Clock, CreditCard, DollarSign, Droplets,
+  FileText, Flame, Loader2, MapPin, Pencil, Plus, Settings, Trash2,
   TrendingUp, Wifi, Zap,
 } from "lucide-react"
 import toast from "react-hot-toast"
@@ -55,17 +55,7 @@ type ReportWithItems = PaymentReport & { items: PaymentReportItem[] }
 
 type NewItemRow = { description: string; vendor_name: string; amount: string; due_date: string }
 
-/* ─── Helpers ────────────────────────────────────────────────────── */
-
-function ServiceIcon({ type, size = 14 }: { type: string; size?: number }) {
-  switch (type) {
-    case "gas":      return <Flame size={size} />
-    case "water":    return <Droplets size={size} />
-    case "internet": return <Wifi size={size} />
-    case "other":    return <Settings size={size} />
-    default:         return <Zap size={size} />
-  }
-}
+/* ─── Scalar helpers ─────────────────────────────────────────────── */
 
 function formatMXN(n: number) {
   return new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 0 }).format(n)
@@ -75,9 +65,10 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
 }
 
-function formatDueDateDisplay(iso: string) {
+function formatDueDateNatural(iso: string) {
   const [y, m, d] = iso.split("-")
-  return `${d}/${m}/${y}`
+  return new Date(Number(y), Number(m) - 1, Number(d))
+    .toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })
 }
 
 function getWeekNumber(date: Date): number {
@@ -86,6 +77,120 @@ function getWeekNumber(date: Date): number {
   d.setUTCDate(d.getUTCDate() + 4 - day)
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1))
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
+}
+
+/* ─── Concept icon ───────────────────────────────────────────────── */
+
+const CONCEPT_COLORS: Record<string, string> = {
+  electricity: "#f59e0b",
+  gas:         "#f97316",
+  water:       "#3b82f6",
+  internet:    "#0ea5e9",
+  other:       "#9ca3af",
+  manual:      "#9ca3af",
+  report:      "#8B2252",
+}
+
+function ConceptIcon({ type }: { type: string }) {
+  const color = CONCEPT_COLORS[type] ?? "#9ca3af"
+  const El = (() => {
+    switch (type) {
+      case "gas":      return <Flame size={14} />
+      case "water":    return <Droplets size={14} />
+      case "internet": return <Wifi size={14} />
+      case "report":   return <ClipboardList size={14} />
+      case "manual":   return <FileText size={14} />
+      case "other":    return <Settings size={14} />
+      default:         return <Zap size={14} />
+    }
+  })()
+  return <span style={{ color, display: "inline-flex", alignItems: "center", flexShrink: 0 }}>{El}</span>
+}
+
+/* ─── Status pill ────────────────────────────────────────────────── */
+
+type PillStatus = "paid" | "overdue" | "today" | "pending"
+
+function getPillStatus(due_date: string | null, payment_status: string, todayStr: string): PillStatus {
+  if (payment_status === "paid") return "paid"
+  if (!due_date) return "pending"
+  if (due_date < todayStr) return "overdue"
+  if (due_date === todayStr) return "today"
+  return "pending"
+}
+
+function dueDateColor(due_date: string | null, payment_status: string, todayStr: string): string {
+  if (!due_date || payment_status === "paid") return "var(--text-secondary)"
+  if (due_date < todayStr) return "#dc2626"
+  if (due_date === todayStr) return "#ea580c"
+  return "var(--text-secondary)"
+}
+
+const PILL_CONFIG: Record<PillStatus, { bg: string; label: string; Icon: React.ElementType }> = {
+  paid:    { bg: "#15803d", label: "Pagado",    Icon: CheckCircle2 },
+  overdue: { bg: "#dc2626", label: "Vencido",   Icon: AlertCircle  },
+  today:   { bg: "#ea580c", label: "Vence hoy", Icon: Clock        },
+  pending: { bg: "#d97706", label: "Pendiente", Icon: Clock        },
+}
+
+function StatusPill({ id, due_date, payment_status, todayStr, toggling, onClick }: {
+  id: string
+  due_date: string | null
+  payment_status: string
+  todayStr: string
+  toggling: Set<string>
+  onClick: () => void
+}) {
+  const status = getPillStatus(due_date, payment_status, todayStr)
+  const { bg, label, Icon } = PILL_CONFIG[status]
+  const isLoading = toggling.has(id)
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={isLoading}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 5,
+        padding: "4px 10px", borderRadius: 999, border: "none",
+        background: bg, color: "#fff",
+        cursor: isLoading ? "default" : "pointer",
+        fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
+        opacity: isLoading ? 0.7 : 1,
+      }}
+    >
+      {isLoading ? <Loader2 size={11} /> : <Icon size={11} />}
+      {isLoading ? "…" : label}
+    </button>
+  )
+}
+
+/* ─── Table style constants ──────────────────────────────────────── */
+
+const TH: React.CSSProperties = {
+  padding: "8px 16px",
+  textAlign: "left",
+  fontWeight: 600,
+  color: "var(--text-muted)",
+  fontSize: 11,
+  textTransform: "uppercase",
+  letterSpacing: "0.06em",
+  borderBottom: "2px solid var(--border-default)",
+  whiteSpace: "nowrap",
+  background: "var(--bg-page)",
+}
+
+const TD: React.CSSProperties = {
+  padding: "12px 16px",
+  verticalAlign: "middle",
+  borderBottom: "1px solid var(--border-default)",
+  fontSize: 13,
+}
+
+const CARD: React.CSSProperties = {
+  background: "var(--bg-card)",
+  border: "1px solid var(--border-default)",
+  borderRadius: 12,
+  overflow: "hidden",
 }
 
 /* ─── Page ───────────────────────────────────────────────────────── */
@@ -105,6 +210,9 @@ export default function PaymentsPage() {
   const [manualPayments, setManualPayments] = useState<ManualPaymentRow[]>([])
   const [allBuildings, setAllBuildings]     = useState<Array<{ id: string; name: string }>>([])
   const [pageLoading, setPageLoading]       = useState(true)
+
+  // Toggle loading tracker
+  const [toggling, setToggling] = useState<Set<string>>(new Set())
 
   // New report modal
   const [reportModalOpen, setReportModalOpen]         = useState(false)
@@ -177,10 +285,10 @@ export default function PaymentsPage() {
         .order("name"),
     ])
 
-    const invoiceList = (invRes.data || []) as BuildingUtilityInvoice[]
-    const mpList      = (mpRes.data  || []) as ManualPayment[]
-    const reportList  = (rptRes.data || []) as PaymentReport[]
-    const buildingList = (bldRes.data || []) as Array<{ id: string; name: string }>
+    const invoiceList  = (invRes.data  || []) as BuildingUtilityInvoice[]
+    const mpList       = (mpRes.data   || []) as ManualPayment[]
+    const reportList   = (rptRes.data  || []) as PaymentReport[]
+    const buildingList = (bldRes.data  || []) as Array<{ id: string; name: string }>
 
     setAllBuildings(buildingList)
     const buildingMap: Record<string, string> = {}
@@ -244,36 +352,38 @@ export default function PaymentsPage() {
   /* ── Invoice toggle ──────────────────────────────────────────────── */
 
   async function toggleInvoice(inv: InvoiceRow) {
+    setToggling(prev => new Set(prev).add(inv.id))
     const nowPaid = inv.payment_status === "paid"
     const { error } = await supabase.from("building_utility_invoices").update({
       payment_status: nowPaid ? "unpaid" : "paid",
       paid_at:        nowPaid ? null : new Date().toISOString(),
     }).eq("id", inv.id)
-    if (error) { toast.error("Error al actualizar"); return }
-    toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+    if (error) toast.error("Error al actualizar")
+    else toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+    setToggling(prev => { const s = new Set(prev); s.delete(inv.id); return s })
     void loadData()
   }
 
   /* ── Report item toggle ──────────────────────────────────────────── */
 
   async function toggleReportItem(item: PaymentReportItem, report: ReportWithItems) {
+    setToggling(prev => new Set(prev).add(item.id))
     const nowPaid = item.payment_status === "paid"
     const { error } = await supabase.from("payment_report_items").update({
       payment_status: nowPaid ? "unpaid" : "paid",
       paid_at:        nowPaid ? null : new Date().toISOString(),
     }).eq("id", item.id)
-    if (error) { toast.error("Error al actualizar"); return }
-
-    if (!nowPaid) {
-      const allPaid = report.items.every(i => i.id === item.id || i.payment_status === "paid")
-      if (allPaid) {
-        await supabase.from("payment_reports").update({ status: "paid" }).eq("id", report.id)
+    if (error) { toast.error("Error al actualizar") }
+    else {
+      if (!nowPaid) {
+        const allPaid = report.items.every(i => i.id === item.id || i.payment_status === "paid")
+        if (allPaid) await supabase.from("payment_reports").update({ status: "paid" }).eq("id", report.id)
+      } else {
+        await supabase.from("payment_reports").update({ status: "pending" }).eq("id", report.id)
       }
-    } else {
-      await supabase.from("payment_reports").update({ status: "pending" }).eq("id", report.id)
+      toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
     }
-
-    toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+    setToggling(prev => { const s = new Set(prev); s.delete(item.id); return s })
     void loadData()
   }
 
@@ -292,12 +402,14 @@ export default function PaymentsPage() {
   /* ── Manual payment toggle / delete ─────────────────────────────── */
 
   async function toggleManual(mp: ManualPaymentRow) {
+    setToggling(prev => new Set(prev).add(mp.id))
     const nowPaid = mp.payment_status === "paid"
     await supabase.from("manual_payments").update({
       payment_status: nowPaid ? "unpaid" : "paid",
       paid_at:        nowPaid ? null : new Date().toISOString(),
     }).eq("id", mp.id)
     toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+    setToggling(prev => { const s = new Set(prev); s.delete(mp.id); return s })
     void loadData()
   }
 
@@ -379,7 +491,7 @@ export default function PaymentsPage() {
     }
   }
 
-  /* ── Create manual payment ───────────────────────────────────────── */
+  /* ── Create / edit manual payment ───────────────────────────────── */
 
   function openMpModal(mp?: ManualPaymentRow) {
     if (mp) {
@@ -407,11 +519,11 @@ export default function PaymentsPage() {
     try {
       if (mpEditId) {
         const { error } = await supabase.from("manual_payments").update({
-          title:       mpTitle.trim(),
-          building_id: mpBuildingId || null,
-          amount:      parseFloat(mpAmount),
-          due_date:    mpDueDate || null,
-          period_year: year,
+          title:        mpTitle.trim(),
+          building_id:  mpBuildingId || null,
+          amount:       parseFloat(mpAmount),
+          due_date:     mpDueDate || null,
+          period_year:  year,
           period_month: month,
         }).eq("id", mpEditId)
         if (error) { setMpMsg(`Error: ${error.message}`); return }
@@ -419,17 +531,17 @@ export default function PaymentsPage() {
       } else {
         const { data: { user: authUser } } = await supabase.auth.getUser()
         const { error } = await supabase.from("manual_payments").insert({
-          company_id:     user!.company_id,
-          building_id:    mpBuildingId || null,
-          title:          mpTitle.trim(),
-          amount:         parseFloat(mpAmount),
-          due_date:       mpDueDate || null,
-          period_year:    year,
-          period_month:   month,
-          payment_status: "unpaid",
-          paid_at:        null,
+          company_id:        user!.company_id,
+          building_id:       mpBuildingId || null,
+          title:             mpTitle.trim(),
+          amount:            parseFloat(mpAmount),
+          due_date:          mpDueDate || null,
+          period_year:       year,
+          period_month:      month,
+          payment_status:    "unpaid",
+          paid_at:           null,
           payment_report_id: null,
-          created_by:     authUser?.id ?? null,
+          created_by:        authUser?.id ?? null,
         })
         if (error) { setMpMsg(`Error: ${error.message}`); return }
         toast.success("Pago agregado")
@@ -449,10 +561,10 @@ export default function PaymentsPage() {
   const unpaidManual   = manualPayments.filter(m => m.payment_status === "unpaid")
   const paidManual     = manualPayments.filter(m => m.payment_status === "paid")
 
-  const pendingCount  = unpaidInvoices.length + unpaidManual.length
-  const paidCount     = paidInvoices.length + paidManual.length
-  const totalPending  = unpaidInvoices.reduce((s, i) => s + Number(i.total_amount), 0) + unpaidManual.reduce((s, m) => s + Number(m.amount), 0)
-  const totalPaid     = paidInvoices.reduce((s, i) => s + Number(i.total_amount), 0) + paidManual.reduce((s, m) => s + Number(m.amount), 0)
+  const pendingCount = unpaidInvoices.length + unpaidManual.length
+  const paidCount    = paidInvoices.length   + paidManual.length
+  const totalPending = unpaidInvoices.reduce((s, i) => s + Number(i.total_amount), 0) + unpaidManual.reduce((s, m) => s + Number(m.amount), 0)
+  const totalPaid    = paidInvoices.reduce((s, i)   => s + Number(i.total_amount), 0) + paidManual.reduce((s, m)   => s + Number(m.amount), 0)
 
   if (loading || !user) return null
 
@@ -492,9 +604,9 @@ export default function PaymentsPage() {
       {/* Tabs */}
       <AppTabs
         items={[
-          { key: "services",  label: "Servicios" },
-          { key: "reports",   label: "Reportes de compras" },
-          { key: "manual",    label: "Manuales" },
+          { key: "services", label: "Servicios" },
+          { key: "reports",  label: "Reportes de compras" },
+          { key: "manual",   label: "Manuales" },
         ]}
         activeKey={activeTab}
         onChange={setActiveTab}
@@ -507,75 +619,72 @@ export default function PaymentsPage() {
           <>
             {pageLoading ? (
               <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
-            ) : invoiceGroups.length === 0 ? (
+            ) : allInvoices.length === 0 ? (
               <AppEmptyState
                 title="No hay facturas de servicios en este período"
                 description="Las facturas aparecen cuando tienen estado 'Distribuida' o 'Cobrada' en el módulo de Servicios."
               />
             ) : (
-              <div style={{ display: "grid", gap: 20 }}>
-                {invoiceGroups.map(group => (
-                  <SectionCard key={group.building_id} title={group.building_name} icon={<MapPin size={16} />}>
-                    <div style={{ display: "grid", gap: 0 }}>
-                      {group.invoices.map((inv, idx) => {
-                        const isPaid = inv.payment_status === "paid"
-                        const label = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
+              <div style={CARD}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        <th style={TH}>Concepto</th>
+                        <th style={TH}>Edificio</th>
+                        <th style={TH}>Fecha límite</th>
+                        <th style={{ ...TH, textAlign: "right" }}>Monto</th>
+                        <th style={TH}>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {allInvoices.map(inv => {
+                        const sub = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
                         return (
-                          <div
+                          <tr
                             key={inv.id}
-                            style={{
-                              display: "flex", alignItems: "center", gap: 12,
-                              padding: "12px 0",
-                              borderBottom: idx < group.invoices.length - 1 ? "1px solid var(--border-default)" : "none",
-                              flexWrap: "wrap",
-                            }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                           >
-                            {/* Icon + name */}
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, width: 32, height: 32, borderRadius: 8, background: "var(--bg-page)", border: "1px solid var(--border-default)", justifyContent: "center", flexShrink: 0, color: "var(--text-muted)" }}>
-                              <ServiceIcon type={inv.service_type} size={15} />
-                            </div>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
-                                {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
-                                {inv.provider_name ? ` — ${inv.provider_name}` : ""}
-                              </div>
-                              {label && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{label}</div>}
-                              {inv.due_date && (() => {
-                                const overdue = inv.due_date < todayStr && inv.payment_status === "unpaid"
-                                return (
-                                  <div style={{ fontSize: 12, marginTop: 2, display: "inline-flex", alignItems: "center", gap: 3, color: overdue ? "#dc2626" : "var(--text-muted)" }}>
-                                    {overdue && <AlertCircle size={11} />}
-                                    Pagar antes del {formatDueDateDisplay(inv.due_date)}
+                            <td style={TD}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                <ConceptIcon type={inv.service_type} />
+                                <div>
+                                  <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
+                                    {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
                                   </div>
-                                )
-                              })()}
-                            </div>
-                            <span style={{ fontWeight: 700, fontSize: 14, color: isPaid ? "#15803d" : "var(--text-primary)", flexShrink: 0 }}>
-                              {formatMXN(Number(inv.total_amount))}
-                            </span>
-                            {isPaid ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                                <div style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#15803d", fontSize: 13, fontWeight: 600 }}>
-                                  <CheckCircle2 size={14} />
-                                  Pagado
+                                  {sub && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{sub}</div>}
                                 </div>
-                                {inv.paid_at && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatDate(inv.paid_at)}</span>}
-                                <button type="button" onClick={() => void toggleInvoice(inv)} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)" }}>
-                                  Deshacer
-                                </button>
                               </div>
-                            ) : (
-                              <button type="button" onClick={() => void toggleInvoice(inv)} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", fontWeight: 600, color: "var(--text-primary)", flexShrink: 0 }}>
-                                <Circle size={14} />
-                                Marcar pagado
-                              </button>
-                            )}
-                          </div>
+                            </td>
+                            <td style={{ ...TD, color: "var(--text-secondary)" }}>{inv.building_name}</td>
+                            <td style={{ ...TD, color: dueDateColor(inv.due_date ?? null, inv.payment_status, todayStr) }}>
+                              {inv.due_date ? formatDueDateNatural(inv.due_date) : "—"}
+                            </td>
+                            <td style={{ ...TD, textAlign: "right", fontWeight: 700 }}>
+                              {formatMXN(Number(inv.total_amount))}
+                            </td>
+                            <td style={TD}>
+                              <StatusPill
+                                id={inv.id}
+                                due_date={inv.due_date ?? null}
+                                payment_status={inv.payment_status}
+                                todayStr={todayStr}
+                                toggling={toggling}
+                                onClick={() => void toggleInvoice(inv)}
+                              />
+                            </td>
+                          </tr>
                         )
                       })}
-                    </div>
-                  </SectionCard>
-                ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div style={{ padding: "10px 16px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--border-default)" }}>
+                  Pendiente: <strong>{formatMXN(unpaidInvoices.reduce((s, i) => s + Number(i.total_amount), 0))}</strong>
+                  {" · "}
+                  Pagado: <strong>{formatMXN(paidInvoices.reduce((s, i) => s + Number(i.total_amount), 0))}</strong>
+                </div>
               </div>
             )}
           </>
@@ -601,10 +710,10 @@ export default function PaymentsPage() {
             ) : (
               <div style={{ display: "grid", gap: 20 }}>
                 {reports.map(report => {
-                  const total    = report.items.reduce((s, i) => s + Number(i.amount), 0)
+                  const total      = report.items.reduce((s, i) => s + Number(i.amount), 0)
                   const hasPending = report.items.some(i => i.payment_status === "unpaid")
                   const statusVariant = report.status === "paid" ? "green" : report.status === "cancelled" ? "gray" : "amber"
-                  const statusLabel  = report.status === "paid" ? "Pagado" : report.status === "cancelled" ? "Cancelado" : "Pendiente"
+                  const statusLabel   = report.status === "paid" ? "Pagado" : report.status === "cancelled" ? "Cancelado" : "Pendiente"
                   return (
                     <SectionCard
                       key={report.id}
@@ -623,62 +732,63 @@ export default function PaymentsPage() {
                       {report.items.length === 0 ? (
                         <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
                       ) : (
-                        <div style={{ overflowX: "auto" }}>
+                        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid var(--border-default)" }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                             <thead>
-                              <tr style={{ background: "var(--bg-page)" }}>
-                                {(["Descripción","Proveedor","Monto","Fecha límite","Estado"] as const).map(h => (
-                                  <th key={h} style={{ padding: "8px 10px", textAlign: h === "Monto" ? "right" : "left", fontWeight: 600, color: "var(--text-secondary)", borderBottom: "2px solid var(--border-default)", fontSize: 12, whiteSpace: "nowrap" }}>{h}</th>
-                                ))}
+                              <tr>
+                                <th style={TH}>Concepto</th>
+                                <th style={TH}>Proveedor</th>
+                                <th style={TH}>Fecha límite</th>
+                                <th style={{ ...TH, textAlign: "right" }}>Monto</th>
+                                <th style={TH}>Status</th>
                               </tr>
                             </thead>
                             <tbody>
-                              {report.items.map(item => {
-                                const itemPaid = item.payment_status === "paid"
-                                return (
-                                  <tr key={item.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
-                                    <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>{item.description}</td>
-                                    <td style={{ padding: "10px 10px", verticalAlign: "middle", color: "var(--text-secondary)" }}>{item.vendor_name ?? "—"}</td>
-                                    <td style={{ padding: "10px 10px", verticalAlign: "middle", textAlign: "right", fontWeight: 600 }}>{formatMXN(Number(item.amount))}</td>
-                                    <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>
-                                      {item.due_date ? (() => {
-                                        const overdue = item.due_date < todayStr && item.payment_status === "unpaid"
-                                        return (
-                                          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: overdue ? "#dc2626" : "var(--text-muted)" }}>
-                                            {overdue && <AlertCircle size={11} />}
-                                            {formatDueDateDisplay(item.due_date)}
-                                          </span>
-                                        )
-                                      })() : "—"}
-                                    </td>
-                                    <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>
-                                      {itemPaid ? (
-                                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#15803d", fontSize: 12, fontWeight: 600 }}>
-                                            <CheckCircle2 size={12} />Pagado
-                                          </span>
-                                          <button type="button" onClick={() => void toggleReportItem(item, report)} style={{ fontSize: 11, padding: "2px 6px", borderRadius: 5, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)" }}>
-                                            Deshacer
-                                          </button>
-                                        </div>
-                                      ) : (
-                                        <button type="button" onClick={() => void toggleReportItem(item, report)} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "4px 10px", borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", fontWeight: 600 }}>
-                                          <Circle size={12} />Marcar pagado
-                                        </button>
-                                      )}
-                                    </td>
-                                  </tr>
-                                )
-                              })}
+                              {report.items.map(item => (
+                                <tr
+                                  key={item.id}
+                                  onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                >
+                                  <td style={TD}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                      <ConceptIcon type="report" />
+                                      <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{item.description}</span>
+                                    </div>
+                                  </td>
+                                  <td style={{ ...TD, color: "var(--text-secondary)" }}>{item.vendor_name ?? "—"}</td>
+                                  <td style={{ ...TD, color: dueDateColor(item.due_date ?? null, item.payment_status, todayStr) }}>
+                                    {item.due_date ? formatDueDateNatural(item.due_date) : "—"}
+                                  </td>
+                                  <td style={{ ...TD, textAlign: "right", fontWeight: 700 }}>
+                                    {formatMXN(Number(item.amount))}
+                                  </td>
+                                  <td style={TD}>
+                                    <StatusPill
+                                      id={item.id}
+                                      due_date={item.due_date ?? null}
+                                      payment_status={item.payment_status}
+                                      todayStr={todayStr}
+                                      toggling={toggling}
+                                      onClick={() => void toggleReportItem(item, report)}
+                                    />
+                                  </td>
+                                </tr>
+                              ))}
                             </tbody>
                             <tfoot>
-                              <tr style={{ background: "var(--bg-page)", fontWeight: 700 }}>
-                                <td colSpan={2} style={{ padding: "10px 10px", fontSize: 13 }}>Total</td>
-                                <td style={{ padding: "10px 10px", textAlign: "right", fontSize: 13 }}>{formatMXN(total)}</td>
-                                <td />
-                                <td style={{ padding: "10px 10px" }}>
+                              <tr style={{ background: "var(--bg-page)" }}>
+                                <td colSpan={3} style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700 }}>Total</td>
+                                <td style={{ padding: "10px 16px", textAlign: "right", fontSize: 13, fontWeight: 700 }}>
+                                  {formatMXN(total)}
+                                </td>
+                                <td style={{ padding: "10px 16px" }}>
                                   {hasPending && (
-                                    <button type="button" onClick={() => void markAllReportPaid(report)} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
+                                    <button
+                                      type="button"
+                                      onClick={() => void markAllReportPaid(report)}
+                                      style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                                    >
                                       Marcar todo pagado
                                     </button>
                                   )}
@@ -700,7 +810,7 @@ export default function PaymentsPage() {
         {activeTab === "manual" && (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <UiButton variant="primary" icon={<Plus size={15} />} onClick={openMpModal}>
+              <UiButton variant="primary" icon={<Plus size={15} />} onClick={() => openMpModal()}>
                 Agregar pago
               </UiButton>
             </div>
@@ -711,68 +821,81 @@ export default function PaymentsPage() {
                 title="No hay pagos manuales en este período"
                 description="Agrega pagos que no tienen origen automático."
                 actionLabel="+ Agregar pago manual"
-                onAction={openMpModal}
+                onAction={() => openMpModal()}
               />
             ) : (
-              <SectionCard title="Pagos manuales">
-                <div style={{ display: "grid", gap: 0 }}>
-                  {manualPayments.map((mp, idx) => {
-                    const isPaid = mp.payment_status === "paid"
-                    return (
-                      <div
-                        key={mp.id}
-                        style={{
-                          display: "flex", alignItems: "center", gap: 12,
-                          padding: "12px 0",
-                          borderBottom: idx < manualPayments.length - 1 ? "1px solid var(--border-default)" : "none",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14 }}>{mp.title}</div>
-                          {mp.building_name && (
-                            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{mp.building_name}</div>
-                          )}
-                          {mp.due_date && (() => {
-                            const overdue = mp.due_date < todayStr && mp.payment_status === "unpaid"
-                            return (
-                              <div style={{ fontSize: 12, marginTop: 2, display: "inline-flex", alignItems: "center", gap: 3, color: overdue ? "#dc2626" : "var(--text-muted)" }}>
-                                {overdue && <AlertCircle size={11} />}
-                                Pagar antes del {formatDueDateDisplay(mp.due_date)}
-                              </div>
-                            )
-                          })()}
-                        </div>
-                        <span style={{ fontWeight: 700, fontSize: 14, color: isPaid ? "#15803d" : "var(--text-primary)", flexShrink: 0 }}>
-                          {formatMXN(Number(mp.amount))}
-                        </span>
-                        {isPaid ? (
-                          <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "#15803d", fontSize: 13, fontWeight: 600 }}>
-                              <CheckCircle2 size={14} />Pagado
-                            </span>
-                            {mp.paid_at && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatDate(mp.paid_at)}</span>}
-                            <button type="button" onClick={() => void toggleManual(mp)} style={{ fontSize: 12, padding: "3px 8px", borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)" }}>
-                              Deshacer
-                            </button>
-                          </div>
-                        ) : (
-                          <button type="button" onClick={() => void toggleManual(mp)} style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", fontWeight: 600, color: "var(--text-primary)", flexShrink: 0 }}>
-                            <Circle size={14} />
-                            Marcar pagado
-                          </button>
-                        )}
-                        <button type="button" onClick={() => openMpModal(mp)} style={{ display: "inline-flex", alignItems: "center", padding: "6px", borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
-                          <Pencil size={13} />
-                        </button>
-                        <button type="button" onClick={() => void deleteManual(mp.id)} style={{ display: "inline-flex", alignItems: "center", padding: "6px", borderRadius: 6, border: "1px solid #dc2626", background: "transparent", cursor: "pointer", color: "#dc2626", flexShrink: 0 }}>
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    )
-                  })}
+              <div style={CARD}>
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr>
+                        <th style={TH}>Concepto</th>
+                        <th style={TH}>Edificio</th>
+                        <th style={TH}>Fecha límite</th>
+                        <th style={{ ...TH, textAlign: "right" }}>Monto</th>
+                        <th style={TH}>Status</th>
+                        <th style={TH}>Acciones</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {manualPayments.map(mp => (
+                        <tr
+                          key={mp.id}
+                          onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                        >
+                          <td style={TD}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                              <ConceptIcon type="manual" />
+                              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{mp.title}</span>
+                            </div>
+                          </td>
+                          <td style={{ ...TD, color: "var(--text-secondary)" }}>{mp.building_name ?? "—"}</td>
+                          <td style={{ ...TD, color: dueDateColor(mp.due_date ?? null, mp.payment_status, todayStr) }}>
+                            {mp.due_date ? formatDueDateNatural(mp.due_date) : "—"}
+                          </td>
+                          <td style={{ ...TD, textAlign: "right", fontWeight: 700 }}>
+                            {formatMXN(Number(mp.amount))}
+                          </td>
+                          <td style={TD}>
+                            <StatusPill
+                              id={mp.id}
+                              due_date={mp.due_date ?? null}
+                              payment_status={mp.payment_status}
+                              todayStr={todayStr}
+                              toggling={toggling}
+                              onClick={() => void toggleManual(mp)}
+                            />
+                          </td>
+                          <td style={TD}>
+                            <div style={{ display: "flex", gap: 6 }}>
+                              <button
+                                type="button"
+                                onClick={() => openMpModal(mp)}
+                                style={{ display: "inline-flex", alignItems: "center", padding: 6, borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)" }}
+                              >
+                                <Pencil size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void deleteManual(mp.id)}
+                                style={{ display: "inline-flex", alignItems: "center", padding: 6, borderRadius: 6, border: "1px solid #dc2626", background: "transparent", cursor: "pointer", color: "#dc2626" }}
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-              </SectionCard>
+                <div style={{ padding: "10px 16px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--border-default)" }}>
+                  Pendiente: <strong>{formatMXN(unpaidManual.reduce((s, m) => s + Number(m.amount), 0))}</strong>
+                  {" · "}
+                  Pagado: <strong>{formatMXN(paidManual.reduce((s, m) => s + Number(m.amount), 0))}</strong>
+                </div>
+              </div>
             )}
           </>
         )}
