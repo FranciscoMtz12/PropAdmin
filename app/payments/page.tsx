@@ -652,11 +652,11 @@ export default function PaymentsPage() {
                       const sub        = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
 
                       return (
-                        <div key={inv.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
+                        <div key={inv.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle, #e5e7eb)", borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `4px solid ${barColor}` }}>
                           {/* Main row */}
                           <div
                             onClick={() => toggleExpand(inv.id)}
-                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
+                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer" }}
                             onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                             onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                           >
@@ -791,11 +791,11 @@ export default function PaymentsPage() {
                             const barColor   = statusBarColor(item.due_date ?? null, item.payment_status, todayStr)
 
                             return (
-                              <div key={item.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
+                              <div key={item.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle, #e5e7eb)", borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `4px solid ${barColor}` }}>
                                 {/* Main row */}
                                 <div
                                   onClick={() => toggleExpand(item.id)}
-                                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
+                                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer" }}
                                   onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                                 >
@@ -891,11 +891,11 @@ export default function PaymentsPage() {
                   const barColor   = statusBarColor(mp.due_date ?? null, mp.payment_status, todayStr)
 
                   return (
-                    <div key={mp.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
+                    <div key={mp.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle, #e5e7eb)", borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `4px solid ${barColor}` }}>
                       {/* Main row */}
                       <div
                         onClick={() => toggleExpand(mp.id)}
-                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer" }}
                         onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                         onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
