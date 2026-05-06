@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react"
 import {
   AlertCircle, CheckCircle, CheckCircle2, ChevronLeft, ChevronRight,
   Circle, Clock, CreditCard, DollarSign, Droplets,
-  FileText, Flame, MapPin, Plus, Settings, Trash2,
+  FileText, Flame, MapPin, Pencil, Plus, Settings, Trash2,
   TrendingUp, Wifi, Zap,
 } from "lucide-react"
 import toast from "react-hot-toast"
@@ -117,8 +117,9 @@ export default function PaymentsPage() {
   const [reportMsg, setReportMsg]                     = useState("")
   const reportPdfRef = useRef<HTMLInputElement>(null)
 
-  // Add manual payment modal
+  // Add / edit manual payment modal
   const [mpModalOpen, setMpModalOpen]   = useState(false)
+  const [mpEditId, setMpEditId]         = useState<string | null>(null)
   const [mpTitle, setMpTitle]           = useState("")
   const [mpBuildingId, setMpBuildingId] = useState("")
   const [mpAmount, setMpAmount]         = useState("")
@@ -380,13 +381,23 @@ export default function PaymentsPage() {
 
   /* ── Create manual payment ───────────────────────────────────────── */
 
-  function openMpModal() {
-    setMpTitle(""); setMpBuildingId(""); setMpAmount("")
-    setMpDueDate(todayStr); setMpMsg("")
+  function openMpModal(mp?: ManualPaymentRow) {
+    if (mp) {
+      setMpEditId(mp.id)
+      setMpTitle(mp.title)
+      setMpBuildingId(mp.building_id ?? "")
+      setMpAmount(String(mp.amount))
+      setMpDueDate(mp.due_date ?? todayStr)
+    } else {
+      setMpEditId(null)
+      setMpTitle(""); setMpBuildingId(""); setMpAmount("")
+      setMpDueDate(todayStr)
+    }
+    setMpMsg("")
     setMpModalOpen(true)
   }
 
-  async function handleAddManualPayment(e: React.FormEvent) {
+  async function handleSaveManualPayment(e: React.FormEvent) {
     e.preventDefault()
     setMpMsg("")
     if (!mpTitle.trim()) { setMpMsg("El título es obligatorio."); return }
@@ -394,22 +405,35 @@ export default function PaymentsPage() {
 
     setSavingMp(true)
     try {
-      const { data: { user: authUser } } = await supabase.auth.getUser()
-      const { error } = await supabase.from("manual_payments").insert({
-        company_id:     user!.company_id,
-        building_id:    mpBuildingId || null,
-        title:          mpTitle.trim(),
-        amount:         parseFloat(mpAmount),
-        due_date:       mpDueDate || null,
-        period_year:    year,
-        period_month:   month,
-        payment_status: "unpaid",
-        paid_at:        null,
-        payment_report_id: null,
-        created_by:     authUser?.id ?? null,
-      })
-      if (error) { setMpMsg(`Error: ${error.message}`); return }
-      toast.success("Pago agregado")
+      if (mpEditId) {
+        const { error } = await supabase.from("manual_payments").update({
+          title:       mpTitle.trim(),
+          building_id: mpBuildingId || null,
+          amount:      parseFloat(mpAmount),
+          due_date:    mpDueDate || null,
+          period_year: year,
+          period_month: month,
+        }).eq("id", mpEditId)
+        if (error) { setMpMsg(`Error: ${error.message}`); return }
+        toast.success("Pago actualizado")
+      } else {
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        const { error } = await supabase.from("manual_payments").insert({
+          company_id:     user!.company_id,
+          building_id:    mpBuildingId || null,
+          title:          mpTitle.trim(),
+          amount:         parseFloat(mpAmount),
+          due_date:       mpDueDate || null,
+          period_year:    year,
+          period_month:   month,
+          payment_status: "unpaid",
+          paid_at:        null,
+          payment_report_id: null,
+          created_by:     authUser?.id ?? null,
+        })
+        if (error) { setMpMsg(`Error: ${error.message}`); return }
+        toast.success("Pago agregado")
+      }
       setMpModalOpen(false)
       void loadData()
     } finally {
@@ -738,6 +762,9 @@ export default function PaymentsPage() {
                             Marcar pagado
                           </button>
                         )}
+                        <button type="button" onClick={() => openMpModal(mp)} style={{ display: "inline-flex", alignItems: "center", padding: "6px", borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)", flexShrink: 0 }}>
+                          <Pencil size={13} />
+                        </button>
                         <button type="button" onClick={() => void deleteManual(mp.id)} style={{ display: "inline-flex", alignItems: "center", padding: "6px", borderRadius: 6, border: "1px solid #dc2626", background: "transparent", cursor: "pointer", color: "#dc2626", flexShrink: 0 }}>
                           <Trash2 size={13} />
                         </button>
@@ -842,9 +869,9 @@ export default function PaymentsPage() {
         </form>
       </Modal>
 
-      {/* ── Modal: Agregar pago manual ──────────────────────────────── */}
-      <Modal open={mpModalOpen} onClose={() => setMpModalOpen(false)} title="Agregar pago manual" maxWidth="480px">
-        <form onSubmit={handleAddManualPayment}>
+      {/* ── Modal: Agregar / Editar pago manual ────────────────────── */}
+      <Modal open={mpModalOpen} onClose={() => setMpModalOpen(false)} title={mpEditId ? "Editar pago" : "Agregar pago manual"} maxWidth="480px">
+        <form onSubmit={handleSaveManualPayment}>
           {mpMsg && <p style={{ ...errorBannerStyle, marginBottom: 14 }}>{mpMsg}</p>}
 
           <AppFormField label="Título *">
@@ -869,7 +896,7 @@ export default function PaymentsPage() {
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setMpModalOpen(false)} disabled={savingMp}>Cancelar</UiButton>
             <UiButton type="submit" variant="primary" disabled={savingMp}>
-              {savingMp ? "Guardando..." : "Agregar"}
+              {savingMp ? "Guardando..." : mpEditId ? "Guardar cambios" : "Agregar"}
             </UiButton>
           </div>
         </form>
