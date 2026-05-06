@@ -652,7 +652,7 @@ export default function PaymentsPage() {
                       const sub        = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
 
                       return (
-                        <div key={inv.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle, #e5e7eb)", borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `4px solid ${barColor}` }}>
+                        <div key={inv.id} style={{ background: "var(--bg-card)", borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", borderLeft: `4px solid ${barColor}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
                           {/* Main row */}
                           <div
                             onClick={() => toggleExpand(inv.id)}
@@ -791,7 +791,7 @@ export default function PaymentsPage() {
                             const barColor   = statusBarColor(item.due_date ?? null, item.payment_status, todayStr)
 
                             return (
-                              <div key={item.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle, #e5e7eb)", borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `4px solid ${barColor}` }}>
+                              <div key={item.id} style={{ background: "var(--bg-card)", borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", borderLeft: `4px solid ${barColor}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
                                 {/* Main row */}
                                 <div
                                   onClick={() => toggleExpand(item.id)}
@@ -891,7 +891,7 @@ export default function PaymentsPage() {
                   const barColor   = statusBarColor(mp.due_date ?? null, mp.payment_status, todayStr)
 
                   return (
-                    <div key={mp.id} style={{ background: "var(--bg-card)", border: "1px solid var(--border-subtle, #e5e7eb)", borderRadius: 12, marginBottom: 8, overflow: "hidden", borderLeft: `4px solid ${barColor}` }}>
+                    <div key={mp.id} style={{ background: "var(--bg-card)", borderTop: "1px solid #e2e8f0", borderRight: "1px solid #e2e8f0", borderBottom: "1px solid #e2e8f0", borderLeft: `4px solid ${barColor}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
                       {/* Main row */}
                       <div
                         onClick={() => toggleExpand(mp.id)}
