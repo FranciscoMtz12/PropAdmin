@@ -674,8 +674,6 @@ export default function PaymentsPage() {
                           <div
                             onClick={() => toggleExpand(inv.id)}
                             style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
-                            onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                           >
                             <ConceptIcon type={inv.service_type} />
                             <div style={{ flex: 1, minWidth: 0 }}>
@@ -696,7 +694,7 @@ export default function PaymentsPage() {
 
                           {/* Dropdown */}
                           {isExpanded && (
-                            <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "14px 16px" }}>
+                            <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                                 {inv.due_date && (
                                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
@@ -815,8 +813,6 @@ export default function PaymentsPage() {
                                 <div
                                   onClick={() => toggleExpand(item.id)}
                                   style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
-                                  onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                                 >
                                   <ConceptIcon type="report" />
                                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -834,7 +830,7 @@ export default function PaymentsPage() {
 
                                 {/* Dropdown */}
                                 {isExpanded && (
-                                  <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "14px 16px" }}>
+                                  <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                                       {item.due_date && (
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
@@ -917,8 +913,6 @@ export default function PaymentsPage() {
                       <div
                         onClick={() => toggleExpand(mp.id)}
                         style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
-                        onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                       >
                         <ConceptIcon type="manual" />
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -936,7 +930,7 @@ export default function PaymentsPage() {
 
                       {/* Dropdown */}
                       {isExpanded && (
-                        <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "14px 16px" }}>
+                        <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                             {mp.due_date && (
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
