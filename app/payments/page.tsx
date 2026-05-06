@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react"
 import {
   AlertCircle, Calendar, CheckCircle, CheckCircle2,
-  ChevronDown, ChevronLeft, ChevronRight,
+  ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
   ClipboardList, Clock, CreditCard, DollarSign, Droplets,
   FileText, Flame, Loader2, MapPin, Pencil, Plus,
   RotateCcw, Settings, Trash2, TrendingUp, Wifi, Zap,
@@ -92,15 +92,15 @@ function getPillStatus(due_date: string | null, payment_status: string, todayStr
   return "pending"
 }
 
-const PILL_CONFIG: Record<PillStatus, { bg: string; label: string; Icon: React.ElementType }> = {
-  paid:    { bg: "#15803d", label: "Pagado",    Icon: CheckCircle2 },
-  overdue: { bg: "#dc2626", label: "Vencido",   Icon: AlertCircle  },
-  today:   { bg: "#ea580c", label: "Vence hoy", Icon: Clock        },
-  pending: { bg: "#d97706", label: "Pendiente", Icon: Clock        },
+const PILL_CONFIG: Record<PillStatus, { bg: string; text: string; border: string; label: string; Icon: React.ElementType }> = {
+  paid:    { bg: "var(--badge-bg-green)", text: "var(--badge-text-green)", border: "var(--metric-border-green)", label: "Pagado",    Icon: CheckCircle2 },
+  overdue: { bg: "var(--badge-bg-red)",   text: "var(--badge-text-red)",   border: "#FECACA",                   label: "Vencido",   Icon: AlertCircle  },
+  today:   { bg: "#FFF7ED",               text: "#EA580C",                  border: "#FED7AA",                   label: "Vence hoy", Icon: Clock        },
+  pending: { bg: "#FEFCE8",               text: "#A16207",                  border: "#FDE68A",                   label: "Pendiente", Icon: Clock        },
 }
 
 function statusBarColor(due_date: string | null, payment_status: string, todayStr: string): string {
-  return PILL_CONFIG[getPillStatus(due_date, payment_status, todayStr)].bg
+  return PILL_CONFIG[getPillStatus(due_date, payment_status, todayStr)].text
 }
 
 /* ─── Concept icon ───────────────────────────────────────────────── */
@@ -139,12 +139,13 @@ function StatusPill({ due_date, payment_status, todayStr }: {
   todayStr: string
 }) {
   const status = getPillStatus(due_date, payment_status, todayStr)
-  const { bg, label, Icon } = PILL_CONFIG[status]
+  const { bg, text, border, label, Icon } = PILL_CONFIG[status]
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 4,
-      padding: "3px 9px", borderRadius: 999, background: bg,
-      color: "#fff", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0,
+      padding: "5px 10px", borderRadius: 999,
+      background: bg, color: text, border: `1px solid ${border}`,
+      fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0,
     }}>
       <Icon size={10} />
       {label}
@@ -179,8 +180,14 @@ const ACT_DANGER: React.CSSProperties = {
 const CARD: React.CSSProperties = {
   background: "var(--bg-card)",
   border: "1px solid var(--border-default)",
-  borderRadius: 12,
+  borderRadius: 16,
   overflow: "hidden",
+}
+
+const CHEVRON_WRAP: React.CSSProperties = {
+  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+  border: "1px solid var(--border-default)", background: "var(--bg-page)",
+  color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center",
 }
 
 /* ─── Page ───────────────────────────────────────────────────────── */
@@ -647,33 +654,32 @@ export default function PaymentsPage() {
                       return (
                         <div key={inv.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
                           {/* Main row */}
-                          <div style={{ position: "relative" }}>
-                            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: barColor }} />
-                            <div
-                              onClick={() => toggleExpand(inv.id)}
-                              style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px 13px 20px", cursor: "pointer" }}
-                              onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                            >
-                              <ConceptIcon type={inv.service_type} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
-                                  {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
-                                  {inv.provider_name ? ` — ${inv.provider_name}` : ""}
-                                </div>
-                                {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{sub}</div>}
+                          <div
+                            onClick={() => toggleExpand(inv.id)}
+                            style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
+                            onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                          >
+                            <ConceptIcon type={inv.service_type} />
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
+                                {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
+                                {inv.provider_name ? ` — ${inv.provider_name}` : ""}
                               </div>
-                              <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
-                                {formatMXN(Number(inv.total_amount))}
-                              </span>
-                              <StatusPill due_date={inv.due_date ?? null} payment_status={inv.payment_status} todayStr={todayStr} />
-                              <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                              {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{sub}</div>}
                             </div>
+                            <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                              {formatMXN(Number(inv.total_amount))}
+                            </span>
+                            <StatusPill due_date={inv.due_date ?? null} payment_status={inv.payment_status} todayStr={todayStr} />
+                            <span style={CHEVRON_WRAP}>
+                              {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                            </span>
                           </div>
 
                           {/* Dropdown */}
                           {isExpanded && (
-                            <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "12px 16px 14px 52px" }}>
+                            <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "14px 16px" }}>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                                 {inv.due_date && (
                                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
@@ -778,7 +784,7 @@ export default function PaymentsPage() {
                       {report.items.length === 0 ? (
                         <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
                       ) : (
-                        <div style={{ border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden" }}>
+                        <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
                           {report.items.map(item => {
                             const isExpanded = expanded.has(item.id)
                             const isLoading  = toggling.has(item.id)
@@ -787,30 +793,29 @@ export default function PaymentsPage() {
                             return (
                               <div key={item.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
                                 {/* Main row */}
-                                <div style={{ position: "relative" }}>
-                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: barColor }} />
-                                  <div
-                                    onClick={() => toggleExpand(item.id)}
-                                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px 12px 20px", cursor: "pointer" }}
-                                    onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                                  >
-                                    <ConceptIcon type="report" />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{item.description}</div>
-                                      {item.vendor_name && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{item.vendor_name}</div>}
-                                    </div>
-                                    <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
-                                      {formatMXN(Number(item.amount))}
-                                    </span>
-                                    <StatusPill due_date={item.due_date ?? null} payment_status={item.payment_status} todayStr={todayStr} />
-                                    <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                                <div
+                                  onClick={() => toggleExpand(item.id)}
+                                  style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                >
+                                  <ConceptIcon type="report" />
+                                  <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{item.description}</div>
+                                    {item.vendor_name && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{item.vendor_name}</div>}
                                   </div>
+                                  <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                                    {formatMXN(Number(item.amount))}
+                                  </span>
+                                  <StatusPill due_date={item.due_date ?? null} payment_status={item.payment_status} todayStr={todayStr} />
+                                  <span style={CHEVRON_WRAP}>
+                                    {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                                  </span>
                                 </div>
 
                                 {/* Dropdown */}
                                 {isExpanded && (
-                                  <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "12px 16px 14px 52px" }}>
+                                  <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "14px 16px" }}>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                                       {item.due_date && (
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
@@ -888,30 +893,29 @@ export default function PaymentsPage() {
                   return (
                     <div key={mp.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
                       {/* Main row */}
-                      <div style={{ position: "relative" }}>
-                        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: barColor }} />
-                        <div
-                          onClick={() => toggleExpand(mp.id)}
-                          style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px 13px 20px", cursor: "pointer" }}
-                          onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                          onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                        >
-                          <ConceptIcon type="manual" />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{mp.title}</div>
-                            {mp.building_name && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{mp.building_name}</div>}
-                          </div>
-                          <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
-                            {formatMXN(Number(mp.amount))}
-                          </span>
-                          <StatusPill due_date={mp.due_date ?? null} payment_status={mp.payment_status} todayStr={todayStr} />
-                          <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                      <div
+                        onClick={() => toggleExpand(mp.id)}
+                        style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", paddingLeft: 12, cursor: "pointer", borderLeft: `4px solid ${barColor}` }}
+                        onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                        onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                      >
+                        <ConceptIcon type="manual" />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{mp.title}</div>
+                          {mp.building_name && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{mp.building_name}</div>}
                         </div>
+                        <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                          {formatMXN(Number(mp.amount))}
+                        </span>
+                        <StatusPill due_date={mp.due_date ?? null} payment_status={mp.payment_status} todayStr={todayStr} />
+                        <span style={CHEVRON_WRAP}>
+                          {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+                        </span>
                       </div>
 
                       {/* Dropdown */}
                       {isExpanded && (
-                        <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "12px 16px 14px 52px" }}>
+                        <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "14px 16px" }}>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                             {mp.due_date && (
                               <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
