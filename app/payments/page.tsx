@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react"
 import {
-  AlertCircle, CheckCircle, CheckCircle2, ChevronLeft, ChevronRight,
+  AlertCircle, Calendar, CheckCircle, CheckCircle2,
+  ChevronDown, ChevronLeft, ChevronRight,
   ClipboardList, Clock, CreditCard, DollarSign, Droplets,
-  FileText, Flame, Loader2, MapPin, Pencil, Plus, Settings, Trash2,
-  TrendingUp, Wifi, Zap,
+  FileText, Flame, Loader2, MapPin, Pencil, Plus,
+  RotateCcw, Settings, Trash2, TrendingUp, Wifi, Zap,
 } from "lucide-react"
 import toast from "react-hot-toast"
 
@@ -79,6 +80,29 @@ function getWeekNumber(date: Date): number {
   return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7)
 }
 
+/* ─── Status helpers ─────────────────────────────────────────────── */
+
+type PillStatus = "paid" | "overdue" | "today" | "pending"
+
+function getPillStatus(due_date: string | null, payment_status: string, todayStr: string): PillStatus {
+  if (payment_status === "paid") return "paid"
+  if (!due_date) return "pending"
+  if (due_date < todayStr) return "overdue"
+  if (due_date === todayStr) return "today"
+  return "pending"
+}
+
+const PILL_CONFIG: Record<PillStatus, { bg: string; label: string; Icon: React.ElementType }> = {
+  paid:    { bg: "#15803d", label: "Pagado",    Icon: CheckCircle2 },
+  overdue: { bg: "#dc2626", label: "Vencido",   Icon: AlertCircle  },
+  today:   { bg: "#ea580c", label: "Vence hoy", Icon: Clock        },
+  pending: { bg: "#d97706", label: "Pendiente", Icon: Clock        },
+}
+
+function statusBarColor(due_date: string | null, payment_status: string, todayStr: string): string {
+  return PILL_CONFIG[getPillStatus(due_date, payment_status, todayStr)].bg
+}
+
 /* ─── Concept icon ───────────────────────────────────────────────── */
 
 const CONCEPT_COLORS: Record<string, string> = {
@@ -95,96 +119,62 @@ function ConceptIcon({ type }: { type: string }) {
   const color = CONCEPT_COLORS[type] ?? "#9ca3af"
   const El = (() => {
     switch (type) {
-      case "gas":      return <Flame size={14} />
-      case "water":    return <Droplets size={14} />
-      case "internet": return <Wifi size={14} />
-      case "report":   return <ClipboardList size={14} />
-      case "manual":   return <FileText size={14} />
-      case "other":    return <Settings size={14} />
-      default:         return <Zap size={14} />
+      case "gas":      return <Flame size={15} />
+      case "water":    return <Droplets size={15} />
+      case "internet": return <Wifi size={15} />
+      case "report":   return <ClipboardList size={15} />
+      case "manual":   return <FileText size={15} />
+      case "other":    return <Settings size={15} />
+      default:         return <Zap size={15} />
     }
   })()
   return <span style={{ color, display: "inline-flex", alignItems: "center", flexShrink: 0 }}>{El}</span>
 }
 
-/* ─── Status pill ────────────────────────────────────────────────── */
+/* ─── Visual-only status pill ────────────────────────────────────── */
 
-type PillStatus = "paid" | "overdue" | "today" | "pending"
-
-function getPillStatus(due_date: string | null, payment_status: string, todayStr: string): PillStatus {
-  if (payment_status === "paid") return "paid"
-  if (!due_date) return "pending"
-  if (due_date < todayStr) return "overdue"
-  if (due_date === todayStr) return "today"
-  return "pending"
-}
-
-function dueDateColor(due_date: string | null, payment_status: string, todayStr: string): string {
-  if (!due_date || payment_status === "paid") return "var(--text-secondary)"
-  if (due_date < todayStr) return "#dc2626"
-  if (due_date === todayStr) return "#ea580c"
-  return "var(--text-secondary)"
-}
-
-const PILL_CONFIG: Record<PillStatus, { bg: string; label: string; Icon: React.ElementType }> = {
-  paid:    { bg: "#15803d", label: "Pagado",    Icon: CheckCircle2 },
-  overdue: { bg: "#dc2626", label: "Vencido",   Icon: AlertCircle  },
-  today:   { bg: "#ea580c", label: "Vence hoy", Icon: Clock        },
-  pending: { bg: "#d97706", label: "Pendiente", Icon: Clock        },
-}
-
-function StatusPill({ id, due_date, payment_status, todayStr, toggling, onClick }: {
-  id: string
+function StatusPill({ due_date, payment_status, todayStr }: {
   due_date: string | null
   payment_status: string
   todayStr: string
-  toggling: Set<string>
-  onClick: () => void
 }) {
   const status = getPillStatus(due_date, payment_status, todayStr)
   const { bg, label, Icon } = PILL_CONFIG[status]
-  const isLoading = toggling.has(id)
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={isLoading}
-      style={{
-        display: "inline-flex", alignItems: "center", gap: 5,
-        padding: "4px 10px", borderRadius: 999, border: "none",
-        background: bg, color: "#fff",
-        cursor: isLoading ? "default" : "pointer",
-        fontSize: 12, fontWeight: 600, whiteSpace: "nowrap",
-        opacity: isLoading ? 0.7 : 1,
-      }}
-    >
-      {isLoading ? <Loader2 size={11} /> : <Icon size={11} />}
-      {isLoading ? "…" : label}
-    </button>
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      padding: "3px 9px", borderRadius: 999, background: bg,
+      color: "#fff", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0,
+    }}>
+      <Icon size={10} />
+      {label}
+    </span>
   )
 }
 
-/* ─── Table style constants ──────────────────────────────────────── */
+/* ─── Dropdown action button styles ──────────────────────────────── */
 
-const TH: React.CSSProperties = {
-  padding: "8px 16px",
-  textAlign: "left",
-  fontWeight: 600,
-  color: "var(--text-muted)",
-  fontSize: 11,
-  textTransform: "uppercase",
-  letterSpacing: "0.06em",
-  borderBottom: "2px solid var(--border-default)",
-  whiteSpace: "nowrap",
-  background: "var(--bg-page)",
+const ACT_PRIMARY: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6,
+  padding: "6px 14px", borderRadius: 8, border: "none",
+  background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
 }
 
-const TD: React.CSSProperties = {
-  padding: "12px 16px",
-  verticalAlign: "middle",
-  borderBottom: "1px solid var(--border-default)",
-  fontSize: 13,
+const ACT_GHOST: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6,
+  padding: "6px 14px", borderRadius: 8,
+  border: "1px solid var(--border-default)", background: "transparent",
+  cursor: "pointer", fontSize: 13, color: "var(--text-secondary)",
 }
+
+const ACT_DANGER: React.CSSProperties = {
+  display: "inline-flex", alignItems: "center", gap: 6,
+  padding: "6px 14px", borderRadius: 8,
+  border: "1px solid #dc2626", background: "transparent",
+  cursor: "pointer", fontSize: 13, color: "#dc2626",
+}
+
+/* ─── Shared card wrapper style ──────────────────────────────────── */
 
 const CARD: React.CSSProperties = {
   background: "var(--bg-card)",
@@ -210,6 +200,9 @@ export default function PaymentsPage() {
   const [manualPayments, setManualPayments] = useState<ManualPaymentRow[]>([])
   const [allBuildings, setAllBuildings]     = useState<Array<{ id: string; name: string }>>([])
   const [pageLoading, setPageLoading]       = useState(true)
+
+  // Expand/collapse per item
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
   // Toggle loading tracker
   const [toggling, setToggling] = useState<Set<string>>(new Set())
@@ -244,6 +237,14 @@ export default function PaymentsPage() {
     if (m < 1)  { m = 12; y-- }
     if (m > 12) { m = 1;  y++ }
     setMonth(m); setYear(y)
+  }
+
+  function toggleExpand(id: string) {
+    setExpanded(prev => {
+      const s = new Set(prev)
+      if (s.has(id)) s.delete(id); else s.add(id)
+      return s
+    })
   }
 
   async function loadData() {
@@ -614,7 +615,7 @@ export default function PaymentsPage() {
 
       <div style={{ marginTop: 20 }}>
 
-        {/* ── TAB 1: SERVICIOS ─────────────────────────────────────── */}
+        {/* ── TAB 1: SERVICIOS (grouped by building) ───────────────── */}
         {activeTab === "services" && (
           <>
             {pageLoading ? (
@@ -626,61 +627,96 @@ export default function PaymentsPage() {
               />
             ) : (
               <div style={CARD}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        <th style={TH}>Concepto</th>
-                        <th style={TH}>Edificio</th>
-                        <th style={TH}>Fecha límite</th>
-                        <th style={{ ...TH, textAlign: "right" }}>Monto</th>
-                        <th style={TH}>Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {allInvoices.map(inv => {
-                        const sub = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
-                        return (
-                          <tr
-                            key={inv.id}
-                            onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                            onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                          >
-                            <td style={TD}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                <ConceptIcon type={inv.service_type} />
-                                <div>
-                                  <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>
-                                    {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
-                                  </div>
-                                  {sub && <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 1 }}>{sub}</div>}
+                {invoiceGroups.map(group => (
+                  <div key={group.building_id}>
+                    {/* Building header */}
+                    <div style={{ padding: "8px 20px", display: "flex", alignItems: "center", gap: 6, background: "var(--bg-page)", borderBottom: "1px solid var(--border-default)" }}>
+                      <MapPin size={12} style={{ color: "var(--text-muted)" }} />
+                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>
+                        {group.building_name}
+                      </span>
+                    </div>
+
+                    {/* Invoice rows */}
+                    {group.invoices.map(inv => {
+                      const isExpanded = expanded.has(inv.id)
+                      const isLoading  = toggling.has(inv.id)
+                      const barColor   = statusBarColor(inv.due_date ?? null, inv.payment_status, todayStr)
+                      const sub        = [inv.provider_name, inv.meter_number].filter(Boolean).join(" · ")
+
+                      return (
+                        <div key={inv.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
+                          {/* Main row */}
+                          <div style={{ position: "relative" }}>
+                            <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: barColor }} />
+                            <div
+                              onClick={() => toggleExpand(inv.id)}
+                              style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px 13px 20px", cursor: "pointer" }}
+                              onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                              onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                            >
+                              <ConceptIcon type={inv.service_type} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
+                                  {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
+                                  {inv.provider_name ? ` — ${inv.provider_name}` : ""}
                                 </div>
+                                {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{sub}</div>}
                               </div>
-                            </td>
-                            <td style={{ ...TD, color: "var(--text-secondary)" }}>{inv.building_name}</td>
-                            <td style={{ ...TD, color: dueDateColor(inv.due_date ?? null, inv.payment_status, todayStr) }}>
-                              {inv.due_date ? formatDueDateNatural(inv.due_date) : "—"}
-                            </td>
-                            <td style={{ ...TD, textAlign: "right", fontWeight: 700 }}>
-                              {formatMXN(Number(inv.total_amount))}
-                            </td>
-                            <td style={TD}>
-                              <StatusPill
-                                id={inv.id}
-                                due_date={inv.due_date ?? null}
-                                payment_status={inv.payment_status}
-                                todayStr={todayStr}
-                                toggling={toggling}
-                                onClick={() => void toggleInvoice(inv)}
-                              />
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ padding: "10px 16px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--border-default)" }}>
+                              <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                                {formatMXN(Number(inv.total_amount))}
+                              </span>
+                              <StatusPill due_date={inv.due_date ?? null} payment_status={inv.payment_status} todayStr={todayStr} />
+                              <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                            </div>
+                          </div>
+
+                          {/* Dropdown */}
+                          {isExpanded && (
+                            <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "12px 16px 14px 52px" }}>
+                              <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
+                                {inv.due_date && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                    <Calendar size={12} />
+                                    Fecha límite: {formatDueDateNatural(inv.due_date)}
+                                  </span>
+                                )}
+                                {inv.paid_at && (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                    <CheckCircle2 size={12} />
+                                    Pagado el: {formatDate(inv.paid_at)}
+                                  </span>
+                                )}
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <Calendar size={12} />
+                                  Período: {MONTH_NAMES[inv.period_month - 1]} {inv.period_year}
+                                </span>
+                              </div>
+                              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                {isLoading ? (
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
+                                    <Loader2 size={13} /> Actualizando...
+                                  </span>
+                                ) : inv.payment_status === "unpaid" ? (
+                                  <button type="button" onClick={() => void toggleInvoice(inv)} style={ACT_PRIMARY}>
+                                    <CheckCircle2 size={14} /> Marcar como pagado
+                                  </button>
+                                ) : (
+                                  <button type="button" onClick={() => void toggleInvoice(inv)} style={ACT_GHOST}>
+                                    <RotateCcw size={14} /> Deshacer pago
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                ))}
+
+                {/* Totals */}
+                <div style={{ padding: "10px 20px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", background: "var(--bg-page)" }}>
                   Pendiente: <strong>{formatMXN(unpaidInvoices.reduce((s, i) => s + Number(i.total_amount), 0))}</strong>
                   {" · "}
                   Pagado: <strong>{formatMXN(paidInvoices.reduce((s, i) => s + Number(i.total_amount), 0))}</strong>
@@ -724,78 +760,97 @@ export default function PaymentsPage() {
                         report.elaborated_by ? `— ${report.elaborated_by}` : null,
                       ].filter(Boolean).join(" · ")}
                     >
+                      {/* Report header */}
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
                         <AppBadge variant={statusVariant}>{statusLabel}</AppBadge>
                         <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{report.items.length} items</span>
+                        {hasPending && (
+                          <button
+                            type="button"
+                            onClick={() => void markAllReportPaid(report)}
+                            style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                          >
+                            <CheckCircle2 size={13} /> Marcar todo pagado
+                          </button>
+                        )}
                       </div>
 
                       {report.items.length === 0 ? (
                         <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
                       ) : (
-                        <div style={{ overflowX: "auto", borderRadius: 8, border: "1px solid var(--border-default)" }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                            <thead>
-                              <tr>
-                                <th style={TH}>Concepto</th>
-                                <th style={TH}>Proveedor</th>
-                                <th style={TH}>Fecha límite</th>
-                                <th style={{ ...TH, textAlign: "right" }}>Monto</th>
-                                <th style={TH}>Status</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {report.items.map(item => (
-                                <tr
-                                  key={item.id}
-                                  onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
-                                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
-                                >
-                                  <td style={TD}>
-                                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                                      <ConceptIcon type="report" />
-                                      <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{item.description}</span>
+                        <div style={{ border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden" }}>
+                          {report.items.map(item => {
+                            const isExpanded = expanded.has(item.id)
+                            const isLoading  = toggling.has(item.id)
+                            const barColor   = statusBarColor(item.due_date ?? null, item.payment_status, todayStr)
+
+                            return (
+                              <div key={item.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
+                                {/* Main row */}
+                                <div style={{ position: "relative" }}>
+                                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: barColor }} />
+                                  <div
+                                    onClick={() => toggleExpand(item.id)}
+                                    style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px 12px 20px", cursor: "pointer" }}
+                                    onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
+                                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                                  >
+                                    <ConceptIcon type="report" />
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{item.description}</div>
+                                      {item.vendor_name && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{item.vendor_name}</div>}
                                     </div>
-                                  </td>
-                                  <td style={{ ...TD, color: "var(--text-secondary)" }}>{item.vendor_name ?? "—"}</td>
-                                  <td style={{ ...TD, color: dueDateColor(item.due_date ?? null, item.payment_status, todayStr) }}>
-                                    {item.due_date ? formatDueDateNatural(item.due_date) : "—"}
-                                  </td>
-                                  <td style={{ ...TD, textAlign: "right", fontWeight: 700 }}>
-                                    {formatMXN(Number(item.amount))}
-                                  </td>
-                                  <td style={TD}>
-                                    <StatusPill
-                                      id={item.id}
-                                      due_date={item.due_date ?? null}
-                                      payment_status={item.payment_status}
-                                      todayStr={todayStr}
-                                      toggling={toggling}
-                                      onClick={() => void toggleReportItem(item, report)}
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                            <tfoot>
-                              <tr style={{ background: "var(--bg-page)" }}>
-                                <td colSpan={3} style={{ padding: "10px 16px", fontSize: 13, fontWeight: 700 }}>Total</td>
-                                <td style={{ padding: "10px 16px", textAlign: "right", fontSize: 13, fontWeight: 700 }}>
-                                  {formatMXN(total)}
-                                </td>
-                                <td style={{ padding: "10px 16px" }}>
-                                  {hasPending && (
-                                    <button
-                                      type="button"
-                                      onClick={() => void markAllReportPaid(report)}
-                                      style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
-                                    >
-                                      Marcar todo pagado
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            </tfoot>
-                          </table>
+                                    <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
+                                      {formatMXN(Number(item.amount))}
+                                    </span>
+                                    <StatusPill due_date={item.due_date ?? null} payment_status={item.payment_status} todayStr={todayStr} />
+                                    <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                                  </div>
+                                </div>
+
+                                {/* Dropdown */}
+                                {isExpanded && (
+                                  <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "12px 16px 14px 52px" }}>
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
+                                      {item.due_date && (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                          <Calendar size={12} />
+                                          Fecha límite: {formatDueDateNatural(item.due_date)}
+                                        </span>
+                                      )}
+                                      {item.paid_at && (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                          <CheckCircle2 size={12} />
+                                          Pagado el: {formatDate(item.paid_at)}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                                      {isLoading ? (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
+                                          <Loader2 size={13} /> Actualizando...
+                                        </span>
+                                      ) : item.payment_status === "unpaid" ? (
+                                        <button type="button" onClick={() => void toggleReportItem(item, report)} style={ACT_PRIMARY}>
+                                          <CheckCircle2 size={14} /> Marcar como pagado
+                                        </button>
+                                      ) : (
+                                        <button type="button" onClick={() => void toggleReportItem(item, report)} style={ACT_GHOST}>
+                                          <RotateCcw size={14} /> Deshacer pago
+                                        </button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )
+                          })}
+
+                          {/* Report total row */}
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, padding: "10px 20px", background: "var(--bg-page)", fontSize: 13 }}>
+                            <span style={{ color: "var(--text-muted)" }}>Total</span>
+                            <strong>{formatMXN(total)}</strong>
+                          </div>
                         </div>
                       )}
                     </SectionCard>
@@ -825,72 +880,81 @@ export default function PaymentsPage() {
               />
             ) : (
               <div style={CARD}>
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr>
-                        <th style={TH}>Concepto</th>
-                        <th style={TH}>Edificio</th>
-                        <th style={TH}>Fecha límite</th>
-                        <th style={{ ...TH, textAlign: "right" }}>Monto</th>
-                        <th style={TH}>Status</th>
-                        <th style={TH}>Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {manualPayments.map(mp => (
-                        <tr
-                          key={mp.id}
+                {manualPayments.map(mp => {
+                  const isExpanded = expanded.has(mp.id)
+                  const isLoading  = toggling.has(mp.id)
+                  const barColor   = statusBarColor(mp.due_date ?? null, mp.payment_status, todayStr)
+
+                  return (
+                    <div key={mp.id} style={{ borderBottom: "1px solid var(--border-default)" }}>
+                      {/* Main row */}
+                      <div style={{ position: "relative" }}>
+                        <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: barColor }} />
+                        <div
+                          onClick={() => toggleExpand(mp.id)}
+                          style={{ display: "flex", alignItems: "center", gap: 12, padding: "13px 16px 13px 20px", cursor: "pointer" }}
                           onMouseEnter={e => (e.currentTarget.style.background = "var(--bg-page)")}
                           onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                         >
-                          <td style={TD}>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                              <ConceptIcon type="manual" />
-                              <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{mp.title}</span>
-                            </div>
-                          </td>
-                          <td style={{ ...TD, color: "var(--text-secondary)" }}>{mp.building_name ?? "—"}</td>
-                          <td style={{ ...TD, color: dueDateColor(mp.due_date ?? null, mp.payment_status, todayStr) }}>
-                            {mp.due_date ? formatDueDateNatural(mp.due_date) : "—"}
-                          </td>
-                          <td style={{ ...TD, textAlign: "right", fontWeight: 700 }}>
+                          <ConceptIcon type="manual" />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{mp.title}</div>
+                            {mp.building_name && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{mp.building_name}</div>}
+                          </div>
+                          <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0, marginRight: 8 }}>
                             {formatMXN(Number(mp.amount))}
-                          </td>
-                          <td style={TD}>
-                            <StatusPill
-                              id={mp.id}
-                              due_date={mp.due_date ?? null}
-                              payment_status={mp.payment_status}
-                              todayStr={todayStr}
-                              toggling={toggling}
-                              onClick={() => void toggleManual(mp)}
-                            />
-                          </td>
-                          <td style={TD}>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <button
-                                type="button"
-                                onClick={() => openMpModal(mp)}
-                                style={{ display: "inline-flex", alignItems: "center", padding: 6, borderRadius: 6, border: "1px solid var(--border-default)", background: "transparent", cursor: "pointer", color: "var(--text-muted)" }}
-                              >
-                                <Pencil size={13} />
+                          </span>
+                          <StatusPill due_date={mp.due_date ?? null} payment_status={mp.payment_status} todayStr={todayStr} />
+                          <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0, transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }} />
+                        </div>
+                      </div>
+
+                      {/* Dropdown */}
+                      {isExpanded && (
+                        <div style={{ borderTop: "1px solid var(--border-default)", background: "var(--bg-page)", padding: "12px 16px 14px 52px" }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
+                            {mp.due_date && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                <Calendar size={12} />
+                                Fecha límite: {formatDueDateNatural(mp.due_date)}
+                              </span>
+                            )}
+                            {mp.paid_at && (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                <CheckCircle2 size={12} />
+                                Pagado el: {formatDate(mp.paid_at)}
+                              </span>
+                            )}
+                          </div>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            {isLoading ? (
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
+                                <Loader2 size={13} /> Actualizando...
+                              </span>
+                            ) : mp.payment_status === "unpaid" ? (
+                              <button type="button" onClick={() => void toggleManual(mp)} style={ACT_PRIMARY}>
+                                <CheckCircle2 size={14} /> Marcar como pagado
                               </button>
-                              <button
-                                type="button"
-                                onClick={() => void deleteManual(mp.id)}
-                                style={{ display: "inline-flex", alignItems: "center", padding: 6, borderRadius: 6, border: "1px solid #dc2626", background: "transparent", cursor: "pointer", color: "#dc2626" }}
-                              >
-                                <Trash2 size={13} />
+                            ) : (
+                              <button type="button" onClick={() => void toggleManual(mp)} style={ACT_GHOST}>
+                                <RotateCcw size={14} /> Deshacer pago
                               </button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-                <div style={{ padding: "10px 16px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--border-default)" }}>
+                            )}
+                            <button type="button" onClick={() => { openMpModal(mp) }} style={ACT_GHOST}>
+                              <Pencil size={14} /> Editar
+                            </button>
+                            <button type="button" onClick={() => void deleteManual(mp.id)} style={ACT_DANGER}>
+                              <Trash2 size={14} /> Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+
+                {/* Totals */}
+                <div style={{ padding: "10px 20px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", background: "var(--bg-page)" }}>
                   Pendiente: <strong>{formatMXN(unpaidManual.reduce((s, m) => s + Number(m.amount), 0))}</strong>
                   {" · "}
                   Pagado: <strong>{formatMXN(paidManual.reduce((s, m) => s + Number(m.amount), 0))}</strong>
