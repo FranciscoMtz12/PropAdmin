@@ -57,6 +57,11 @@ export default function UtilityInvoiceModal({
     existingInvoice?.total_consumption != null ? String(existingInvoice.total_consumption) : ""
   )
   const [folio, setFolio]                     = useState(existingInvoice?.folio ?? "")
+  const [dueDate, setDueDate]                 = useState(() => {
+    if (existingInvoice?.due_date) return existingInvoice.due_date
+    const lastDay = new Date(period.year, period.month, 0).getDate()
+    return `${period.year}-${String(period.month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+  })
   const [pdfFile, setPdfFile]                 = useState<File | null>(null)
   const [saving, setSaving]                   = useState(false)
   const [msg, setMsg]                         = useState("")
@@ -320,6 +325,7 @@ export default function UtilityInvoiceModal({
         total_consumption:         totalConsumption ? parseFloat(totalConsumption) : null,
         consumption_unit:          consumptionUnit,
         folio:                     folio.trim() || null,
+        due_date:                  dueDate || null,
         pdf_path:                  pdfPath,
         status:                    "charged" as const,
         charged_at:                new Date().toISOString(),
@@ -493,6 +499,10 @@ export default function UtilityInvoiceModal({
 
         <AppFormField label="Folio / referencia (opcional)">
           <input value={folio} onChange={e => setFolio(e.target.value)} placeholder="Ej. 1234567890" style={INPUT_STYLE} />
+        </AppFormField>
+
+        <AppFormField label="Fecha límite de pago al proveedor (opcional)">
+          <input type="date" value={dueDate} onChange={e => setDueDate(e.target.value)} style={INPUT_STYLE} />
         </AppFormField>
 
         <AppFormField label="PDF de la factura (opcional)">

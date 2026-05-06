@@ -137,6 +137,7 @@ export type BuildingUtilityInvoice = {
   status: UtilityInvoiceStatus
   payment_status: PaymentStatus
   paid_at: string | null
+  due_date: string | null
   distributed_at: string | null
   charged_at: string | null
   created_by: string | null
@@ -169,6 +170,7 @@ export type PaymentReportItem = {
   amount: number
   payment_status: PaymentStatus
   paid_at: string | null
+  due_date: string | null
   notes: string | null
   created_at: string
 }
@@ -183,6 +185,7 @@ export type ManualPayment = {
   period_month: number
   payment_status: PaymentStatus
   paid_at: string | null
+  due_date: string | null
   payment_report_id: string | null
   created_by: string | null
   created_at: string

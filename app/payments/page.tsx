@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import {
-  CheckCircle, CheckCircle2, ChevronLeft, ChevronRight,
+  AlertCircle, CheckCircle, CheckCircle2, ChevronLeft, ChevronRight,
   Circle, Clock, CreditCard, DollarSign, Droplets,
   FileText, Flame, MapPin, Plus, Settings, Trash2,
   TrendingUp, Wifi, Zap,
@@ -53,7 +53,7 @@ type ManualPaymentRow = ManualPayment & { building_name: string | null }
 
 type ReportWithItems = PaymentReport & { items: PaymentReportItem[] }
 
-type NewItemRow = { description: string; vendor_name: string; amount: string }
+type NewItemRow = { description: string; vendor_name: string; amount: string; due_date: string }
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
@@ -75,6 +75,11 @@ function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })
 }
 
+function formatDueDateDisplay(iso: string) {
+  const [y, m, d] = iso.split("-")
+  return `${d}/${m}/${y}`
+}
+
 function getWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
   const day = d.getUTCDay() || 7
@@ -88,6 +93,7 @@ function getWeekNumber(date: Date): number {
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser()
   const now = new Date()
+  const todayStr = now.toISOString().split("T")[0]
 
   const [year, setYear]   = useState(now.getFullYear())
   const [month, setMonth] = useState(now.getMonth() + 1)
@@ -105,7 +111,7 @@ export default function PaymentsPage() {
   const [newReportFolio, setNewReportFolio]           = useState("")
   const [newReportDate, setNewReportDate]             = useState("")
   const [newReportElaboratedBy, setNewReportElaboratedBy] = useState("")
-  const [newReportItems, setNewReportItems]           = useState<NewItemRow[]>([{ description: "", vendor_name: "", amount: "" }])
+  const [newReportItems, setNewReportItems]           = useState<NewItemRow[]>([{ description: "", vendor_name: "", amount: "", due_date: "" }])
   const [reportPdfFile, setReportPdfFile]             = useState<File | null>(null)
   const [savingReport, setSavingReport]               = useState(false)
   const [reportMsg, setReportMsg]                     = useState("")
@@ -116,6 +122,7 @@ export default function PaymentsPage() {
   const [mpTitle, setMpTitle]           = useState("")
   const [mpBuildingId, setMpBuildingId] = useState("")
   const [mpAmount, setMpAmount]         = useState("")
+  const [mpDueDate, setMpDueDate]       = useState("")
   const [savingMp, setSavingMp]         = useState(false)
   const [mpMsg, setMpMsg]               = useState("")
 
@@ -309,7 +316,7 @@ export default function PaymentsPage() {
     setNewReportFolio(`RPG-${today.getFullYear()}-${week}`)
     setNewReportDate(today.toISOString().split("T")[0])
     setNewReportElaboratedBy("")
-    setNewReportItems([{ description: "", vendor_name: "", amount: "" }])
+    setNewReportItems([{ description: "", vendor_name: "", amount: "", due_date: todayStr }])
     setReportPdfFile(null)
     setReportMsg("")
     setReportModalOpen(true)
@@ -355,6 +362,7 @@ export default function PaymentsPage() {
         description:       i.description.trim(),
         vendor_name:       i.vendor_name.trim() || null,
         amount:            parseFloat(i.amount),
+        due_date:          i.due_date || null,
         payment_status:    "unpaid" as const,
         paid_at:           null,
         notes:             null,
@@ -373,7 +381,8 @@ export default function PaymentsPage() {
   /* ── Create manual payment ───────────────────────────────────────── */
 
   function openMpModal() {
-    setMpTitle(""); setMpBuildingId(""); setMpAmount(""); setMpMsg("")
+    setMpTitle(""); setMpBuildingId(""); setMpAmount("")
+    setMpDueDate(todayStr); setMpMsg("")
     setMpModalOpen(true)
   }
 
@@ -391,6 +400,7 @@ export default function PaymentsPage() {
         building_id:    mpBuildingId || null,
         title:          mpTitle.trim(),
         amount:         parseFloat(mpAmount),
+        due_date:       mpDueDate || null,
         period_year:    year,
         period_month:   month,
         payment_status: "unpaid",
@@ -506,6 +516,15 @@ export default function PaymentsPage() {
                                 {inv.provider_name ? ` — ${inv.provider_name}` : ""}
                               </div>
                               {label && <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{label}</div>}
+                              {inv.due_date && (() => {
+                                const overdue = inv.due_date < todayStr && inv.payment_status === "unpaid"
+                                return (
+                                  <div style={{ fontSize: 12, marginTop: 2, display: "inline-flex", alignItems: "center", gap: 3, color: overdue ? "#dc2626" : "var(--text-muted)" }}>
+                                    {overdue && <AlertCircle size={11} />}
+                                    Pagar antes del {formatDueDateDisplay(inv.due_date)}
+                                  </div>
+                                )
+                              })()}
                             </div>
                             <span style={{ fontWeight: 700, fontSize: 14, color: isPaid ? "#15803d" : "var(--text-primary)", flexShrink: 0 }}>
                               {formatMXN(Number(inv.total_amount))}
@@ -584,7 +603,7 @@ export default function PaymentsPage() {
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                             <thead>
                               <tr style={{ background: "var(--bg-page)" }}>
-                                {(["Descripción","Proveedor","Monto","Estado"] as const).map(h => (
+                                {(["Descripción","Proveedor","Monto","Fecha límite","Estado"] as const).map(h => (
                                   <th key={h} style={{ padding: "8px 10px", textAlign: h === "Monto" ? "right" : "left", fontWeight: 600, color: "var(--text-secondary)", borderBottom: "2px solid var(--border-default)", fontSize: 12, whiteSpace: "nowrap" }}>{h}</th>
                                 ))}
                               </tr>
@@ -597,6 +616,17 @@ export default function PaymentsPage() {
                                     <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>{item.description}</td>
                                     <td style={{ padding: "10px 10px", verticalAlign: "middle", color: "var(--text-secondary)" }}>{item.vendor_name ?? "—"}</td>
                                     <td style={{ padding: "10px 10px", verticalAlign: "middle", textAlign: "right", fontWeight: 600 }}>{formatMXN(Number(item.amount))}</td>
+                                    <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>
+                                      {item.due_date ? (() => {
+                                        const overdue = item.due_date < todayStr && item.payment_status === "unpaid"
+                                        return (
+                                          <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 12, color: overdue ? "#dc2626" : "var(--text-muted)" }}>
+                                            {overdue && <AlertCircle size={11} />}
+                                            {formatDueDateDisplay(item.due_date)}
+                                          </span>
+                                        )
+                                      })() : "—"}
+                                    </td>
                                     <td style={{ padding: "10px 10px", verticalAlign: "middle" }}>
                                       {itemPaid ? (
                                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -621,6 +651,7 @@ export default function PaymentsPage() {
                               <tr style={{ background: "var(--bg-page)", fontWeight: 700 }}>
                                 <td colSpan={2} style={{ padding: "10px 10px", fontSize: 13 }}>Total</td>
                                 <td style={{ padding: "10px 10px", textAlign: "right", fontSize: 13 }}>{formatMXN(total)}</td>
+                                <td />
                                 <td style={{ padding: "10px 10px" }}>
                                   {hasPending && (
                                     <button type="button" onClick={() => void markAllReportPaid(report)} style={{ fontSize: 12, padding: "4px 10px", borderRadius: 6, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontWeight: 600 }}>
@@ -678,6 +709,15 @@ export default function PaymentsPage() {
                           {mp.building_name && (
                             <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 1 }}>{mp.building_name}</div>
                           )}
+                          {mp.due_date && (() => {
+                            const overdue = mp.due_date < todayStr && mp.payment_status === "unpaid"
+                            return (
+                              <div style={{ fontSize: 12, marginTop: 2, display: "inline-flex", alignItems: "center", gap: 3, color: overdue ? "#dc2626" : "var(--text-muted)" }}>
+                                {overdue && <AlertCircle size={11} />}
+                                Pagar antes del {formatDueDateDisplay(mp.due_date)}
+                              </div>
+                            )
+                          })()}
                         </div>
                         <span style={{ fontWeight: 700, fontSize: 14, color: isPaid ? "#15803d" : "var(--text-primary)", flexShrink: 0 }}>
                           {formatMXN(Number(mp.amount))}
@@ -733,7 +773,7 @@ export default function PaymentsPage() {
             <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Items *</p>
             <div style={{ display: "grid", gap: 8 }}>
               {newReportItems.map((item, idx) => (
-                <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 120px 32px", gap: 8, alignItems: "center" }}>
+                <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 110px 130px 32px", gap: 8, alignItems: "center" }}>
                   <input
                     placeholder="Descripción *"
                     value={item.description}
@@ -755,6 +795,12 @@ export default function PaymentsPage() {
                     min="0"
                     step="0.01"
                   />
+                  <input
+                    type="date"
+                    value={item.due_date}
+                    onChange={e => setNewReportItems(prev => prev.map((it, i) => i === idx ? { ...it, due_date: e.target.value } : it))}
+                    style={{ ...INPUT_STYLE, fontSize: 13 }}
+                  />
                   <button
                     type="button"
                     onClick={() => setNewReportItems(prev => prev.filter((_, i) => i !== idx))}
@@ -768,7 +814,7 @@ export default function PaymentsPage() {
             </div>
             <button
               type="button"
-              onClick={() => setNewReportItems(prev => [...prev, { description: "", vendor_name: "", amount: "" }])}
+              onClick={() => setNewReportItems(prev => [...prev, { description: "", vendor_name: "", amount: "", due_date: todayStr }])}
               style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer" }}
             >
               <Plus size={13} /> Agregar item
@@ -814,6 +860,10 @@ export default function PaymentsPage() {
 
           <AppFormField label="Monto *">
             <input type="number" value={mpAmount} onChange={e => setMpAmount(e.target.value)} placeholder="0.00" style={INPUT_STYLE} step="0.01" min="0" />
+          </AppFormField>
+
+          <AppFormField label="Fecha límite de pago *">
+            <input type="date" value={mpDueDate} onChange={e => setMpDueDate(e.target.value)} style={INPUT_STYLE} required />
           </AppFormField>
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
