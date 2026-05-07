@@ -15,7 +15,7 @@
       id uuid PK, company_id uuid, folio text,
       elaborated_by text, report_date date,
       week_number int, year int,
-      pdf_url text NULL,
+      pdf_path text NULL,
       created_at, updated_at, deleted_at
 
     payment_report_items
@@ -111,7 +111,7 @@ type PaymentReport = {
   report_date:    string;
   week_number:    number | null;
   year:           number | null;
-  pdf_url:        string | null;
+  pdf_path:        string | null;
   created_at:     string;
 };
 
@@ -213,7 +213,7 @@ export default function ReportePagosPage() {
     ] = await Promise.all([
       supabase
         .from("payment_reports")
-        .select("id, folio, elaborated_by, report_date, week_number, year, pdf_url, created_at")
+        .select("id, folio, elaborated_by, report_date, week_number, year, pdf_path, created_at")
         .eq("company_id", companyId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
@@ -873,9 +873,9 @@ export default function ReportePagosPage() {
                   </div>
 
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
-                    {r.pdf_url ? (
+                    {r.pdf_path ? (
                       <a
-                        href={r.pdf_url}
+                        href={r.pdf_path}
                         target="_blank"
                         rel="noopener noreferrer"
                         onClick={(e) => e.stopPropagation()}
