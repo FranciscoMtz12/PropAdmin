@@ -415,16 +415,28 @@ export default function PaymentsPage() {
     setToggling(prev => new Set(prev).add(inv.id))
     const nowPaid = inv.payment_status === "paid"
     const now = new Date().toISOString()
+    const newPaymentStatus = (nowPaid ? "unpaid" : "paid") as "unpaid" | "paid"
+    const newStatus        = (nowPaid ? "distributed" : "charged") as "distributed" | "charged"
     const { error } = await supabase.from("building_utility_invoices").update({
-      payment_status: nowPaid ? "unpaid" : "paid",
+      payment_status: newPaymentStatus,
       paid_at:        nowPaid ? null : now,
-      status:         nowPaid ? "distributed" : "charged",
+      status:         newStatus,
       charged_at:     nowPaid ? null : now,
     }).eq("id", inv.id)
-    if (error) toast.error("Error al actualizar")
-    else toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+    if (error) {
+      toast.error("Error al actualizar")
+    } else {
+      toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+      setInvoiceGroups(prev => prev.map(group => ({
+        ...group,
+        invoices: group.invoices.map(i =>
+          i.id === inv.id
+            ? { ...i, payment_status: newPaymentStatus, status: newStatus, paid_at: nowPaid ? null : now, charged_at: nowPaid ? null : now }
+            : i
+        ),
+      })))
+    }
     setToggling(prev => { const s = new Set(prev); s.delete(inv.id); return s })
-    void loadData()
   }
 
   /* ── Report item toggle ──────────────────────────────────────────── */
@@ -432,23 +444,30 @@ export default function PaymentsPage() {
   async function toggleReportItem(item: PaymentReportItem, report: ReportWithItems) {
     setToggling(prev => new Set(prev).add(item.id))
     const nowPaid = item.payment_status === "paid"
+    const now = new Date().toISOString()
+    const newPaymentStatus = (nowPaid ? "unpaid" : "paid") as "unpaid" | "paid"
     const { error } = await supabase.from("payment_report_items").update({
-      payment_status: nowPaid ? "unpaid" : "paid",
-      paid_at:        nowPaid ? null : new Date().toISOString(),
+      payment_status: newPaymentStatus,
+      paid_at:        nowPaid ? null : now,
     }).eq("id", item.id)
-    if (error) { toast.error("Error al actualizar") }
-    else {
+    if (error) {
+      toast.error("Error al actualizar")
+    } else {
       const updatedItems = report.items.map(i =>
-        i.id === item.id ? { ...i, payment_status: nowPaid ? "unpaid" : "paid" } : i
+        i.id === item.id ? { ...i, payment_status: newPaymentStatus, paid_at: nowPaid ? null : now } : i
       )
       const paidCount = updatedItems.filter(i => i.payment_status === "paid").length
-      const newStatus = paidCount === updatedItems.length ? "paid"
-        : paidCount === 0 ? "pending" : "partial"
-      await supabase.from("payment_reports").update({ status: newStatus }).eq("id", report.id)
+      const newReportStatus = (paidCount === updatedItems.length ? "paid"
+        : paidCount === 0 ? "pending" : "partial") as "pending" | "partial" | "paid" | "cancelled"
+      await supabase.from("payment_reports").update({ status: newReportStatus }).eq("id", report.id)
       toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+      setReports(prev => prev.map(r =>
+        r.id === report.id
+          ? { ...r, status: newReportStatus, items: updatedItems }
+          : r
+      ))
     }
     setToggling(prev => { const s = new Set(prev); s.delete(item.id); return s })
-    void loadData()
   }
 
   async function markAllReportPaid(report: ReportWithItems) {
@@ -460,7 +479,11 @@ export default function PaymentsPage() {
     }
     await supabase.from("payment_reports").update({ status: "paid" }).eq("id", report.id)
     toast.success("Reporte marcado como pagado")
-    void loadData()
+    setReports(prev => prev.map(r =>
+      r.id === report.id
+        ? { ...r, status: "paid" as const, items: r.items.map(i => ({ ...i, payment_status: "paid" as const, paid_at: now })) }
+        : r
+    ))
   }
 
   /* ── Manual payment toggle / delete ─────────────────────────────── */
@@ -468,21 +491,30 @@ export default function PaymentsPage() {
   async function toggleManual(mp: ManualPaymentRow) {
     setToggling(prev => new Set(prev).add(mp.id))
     const nowPaid = mp.payment_status === "paid"
-    await supabase.from("manual_payments").update({
-      payment_status: nowPaid ? "unpaid" : "paid",
-      paid_at:        nowPaid ? null : new Date().toISOString(),
+    const now = new Date().toISOString()
+    const newPaymentStatus = (nowPaid ? "unpaid" : "paid") as "unpaid" | "paid"
+    const { error } = await supabase.from("manual_payments").update({
+      payment_status: newPaymentStatus,
+      paid_at:        nowPaid ? null : now,
     }).eq("id", mp.id)
-    toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+    if (error) {
+      toast.error("Error al actualizar")
+    } else {
+      toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
+      setManualPayments(prev => prev.map(m =>
+        m.id === mp.id ? { ...m, payment_status: newPaymentStatus, paid_at: nowPaid ? null : now } : m
+      ))
+    }
     setToggling(prev => { const s = new Set(prev); s.delete(mp.id); return s })
-    void loadData()
   }
 
   async function deleteManual(id: string) {
-    await supabase.from("manual_payments")
+    const { error } = await supabase.from("manual_payments")
       .update({ deleted_at: new Date().toISOString() })
       .eq("id", id)
+    if (error) { toast.error("Error al eliminar"); return }
     toast.success("Pago eliminado")
-    void loadData()
+    setManualPayments(prev => prev.filter(m => m.id !== id))
   }
 
   /* ── Create report ───────────────────────────────────────────────── */

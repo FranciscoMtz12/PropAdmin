@@ -155,7 +155,7 @@ export type PaymentReport = {
   elaborated_by: string | null
   signer_name: string | null
   pdf_path: string | null
-  status: 'pending' | 'paid' | 'cancelled'
+  status: 'pending' | 'partial' | 'paid' | 'cancelled'
   created_by: string | null
   created_at: string
   deleted_at: string | null
