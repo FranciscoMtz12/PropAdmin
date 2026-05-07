@@ -87,6 +87,7 @@ type AvailableOC = {
   supplier_name:       string | null;
   project_description: string | null;
   building_name:       string | null;
+  total_estimated:     number | null;
   created_at:          string;
   sent_at:             string | null;
 };
@@ -219,6 +220,7 @@ export default function ReportePagosPage() {
         .from("purchase_orders")
         .select(`
           id, folio, project_description, notes, created_at, sent_at, supplier_prefix,
+          total_estimated,
           suppliers(name),
           buildings(name)
         `)
@@ -295,7 +297,7 @@ export default function ReportePagosPage() {
     /* OCs disponibles (sent) con info mínima */
     type OCRaw = {
       id: string; folio: string; project_description: string | null;
-      notes: string | null;
+      notes: string | null; total_estimated: number | null;
       created_at: string; sent_at: string | null; supplier_prefix: string | null;
       buildings: { name: string } | null;
       suppliers: { name: string } | null;
@@ -307,6 +309,7 @@ export default function ReportePagosPage() {
       supplier_name:       o.suppliers?.name || null,
       project_description: o.project_description,
       building_name:       o.buildings?.name || null,
+      total_estimated:     o.total_estimated,
       created_at:          o.created_at,
       sent_at:             o.sent_at,
     }));
@@ -540,10 +543,17 @@ export default function ReportePagosPage() {
       }
 
       /* INSERT de items */
-      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId]) => ({
-        payment_report_id: targetId,
-        purchase_order_id: ocId,
-      }));
+      const ocById = new Map(allSentOCs.map((o) => [o.id, o]));
+      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId]) => {
+        const oc = ocById.get(ocId);
+        return {
+          payment_report_id: targetId,
+          purchase_order_id: ocId,
+          description:       oc?.project_description || oc?.folio || ocId,
+          vendor_name:       oc?.supplier_name || null,
+          amount:            oc?.total_estimated ?? 0,
+        };
+      });
       const { error: itemsErr } = await supabase
         .from("payment_report_items")
         .insert(itemsPayload);
