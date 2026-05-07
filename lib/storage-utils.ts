@@ -6,11 +6,15 @@ export async function getSignedBillUrl(
   expiresInSeconds = 3600,
 ): Promise<string | null> {
   if (!path) return null;
-  const { data, error } = await supabase.storage
-    .from("utility-invoices")
-    .createSignedUrl(path, expiresInSeconds);
-  if (error || !data?.signedUrl) return null;
-  return data.signedUrl;
+  try {
+    const { data, error } = await supabase.storage
+      .from("utility-invoices")
+      .createSignedUrl(path, expiresInSeconds);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  } catch {
+    return null;
+  }
 }
 
 export async function getSignedUtilityReadingUrl(
@@ -19,9 +23,13 @@ export async function getSignedUtilityReadingUrl(
   expiresInSeconds = 3600,
 ): Promise<string | null> {
   if (!path) return null;
-  const { data, error } = await supabase.storage
-    .from("utility-readings")
-    .createSignedUrl(path, expiresInSeconds);
-  if (error || !data?.signedUrl) return null;
-  return data.signedUrl;
+  try {
+    const { data, error } = await supabase.storage
+      .from("utility-readings")
+      .createSignedUrl(path, expiresInSeconds);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  } catch {
+    return null;
+  }
 }

@@ -139,14 +139,13 @@ export async function removeInvoiceFile(path?: string | null) {
 
 export async function createInvoiceSignedUrl(path?: string | null) {
   if (!path) return null;
-
-  const { data, error } = await supabase.storage
-    .from(INVOICE_STORAGE_BUCKET)
-    .createSignedUrl(path, 60 * 10);
-
-  if (error) {
-    throw new Error(error.message || "No fue posible generar el acceso temporal al archivo.");
+  try {
+    const { data, error } = await supabase.storage
+      .from(INVOICE_STORAGE_BUCKET)
+      .createSignedUrl(path, 60 * 10);
+    if (error || !data?.signedUrl) return null;
+    return data.signedUrl;
+  } catch {
+    return null;
   }
-
-  return data?.signedUrl || null;
 }

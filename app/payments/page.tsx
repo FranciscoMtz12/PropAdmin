@@ -351,13 +351,20 @@ export default function PaymentsPage() {
     const meterMap: Record<string, MeterSnap> = {}
     ;((mRes.data || []) as MeterSnap[]).forEach(m => { meterMap[m.id] = m })
 
-    const enriched: InvoiceRow[] = invoiceList.map(inv => ({
-      ...inv,
-      building_name: buildingMap[inv.building_id] ?? inv.building_id,
-      service_type:  meterMap[inv.building_utility_meter_id]?.service_type ?? "other",
-      provider_name: meterMap[inv.building_utility_meter_id]?.provider_name ?? null,
-      meter_number:  meterMap[inv.building_utility_meter_id]?.meter_number ?? null,
-    }))
+    const enriched: InvoiceRow[] = invoiceList.map(inv => {
+      // payment_status column may not exist in DB yet — derive from status as fallback
+      const ps = inv.payment_status as string | undefined
+      const paymentStatus: "paid" | "unpaid" =
+        ps === "paid" || ps === "unpaid" ? ps : inv.status === "charged" ? "paid" : "unpaid"
+      return {
+        ...inv,
+        payment_status: paymentStatus,
+        building_name: buildingMap[inv.building_id] ?? inv.building_id,
+        service_type:  meterMap[inv.building_utility_meter_id]?.service_type ?? "other",
+        provider_name: meterMap[inv.building_utility_meter_id]?.provider_name ?? null,
+        meter_number:  meterMap[inv.building_utility_meter_id]?.meter_number ?? null,
+      }
+    })
 
     const groupMap = new Map<string, BuildingInvoiceGroup>()
     for (const inv of enriched) {
@@ -403,9 +410,10 @@ export default function PaymentsPage() {
   async function toggleInvoice(inv: InvoiceRow) {
     setToggling(prev => new Set(prev).add(inv.id))
     const nowPaid = inv.payment_status === "paid"
+    // Update status + charged_at (payment_status/paid_at columns don't exist in DB yet)
     const { error } = await supabase.from("building_utility_invoices").update({
-      payment_status: nowPaid ? "unpaid" : "paid",
-      paid_at:        nowPaid ? null : new Date().toISOString(),
+      status:     nowPaid ? "distributed" : "charged",
+      charged_at: nowPaid ? null : new Date().toISOString(),
     }).eq("id", inv.id)
     if (error) toast.error("Error al actualizar")
     else toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
