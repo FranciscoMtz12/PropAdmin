@@ -160,24 +160,29 @@ console.log('\n── Seed 1: Facturas de servicios (Mayo 2026) ─────�
 const baseInv = {
   company_id: CID, period_year: 2026, period_month: 5,
   total_consumption: null, consumption_unit: null,
-  folio: null, distributed_at: null, charged_at: null, due_date: null,
+  folio: null, distributed_at: null, charged_at: null, paid_at: null,
+  payment_status: 'unpaid', due_date: null,
   pdf_path: null, created_by: null, is_test: true,
 }
 
 const invoiceDefs = [
   { ...baseInv, building_id: M232, building_utility_meter_id: ELEC_232,
     total_amount: 3450, total_consumption: 280, consumption_unit: 'kWh',
-    folio: 'CFE-MAY-001', status: 'distributed', due_date: '2026-05-31' },
+    folio: 'CFE-MAY-001', status: 'distributed', payment_status: 'unpaid',
+    due_date: '2026-05-31' },
   { ...baseInv, building_id: M232, building_utility_meter_id: WATER_232,
     total_amount: 890, total_consumption: 45, consumption_unit: 'm3',
-    folio: 'SADM-MAY-001', status: 'distributed', due_date: '2026-05-20' },
+    folio: 'SADM-MAY-001', status: 'distributed', payment_status: 'unpaid',
+    due_date: '2026-05-20' },
   { ...baseInv, building_id: M304, building_utility_meter_id: ELEC_304,
     total_amount: 4120, total_consumption: 320, consumption_unit: 'kWh',
-    folio: 'CFE-MAY-002', status: 'charged', charged_at: '2026-05-10T12:00:00Z',
+    folio: 'CFE-MAY-002', status: 'charged', payment_status: 'paid',
+    charged_at: '2026-05-10T12:00:00Z', paid_at: '2026-05-10T12:00:00Z',
     due_date: '2026-05-15' },
   { ...baseInv, building_id: M304, building_utility_meter_id: WATER_304,
     total_amount: 1200, total_consumption: 60, consumption_unit: 'm3',
-    folio: 'SADM-MAY-002', status: 'distributed', due_date: TODAY },
+    folio: 'SADM-MAY-002', status: 'distributed', payment_status: 'unpaid',
+    due_date: TODAY },
 ]
 
 const invoiceRows = await post('building_utility_invoices', invoiceDefs)

@@ -354,10 +354,12 @@ export default function PaymentsPage() {
     ;((mRes.data || []) as MeterSnap[]).forEach(m => { meterMap[m.id] = m })
 
     const enriched: InvoiceRow[] = invoiceList.map(inv => {
-      // payment_status column may not exist in DB yet — derive from status as fallback
-      const ps = inv.payment_status as string | undefined
+      // payment_status exists in DB with default 'unpaid'; fall back to status derivation
+      // only for legacy rows that may have null (though default prevents that).
+      const ps = inv.payment_status as string | null | undefined
       const paymentStatus: "paid" | "unpaid" =
-        ps === "paid" || ps === "unpaid" ? ps : inv.status === "charged" ? "paid" : "unpaid"
+        ps === "paid" ? "paid" : ps === "unpaid" ? "unpaid"
+        : inv.status === "charged" ? "paid" : "unpaid"
       return {
         ...inv,
         payment_status: paymentStatus,
@@ -412,10 +414,12 @@ export default function PaymentsPage() {
   async function toggleInvoice(inv: InvoiceRow) {
     setToggling(prev => new Set(prev).add(inv.id))
     const nowPaid = inv.payment_status === "paid"
-    // Update status + charged_at (payment_status/paid_at columns don't exist in DB yet)
+    const now = new Date().toISOString()
     const { error } = await supabase.from("building_utility_invoices").update({
-      status:     nowPaid ? "distributed" : "charged",
-      charged_at: nowPaid ? null : new Date().toISOString(),
+      payment_status: nowPaid ? "unpaid" : "paid",
+      paid_at:        nowPaid ? null : now,
+      status:         nowPaid ? "distributed" : "charged",
+      charged_at:     nowPaid ? null : now,
     }).eq("id", inv.id)
     if (error) toast.error("Error al actualizar")
     else toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
