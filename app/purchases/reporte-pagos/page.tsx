@@ -35,6 +35,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  AlertTriangle,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -53,7 +54,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateReportePdf } from "@/lib/pdfTemplates";
-import { formatDateShort, getWeekNumber } from "@/lib/dateUtils";
+import { formatDateShort } from "@/lib/dateUtils";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -66,6 +67,15 @@ import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
 
 /* ── Helpers ──────────────────────────────────────────────────── */
+
+function getISOWeek(date: Date): number {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const week1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000
+    - 3 + (week1.getDay() + 6) % 7) / 7);
+}
 
 /** YYYY-MM-DD local (no UTC) */
 function todayIso(): string {
@@ -195,6 +205,10 @@ export default function ReportePagosPage() {
   type InvoiceRef = { invoice_number: string; invoice_date: string; amount: number };
   const [invoicesByOrderId, setInvoicesByOrderId] = useState<Map<string, InvoiceRef>>(new Map());
 
+  /* Validación de semana duplicada */
+  type DuplicateWarning = { folio: string; week: number; year: number };
+  const [duplicateWarning, setDuplicateWarning] = useState<DuplicateWarning | null>(null);
+
   /* Flags */
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   const [archivingId,     setArchivingId]     = useState<string | null>(null);
@@ -205,6 +219,39 @@ export default function ReportePagosPage() {
     if (!userLoading && user?.company_id) void loadAll(user.company_id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLoading, user]);
+
+  /* Validación de semana duplicada — se dispara al cambiar fecha o al abrir modal */
+  useEffect(() => {
+    if (!showModal || !user?.company_id) { setDuplicateWarning(null); return; }
+    const d = new Date(reportDate + "T00:00:00");
+    const w = getISOWeek(d);
+    const y = d.getFullYear();
+    let cancelled = false;
+    async function check() {
+      const baseQ = supabase
+        .from("payment_reports")
+        .select("id, folio")
+        .eq("company_id", user!.company_id)
+        .eq("week_number", w)
+        .eq("year", y)
+        .is("deleted_at", null)
+        .or("is_test.eq.false,is_test.is.null");
+      const { data: rows } = await (editingReportId
+        ? baseQ.neq("id", editingReportId)
+        : baseQ
+      ).limit(1);
+      if (!cancelled) {
+        const found = (rows as Array<{ id: string; folio: string | null }> | null)?.[0];
+        setDuplicateWarning(found
+          ? { folio: found.folio || "—", week: w, year: y }
+          : null
+        );
+      }
+    }
+    void check();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [reportDate, showModal, editingReportId]);
 
   async function loadAll(companyId: string) {
     setLoading(true);
@@ -384,9 +431,9 @@ export default function ReportePagosPage() {
   }, [allSentOCs, claimedByReport, editingReportId]);
 
   /** Semana / año / folio — recalculan al cambiar report_date */
-  const week  = useMemo(() => getWeekNumber(new Date(reportDate + "T00:00:00")), [reportDate]);
+  const week  = useMemo(() => getISOWeek(new Date(reportDate + "T00:00:00")), [reportDate]);
   const year  = useMemo(() => new Date(reportDate + "T00:00:00").getFullYear(), [reportDate]);
-  const folio = useMemo(() => `REP-S${week}-${year}`, [week, year]);
+  const folio = useMemo(() => `RPG-${year}-S${week}`, [week, year]);
 
   /** OCs enviadas que aún no están en ningún reporte */
   const unreportedOCs = useMemo(() => {
@@ -473,6 +520,7 @@ export default function ReportePagosPage() {
     setShowModal(false);
     setEditingReportId(null);
     setCustomSignerMode(false);
+    setDuplicateWarning(null);
     setError("");
   }
 
@@ -1122,6 +1170,20 @@ export default function ReportePagosPage() {
               />
             </AppFormField>
           </div>
+
+          {/* Banner de semana duplicada */}
+          {duplicateWarning ? (
+            <div style={{
+              display: "flex", alignItems: "flex-start", gap: 8,
+              padding: "10px 12px", borderRadius: 8, marginBottom: 4,
+              background: "#fffbeb", border: "1px solid #f59e0b",
+            }}>
+              <AlertTriangle size={15} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ margin: 0, fontSize: 12, color: "#92400e", lineHeight: 1.5 }}>
+                Ya existe el reporte <strong>{duplicateWarning.folio}</strong> para la semana {duplicateWarning.week} de {duplicateWarning.year}. Si continúas, se creará un reporte duplicado.
+              </p>
+            </div>
+          ) : null}
 
           {/* ── Tabla 1: OCs disponibles (para agregar con checkbox) ── */}
           <div style={{ marginTop: 12, marginBottom: 18 }}>
