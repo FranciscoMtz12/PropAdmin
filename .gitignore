@@ -40,3 +40,12 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .gstack/
+
+# scratch / dev artifacts
+screenshots/
+.claude/
+verify-*.mjs
+compare*.mjs
+expand-shot.mjs
+scripts/*.mjs
+Usersfcomt*/
