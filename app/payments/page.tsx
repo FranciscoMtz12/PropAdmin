@@ -300,19 +300,21 @@ export default function PaymentsPage() {
         .eq("period_year", year)
         .eq("period_month", month)
         .in("status", ["distributed", "charged"])
-        .is("deleted_at", null),
+        .is("deleted_at", null)
+        .or("is_test.eq.false,is_test.is.null"),
       supabase.from("manual_payments")
         .select("*")
         .eq("company_id", cid)
         .eq("period_year", year)
         .eq("period_month", month)
-        .is("deleted_at", null),
+        .is("deleted_at", null)
+        .or("is_test.eq.false,is_test.is.null"),
       supabase.from("payment_reports")
         .select("*")
         .eq("company_id", cid)
-        .gte("report_date", startDate)
-        .lt("report_date", endDate)
+        .eq("year", year)
         .is("deleted_at", null)
+        .or("is_test.eq.false,is_test.is.null")
         .order("created_at", { ascending: false }),
       supabase.from("buildings")
         .select("id, name")
@@ -432,12 +434,13 @@ export default function PaymentsPage() {
     }).eq("id", item.id)
     if (error) { toast.error("Error al actualizar") }
     else {
-      if (!nowPaid) {
-        const allPaid = report.items.every(i => i.id === item.id || i.payment_status === "paid")
-        if (allPaid) await supabase.from("payment_reports").update({ status: "paid" }).eq("id", report.id)
-      } else {
-        await supabase.from("payment_reports").update({ status: "pending" }).eq("id", report.id)
-      }
+      const updatedItems = report.items.map(i =>
+        i.id === item.id ? { ...i, payment_status: nowPaid ? "unpaid" : "paid" } : i
+      )
+      const paidCount = updatedItems.filter(i => i.payment_status === "paid").length
+      const newStatus = paidCount === updatedItems.length ? "paid"
+        : paidCount === 0 ? "pending" : "partial"
+      await supabase.from("payment_reports").update({ status: newStatus }).eq("id", report.id)
       toast.success(nowPaid ? "Marcado como pendiente" : "Marcado como pagado")
     }
     setToggling(prev => { const s = new Set(prev); s.delete(item.id); return s })
@@ -822,60 +825,74 @@ export default function PaymentsPage() {
         {activeTab === "reports" && (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <UiButton variant="primary" icon={<Plus size={15} />} onClick={openReportModal}>
-                Nuevo reporte
-              </UiButton>
+              <a href="/purchases/reporte-pagos" style={{ fontSize: 12, color: "var(--text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                Los reportes se generan desde Compras →
+              </a>
             </div>
             {pageLoading ? (
               <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
             ) : reports.length === 0 ? (
               <AppEmptyState
                 title="No hay reportes de compras en este período"
-                description="Crea un reporte semanal para registrar los pagos de compras."
-                actionLabel="+ Nuevo reporte"
-                onAction={openReportModal}
+                description="Los reportes semanales se crean desde el módulo de Compras."
+                actionLabel="Ir a Compras →"
+                onAction={() => { window.location.href = "/purchases" }}
               />
             ) : (
               <div style={{ display: "grid", gap: 20 }}>
                 {reports.map(report => {
-                  const total      = report.items.reduce((s, i) => s + Number(i.amount), 0)
-                  const hasPending = report.items.some(i => i.payment_status === "unpaid")
-                  const statusVariant = report.status === "paid" ? "green" : report.status === "cancelled" ? "gray" : "amber"
-                  const statusLabel   = report.status === "paid" ? "Pagado" : report.status === "cancelled" ? "Cancelado" : "Pendiente"
+                  const total     = report.items.reduce((s, i) => s + Number(i.amount), 0)
+                  const paidCount = report.items.filter(i => i.payment_status === "paid").length
+                  const calcStatus = report.items.length === 0 ? "pending"
+                    : paidCount === report.items.length ? "paid"
+                    : paidCount > 0 ? "partial" : "pending"
+                  const statusVariant = calcStatus === "paid" ? "green" : calcStatus === "partial" ? "blue" : "amber"
+                  const statusLabel   = calcStatus === "paid" ? "Pagado" : calcStatus === "partial" ? "Parcial" : "Pendiente"
+                  const hasPending    = report.items.some(i => i.payment_status === "unpaid")
+
                   return (
-                    <SectionCard
-                      key={report.id}
-                      title={`Reporte ${report.folio ?? report.id.slice(0, 8)}`}
-                      subtitle={[
-                        report.week_number ? `Semana ${report.week_number}` : null,
-                        report.report_date ? formatDate(report.report_date) : null,
-                        report.elaborated_by ? `— ${report.elaborated_by}` : null,
-                      ].filter(Boolean).join(" · ")}
-                    >
-                      {/* Report header */}
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-                        <AppBadge variant={statusVariant}>{statusLabel}</AppBadge>
-                        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{report.items.length} items</span>
-                        {hasPending && (
-                          <button
-                            type="button"
-                            onClick={() => void markAllReportPaid(report)}
-                            style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
-                          >
-                            <CheckCircle2 size={13} /> Marcar todo pagado
-                          </button>
-                        )}
+                    <div key={report.id} style={CARD}>
+                      {/* Report card header */}
+                      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                              Reporte {report.folio ?? report.id.slice(0, 8)}{report.week_number ? ` — Semana ${report.week_number}` : ""}
+                            </span>
+                            <AppBadge variant={statusVariant}>{statusLabel}</AppBadge>
+                          </div>
+                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                            {[
+                              report.report_date ? formatDate(report.report_date) : null,
+                              report.elaborated_by ? report.elaborated_by : null,
+                            ].filter(Boolean).join(" · ")}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{formatMXN(total)}</span>
+                          {hasPending && (
+                            <button
+                              type="button"
+                              onClick={() => void markAllReportPaid(report)}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                            >
+                              <CheckCircle2 size={13} /> Marcar todo pagado
+                            </button>
+                          )}
+                        </div>
                       </div>
 
                       {report.items.length === 0 ? (
-                        <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
+                        <div style={{ padding: "20px 16px" }}>
+                          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
+                        </div>
                       ) : (
-                        <>
-                        <div style={{ display: "grid", gap: 10, marginBottom: 12 }}>
+                        <div style={ITEMS_GRID}>
                           {report.items.map(item => {
                             const isExpanded = expanded.has(item.id)
                             const isLoading  = toggling.has(item.id)
                             const barColor   = statusBarColor(item.due_date ?? null, item.payment_status, todayStr)
+                            const po         = item.purchase_order_id ? poMap[item.purchase_order_id] : null
 
                             return (
                               <div key={item.id} style={ITEM_CARD}>
@@ -933,14 +950,17 @@ export default function PaymentsPage() {
                                           Pagado el: {formatDate(item.paid_at)}
                                         </span>
                                       )}
-                                      {item.purchase_order_id && poMap[item.purchase_order_id] && (
+                                      {po && (
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
                                           <ClipboardList size={12} />
-                                          OC {poMap[item.purchase_order_id].folio ?? item.purchase_order_id.slice(0, 8)}
+                                          OC{" "}
+                                          <a href={`/purchases/${po.id}`} style={{ color: "#8B2252", textDecoration: "none", fontWeight: 600 }}>
+                                            {po.folio ?? item.purchase_order_id!.slice(0, 8)}
+                                          </a>
                                           {" — "}
-                                          {formatMXN(Number(poMap[item.purchase_order_id].total_estimated))}
+                                          {formatMXN(Number(po.total_estimated))}
                                           {" — "}
-                                          {poMap[item.purchase_order_id].status}
+                                          {po.status}
                                         </span>
                                       )}
                                     </div>
@@ -964,16 +984,9 @@ export default function PaymentsPage() {
                               </div>
                             )
                           })}
-
                         </div>
-                        {/* Report total row */}
-                        <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 16, padding: "10px 20px", background: "var(--bg-page)", borderRadius: 10, fontSize: 13, border: "1px solid var(--border-default)" }}>
-                          <span style={{ color: "var(--text-muted)" }}>Total</span>
-                          <strong>{formatMXN(total)}</strong>
-                        </div>
-                        </>
                       )}
-                    </SectionCard>
+                    </div>
                   )
                 })}
               </div>

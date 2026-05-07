@@ -216,6 +216,7 @@ export default function ReportePagosPage() {
         .select("id, folio, elaborated_by, report_date, week_number, year, pdf_path, created_at")
         .eq("company_id", companyId)
         .is("deleted_at", null)
+        .or("is_test.eq.false,is_test.is.null")
         .order("created_at", { ascending: false }),
 
       supabase
