@@ -287,11 +287,10 @@ export default function PaymentsPage() {
     setPageLoading(true)
     const cid = user.company_id
 
-    const padM = String(month).padStart(2, "0")
-    const nm   = month === 12 ? 1 : month + 1
-    const ny   = month === 12 ? year + 1 : year
-    const startDate = `${year}-${padM}-01`
-    const endDate   = `${ny}-${String(nm).padStart(2, "0")}-01`
+    const padM          = String(month).padStart(2, "0")
+    const startDate     = `${year}-${padM}-01`
+    const lastDay       = new Date(year, month, 0).getDate()
+    const lastDayOfMonth = `${year}-${padM}-${String(lastDay).padStart(2, "0")}`
 
     const [invRes, mpRes, rptRes, bldRes] = await Promise.all([
       supabase.from("building_utility_invoices")
@@ -313,7 +312,7 @@ export default function PaymentsPage() {
         .select("*")
         .eq("company_id", cid)
         .gte("report_date", startDate)
-        .lt("report_date", endDate)
+        .lte("report_date", lastDayOfMonth)
         .is("deleted_at", null)
         .or("is_test.eq.false,is_test.is.null")
         .order("report_date", { ascending: false }),
