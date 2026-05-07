@@ -312,10 +312,11 @@ export default function PaymentsPage() {
       supabase.from("payment_reports")
         .select("*")
         .eq("company_id", cid)
-        .eq("year", year)
+        .gte("report_date", startDate)
+        .lt("report_date", endDate)
         .is("deleted_at", null)
         .or("is_test.eq.false,is_test.is.null")
-        .order("created_at", { ascending: false }),
+        .order("report_date", { ascending: false }),
       supabase.from("buildings")
         .select("id, name")
         .eq("company_id", cid)
@@ -391,7 +392,9 @@ export default function PaymentsPage() {
       arr.push(item)
       itemsByReport.set(item.payment_report_id, arr)
     })
-    setReports(reportList.map(r => ({ ...r, items: itemsByReport.get(r.id) ?? [] })))
+    const mapped = reportList.map(r => ({ ...r, items: itemsByReport.get(r.id) ?? [] }))
+    const sorted = [...mapped.filter(r => r.status !== "paid"), ...mapped.filter(r => r.status === "paid")]
+    setReports(sorted)
 
     // Fetch purchase orders linked to report items
     const poIds = [...new Set(((itemsRes.data || []) as PaymentReportItem[])
@@ -905,7 +908,9 @@ export default function PaymentsPage() {
                           </div>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{formatMXN(total)}</span>
+                          {calcStatus !== "paid" && (
+                            <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{formatMXN(total)}</span>
+                          )}
                           {hasPending && (
                             <button
                               type="button"
