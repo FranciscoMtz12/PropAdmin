@@ -83,6 +83,12 @@ if (existingInvs.length > 0) {
 
 await del('payment_report_items', 'is_test=eq.true')
 await del('payment_reports',      `is_test=eq.true&company_id=eq.${CID}`)
+// Clean up purchase_order_invoices for test OCs before deleting OCs (FK constraint)
+const testOCsForCleanup = await get('purchase_orders', `select=id&is_test=eq.true&company_id=eq.${CID}`)
+if (testOCsForCleanup.length > 0) {
+  const ids = testOCsForCleanup.map(o => o.id).join(',')
+  await del('purchase_order_invoices', `purchase_order_id=in.(${ids})`)
+}
 await del('purchase_orders',      `is_test=eq.true&company_id=eq.${CID}`)
 await del('manual_payments',      `is_test=eq.true&company_id=eq.${CID}`)
 console.log('  ✓ Limpieza completa')
@@ -276,6 +282,21 @@ if (!poRows) { console.error('❌ Abortando'); process.exit(1) }
 const [po1, po2, po3] = poRows
 console.log(`  ✓ ${poRows.length} OCs insertadas`)
 
+// ── SEED 2b: Facturas de OCs ──────────────────────────────────────────────────
+
+console.log('\n── Seed 2b: Facturas de OCs de prueba ──────────────────────')
+
+const poiRows = await post('purchase_order_invoices', [
+  { company_id: CID, purchase_order_id: po1.id,
+    invoice_number: 'FAC-HD-2026-001',  invoice_date: '2026-04-28', amount: 4500 },
+  { company_id: CID, purchase_order_id: po2.id,
+    invoice_number: 'FAC-GIL-2026-001', invoice_date: '2026-04-30', amount: 2800 },
+  { company_id: CID, purchase_order_id: po3.id,
+    invoice_number: 'FAC-BRI-2026-001', invoice_date: '2026-05-02', amount: 1200 },
+])
+if (!poiRows) { console.error('❌ Abortando'); process.exit(1) }
+console.log(`  ✓ ${poiRows.length} facturas de OC insertadas`)
+
 const rptRows = await post('payment_reports', {
   company_id: CID, folio: 'RPG-2026-18', week_number: 18, year: 2026,
   report_date: '2026-05-02', elaborated_by: 'Compras Fra-Mar',
@@ -348,6 +369,7 @@ console.log(`
   Facturas de servicios:  ${invoiceRows.length}
   Items de facturas:      ${totalInvItems} (${activeSubMeters232.length} elec-232 + 1 agua-232 + ${activeSubMeters304.length} elec-304 + 1 agua-304)
   OCs de prueba:          ${poRows.length}
+  Facturas de OCs:        ${poiRows.length}
   Reporte creado:         ${rptRows[0].folio} (status: ${newStatus})
   Items del reporte:      ${itemRows.length}
   Pagos manuales:         ${mpRows.length}

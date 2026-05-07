@@ -100,6 +100,9 @@ type ReportItemRow = {
   oc_project_description: string | null;
   oc_building_name:  string | null;
   oc_sent_at:        string | null;
+  invoice_number:    string | null;
+  invoice_date:      string | null;
+  amount:            number | null;
 };
 
 type PaymentReport = {
@@ -274,6 +277,7 @@ export default function ReportePagosPage() {
         .from("payment_report_items")
         .select(`
           id, payment_report_id, purchase_order_id,
+          invoice_number, invoice_date, amount,
           purchase_orders(
             id, folio, project_description, sent_at,
             buildings(name),
@@ -284,6 +288,7 @@ export default function ReportePagosPage() {
 
       type Raw = {
         id: string; payment_report_id: string; purchase_order_id: string;
+        invoice_number: string | null; invoice_date: string | null; amount: number | null;
         purchase_orders: {
           id: string; folio: string; project_description: string | null;
           sent_at: string | null;
@@ -300,6 +305,9 @@ export default function ReportePagosPage() {
         oc_project_description: r.purchase_orders?.project_description || null,
         oc_building_name:       r.purchase_orders?.buildings?.name || null,
         oc_sent_at:             r.purchase_orders?.sent_at || null,
+        invoice_number:         r.invoice_number || null,
+        invoice_date:           r.invoice_date || null,
+        amount:                 r.amount != null ? r.amount : null,
       }));
       setReportItems(mapped);
     } else {
@@ -648,14 +656,15 @@ export default function ReportePagosPage() {
         companyName:  (legalName || companyName || shortName || "").toString(),
         reportDate:   formatDateShort(report.report_date),
         items: items.map((it) => {
+          const inv = invoicesByOrderId.get(it.purchase_order_id);
           const proj = it.oc_building_name
             ? (it.oc_project_description ? `${it.oc_building_name} · ${it.oc_project_description}` : it.oc_building_name)
             : (it.oc_project_description || "—");
           return {
             folio:         it.oc_folio || "",
             sentAt:        it.oc_sent_at ? formatDateShort(it.oc_sent_at) : "",
-            invoiceDate:   "",
-            invoiceNumber: "",
+            invoiceDate:   it.invoice_date   || inv?.invoice_date   || "",
+            invoiceNumber: it.invoice_number || inv?.invoice_number || "",
             project:       proj,
           };
         }),
@@ -937,11 +946,18 @@ export default function ReportePagosPage() {
                                 <th style={{ ...thStyle, width: 36 }}>#</th>
                                 <th style={{ ...thStyle, width: 100 }}>Fecha OC</th>
                                 <th style={{ ...thStyle, width: 120 }}>Folio OC</th>
+                                <th style={{ ...thStyle, width: 140 }}>No. Factura</th>
+                                <th style={{ ...thStyle, width: 110 }}>Fecha Factura</th>
+                                <th style={{ ...thStyle, width: 120 }}>Monto Factura</th>
                                 <th style={{ ...thStyle, textAlign: "left" }}>Proyecto</th>
                               </tr>
                             </thead>
                             <tbody>
                               {items.map((it, idx) => {
+                                const inv = invoicesByOrderId.get(it.purchase_order_id);
+                                const invNumber = it.invoice_number || inv?.invoice_number || null;
+                                const invDate   = it.invoice_date   || inv?.invoice_date   || null;
+                                const invAmount = it.amount != null  ? it.amount : (inv?.amount ?? null);
                                 const proj = it.oc_building_name
                                   ? (it.oc_project_description ? `${it.oc_building_name} · ${it.oc_project_description}` : it.oc_building_name)
                                   : (it.oc_project_description || "—");
@@ -949,8 +965,13 @@ export default function ReportePagosPage() {
                                   <tr key={it.id} style={{ borderTop: "1px solid var(--border-default)" }}>
                                     <td style={tdStyle}>{idx + 1}</td>
                                     <td style={tdStyle}>{it.oc_sent_at ? formatDateShort(it.oc_sent_at) : "—"}</td>
-                                    <td style={{ ...tdStyle, fontWeight: 700 }}>
-                                      {it.oc_folio}
+                                    <td style={{ ...tdStyle, fontWeight: 700 }}>{it.oc_folio}</td>
+                                    <td style={{ ...tdStyle, fontFamily: "monospace" }}>{invNumber || "—"}</td>
+                                    <td style={tdStyle}>{invDate ? formatDateShort(invDate) : "—"}</td>
+                                    <td style={{ ...tdStyle, fontWeight: 600 }}>
+                                      {invAmount != null
+                                        ? `$${Number(invAmount).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                        : "—"}
                                     </td>
                                     <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)" }}>
                                       {proj}
