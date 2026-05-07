@@ -47,5 +47,4 @@ screenshots/
 verify-*.mjs
 compare*.mjs
 expand-shot.mjs
-scripts/*.mjs
 Usersfcomt*/
