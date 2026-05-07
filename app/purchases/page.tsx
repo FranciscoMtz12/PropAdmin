@@ -58,7 +58,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
-import { type PurchaseReturn, type PurchaseOrderVersionType, RETURN_REASON_LABEL } from "@/lib/types";
+import { type PurchaseReturn, type PurchaseOrderVersionType, type PurchaseOrderInvoice, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
@@ -309,6 +309,9 @@ export default function PurchasesPage() {
   const [invoiceForm, setInvoiceForm] = useState({ number: "", amount: "", date: "", notes: "" });
   const [savingInvoice, setSavingInvoice] = useState(false);
 
+  /* Facturas de OCs (purchase_order_invoices) */
+  const [invoicesByOrderId, setInvoicesByOrderId] = useState<Map<string, PurchaseOrderInvoice>>(new Map());
+
   /* XML factura */
   type XmlConcepto = { descripcion: string; cantidad: string; valorUnitario: string; importe: string };
   const [xmlConceptos,    setXmlConceptos]    = useState<XmlConcepto[]>([]);
@@ -535,6 +538,20 @@ export default function PurchasesPage() {
             returns: (returnsData as PurchaseReturn[]).filter((r) => r.purchase_order_id === o.id),
           }))
         );
+      }
+
+      /* Fetch purchase_order_invoices */
+      const { data: invData } = await supabase
+        .from("purchase_order_invoices")
+        .select("id, company_id, purchase_order_id, invoice_number, invoice_date, amount, xml_path, pdf_path, notes, uploaded_by, created_at, updated_at, deleted_at")
+        .in("purchase_order_id", orderIds)
+        .is("deleted_at", null);
+      if (invData) {
+        const invMap = new Map<string, PurchaseOrderInvoice>();
+        for (const inv of invData as PurchaseOrderInvoice[]) {
+          invMap.set(inv.purchase_order_id, inv);
+        }
+        setInvoicesByOrderId(invMap);
       }
     }
 
@@ -1136,48 +1153,57 @@ export default function PurchasesPage() {
       toast.error("Completa número, monto y fecha de factura.");
       return;
     }
+    if (!user?.company_id) return;
     setSavingInvoice(true);
 
-    // Preservar notas previas intentando parsearlas como JSON.
-    let existing: Record<string, unknown> = {};
-    if (invoiceTarget.notes) {
-      try {
-        const parsed = JSON.parse(invoiceTarget.notes);
-        if (parsed && typeof parsed === "object") existing = parsed as Record<string, unknown>;
-        else existing = { text: invoiceTarget.notes };
-      } catch {
-        existing = { text: invoiceTarget.notes };
-      }
-    }
-
-    const invoicePayload: Record<string, unknown> = {
-      number: num,
-      amount: amt,
-      date,
-      notes: invoiceForm.notes.trim() || null,
-    };
-    if (xmlUploaded) {
-      invoicePayload.rfc_emisor     = xmlRfcEmisor;
-      invoicePayload.nombre_emisor  = xmlNombreEmisor;
-      invoicePayload.conceptos      = xmlConceptos;
-      invoicePayload.xml_uploaded   = true;
-    }
-    const newNotes = JSON.stringify({ ...existing, invoice: invoicePayload });
-
     const nowIso = new Date().toISOString();
-    const { error } = await supabase
-      .from("purchase_orders")
-      .update({ status: "invoiced", notes: newNotes, updated_at: nowIso })
-      .eq("id", invoiceTarget.id);
-    if (error) {
-      console.error("invoice save failed", error);
+
+    // 1. Upsert en purchase_order_invoices
+    const { data: upserted, error: upsertErr } = await supabase
+      .from("purchase_order_invoices")
+      .upsert({
+        company_id:        user.company_id,
+        purchase_order_id: invoiceTarget.id,
+        invoice_number:    num,
+        invoice_date:      date,
+        amount:            amt,
+        notes:             invoiceForm.notes.trim() || null,
+        updated_at:        nowIso,
+      }, { onConflict: "purchase_order_id" })
+      .select("id, company_id, purchase_order_id, invoice_number, invoice_date, amount, xml_path, pdf_path, notes, uploaded_by, created_at, updated_at, deleted_at")
+      .single();
+
+    if (upsertErr) {
+      console.error("invoice upsert failed", upsertErr);
       toast.error("No se pudo guardar la factura.");
       setSavingInvoice(false);
       return;
     }
+
+    // 2. Update purchase_orders — solo status, SIN tocar notes
+    const { error: poErr } = await supabase
+      .from("purchase_orders")
+      .update({ status: "invoiced", updated_at: nowIso })
+      .eq("id", invoiceTarget.id);
+
+    if (poErr) {
+      console.error("purchase_orders status update failed", poErr);
+      toast.error("No se pudo actualizar el estado de la OC.");
+      setSavingInvoice(false);
+      return;
+    }
+
+    // 3. Actualizar estado local
     setOrders((prev) => prev.map((o) =>
-      o.id === invoiceTarget.id ? { ...o, status: "invoiced" as Status, notes: newNotes } : o
+      o.id === invoiceTarget.id ? { ...o, status: "invoiced" as Status } : o
     ));
+    if (upserted) {
+      setInvoicesByOrderId((prev) => {
+        const next = new Map(prev);
+        next.set(invoiceTarget.id, upserted as PurchaseOrderInvoice);
+        return next;
+      });
+    }
     toast.success("Factura registrada.");
     setInvoiceTarget(null);
     setInvoiceForm({ number: "", amount: "", date: "", notes: "" });
@@ -1278,14 +1304,14 @@ export default function PurchasesPage() {
   };
 
   function getInvoiceMeta(o: PurchaseOrder): InvoiceMeta | null {
-    if (!o.notes) return null;
-    try {
-      const parsed = JSON.parse(o.notes);
-      if (parsed && typeof parsed === "object" && "invoice" in parsed) {
-        return (parsed as { invoice: InvoiceMeta }).invoice;
-      }
-    } catch { /* notes es texto plano */ }
-    return null;
+    const inv = invoicesByOrderId.get(o.id);
+    if (!inv) return null;
+    return {
+      number: inv.invoice_number,
+      amount: inv.amount,
+      date:   inv.invoice_date,
+      notes:  inv.notes ?? null,
+    };
   }
 
   /* ── Editar OC: abrir modal con datos precargados ─────────────── */

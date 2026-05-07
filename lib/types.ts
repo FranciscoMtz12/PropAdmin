@@ -204,3 +204,19 @@ export type BuildingUtilityInvoiceItem = {
   created_at: string
 }
 
+export type PurchaseOrderInvoice = {
+  id: string
+  company_id: string
+  purchase_order_id: string
+  invoice_number: string
+  invoice_date: string
+  amount: number
+  xml_path: string | null
+  pdf_path: string | null
+  notes: string | null
+  uploaded_by: string | null
+  created_at: string
+  updated_at: string
+  deleted_at: string | null
+}
+

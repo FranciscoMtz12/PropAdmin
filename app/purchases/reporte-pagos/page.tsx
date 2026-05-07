@@ -83,7 +83,6 @@ type Signer = { id: string; name: string; is_default: boolean };
 type AvailableOC = {
   id:                  string;
   folio:               string;
-  notes:               string | null;
   supplier_name:       string | null;
   project_description: string | null;
   building_name:       string | null;
@@ -116,6 +115,8 @@ type PaymentReport = {
 
 type ItemDraft = {
   fromXml?: boolean;
+  invoice_number?: string;
+  invoice_date?: string;
 };
 
 const reporteSchema = z.object({
@@ -187,6 +188,10 @@ export default function ReportePagosPage() {
   /* Map<purchase_order_id, ItemDraft> con las OCs marcadas y sus datos de factura */
   const [itemDrafts,       setItemDrafts]       = useState<Map<string, ItemDraft>>(new Map());
 
+  /* Map<purchase_order_id, datos de factura> desde purchase_order_invoices */
+  type InvoiceRef = { invoice_number: string; invoice_date: string; amount: number };
+  const [invoicesByOrderId, setInvoicesByOrderId] = useState<Map<string, InvoiceRef>>(new Map());
+
   /* Flags */
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
   const [archivingId,     setArchivingId]     = useState<string | null>(null);
@@ -207,6 +212,7 @@ export default function ReportePagosPage() {
       { data: sentOCsData                        },
       { data: signerData                         },
       { data: companyData                        },
+      { data: invoiceData                        },
     ] = await Promise.all([
       supabase
         .from("payment_reports")
@@ -219,7 +225,7 @@ export default function ReportePagosPage() {
       supabase
         .from("purchase_orders")
         .select(`
-          id, folio, project_description, notes, created_at, sent_at, supplier_prefix,
+          id, folio, project_description, created_at, sent_at, supplier_prefix,
           total_estimated,
           suppliers(name),
           buildings(name)
@@ -243,6 +249,12 @@ export default function ReportePagosPage() {
         .select("name, logo_url, logo_print_url")
         .eq("id", companyId)
         .single(),
+
+      supabase
+        .from("purchase_order_invoices")
+        .select("purchase_order_id, invoice_number, invoice_date, amount")
+        .eq("company_id", companyId)
+        .is("deleted_at", null),
     ]);
 
     if (reportsError) {
@@ -297,7 +309,7 @@ export default function ReportePagosPage() {
     /* OCs disponibles (sent) con info mínima */
     type OCRaw = {
       id: string; folio: string; project_description: string | null;
-      notes: string | null; total_estimated: number | null;
+      total_estimated: number | null;
       created_at: string; sent_at: string | null; supplier_prefix: string | null;
       buildings: { name: string } | null;
       suppliers: { name: string } | null;
@@ -305,7 +317,6 @@ export default function ReportePagosPage() {
     const ocs: AvailableOC[] = ((sentOCsData || []) as unknown as OCRaw[]).map((o) => ({
       id:                  o.id,
       folio:               o.folio,
-      notes:               o.notes,
       supplier_name:       o.suppliers?.name || null,
       project_description: o.project_description,
       building_name:       o.buildings?.name || null,
@@ -314,6 +325,14 @@ export default function ReportePagosPage() {
       sent_at:             o.sent_at,
     }));
     setAllSentOCs(ocs);
+
+    /* purchase_order_invoices — mapa por purchase_order_id */
+    type InvoiceRow = { purchase_order_id: string; invoice_number: string; invoice_date: string; amount: number };
+    const invMap = new Map<string, InvoiceRef>();
+    for (const inv of (invoiceData || []) as InvoiceRow[]) {
+      invMap.set(inv.purchase_order_id, { invoice_number: inv.invoice_number, invoice_date: inv.invoice_date, amount: inv.amount });
+    }
+    setInvoicesByOrderId(invMap);
 
     setSigners((signerData as Signer[]) || []);
 
@@ -430,7 +449,11 @@ export default function ReportePagosPage() {
     const drafts = new Map<string, ItemDraft>();
     const items = itemsByReportId.get(report.id) || [];
     for (const it of items) {
-      drafts.set(it.purchase_order_id, {});
+      const inv = invoicesByOrderId.get(it.purchase_order_id);
+      drafts.set(it.purchase_order_id, {
+        invoice_number: inv?.invoice_number ?? "",
+        invoice_date:   inv?.invoice_date   ?? "",
+      });
     }
     setItemDrafts(drafts);
     setError("");
@@ -445,40 +468,24 @@ export default function ReportePagosPage() {
     setError("");
   }
 
-  /* Extrae invoice.number y invoice.date desde el JSON de notes de la OC */
-  function parseInvoice(notes: string | null): { number?: string; date?: string } | null {
-    try {
-      const parsed = JSON.parse(notes ?? "");
-      if (parsed?.invoice && typeof parsed.invoice === "object") {
-        return parsed.invoice as { number?: string; date?: string };
-      }
-      return null;
-    } catch { return null; }
-  }
-
-  /* Toggle OC en el form — auto-llena desde XML si está disponible */
+  /* Toggle OC en el form — pre-llena datos de factura desde purchase_order_invoices */
   function toggleOCInForm(ocId: string) {
-    const oc = allSentOCs.find((o) => o.id === ocId);
     setItemDrafts((prev) => {
       const next = new Map(prev);
       if (next.has(ocId)) {
         next.delete(ocId);
       } else {
-        next.set(ocId, {});
+        const inv = invoicesByOrderId.get(ocId);
+        next.set(ocId, {
+          invoice_number: inv?.invoice_number ?? "",
+          invoice_date:   inv?.invoice_date   ?? "",
+        });
       }
       return next;
     });
   }
 
-  function updateDraft(ocId: string, patch: Partial<ItemDraft>) {
-    setItemDrafts((prev) => {
-      const cur = prev.get(ocId);
-      if (!cur) return prev;
-      const next = new Map(prev);
-      next.set(ocId, { ...cur, ...patch });
-      return next;
-    });
-  }
+
 
   /* ── Guardar (crear o editar) ───────────────────────────────── */
 
@@ -544,14 +551,17 @@ export default function ReportePagosPage() {
 
       /* INSERT de items */
       const ocById = new Map(allSentOCs.map((o) => [o.id, o]));
-      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId]) => {
-        const oc = ocById.get(ocId);
+      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId, draft]) => {
+        const oc  = ocById.get(ocId);
+        const inv = invoicesByOrderId.get(ocId);
         return {
           payment_report_id: targetId,
           purchase_order_id: ocId,
           description:       oc?.project_description || oc?.folio || ocId,
           vendor_name:       oc?.supplier_name || null,
-          amount:            oc?.total_estimated ?? 0,
+          amount:            inv?.amount ?? oc?.total_estimated ?? 0,
+          invoice_number:    draft?.invoice_number || null,
+          invoice_date:      draft?.invoice_date   || null,
         };
       });
       const { error: itemsErr } = await supabase
