@@ -432,9 +432,94 @@ export default function CollectionsPage() {
     if (!user?.company_id) return;
     setGenerating(true);
 
-    // Schedules activos para leases activos
+    // ── Paso 0: crear schedules de renta/parking faltantes ───────────────────
+    type LeaseDetail = {
+      id: string; unit_id: string | null; rent_amount: number | null;
+      due_day: number | null; includes_parking: boolean | null; parking_fee: number | null;
+    };
+    type ScheduleRow = {
+      company_id: string; building_id: string; unit_id: string; lease_id: string;
+      charge_type: string; title: string; responsibility_type: string;
+      amount_expected: number; due_day: number; active: boolean; billing_frequency: string;
+    };
+
+    let allSchedules = schedules;
+    const leaseIdList = leases.map(l => l.id);
+
+    if (leaseIdList.length > 0) {
+      const { data: leaseDetails, error: ldErr } = await supabase
+        .from("leases")
+        .select("id, unit_id, rent_amount, due_day, includes_parking, parking_fee")
+        .in("id", leaseIdList)
+        .is("deleted_at", null);
+
+      if (ldErr) {
+        toast.error(`Error cargando contratos: ${ldErr.message}`);
+        setGenerating(false);
+        return;
+      }
+
+      const rentLeaseIds = new Set(
+        schedules.filter(s => s.charge_type === "rent" && s.active).map(s => s.lease_id),
+      );
+      const parkingLeaseIds = new Set(
+        schedules.filter(s => s.charge_type === "parking" && s.active).map(s => s.lease_id),
+      );
+
+      const toCreate: ScheduleRow[] = [];
+      for (const ld of (leaseDetails ?? []) as LeaseDetail[]) {
+        if (!ld.unit_id) continue;
+        const unit = units.find(u => u.id === ld.unit_id);
+        if (!unit) continue;
+
+        if (!rentLeaseIds.has(ld.id)) {
+          toCreate.push({
+            company_id: user.company_id, building_id: unit.building_id,
+            unit_id: unit.id, lease_id: ld.id,
+            charge_type: "rent", title: "Renta",
+            responsibility_type: "tenant",
+            amount_expected: ld.rent_amount ?? 0,
+            due_day: ld.due_day ?? 5,
+            active: true, billing_frequency: "monthly",
+          });
+        }
+        if (ld.includes_parking && ld.parking_fee && ld.parking_fee > 0 && !parkingLeaseIds.has(ld.id)) {
+          toCreate.push({
+            company_id: user.company_id, building_id: unit.building_id,
+            unit_id: unit.id, lease_id: ld.id,
+            charge_type: "parking", title: "Estacionamiento",
+            responsibility_type: "tenant",
+            amount_expected: ld.parking_fee,
+            due_day: ld.due_day ?? 5,
+            active: true, billing_frequency: "monthly",
+          });
+        }
+      }
+
+      if (toCreate.length > 0) {
+        const { data: created, error: createErr } = await supabase
+          .from("collection_schedules")
+          .insert(toCreate)
+          .select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes");
+
+        if (createErr) {
+          toast.error(`Error creando configuraciones de cobro: ${createErr.message}`);
+          setGenerating(false);
+          return;
+        }
+        const newScheds = (created ?? []) as CollectionSchedule[];
+        allSchedules = [...schedules, ...newScheds];
+        setSchedules(allSchedules);
+        toast(
+          `${newScheds.length} configuración${newScheds.length === 1 ? "" : "es"} de cobro restaurada${newScheds.length === 1 ? "" : "s"}.`,
+          { icon: "🔧" },
+        );
+      }
+    }
+
+    // ── Schedules activos para leases activos ─────────────────────────────────
     const activeLeaseIds = new Set(leases.map((l) => l.id));
-    const activeSchedules = schedules.filter(
+    const activeSchedules = allSchedules.filter(
       (s) => s.active && s.lease_id && activeLeaseIds.has(s.lease_id),
     );
 
