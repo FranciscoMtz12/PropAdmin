@@ -162,7 +162,10 @@ const baseInv = {
   total_consumption: null, consumption_unit: null,
   folio: null, distributed_at: null, charged_at: null, paid_at: null,
   payment_status: 'unpaid', due_date: null,
-  pdf_path: null, created_by: null, is_test: true,
+  pdf_path: null, created_by: null,
+  // is_test=false: these are visible demo invoices, not automated-test artifacts.
+  // Cleanup uses meter+period combination (not is_test flag) so they're still idempotent.
+  is_test: false,
 }
 
 const invoiceDefs = [

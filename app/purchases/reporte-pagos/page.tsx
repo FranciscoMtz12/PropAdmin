@@ -95,8 +95,6 @@ type ReportItemRow = {
   id:                string;
   payment_report_id: string;
   purchase_order_id: string;
-  invoice_date:      string | null;
-  invoice_number:    string | null;
   oc_folio:          string;
   oc_supplier_name:  string | null;
   oc_project_description: string | null;
@@ -116,9 +114,7 @@ type PaymentReport = {
 };
 
 type ItemDraft = {
-  invoice_date:   string;
-  invoice_number: string;
-  fromXml?:       boolean;
+  fromXml?: boolean;
 };
 
 const reporteSchema = z.object({
@@ -264,7 +260,6 @@ export default function ReportePagosPage() {
         .from("payment_report_items")
         .select(`
           id, payment_report_id, purchase_order_id,
-          invoice_date, invoice_number,
           purchase_orders(
             id, folio, project_description, sent_at,
             buildings(name),
@@ -275,7 +270,6 @@ export default function ReportePagosPage() {
 
       type Raw = {
         id: string; payment_report_id: string; purchase_order_id: string;
-        invoice_date: string | null; invoice_number: string | null;
         purchase_orders: {
           id: string; folio: string; project_description: string | null;
           sent_at: string | null;
@@ -287,8 +281,6 @@ export default function ReportePagosPage() {
         id:                     r.id,
         payment_report_id:      r.payment_report_id,
         purchase_order_id:      r.purchase_order_id,
-        invoice_date:           r.invoice_date,
-        invoice_number:         r.invoice_number,
         oc_folio:               r.purchase_orders?.folio || "",
         oc_supplier_name:       r.purchase_orders?.suppliers?.name || null,
         oc_project_description: r.purchase_orders?.project_description || null,
@@ -435,10 +427,7 @@ export default function ReportePagosPage() {
     const drafts = new Map<string, ItemDraft>();
     const items = itemsByReportId.get(report.id) || [];
     for (const it of items) {
-      drafts.set(it.purchase_order_id, {
-        invoice_date:   it.invoice_date   || "",
-        invoice_number: it.invoice_number || "",
-      });
+      drafts.set(it.purchase_order_id, {});
     }
     setItemDrafts(drafts);
     setError("");
@@ -472,13 +461,7 @@ export default function ReportePagosPage() {
       if (next.has(ocId)) {
         next.delete(ocId);
       } else {
-        const invoice = parseInvoice(oc?.notes ?? null);
-        const prefilled = !!(invoice?.number || invoice?.date);
-        next.set(ocId, {
-          invoice_date:   invoice?.date   ?? "",
-          invoice_number: invoice?.number ?? "",
-          fromXml: prefilled,
-        });
+        next.set(ocId, {});
       }
       return next;
     });
@@ -489,8 +472,7 @@ export default function ReportePagosPage() {
       const cur = prev.get(ocId);
       if (!cur) return prev;
       const next = new Map(prev);
-      const clearsXml = "invoice_number" in patch || "invoice_date" in patch;
-      next.set(ocId, { ...cur, ...patch, ...(clearsXml ? { fromXml: false } : {}) });
+      next.set(ocId, { ...cur, ...patch });
       return next;
     });
   }
@@ -558,11 +540,9 @@ export default function ReportePagosPage() {
       }
 
       /* INSERT de items */
-      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId, draft]) => ({
+      const itemsPayload = Array.from(itemDrafts.entries()).map(([ocId]) => ({
         payment_report_id: targetId,
         purchase_order_id: ocId,
-        invoice_date:      draft.invoice_date || null,
-        invoice_number:    draft.invoice_number.trim() || null,
       }));
       const { error: itemsErr } = await supabase
         .from("payment_report_items")
@@ -654,8 +634,8 @@ export default function ReportePagosPage() {
           return {
             folio:         it.oc_folio || "",
             sentAt:        it.oc_sent_at ? formatDateShort(it.oc_sent_at) : "",
-            invoiceDate:   it.invoice_date ? formatDateShort(it.invoice_date) : "",
-            invoiceNumber: it.invoice_number || "",
+            invoiceDate:   "",
+            invoiceNumber: "",
             project:       proj,
           };
         }),
@@ -937,8 +917,6 @@ export default function ReportePagosPage() {
                                 <th style={{ ...thStyle, width: 36 }}>#</th>
                                 <th style={{ ...thStyle, width: 100 }}>Fecha OC</th>
                                 <th style={{ ...thStyle, width: 120 }}>Folio OC</th>
-                                <th style={{ ...thStyle, width: 100 }}>Fecha factura</th>
-                                <th style={{ ...thStyle, width: 100 }}>No. factura</th>
                                 <th style={{ ...thStyle, textAlign: "left" }}>Proyecto</th>
                               </tr>
                             </thead>
@@ -954,8 +932,6 @@ export default function ReportePagosPage() {
                                     <td style={{ ...tdStyle, fontWeight: 700 }}>
                                       {it.oc_folio}
                                     </td>
-                                    <td style={tdStyle}>{formatDateShort(it.invoice_date)}</td>
-                                    <td style={tdStyle}>{it.invoice_number || "—"}</td>
                                     <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)" }}>
                                       {proj}
                                     </td>
@@ -1203,8 +1179,6 @@ export default function ReportePagosPage() {
                   <thead>
                     <tr>
                       <th style={{ ...thStyle, width: 130 }}>Folio OC</th>
-                      <th style={{ ...thStyle, width: 150 }}>Fecha factura</th>
-                      <th style={{ ...thStyle, width: 150 }}>No. factura</th>
                       <th style={{ ...thStyle, textAlign: "left" }}>Proyecto</th>
                       <th style={{ ...thStyle, width: 48 }}></th>
                     </tr>
@@ -1220,32 +1194,6 @@ export default function ReportePagosPage() {
                         <tr key={ocId} style={{ borderTop: "1px solid var(--border-default)" }}>
                           <td style={{ ...tdStyle, fontFamily: "monospace", fontWeight: 700, padding: "8px 12px" }}>
                             {oc.folio}
-                          </td>
-                          <td style={{ ...tdStyle, padding: "6px 8px" }}>
-                            <input
-                              type="date"
-                              style={{ ...INPUT_STYLE, padding: "7px 10px", fontSize: 13 }}
-                              value={draft.invoice_date}
-                              onChange={(e) => updateDraft(ocId, { invoice_date: e.target.value })}
-                            />
-                          </td>
-                          <td style={{ ...tdStyle, padding: "6px 8px" }}>
-                            <input
-                              style={{ ...INPUT_STYLE, padding: "7px 10px", fontSize: 13 }}
-                              value={draft.invoice_number}
-                              onChange={(e) => updateDraft(ocId, { invoice_number: e.target.value })}
-                              placeholder="A-12345"
-                            />
-                            {draft.fromXml ? (
-                              <span style={{
-                                display: "inline-flex", alignItems: "center",
-                                marginTop: 4, padding: "2px 7px", borderRadius: 999,
-                                background: "var(--icon-bg-green)", color: "var(--icon-color-green)",
-                                fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
-                              }}>
-                                Del XML
-                              </span>
-                            ) : null}
                           </td>
                           <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-secondary)", padding: "8px 12px",
                             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 240 }}>
