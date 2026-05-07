@@ -83,10 +83,11 @@ if (existingInvs.length > 0) {
 
 await del('payment_report_items', 'is_test=eq.true')
 await del('payment_reports',      `is_test=eq.true&company_id=eq.${CID}`)
-// Clean up purchase_order_invoices for test OCs before deleting OCs (FK constraint)
+// Clean up by OC ID to catch any payment_report_items or invoices that lack is_test
 const testOCsForCleanup = await get('purchase_orders', `select=id&is_test=eq.true&company_id=eq.${CID}`)
 if (testOCsForCleanup.length > 0) {
   const ids = testOCsForCleanup.map(o => o.id).join(',')
+  await del('payment_report_items',   `purchase_order_id=in.(${ids})`)
   await del('purchase_order_invoices', `purchase_order_id=in.(${ids})`)
 }
 await del('purchase_orders',      `is_test=eq.true&company_id=eq.${CID}`)
@@ -297,6 +298,54 @@ const poiRows = await post('purchase_order_invoices', [
 if (!poiRows) { console.error('❌ Abortando'); process.exit(1) }
 console.log(`  ✓ ${poiRows.length} facturas de OC insertadas`)
 
+// ── SEED 2c: OCs adicionales con fechas distintas ────────────────────────────
+
+console.log('\n── Seed 2c: OCs adicionales (semanas 16, 17, 19) ───────────')
+
+const poRowsExtra = await post('purchase_orders', [
+  // Semana 16 — abril 14-18, 2026
+  { ...basePO, building_id: M232, supplier_id: SUP_HD,    supplier_prefix: 'HD',
+    folio: 'PO-TEST-004', project_description: 'Pintura pasillos',
+    total_estimated: 3200, created_at: '2026-04-14T10:00:00Z' },
+  { ...basePO, building_id: M304, supplier_id: SUP_BRICO,
+    folio: 'PO-TEST-005', project_description: 'Plomería baños',
+    total_estimated: 1800, created_at: '2026-04-15T10:00:00Z' },
+  // Semana 17 — abril 21-25, 2026
+  { ...basePO, building_id: M232, supplier_id: SUP_HD,    supplier_prefix: 'HD',
+    folio: 'PO-TEST-006', project_description: 'Impermeabilización azotea',
+    total_estimated: 8500, created_at: '2026-04-21T10:00:00Z' },
+  { ...basePO, building_id: M304, supplier_id: SUP_GILSA,
+    folio: 'PO-TEST-007', project_description: 'Instalación eléctrica',
+    total_estimated: 4200, created_at: '2026-04-22T10:00:00Z' },
+  // Semana 19 — mayo 5-9, 2026
+  { ...basePO, building_id: M232, supplier_id: SUP_HD,    supplier_prefix: 'HD',
+    folio: 'PO-TEST-008', project_description: 'Herrería ventanas',
+    total_estimated: 5600, created_at: '2026-05-05T10:00:00Z' },
+  { ...basePO, building_id: M304, supplier_id: SUP_GILSA,
+    folio: 'PO-TEST-009', project_description: 'Acabados interiores',
+    total_estimated: 2900, created_at: '2026-05-06T10:00:00Z' },
+])
+if (!poRowsExtra) { console.error('❌ Abortando'); process.exit(1) }
+const [po4, po5, po6, po7, po8, po9] = poRowsExtra
+console.log(`  ✓ ${poRowsExtra.length} OCs adicionales insertadas`)
+
+const poiRowsExtra = await post('purchase_order_invoices', [
+  { company_id: CID, purchase_order_id: po4.id,
+    invoice_number: 'FAC-HD-2026-004',  invoice_date: '2026-04-16', amount: 3200 },
+  { company_id: CID, purchase_order_id: po5.id,
+    invoice_number: 'FAC-BRI-2026-005', invoice_date: '2026-04-17', amount: 1800 },
+  { company_id: CID, purchase_order_id: po6.id,
+    invoice_number: 'FAC-HD-2026-006',  invoice_date: '2026-04-23', amount: 8500 },
+  { company_id: CID, purchase_order_id: po7.id,
+    invoice_number: 'FAC-GIL-2026-007', invoice_date: '2026-04-24', amount: 4200 },
+  { company_id: CID, purchase_order_id: po8.id,
+    invoice_number: 'FAC-HD-2026-008',  invoice_date: '2026-05-07', amount: 5600 },
+  { company_id: CID, purchase_order_id: po9.id,
+    invoice_number: 'FAC-GIL-2026-009', invoice_date: '2026-05-08', amount: 2900 },
+])
+if (!poiRowsExtra) { console.error('❌ Abortando'); process.exit(1) }
+console.log(`  ✓ ${poiRowsExtra.length} facturas de OC adicionales insertadas`)
+
 const rptRows = await post('payment_reports', {
   company_id: CID, folio: 'RPG-2026-18', week_number: 18, year: 2026,
   report_date: '2026-05-02', elaborated_by: 'Compras Fra-Mar',
@@ -368,8 +417,8 @@ console.log(`
 ═══════════════════════════════════════════════════
   Facturas de servicios:  ${invoiceRows.length}
   Items de facturas:      ${totalInvItems} (${activeSubMeters232.length} elec-232 + 1 agua-232 + ${activeSubMeters304.length} elec-304 + 1 agua-304)
-  OCs de prueba:          ${poRows.length}
-  Facturas de OCs:        ${poiRows.length}
+  OCs de prueba:          ${poRows.length + poRowsExtra.length} (${poRows.length} sem-18 + ${poRowsExtra.length} sems-16/17/19)
+  Facturas de OCs:        ${poiRows.length + poiRowsExtra.length}
   Reporte creado:         ${rptRows[0].folio} (status: ${newStatus})
   Items del reporte:      ${itemRows.length}
   Pagos manuales:         ${mpRows.length}
