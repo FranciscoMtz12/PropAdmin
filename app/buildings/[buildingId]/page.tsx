@@ -785,7 +785,7 @@ export default function BuildingDetailPage() {
     setSavingAssign(true);
     setAssignMsg("");
     const { error } = await supabase.from("parking_spots").update({
-      status: "occupied", tenant_id: lease.tenant_id,
+      status: "rented", tenant_id: lease.tenant_id,
       lease_id: lease.id, monthly_fee: fee,
       notes: assignNotes.trim() || null,
     }).eq("id", assignSpot.id);
@@ -1656,7 +1656,7 @@ export default function BuildingDetailPage() {
             ) : (
               <div>
                 {parkingSpots.map((spot, i) => {
-                  const occupied = spot.status === "occupied";
+                  const occupied = spot.status === "rented";
                   const tenantName = spot.tenant_id
                     ? (parkingLeases.find(l => l.tenant_id === spot.tenant_id)?.tenant_name ?? null)
                     : null;
