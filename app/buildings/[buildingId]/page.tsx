@@ -1834,7 +1834,7 @@ export default function BuildingDetailPage() {
         <AppFormField label="Contrato / Inquilino" required>
           <AppSelect value={assignLeaseId} onChange={e => setAssignLeaseId(e.target.value)}>
             <option value="">Selecciona un contrato...</option>
-            {parkingLeases.map(l => (
+            {sortByNatural(parkingLeases, l => l.unit_number).map(l => (
               <option key={l.id} value={l.id}>
                 {l.tenant_name ?? "Sin nombre"}{l.unit_number ? ` — Depa ${l.unit_number}` : ""}
               </option>
