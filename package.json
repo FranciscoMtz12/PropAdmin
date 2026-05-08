@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "deploy:functions": "supabase functions deploy generate-monthly-charges"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
