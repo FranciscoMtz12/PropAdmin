@@ -223,7 +223,7 @@ export default function UtilityInvoiceModal({
       .select("id")
       .eq("company_id", companyId)
       .eq("unit_id", unitId)
-      .eq("charge_type", "services")
+      .eq("charge_type", meter.service_type)
       .eq("active", true)
       .is("deleted_at", null)
       .limit(1)
@@ -237,7 +237,7 @@ export default function UtilityInvoiceModal({
         building_id:         building.id,
         unit_id:             unitId,
         lease_id:            leaseId,
-        charge_type:         "services",
+        charge_type:         meter.service_type,
         title:               `${SERVICE_TYPE_LABEL[meter.service_type]} — Depa ${unitNumber}`,
         responsibility_type: "tenant",
         amount_expected:     amount,

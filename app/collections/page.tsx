@@ -515,6 +515,89 @@ export default function CollectionsPage() {
           { icon: "🔧" },
         );
       }
+
+      // ── Paso 0b: crear schedules de servicios charged faltantes ───────────────
+      type ChargedMeter = { id: string; building_id: string; service_type: string };
+      type SubMeterRow  = { id: string; unit_id: string; building_utility_meter_id: string };
+
+      const unitIds = leases.map(l => l.unit_id).filter((id): id is string => !!id);
+      if (unitIds.length > 0) {
+        const buildingIds = [...new Set(
+          leases.map(l => units.find(u => u.id === l.unit_id)?.building_id).filter((id): id is string => !!id),
+        )];
+
+        const { data: chargedMetersData } = await supabase
+          .from("building_utility_meters")
+          .select("id, building_id, service_type")
+          .in("building_id", buildingIds)
+          .eq("billing_mode", "charged")
+          .eq("active", true)
+          .is("deleted_at", null);
+
+        const chargedMeters = (chargedMetersData ?? []) as ChargedMeter[];
+
+        if (chargedMeters.length > 0) {
+          const { data: subMetersData } = await supabase
+            .from("building_utility_sub_meters")
+            .select("id, unit_id, building_utility_meter_id")
+            .in("building_utility_meter_id", chargedMeters.map(m => m.id))
+            .eq("active", true)
+            .is("deleted_at", null);
+
+          const subMeters = (subMetersData ?? []) as SubMeterRow[];
+          const svcToCreate: ScheduleRow[] = [];
+
+          for (const sub of subMeters) {
+            const meter = chargedMeters.find(m => m.id === sub.building_utility_meter_id);
+            const lease = leases.find(l => l.unit_id === sub.unit_id);
+            if (!meter || !lease) continue;
+
+            const hasSchedule = allSchedules.some(
+              s => s.unit_id === sub.unit_id && (s.charge_type as string) === meter.service_type,
+            );
+            if (hasSchedule) continue;
+
+            const unit = units.find(u => u.id === sub.unit_id);
+            if (!unit) continue;
+
+            const ld = (leaseDetails as LeaseDetail[] | null)?.find(d => d.id === lease.id);
+            const svcTitle = meter.service_type === "electricity" ? "Electricidad"
+              : meter.service_type === "water" ? "Agua"
+              : meter.service_type === "gas" ? "Gas"
+              : meter.service_type;
+
+            svcToCreate.push({
+              company_id: user.company_id,
+              building_id: meter.building_id,
+              unit_id: sub.unit_id,
+              lease_id: lease.id,
+              charge_type: meter.service_type,
+              title: svcTitle,
+              responsibility_type: "tenant",
+              amount_expected: 0,
+              due_day: ld?.due_day ?? 15,
+              active: true,
+              billing_frequency: "monthly",
+            });
+          }
+
+          if (svcToCreate.length > 0) {
+            const { data: createdSvc, error: svcErr } = await supabase
+              .from("collection_schedules")
+              .insert(svcToCreate)
+              .select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes");
+
+            if (svcErr) {
+              toast.error(`Error creando programas de servicio: ${svcErr.message}`);
+              setGenerating(false);
+              return;
+            }
+            const newSvcScheds = (createdSvc ?? []) as CollectionSchedule[];
+            allSchedules = [...allSchedules, ...newSvcScheds];
+            setSchedules(allSchedules);
+          }
+        }
+      }
     }
 
     // ── Schedules activos para leases activos ─────────────────────────────────
@@ -1254,7 +1337,7 @@ export default function CollectionsPage() {
                           const conceptLabel = schedule ? getChargeTypeLabel(chargeType) : "Cobro";
                           const recColors = getStatusColors(record.status);
                           const isMarking = markingIds.has(record.id);
-                          const needsCaptura = VARIABLE_CHARGE_TYPES.has(chargeType) && record.amount_due === 0;
+                          const needsCaptura = record.notes === "needs_amount";
 
                           return (
                             <div key={record.id} style={conceptRowStyle}>
@@ -1269,18 +1352,24 @@ export default function CollectionsPage() {
 
                               {/* Monto — 3 líneas */}
                               <div style={{ display: "grid", gap: 2, textAlign: "right" }}>
-                                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Total: {formatCurrency(record.amount_due)}</span>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "#10B981" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
-                                <span style={{ fontSize: 12, fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "#EF4444" : "#10B981" }}>
-                                  Resta: {formatCurrency(Math.max(record.amount_due - (record.amount_collected || 0), 0))}
-                                </span>
+                                {needsCaptura ? (
+                                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)" }}>—</span>
+                                ) : (
+                                  <>
+                                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Total: {formatCurrency(record.amount_due)}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 600, color: "#10B981" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "#EF4444" : "#10B981" }}>
+                                      Resta: {formatCurrency(Math.max(record.amount_due - (record.amount_collected || 0), 0))}
+                                    </span>
+                                  </>
+                                )}
                               </div>
 
                               {/* Estado */}
                               <div style={{ display: "flex", justifyContent: "center" }}>
                                 {needsCaptura ? (
                                   <span style={{ ...badgeStyle, fontSize: 11, padding: "4px 8px", background: "var(--metric-bg-amber)", color: "var(--badge-text-amber)", border: "1px solid var(--metric-border-amber)" }}>
-                                    Capturar monto
+                                    Pendiente captura
                                   </span>
                                 ) : (
                                   <span style={{
