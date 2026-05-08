@@ -1034,20 +1034,25 @@ export default function UnitDetailPage() {
 
   async function handleFinishLease(leaseId: string, currentEndDate: string | null) {
     if (!user?.company_id || !unit) return;
-
     setSaving(true);
     setMsg("");
-
+    const now = new Date().toISOString();
     const today = getTodayDateInput();
 
-    const { error } = await supabase
-      .from("leases")
-      .update({
-        status: "ENDED",
-        end_date: currentEndDate || today,
-      })
-      .eq("id", leaseId)
-      .eq("company_id", user.company_id);
+    // 1. Collection schedules
+    await supabase.from("collection_schedules")
+      .update({ deleted_at: now, active: false })
+      .eq("lease_id", leaseId).is("deleted_at", null);
+
+    // 2. Collection records pendientes
+    await supabase.from("collection_records")
+      .update({ deleted_at: now })
+      .eq("lease_id", leaseId).in("status", ["pending", "overdue"]).is("deleted_at", null);
+
+    // 3. Lease
+    const { error } = await supabase.from("leases")
+      .update({ status: "ENDED", end_date: currentEndDate || today })
+      .eq("id", leaseId).eq("company_id", user.company_id);
 
     if (error) {
       setSaving(false);
@@ -1056,12 +1061,9 @@ export default function UnitDetailPage() {
     }
 
     const remainingActive = activeLeases.filter((lease) => lease.id !== leaseId);
-
-    await supabase
-      .from("units")
+    await supabase.from("units")
       .update({ status: remainingActive.length > 0 ? "RENTED" : "VACANT" })
-      .eq("id", unit.id)
-      .eq("company_id", user.company_id);
+      .eq("id", unit.id).eq("company_id", user.company_id);
 
     setSaving(false);
     setMsg("Lease finalizado correctamente.");
@@ -1070,18 +1072,25 @@ export default function UnitDetailPage() {
 
   async function handleDeleteLeaseConfirmed() {
     if (!user?.company_id || !unit || !leaseToDelete) return;
-
     setSaving(true);
     setMsg("");
-
+    const now = new Date().toISOString();
     const wasActive = leaseToDelete.status === "ACTIVE";
 
-    // Soft delete: marca deleted_at en lugar de eliminar físicamente
-    const { error } = await supabase
-      .from("leases")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", leaseToDelete.id)
-      .eq("company_id", user.company_id);
+    // 1. Collection schedules
+    await supabase.from("collection_schedules")
+      .update({ deleted_at: now, active: false })
+      .eq("lease_id", leaseToDelete.id).is("deleted_at", null);
+
+    // 2. Collection records pendientes
+    await supabase.from("collection_records")
+      .update({ deleted_at: now })
+      .eq("lease_id", leaseToDelete.id).in("status", ["pending", "overdue"]).is("deleted_at", null);
+
+    // 3. Lease soft-delete
+    const { error } = await supabase.from("leases")
+      .update({ deleted_at: now })
+      .eq("id", leaseToDelete.id).eq("company_id", user.company_id);
 
     if (error) {
       setSaving(false);
@@ -1096,15 +1105,10 @@ export default function UnitDetailPage() {
     }
 
     if (wasActive) {
-      const remainingActive = activeLeases.filter(
-        (lease) => lease.id !== leaseToDelete.id
-      );
-
-      await supabase
-        .from("units")
+      const remainingActive = activeLeases.filter((lease) => lease.id !== leaseToDelete.id);
+      await supabase.from("units")
         .update({ status: remainingActive.length > 0 ? "RENTED" : "VACANT" })
-        .eq("id", unit.id)
-        .eq("company_id", user.company_id);
+        .eq("id", unit.id).eq("company_id", user.company_id);
     }
 
     setSaving(false);

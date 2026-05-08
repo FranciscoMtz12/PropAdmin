@@ -567,11 +567,30 @@ export default function BuildingUnitsPage() {
     if (!user?.company_id || !unitToDelete) return;
     setDeleting(true);
     setDeleteError(null);
-    const { error } = await supabase
-      .from("units")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", unitToDelete.id)
-      .eq("company_id", user.company_id);
+    const now = new Date().toISOString();
+    const uid = unitToDelete.id;
+
+    // 1. Assets de la unidad
+    await supabase.from("assets")
+      .update({ deleted_at: now }).eq("unit_id", uid).is("deleted_at", null);
+
+    // 2. Collection schedules
+    await supabase.from("collection_schedules")
+      .update({ deleted_at: now, active: false }).eq("unit_id", uid).is("deleted_at", null);
+
+    // 3. Collection records pendientes
+    await supabase.from("collection_records")
+      .update({ deleted_at: now })
+      .eq("unit_id", uid).in("status", ["pending", "overdue"]).is("deleted_at", null);
+
+    // 4. Leases activos
+    await supabase.from("leases")
+      .update({ deleted_at: now, status: "ENDED" })
+      .eq("unit_id", uid).eq("status", "ACTIVE").is("deleted_at", null);
+
+    // 5. Unidad
+    const { error } = await supabase.from("units")
+      .update({ deleted_at: now }).eq("id", uid).eq("company_id", user.company_id);
 
     if (error) {
       setDeleteError(`No se pudo eliminar el departamento. ${error.message}`);

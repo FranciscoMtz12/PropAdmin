@@ -29,6 +29,7 @@ import {
   Archive,
   ArrowLeft,
   Building2,
+  Car,
   CreditCard,
   Droplets,
   Edit3,
@@ -194,6 +195,25 @@ type UtilityMeterForOverview = {
   meter_type: "dedicated" | "shared";
   billing_mode: "charged" | "included";
   contract_holder: "tenant" | "company";
+};
+
+type ParkingSpot = {
+  id: string;
+  spot_number: number;
+  status: string;
+  tenant_id: string | null;
+  lease_id: string | null;
+  monthly_fee: number;
+  notes: string | null;
+  created_at: string;
+};
+
+type BuildingLeaseForParking = {
+  id: string;
+  unit_id: string | null;
+  tenant_id: string | null;
+  tenant_name: string | null;
+  due_day: number | null;
 };
 
 function utilityMeterBillsTenant(m: UtilityMeterForOverview): boolean {
@@ -487,6 +507,23 @@ export default function BuildingDetailPage() {
   /* Servicios activos (para card en Resumen) */
   const [utilityMeters, setUtilityMeters] = useState<UtilityMeterForOverview[]>([]);
 
+  /* Cajones de estacionamiento */
+  const [parkingSpots, setParkingSpots]   = useState<ParkingSpot[]>([]);
+  const [parkingLeases, setParkingLeases] = useState<BuildingLeaseForParking[]>([]);
+  const [loadingParking, setLoadingParking] = useState(false);
+  const [createSpotOpen, setCreateSpotOpen] = useState(false);
+  const [newSpotNumber, setNewSpotNumber]   = useState("");
+  const [savingSpot, setSavingSpot]         = useState(false);
+  const [spotMsg, setSpotMsg]               = useState("");
+  const [assignSpot, setAssignSpot]         = useState<ParkingSpot | null>(null);
+  const [assignLeaseId, setAssignLeaseId]   = useState("");
+  const [assignFee, setAssignFee]           = useState("0");
+  const [assignNotes, setAssignNotes]       = useState("");
+  const [savingAssign, setSavingAssign]     = useState(false);
+  const [assignMsg, setAssignMsg]           = useState("");
+  const [releaseSpot, setReleaseSpot]       = useState<ParkingSpot | null>(null);
+  const [savingRelease, setSavingRelease]   = useState(false);
+
   /* Formulario de asset */
   const [assetType, setAssetType]   = useState("ELEVATOR");
   const [assetName, setAssetName]   = useState("");
@@ -507,6 +544,10 @@ export default function BuildingDetailPage() {
   useEffect(() => {
     if (user?.company_id && buildingId) void loadBuilding();
   }, [user, buildingId]);
+
+  useEffect(() => {
+    if (activeTab === "parking" && building && !loadingBuilding) void loadParkingData();
+  }, [activeTab, building, loadingBuilding]);
 
   /* ── Carga de datos ──────────────────────────────────────────────── */
 
@@ -630,6 +671,103 @@ export default function BuildingDetailPage() {
     setLoadingBuilding(false);
   }
 
+  /* ── Cajones de estacionamiento ─────────────────────────────────── */
+
+  async function loadParkingData() {
+    if (!user?.company_id || !building) return;
+    setLoadingParking(true);
+    const { data: spots } = await supabase
+      .from("parking_spots")
+      .select("id, spot_number, status, tenant_id, lease_id, monthly_fee, notes, created_at")
+      .eq("building_id", building.id)
+      .eq("company_id", user.company_id)
+      .is("deleted_at", null)
+      .order("spot_number");
+    setParkingSpots((spots || []) as ParkingSpot[]);
+
+    const unitIds = buildingUnits.map(u => u.id);
+    if (unitIds.length > 0) {
+      type RawLease = { id: string; unit_id: string | null; tenant_id: string | null; due_day: number | null; tenants: Array<{ full_name: string }> | null };
+      const { data: lData } = await supabase
+        .from("leases")
+        .select("id, unit_id, tenant_id, due_day, tenants(full_name)")
+        .in("unit_id", unitIds)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null);
+      setParkingLeases(((lData || []) as RawLease[]).map(l => ({
+        id: l.id, unit_id: l.unit_id, tenant_id: l.tenant_id,
+        due_day: l.due_day, tenant_name: l.tenants?.[0]?.full_name ?? null,
+      })));
+    } else {
+      setParkingLeases([]);
+    }
+    setLoadingParking(false);
+  }
+
+  async function handleCreateSpot() {
+    if (!user?.company_id || !building) return;
+    const num = parseInt(newSpotNumber, 10);
+    if (!num || num <= 0) { setSpotMsg("Ingresa un número de cajón válido."); return; }
+    setSavingSpot(true);
+    setSpotMsg("");
+    const { error } = await supabase.from("parking_spots").insert({
+      company_id: user.company_id, building_id: building.id,
+      spot_number: num, status: "vacant", monthly_fee: 0,
+    });
+    setSavingSpot(false);
+    if (error) { setSpotMsg(error.message); return; }
+    setCreateSpotOpen(false);
+    setNewSpotNumber("");
+    await loadParkingData();
+  }
+
+  async function handleAssignSpot() {
+    if (!user?.company_id || !building || !assignSpot) return;
+    const lease = parkingLeases.find(l => l.id === assignLeaseId);
+    if (!lease) { setAssignMsg("Selecciona un contrato."); return; }
+    const fee = parseFloat(assignFee) || 0;
+    setSavingAssign(true);
+    setAssignMsg("");
+    const { error } = await supabase.from("parking_spots").update({
+      status: "occupied", tenant_id: lease.tenant_id,
+      lease_id: lease.id, monthly_fee: fee,
+      notes: assignNotes.trim() || null,
+    }).eq("id", assignSpot.id);
+    if (error) { setSavingAssign(false); setAssignMsg(error.message); return; }
+    if (fee > 0 && lease.unit_id) {
+      await supabase.from("collection_schedules").insert({
+        company_id: user.company_id, building_id: building.id,
+        unit_id: lease.unit_id, lease_id: lease.id,
+        charge_type: "parking",
+        title: `Estacionamiento - Cajón ${assignSpot.spot_number}`,
+        responsibility_type: "tenant", amount_expected: fee,
+        due_day: lease.due_day ?? 5, active: true, billing_frequency: "monthly",
+      });
+    }
+    setSavingAssign(false);
+    setAssignSpot(null);
+    setAssignLeaseId(""); setAssignFee("0"); setAssignNotes("");
+    await loadParkingData();
+  }
+
+  async function handleReleaseSpot() {
+    if (!user?.company_id || !releaseSpot) return;
+    setSavingRelease(true);
+    const now = new Date().toISOString();
+    if (releaseSpot.lease_id) {
+      await supabase.from("collection_schedules")
+        .update({ deleted_at: now, active: false })
+        .eq("lease_id", releaseSpot.lease_id).eq("charge_type", "parking").is("deleted_at", null);
+    }
+    const { error } = await supabase.from("parking_spots").update({
+      status: "vacant", tenant_id: null, lease_id: null, monthly_fee: 0, notes: null,
+    }).eq("id", releaseSpot.id);
+    setSavingRelease(false);
+    setReleaseSpot(null);
+    if (error) { setMsg(error.message); return; }
+    await loadParkingData();
+  }
+
   /* ── Derivaciones ─────────────────────────────────────────────────── */
 
   const documentFiles = useMemo(() => files.filter((f) => f.file_type === "document"), [files]);
@@ -723,11 +861,61 @@ export default function BuildingDetailPage() {
     if (!user?.company_id || !building) return;
     setDeletingBuilding(true);
     setMsg("");
-    const { error } = await supabase
-      .from("buildings")
-      .update({ deleted_at: new Date().toISOString() })
-      .eq("id", building.id)
-      .eq("company_id", user.company_id);
+    const now = new Date().toISOString();
+    const bid = building.id;
+
+    // 1. Sub-medidores (via metros del edificio)
+    const { data: meterRows } = await supabase
+      .from("building_utility_meters").select("id")
+      .eq("building_id", bid).is("deleted_at", null);
+    const meterIds = (meterRows || []).map((m: { id: string }) => m.id);
+    if (meterIds.length > 0) {
+      await supabase.from("building_utility_sub_meters")
+        .update({ deleted_at: now })
+        .in("building_utility_meter_id", meterIds).is("deleted_at", null);
+    }
+
+    // 2. Metros de servicios
+    await supabase.from("building_utility_meters")
+      .update({ deleted_at: now }).eq("building_id", bid).is("deleted_at", null);
+
+    // 3. Áreas comunes
+    await supabase.from("common_areas")
+      .update({ deleted_at: now }).eq("building_id", bid).is("deleted_at", null);
+
+    // 4. Assets del edificio
+    await supabase.from("assets")
+      .update({ deleted_at: now }).eq("building_id", bid).is("deleted_at", null);
+
+    // 5-7. Cascada via unidades
+    const { data: unitRows } = await supabase
+      .from("units").select("id")
+      .eq("building_id", bid).is("deleted_at", null);
+    const unitIds = (unitRows || []).map((u: { id: string }) => u.id);
+    if (unitIds.length > 0) {
+      await supabase.from("collection_schedules")
+        .update({ deleted_at: now, active: false })
+        .in("unit_id", unitIds).is("deleted_at", null);
+      await supabase.from("collection_records")
+        .update({ deleted_at: now })
+        .in("unit_id", unitIds).in("status", ["pending", "overdue"]).is("deleted_at", null);
+      await supabase.from("leases")
+        .update({ deleted_at: now, status: "ENDED" })
+        .in("unit_id", unitIds).eq("status", "ACTIVE").is("deleted_at", null);
+    }
+
+    // 8. Horarios de limpieza
+    await supabase.from("cleaning_unit_schedules")
+      .update({ deleted_at: now }).eq("building_id", bid).is("deleted_at", null);
+
+    // 9. Unidades
+    await supabase.from("units")
+      .update({ deleted_at: now }).eq("building_id", bid).is("deleted_at", null);
+
+    // 10. Edificio
+    const { error } = await supabase.from("buildings")
+      .update({ deleted_at: now }).eq("id", bid).eq("company_id", user.company_id);
+
     if (error) { setMsg(`No se pudo eliminar el edificio. ${error.message}`); setDeletingBuilding(false); return; }
     setDeletingBuilding(false);
     setIsDeleteModalOpen(false);
@@ -932,6 +1120,7 @@ export default function BuildingDetailPage() {
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: documentFiles.length },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: imageFiles.length },
           { key: "services",  label: "Servicios",  icon: <Wrench size={16} /> },
+          { key: "parking",   label: "Cajones",    icon: <Car size={16} />,        count: parkingSpots.length },
         ]}
       />
 
@@ -1389,6 +1578,66 @@ export default function BuildingDetailPage() {
         />
       ) : null}
 
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: CAJONES DE ESTACIONAMIENTO
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "parking" ? (
+        <div style={{ display: "grid", gap: 20 }}>
+          <SectionCard
+            title="Cajones de estacionamiento"
+            subtitle="Espacios de estacionamiento del edificio."
+            icon={<Car size={18} />}
+            action={
+              <UiButton icon={<Plus size={15} />} onClick={() => { setNewSpotNumber(""); setSpotMsg(""); setCreateSpotOpen(true); }}>
+                Agregar cajón
+              </UiButton>
+            }
+          >
+            {loadingParking ? (
+              <p style={{ color: "var(--text-muted)", fontSize: 14, padding: "16px 20px" }}>Cargando...</p>
+            ) : parkingSpots.length === 0 ? (
+              <p style={{ color: "var(--text-muted)", fontSize: 14, padding: "16px 20px" }}>Sin cajones registrados. Usa &quot;Agregar cajón&quot; para comenzar.</p>
+            ) : (
+              <div>
+                {parkingSpots.map((spot, i) => {
+                  const occupied = spot.status === "occupied";
+                  const tenantName = spot.tenant_id
+                    ? (parkingLeases.find(l => l.tenant_id === spot.tenant_id)?.tenant_name ?? null)
+                    : null;
+                  return (
+                    <div key={spot.id} style={{
+                      display: "flex", alignItems: "center", justifyContent: "space-between",
+                      gap: 12, padding: "14px 20px", flexWrap: "wrap",
+                      borderTop: i > 0 ? "1px solid var(--border-default)" : undefined,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, fontSize: 15 }}>Cajón #{spot.spot_number}</span>
+                        <AppBadge variant={occupied ? "red" : "green"}>{occupied ? "Ocupado" : "Disponible"}</AppBadge>
+                        {occupied && tenantName && (
+                          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{tenantName}</span>
+                        )}
+                        {occupied && spot.monthly_fee > 0 && (
+                          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{formatMXN(spot.monthly_fee)}/mes</span>
+                        )}
+                      </div>
+                      <div>
+                        {occupied ? (
+                          <UiButton variant="secondary" onClick={() => setReleaseSpot(spot)}>Liberar</UiButton>
+                        ) : (
+                          <UiButton onClick={() => { setAssignSpot(spot); setAssignLeaseId(""); setAssignFee("0"); setAssignNotes(""); setAssignMsg(""); }}>
+                            Asignar
+                          </UiButton>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
       {/* ── Modal editar edificio ── */}
       <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar edificio">
         <form onSubmit={handleUpdateBuilding}>
@@ -1499,6 +1748,72 @@ export default function BuildingDetailPage() {
         confirmText={deletingBuilding ? "Eliminando..." : "Eliminar edificio"}
         onConfirm={() => void handleDeleteBuilding()}
         onCancel={() => { if (!deletingBuilding) setIsDeleteModalOpen(false); }}
+      />
+
+      {/* ── Modal agregar cajón ── */}
+      <Modal open={createSpotOpen} onClose={() => { if (!savingSpot) setCreateSpotOpen(false); }} title="Agregar cajón">
+        {spotMsg ? <p style={errorBannerStyle}>{spotMsg}</p> : null}
+        <AppFormField label="Número de cajón" required>
+          <input
+            type="number" min="1" value={newSpotNumber}
+            onChange={e => setNewSpotNumber(e.target.value)}
+            placeholder="Ej. 1" style={INPUT_STYLE}
+          />
+        </AppFormField>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+          <UiButton type="button" variant="secondary" onClick={() => setCreateSpotOpen(false)} disabled={savingSpot}>Cancelar</UiButton>
+          <UiButton type="button" variant="primary" onClick={() => void handleCreateSpot()} disabled={savingSpot || !newSpotNumber}>
+            {savingSpot ? "Guardando..." : "Agregar"}
+          </UiButton>
+        </div>
+      </Modal>
+
+      {/* ── Modal asignar cajón ── */}
+      <Modal
+        open={assignSpot !== null}
+        onClose={() => { if (!savingAssign) setAssignSpot(null); }}
+        title={`Asignar Cajón #${assignSpot?.spot_number ?? ""}`}
+      >
+        {assignMsg ? <p style={errorBannerStyle}>{assignMsg}</p> : null}
+        <AppFormField label="Contrato / Inquilino" required>
+          <AppSelect value={assignLeaseId} onChange={e => setAssignLeaseId(e.target.value)}>
+            <option value="">Selecciona un contrato...</option>
+            {parkingLeases.map(l => (
+              <option key={l.id} value={l.id}>
+                {l.tenant_name ?? l.tenant_id?.slice(0, 8) ?? "Sin nombre"}
+              </option>
+            ))}
+          </AppSelect>
+        </AppFormField>
+        <AppFormField label="Cuota mensual (0 si va incluido en renta)">
+          <input
+            type="number" min="0" value={assignFee}
+            onChange={e => setAssignFee(e.target.value)}
+            placeholder="0" style={INPUT_STYLE}
+          />
+        </AppFormField>
+        <AppFormField label="Notas">
+          <input
+            value={assignNotes} onChange={e => setAssignNotes(e.target.value)}
+            placeholder="Notas opcionales" style={INPUT_STYLE}
+          />
+        </AppFormField>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+          <UiButton type="button" variant="secondary" onClick={() => setAssignSpot(null)} disabled={savingAssign}>Cancelar</UiButton>
+          <UiButton type="button" variant="primary" onClick={() => void handleAssignSpot()} disabled={savingAssign || !assignLeaseId}>
+            {savingAssign ? "Asignando..." : "Asignar cajón"}
+          </UiButton>
+        </div>
+      </Modal>
+
+      {/* ── Modal liberar cajón ── */}
+      <DeleteConfirmModal
+        open={releaseSpot !== null}
+        title={`Liberar Cajón #${releaseSpot?.spot_number ?? ""}`}
+        description={`¿Liberar este cajón? Se quitará la asignación actual${releaseSpot?.monthly_fee && releaseSpot.monthly_fee > 0 ? " y se archivará el cobro de estacionamiento." : "."}`}
+        confirmText={savingRelease ? "Liberando..." : "Liberar cajón"}
+        onConfirm={() => void handleReleaseSpot()}
+        onCancel={() => { if (!savingRelease) setReleaseSpot(null); }}
       />
     </PageContainer>
   );
