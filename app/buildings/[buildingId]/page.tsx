@@ -211,6 +211,7 @@ type ParkingSpot = {
 type BuildingLeaseForParking = {
   id: string;
   unit_id: string | null;
+  unit_number: string | null;
   tenant_id: string | null;
   tenant_name: string | null;
   due_day: number | null;
@@ -694,10 +695,14 @@ export default function BuildingDetailPage() {
         .in("unit_id", unitIds)
         .eq("status", "ACTIVE")
         .is("deleted_at", null);
-      setParkingLeases(((lData || []) as RawLease[]).map(l => ({
-        id: l.id, unit_id: l.unit_id, tenant_id: l.tenant_id,
-        due_day: l.due_day, tenant_name: l.tenants?.[0]?.full_name ?? null,
-      })));
+      setParkingLeases(((lData || []) as RawLease[]).map(l => {
+        const unit = buildingUnits.find(u => u.id === l.unit_id);
+        return {
+          id: l.id, unit_id: l.unit_id, tenant_id: l.tenant_id,
+          due_day: l.due_day, tenant_name: l.tenants?.[0]?.full_name ?? null,
+          unit_number: unit?.unit_number ?? null,
+        };
+      }));
     } else {
       setParkingLeases([]);
     }
@@ -1780,7 +1785,7 @@ export default function BuildingDetailPage() {
             <option value="">Selecciona un contrato...</option>
             {parkingLeases.map(l => (
               <option key={l.id} value={l.id}>
-                {l.tenant_name ?? l.tenant_id?.slice(0, 8) ?? "Sin nombre"}
+                {l.tenant_name ?? "Sin nombre"}{l.unit_number ? ` — Depa ${l.unit_number}` : ""}
               </option>
             ))}
           </AppSelect>
