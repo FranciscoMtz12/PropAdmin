@@ -508,6 +508,9 @@ export default function BuildingDetailPage() {
   /* Servicios activos (para card en Resumen) */
   const [utilityMeters, setUtilityMeters] = useState<UtilityMeterForOverview[]>([]);
 
+  /* Counts de tabs (cargados al inicio para evitar mostrar 0) */
+  const [tabCounts, setTabCounts] = useState({ assets: 0, docs: 0, gallery: 0, services: 0, parking: 0 });
+
   /* Cajones de estacionamiento */
   const [parkingSpots, setParkingSpots]   = useState<ParkingSpot[]>([]);
   const [parkingLeases, setParkingLeases] = useState<BuildingLeaseForParking[]>([]);
@@ -669,6 +672,33 @@ export default function BuildingDetailPage() {
     setBuildingUnits((allUnits || []) as UnitRow[]);
     setUtilityMeters((utilMetersData || []) as UtilityMeterForOverview[]);
 
+    // Counts de todos los tabs — consultas head:true, sin traer filas
+    const [
+      { count: aCount },
+      { count: dCount },
+      { count: gCount },
+      { count: sCount },
+      { count: pCount },
+    ] = await Promise.all([
+      supabase.from("assets").select("*", { count: "exact", head: true })
+        .eq("building_id", buildingId).is("unit_id", null).is("deleted_at", null),
+      supabase.from("building_files").select("*", { count: "exact", head: true })
+        .eq("building_id", buildingId).eq("file_type", "document").is("deleted_at", null),
+      supabase.from("building_files").select("*", { count: "exact", head: true })
+        .eq("building_id", buildingId).eq("file_type", "image").is("deleted_at", null),
+      supabase.from("building_utility_meters").select("*", { count: "exact", head: true })
+        .eq("building_id", buildingId).eq("active", true).is("deleted_at", null),
+      supabase.from("parking_spots").select("*", { count: "exact", head: true })
+        .eq("building_id", buildingId).is("deleted_at", null),
+    ]);
+    setTabCounts({
+      assets:   aCount ?? 0,
+      docs:     dCount ?? 0,
+      gallery:  gCount ?? 0,
+      services: sCount ?? 0,
+      parking:  pCount ?? 0,
+    });
+
     setLoadingBuilding(false);
   }
 
@@ -684,7 +714,9 @@ export default function BuildingDetailPage() {
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
       .order("spot_number");
-    setParkingSpots((spots || []) as ParkingSpot[]);
+    const spotsArr = (spots || []) as ParkingSpot[];
+    setParkingSpots(spotsArr);
+    setTabCounts(prev => ({ ...prev, parking: spotsArr.length }));
 
     const unitIds = buildingUnits.map(u => u.id);
     if (unitIds.length > 0) {
@@ -1140,11 +1172,11 @@ export default function BuildingDetailPage() {
         onChange={setActiveTab}
         items={[
           { key: "overview",  label: "Resumen",       icon: <Building2 size={16} /> },
-          { key: "assets",    label: "Assets",     icon: <Package size={16} />,    count: buildingAssets.length },
-          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: documentFiles.length },
-          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: imageFiles.length },
-          { key: "services",  label: "Servicios",  icon: <Wrench size={16} /> },
-          { key: "parking",   label: "Cajones",    icon: <Car size={16} />,        count: parkingSpots.length },
+          { key: "assets",    label: "Assets",     icon: <Package size={16} />,    count: tabCounts.assets },
+          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
+          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
+          { key: "services",  label: "Servicios",  icon: <Wrench size={16} />,     count: tabCounts.services },
+          { key: "parking",   label: "Cajones",    icon: <Car size={16} />,        count: tabCounts.parking },
         ]}
       />
 
