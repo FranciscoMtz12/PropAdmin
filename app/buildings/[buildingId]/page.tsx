@@ -688,18 +688,37 @@ export default function BuildingDetailPage() {
 
     const unitIds = buildingUnits.map(u => u.id);
     if (unitIds.length > 0) {
-      type RawLease = { id: string; unit_id: string | null; tenant_id: string | null; due_day: number | null; tenants: Array<{ full_name: string }> | null };
+      type LRow = { id: string; unit_id: string | null; tenant_id: string | null; due_day: number | null };
+      type TRow = { id: string; full_name: string };
+
+      // Step 1: leases activos de las unidades del edificio
       const { data: lData } = await supabase
         .from("leases")
-        .select("id, unit_id, tenant_id, due_day, tenants(full_name)")
+        .select("id, unit_id, tenant_id, due_day")
         .in("unit_id", unitIds)
         .eq("status", "ACTIVE")
         .is("deleted_at", null);
-      setParkingLeases(((lData || []) as RawLease[]).map(l => {
+      const leaseList = (lData || []) as LRow[];
+
+      // Step 2: nombres de inquilinos (query separada — evita depender del FK PostgREST)
+      const tenantIds = [...new Set(
+        leaseList.map(l => l.tenant_id).filter((id): id is string => id != null)
+      )];
+      const tenantMap: Record<string, string> = {};
+      if (tenantIds.length > 0) {
+        const { data: tData } = await supabase
+          .from("tenants")
+          .select("id, full_name")
+          .in("id", tenantIds);
+        for (const t of (tData || []) as TRow[]) tenantMap[t.id] = t.full_name;
+      }
+
+      // Step 3: combinar con unit_number desde buildingUnits (ya cargado)
+      setParkingLeases(leaseList.map(l => {
         const unit = buildingUnits.find(u => u.id === l.unit_id);
         return {
-          id: l.id, unit_id: l.unit_id, tenant_id: l.tenant_id,
-          due_day: l.due_day, tenant_name: l.tenants?.[0]?.full_name ?? null,
+          id: l.id, unit_id: l.unit_id, tenant_id: l.tenant_id, due_day: l.due_day,
+          tenant_name: l.tenant_id ? (tenantMap[l.tenant_id] ?? null) : null,
           unit_number: unit?.unit_number ?? null,
         };
       }));
