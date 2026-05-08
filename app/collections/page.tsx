@@ -521,12 +521,14 @@ export default function CollectionsPage() {
       type SubMeterRow  = { id: string; unit_id: string; building_utility_meter_id: string };
 
       const unitIds = leases.map(l => l.unit_id).filter((id): id is string => !!id);
+      console.log("[Paso0b] unitIds:", unitIds.length, "leases:", leases.length);
       if (unitIds.length > 0) {
         const buildingIds = [...new Set(
           leases.map(l => units.find(u => u.id === l.unit_id)?.building_id).filter((id): id is string => !!id),
         )];
+        console.log("[Paso0b] buildingIds:", buildingIds);
 
-        const { data: chargedMetersData } = await supabase
+        const { data: chargedMetersData, error: cmErr } = await supabase
           .from("building_utility_meters")
           .select("id, building_id, service_type")
           .in("building_id", buildingIds)
@@ -534,31 +536,42 @@ export default function CollectionsPage() {
           .eq("active", true)
           .is("deleted_at", null);
 
+        console.log("[Paso0b] chargedMeters:", chargedMetersData?.length ?? 0, cmErr?.message ?? "ok");
         const chargedMeters = (chargedMetersData ?? []) as ChargedMeter[];
 
         if (chargedMeters.length > 0) {
-          const { data: subMetersData } = await supabase
+          const { data: subMetersData, error: smErr } = await supabase
             .from("building_utility_sub_meters")
             .select("id, unit_id, building_utility_meter_id")
             .in("building_utility_meter_id", chargedMeters.map(m => m.id))
             .eq("active", true)
             .is("deleted_at", null);
 
+          console.log("[Paso0b] subMeters:", subMetersData?.length ?? 0, smErr?.message ?? "ok");
           const subMeters = (subMetersData ?? []) as SubMeterRow[];
           const svcToCreate: ScheduleRow[] = [];
 
           for (const sub of subMeters) {
             const meter = chargedMeters.find(m => m.id === sub.building_utility_meter_id);
             const lease = leases.find(l => l.unit_id === sub.unit_id);
-            if (!meter || !lease) continue;
+            if (!meter || !lease) {
+              console.log("[Paso0b] skip sub", sub.unit_id, "meter:", !!meter, "lease:", !!lease);
+              continue;
+            }
 
             const hasSchedule = allSchedules.some(
               s => s.unit_id === sub.unit_id && (s.charge_type as string) === meter.service_type,
             );
-            if (hasSchedule) continue;
+            if (hasSchedule) {
+              console.log("[Paso0b] skip sub", sub.unit_id, "hasSchedule already");
+              continue;
+            }
 
             const unit = units.find(u => u.id === sub.unit_id);
-            if (!unit) continue;
+            if (!unit) {
+              console.log("[Paso0b] skip sub", sub.unit_id, "unit not found in state");
+              continue;
+            }
 
             const ld = (leaseDetails as LeaseDetail[] | null)?.find(d => d.id === lease.id);
             const svcTitle = meter.service_type === "electricity" ? "Electricidad"
@@ -581,12 +594,14 @@ export default function CollectionsPage() {
             });
           }
 
+          console.log("[Paso0b] svcToCreate:", svcToCreate.length);
           if (svcToCreate.length > 0) {
             const { data: createdSvc, error: svcErr } = await supabase
               .from("collection_schedules")
               .insert(svcToCreate)
               .select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes");
 
+            console.log("[Paso0b] insert result:", createdSvc?.length ?? 0, svcErr?.message ?? "ok");
             if (svcErr) {
               toast.error(`Error creando programas de servicio: ${svcErr.message}`);
               setGenerating(false);
@@ -596,6 +611,8 @@ export default function CollectionsPage() {
             allSchedules = [...allSchedules, ...newSvcScheds];
             setSchedules(allSchedules);
           }
+        } else {
+          console.log("[Paso0b] no chargedMeters found for buildingIds:", buildingIds);
         }
       }
     }
@@ -625,6 +642,8 @@ export default function CollectionsPage() {
       (existingRecords || []).map((r) => r.collection_schedule_id),
     );
 
+    console.log("[GenCobros] activeSchedules:", activeSchedules.length, "existingScheduleIds:", existingScheduleIds.size);
+    console.log("[GenCobros] activeSchedules by type:", activeSchedules.reduce<Record<string,number>>((acc, s) => { acc[s.charge_type] = (acc[s.charge_type] ?? 0) + 1; return acc; }, {}));
     const today = getTodayDateKey();
     const toInsert = activeSchedules
       .filter((s) => !existingScheduleIds.has(s.id))
