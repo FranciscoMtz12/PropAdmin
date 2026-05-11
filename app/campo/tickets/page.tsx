@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import Webcam from "react-webcam";
 
+import { sortByNatural } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import Modal from "@/components/Modal";
@@ -290,11 +291,7 @@ export default function CampoTicketsPage() {
         .is("deleted_at", null)
         .order("name"),
     ]);
-    const sortedUnits = ((unitsRes.data || []) as Unit[]).sort((a, b) => {
-      const numA = parseInt(a.unit_number || "", 10) || 0;
-      const numB = parseInt(b.unit_number || "", 10) || 0;
-      return numA - numB;
-    });
+    const sortedUnits = sortByNatural((unitsRes.data || []) as Unit[], u => u.unit_number);
     setBuildingUnits(sortedUnits);
     setBuildingAssets(assetsRes.data || []);
     setLoadingDeps(false);

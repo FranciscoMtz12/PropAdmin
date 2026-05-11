@@ -58,6 +58,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateOCPdf, generateOMPdf } from "@/lib/pdfTemplates";
 import { formatDateLong, formatDateMedium, formatDateShort } from "@/lib/dateUtils";
+import { sortByNatural } from "@/lib/sort-utils";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -1164,7 +1165,7 @@ export default function MaintenancePage() {
         .is("deleted_at", null)
         .order("unit_number");
       if (!cancelled) {
-        setCreateUnits((data as UnitOption[]) || []);
+        setCreateUnits(sortByNatural((data as UnitOption[]) || [], u => u.unit_number));
       }
     })();
     return () => { cancelled = true; };

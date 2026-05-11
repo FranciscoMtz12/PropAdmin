@@ -33,6 +33,7 @@ import {
   Warehouse,
   Wrench,
 } from "lucide-react";
+import { sortByNatural } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
@@ -355,13 +356,7 @@ export default function BuildingUnitsPage() {
 
     const raw = (unitData as unknown as UnitRow[]) || [];
 
-    /* Ordenamiento numérico: "1", "2", "10" en lugar de "1", "10", "2" */
-    const sorted = [...raw].sort((a, b) => {
-      const numA = parseInt(a.unit_number, 10);
-      const numB = parseInt(b.unit_number, 10);
-      if (!isNaN(numA) && !isNaN(numB)) return numA - numB;
-      return a.unit_number.localeCompare(b.unit_number);
-    });
+    const sorted = sortByNatural(raw, u => u.unit_number);
     setUnits(sorted);
 
     /* 4. Nombre del inquilino activo para unidades ocupadas */

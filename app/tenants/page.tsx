@@ -26,6 +26,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
+import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -581,7 +582,7 @@ export default function TenantsPage() {
       entry.entries.sort((a, b) => {
         const la = a.unit.display_code || a.unit.unit_number || "";
         const lb = b.unit.display_code || b.unit.unit_number || "";
-        return la.localeCompare(lb);
+        return naturalCompare(la, lb);
       });
     });
 

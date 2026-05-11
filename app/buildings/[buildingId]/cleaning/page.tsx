@@ -27,6 +27,7 @@ import {
   Sparkles,
 } from "lucide-react";
 
+import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -254,7 +255,7 @@ export default function BuildingCleaningPage() {
       const aLabel = aUnit?.display_code || aUnit?.unit_number || "";
       const bLabel = bUnit?.display_code || bUnit?.unit_number || "";
 
-      return aLabel.localeCompare(bLabel);
+      return naturalCompare(aLabel, bLabel);
     });
 
     const lines: string[] = [

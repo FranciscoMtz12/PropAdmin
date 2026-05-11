@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
+import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import toast from "react-hot-toast";
@@ -522,12 +523,10 @@ export default function CollectionsPage() {
       type SubMeterRow  = { id: string; unit_id: string; building_utility_meter_id: string };
 
       const unitIds = leases.map(l => l.unit_id).filter((id): id is string => !!id);
-      console.log("[Paso0b] unitIds:", unitIds.length, "leases:", leases.length);
       if (unitIds.length > 0) {
         const buildingIds = [...new Set(
           leases.map(l => units.find(u => u.id === l.unit_id)?.building_id).filter((id): id is string => !!id),
         )];
-        console.log("[Paso0b] buildingIds:", buildingIds);
 
         const { data: chargedMetersData, error: cmErr } = await supabase
           .from("building_utility_meters")
@@ -537,7 +536,6 @@ export default function CollectionsPage() {
           .eq("active", true)
           .is("deleted_at", null);
 
-        console.log("[Paso0b] chargedMeters:", chargedMetersData?.length ?? 0, cmErr?.message ?? "ok");
         const chargedMeters = (chargedMetersData ?? []) as ChargedMeter[];
 
         if (chargedMeters.length > 0) {
@@ -548,7 +546,6 @@ export default function CollectionsPage() {
             .eq("active", true)
             .is("deleted_at", null);
 
-          console.log("[Paso0b] subMeters:", subMetersData?.length ?? 0, smErr?.message ?? "ok");
           const subMeters = (subMetersData ?? []) as SubMeterRow[];
           const svcToCreate: ScheduleRow[] = [];
 
@@ -556,7 +553,6 @@ export default function CollectionsPage() {
             const meter = chargedMeters.find(m => m.id === sub.building_utility_meter_id);
             const lease = leases.find(l => l.unit_id === sub.unit_id);
             if (!meter || !lease) {
-              console.log("[Paso0b] skip sub", sub.unit_id, "meter:", !!meter, "lease:", !!lease);
               continue;
             }
 
@@ -564,13 +560,11 @@ export default function CollectionsPage() {
               s => s.unit_id === sub.unit_id && (s.charge_type as string) === meter.service_type,
             );
             if (hasSchedule) {
-              console.log("[Paso0b] skip sub", sub.unit_id, "hasSchedule already");
               continue;
             }
 
             const unit = units.find(u => u.id === sub.unit_id);
             if (!unit) {
-              console.log("[Paso0b] skip sub", sub.unit_id, "unit not found in state");
               continue;
             }
 
@@ -595,14 +589,12 @@ export default function CollectionsPage() {
             });
           }
 
-          console.log("[Paso0b] svcToCreate:", svcToCreate.length);
           if (svcToCreate.length > 0) {
             const { data: createdSvc, error: svcErr } = await supabase
               .from("collection_schedules")
               .insert(svcToCreate)
               .select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes");
 
-            console.log("[Paso0b] insert result:", createdSvc?.length ?? 0, svcErr?.message ?? "ok");
             if (svcErr) {
               toast.error(`Error creando programas de servicio: ${svcErr.message}`);
               setGenerating(false);
@@ -612,8 +604,6 @@ export default function CollectionsPage() {
             allSchedules = [...allSchedules, ...newSvcScheds];
             setSchedules(allSchedules);
           }
-        } else {
-          console.log("[Paso0b] no chargedMeters found for buildingIds:", buildingIds);
         }
       }
     }
@@ -643,8 +633,6 @@ export default function CollectionsPage() {
       (existingRecords || []).map((r) => r.collection_schedule_id),
     );
 
-    console.log("[GenCobros] activeSchedules:", activeSchedules.length, "existingScheduleIds:", existingScheduleIds.size);
-    console.log("[GenCobros] activeSchedules by type:", activeSchedules.reduce<Record<string,number>>((acc, s) => { acc[s.charge_type] = (acc[s.charge_type] ?? 0) + 1; return acc; }, {}));
     const today = getTodayDateKey();
     const toInsert = activeSchedules
       .filter((s) => !existingScheduleIds.has(s.id))
@@ -1006,10 +994,7 @@ export default function CollectionsPage() {
           if (aBldg !== bBldg) return aBldg < bBldg ? -1 : 1;
           const aUnit = unitMap.get(a.records[0]?.unit_id);
           const bUnit = unitMap.get(b.records[0]?.unit_id);
-          const aNum  = parseInt(aUnit?.unit_number || "", 10);
-          const bNum  = parseInt(bUnit?.unit_number || "", 10);
-          if (!isNaN(aNum) && !isNaN(bNum) && aNum !== bNum) return aNum - bNum;
-          if (aUnit?.unit_number && bUnit?.unit_number) return aUnit.unit_number.localeCompare(bUnit.unit_number);
+          return naturalCompare(aUnit?.unit_number, bUnit?.unit_number);
         }
         const statusOrder: Record<CollectionStoredStatus, number> = { overdue: 0, pending: 1, partial: 2, collected: 3 };
         return statusOrder[a.estadoGeneral] - statusOrder[b.estadoGeneral];
