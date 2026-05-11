@@ -267,9 +267,10 @@ export default function UtilityInvoiceModal({
         period_year:  period.year,
         period_month: period.month,
         due_date:     `${period.year}-${padMonth}-05`,
-        amount_due:   amount,
-        status:       "pending",
-        notes:        `${SERVICE_TYPE_LABEL[meter.service_type]} ${MONTH_NAMES[period.month - 1]} ${period.year}${notesSuffix}`,
+        amount_due:    amount,
+        needs_capture: false,
+        status:        "pending",
+        notes:         `${SERVICE_TYPE_LABEL[meter.service_type]} ${MONTH_NAMES[period.month - 1]} ${period.year}${notesSuffix}`,
       }, { onConflict: "collection_schedule_id,period_year,period_month" })
       .select("id")
       .single()

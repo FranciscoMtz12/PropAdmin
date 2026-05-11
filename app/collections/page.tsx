@@ -136,6 +136,7 @@ type CollectionRecord = {
   status: CollectionStoredStatus;
   collected_at: string | null;
   notes: string | null;
+  needs_capture: boolean;
   created_at: string;
 };
 
@@ -390,7 +391,7 @@ export default function CollectionsPage() {
         supabase.from("tenants").select("id, full_name, email, billing_name, billing_email, tax_id").eq("company_id", user.company_id).is("deleted_at", null),
         supabase.from("leases").select("id, unit_id, tenant_id, billing_name, billing_email, billing_tax_id, rent_amount, room_number, status, start_date, end_date").eq("company_id", user.company_id).eq("status", "ACTIVE").is("deleted_at", null),
         supabase.from("collection_schedules").select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes").eq("company_id", user.company_id).is("deleted_at", null),
-        supabase.from("collection_records").select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, created_at").eq("company_id", user.company_id).is("deleted_at", null).order("due_date"),
+        supabase.from("collection_records").select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, needs_capture, created_at").eq("company_id", user.company_id).is("deleted_at", null).order("due_date"),
       ]);
 
     for (const res of [buildingsRes, unitsRes, tenantsRes, leasesRes, schedulesRes, recordsRes]) {
@@ -664,7 +665,8 @@ export default function CollectionsPage() {
           status: dueDate < today ? "overdue" : "pending",
           collected_at: null,
           payment_method: null,
-          notes: isVariable ? "needs_amount" : null,
+          needs_capture: isVariable,
+          notes: null,
         };
       });
 
@@ -844,7 +846,7 @@ export default function CollectionsPage() {
 
     const { error } = await supabase
       .from("collection_records")
-      .update({ amount_due: monto, notes: notesLine, status: newStatus })
+      .update({ amount_due: monto, notes: notesLine, needs_capture: false, status: newStatus })
       .eq("id", capturaContext.record.id)
       .eq("company_id", user.company_id);
 
@@ -852,7 +854,7 @@ export default function CollectionsPage() {
 
     const recordId = capturaContext.record.id;
     setRecords((prev) => prev.map((r) =>
-      r.id === recordId ? { ...r, amount_due: monto, notes: notesLine, status: newStatus } : r
+      r.id === recordId ? { ...r, amount_due: monto, notes: notesLine, needs_capture: false, status: newStatus } : r
     ));
     setCapturaContext(null);
     capturaForm.reset({ monto: "", unidades: "", notas: "" });
@@ -1356,7 +1358,7 @@ export default function CollectionsPage() {
                           const conceptLabel = schedule ? getChargeTypeLabel(chargeType) : "Cobro";
                           const recColors = getStatusColors(record.status);
                           const isMarking = markingIds.has(record.id);
-                          const needsCaptura = record.notes === "needs_amount";
+                          const needsCaptura = record.needs_capture === true;
 
                           return (
                             <div key={record.id} style={conceptRowStyle}>

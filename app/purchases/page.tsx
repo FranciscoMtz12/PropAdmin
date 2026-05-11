@@ -1293,7 +1293,6 @@ export default function PurchasesPage() {
     reader.readAsText(file, "UTF-8");
   }
 
-  // Parsear metadata de factura guardada en notes (JSON)
   type InvoiceMeta = {
     number?: string;
     amount?: number;
