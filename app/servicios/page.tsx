@@ -636,26 +636,25 @@ export default function ServiciosPage() {
 
   /* ── Metrics ──────────────────────────────────────────────────── */
 
-  const pendingCount = groups.reduce((n, g) =>
-    n + g.utility_meters.filter(m => !g.invoices.has(m.id)).length, 0);
-
-  const registeredCount = groups.reduce((n, g) =>
-    n + g.utility_meters.filter(m => {
-      const inv = g.invoices.get(m.id);
-      return inv != null && inv.status !== "draft";
-    }).length, 0);
-
-  const cobrosCount = groups.reduce((n, g) =>
-    n + g.utility_meters.filter(m => {
-      const inv = g.invoices.get(m.id);
-      return inv?.status === "distributed" || inv?.status === "charged";
-    }).length, 0);
-
   const totalAmount = groups.reduce((sum, g) =>
     sum + g.utility_meters.reduce((s, m) => {
       const inv = g.invoices.get(m.id);
       return s + (inv ? Number(inv.total_amount) : 0);
     }, 0), 0);
+
+  const serviceStats = (() => {
+    const allMeters = groups.flatMap(g => g.utility_meters.map(m => ({ m, g })));
+    const types = [...new Set(allMeters.map(({ m }) => m.service_type))];
+    return types.map(type => {
+      const meters = allMeters.filter(({ m }) => m.service_type === type);
+      const total      = meters.length;
+      const registered = meters.filter(({ m, g }) => {
+        const inv = g.invoices.get(m.id);
+        return inv != null && inv.status !== "draft";
+      }).length;
+      return { type, total, registered, allDone: registered === total };
+    });
+  })();
 
   /* ── Empty states ─────────────────────────────────────────────── */
 
@@ -677,31 +676,69 @@ export default function ServiciosPage() {
         onNext={nextPeriod}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard
-          label="Servicios pendientes"
-          value={pageLoading ? "…" : pendingCount}
-          icon={<Clock size={18} />}
-          variant={pageLoading ? "neutral" : pendingCount > 0 ? "amber" : "green"}
-        />
-        <MetricCard
-          label="Facturas registradas"
-          value={pageLoading ? "…" : registeredCount}
-          icon={<CheckCircle size={18} />}
-          variant={pageLoading ? "neutral" : registeredCount > 0 ? "green" : "neutral"}
-        />
-        <MetricCard
-          label="Cobros generados"
-          value={pageLoading ? "…" : cobrosCount}
-          icon={<DollarSign size={18} />}
-          variant={pageLoading ? "neutral" : cobrosCount > 0 ? "green" : "neutral"}
-        />
-        <MetricCard
-          label="Total facturado"
-          value={pageLoading ? "…" : formatMXN(totalAmount)}
-          icon={<TrendingUp size={18} />}
-          variant="neutral"
-        />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+
+        {/* Per-service-type cards */}
+        {!pageLoading && serviceStats.map(({ type, total, registered, allDone }) => (
+          <div
+            key={type}
+            style={{
+              padding: "14px 16px", borderRadius: 12,
+              background: "var(--bg-card)", border: "1px solid var(--border-default)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+              <div style={{
+                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                background: allDone ? "var(--icon-bg-green)" : "var(--icon-bg-amber)",
+                color: allDone ? "var(--icon-color-green)" : "var(--icon-color-amber)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}>
+                <ServiceIcon type={type} size={15} />
+              </div>
+              <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+                {SERVICE_TYPE_LABEL[type as keyof typeof SERVICE_TYPE_LABEL] ?? type}
+              </span>
+            </div>
+            <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--text-muted)" }}>
+              Facturas:{" "}
+              <strong style={{ color: "var(--text-primary)" }}>{registered}/{total}</strong>
+            </p>
+            <p style={{
+              margin: 0, fontSize: 12, fontWeight: 600,
+              display: "flex", alignItems: "center", gap: 4,
+              color: allDone ? "#15803d" : "#b45309",
+            }}>
+              {allDone
+                ? <><CheckCircle size={12} /> Al día</>
+                : <><Clock size={12} /> Pendiente</>}
+            </p>
+          </div>
+        ))}
+
+        {/* Total facturado */}
+        <div style={{
+          padding: "14px 16px", borderRadius: 12,
+          background: "var(--bg-card)", border: "1px solid var(--border-default)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <div style={{
+              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              background: "var(--bg-page)", border: "1px solid var(--border-default)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "var(--text-muted)",
+            }}>
+              <TrendingUp size={15} />
+            </div>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-muted)" }}>
+              Total facturado
+            </span>
+          </div>
+          <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
+            {pageLoading ? "…" : formatMXN(totalAmount)}
+          </p>
+        </div>
+
       </div>
 
       {showNoServices && (
