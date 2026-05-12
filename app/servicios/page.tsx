@@ -186,31 +186,58 @@ function ServiceRow({
             style={{
               fontSize: 13,
               fontWeight: 700,
-              color: status === "charged" ? "var(--badge-text-green)" : "var(--text-primary)",
+              color: generatesCharge && status === "charged"
+                ? "var(--badge-text-green)"
+                : "var(--text-muted)",
             }}
           >
             {formatMXN(amount)}
           </span>
         )}
-        <AppBadge variant={badge.variant}>{badge.label}</AppBadge>
-        {(generatesCharge || status !== "distributed") && (
-          <button
-            type="button"
-            onClick={e => { e.stopPropagation(); onAction(); }}
-            style={{
-              padding: "5px 12px",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 600,
-              cursor: "pointer",
-              border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
-              background: isBtnPrimary ? "#8B2252" : "transparent",
-              color: isBtnPrimary ? "#fff" : "var(--text-primary)",
-              whiteSpace: "nowrap",
-            }}
-          >
-            {actionLabel}
-          </button>
+        {generatesCharge ? (
+          <>
+            <AppBadge variant={badge.variant}>{badge.label}</AppBadge>
+            <button
+              type="button"
+              onClick={e => { e.stopPropagation(); onAction(); }}
+              style={{
+                padding: "5px 12px",
+                borderRadius: 8,
+                fontSize: 12,
+                fontWeight: 600,
+                cursor: "pointer",
+                border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
+                background: isBtnPrimary ? "#8B2252" : "transparent",
+                color: isBtnPrimary ? "#fff" : "var(--text-primary)",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {actionLabel}
+            </button>
+          </>
+        ) : (
+          <>
+            <AppBadge variant="gray">Gasto empresa</AppBadge>
+            {invoice == null && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onAction(); }}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  border: "none",
+                  background: "#8B2252",
+                  color: "#fff",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                Registrar factura
+              </button>
+            )}
+          </>
         )}
         {isShared && (
           <ChevronDown
