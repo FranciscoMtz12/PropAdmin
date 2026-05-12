@@ -640,13 +640,22 @@ export default function ServiciosPage() {
     n + g.utility_meters.filter(m => !g.invoices.has(m.id)).length, 0);
 
   const registeredCount = groups.reduce((n, g) =>
-    n + [...g.invoices.values()].filter(i => i.status !== "draft").length, 0);
+    n + g.utility_meters.filter(m => {
+      const inv = g.invoices.get(m.id);
+      return inv != null && inv.status !== "draft";
+    }).length, 0);
 
   const cobrosCount = groups.reduce((n, g) =>
-    n + [...g.invoices.values()].filter(i => i.status === "distributed" || i.status === "charged").length, 0);
+    n + g.utility_meters.filter(m => {
+      const inv = g.invoices.get(m.id);
+      return inv?.status === "distributed" || inv?.status === "charged";
+    }).length, 0);
 
   const totalAmount = groups.reduce((sum, g) =>
-    sum + [...g.invoices.values()].reduce((s, i) => s + Number(i.total_amount), 0), 0);
+    sum + g.utility_meters.reduce((s, m) => {
+      const inv = g.invoices.get(m.id);
+      return s + (inv ? Number(inv.total_amount) : 0);
+    }, 0), 0);
 
   /* ── Empty states ─────────────────────────────────────────────── */
 
