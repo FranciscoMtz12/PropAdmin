@@ -12,11 +12,13 @@ import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import {
-  type BuildingUtilityMeter, type BuildingUtilityInvoice,
+  type BuildingUtilityMeter, type BuildingUtilityInvoice, type BuildingUtilityInvoiceItem,
   meterGeneratesCharge, SERVICE_TYPE_LABEL, SERVICE_TYPE_UNIT,
 } from "@/lib/types";
 import { sortByNatural } from "@/lib/sort-utils";
 import { shouldBillThisPeriod } from "@/lib/service-utils";
+import { useTheme } from "@/contexts/ThemeContext";
+import { generateReciboServicioPdf, generateReporteDistribucionPdf } from "@/lib/pdfTemplates";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import MetricCard from "@/components/MetricCard";
@@ -25,6 +27,7 @@ import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
 import UiButton from "@/components/UiButton";
 import UtilityInvoiceModal from "@/components/UtilityInvoiceModal";
+import UploadFixedInvoiceModal from "@/components/UploadFixedInvoiceModal";
 
 /* ─── Constants ──────────────────────────────────────────────────── */
 
@@ -123,6 +126,9 @@ function ServiceRow({
   fixedAmount,
   onGenerateFixedCobro,
   generatingFixedCobro,
+  onGeneratePdfs,
+  generatingPdfs,
+  onUploadInvoice,
 }: {
   serviceType: string;
   name: string;
@@ -139,6 +145,9 @@ function ServiceRow({
   fixedAmount?: number;
   onGenerateFixedCobro?: () => void;
   generatingFixedCobro?: boolean;
+  onGeneratePdfs?: () => void;
+  generatingPdfs?: boolean;
+  onUploadInvoice?: () => void;
 }) {
   const status = invoice?.status ?? "pending";
   const badge = INVOICE_STATUS_BADGE[status] ?? INVOICE_STATUS_BADGE.pending;
@@ -213,6 +222,19 @@ function ServiceRow({
                 {generatingFixedCobro ? "Generando..." : "Generar cobro"}
               </button>
             )}
+            {invoice == null && onUploadInvoice && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onUploadInvoice(); }}
+                style={{
+                  padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  cursor: "pointer", border: "1px solid var(--border-default)",
+                  background: "var(--bg-card)", color: "var(--text-primary)", whiteSpace: "nowrap",
+                }}
+              >
+                Subir factura
+              </button>
+            )}
           </>
         ) : (
           <>
@@ -249,6 +271,22 @@ function ServiceRow({
                 >
                   {actionLabel}
                 </button>
+                {isShared && invoice != null && onGeneratePdfs && (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); onGeneratePdfs(); }}
+                    disabled={generatingPdfs}
+                    style={{
+                      padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      cursor: generatingPdfs ? "default" : "pointer",
+                      border: "1px solid var(--border-default)",
+                      background: "var(--bg-card)", color: "var(--text-primary)", whiteSpace: "nowrap",
+                      opacity: generatingPdfs ? 0.6 : 1,
+                    }}
+                  >
+                    {generatingPdfs ? "Generando..." : "Generar PDFs"}
+                  </button>
+                )}
               </>
             ) : (
               <>
@@ -492,6 +530,7 @@ function PeriodSelector({
 
 export default function ServiciosPage() {
   const { user, loading } = useCurrentUser();
+  const { legalName, companyAddress, companyTaxId, accentColor } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -510,6 +549,8 @@ export default function ServiciosPage() {
   const [expandedMeterId, setExpandedMeterId] = useState<string | null>(null);
   const [detailCache, setDetailCache] = useState<Record<string, SharedMeterDetail | "loading">>({});
   const [generatingFixedMeter, setGeneratingFixedMeter] = useState<string | null>(null);
+  const [generatingPdfsMeter, setGeneratingPdfsMeter]   = useState<string | null>(null);
+  const [uploadInvoiceMeter, setUploadInvoiceMeter]     = useState<{ meter: BuildingUtilityMeter; building: { id: string; name: string } } | null>(null);
 
   function prevPeriod() {
     setPeriod(p => p.month === 1 ? { year: p.year - 1, month: 12 } : { ...p, month: p.month - 1 });
@@ -795,6 +836,135 @@ export default function ServiciosPage() {
     }
   }
 
+  async function handleGeneratePdfs(
+    meter: BuildingUtilityMeter,
+    invoice: BuildingUtilityInvoice,
+    group: BuildingGroup,
+  ) {
+    setGeneratingPdfsMeter(meter.id);
+    try {
+      const { data: itemsData } = await supabase
+        .from("building_utility_invoice_items")
+        .select("*")
+        .eq("invoice_id", invoice.id);
+
+      const items = (itemsData ?? []) as BuildingUtilityInvoiceItem[];
+
+      const unitIds = [...new Set(items.map(i => i.unit_id))];
+      const tenantMap: Record<string, string> = {};
+      if (unitIds.length > 0) {
+        const today = new Date().toISOString().split("T")[0];
+        const { data: leasesData } = await supabase
+          .from("leases")
+          .select("unit_id, tenant:tenants(full_name)")
+          .in("unit_id", unitIds)
+          .eq("status", "ACTIVE")
+          .is("deleted_at", null)
+          .lte("start_date", today)
+          .or(`end_date.is.null,end_date.gte.${today}`);
+        for (const row of (leasesData ?? []) as unknown as { unit_id: string; tenant: { full_name: string } | null }[]) {
+          if (row.tenant) tenantMap[row.unit_id] = row.tenant.full_name;
+        }
+      }
+
+      const totalConsumption = Number(invoice.total_consumption ?? 0);
+      const totalAmount      = Number(invoice.total_amount);
+      const ratePerUnit      = totalConsumption > 0 ? totalAmount / totalConsumption : undefined;
+      const consumptionUnit  = invoice.consumption_unit ?? SERVICE_TYPE_UNIT[meter.service_type] ?? undefined;
+      const periodLabel      = `${MONTH_LABELS[period.month - 1]} ${period.year}`;
+      const periodCode       = `${period.year}${String(period.month).padStart(2, "0")}`;
+      const svcName          = SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type;
+      const meterRef         = meter.meter_number ?? meter.id.slice(0, 6);
+
+      const tenantItems = items.filter(i => tenantMap[i.unit_id]);
+
+      for (const item of tenantItems) {
+        const unitNumber = group.units.find(u => u.id === item.unit_id)?.unit_number ?? "—";
+        const subtotal   = Number(item.amount_assigned);
+        const svcCharge  = subtotal * 0.02;
+        await generateReciboServicioPdf({
+          legalName,
+          address:             companyAddress,
+          rfc:                 companyTaxId,
+          accentColor,
+          serviceName:         svcName,
+          providerName:        meter.provider_name ?? "",
+          period:              periodLabel,
+          buildingName:        group.building_name,
+          unitNumber,
+          tenantName:          tenantMap[item.unit_id],
+          consumption:         item.consumption ?? undefined,
+          consumptionUnit:     consumptionUnit ?? undefined,
+          ratePerUnit,
+          subtotal,
+          serviceChargePct:    2,
+          serviceChargeAmount: svcCharge,
+          total:               subtotal + svcCharge,
+          folio:               `REC-${meterRef}-${unitNumber}-${periodCode}`,
+        });
+      }
+
+      const reportRows: {
+        unitNumber: string; tenantName: string;
+        consumption?: number; percentage?: number;
+        subtotal: number; serviceChargeAmount: number; total: number;
+        type: "tenant" | "common" | "company";
+      }[] = tenantItems.map(item => {
+        const unitNumber = group.units.find(u => u.id === item.unit_id)?.unit_number ?? "—";
+        const subtotal   = Number(item.amount_assigned);
+        return {
+          unitNumber,
+          tenantName:          tenantMap[item.unit_id],
+          consumption:         item.consumption ?? undefined,
+          percentage:          item.percentage ?? undefined,
+          subtotal,
+          serviceChargeAmount: subtotal * 0.02,
+          total:               subtotal * 1.02,
+          type:                "tenant" as const,
+        };
+      });
+
+      if (totalConsumption > 0 && ratePerUnit != null) {
+        const sumTenant = tenantItems.reduce((s, i) => s + (i.consumption ?? 0), 0);
+        const commonConsumption = totalConsumption - sumTenant;
+        if (commonConsumption > 0) {
+          const subtotal = commonConsumption * ratePerUnit;
+          reportRows.push({
+            unitNumber: "—", tenantName: "Áreas comunes",
+            consumption: commonConsumption, percentage: undefined,
+            subtotal, serviceChargeAmount: 0, total: subtotal,
+            type: "company" as const,
+          });
+        }
+      }
+
+      await generateReporteDistribucionPdf({
+        legalName,
+        address:      companyAddress,
+        rfc:          companyTaxId,
+        accentColor,
+        serviceName:  svcName,
+        providerName: meter.provider_name ?? "",
+        meterNumber:  meter.meter_number ?? undefined,
+        period:       periodLabel,
+        buildingName: group.building_name,
+        invoiceTotal: totalAmount,
+        ratePerUnit,
+        consumptionUnit: consumptionUnit ?? undefined,
+        invoiceFolio: invoice.folio ?? undefined,
+        rows:         reportRows,
+        folio:        `RPT-DIST-${meterRef}-${periodCode}`,
+      });
+
+      toast.success(`${tenantItems.length} recibo${tenantItems.length !== 1 ? "s" : ""} + reporte generados.`);
+    } catch (err) {
+      console.error("PDF generation error", err);
+      toast.error("Error al generar PDFs");
+    } finally {
+      setGeneratingPdfsMeter(null);
+    }
+  }
+
   if (loading || !user) return null;
 
   /* ── Metrics ──────────────────────────────────────────────────── */
@@ -967,6 +1137,17 @@ export default function ServiciosPage() {
                           : undefined
                       }
                       generatingFixedCobro={generatingFixedMeter === meter.id}
+                      onGeneratePdfs={
+                        isShared && invoice != null
+                          ? () => void handleGeneratePdfs(meter, invoice, group)
+                          : undefined
+                      }
+                      generatingPdfs={generatingPdfsMeter === meter.id}
+                      onUploadInvoice={
+                        isFixed && invoice == null
+                          ? () => setUploadInvoiceMeter({ meter, building: { id: group.building_id, name: group.building_name } })
+                          : undefined
+                      }
                       onAction={() => setActiveModal({
                         meter,
                         building: { id: group.building_id, name: group.building_name },
@@ -1000,6 +1181,18 @@ export default function ServiciosPage() {
           units={activeModal.units}
           onClose={() => setActiveModal(null)}
           onSuccess={() => { setActiveModal(null); void loadData(); }}
+        />
+      )}
+
+      {uploadInvoiceMeter && (
+        <UploadFixedInvoiceModal
+          isOpen
+          meter={uploadInvoiceMeter.meter}
+          building={uploadInvoiceMeter.building}
+          period={period}
+          companyId={user.company_id}
+          onClose={() => setUploadInvoiceMeter(null)}
+          onSuccess={() => { setUploadInvoiceMeter(null); void loadData(); }}
         />
       )}
     </PageContainer>
