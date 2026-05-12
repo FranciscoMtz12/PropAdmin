@@ -517,6 +517,7 @@ export interface ReciboServicioTemplateData {
   address: string;
   rfc: string;
   logoUrl?: string;
+  logoMatzUrl?: string;
   accentColor?: string;
   serviceName: string;
   providerName: string;
@@ -594,11 +595,11 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
               {data.logoUrl
                 ? <Image src={data.logoUrl} style={S.logoImg} />
                 : <Text style={[S.companyName, { color: data.accentColor || "#8B2252" }]}>{data.legalName}</Text>}
-              <Text style={S.companyName}>{data.legalName}</Text>
               <Text style={S.companyInfo}>{data.address}</Text>
               <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
             </View>
             <View style={S.docInfo}>
+              {data.logoMatzUrl && <Image src={data.logoMatzUrl} style={S.matzImg} />}
               <Text style={S.docTitle}>Recibo de Servicio</Text>
               <Text style={S.docFolio}>Folio: {data.folio}</Text>
               <Text style={S.docDate}>{todayStr}</Text>

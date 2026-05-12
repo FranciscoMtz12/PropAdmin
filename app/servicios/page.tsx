@@ -530,7 +530,7 @@ function PeriodSelector({
 
 export default function ServiciosPage() {
   const { user, loading } = useCurrentUser();
-  const { legalName, companyAddress, companyTaxId, accentColor } = useTheme();
+  const { legalName, companyAddress, companyTaxId, accentColor, logoGroupUrl } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -887,6 +887,7 @@ export default function ServiciosPage() {
           address:             companyAddress,
           rfc:                 companyTaxId,
           accentColor,
+          logoMatzUrl:         logoGroupUrl ?? undefined,
           serviceName:         svcName,
           providerName:        meter.provider_name ?? "",
           period:              periodLabel,
