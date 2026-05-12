@@ -510,6 +510,322 @@ function ReporteDocument({ data }: { data: ReporteTemplateData }) {
   );
 }
 
+/* ━━━ INTERFACES — nuevos templates ━━━ */
+
+export interface ReciboServicioTemplateData {
+  legalName: string;
+  address: string;
+  rfc: string;
+  logoUrl?: string;
+  accentColor?: string;
+  serviceName: string;
+  providerName: string;
+  period: string;
+  buildingName: string;
+  unitNumber: string;
+  tenantName: string;
+  consumption?: number;
+  consumptionUnit?: string;
+  ratePerUnit?: number;
+  subtotal: number;
+  serviceChargePct: number;
+  serviceChargeAmount: number;
+  total: number;
+  folio: string;
+}
+
+export interface ReporteDistribucionTemplateData {
+  legalName: string;
+  address: string;
+  rfc: string;
+  logoUrl?: string;
+  accentColor?: string;
+  serviceName: string;
+  providerName: string;
+  meterNumber?: string;
+  period: string;
+  buildingName: string;
+  invoiceTotal: number;
+  ratePerUnit?: number;
+  consumptionUnit?: string;
+  invoiceFolio?: string;
+  rows: {
+    unitNumber: string;
+    tenantName: string;
+    consumption?: number;
+    percentage?: number;
+    subtotal: number;
+    serviceChargeAmount: number;
+    total: number;
+    type: "tenant" | "common" | "company";
+  }[];
+  folio: string;
+}
+
+/* ━━━ COMPONENTE: RECIBO INDIVIDUAL DE SERVICIO ━━━ */
+
+function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) {
+  const S = createStyles(data.accentColor);
+  const fmt = (n: number) =>
+    n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
+
+  const detailText =
+    data.consumption != null && data.ratePerUnit != null
+      ? `${data.consumption} ${data.consumptionUnit ?? ""} × ${fmt(data.ratePerUnit)}/${data.consumptionUnit ?? "u"}`
+      : "Monto del período";
+
+  const today = new Date();
+  const todayStr = `${today.getDate().toString().padStart(2, "0")}/${(today.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}/${today.getFullYear()}`;
+
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+
+        {/* Barra de acento */}
+        <View style={S.accentBar} />
+
+        <View style={S.pageContent}>
+
+          {/* Header */}
+          <View style={S.header}>
+            <View style={{ maxWidth: 320 }}>
+              {data.logoUrl
+                ? <Image src={data.logoUrl} style={S.logoImg} />
+                : <Text style={[S.companyName, { color: data.accentColor || "#8B2252" }]}>{data.legalName}</Text>}
+              <Text style={S.companyName}>{data.legalName}</Text>
+              <Text style={S.companyInfo}>{data.address}</Text>
+              <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
+            </View>
+            <View style={S.docInfo}>
+              <Text style={S.docTitle}>Recibo de Servicio</Text>
+              <Text style={S.docFolio}>Folio: {data.folio}</Text>
+              <Text style={S.docDate}>{todayStr}</Text>
+            </View>
+          </View>
+
+          <View style={S.separator} />
+
+          {/* Meta rows */}
+          <View style={S.metaRow}>
+            <View style={S.metaCell}>
+              <Text style={S.metaLabel}>Edificio</Text>
+              <Text style={S.metaValue}>{data.buildingName}</Text>
+            </View>
+            <View style={S.metaCellLast}>
+              <Text style={S.metaLabel}>Período</Text>
+              <Text style={S.metaValue}>{data.period}</Text>
+            </View>
+          </View>
+          <View style={S.metaRow}>
+            <View style={S.metaCell}>
+              <Text style={S.metaLabel}>Departamento</Text>
+              <Text style={S.metaValue}>{data.unitNumber}</Text>
+            </View>
+            <View style={S.metaCellLast}>
+              <Text style={S.metaLabel}>Inquilino</Text>
+              <Text style={S.metaValue}>{data.tenantName}</Text>
+            </View>
+          </View>
+
+          <Text style={S.sectionTitle}>Detalle del cobro</Text>
+
+          {/* Tabla */}
+          <View style={S.tableWrap}>
+            <View style={S.tableHeader}>
+              <Text style={[S.tableHeaderCell, { flex: 2 }]}>Concepto</Text>
+              <Text style={[S.tableHeaderCell, { flex: 3 }]}>Detalle</Text>
+              <Text style={[S.tableHeaderCell, { width: 90, textAlign: "right" }]}>Importe</Text>
+            </View>
+
+            {/* Fila 1 — servicio */}
+            <View style={S.tableRow}>
+              <Text style={[S.tableCell, { flex: 2 }]}>
+                {data.serviceName}{data.providerName ? ` · ${data.providerName}` : ""}
+              </Text>
+              <Text style={[S.tableCell, { flex: 3 }]}>{detailText}</Text>
+              <Text style={[S.tableCell, { width: 90, textAlign: "right" }]}>{fmt(data.subtotal)}</Text>
+            </View>
+
+            {/* Fila 2 — cargo por servicio */}
+            <View style={S.tableRowLast}>
+              <Text style={[S.tableCell, { flex: 2 }]}>Cargo por servicio ({data.serviceChargePct}%)</Text>
+              <Text style={[S.tableCell, { flex: 3 }]}></Text>
+              <Text style={[S.tableCell, { width: 90, textAlign: "right" }]}>{fmt(data.serviceChargeAmount)}</Text>
+            </View>
+
+            {/* Footer — total */}
+            <View style={[S.tableFooter, { justifyContent: "flex-end" }]}>
+              <View style={[S.tableFooterCellLast, { alignItems: "flex-end" }]}>
+                <Text style={S.tableFooterLabel}>Total a pagar</Text>
+                <Text style={[S.tableFooterValue, { fontSize: 12 }]}>{fmt(data.total)}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={[S.pageFooter, { marginTop: 24 }]}>
+            <Text>{data.legalName} · RFC: {data.rfc}</Text>
+          </View>
+
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
+/* ━━━ COMPONENTE: REPORTE DE DISTRIBUCIÓN ━━━ */
+
+function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTemplateData }) {
+  const S = createStyles(data.accentColor);
+  const fmt = (n: number) =>
+    n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
+
+  const tenantRows  = data.rows.filter(r => r.type === "tenant");
+  const companyRows = data.rows.filter(r => r.type !== "tenant");
+  const totalTenant  = tenantRows.reduce((s, r) => s + r.total, 0);
+  const totalCompany = companyRows.reduce((s, r) => s + r.total, 0);
+
+  const today = new Date();
+  const todayStr = `${today.getDate().toString().padStart(2, "0")}/${(today.getMonth() + 1)
+    .toString()
+    .padStart(2, "0")}/${today.getFullYear()}`;
+
+  return (
+    <Document>
+      <Page size="A4" style={S.page}>
+
+        {/* Barra de acento */}
+        <View style={S.accentBar} />
+
+        <View style={S.pageContent}>
+
+          {/* Header */}
+          <View style={S.header}>
+            <View style={{ maxWidth: 320 }}>
+              {data.logoUrl
+                ? <Image src={data.logoUrl} style={S.logoImg} />
+                : <Text style={[S.companyName, { color: data.accentColor || "#8B2252" }]}>{data.legalName}</Text>}
+              <Text style={S.companyName}>{data.legalName}</Text>
+              <Text style={S.companyInfo}>{data.address}</Text>
+              <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
+            </View>
+            <View style={S.docInfo}>
+              <Text style={S.docTitle}>Reporte de Distribución</Text>
+              <Text style={S.docFolio}>Folio: {data.folio}</Text>
+              <Text style={S.docDate}>{todayStr}</Text>
+            </View>
+          </View>
+
+          <View style={S.separator} />
+
+          {/* Meta rows */}
+          <View style={S.metaRow}>
+            <View style={S.metaCell}>
+              <Text style={S.metaLabel}>Edificio</Text>
+              <Text style={S.metaValue}>{data.buildingName}</Text>
+            </View>
+            <View style={S.metaCell}>
+              <Text style={S.metaLabel}>Período</Text>
+              <Text style={S.metaValue}>{data.period}</Text>
+            </View>
+            <View style={S.metaCellLast}>
+              <Text style={S.metaLabel}>Proveedor</Text>
+              <Text style={S.metaValue}>{data.providerName}</Text>
+            </View>
+          </View>
+          <View style={S.metaRow}>
+            <View style={S.metaCell}>
+              <Text style={S.metaLabel}>Total factura</Text>
+              <Text style={S.metaValue}>{fmt(data.invoiceTotal)}</Text>
+            </View>
+            <View style={S.metaCell}>
+              <Text style={S.metaLabel}>N° medidor</Text>
+              <Text style={S.metaValue}>{data.meterNumber || "—"}</Text>
+            </View>
+            <View style={S.metaCellLast}>
+              <Text style={S.metaLabel}>Folio factura</Text>
+              <Text style={S.metaValue}>{data.invoiceFolio || "—"}</Text>
+            </View>
+          </View>
+
+          <Text style={S.sectionTitle}>Distribución por unidad</Text>
+
+          {/* Tabla */}
+          <View style={S.tableWrap}>
+            <View style={S.tableHeader}>
+              <Text style={[S.tableHeaderCell, { width: 55 }]}>Unidad</Text>
+              <Text style={[S.tableHeaderCell, { flex: 2 }]}>Inquilino</Text>
+              {data.rows.some(r => r.consumption != null) ? (
+                <Text style={[S.tableHeaderCell, { width: 55, textAlign: "right" }]}>Consumo</Text>
+              ) : null}
+              {data.rows.some(r => r.percentage != null) ? (
+                <Text style={[S.tableHeaderCell, { width: 38, textAlign: "right" }]}>%</Text>
+              ) : null}
+              <Text style={[S.tableHeaderCell, { width: 68, textAlign: "right" }]}>Subtotal</Text>
+              <Text style={[S.tableHeaderCell, { width: 62, textAlign: "right" }]}>Cargo s.</Text>
+              <Text style={[S.tableHeaderCell, { width: 68, textAlign: "right" }]}>Total</Text>
+            </View>
+
+            {data.rows.map((row, i) => {
+              const isLast      = i === data.rows.length - 1;
+              const isCompany   = row.type !== "tenant";
+              const rowStyle    = isLast ? S.tableRowLast : S.tableRow;
+              const cellBg      = isCompany ? { backgroundColor: "#F3F4F6" } : {};
+              const showConsCol = data.rows.some(r => r.consumption != null);
+              const showPctCol  = data.rows.some(r => r.percentage != null);
+              return (
+                <View key={i} style={[rowStyle, cellBg]}>
+                  <Text style={[S.tableCell, { width: 55 }]}>{row.unitNumber}</Text>
+                  <Text style={[S.tableCell, { flex: 2 }]}>{row.tenantName}</Text>
+                  {showConsCol ? (
+                    <Text style={[S.tableCell, { width: 55, textAlign: "right" }]}>
+                      {row.consumption != null
+                        ? `${row.consumption}${data.consumptionUnit ? " " + data.consumptionUnit : ""}`
+                        : "—"}
+                    </Text>
+                  ) : null}
+                  {showPctCol ? (
+                    <Text style={[S.tableCell, { width: 38, textAlign: "right" }]}>
+                      {row.percentage != null ? `${row.percentage.toFixed(1)}%` : "—"}
+                    </Text>
+                  ) : null}
+                  <Text style={[S.tableCell, { width: 68, textAlign: "right" }]}>{fmt(row.subtotal)}</Text>
+                  <Text style={[S.tableCell, { width: 62, textAlign: "right" }]}>
+                    {isCompany ? "—" : fmt(row.serviceChargeAmount)}
+                  </Text>
+                  <Text style={[S.tableCell, { width: 68, textAlign: "right" }]}>{fmt(row.total)}</Text>
+                </View>
+              );
+            })}
+
+            {/* Footer */}
+            <View style={S.tableFooter}>
+              <View style={S.tableFooterCell}>
+                <Text style={S.tableFooterLabel}>Total distribuido (inquilinos)</Text>
+                <Text style={S.tableFooterValue}>{fmt(totalTenant)}</Text>
+              </View>
+              <View style={S.tableFooterCell}>
+                <Text style={S.tableFooterLabel}>Gasto empresa</Text>
+                <Text style={S.tableFooterValue}>{fmt(totalCompany)}</Text>
+              </View>
+              <View style={S.tableFooterCellLast}>
+                <Text style={S.tableFooterLabel}>Total factura</Text>
+                <Text style={S.tableFooterValue}>{fmt(data.invoiceTotal)}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={[S.pageFooter, { marginTop: 24 }]}>
+            <Text>{data.legalName} · RFC: {data.rfc}</Text>
+          </View>
+
+        </View>
+      </Page>
+    </Document>
+  );
+}
+
 /* ━━━ EXPORTS — funciones async de descarga ━━━ */
 
 export async function generateOCPdf(data: OCTemplateData): Promise<void> {
@@ -522,4 +838,18 @@ export async function generateOMPdf(data: OMTemplateData): Promise<void> {
 
 export async function generateReportePdf(data: ReporteTemplateData): Promise<void> {
   await savePdf(<ReporteDocument data={data} />, `${data.folio}.pdf`);
+}
+
+export async function generateReciboServicioPdf(data: ReciboServicioTemplateData): Promise<void> {
+  await savePdf(
+    <ReciboServicioDocument data={data} />,
+    `Recibo-${data.serviceName}-${data.unitNumber}-${data.period}.pdf`,
+  );
+}
+
+export async function generateReporteDistribucionPdf(data: ReporteDistribucionTemplateData): Promise<void> {
+  await savePdf(
+    <ReporteDistribucionDocument data={data} />,
+    `Reporte-Distribucion-${data.serviceName}-${data.period}.pdf`,
+  );
 }
