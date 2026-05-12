@@ -321,9 +321,9 @@ function SharedMeterDropdown({
               return (
                 <tr key={sm.id}>
                   <td style={TD_L}>
-                    <strong style={{ fontSize: 14 }}>{sm.unit_number}</strong>
-                    {sm.sub_meter_number && (
-                      <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>({sm.sub_meter_number})</span>
+                    <strong style={{ fontSize: 14 }}>Depa {sm.unit_number}</strong>
+                    {sm.sub_meter_number && sm.sub_meter_number !== sm.unit_number && (
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>— {sm.sub_meter_number}</span>
                     )}
                   </td>
                   <td style={TD_R}>{r != null ? r.previous_reading.toLocaleString("es-MX") : "—"}</td>
