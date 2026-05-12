@@ -274,11 +274,10 @@ function SharedMeterDropdown({
   const consumoAreas = totalConsumption - sumConsumos;
   const montoAreas   = precioUnit != null ? consumoAreas * precioUnit : null;
 
-  const totalDistribuido = sorted.reduce((s, sm) => {
+  const totalInquilinos = sorted.reduce((s, sm) => {
     if (sm.reading?.consumption == null || precioUnit == null) return s;
     return s + sm.reading.consumption * precioUnit;
   }, 0);
-  const diferencia = totalDistribuido + (montoAreas ?? 0) - totalAmount;
 
   return (
     <div style={panelStyle}>
@@ -360,15 +359,15 @@ function SharedMeterDropdown({
       {/* Footer */}
       <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-default)", display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "flex-end" }}>
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Total distribuido: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(totalDistribuido)}</strong>
+          Total cobrado a inquilinos: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(totalInquilinos)}</strong>
         </span>
+        {montoAreas != null && (
+          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+            Absorción empresa: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(montoAreas)}</strong>
+          </span>
+        )}
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
           Total factura: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(totalAmount)}</strong>
-        </span>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
-          Diferencia: <strong style={{ color: Math.abs(diferencia) < 0.5 ? "#15803d" : "#dc2626" }}>
-            {formatMXN(diferencia)}
-          </strong>
         </span>
       </div>
     </div>
