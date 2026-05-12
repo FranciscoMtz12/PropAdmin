@@ -11,7 +11,14 @@ import { sortByNatural, sortByAlphabetic } from "@/lib/sort-utils";
 import type { BuildingUtilityMeter, BuildingUtilitySubMeter } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
 
-const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_NAMES  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_SHORT  = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+function formatShortDate(dateStr: string | null | undefined): string {
+  if (!dateStr) return "";
+  const [y, m, d] = dateStr.split("-").map(Number);
+  return `${d} ${MONTH_SHORT[m - 1]} ${y}`;
+}
 
 type SubMeterRow = BuildingUtilitySubMeter & {
   unit_number: string;
@@ -25,6 +32,7 @@ type ReadingRow = {
   current_reading: number;
   previous_reading: number;
   consumption: number | null;
+  reading_date: string | null;
 };
 
 type Group = {
@@ -128,7 +136,7 @@ export default function CampoMedidoresPage() {
     if (smIds.length > 0) {
       const { data: rData } = await supabase
         .from("building_utility_readings")
-        .select("id, building_utility_sub_meter_id, current_reading, previous_reading, consumption")
+        .select("id, building_utility_sub_meter_id, current_reading, previous_reading, consumption, reading_date")
         .in("building_utility_sub_meter_id", smIds)
         .eq("period_year", year)
         .eq("period_month", month)
@@ -296,10 +304,17 @@ export default function CampoMedidoresPage() {
                           </span>
                         </div>
                         {isCaptured ? (
-                          <p style={{ margin: "8px 0 0", fontSize: 13 }}>
-                            Anterior: {reading.previous_reading} | Actual: {reading.current_reading}
-                            {reading.consumption != null ? ` | Consumo: ${reading.consumption}` : ""}
-                          </p>
+                          <>
+                            <p style={{ margin: "8px 0 0", fontSize: 13 }}>
+                              Anterior: {reading.previous_reading} | Actual: {reading.current_reading}
+                              {reading.consumption != null ? ` | Consumo: ${reading.consumption}` : ""}
+                            </p>
+                            {reading.reading_date && (
+                              <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                                Capturado el {formatShortDate(reading.reading_date)}
+                              </p>
+                            )}
+                          </>
                         ) : (
                           <p style={{ margin: "8px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
                             Anterior: {sm.baseline_reading}

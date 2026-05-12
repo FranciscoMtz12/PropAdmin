@@ -10,7 +10,8 @@ import { INPUT_STYLE, TEXTAREA_STYLE, errorBannerStyle } from "@/lib/pageStyles"
 import type { BuildingUtilityMeter, BuildingUtilitySubMeter } from "@/lib/types";
 import { SERVICE_TYPE_UNIT } from "@/lib/types";
 
-const MONTH_NAMES = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_NAMES  = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const MONTH_SHORT  = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
 
 type Props = {
   isOpen: boolean;
@@ -40,6 +41,9 @@ export default function CaptureUtilityReadingModal({
   const [msg, setMsg] = useState("");
   const [bucketMissing, setBucketMissing] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const captureDate      = new Date();
+  const captureDateLabel = `${captureDate.getDate()} ${MONTH_SHORT[captureDate.getMonth()]} ${captureDate.getFullYear()}`;
 
   const consumptionUnit = SERVICE_TYPE_UNIT[meter.service_type];
   const hasConsumption  = consumptionUnit !== null;
@@ -133,6 +137,9 @@ export default function CaptureUtilityReadingModal({
         </span>
         <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 12 }}>
           Período: {MONTH_NAMES[period.month - 1]} {period.year}
+        </p>
+        <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: 12 }}>
+          Fecha de captura: {captureDateLabel}
         </p>
       </div>
 
