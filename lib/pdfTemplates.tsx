@@ -682,10 +682,11 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
   const fmt = (n: number) =>
     n.toLocaleString("es-MX", { style: "currency", currency: "MXN", maximumFractionDigits: 2 });
 
-  const tenantRows  = data.rows.filter(r => r.type === "tenant");
-  const companyRows = data.rows.filter(r => r.type !== "tenant");
-  const totalTenant  = tenantRows.reduce((s, r) => s + r.total, 0);
-  const totalCompany = companyRows.reduce((s, r) => s + r.total, 0);
+  const tenantRows     = data.rows.filter(r => r.type === "tenant");
+  const companyRows    = data.rows.filter(r => r.type !== "tenant");
+  const subtotalTenant = tenantRows.reduce((s, r) => s + r.subtotal, 0);
+  const totalSvcCharge = tenantRows.reduce((s, r) => s + r.serviceChargeAmount, 0);
+  const totalCompany   = companyRows.reduce((s, r) => s + r.subtotal, 0);
 
   const today = new Date();
   const todayStr = `${today.getDate().toString().padStart(2, "0")}/${(today.getMonth() + 1)
@@ -707,7 +708,6 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
               {data.logoUrl
                 ? <Image src={data.logoUrl} style={S.logoImg} />
                 : <Text style={[S.companyName, { color: data.accentColor || "#8B2252" }]}>{data.legalName}</Text>}
-              <Text style={S.companyName}>{data.legalName}</Text>
               <Text style={S.companyInfo}>{data.address}</Text>
               <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
             </View>
@@ -803,8 +803,12 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
             {/* Footer */}
             <View style={S.tableFooter}>
               <View style={S.tableFooterCell}>
-                <Text style={S.tableFooterLabel}>Total distribuido (inquilinos)</Text>
-                <Text style={S.tableFooterValue}>{fmt(totalTenant)}</Text>
+                <Text style={S.tableFooterLabel}>Subtotal inquilinos</Text>
+                <Text style={S.tableFooterValue}>{fmt(subtotalTenant)}</Text>
+              </View>
+              <View style={S.tableFooterCell}>
+                <Text style={S.tableFooterLabel}>Cargo por servicio (2%)</Text>
+                <Text style={S.tableFooterValue}>{fmt(totalSvcCharge)}</Text>
               </View>
               <View style={S.tableFooterCell}>
                 <Text style={S.tableFooterLabel}>Gasto empresa</Text>

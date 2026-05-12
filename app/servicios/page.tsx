@@ -906,8 +906,17 @@ export default function ServiciosPage() {
         }
       }
 
-      for (const [unitId, agg] of byUnit) {
-        const unitNumber = group.units.find(u => u.id === unitId)?.unit_number ?? "—";
+      // Sort by unit_number for consistent ordering in receipts and report
+      const sortedUnits = sortByNatural(
+        [...byUnit.entries()].map(([unitId, agg]) => ({
+          unitId,
+          agg,
+          unitNumber: group.units.find(u => u.id === unitId)?.unit_number ?? "—",
+        })),
+        e => e.unitNumber,
+      );
+
+      for (const { unitId, agg, unitNumber } of sortedUnits) {
         const { subtotal, consumption } = agg;
         const svcCharge = subtotal * 0.02;
         const folio     = `${folioS}-${folioEdif}-${unitNumber.replace(/\s/g, "")}-${mm}-${yyyy}`;
@@ -939,8 +948,7 @@ export default function ServiciosPage() {
         consumption?: number; percentage?: number;
         subtotal: number; serviceChargeAmount: number; total: number;
         type: "tenant" | "common" | "company";
-      }[] = [...byUnit.entries()].map(([unitId, agg]) => {
-        const unitNumber = group.units.find(u => u.id === unitId)?.unit_number ?? "—";
+      }[] = sortedUnits.map(({ unitId, agg, unitNumber }) => {
         const { subtotal, consumption, percentage } = agg;
         return {
           unitNumber,
@@ -955,7 +963,7 @@ export default function ServiciosPage() {
       });
 
       if (totalConsumption > 0 && ratePerUnit != null) {
-        const sumTenant = [...byUnit.values()].reduce((s, a) => s + (a.consumption ?? 0), 0);
+        const sumTenant = sortedUnits.reduce((s, { agg }) => s + (agg.consumption ?? 0), 0);
         const commonConsumption = totalConsumption - sumTenant;
         if (commonConsumption > 0) {
           const subtotal = commonConsumption * ratePerUnit;
@@ -986,7 +994,7 @@ export default function ServiciosPage() {
         folio:        `${folioS}-${folioEdif}-RPT-${mm}-${yyyy}`,
       });
 
-      toast.success(`${byUnit.size} recibo${byUnit.size !== 1 ? "s" : ""} + reporte generados.`);
+      toast.success(`${sortedUnits.length} recibo${sortedUnits.length !== 1 ? "s" : ""} + reporte generados.`);
     } catch (err) {
       console.error("PDF generation error", err);
       toast.error("Error al generar PDFs");
