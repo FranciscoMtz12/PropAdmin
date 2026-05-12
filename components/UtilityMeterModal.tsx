@@ -80,6 +80,8 @@ export default function UtilityMeterModal({
   const [billingFrequency, setBillingFrequency] = useState<BillingFrequency>(existingMeter?.billing_frequency ?? 'monthly');
   const [cycleStartMonth, setCycleStartMonth]   = useState<number | "">(existingMeter?.cycle_start_month ?? "");
   const [cycleStartYear, setCycleStartYear]     = useState<number | "">(existingMeter?.cycle_start_year ?? "");
+  const [billingType, setBillingType]   = useState<'variable' | 'fixed'>(existingMeter?.billing_type ?? 'variable');
+  const [fixedAmount, setFixedAmount]   = useState(existingMeter?.fixed_amount ? String(existingMeter.fixed_amount) : "");
   const [unitId, setUnitId]                 = useState(existingMeter?.unit_id ?? "");
   const [saving, setSaving]                 = useState(false);
   const [msg, setMsg]                       = useState("");
@@ -103,6 +105,8 @@ export default function UtilityMeterModal({
       billing_frequency: billingFrequency,
       cycle_start_month: billingFrequency === "bimonthly" ? (cycleStartMonth || null) : null,
       cycle_start_year:  billingFrequency === "bimonthly" ? (cycleStartYear || null) : null,
+      billing_type:      billingType,
+      fixed_amount:      billingType === "fixed" ? (parseFloat(fixedAmount) || 0) : 0,
       unit_id:           meterType === "dedicated" ? unitId : null,
       provider_name:     providerName.trim() || null,
       meter_number:      meterNumber.trim() || null,
@@ -292,6 +296,45 @@ export default function UtilityMeterModal({
                 <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 Gasto del edificio — las facturas se registran sin generar cobros.
               </div>
+            )}
+          </>
+        )}
+
+        {generatesCharge && (
+          <>
+            <AppFormField label="Tipo de facturación">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
+                {(["variable", "fixed"] as const).map(bt => (
+                  <label key={bt} style={{
+                    display: "flex", flexDirection: "column", gap: 6,
+                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    border: `2px solid ${billingType === bt ? "#8B2252" : "var(--border-default)"}`,
+                    background: billingType === bt ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <input type="radio" value={bt} checked={billingType === bt} onChange={() => setBillingType(bt)} style={{ accentColor: "#8B2252" }} />
+                      <strong style={{ fontSize: 14 }}>{bt === "variable" ? "Monto variable" : "Monto fijo"}</strong>
+                    </div>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                      {bt === "variable" ? "El monto varía cada período (CFE, agua, gas)" : "Mismo monto cada mes (internet, cuota fija)"}
+                    </p>
+                  </label>
+                ))}
+              </div>
+            </AppFormField>
+
+            {billingType === "fixed" && (
+              <AppFormField label="Monto mensual fijo *">
+                <input
+                  type="number"
+                  value={fixedAmount}
+                  onChange={e => setFixedAmount(e.target.value)}
+                  placeholder="$0.00"
+                  style={INPUT_STYLE}
+                  step="0.01"
+                  min="0"
+                />
+              </AppFormField>
             )}
           </>
         )}

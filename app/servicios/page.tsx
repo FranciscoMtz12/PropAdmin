@@ -8,6 +8,7 @@ import {
   TrendingUp, Wifi, Zap,
 } from "lucide-react";
 
+import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import {
@@ -118,6 +119,10 @@ function ServiceRow({
   isShared,
   isExpanded,
   onExpandToggle,
+  billingType,
+  fixedAmount,
+  onGenerateFixedCobro,
+  generatingFixedCobro,
 }: {
   serviceType: string;
   name: string;
@@ -130,6 +135,10 @@ function ServiceRow({
   isShared?: boolean;
   isExpanded?: boolean;
   onExpandToggle?: () => void;
+  billingType?: "variable" | "fixed";
+  fixedAmount?: number;
+  onGenerateFixedCobro?: () => void;
+  generatingFixedCobro?: boolean;
 }) {
   const status = invoice?.status ?? "pending";
   const badge = INVOICE_STATUS_BADGE[status] ?? INVOICE_STATUS_BADGE.pending;
@@ -181,61 +190,89 @@ function ServiceRow({
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-        {amount != null && (
-          <span
-            style={{
-              fontSize: 13,
-              fontWeight: 700,
-              color: generatesCharge && status === "charged"
-                ? "var(--badge-text-green)"
-                : "var(--text-muted)",
-            }}
-          >
-            {formatMXN(amount)}
-          </span>
-        )}
-        {generatesCharge ? (
+        {billingType === "fixed" ? (
           <>
-            <AppBadge variant={badge.variant}>{badge.label}</AppBadge>
-            <button
-              type="button"
-              onClick={e => { e.stopPropagation(); onAction(); }}
-              style={{
-                padding: "5px 12px",
-                borderRadius: 8,
-                fontSize: 12,
-                fontWeight: 600,
-                cursor: "pointer",
-                border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
-                background: isBtnPrimary ? "#8B2252" : "transparent",
-                color: isBtnPrimary ? "#fff" : "var(--text-primary)",
-                whiteSpace: "nowrap",
-              }}
-            >
-              {actionLabel}
-            </button>
+            <AppBadge variant="gray">Monto fijo</AppBadge>
+            {fixedAmount != null && fixedAmount > 0 && (
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>
+                {formatMXN(fixedAmount)}/mes
+              </span>
+            )}
+            {generatesCharge && onGenerateFixedCobro && (
+              <button
+                type="button"
+                onClick={e => { e.stopPropagation(); onGenerateFixedCobro(); }}
+                disabled={generatingFixedCobro}
+                style={{
+                  padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  cursor: generatingFixedCobro ? "default" : "pointer",
+                  border: "none", background: "#8B2252", color: "#fff", whiteSpace: "nowrap",
+                  opacity: generatingFixedCobro ? 0.6 : 1,
+                }}
+              >
+                {generatingFixedCobro ? "Generando..." : "Generar cobro"}
+              </button>
+            )}
           </>
         ) : (
           <>
-            <AppBadge variant="gray">Gasto empresa</AppBadge>
-            {invoice == null && (
-              <button
-                type="button"
-                onClick={e => { e.stopPropagation(); onAction(); }}
+            {amount != null && (
+              <span
                 style={{
-                  padding: "5px 12px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: "pointer",
-                  border: "none",
-                  background: "#8B2252",
-                  color: "#fff",
-                  whiteSpace: "nowrap",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: generatesCharge && status === "charged"
+                    ? "var(--badge-text-green)"
+                    : "var(--text-muted)",
                 }}
               >
-                Registrar factura
-              </button>
+                {formatMXN(amount)}
+              </span>
+            )}
+            {generatesCharge ? (
+              <>
+                <AppBadge variant={badge.variant}>{badge.label}</AppBadge>
+                <button
+                  type="button"
+                  onClick={e => { e.stopPropagation(); onAction(); }}
+                  style={{
+                    padding: "5px 12px",
+                    borderRadius: 8,
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
+                    background: isBtnPrimary ? "#8B2252" : "transparent",
+                    color: isBtnPrimary ? "#fff" : "var(--text-primary)",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {actionLabel}
+                </button>
+              </>
+            ) : (
+              <>
+                <AppBadge variant="gray">Gasto empresa</AppBadge>
+                {invoice == null && (
+                  <button
+                    type="button"
+                    onClick={e => { e.stopPropagation(); onAction(); }}
+                    style={{
+                      padding: "5px 12px",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      border: "none",
+                      background: "#8B2252",
+                      color: "#fff",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    Registrar factura
+                  </button>
+                )}
+              </>
             )}
           </>
         )}
@@ -472,6 +509,7 @@ export default function ServiciosPage() {
   const [activeModal, setActiveModal] = useState<ActiveModal>(null);
   const [expandedMeterId, setExpandedMeterId] = useState<string | null>(null);
   const [detailCache, setDetailCache] = useState<Record<string, SharedMeterDetail | "loading">>({});
+  const [generatingFixedMeter, setGeneratingFixedMeter] = useState<string | null>(null);
 
   function prevPeriod() {
     setPeriod(p => p.month === 1 ? { year: p.year - 1, month: 12 } : { ...p, month: p.month - 1 });
@@ -632,6 +670,131 @@ export default function ServiciosPage() {
     }));
   }
 
+  async function handleGenerateFixedCobro(meter: BuildingUtilityMeter, buildingUnits: { id: string; unit_number: string }[]) {
+    if (!user?.company_id) return;
+    const fixedAmt = meter.fixed_amount ?? 0;
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,"0")}-${String(today.getDate()).padStart(2,"0")}`;
+
+    setGeneratingFixedMeter(meter.id);
+    try {
+      const unitIds = buildingUnits.map(u => u.id);
+      if (!unitIds.length) { toast.error("Sin unidades configuradas"); return; }
+
+      const { data: lData } = await supabase
+        .from("leases")
+        .select("id, unit_id, due_day")
+        .in("unit_id", unitIds)
+        .eq("status", "ACTIVE")
+        .is("deleted_at", null)
+        .lte("start_date", todayStr)
+        .or(`end_date.is.null,end_date.gte.${todayStr}`);
+
+      const leases = (lData || []) as { id: string; unit_id: string; due_day: number | null }[];
+      if (!leases.length) { toast.error("Sin inquilinos activos en este edificio"); return; }
+
+      const leaseUnitIds = leases.map(l => l.unit_id);
+      const { data: sData } = await supabase
+        .from("collection_schedules")
+        .select("id, unit_id, amount_expected")
+        .eq("company_id", user.company_id)
+        .in("unit_id", leaseUnitIds)
+        .eq("charge_type", meter.service_type)
+        .is("deleted_at", null);
+
+      const existingScheds = (sData || []) as { id: string; unit_id: string; amount_expected: number }[];
+      const schedByUnit = new Map(existingScheds.map(s => [s.unit_id, s]));
+
+      const newScheds: object[] = [];
+      for (const lease of leases) {
+        if (!schedByUnit.has(lease.unit_id)) {
+          newScheds.push({
+            company_id:          user.company_id,
+            building_id:         meter.building_id,
+            unit_id:             lease.unit_id,
+            lease_id:            lease.id,
+            charge_type:         meter.service_type,
+            title:               SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type,
+            responsibility_type: "tenant",
+            amount_expected:     fixedAmt,
+            due_day:             lease.due_day ?? 15,
+            active:              true,
+            billing_frequency:   "monthly",
+          });
+        }
+      }
+
+      if (newScheds.length > 0) {
+        const { data: created } = await supabase
+          .from("collection_schedules").insert(newScheds)
+          .select("id, unit_id, amount_expected");
+        ((created || []) as { id: string; unit_id: string; amount_expected: number }[]).forEach(s => {
+          schedByUnit.set(s.unit_id, s);
+        });
+      }
+
+      const toUpdate = existingScheds.filter(s => s.amount_expected !== fixedAmt);
+      if (toUpdate.length) {
+        await supabase.from("collection_schedules")
+          .update({ amount_expected: fixedAmt })
+          .in("id", toUpdate.map(s => s.id));
+      }
+
+      const allSchedIds = [...schedByUnit.values()].map(s => s.id);
+      const { data: exRec } = await supabase
+        .from("collection_records")
+        .select("collection_schedule_id")
+        .in("collection_schedule_id", allSchedIds)
+        .eq("period_year", period.year)
+        .eq("period_month", period.month)
+        .is("deleted_at", null);
+
+      const existingIds = new Set(
+        ((exRec || []) as { collection_schedule_id: string }[]).map(r => r.collection_schedule_id),
+      );
+
+      const lastDay = (y: number, m: number) => new Date(y, m, 0).getDate();
+      const buildDue = (y: number, m: number, d: number) => {
+        const safe = Math.max(1, Math.min(d, lastDay(y, m)));
+        return `${y}-${String(m).padStart(2,"0")}-${String(safe).padStart(2,"0")}`;
+      };
+
+      const toInsert = leases
+        .filter(l => { const s = schedByUnit.get(l.unit_id); return s && !existingIds.has(s.id); })
+        .map(l => {
+          const sched = schedByUnit.get(l.unit_id)!;
+          const dueDate = buildDue(period.year, period.month, l.due_day ?? 15);
+          return {
+            collection_schedule_id: sched.id,
+            company_id:    user!.company_id,
+            building_id:   meter.building_id,
+            unit_id:       l.unit_id,
+            lease_id:      l.id,
+            period_year:   period.year,
+            period_month:  period.month,
+            due_date:      dueDate,
+            amount_due:    fixedAmt,
+            amount_collected: 0,
+            status:        dueDate < todayStr ? "overdue" : "pending",
+            collected_at:  null,
+            needs_capture: false,
+            notes:         null,
+          };
+        });
+
+      if (!toInsert.length) {
+        toast.success("Los cobros de este período ya están generados.");
+        return;
+      }
+
+      const { error } = await supabase.from("collection_records").insert(toInsert);
+      if (error) { toast.error(`Error: ${error.message}`); return; }
+      toast.success(`${toInsert.length} cobro${toInsert.length === 1 ? "" : "s"} generado${toInsert.length === 1 ? "" : "s"}.`);
+    } finally {
+      setGeneratingFixedMeter(null);
+    }
+  }
+
   if (loading || !user) return null;
 
   /* ── Metrics ──────────────────────────────────────────────────── */
@@ -776,12 +939,13 @@ export default function ServiciosPage() {
               subtitle={bPend === 0 ? "Todo facturado" : `${bPend} servicio${bPend > 1 ? "s" : ""} pendiente${bPend > 1 ? "s" : ""}`}
             >
               {group.utility_meters.map(meter => {
-                const invoice    = group.invoices.get(meter.id) ?? null;
-                const parts      = [meter.provider_name, meter.meter_number].filter(Boolean);
+                const invoice      = group.invoices.get(meter.id) ?? null;
+                const parts        = [meter.provider_name, meter.meter_number].filter(Boolean);
                 const providerLine = parts.length > 0 ? parts.join(" · ") : null;
-                const svcName    = SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type;
-                const isShared   = meter.meter_type === "shared";
-                const isExpanded = expandedMeterId === meter.id;
+                const svcName      = SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type;
+                const isFixed      = meter.billing_type === "fixed";
+                const isShared     = meter.meter_type === "shared" && !isFixed;
+                const isExpanded   = expandedMeterId === meter.id;
                 return (
                   <div key={meter.id}>
                     <ServiceRow
@@ -795,6 +959,14 @@ export default function ServiciosPage() {
                       isShared={isShared}
                       isExpanded={isExpanded}
                       onExpandToggle={isShared ? () => void handleExpand(meter.id) : undefined}
+                      billingType={meter.billing_type}
+                      fixedAmount={meter.fixed_amount}
+                      onGenerateFixedCobro={
+                        isFixed && meterGeneratesCharge(meter)
+                          ? () => void handleGenerateFixedCobro(meter, group.units)
+                          : undefined
+                      }
+                      generatingFixedCobro={generatingFixedMeter === meter.id}
                       onAction={() => setActiveModal({
                         meter,
                         building: { id: group.building_id, name: group.building_name },

@@ -77,6 +77,8 @@ export type BuildingUtilityMeter = {
   contract_number: string | null
   description: string | null
   billing_mode: 'charged' | 'included'
+  billing_type: 'variable' | 'fixed'
+  fixed_amount: number
   contract_holder: 'tenant' | 'company'
   billing_frequency: BillingFrequency
   cycle_start_month: number | null

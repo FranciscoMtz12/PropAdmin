@@ -519,7 +519,7 @@ export default function CollectionsPage() {
       }
 
       // ── Paso 0b: crear schedules de servicios charged faltantes ───────────────
-      type ChargedMeter = { id: string; building_id: string; service_type: string };
+      type ChargedMeter = { id: string; building_id: string; service_type: string; billing_type: string; fixed_amount: number };
       type SubMeterRow  = { id: string; unit_id: string; building_utility_meter_id: string };
 
       const unitIds = leases.map(l => l.unit_id).filter((id): id is string => !!id);
@@ -530,7 +530,7 @@ export default function CollectionsPage() {
 
         const { data: chargedMetersData, error: cmErr } = await supabase
           .from("building_utility_meters")
-          .select("id, building_id, service_type")
+          .select("id, building_id, service_type, billing_type, fixed_amount")
           .in("building_id", buildingIds)
           .eq("billing_mode", "charged")
           .eq("active", true)
@@ -582,7 +582,7 @@ export default function CollectionsPage() {
               charge_type: meter.service_type,
               title: svcTitle,
               responsibility_type: "tenant",
-              amount_expected: 0,
+              amount_expected: meter.billing_type === "fixed" ? (meter.fixed_amount ?? 0) : 0,
               due_day: ld?.due_day ?? 15,
               active: true,
               billing_frequency: "monthly",
@@ -638,7 +638,8 @@ export default function CollectionsPage() {
       .filter((s) => !existingScheduleIds.has(s.id))
       .map((s) => {
         const dueDate    = buildDateKey(year, month, s.due_day || 15);
-        const isVariable = VARIABLE_CHARGE_TYPES.has(s.charge_type as CollectionChargeType);
+        const isVariable = VARIABLE_CHARGE_TYPES.has(s.charge_type as CollectionChargeType)
+          && s.amount_expected === 0;
         return {
           collection_schedule_id: s.id,
           company_id: user.company_id,

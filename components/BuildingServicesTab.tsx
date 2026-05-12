@@ -224,6 +224,11 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
                         {meterGeneratesCharge(meter) && (
                           <AppBadge variant="gray">{BILLING_FREQUENCY_LABEL[meter.billing_frequency]}</AppBadge>
                         )}
+                        {meter.billing_type === "fixed" && meter.fixed_amount > 0 && (
+                          <span style={{ padding: "2px 8px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#eff6ff", color: "#1d4ed8", border: "1px solid #bfdbfe" }}>
+                            Monto fijo · ${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 }).format(meter.fixed_amount)}/mes
+                          </span>
+                        )}
                       </div>
 
                       {meter.meter_type === "shared" && (
@@ -235,25 +240,29 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
                             </div>
                           ) : (
                             <>
-                              {subs.length > 0 ? (
-                                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                                  {subs.map(sm => (
-                                    <span key={sm.id} style={{ padding: "2px 8px", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 12 }}>
-                                      Depa {sm.unit_number ?? sm.unit_id.slice(0, 6)}
-                                    </span>
-                                  ))}
-                                </div>
-                              ) : (
-                                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", borderRadius: 10, padding: "6px 10px", fontSize: 12, alignSelf: "flex-start" }}>
-                                  <AlertTriangle size={12} />Sin submedidores configurados
-                                </div>
+                              {meter.billing_type !== "fixed" && (
+                                <>
+                                  {subs.length > 0 ? (
+                                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                                      {subs.map(sm => (
+                                        <span key={sm.id} style={{ padding: "2px 8px", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 999, fontSize: 12 }}>
+                                          Depa {sm.unit_number ?? sm.unit_id.slice(0, 6)}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "#fef3c7", color: "#92400e", borderRadius: 10, padding: "6px 10px", fontSize: 12, alignSelf: "flex-start" }}>
+                                      <AlertTriangle size={12} />Sin submedidores configurados
+                                    </div>
+                                  )}
+                                  <button
+                                    onClick={() => setSubMetersModalFor(meter)}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "5px 10px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", alignSelf: "flex-start" }}
+                                  >
+                                    <Settings2 size={12} />Configurar submedidores
+                                  </button>
+                                </>
                               )}
-                              <button
-                                onClick={() => setSubMetersModalFor(meter)}
-                                style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, padding: "5px 10px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", alignSelf: "flex-start" }}
-                              >
-                                <Settings2 size={12} />Configurar submedidores
-                              </button>
                             </>
                           )}
                         </div>
