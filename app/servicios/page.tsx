@@ -871,10 +871,17 @@ export default function ServiciosPage() {
       const totalAmount      = Number(invoice.total_amount);
       const ratePerUnit      = totalConsumption > 0 ? totalAmount / totalConsumption : undefined;
       const consumptionUnit  = invoice.consumption_unit ?? SERVICE_TYPE_UNIT[meter.service_type] ?? undefined;
-      const periodLabel      = `${MONTH_LABELS[period.month - 1]} ${period.year}`;
-      const periodCode       = `${period.year}${String(period.month).padStart(2, "0")}`;
-      const svcName          = SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type;
-      const meterRef         = meter.meter_number ?? meter.id.slice(0, 6);
+      const periodLabel = `${MONTH_LABELS[period.month - 1]} ${period.year}`;
+      const mm          = String(period.month).padStart(2, "0");
+      const yyyy        = String(period.year);
+      const svcName     = SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type;
+      const folioS      = svcName[0].toUpperCase();
+      const folioEdif   = group.building_name
+        .split(" ")
+        .map(t => t.slice(0, 3))
+        .join("")
+        .toUpperCase()
+        .slice(0, 8);
 
       const tenantItems = items.filter(i => tenantMap[i.unit_id]);
 
@@ -901,7 +908,7 @@ export default function ServiciosPage() {
           serviceChargePct:    2,
           serviceChargeAmount: svcCharge,
           total:               subtotal + svcCharge,
-          folio:               `REC-${meterRef}-${unitNumber}-${periodCode}`,
+          folio:               `${folioS}-${folioEdif}-${unitNumber.replace(/\s/g, "")}-${mm}-${yyyy}`,
         });
       }
 
@@ -954,7 +961,7 @@ export default function ServiciosPage() {
         consumptionUnit: consumptionUnit ?? undefined,
         invoiceFolio: invoice.folio ?? undefined,
         rows:         reportRows,
-        folio:        `RPT-DIST-${meterRef}-${periodCode}`,
+        folio:        `${folioS}-${folioEdif}-RPT-${mm}-${yyyy}`,
       });
 
       toast.success(`${tenantItems.length} recibo${tenantItems.length !== 1 ? "s" : ""} + reporte generados.`);
