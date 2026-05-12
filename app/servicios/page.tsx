@@ -883,12 +883,34 @@ export default function ServiciosPage() {
         .toUpperCase()
         .slice(0, 8);
 
-      const tenantItems = items.filter(i => tenantMap[i.unit_id]);
+      // Group items by unit_id to avoid duplicate receipts when multiple
+      // sub-meter rows exist for the same unit
+      const byUnit = new Map<string, { subtotal: number; consumption: number | null; percentage: number | null }>();
+      for (const item of items) {
+        if (!tenantMap[item.unit_id]) continue;
+        const prev = byUnit.get(item.unit_id);
+        if (prev) {
+          prev.subtotal    += Number(item.amount_assigned);
+          prev.consumption  = prev.consumption != null && item.consumption != null
+            ? prev.consumption + item.consumption
+            : (prev.consumption ?? item.consumption);
+          prev.percentage   = prev.percentage != null && item.percentage != null
+            ? prev.percentage + item.percentage
+            : (prev.percentage ?? item.percentage);
+        } else {
+          byUnit.set(item.unit_id, {
+            subtotal:    Number(item.amount_assigned),
+            consumption: item.consumption,
+            percentage:  item.percentage,
+          });
+        }
+      }
 
-      for (const item of tenantItems) {
-        const unitNumber = group.units.find(u => u.id === item.unit_id)?.unit_number ?? "—";
-        const subtotal   = Number(item.amount_assigned);
-        const svcCharge  = subtotal * 0.02;
+      for (const [unitId, agg] of byUnit) {
+        const unitNumber = group.units.find(u => u.id === unitId)?.unit_number ?? "—";
+        const { subtotal, consumption } = agg;
+        const svcCharge = subtotal * 0.02;
+        const folio     = `${folioS}-${folioEdif}-${unitNumber.replace(/\s/g, "")}-${mm}-${yyyy}`;
         await generateReciboServicioPdf({
           legalName,
           address:             companyAddress,
@@ -900,15 +922,15 @@ export default function ServiciosPage() {
           period:              periodLabel,
           buildingName:        group.building_name,
           unitNumber,
-          tenantName:          tenantMap[item.unit_id],
-          consumption:         item.consumption ?? undefined,
+          tenantName:          tenantMap[unitId],
+          consumption:         consumption ?? undefined,
           consumptionUnit:     consumptionUnit ?? undefined,
           ratePerUnit,
           subtotal,
           serviceChargePct:    2,
           serviceChargeAmount: svcCharge,
           total:               subtotal + svcCharge,
-          folio:               `${folioS}-${folioEdif}-${unitNumber.replace(/\s/g, "")}-${mm}-${yyyy}`,
+          folio,
         });
       }
 
@@ -917,14 +939,14 @@ export default function ServiciosPage() {
         consumption?: number; percentage?: number;
         subtotal: number; serviceChargeAmount: number; total: number;
         type: "tenant" | "common" | "company";
-      }[] = tenantItems.map(item => {
-        const unitNumber = group.units.find(u => u.id === item.unit_id)?.unit_number ?? "—";
-        const subtotal   = Number(item.amount_assigned);
+      }[] = [...byUnit.entries()].map(([unitId, agg]) => {
+        const unitNumber = group.units.find(u => u.id === unitId)?.unit_number ?? "—";
+        const { subtotal, consumption, percentage } = agg;
         return {
           unitNumber,
-          tenantName:          tenantMap[item.unit_id],
-          consumption:         item.consumption ?? undefined,
-          percentage:          item.percentage ?? undefined,
+          tenantName:          tenantMap[unitId],
+          consumption:         consumption ?? undefined,
+          percentage:          percentage ?? undefined,
           subtotal,
           serviceChargeAmount: subtotal * 0.02,
           total:               subtotal * 1.02,
@@ -933,7 +955,7 @@ export default function ServiciosPage() {
       });
 
       if (totalConsumption > 0 && ratePerUnit != null) {
-        const sumTenant = tenantItems.reduce((s, i) => s + (i.consumption ?? 0), 0);
+        const sumTenant = [...byUnit.values()].reduce((s, a) => s + (a.consumption ?? 0), 0);
         const commonConsumption = totalConsumption - sumTenant;
         if (commonConsumption > 0) {
           const subtotal = commonConsumption * ratePerUnit;
@@ -964,7 +986,7 @@ export default function ServiciosPage() {
         folio:        `${folioS}-${folioEdif}-RPT-${mm}-${yyyy}`,
       });
 
-      toast.success(`${tenantItems.length} recibo${tenantItems.length !== 1 ? "s" : ""} + reporte generados.`);
+      toast.success(`${byUnit.size} recibo${byUnit.size !== 1 ? "s" : ""} + reporte generados.`);
     } catch (err) {
       console.error("PDF generation error", err);
       toast.error("Error al generar PDFs");

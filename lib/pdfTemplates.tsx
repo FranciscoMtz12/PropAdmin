@@ -842,15 +842,9 @@ export async function generateReportePdf(data: ReporteTemplateData): Promise<voi
 }
 
 export async function generateReciboServicioPdf(data: ReciboServicioTemplateData): Promise<void> {
-  await savePdf(
-    <ReciboServicioDocument data={data} />,
-    `Recibo-${data.serviceName}-${data.unitNumber}-${data.period}.pdf`,
-  );
+  await savePdf(<ReciboServicioDocument data={data} />, `${data.folio}.pdf`);
 }
 
 export async function generateReporteDistribucionPdf(data: ReporteDistribucionTemplateData): Promise<void> {
-  await savePdf(
-    <ReporteDistribucionDocument data={data} />,
-    `Reporte-Distribucion-${data.serviceName}-${data.period}.pdf`,
-  );
+  await savePdf(<ReporteDistribucionDocument data={data} />, `${data.folio}.pdf`);
 }
