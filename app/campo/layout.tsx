@@ -18,19 +18,21 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Grid2X2, LogOut, Menu, Settings, ShoppingCart, Sparkles, Ticket, Wrench, X } from "lucide-react";
+import { Grid2X2, LogOut, Menu, Settings, ShoppingCart, Sparkles, Ticket, Wrench, X, Zap } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import SettingsModal from "@/components/SettingsModal";
+import BgTexture from "@/components/BgTexture";
 
 const NAV_ITEMS = [
-  { href: "/campo/dashboard", label: "Inicio",   icon: Grid2X2     },
-  { href: "/campo/tickets",   label: "Tickets",  icon: Wrench      },
-  { href: "/campo/limpieza",  label: "Limpieza", icon: Sparkles    },
-  { href: "/campo/assets",    label: "Activos",  icon: Ticket      },
-  { href: "/campo/compras",   label: "Órdenes",  icon: ShoppingCart },
+  { href: "/campo/dashboard",  label: "Inicio",     icon: Grid2X2     },
+  { href: "/campo/tickets",    label: "Tickets",    icon: Wrench      },
+  { href: "/campo/limpieza",   label: "Limpieza",   icon: Sparkles    },
+  { href: "/campo/medidores",  label: "Medidores",  icon: Zap         },
+  { href: "/campo/assets",     label: "Activos",    icon: Ticket      },
+  { href: "/campo/compras",    label: "Órdenes",    icon: ShoppingCart },
 ];
 
 export default function CampoLayout({ children }: { children: ReactNode }) {
@@ -74,9 +76,11 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
 
   return (
     <>
+      <BgTexture />
       <div
         style={{
           position: "relative",
+          zIndex: 1,
           width: "100%",
           minHeight: "100dvh",
           background: "var(--bg-page)",

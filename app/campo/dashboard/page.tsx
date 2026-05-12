@@ -12,7 +12,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ShoppingCart, Sparkles, Ticket, Wrench } from "lucide-react";
+import { ShoppingCart, Sparkles, Ticket, Wrench, Zap } from "lucide-react";
 import type { CSSProperties } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -243,6 +243,15 @@ export default function CampoDashboardPage() {
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               Limpieza
+            </span>
+          </a>
+
+          <a href="/campo/medidores" style={quickCardStyle}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <Zap size={20} />
+            </div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+              Medidores
             </span>
           </a>
 
