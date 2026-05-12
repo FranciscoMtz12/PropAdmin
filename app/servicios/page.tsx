@@ -193,23 +193,25 @@ function ServiceRow({
           </span>
         )}
         <AppBadge variant={badge.variant}>{badge.label}</AppBadge>
-        <button
-          type="button"
-          onClick={e => { e.stopPropagation(); onAction(); }}
-          style={{
-            padding: "5px 12px",
-            borderRadius: 8,
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: "pointer",
-            border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
-            background: isBtnPrimary ? "#8B2252" : "transparent",
-            color: isBtnPrimary ? "#fff" : "var(--text-primary)",
-            whiteSpace: "nowrap",
-          }}
-        >
-          {actionLabel}
-        </button>
+        {(generatesCharge || status !== "distributed") && (
+          <button
+            type="button"
+            onClick={e => { e.stopPropagation(); onAction(); }}
+            style={{
+              padding: "5px 12px",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: "pointer",
+              border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
+              background: isBtnPrimary ? "#8B2252" : "transparent",
+              color: isBtnPrimary ? "#fff" : "var(--text-primary)",
+              whiteSpace: "nowrap",
+            }}
+          >
+            {actionLabel}
+          </button>
+        )}
         {isShared && (
           <ChevronDown
             size={16}
