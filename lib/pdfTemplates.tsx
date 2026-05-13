@@ -50,7 +50,7 @@ function createStyles(accent = "#8B2252") {
     docTitle: { fontSize: 10, fontFamily: "Montserrat", fontWeight: 700, color: accent, marginBottom: 3 },
     docFolio: { fontSize: 10, fontFamily: "Montserrat", fontWeight: 700, color: "#111827" },
     docDate: { fontSize: 8, color: "#374151", marginBottom: 3 },
-    matzImg: { height: 44, marginBottom: 4, maxWidth: 70 },
+    matzImg: { height: 44, maxWidth: 70, objectFit: "contain" as const },
     /* Separador */
     separator: { height: 0.5, backgroundColor: "#000000", marginVertical: 8 },
     /* Meta row */

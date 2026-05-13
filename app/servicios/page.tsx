@@ -46,23 +46,17 @@ function formatMXN(n: number) {
 async function storageUrlToBase64(url: string): Promise<string | undefined> {
   try {
     const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-    if (!match) {
-      console.log("[storageUrl] no match", url);
-      return undefined;
-    }
+    if (!match) return undefined;
     const bucket = match[1];
     const path = decodeURIComponent(match[2]);
-    console.log("[storageUrl] bucket:", bucket, "path:", path);
     const { data, error } = await supabase.storage.from(bucket).download(path);
-    console.log("[storageUrl] result:", { hasData: !!data, error });
     if (error || !data) return undefined;
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
       reader.readAsDataURL(data);
     });
-  } catch (e) {
-    console.log("[storageUrl] catch:", e);
+  } catch {
     return undefined;
   }
 }
@@ -976,10 +970,10 @@ export default function ServiciosPage() {
       );
 
       const matzUrl = logoGroupUrl ?? logoPrintUrl;
-      const [logoBase64, logoMatzBase64] = await Promise.all([
-        logoPrintUrl ? storageUrlToBase64(logoPrintUrl) : Promise.resolve(undefined),
-        matzUrl ? storageUrlToBase64(matzUrl) : Promise.resolve(undefined),
-      ]);
+      const logoBase64 = logoPrintUrl ? await storageUrlToBase64(logoPrintUrl) : undefined;
+      const logoMatzBase64 = matzUrl && matzUrl !== logoPrintUrl
+        ? await storageUrlToBase64(matzUrl)
+        : logoBase64;
       const zip = new JSZip();
 
       for (const { unitId, agg, unitNumber } of sortedUnits) {
