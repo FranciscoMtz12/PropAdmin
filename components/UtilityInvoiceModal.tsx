@@ -256,9 +256,27 @@ export default function UtilityInvoiceModal({
     scheduleId: string, unitId: string, leaseId: string, amount: number, notesSuffix: string,
   ): Promise<string | null> {
     const padMonth = String(period.month).padStart(2, "0")
+
+    const { data: existing } = await supabase
+      .from("collection_records")
+      .select("id")
+      .eq("collection_schedule_id", scheduleId)
+      .eq("period_year", period.year)
+      .eq("period_month", period.month)
+      .maybeSingle()
+
+    if (existing) {
+      const { error } = await supabase
+        .from("collection_records")
+        .update({ amount_due: amount, needs_capture: false, updated_at: new Date().toISOString() })
+        .eq("id", existing.id)
+      if (error) { setMsg(`Error al actualizar cobro: ${error.message}`); return null }
+      return (existing as { id: string }).id
+    }
+
     const { data: rec, error } = await supabase
       .from("collection_records")
-      .upsert({
+      .insert({
         collection_schedule_id: scheduleId,
         company_id:   companyId,
         building_id:  building.id,
@@ -271,7 +289,7 @@ export default function UtilityInvoiceModal({
         needs_capture: false,
         status:        "pending",
         notes:         `${SERVICE_TYPE_LABEL[meter.service_type]} ${MONTH_NAMES[period.month - 1]} ${period.year}${notesSuffix}`,
-      }, { onConflict: "collection_schedule_id,period_year,period_month" })
+      })
       .select("id")
       .single()
 
