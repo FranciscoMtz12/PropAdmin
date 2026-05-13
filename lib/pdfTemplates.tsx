@@ -706,12 +706,11 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
     .toString()
     .padStart(2, "0")}/${today.getFullYear()}`;
 
+  const matzSrcRpt = data.logoMatzUrl ?? data.logoUrl;
+
   return (
     <Document>
       <Page size="A4" style={S.page}>
-
-        {/* Barra de acento */}
-        <View style={S.accentBar} />
 
         <View style={S.pageContent}>
 
@@ -725,7 +724,7 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
               <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
             </View>
             <View style={S.docInfo}>
-              {data.logoMatzUrl && <Image src={data.logoMatzUrl} style={S.matzImg} />}
+              {matzSrcRpt && <Image src={matzSrcRpt} style={S.matzImg} />}
               <Text style={S.docTitle}>Reporte de Distribución</Text>
               <Text style={S.docFolio}>Folio: {data.folio}</Text>
               <Text style={S.docDate}>{todayStr}</Text>
