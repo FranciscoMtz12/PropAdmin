@@ -591,6 +591,8 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
   const showResponsible =
     data.responsibleName != null && data.responsibleName !== data.tenantName;
 
+  const matzSrc = data.logoMatzUrl ?? data.logoUrl;
+
   return (
     <Document>
       <Page size="A4" style={S.page}>
@@ -607,7 +609,7 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
               <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
             </View>
             <View style={S.docInfo}>
-              {data.logoMatzUrl && <Image src={data.logoMatzUrl} style={S.matzImg} />}
+              {matzSrc && <Image src={matzSrc} style={S.matzImg} />}
               <Text style={S.docTitle}>Recibo de Servicio</Text>
               <Text style={S.docFolio}>Folio: {data.folio}</Text>
               <Text style={S.docDate}>{todayStr}</Text>
@@ -732,35 +734,31 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
 
           <View style={S.separator} />
 
-          {/* Meta rows */}
-          <View style={S.metaRow}>
-            <View style={S.metaCell}>
-              <Text style={S.metaLabel}>Edificio</Text>
-              <Text style={S.metaValue}>{data.buildingName}</Text>
+          {/* Info section — dos columnas, sin bordes */}
+          <View style={S.infoSection}>
+            <View style={S.infoColLeft}>
+              <Text style={S.infoLabel}>Edificio</Text>
+              <Text style={S.infoValue}>{data.buildingName}</Text>
+              <View style={{ height: 8 }} />
+              <Text style={S.infoLabel}>Proveedor</Text>
+              <Text style={S.infoValue}>{data.providerName}</Text>
+              <View style={{ height: 8 }} />
+              <Text style={S.infoLabel}>N° Medidor</Text>
+              <Text style={S.infoValue}>{data.meterNumber || "—"}</Text>
+              <View style={{ height: 8 }} />
+              <Text style={S.infoLabel}>Folio Factura</Text>
+              <Text style={S.infoValue}>{data.invoiceFolio || "—"}</Text>
             </View>
-            <View style={S.metaCell}>
-              <Text style={S.metaLabel}>Período</Text>
-              <Text style={S.metaValue}>{data.period}</Text>
-            </View>
-            <View style={S.metaCellLast}>
-              <Text style={S.metaLabel}>Proveedor</Text>
-              <Text style={S.metaValue}>{data.providerName}</Text>
-            </View>
-          </View>
-          <View style={S.metaRow}>
-            <View style={S.metaCell}>
-              <Text style={S.metaLabel}>Total factura</Text>
-              <Text style={S.metaValue}>{fmt(data.invoiceTotal)}</Text>
-            </View>
-            <View style={S.metaCell}>
-              <Text style={S.metaLabel}>N° medidor</Text>
-              <Text style={S.metaValue}>{data.meterNumber || "—"}</Text>
-            </View>
-            <View style={S.metaCellLast}>
-              <Text style={S.metaLabel}>Folio factura</Text>
-              <Text style={S.metaValue}>{data.invoiceFolio || "—"}</Text>
+            <View style={S.infoColRight}>
+              <Text style={S.infoLabel}>Período</Text>
+              <Text style={[S.infoValue, { fontSize: 13 }]}>{data.period}</Text>
+              <View style={{ height: 8 }} />
+              <Text style={S.infoLabel}>Total Factura</Text>
+              <Text style={S.infoValue}>{fmt(data.invoiceTotal)}</Text>
             </View>
           </View>
+
+          <View style={S.separator} />
 
           <Text style={S.sectionTitle}>Distribución por unidad</Text>
 
