@@ -852,3 +852,11 @@ export async function generateReciboServicioPdf(data: ReciboServicioTemplateData
 export async function generateReporteDistribucionPdf(data: ReporteDistribucionTemplateData): Promise<void> {
   await savePdf(<ReporteDistribucionDocument data={data} />, `${data.folio}.pdf`);
 }
+
+export async function getReciboServicioPdfBlob(data: ReciboServicioTemplateData): Promise<Blob> {
+  return await pdf(<ReciboServicioDocument data={data} />).toBlob();
+}
+
+export async function getReporteDistribucionPdfBlob(data: ReporteDistribucionTemplateData): Promise<Blob> {
+  return await pdf(<ReporteDistribucionDocument data={data} />).toBlob();
+}

@@ -18,7 +18,8 @@ import {
 import { sortByNatural } from "@/lib/sort-utils";
 import { shouldBillThisPeriod } from "@/lib/service-utils";
 import { useTheme } from "@/contexts/ThemeContext";
-import { generateReciboServicioPdf, generateReporteDistribucionPdf } from "@/lib/pdfTemplates";
+import { getReciboServicioPdfBlob, getReporteDistribucionPdfBlob } from "@/lib/pdfTemplates";
+import JSZip from "jszip";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import MetricCard from "@/components/MetricCard";
@@ -916,11 +917,13 @@ export default function ServiciosPage() {
         e => e.unitNumber,
       );
 
+      const zip = new JSZip();
+
       for (const { unitId, agg, unitNumber } of sortedUnits) {
         const { subtotal, consumption } = agg;
         const svcCharge = subtotal * 0.02;
         const folio     = `${folioS}-${folioEdif}-${unitNumber.replace(/\s/g, "")}-${mm}-${yyyy}`;
-        await generateReciboServicioPdf({
+        const blob = await getReciboServicioPdfBlob({
           legalName,
           address:             companyAddress,
           rfc:                 companyTaxId,
@@ -941,6 +944,7 @@ export default function ServiciosPage() {
           total:               subtotal + svcCharge,
           folio,
         });
+        zip.file(`${folio}.pdf`, blob);
       }
 
       const reportRows: {
@@ -976,7 +980,8 @@ export default function ServiciosPage() {
         }
       }
 
-      await generateReporteDistribucionPdf({
+      const reportFolio = `${folioS}-${folioEdif}-RPT-${mm}-${yyyy}`;
+      const reportBlob = await getReporteDistribucionPdfBlob({
         legalName,
         address:      companyAddress,
         rfc:          companyTaxId,
@@ -991,10 +996,20 @@ export default function ServiciosPage() {
         consumptionUnit: consumptionUnit ?? undefined,
         invoiceFolio: invoice.folio ?? undefined,
         rows:         reportRows,
-        folio:        `${folioS}-${folioEdif}-RPT-${mm}-${yyyy}`,
+        folio:        reportFolio,
       });
+      zip.file(`${reportFolio}.pdf`, reportBlob);
 
-      toast.success(`${sortedUnits.length} recibo${sortedUnits.length !== 1 ? "s" : ""} + reporte generados.`);
+      const zipName = `CONSUMO ${svcName.toUpperCase()} ${group.building_name.toUpperCase()} ${MONTH_LABELS[period.month - 1].toUpperCase()} ${yyyy}.zip`;
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = zipName;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success(`${sortedUnits.length} recibo${sortedUnits.length !== 1 ? "s" : ""} + reporte empacados en ZIP.`);
     } catch (err) {
       console.error("PDF generation error", err);
       toast.error("Error al generar PDFs");
