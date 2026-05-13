@@ -43,6 +43,16 @@ function formatMXN(n: number) {
   }).format(n);
 }
 
+async function urlToBase64(url: string): Promise<string> {
+  const res = await fetch(url);
+  const blob = await res.blob();
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result as string);
+    reader.readAsDataURL(blob);
+  });
+}
+
 /* ─── Types ──────────────────────────────────────────────────────── */
 
 type BuildingGroup = {
@@ -951,6 +961,11 @@ export default function ServiciosPage() {
         e => e.unitNumber,
       );
 
+      const [logoBase64, logoMatzBase64] = await Promise.all([
+        logoUrl ? urlToBase64(logoUrl) : Promise.resolve(undefined),
+        logoGroupUrl ? urlToBase64(logoGroupUrl) : Promise.resolve(undefined),
+      ]);
+
       const zip = new JSZip();
 
       for (const { unitId, agg, unitNumber } of sortedUnits) {
@@ -962,8 +977,8 @@ export default function ServiciosPage() {
           address:             companyAddress,
           rfc:                 companyTaxId,
           accentColor,
-          logoUrl:             logoUrl ?? undefined,
-          logoMatzUrl:         logoGroupUrl ?? undefined,
+          logoUrl:             logoBase64,
+          logoMatzUrl:         logoMatzBase64,
           serviceName:         svcName,
           providerName:        meter.provider_name ?? "",
           period:              periodLabel,
@@ -1022,8 +1037,8 @@ export default function ServiciosPage() {
         address:      companyAddress,
         rfc:          companyTaxId,
         accentColor,
-        logoUrl:      logoUrl ?? undefined,
-        logoMatzUrl:  logoGroupUrl ?? undefined,
+        logoUrl:      logoBase64,
+        logoMatzUrl:  logoMatzBase64,
         serviceName:  svcName,
         providerName: meter.provider_name ?? "",
         meterNumber:  meter.meter_number ?? undefined,
