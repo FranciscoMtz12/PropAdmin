@@ -43,14 +43,20 @@ function formatMXN(n: number) {
   }).format(n);
 }
 
-async function urlToBase64(url: string): Promise<string> {
-  const res = await fetch(url);
-  const blob = await res.blob();
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
-    reader.readAsDataURL(blob);
-  });
+async function urlToBase64(url: string): Promise<string | undefined> {
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return undefined;
+    const blob = await res.blob();
+    if (!blob.type.startsWith("image/")) return undefined;
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return undefined;
+  }
 }
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -966,14 +972,6 @@ export default function ServiciosPage() {
         logoPrintUrl ? urlToBase64(logoPrintUrl) : Promise.resolve(undefined),
         matzUrl ? urlToBase64(matzUrl) : Promise.resolve(undefined),
       ]);
-      console.log("[LOGOS DEBUG]", {
-        logoPrintUrl,
-        logoGroupUrl,
-        matzUrl,
-        logoBase64Length: logoBase64?.length ?? 0,
-        logoMatzBase64Length: logoMatzBase64?.length ?? 0,
-      });
-
       const zip = new JSZip();
 
       for (const { unitId, agg, unitNumber } of sortedUnits) {
