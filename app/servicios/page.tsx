@@ -43,22 +43,9 @@ function formatMXN(n: number) {
   }).format(n);
 }
 
-async function storageUrlToBase64(url: string): Promise<string | undefined> {
-  try {
-    const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
-    if (!match) return undefined;
-    const bucket = match[1];
-    const path = decodeURIComponent(match[2]);
-    const { data, error } = await supabase.storage.from(bucket).download(path);
-    if (error || !data) return undefined;
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(data);
-    });
-  } catch {
-    return undefined;
-  }
+function proxyUrl(url: string): string {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  return `${origin}/api/logo-proxy?url=${encodeURIComponent(url)}`;
 }
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -970,10 +957,8 @@ export default function ServiciosPage() {
       );
 
       const matzUrl = logoGroupUrl ?? logoPrintUrl;
-      const logoBase64 = logoPrintUrl ? await storageUrlToBase64(logoPrintUrl) : undefined;
-      const logoMatzBase64 = matzUrl && matzUrl !== logoPrintUrl
-        ? await storageUrlToBase64(matzUrl)
-        : logoBase64;
+      const logoProxied     = logoPrintUrl ? proxyUrl(logoPrintUrl) : undefined;
+      const logoMatzProxied = matzUrl ? proxyUrl(matzUrl) : undefined;
       const zip = new JSZip();
 
       for (const { unitId, agg, unitNumber } of sortedUnits) {
@@ -985,8 +970,8 @@ export default function ServiciosPage() {
           address:             companyAddress,
           rfc:                 companyTaxId,
           accentColor,
-          logoUrl:             logoBase64,
-          logoMatzUrl:         logoMatzBase64,
+          logoUrl:             logoProxied,
+          logoMatzUrl:         logoMatzProxied,
           serviceName:         svcName,
           providerName:        meter.provider_name ?? "",
           period:              periodLabel,
@@ -1045,8 +1030,8 @@ export default function ServiciosPage() {
         address:      companyAddress,
         rfc:          companyTaxId,
         accentColor,
-        logoUrl:      logoBase64,
-        logoMatzUrl:  logoMatzBase64,
+        logoUrl:      logoProxied,
+        logoMatzUrl:  logoMatzProxied,
         serviceName:  svcName,
         providerName: meter.provider_name ?? "",
         meterNumber:  meter.meter_number ?? undefined,
