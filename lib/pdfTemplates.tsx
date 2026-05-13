@@ -92,6 +92,12 @@ function createStyles(accent = "#8B2252") {
     sigLabel: { fontSize: 7, fontFamily: "Montserrat", color: "#374151", textTransform: "uppercase", letterSpacing: 0.5 },
     /* Footer página */
     pageFooter: { marginTop: 16, paddingTop: 8, borderTopWidth: 0.5, borderTopColor: "#374151", fontSize: 7.5, color: "#374151" },
+    /* Info section (sin bordes, recibo) */
+    infoSection: { flexDirection: "row", marginVertical: 8 },
+    infoColLeft: { flex: 1 },
+    infoColRight: { minWidth: 130, alignItems: "flex-end" as const },
+    infoLabel: { fontSize: 6.5, fontFamily: "Montserrat", color: "#6B7280", textTransform: "uppercase" as const, letterSpacing: 0.5, marginBottom: 2 },
+    infoValue: { fontSize: 9, fontFamily: "Montserrat", fontWeight: 700, color: "#111827" },
   });
 }
 
@@ -525,6 +531,7 @@ export interface ReciboServicioTemplateData {
   buildingName: string;
   unitNumber: string;
   tenantName: string;
+  responsibleName?: string;
   consumption?: number;
   consumptionUnit?: string;
   ratePerUnit?: number;
@@ -540,6 +547,7 @@ export interface ReporteDistribucionTemplateData {
   address: string;
   rfc: string;
   logoUrl?: string;
+  logoMatzUrl?: string;
   accentColor?: string;
   serviceName: string;
   providerName: string;
@@ -580,6 +588,9 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
     .toString()
     .padStart(2, "0")}/${today.getFullYear()}`;
 
+  const showResponsible =
+    data.responsibleName != null && data.responsibleName !== data.tenantName;
+
   return (
     <Document>
       <Page size="A4" style={S.page}>
@@ -608,27 +619,32 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
 
           <View style={S.separator} />
 
-          {/* Meta rows */}
-          <View style={S.metaRow}>
-            <View style={S.metaCell}>
-              <Text style={S.metaLabel}>Edificio</Text>
-              <Text style={S.metaValue}>{data.buildingName}</Text>
+          {/* Info section — dos columnas, sin bordes */}
+          <View style={S.infoSection}>
+            <View style={S.infoColLeft}>
+              <Text style={S.infoLabel}>Edificio</Text>
+              <Text style={S.infoValue}>{data.buildingName}</Text>
+              <View style={{ height: 8 }} />
+              <Text style={S.infoLabel}>Departamento</Text>
+              <Text style={S.infoValue}>Depa {data.unitNumber}</Text>
+              <View style={{ height: 8 }} />
+              <Text style={S.infoLabel}>Inquilino</Text>
+              <Text style={S.infoValue}>{data.tenantName}</Text>
+              {showResponsible && (
+                <>
+                  <View style={{ height: 8 }} />
+                  <Text style={S.infoLabel}>Responsable de pago</Text>
+                  <Text style={S.infoValue}>{data.responsibleName}</Text>
+                </>
+              )}
             </View>
-            <View style={S.metaCellLast}>
-              <Text style={S.metaLabel}>Período</Text>
-              <Text style={S.metaValue}>{data.period}</Text>
+            <View style={S.infoColRight}>
+              <Text style={S.infoLabel}>Período</Text>
+              <Text style={[S.infoValue, { fontSize: 13 }]}>{data.period}</Text>
             </View>
           </View>
-          <View style={S.metaRow}>
-            <View style={S.metaCell}>
-              <Text style={S.metaLabel}>Departamento</Text>
-              <Text style={S.metaValue}>{data.unitNumber}</Text>
-            </View>
-            <View style={S.metaCellLast}>
-              <Text style={S.metaLabel}>Inquilino</Text>
-              <Text style={S.metaValue}>{data.tenantName}</Text>
-            </View>
-          </View>
+
+          <View style={S.separator} />
 
           <Text style={S.sectionTitle}>Detalle del cobro</Text>
 
@@ -640,7 +656,7 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
               <Text style={[S.tableHeaderCell, { width: 90, textAlign: "right" }]}>Importe</Text>
             </View>
 
-            {/* Fila 1 — servicio */}
+            {/* Fila servicio principal */}
             <View style={S.tableRow}>
               <Text style={[S.tableCell, { flex: 2 }]}>
                 {data.serviceName}{data.providerName ? ` · ${data.providerName}` : ""}
@@ -649,11 +665,15 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
               <Text style={[S.tableCell, { width: 90, textAlign: "right" }]}>{fmt(data.subtotal)}</Text>
             </View>
 
-            {/* Fila 2 — cargo por servicio */}
+            {/* Cargo servicio — sub-fila gris, indentada, sin peso visual igual */}
             <View style={S.tableRowLast}>
-              <Text style={[S.tableCell, { flex: 2 }]}>Cargo por servicio ({data.serviceChargePct}%)</Text>
-              <Text style={[S.tableCell, { flex: 3 }]}></Text>
-              <Text style={[S.tableCell, { width: 90, textAlign: "right" }]}>{fmt(data.serviceChargeAmount)}</Text>
+              <Text style={[S.tableCell, { flex: 2, fontSize: 7.5, color: "#6B7280", paddingLeft: 16 }]}>
+                Cargo por servicio ({data.serviceChargePct}%)
+              </Text>
+              <Text style={[S.tableCell, { flex: 3, fontSize: 7.5, color: "#6B7280" }]}></Text>
+              <Text style={[S.tableCell, { width: 90, textAlign: "right", fontSize: 7.5, color: "#6B7280" }]}>
+                {fmt(data.serviceChargeAmount)}
+              </Text>
             </View>
 
             {/* Footer — total */}
@@ -712,6 +732,7 @@ function ReporteDistribucionDocument({ data }: { data: ReporteDistribucionTempla
               <Text style={S.companyInfo}>RFC: {data.rfc}</Text>
             </View>
             <View style={S.docInfo}>
+              {data.logoMatzUrl && <Image src={data.logoMatzUrl} style={S.matzImg} />}
               <Text style={S.docTitle}>Reporte de Distribución</Text>
               <Text style={S.docFolio}>Folio: {data.folio}</Text>
               <Text style={S.docDate}>{todayStr}</Text>

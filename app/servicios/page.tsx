@@ -531,7 +531,7 @@ function PeriodSelector({
 
 export default function ServiciosPage() {
   const { user, loading } = useCurrentUser();
-  const { legalName, companyAddress, companyTaxId, accentColor, logoGroupUrl } = useTheme();
+  const { legalName, companyAddress, companyTaxId, accentColor, logoUrl, logoGroupUrl } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -853,18 +853,52 @@ export default function ServiciosPage() {
 
       const unitIds = [...new Set(items.map(i => i.unit_id))];
       const tenantMap: Record<string, string> = {};
+      const responsibleMap: Record<string, string> = {};
       if (unitIds.length > 0) {
         const today = new Date().toISOString().split("T")[0];
         const { data: leasesData } = await supabase
           .from("leases")
-          .select("unit_id, tenant:tenants(full_name)")
+          .select("unit_id, tenant_id, responsible_payer_id, tenant:tenants(full_name)")
           .in("unit_id", unitIds)
           .eq("status", "ACTIVE")
           .is("deleted_at", null)
           .lte("start_date", today)
           .or(`end_date.is.null,end_date.gte.${today}`);
-        for (const row of (leasesData ?? []) as unknown as { unit_id: string; tenant: { full_name: string } | null }[]) {
+
+        const leaseRows = (leasesData ?? []) as unknown as {
+          unit_id: string;
+          tenant_id: string;
+          responsible_payer_id: string | null;
+          tenant: { full_name: string } | null;
+        }[];
+
+        for (const row of leaseRows) {
           if (row.tenant) tenantMap[row.unit_id] = row.tenant.full_name;
+        }
+
+        const responsibleIds = [...new Set(
+          leaseRows
+            .filter(r => r.responsible_payer_id != null && r.responsible_payer_id !== r.tenant_id)
+            .map(r => r.responsible_payer_id as string),
+        )];
+
+        if (responsibleIds.length > 0) {
+          const { data: payerData } = await supabase
+            .from("tenants")
+            .select("id, full_name")
+            .in("id", responsibleIds);
+
+          const payerNameMap: Record<string, string> = {};
+          for (const p of (payerData ?? []) as { id: string; full_name: string }[]) {
+            payerNameMap[p.id] = p.full_name;
+          }
+
+          for (const row of leaseRows) {
+            if (row.responsible_payer_id && row.responsible_payer_id !== row.tenant_id) {
+              const name = payerNameMap[row.responsible_payer_id];
+              if (name) responsibleMap[row.unit_id] = name;
+            }
+          }
         }
       }
 
@@ -928,6 +962,7 @@ export default function ServiciosPage() {
           address:             companyAddress,
           rfc:                 companyTaxId,
           accentColor,
+          logoUrl:             logoUrl ?? undefined,
           logoMatzUrl:         logoGroupUrl ?? undefined,
           serviceName:         svcName,
           providerName:        meter.provider_name ?? "",
@@ -942,6 +977,7 @@ export default function ServiciosPage() {
           serviceChargePct:    2,
           serviceChargeAmount: svcCharge,
           total:               subtotal + svcCharge,
+          responsibleName:     responsibleMap[unitId],
           folio,
         });
         zip.file(`${folio}.pdf`, blob);
@@ -986,6 +1022,8 @@ export default function ServiciosPage() {
         address:      companyAddress,
         rfc:          companyTaxId,
         accentColor,
+        logoUrl:      logoUrl ?? undefined,
+        logoMatzUrl:  logoGroupUrl ?? undefined,
         serviceName:  svcName,
         providerName: meter.provider_name ?? "",
         meterNumber:  meter.meter_number ?? undefined,
