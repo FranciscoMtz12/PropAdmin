@@ -43,21 +43,6 @@ function formatMXN(n: number) {
   }).format(n);
 }
 
-async function urlToBase64(url: string): Promise<string | undefined> {
-  try {
-    const res = await fetch(url);
-    if (!res.ok) return undefined;
-    const blob = await res.blob();
-    if (!blob.type.startsWith("image/")) return undefined;
-    return new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result as string);
-      reader.readAsDataURL(blob);
-    });
-  } catch {
-    return undefined;
-  }
-}
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -968,10 +953,6 @@ export default function ServiciosPage() {
       );
 
       const matzUrl = logoGroupUrl ?? logoPrintUrl;
-      const [logoBase64, logoMatzBase64] = await Promise.all([
-        logoPrintUrl ? urlToBase64(logoPrintUrl) : Promise.resolve(undefined),
-        matzUrl ? urlToBase64(matzUrl) : Promise.resolve(undefined),
-      ]);
       const zip = new JSZip();
 
       for (const { unitId, agg, unitNumber } of sortedUnits) {
@@ -983,8 +964,8 @@ export default function ServiciosPage() {
           address:             companyAddress,
           rfc:                 companyTaxId,
           accentColor,
-          logoUrl:             logoBase64,
-          logoMatzUrl:         logoMatzBase64,
+          logoUrl:             logoPrintUrl ?? undefined,
+          logoMatzUrl:         matzUrl ?? undefined,
           serviceName:         svcName,
           providerName:        meter.provider_name ?? "",
           period:              periodLabel,
@@ -1043,8 +1024,8 @@ export default function ServiciosPage() {
         address:      companyAddress,
         rfc:          companyTaxId,
         accentColor,
-        logoUrl:      logoBase64,
-        logoMatzUrl:  logoMatzBase64,
+        logoUrl:      logoPrintUrl ?? undefined,
+        logoMatzUrl:  matzUrl ?? undefined,
         serviceName:  svcName,
         providerName: meter.provider_name ?? "",
         meterNumber:  meter.meter_number ?? undefined,
