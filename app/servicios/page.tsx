@@ -966,6 +966,13 @@ export default function ServiciosPage() {
         logoPrintUrl ? urlToBase64(logoPrintUrl) : Promise.resolve(undefined),
         matzUrl ? urlToBase64(matzUrl) : Promise.resolve(undefined),
       ]);
+      console.log("[LOGOS DEBUG]", {
+        logoPrintUrl,
+        logoGroupUrl,
+        matzUrl,
+        logoBase64Length: logoBase64?.length ?? 0,
+        logoMatzBase64Length: logoMatzBase64?.length ?? 0,
+      });
 
       const zip = new JSZip();
 
