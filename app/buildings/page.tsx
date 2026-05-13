@@ -16,7 +16,7 @@
   Funcionalidad CRUD intacta: crear / editar / eliminar edificio.
 */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -31,14 +31,15 @@ import {
 } from "recharts";
 import {
   Building2,
-  DoorOpen,
   Edit3,
+  Factory,
   Filter,
   Home,
   Map as MapIcon,
+  MapPin,
   MoreHorizontal,
   Plus,
-  Tags,
+  Store,
   TrendingUp,
   Trash2,
   Warehouse,
@@ -49,7 +50,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
-import BuildingCategoryBadge from "@/components/BuildingCategoryBadge";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -59,10 +59,13 @@ import UiButton from "@/components/UiButton";
 import AppSelect from "@/components/AppSelect";
 import AppFormField from "@/components/AppFormField";
 import AppEmptyState from "@/components/AppEmptyState";
+import { BUILDING_CATEGORIES } from "@/lib/buildingCategories";
 import {
-  BUILDING_CATEGORIES,
-  MIXED_USE_SUBCATEGORIES,
-} from "@/lib/buildingCategories";
+  getPropertyType,
+  PROPERTY_TYPES,
+  PROPERTY_TAGS,
+  BUILDING_FEATURES,
+} from "@/lib/property-types";
 import {
   INPUT_STYLE,
   dropdownTriggerStyle,
@@ -72,6 +75,10 @@ import {
   warnBannerStyle,
   errorBannerStyle,
 } from "@/lib/pageStyles";
+
+const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  Building2, Store, Warehouse, Factory, MapPin,
+};
 
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
@@ -85,6 +92,10 @@ type Building = {
   building_subcategory: string | null;
   latitude: number | null;
   longitude: number | null;
+  total_sqm: number | null;
+  building_tags: string[] | null;
+  building_features: Record<string, boolean> | null;
+  parent_building_id: string | null;
 };
 
 type UnitForTrend = {
@@ -176,27 +187,21 @@ const errorTextStyle: React.CSSProperties = {
   marginBottom: 0,
 };
 
-const buildingSchema = z
-  .object({
-    name: z.string().min(1, "El nombre del edificio es obligatorio"),
-    code: z.string().optional(),
-    address: z.string().optional(),
-    building_category: z.string().min(1, "Selecciona una categoría"),
-    building_subcategory: z.string().optional(),
-    /* Coordenadas opcionales para el mapa. Se guardan como string y
-       se convierten a number en el submit (evita incompatibilidades
-       de tipos entre zod preprocess y react-hook-form). */
-    latitude: z.string().optional(),
-    longitude: z.string().optional(),
-  })
-  .refine(
-    (data) =>
-      data.building_category !== "mixed_use" || !!data.building_subcategory,
-    {
-      message: "Debes seleccionar el tipo de uso mixto",
-      path: ["building_subcategory"],
-    }
-  );
+const buildingSchema = z.object({
+  name: z.string().min(1, "El nombre del edificio es obligatorio"),
+  code: z.string().optional(),
+  address: z.string().optional(),
+  building_category: z.string().min(1, "Selecciona una categoría"),
+  building_subcategory: z.string().optional(),
+  /* Coordenadas opcionales para el mapa. Se guardan como string y
+     se convierten a number en el submit (evita incompatibilidades
+     de tipos entre zod preprocess y react-hook-form). */
+  latitude: z.string().optional(),
+  longitude: z.string().optional(),
+  total_sqm: z.string().optional(),
+  building_tags: z.array(z.string()).optional(),
+  building_features: z.record(z.string(), z.boolean()).optional(),
+});
 type BuildingFormValues = z.infer<typeof buildingSchema>;
 
 const BUILDING_DEFAULTS: BuildingFormValues = {
@@ -207,6 +212,9 @@ const BUILDING_DEFAULTS: BuildingFormValues = {
   building_subcategory: "",
   latitude: "",
   longitude: "",
+  total_sqm: "",
+  building_tags: [],
+  building_features: {},
 };
 
 /* LocationPicker — importación dinámica (ssr: false) porque usa Leaflet. */
@@ -272,6 +280,25 @@ export default function BuildingsPage() {
     defaultValues: BUILDING_DEFAULTS,
   });
   const buildingCategory = watch("building_category");
+  const buildingTags = watch("building_tags") ?? [];
+  const buildingFeatures = watch("building_features") ?? {};
+  const showSqm = buildingCategory !== "residential";
+  const showFeatures = buildingCategory === "industrial" || buildingCategory === "industrial_park" || buildingCategory === "commercial";
+
+  function toggleTag(value: string) {
+    const current = (getValues("building_tags") as string[]) ?? [];
+    if (current.includes(value)) {
+      setValue("building_tags", current.filter((t) => t !== value));
+    } else {
+      setValue("building_tags", [...current, value]);
+    }
+  }
+
+  function toggleFeature(key: string) {
+    const current = (getValues("building_features") as Record<string, boolean>) ?? {};
+    setValue("building_features", { ...current, [key]: !current[key] });
+  }
+
   /* Coordenadas observadas como números (o null si están vacías/no válidas). */
   const latitudeStr  = watch("latitude");
   const longitudeStr = watch("longitude");
@@ -326,7 +353,7 @@ export default function BuildingsPage() {
     /* 1. Edificios */
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id")
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -517,6 +544,9 @@ export default function BuildingsPage() {
       building_subcategory: building.building_subcategory || "",
       latitude: building.latitude != null ? String(building.latitude) : "",
       longitude: building.longitude != null ? String(building.longitude) : "",
+      total_sqm: building.total_sqm != null ? String(building.total_sqm) : "",
+      building_tags: building.building_tags ?? [],
+      building_features: building.building_features ?? {},
     });
     setIsEditModalOpen(true);
     setOpenActionsBuildingId(null);
@@ -555,12 +585,12 @@ export default function BuildingsPage() {
       code: data.code?.trim() || null,
       address: data.address?.trim() || null,
       building_category: data.building_category,
-      building_subcategory:
-        data.building_category === "mixed_use"
-          ? data.building_subcategory || null
-          : null,
+      building_subcategory: null,
       latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
       longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
+      total_sqm: data.total_sqm && data.total_sqm.trim() ? Number(data.total_sqm) : null,
+      building_tags: data.building_tags?.length ? data.building_tags : null,
+      building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
     });
     if (error) { setMsg(error.message); return; }
     setMsg("Edificio guardado correctamente.");
@@ -581,12 +611,12 @@ export default function BuildingsPage() {
         code: data.code?.trim() || null,
         address: data.address?.trim() || null,
         building_category: data.building_category,
-        building_subcategory:
-          data.building_category === "mixed_use"
-            ? data.building_subcategory || null
-            : null,
-        latitude: data.latitude || null,
-        longitude: data.longitude || null,
+        building_subcategory: null,
+        latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
+        longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
+        total_sqm: data.total_sqm && data.total_sqm.trim() ? Number(data.total_sqm) : null,
+        building_tags: data.building_tags?.length ? data.building_tags : null,
+        building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
       })
       .eq("id", buildingEditingId)
       .eq("company_id", user.company_id);
@@ -823,7 +853,35 @@ export default function BuildingsPage() {
                         >
                           {building.address || "Sin dirección registrada"}
                         </p>
-                        <BuildingCategoryBadge category={building.building_category} />
+                        {(() => {
+                          const pt = getPropertyType(building.building_category);
+                          const PtIcon = ICON_MAP[pt.icon];
+                          return (
+                            <span style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                              borderRadius: 999, background: pt.color + "1a", color: pt.color,
+                            }}>
+                              {PtIcon && <PtIcon size={11} />}
+                              {pt.label}
+                            </span>
+                          );
+                        })()}
+                        {(building.building_tags?.length ?? 0) > 0 && (
+                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                            {(building.building_tags ?? []).slice(0, 2).map((tag) => {
+                              const tagDef = PROPERTY_TAGS.find((t) => t.value === tag);
+                              return (
+                                <span key={tag} style={{
+                                  fontSize: 10, padding: "1px 6px", borderRadius: 999,
+                                  background: "#F3F4F6", color: "#4B5563", fontWeight: 500,
+                                }}>
+                                  {tagDef?.label ?? tag}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
 
                       {/* Dona — tamaño fijo, no se encoge */}
@@ -877,6 +935,14 @@ export default function BuildingsPage() {
                           </p>
                           <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
                         </div>
+                        {building.total_sqm != null && building.building_category !== "residential" && (
+                          <div style={{ textAlign: "center" }}>
+                            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                              {building.total_sqm.toLocaleString("es-MX")}
+                            </p>
+                            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>m²</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* Acciones */}
@@ -1064,59 +1130,105 @@ export default function BuildingsPage() {
             {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </AppFormField>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 16,
-              marginBottom: 16,
-            }}
-          >
-            <AppFormField label="Código">
+          <AppFormField label="Código">
+            <input
+              {...register("code")}
+              placeholder="Ej. TC-001"
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+
+          <AppFormField label="Tipo de propiedad" required>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {PROPERTY_TYPES.map((pt) => {
+                const PtIcon = ICON_MAP[pt.icon];
+                const selected = buildingCategory === pt.value;
+                return (
+                  <button
+                    key={pt.value}
+                    type="button"
+                    onClick={() => setValue("building_category", pt.value)}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                      border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
+                      background: selected ? pt.color + "15" : "var(--bg-card)",
+                      color: selected ? pt.color : "var(--text-secondary)",
+                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
+                    {pt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.building_category ? (
+              <p style={errorTextStyle}>{errors.building_category.message}</p>
+            ) : null}
+          </AppFormField>
+
+          {showSqm && (
+            <AppFormField label="Superficie total (m²)">
               <input
-                {...register("code")}
-                placeholder="Ej. TC-001"
+                {...register("total_sqm")}
+                type="number"
+                placeholder="Ej. 2500"
                 style={INPUT_STYLE}
               />
             </AppFormField>
+          )}
 
-            <AppFormField label="Categoría" required>
-              <AppSelect
-                {...register("building_category", {
-                  onChange: (e) => {
-                    if (e.target.value !== "mixed_use") {
-                      setValue("building_subcategory", "");
-                    }
-                  },
+          <AppFormField label="Etiquetas">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {PROPERTY_TAGS.map((tag) => {
+                const active = (buildingTags as string[]).includes(tag.value);
+                return (
+                  <button
+                    key={tag.value}
+                    type="button"
+                    onClick={() => toggleTag(tag.value)}
+                    style={{
+                      padding: "4px 12px", borderRadius: 999, fontSize: 12,
+                      border: active ? "2px solid var(--accent)" : "2px solid var(--border-default)",
+                      background: active ? "var(--accent-bg, #EFF6FF)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--text-secondary)",
+                      cursor: "pointer", fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {tag.label}
+                  </button>
+                );
+              })}
+            </div>
+          </AppFormField>
+
+          {showFeatures && (
+            <AppFormField label="Características">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {BUILDING_FEATURES.map((feat) => {
+                  const active = !!(buildingFeatures as Record<string, boolean>)[feat.key];
+                  return (
+                    <label
+                      key={feat.key}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        cursor: "pointer", fontSize: 13, color: "var(--text-primary)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        onChange={() => toggleFeature(feat.key)}
+                      />
+                      {feat.label}
+                    </label>
+                  );
                 })}
-              >
-                {BUILDING_CATEGORIES.map((item, index) => (
-                  <option key={`${item.key}-${index}`} value={item.key}>
-                    {item.label}
-                  </option>
-                ))}
-              </AppSelect>
-              {errors.building_category ? (
-                <p style={errorTextStyle}>{errors.building_category.message}</p>
-              ) : null}
+              </div>
             </AppFormField>
-          </div>
-
-          {buildingCategory === "mixed_use" ? (
-            <AppFormField label="Subcategoría de uso mixto" required>
-              <AppSelect {...register("building_subcategory")}>
-                <option value="">Selecciona una subcategoría</option>
-                {MIXED_USE_SUBCATEGORIES.map((item, index) => (
-                  <option key={`${item.value}-${index}`} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </AppSelect>
-              {errors.building_subcategory ? (
-                <p style={errorTextStyle}>{errors.building_subcategory.message}</p>
-              ) : null}
-            </AppFormField>
-          ) : null}
+          )}
 
           <AppFormField label="Dirección">
             <input
@@ -1201,59 +1313,105 @@ export default function BuildingsPage() {
             {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </AppFormField>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 16,
-              marginBottom: 16,
-            }}
-          >
-            <AppFormField label="Código">
+          <AppFormField label="Código">
+            <input
+              {...register("code")}
+              placeholder="Ej. TC-001"
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+
+          <AppFormField label="Tipo de propiedad" required>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {PROPERTY_TYPES.map((pt) => {
+                const PtIcon = ICON_MAP[pt.icon];
+                const selected = buildingCategory === pt.value;
+                return (
+                  <button
+                    key={pt.value}
+                    type="button"
+                    onClick={() => setValue("building_category", pt.value)}
+                    style={{
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                      border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
+                      background: selected ? pt.color + "15" : "var(--bg-card)",
+                      color: selected ? pt.color : "var(--text-secondary)",
+                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
+                    {pt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {errors.building_category ? (
+              <p style={errorTextStyle}>{errors.building_category.message}</p>
+            ) : null}
+          </AppFormField>
+
+          {showSqm && (
+            <AppFormField label="Superficie total (m²)">
               <input
-                {...register("code")}
-                placeholder="Ej. TC-001"
+                {...register("total_sqm")}
+                type="number"
+                placeholder="Ej. 2500"
                 style={INPUT_STYLE}
               />
             </AppFormField>
+          )}
 
-            <AppFormField label="Categoría" required>
-              <AppSelect
-                {...register("building_category", {
-                  onChange: (e) => {
-                    if (e.target.value !== "mixed_use") {
-                      setValue("building_subcategory", "");
-                    }
-                  },
+          <AppFormField label="Etiquetas">
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {PROPERTY_TAGS.map((tag) => {
+                const active = (buildingTags as string[]).includes(tag.value);
+                return (
+                  <button
+                    key={tag.value}
+                    type="button"
+                    onClick={() => toggleTag(tag.value)}
+                    style={{
+                      padding: "4px 12px", borderRadius: 999, fontSize: 12,
+                      border: active ? "2px solid var(--accent)" : "2px solid var(--border-default)",
+                      background: active ? "var(--accent-bg, #EFF6FF)" : "transparent",
+                      color: active ? "var(--accent)" : "var(--text-secondary)",
+                      cursor: "pointer", fontWeight: active ? 600 : 400,
+                    }}
+                  >
+                    {tag.label}
+                  </button>
+                );
+              })}
+            </div>
+          </AppFormField>
+
+          {showFeatures && (
+            <AppFormField label="Características">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {BUILDING_FEATURES.map((feat) => {
+                  const active = !!(buildingFeatures as Record<string, boolean>)[feat.key];
+                  return (
+                    <label
+                      key={feat.key}
+                      style={{
+                        display: "flex", alignItems: "center", gap: 8,
+                        cursor: "pointer", fontSize: 13, color: "var(--text-primary)",
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={active}
+                        onChange={() => toggleFeature(feat.key)}
+                      />
+                      {feat.label}
+                    </label>
+                  );
                 })}
-              >
-                {BUILDING_CATEGORIES.map((item, index) => (
-                  <option key={`${item.key}-${index}`} value={item.key}>
-                    {item.label}
-                  </option>
-                ))}
-              </AppSelect>
-              {errors.building_category ? (
-                <p style={errorTextStyle}>{errors.building_category.message}</p>
-              ) : null}
+              </div>
             </AppFormField>
-          </div>
-
-          {buildingCategory === "mixed_use" ? (
-            <AppFormField label="Subcategoría de uso mixto" required>
-              <AppSelect {...register("building_subcategory")}>
-                <option value="">Selecciona una subcategoría</option>
-                {MIXED_USE_SUBCATEGORIES.map((item, index) => (
-                  <option key={`${item.value}-${index}`} value={item.value}>
-                    {item.label}
-                  </option>
-                ))}
-              </AppSelect>
-              {errors.building_subcategory ? (
-                <p style={errorTextStyle}>{errors.building_subcategory.message}</p>
-              ) : null}
-            </AppFormField>
-          ) : null}
+          )}
 
           <AppFormField label="Dirección">
             <input
