@@ -43,6 +43,23 @@ function formatMXN(n: number) {
   }).format(n);
 }
 
+async function storageUrlToBase64(url: string): Promise<string | undefined> {
+  try {
+    const match = url.match(/\/storage\/v1\/object\/public\/([^/]+)\/(.+)/);
+    if (!match) return undefined;
+    const bucket = match[1];
+    const path = match[2];
+    const { data, error } = await supabase.storage.from(bucket).download(path);
+    if (error || !data) return undefined;
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(data);
+    });
+  } catch {
+    return undefined;
+  }
+}
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -953,6 +970,10 @@ export default function ServiciosPage() {
       );
 
       const matzUrl = logoGroupUrl ?? logoPrintUrl;
+      const [logoBase64, logoMatzBase64] = await Promise.all([
+        logoPrintUrl ? storageUrlToBase64(logoPrintUrl) : Promise.resolve(undefined),
+        matzUrl ? storageUrlToBase64(matzUrl) : Promise.resolve(undefined),
+      ]);
       const zip = new JSZip();
 
       for (const { unitId, agg, unitNumber } of sortedUnits) {
@@ -964,8 +985,8 @@ export default function ServiciosPage() {
           address:             companyAddress,
           rfc:                 companyTaxId,
           accentColor,
-          logoUrl:             logoPrintUrl ?? undefined,
-          logoMatzUrl:         matzUrl ?? undefined,
+          logoUrl:             logoBase64,
+          logoMatzUrl:         logoMatzBase64,
           serviceName:         svcName,
           providerName:        meter.provider_name ?? "",
           period:              periodLabel,
@@ -1024,8 +1045,8 @@ export default function ServiciosPage() {
         address:      companyAddress,
         rfc:          companyTaxId,
         accentColor,
-        logoUrl:      logoPrintUrl ?? undefined,
-        logoMatzUrl:  matzUrl ?? undefined,
+        logoUrl:      logoBase64,
+        logoMatzUrl:  logoMatzBase64,
         serviceName:  svcName,
         providerName: meter.provider_name ?? "",
         meterNumber:  meter.meter_number ?? undefined,
