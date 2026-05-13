@@ -656,24 +656,18 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
               <Text style={[S.tableHeaderCell, { width: 90, textAlign: "right" }]}>Importe</Text>
             </View>
 
-            {/* Fila servicio principal */}
-            <View style={S.tableRow}>
+            {/* Fila servicio principal — cargo por servicio embebido bajo el importe */}
+            <View style={S.tableRowLast}>
               <Text style={[S.tableCell, { flex: 2 }]}>
                 {data.serviceName}{data.providerName ? ` · ${data.providerName}` : ""}
               </Text>
               <Text style={[S.tableCell, { flex: 3 }]}>{detailText}</Text>
-              <Text style={[S.tableCell, { width: 90, textAlign: "right" }]}>{fmt(data.subtotal)}</Text>
-            </View>
-
-            {/* Cargo servicio — sub-fila gris, indentada, sin peso visual igual */}
-            <View style={S.tableRowLast}>
-              <Text style={[S.tableCell, { flex: 2, fontSize: 7.5, color: "#6B7280", paddingLeft: 16 }]}>
-                Cargo por servicio ({data.serviceChargePct}%)
-              </Text>
-              <Text style={[S.tableCell, { flex: 3, fontSize: 7.5, color: "#6B7280" }]}></Text>
-              <Text style={[S.tableCell, { width: 90, textAlign: "right", fontSize: 7.5, color: "#6B7280" }]}>
-                {fmt(data.serviceChargeAmount)}
-              </Text>
+              <View style={[S.tableCell, { width: 90, alignItems: "flex-end" }]}>
+                <Text style={{ fontSize: 8.5, color: "#374151", textAlign: "right" }}>{fmt(data.subtotal)}</Text>
+                <Text style={{ fontSize: 7, color: "#6B7280", textAlign: "right", marginTop: 2 }}>
+                  {"Cargo por servicio  "}{fmt(data.serviceChargeAmount)}
+                </Text>
+              </View>
             </View>
 
             {/* Footer — total */}

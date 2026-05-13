@@ -27,6 +27,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
 type ThemeContextType = {
   accentColor: string;
   logoUrl: string | null;
+  logoPrintUrl: string | null;
   logoDarkUrl: string | null;
   logoGroupUrl: string | null;
   shortName: string;
@@ -54,6 +55,7 @@ const DEFAULT_ACCENT = "#8B2252";
 const ThemeContext = createContext<ThemeContextType>({
   accentColor: DEFAULT_ACCENT,
   logoUrl: null,
+  logoPrintUrl: null,
   logoDarkUrl: null,
   logoGroupUrl: null,
   shortName: "PropAdmin",
@@ -91,6 +93,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoPrintUrl, setLogoPrintUrl] = useState<string | null>(null);
   const [logoDarkUrl, setLogoDarkUrl] = useState<string | null>(null);
   const [logoGroupUrl, setLogoGroupUrl] = useState<string | null>(null);
   const [shortName, setShortName] = useState("PropAdmin");
@@ -142,7 +145,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadCompanyBranding(companyId: string) {
     const { data } = await supabase
       .from("companies")
-      .select("brand_color, logo_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email")
+      .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email")
       .eq("id", companyId)
       .maybeSingle();
 
@@ -150,6 +153,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (data.brand_color) setAccentColor(data.brand_color);
     setLogoUrl(data.logo_url ?? null);
+    setLogoPrintUrl(data.logo_print_url ?? null);
     setLogoDarkUrl(data.logo_dark_url ?? null);
     setLogoGroupUrl(data.logo_group_url ?? null);
     if (data.short_name) setShortName(data.short_name);
@@ -192,6 +196,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       value={{
         accentColor,
         logoUrl,
+        logoPrintUrl,
         logoDarkUrl,
         logoGroupUrl,
         shortName,

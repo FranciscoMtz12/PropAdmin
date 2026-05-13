@@ -541,7 +541,7 @@ function PeriodSelector({
 
 export default function ServiciosPage() {
   const { user, loading } = useCurrentUser();
-  const { legalName, companyAddress, companyTaxId, accentColor, logoUrl, logoGroupUrl } = useTheme();
+  const { legalName, companyAddress, companyTaxId, accentColor, logoPrintUrl, logoGroupUrl } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -962,9 +962,10 @@ export default function ServiciosPage() {
       );
 
       const [logoBase64, logoMatzBase64] = await Promise.all([
-        logoUrl ? urlToBase64(logoUrl) : Promise.resolve(undefined),
+        logoPrintUrl ? urlToBase64(logoPrintUrl) : Promise.resolve(undefined),
         logoGroupUrl ? urlToBase64(logoGroupUrl) : Promise.resolve(undefined),
       ]);
+      console.log("[PDF logos]", { logoPrintUrl, logoGroupUrl, hasLogo: !!logoBase64, hasMatz: !!logoMatzBase64 });
 
       const zip = new JSZip();
 
