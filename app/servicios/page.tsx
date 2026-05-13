@@ -961,11 +961,11 @@ export default function ServiciosPage() {
         e => e.unitNumber,
       );
 
+      const matzUrl = logoGroupUrl ?? logoPrintUrl;
       const [logoBase64, logoMatzBase64] = await Promise.all([
         logoPrintUrl ? urlToBase64(logoPrintUrl) : Promise.resolve(undefined),
-        logoGroupUrl ? urlToBase64(logoGroupUrl) : Promise.resolve(undefined),
+        matzUrl ? urlToBase64(matzUrl) : Promise.resolve(undefined),
       ]);
-      console.log("[PDF logos]", { logoPrintUrl, logoGroupUrl, hasLogo: !!logoBase64, hasMatz: !!logoMatzBase64 });
 
       const zip = new JSZip();
 

@@ -595,9 +595,6 @@ function ReciboServicioDocument({ data }: { data: ReciboServicioTemplateData }) 
     <Document>
       <Page size="A4" style={S.page}>
 
-        {/* Barra de acento */}
-        <View style={S.accentBar} />
-
         <View style={S.pageContent}>
 
           {/* Header */}
