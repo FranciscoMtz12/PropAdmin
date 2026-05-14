@@ -1603,8 +1603,8 @@ export default function BuildingDetailPage() {
               )}
             </SectionCard>}
 
-            {/* Col derecha: Cobranza */}
-            <SectionCard
+            {/* Col derecha: Cobranza — oculta para parques industriales */}
+            {!isIndustrialPark && <SectionCard
               title={labels.collections}
               subtitle={`Últimos ${collectionMonths} meses`}
               icon={<CreditCard size={18} />}
@@ -1644,7 +1644,7 @@ export default function BuildingDetailPage() {
                   </BarChart>
                 </ResponsiveContainer>
               )}
-            </SectionCard>
+            </SectionCard>}
           </div>
 
           {/* ── Fila 3: Tendencia de ocupación — oculta para terrenos y parques ── */}
@@ -1679,8 +1679,8 @@ export default function BuildingDetailPage() {
             )}
           </SectionCard>}
 
-          {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
+          {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos (oculta para parques) ── */}
+          {!isIndustrialPark && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
 
             {/* Servicios activos */}
             <SectionCard title="Servicios activos" subtitle="Gestionado desde el tab Servicios." icon={<Wrench size={18} />}>
@@ -1745,7 +1745,7 @@ export default function BuildingDetailPage() {
                 ))}
               </div>
             </SectionCard>
-          </div>
+          </div>}
         </div>
       ) : null}
 
