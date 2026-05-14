@@ -221,6 +221,16 @@ type LandLease = {
 
 type TrendPoint = { label: string; total: number; occupied: number; pct: number };
 
+type ChildBuilding = {
+  id: string;
+  name: string;
+  code: string | null;
+  building_category: string | null;
+  total_sqm: number | null;
+  land_sqm: number | null;
+  construction_sqm: number | null;
+};
+
 type BuildingAssetRow = {
   id: string;
   asset_type: string;
@@ -552,8 +562,19 @@ export default function BuildingDetailPage() {
   /* Counts de tabs (cargados al inicio para evitar mostrar 0) */
   const [tabCounts, setTabCounts] = useState({ assets: 0, docs: 0, gallery: 0, services: 0, parking: 0 });
 
-  /* Contratos de terreno (building_id directo, unit_id IS NULL) */
+  /* Contratos directos del edificio (land, commercial, industrial) */
   const [landLeases, setLandLeases] = useState<LandLease[]>([]);
+
+  /* Bodegas hijas (industrial_park) */
+  const [childBuildings, setChildBuildings] = useState<ChildBuilding[]>([]);
+  const [isCreateBodegaOpen, setIsCreateBodegaOpen] = useState(false);
+  const [savingBodega, setSavingBodega] = useState(false);
+  const [bodegaName, setBodegaName] = useState("");
+  const [bodegaCode, setBodegaCode] = useState("");
+  const [bodegaLandSqm, setBodegaLandSqm] = useState("");
+  const [bodegaConstructionSqm, setBodegaConstructionSqm] = useState("");
+  const [bodegaFeatures, setBodegaFeatures] = useState<Record<string, boolean>>({});
+  const [bodegaMsg, setBodegaMsg] = useState("");
 
   /* Cajones de estacionamiento */
   const [parkingSpots, setParkingSpots]   = useState<ParkingSpot[]>([]);
@@ -703,8 +724,8 @@ export default function BuildingDetailPage() {
       setLeasesForTrend([]);
     }
 
-    /* Contratos de terreno: ligados al building con unit_id IS NULL */
-    if (b.building_category === "land") {
+    /* Contratos directos del edificio (land, commercial, industrial) — unit_id IS NULL */
+    if (["land", "commercial", "industrial"].includes(b.building_category ?? "")) {
       type LLRow = { id: string; tenant_id: string; rent_amount: number; start_date: string | null; end_date: string | null; status: string; leased_sqm: number | null };
       const { data: llData } = await supabase
         .from("leases")
@@ -715,7 +736,6 @@ export default function BuildingDetailPage() {
         .order("created_at", { ascending: false });
       const llRows = (llData || []) as LLRow[];
 
-      /* Nombres de inquilinos */
       const tIds = [...new Set(llRows.map((l) => l.tenant_id).filter(Boolean))];
       const tenantNameMap: Record<string, string> = {};
       if (tIds.length > 0) {
@@ -727,6 +747,20 @@ export default function BuildingDetailPage() {
       setLandLeases(llRows.map((l) => ({ ...l, tenant_name: tenantNameMap[l.tenant_id] ?? null })));
     } else {
       setLandLeases([]);
+    }
+
+    /* Bodegas hijas (industrial_park) */
+    if (b.building_category === "industrial_park") {
+      const { data: cbData } = await supabase
+        .from("buildings")
+        .select("id, name, code, building_category, total_sqm, land_sqm, construction_sqm")
+        .eq("parent_building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null)
+        .order("name");
+      setChildBuildings((cbData || []) as ChildBuilding[]);
+    } else {
+      setChildBuildings([]);
     }
 
     // Unidades del edificio para BuildingServicesTab + servicios para Resumen
@@ -1053,6 +1087,30 @@ export default function BuildingDetailPage() {
     setMsg("Edificio actualizado correctamente.");
   }
 
+  async function handleCreateBodega(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.company_id || !building) return;
+    if (!bodegaName.trim()) { setBodegaMsg("El nombre es obligatorio."); return; }
+    setSavingBodega(true);
+    setBodegaMsg("");
+    const { error } = await supabase.from("buildings").insert({
+      company_id: user.company_id,
+      name: bodegaName.trim(),
+      code: bodegaCode.trim() || null,
+      building_category: "industrial",
+      parent_building_id: building.id,
+      land_sqm: bodegaLandSqm.trim() ? Number(bodegaLandSqm) : null,
+      construction_sqm: bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
+      building_features: bodegaFeatures,
+    });
+    setSavingBodega(false);
+    if (error) { setBodegaMsg(`Error: ${error.message}`); return; }
+    setIsCreateBodegaOpen(false);
+    setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm("");
+    setBodegaFeatures({}); setBodegaMsg("");
+    await loadBuilding();
+  }
+
   async function handleDeleteBuilding() {
     if (!user?.company_id || !building) return;
     setDeletingBuilding(true);
@@ -1230,10 +1288,40 @@ export default function BuildingDetailPage() {
 
   const categoryDefinition = getBuildingCategoryDefinition(building.building_category);
   const labels = getPropertyLabels(building.building_category);
-  const isLand = building.building_category === "land";
+  const isLand         = building.building_category === "land";
+  const isCommercial   = building.building_category === "commercial";
+  const isIndustrial   = building.building_category === "industrial";
+  const isIndustrialPark = building.building_category === "industrial_park";
+  const hasLeasesTab   = isLand || isCommercial || isIndustrial;
+  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark;
+  const hasAssetsTab   = !isIndustrialPark;
+  const hasServicesTab = !isIndustrialPark;
+  const hasBodegasTab  = isIndustrialPark;
+  const hideUnitsUI    = isLand || isIndustrialPark;
+
+  function getBuildingDetailLabel(cat: string | null): string {
+    switch (cat) {
+      case "commercial":    return "Detalle de la propiedad";
+      case "industrial":    return "Detalle de la nave";
+      case "industrial_park": return "Detalle del parque";
+      case "land":          return "Detalle del terreno";
+      default:              return "Detalle del edificio";
+    }
+  }
 
   return (
     <PageContainer>
+      {/* ── Breadcrumb dinámico ── */}
+      <div style={{ width: "100%", padding: "18px 0 0 0" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 13, color: "var(--text-secondary)" }}>
+          <a href="/dashboard" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Inicio</a>
+          <span style={{ color: "var(--text-muted)" }}>{">"}</span>
+          <a href="/buildings" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Propiedades</a>
+          <span style={{ color: "var(--text-muted)" }}>{">"}</span>
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{getBuildingDetailLabel(building.building_category)}</span>
+        </div>
+      </div>
+
       <PageHeader
         title={building.name}
         titleIcon={<Building2 size={20} />}
@@ -1269,8 +1357,8 @@ export default function BuildingDetailPage() {
               <Pencil size={18} />
               <span>Editar</span>
             </button>
-            {/* Unidades — oculto para terrenos */}
-            {!isLand && (
+            {/* Unidades — oculto para terrenos y parques industriales */}
+            {!hideUnitsUI && (
               <a
                 href={`/buildings/${building.id}/units`}
                 style={{
@@ -1315,13 +1403,14 @@ export default function BuildingDetailPage() {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: "overview",   label: "Resumen",       icon: <Building2 size={16} /> },
-          ...(isLand ? [{ key: "leases", label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
-          { key: "assets",     label: "Activos",    icon: <Package size={16} />,    count: tabCounts.assets },
-          { key: "documents",  label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
-          { key: "gallery",    label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
-          { key: "services",   label: "Servicios",  icon: <Wrench size={16} />,     count: tabCounts.services },
-          ...(!isLand ? [{ key: "parking", label: "Cajones", icon: <Car size={16} />, count: tabCounts.parking }] : []),
+          { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
+          ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
+          ...(hasBodegasTab ? [{ key: "bodegas", label: "Bodegas",     icon: <Warehouse size={16} />,    count: childBuildings.length }] : []),
+          ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
+          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
+          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
+          ...(hasServicesTab ? [{ key: "services", label: "Servicios", icon: <Wrench size={16} />,       count: tabCounts.services }] : []),
+          ...(hasParkingTab  ? [{ key: "parking",  label: "Cajones",   icon: <Car size={16} />,          count: tabCounts.parking }] : []),
         ]}
       />
 
@@ -1332,26 +1421,38 @@ export default function BuildingDetailPage() {
         <div style={{ display: "grid", gap: 24 }}>
 
           {/* ── Fila 1: métricas ── */}
-          <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            <OccupancyDonutCard occupied={occupiedUnits} total={totalUnits} />
-            {isLand ? (
-              building.land_sqm != null ? (
+          {isIndustrialPark ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+              <MetricCard label="Bodegas" value={String(childBuildings.length)} icon={<Warehouse size={18} />} helper="Naves en el parque" />
+              {building.land_sqm != null && (
+                <MetricCard label="M² totales" value={`${building.land_sqm.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="M² de terreno" />
+              )}
+              {building.construction_sqm != null && (
+                <MetricCard label="M² construcción" value={`${building.construction_sqm.toLocaleString("es-MX")} m²`} icon={<Building2 size={18} />} helper="M² construidos" />
+              )}
+            </div>
+          ) : (
+            <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <OccupancyDonutCard occupied={occupiedUnits} total={totalUnits} />
+              {isLand ? (
+                building.land_sqm != null ? (
+                  <MetricCard
+                    label="Superficie total"
+                    value={`${building.land_sqm.toLocaleString("es-MX")} m²`}
+                    icon={<MapPin size={18} />}
+                    helper="M² de terreno registrados"
+                  />
+                ) : null
+              ) : (
                 <MetricCard
-                  label="Superficie total"
-                  value={`${building.land_sqm.toLocaleString("es-MX")} m²`}
-                  icon={<MapPin size={18} />}
-                  helper="M² de terreno registrados"
+                  label={labels.units}
+                  value={`${occupiedUnits} / ${totalUnits}`}
+                  icon={<Home size={18} />}
+                  helper="Ocupadas sobre registradas"
                 />
-              ) : null
-            ) : (
-              <MetricCard
-                label="Unidades"
-                value={`${occupiedUnits} / ${totalUnits}`}
-                icon={<Home size={18} />}
-                helper="Ocupadas sobre registradas"
-              />
-            )}
-          </div>
+              )}
+            </div>
+          )}
 
           {/* ── Información general: 2 columnas — datos | mapa ── */}
           <SectionCard
@@ -1458,8 +1559,8 @@ export default function BuildingDetailPage() {
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
 
-            {/* Col izquierda: Distribución de unidades — oculta para terrenos */}
-            {!isLand && <SectionCard title="Distribución de unidades" icon={<Home size={18} />}>
+            {/* Col izquierda: Distribución — oculta para terrenos y parques */}
+            {!isLand && !isIndustrialPark && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />}>
               {totalUnits === 0 ? (
                 <AppEmptyState
                   title="Sin unidades registradas"
@@ -1546,8 +1647,8 @@ export default function BuildingDetailPage() {
             </SectionCard>
           </div>
 
-          {/* ── Fila 3: Tendencia de ocupación — oculta para terrenos ── */}
-          {!isLand && <SectionCard
+          {/* ── Fila 3: Tendencia de ocupación — oculta para terrenos y parques ── */}
+          {!isLand && !isIndustrialPark && <SectionCard
             title="Tendencia de ocupación"
             subtitle="Últimos 12 meses — total de unidades vs. unidades ocupadas."
             icon={<Building2 size={18} />}
@@ -1628,8 +1729,8 @@ export default function BuildingDetailPage() {
             <SectionCard title="Accesos rápidos" subtitle="Navega a los módulos del edificio." icon={<Layers3 size={18} />}>
               <div style={{ display: "grid", gap: 10 }}>
                 {[
-                  { title: "Tipologías",         desc: `${unitTypeCount} tipos de unidad registrados.`,       href: `/buildings/${building.id}/unit-types`, variant: undefined as "primary" | undefined, hidden: isLand },
-                  { title: labels.units,          desc: `${totalUnits} ${labels.unit.toLowerCase()}s en el ${labels.building.toLowerCase()}.`, href: `/buildings/${building.id}/units`, variant: "primary" as "primary" | undefined, hidden: isLand },
+                  { title: "Tipologías",         desc: `${unitTypeCount} tipos de unidad registrados.`,       href: `/buildings/${building.id}/unit-types`, variant: undefined as "primary" | undefined, hidden: hideUnitsUI },
+                  { title: labels.units,          desc: `${totalUnits} ${labels.unit.toLowerCase()}s en el ${labels.building.toLowerCase()}.`, href: `/buildings/${building.id}/units`, variant: "primary" as "primary" | undefined, hidden: hideUnitsUI },
                   { title: "Limpieza",            desc: "Organiza las áreas de limpieza.",                      href: `/buildings/${building.id}/cleaning`,    variant: undefined as "primary" | undefined, hidden: false },
                 ].filter(item => !item.hidden).map((item) => (
                   <AppCard key={item.href} style={{ padding: 14, borderRadius: 12 }}>
@@ -1823,7 +1924,7 @@ export default function BuildingDetailPage() {
       {/* ══════════════════════════════════════════════════════════════
           TAB: CONTRATOS DE TERRENO
       ══════════════════════════════════════════════════════════════ */}
-      {activeTab === "leases" && isLand ? (() => {
+      {activeTab === "leases" && hasLeasesTab ? (() => {
         const activeLeases = landLeases.filter((l) => l.status === "ACTIVE");
         const totalLeasedSqm = activeLeases.reduce((s, l) => s + (l.leased_sqm ?? 0), 0);
         const totalLandSqm = building.land_sqm ?? 0;
@@ -1969,6 +2070,51 @@ export default function BuildingDetailPage() {
         </div>
       ) : null}
 
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: BODEGAS (industrial_park)
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "bodegas" && hasBodegasTab ? (
+        <div style={{ display: "grid", gap: 20 }}>
+          <SectionCard
+            title="Bodegas del parque"
+            subtitle="Naves industriales que forman parte de este parque."
+            icon={<Warehouse size={18} />}
+            action={
+              <UiButton icon={<Plus size={15} />} onClick={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaFeatures({}); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+                Agregar bodega
+              </UiButton>
+            }
+          >
+            {childBuildings.length === 0 ? (
+              <AppEmptyState
+                title="Sin bodegas registradas"
+                description="Agrega la primera bodega para comenzar a gestionar el parque industrial."
+                actionLabel="Agregar primera bodega"
+                onAction={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaFeatures({}); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+              />
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {childBuildings.map((cb) => (
+                  <AppCard key={cb.id} style={{ padding: 16, borderRadius: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div>
+                        <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>{cb.name}</strong>
+                        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
+                          {cb.code ? `Código: ${cb.code}` : "Sin código"}
+                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m² construcción` : ""}
+                          {cb.land_sqm != null ? ` · ${cb.land_sqm.toLocaleString("es-MX")} m² terreno` : ""}
+                        </p>
+                      </div>
+                      <UiButton href={`/buildings/${cb.id}`}>Ver detalle</UiButton>
+                    </div>
+                  </AppCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
       {/* ── Modal editar edificio ── */}
       <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar propiedad">
         <form onSubmit={handleUpdateBuilding}>
@@ -2080,6 +2226,41 @@ export default function BuildingDetailPage() {
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)} disabled={savingEdit}>Cancelar</UiButton>
             <UiButton type="submit" disabled={savingEdit}>{savingEdit ? "Guardando..." : "Guardar cambios"}</UiButton>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Modal agregar bodega ── */}
+      <Modal open={isCreateBodegaOpen} onClose={() => { if (!savingBodega) setIsCreateBodegaOpen(false); }} title="Agregar bodega">
+        <form onSubmit={handleCreateBodega}>
+          {bodegaMsg ? <p style={errorBannerStyle}>{bodegaMsg}</p> : null}
+          <AppFormField label="Nombre de la bodega" required>
+            <input value={bodegaName} onChange={(e) => setBodegaName(e.target.value)} placeholder="Ej. Bodega 1" style={INPUT_STYLE} />
+          </AppFormField>
+          <AppFormField label="Código">
+            <input value={bodegaCode} onChange={(e) => setBodegaCode(e.target.value)} placeholder="Ej. B-01" style={INPUT_STYLE} />
+          </AppFormField>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
+            <AppFormField label="M² de terreno">
+              <input value={bodegaLandSqm} onChange={(e) => setBodegaLandSqm(e.target.value)} type="number" placeholder="Ej: 500" style={INPUT_STYLE} />
+            </AppFormField>
+            <AppFormField label="M² de construcción">
+              <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
+            </AppFormField>
+          </div>
+          <AppFormField label="Características">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              {BUILDING_FEATURES.map((feat) => (
+                <label key={feat.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                  <input type="checkbox" checked={!!bodegaFeatures[feat.key]} onChange={() => setBodegaFeatures((prev) => ({ ...prev, [feat.key]: !prev[feat.key] }))} />
+                  {feat.label}
+                </label>
+              ))}
+            </div>
+          </AppFormField>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
+            <UiButton type="button" variant="secondary" onClick={() => setIsCreateBodegaOpen(false)} disabled={savingBodega}>Cancelar</UiButton>
+            <UiButton type="submit" disabled={savingBodega}>{savingBodega ? "Guardando..." : "Crear bodega"}</UiButton>
           </div>
         </form>
       </Modal>
