@@ -1224,7 +1224,7 @@ export default function BuildingDetailPage() {
         items={[
           { key: "overview",   label: "Resumen",       icon: <Building2 size={16} /> },
           ...(isLand ? [{ key: "leases", label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
-          { key: "assets",     label: "Assets",     icon: <Package size={16} />,    count: tabCounts.assets },
+          { key: "assets",     label: "Activos",    icon: <Package size={16} />,    count: tabCounts.assets },
           { key: "documents",  label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
           { key: "gallery",    label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
           { key: "services",   label: "Servicios",  icon: <Wrench size={16} />,     count: tabCounts.services },
@@ -1238,15 +1238,26 @@ export default function BuildingDetailPage() {
       {activeTab === "overview" ? (
         <div style={{ display: "grid", gap: 24 }}>
 
-          {/* ── Fila 1: 2 métricas ── */}
+          {/* ── Fila 1: métricas ── */}
           <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <OccupancyDonutCard occupied={occupiedUnits} total={totalUnits} />
-            <MetricCard
-              label="Unidades"
-              value={`${occupiedUnits} / ${totalUnits}`}
-              icon={<Home size={18} />}
-              helper="Ocupadas sobre registradas"
-            />
+            {isLand ? (
+              building.land_sqm != null ? (
+                <MetricCard
+                  label="Superficie total"
+                  value={`${building.land_sqm.toLocaleString("es-MX")} m²`}
+                  icon={<MapPin size={18} />}
+                  helper="M² de terreno registrados"
+                />
+              ) : null
+            ) : (
+              <MetricCard
+                label="Unidades"
+                value={`${occupiedUnits} / ${totalUnits}`}
+                icon={<Home size={18} />}
+                helper="Ocupadas sobre registradas"
+              />
+            )}
           </div>
 
           {/* ── Información general: 2 columnas — datos | mapa ── */}
@@ -1354,8 +1365,8 @@ export default function BuildingDetailPage() {
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
 
-            {/* Col izquierda: Distribución de unidades */}
-            <SectionCard title="Distribución de unidades" icon={<Home size={18} />}>
+            {/* Col izquierda: Distribución de unidades — oculta para terrenos */}
+            {!isLand && <SectionCard title="Distribución de unidades" icon={<Home size={18} />}>
               {totalUnits === 0 ? (
                 <AppEmptyState
                   title="Sin unidades registradas"
@@ -1396,11 +1407,11 @@ export default function BuildingDetailPage() {
                   </div>
                 </>
               )}
-            </SectionCard>
+            </SectionCard>}
 
-            {/* Col derecha: Cobranza del edificio con toggle 3/6 meses */}
+            {/* Col derecha: Cobranza */}
             <SectionCard
-              title={`${labels.collections} del ${labels.building.toLowerCase()}`}
+              title={labels.collections}
               subtitle={`Últimos ${collectionMonths} meses`}
               icon={<CreditCard size={18} />}
               action={
@@ -1442,8 +1453,8 @@ export default function BuildingDetailPage() {
             </SectionCard>
           </div>
 
-          {/* ── Fila 3: Tendencia de ocupación ── */}
-          <SectionCard
+          {/* ── Fila 3: Tendencia de ocupación — oculta para terrenos ── */}
+          {!isLand && <SectionCard
             title="Tendencia de ocupación"
             subtitle="Últimos 12 meses — total de unidades vs. unidades ocupadas."
             icon={<Building2 size={18} />}
@@ -1472,7 +1483,7 @@ export default function BuildingDetailPage() {
                 </LineChart>
               </ResponsiveContainer>
             )}
-          </SectionCard>
+          </SectionCard>}
 
           {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
