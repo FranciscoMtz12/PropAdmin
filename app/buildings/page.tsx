@@ -201,7 +201,6 @@ const buildingSchema = z.object({
      de tipos entre zod preprocess y react-hook-form). */
   latitude: z.string().optional(),
   longitude: z.string().optional(),
-  total_sqm: z.string().optional(),
   building_tags: z.array(z.string()).optional(),
   building_features: z.record(z.string(), z.boolean()).optional(),
   land_sqm: z.string().optional(),
@@ -218,7 +217,6 @@ const BUILDING_DEFAULTS: BuildingFormValues = {
   building_subcategory: "",
   latitude: "",
   longitude: "",
-  total_sqm: "",
   building_tags: [],
   building_features: {},
   land_sqm: "",
@@ -291,15 +289,31 @@ export default function BuildingsPage() {
   const buildingCategory = watch("building_category");
   const buildingTags = watch("building_tags") ?? [];
   const buildingFeatures = watch("building_features") ?? {};
-  const showSqm = buildingCategory !== "residential";
-  const showFeatures = buildingCategory === "industrial" || buildingCategory === "industrial_park" || buildingCategory === "commercial";
 
-  function toggleTag(value: string) {
-    const current = (getValues("building_tags") as string[]) ?? [];
-    if (current.includes(value)) {
-      setValue("building_tags", current.filter((t) => t !== value));
+  /* Multi-type selection: primary type = building_category, secondary = building_tags filtered to type values */
+  const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
+  const selectedTypeTags = (buildingTags as string[]).filter((t) => PROPERTY_TYPE_VALUES.includes(t));
+  const selectedTypes = [buildingCategory, ...selectedTypeTags];
+
+  const FEATURES_TYPES = ["commercial", "industrial", "industrial_park"];
+  const showFeatures = selectedTypes.some((t) => FEATURES_TYPES.includes(t));
+
+  function toggleTypeSelection(value: string) {
+    const primary = getValues("building_category") as string;
+    const secTags = ((getValues("building_tags") as string[]) ?? []).filter((t) => PROPERTY_TYPE_VALUES.includes(t));
+    const all = [primary, ...secTags];
+
+    if (all.includes(value)) {
+      if (value === primary) {
+        if (secTags.length === 0) return; // min 1 — can't deselect the only one
+        setValue("building_category", secTags[0]);
+        setValue("building_tags", secTags.slice(1));
+      } else {
+        setValue("building_tags", secTags.filter((t) => t !== value));
+      }
     } else {
-      setValue("building_tags", [...current, value]);
+      if (all.length >= 3) return; // max 3
+      setValue("building_tags", [...secTags, value]);
     }
   }
 
@@ -553,7 +567,6 @@ export default function BuildingsPage() {
       building_subcategory: building.building_subcategory || "",
       latitude: building.latitude != null ? String(building.latitude) : "",
       longitude: building.longitude != null ? String(building.longitude) : "",
-      total_sqm: building.total_sqm != null ? String(building.total_sqm) : "",
       building_tags: building.building_tags ?? [],
       building_features: building.building_features ?? {},
       land_sqm: building.land_sqm != null ? String(building.land_sqm) : "",
@@ -600,7 +613,6 @@ export default function BuildingsPage() {
       building_subcategory: null,
       latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
       longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
-      total_sqm: data.total_sqm && data.total_sqm.trim() ? Number(data.total_sqm) : null,
       building_tags: data.building_tags?.length ? data.building_tags : null,
       building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
       land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
@@ -629,7 +641,6 @@ export default function BuildingsPage() {
         building_subcategory: null,
         latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
         longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
-        total_sqm: data.total_sqm && data.total_sqm.trim() ? Number(data.total_sqm) : null,
         building_tags: data.building_tags?.length ? data.building_tags : null,
         building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
         land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
@@ -674,7 +685,7 @@ export default function BuildingsPage() {
     <PageContainer>
       {/* Encabezado */}
       <PageHeader
-        title="Edificios"
+        title="Propiedades"
         titleIcon={<Building2 size={20} />}
         actions={
           <>
@@ -717,7 +728,7 @@ export default function BuildingsPage() {
         }}
       >
         <MetricCard
-          label="Total de edificios"
+          label="Total de propiedades"
           value={portfolioStats.total}
           icon={<Warehouse size={18} />}
           helper="Portafolio actual"
@@ -726,7 +737,7 @@ export default function BuildingsPage() {
           label="Al 75 %+ de ocupación"
           value={portfolioStats.highOccupancy}
           icon={<Building2 size={18} />}
-          helper="Edificios en alta ocupación"
+          helper="Propiedades en alta ocupación"
           variant="green"
         />
         <MetricCard
@@ -1160,13 +1171,15 @@ export default function BuildingsPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
               {PROPERTY_TYPES.map((pt) => {
                 const PtIcon = ICON_MAP[pt.icon];
-                const selected = buildingCategory === pt.value;
+                const orderIdx = selectedTypes.indexOf(pt.value);
+                const selected = orderIdx !== -1;
                 return (
                   <button
                     key={pt.value}
                     type="button"
-                    onClick={() => setValue("building_category", pt.value)}
+                    onClick={() => toggleTypeSelection(pt.value)}
                     style={{
+                      position: "relative",
                       display: "flex", flexDirection: "column", alignItems: "center",
                       justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
@@ -1176,27 +1189,34 @@ export default function BuildingsPage() {
                       transition: "all 0.15s ease",
                     }}
                   >
+                    {selected && (
+                      <span style={{
+                        position: "absolute", top: 4, left: 4,
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: pt.color, color: "#fff",
+                        fontSize: 10, fontWeight: 700,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {orderIdx + 1}
+                      </span>
+                    )}
                     {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
                     {pt.label}
                   </button>
                 );
               })}
             </div>
+            {selectedTypes.length > 1 && (
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
+                  {PROPERTY_TYPES.find((pt) => pt.value === buildingCategory)?.label}
+                </strong>
+              </p>
+            )}
             {errors.building_category ? (
               <p style={errorTextStyle}>{errors.building_category.message}</p>
             ) : null}
           </AppFormField>
-
-          {showSqm && (
-            <AppFormField label="Superficie total (m²)">
-              <input
-                {...register("total_sqm")}
-                type="number"
-                placeholder="Ej. 2500"
-                style={INPUT_STYLE}
-              />
-            </AppFormField>
-          )}
 
           <div style={{ marginBottom: 4 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
@@ -1231,30 +1251,6 @@ export default function BuildingsPage() {
               </AppFormField>
             )}
           </div>
-
-          <AppFormField label="Etiquetas">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {PROPERTY_TAGS.map((tag) => {
-                const active = (buildingTags as string[]).includes(tag.value);
-                return (
-                  <button
-                    key={tag.value}
-                    type="button"
-                    onClick={() => toggleTag(tag.value)}
-                    style={{
-                      padding: "4px 12px", borderRadius: 999, fontSize: 12,
-                      border: active ? "2px solid var(--accent)" : "2px solid var(--border-default)",
-                      background: active ? "var(--accent-bg, #EFF6FF)" : "transparent",
-                      color: active ? "var(--accent)" : "var(--text-secondary)",
-                      cursor: "pointer", fontWeight: active ? 600 : 400,
-                    }}
-                  >
-                    {tag.label}
-                  </button>
-                );
-              })}
-            </div>
-          </AppFormField>
 
           {showFeatures && (
             <AppFormField label="Características">
@@ -1377,13 +1373,15 @@ export default function BuildingsPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
               {PROPERTY_TYPES.map((pt) => {
                 const PtIcon = ICON_MAP[pt.icon];
-                const selected = buildingCategory === pt.value;
+                const orderIdx = selectedTypes.indexOf(pt.value);
+                const selected = orderIdx !== -1;
                 return (
                   <button
                     key={pt.value}
                     type="button"
-                    onClick={() => setValue("building_category", pt.value)}
+                    onClick={() => toggleTypeSelection(pt.value)}
                     style={{
+                      position: "relative",
                       display: "flex", flexDirection: "column", alignItems: "center",
                       justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
@@ -1393,27 +1391,34 @@ export default function BuildingsPage() {
                       transition: "all 0.15s ease",
                     }}
                   >
+                    {selected && (
+                      <span style={{
+                        position: "absolute", top: 4, left: 4,
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: pt.color, color: "#fff",
+                        fontSize: 10, fontWeight: 700,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {orderIdx + 1}
+                      </span>
+                    )}
                     {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
                     {pt.label}
                   </button>
                 );
               })}
             </div>
+            {selectedTypes.length > 1 && (
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
+                  {PROPERTY_TYPES.find((pt) => pt.value === buildingCategory)?.label}
+                </strong>
+              </p>
+            )}
             {errors.building_category ? (
               <p style={errorTextStyle}>{errors.building_category.message}</p>
             ) : null}
           </AppFormField>
-
-          {showSqm && (
-            <AppFormField label="Superficie total (m²)">
-              <input
-                {...register("total_sqm")}
-                type="number"
-                placeholder="Ej. 2500"
-                style={INPUT_STYLE}
-              />
-            </AppFormField>
-          )}
 
           <div style={{ marginBottom: 4 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
@@ -1448,30 +1453,6 @@ export default function BuildingsPage() {
               </AppFormField>
             )}
           </div>
-
-          <AppFormField label="Etiquetas">
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {PROPERTY_TAGS.map((tag) => {
-                const active = (buildingTags as string[]).includes(tag.value);
-                return (
-                  <button
-                    key={tag.value}
-                    type="button"
-                    onClick={() => toggleTag(tag.value)}
-                    style={{
-                      padding: "4px 12px", borderRadius: 999, fontSize: 12,
-                      border: active ? "2px solid var(--accent)" : "2px solid var(--border-default)",
-                      background: active ? "var(--accent-bg, #EFF6FF)" : "transparent",
-                      color: active ? "var(--accent)" : "var(--text-secondary)",
-                      cursor: "pointer", fontWeight: active ? 600 : 400,
-                    }}
-                  >
-                    {tag.label}
-                  </button>
-                );
-              })}
-            </div>
-          </AppFormField>
 
           {showFeatures && (
             <AppFormField label="Características">

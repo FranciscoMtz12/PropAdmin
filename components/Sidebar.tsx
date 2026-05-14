@@ -76,7 +76,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "GENERAL",
     items: [
-      { label: "Edificios",  href: "/buildings", icon: Building2,    status: "done" },
+      { label: "Propiedades", href: "/buildings", icon: Building2,    status: "done" },
       { label: "Analytics",  href: "/analytics", icon: BarChart2,    status: "done" },
       { label: "Calendario", href: "/calendar",  icon: CalendarDays, status: "done" },
     ],

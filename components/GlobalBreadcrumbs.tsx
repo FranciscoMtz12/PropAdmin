@@ -15,7 +15,7 @@ function isUuidLike(segment: string) {
 function humanizeSegment(segment: string) {
   const map: Record<string, string> = {
     dashboard: "Inicio",
-    buildings: "Edificios",
+    buildings: "Propiedades",
     maintenance: "Mantenimiento",
     payments: "Pagos",
     collections: "Cobranza",
