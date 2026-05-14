@@ -32,6 +32,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4",
     "@types/jszip": "^3.4.0",
     "@types/node": "^20",
@@ -42,6 +43,7 @@
     "eslint-config-next": "16.1.6",
     "playwright": "^1.59.1",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }

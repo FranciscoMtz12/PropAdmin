@@ -13,7 +13,7 @@
   - Sección Info general | Facturación | Accesos rápidos permanece al fondo
 */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
 import type { ReactNode } from "react";
 import { useParams, useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -33,6 +33,7 @@ import {
   CreditCard,
   Droplets,
   Edit3,
+  Factory,
   Flame,
   FileClockIcon,
   FileImage,
@@ -50,8 +51,10 @@ import {
   Plus,
   Ruler,
   Settings2,
+  Store,
   Tags,
   Trash2,
+  Warehouse,
   Wifi,
   Wrench,
   Zap,
@@ -74,12 +77,10 @@ import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 import AppEmptyState from "@/components/AppEmptyState";
 import {
-  BUILDING_CATEGORIES,
-  MIXED_USE_SUBCATEGORIES,
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
-import { getPropertyType, getPropertyLabels } from "@/lib/property-types";
+import { getPropertyType, getPropertyLabels, PROPERTY_TYPES, BUILDING_FEATURES } from "@/lib/property-types";
 import {
   INPUT_STYLE,
   TEXTAREA_STYLE,
@@ -95,6 +96,16 @@ import BuildingServicesTab from "@/components/BuildingServicesTab";
 import type { UtilityServiceType } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
 import { sortByNatural } from "@/lib/sort-utils";
+
+/* LocationPicker — edición de ubicación en el mapa. */
+const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
+  ssr: false,
+  loading: () => (
+    <div style={{ height: 340, width: "100%", borderRadius: 8, background: "var(--bg-card-hover)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
+      Cargando selector de ubicación...
+    </div>
+  ),
+});
 
 /* Mini mapa — importación dinámica para evitar errores de SSR con Leaflet. */
 const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
@@ -118,6 +129,15 @@ const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
   ),
 });
 
+/* ─── Mapa de iconos de tipo de propiedad ─────────────────────────── */
+
+const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  Building2, Store, Warehouse, Factory, MapPin,
+};
+
+const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
+const FEATURES_TYPES = ["commercial", "industrial", "industrial_park"];
+
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
 type Building = {
@@ -133,6 +153,9 @@ type Building = {
   land_sqm: number | null;
   construction_sqm: number | null;
   default_unit_sqm: number | null;
+  building_tags: string[] | null;
+  building_features: Record<string, boolean> | null;
+  parent_building_id: string | null;
 };
 
 type BuildingFile = {
@@ -560,7 +583,13 @@ export default function BuildingDetailPage() {
   const [code, setCode]                               = useState("");
   const [address, setAddress]                         = useState("");
   const [buildingCategory, setBuildingCategory]       = useState("residential");
-  const [buildingSubcategory, setBuildingSubcategory] = useState("");
+  const [editBuildingTags, setEditBuildingTags]       = useState<string[]>([]);
+  const [editBuildingFeatures, setEditBuildingFeatures] = useState<Record<string, boolean>>({});
+  const [editLandSqm, setEditLandSqm]                 = useState("");
+  const [editConstructionSqm, setEditConstructionSqm] = useState("");
+  const [editDefaultUnitSqm, setEditDefaultUnitSqm]   = useState("");
+  const [editLatitude, setEditLatitude]               = useState("");
+  const [editLongitude, setEditLongitude]             = useState("");
 
   useEffect(() => {
     if (!loading && !user) router.push("/");
@@ -583,7 +612,7 @@ export default function BuildingDetailPage() {
 
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, land_sqm, construction_sqm, default_unit_sqm")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, land_sqm, construction_sqm, default_unit_sqm, building_tags, building_features, parent_building_id")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
@@ -597,7 +626,6 @@ export default function BuildingDetailPage() {
     setCode(b.code || "");
     setAddress(b.address || "");
     setBuildingCategory(b.building_category || "residential");
-    setBuildingSubcategory(b.building_subcategory || "");
 
     /* Queries paralelas — units incluye created_at para tendencia */
     const [
@@ -921,6 +949,48 @@ export default function BuildingDetailPage() {
     .filter((item) => item.is_active)
     .map((item) => item.concept_code);
 
+  /* ── Valores derivados para el modal de edición ─────────────────── */
+
+  const editSelectedTypes = [
+    ...(PROPERTY_TYPE_VALUES.includes(buildingCategory) ? [buildingCategory] : []),
+    ...editBuildingTags.filter((t) => PROPERTY_TYPE_VALUES.includes(t) && t !== buildingCategory),
+  ];
+  const editShowFeatures = editSelectedTypes.some((t) => FEATURES_TYPES.includes(t));
+
+  const editLatNum = editLatitude.trim() && Number.isFinite(Number(editLatitude)) ? Number(editLatitude) : null;
+  const editLngNum = editLongitude.trim() && Number.isFinite(Number(editLongitude)) ? Number(editLongitude) : null;
+
+  function toggleEditType(value: string) {
+    const primary = buildingCategory;
+    const secTags = editBuildingTags.filter((t) => PROPERTY_TYPE_VALUES.includes(t) && t !== primary);
+    const all = [
+      ...(PROPERTY_TYPE_VALUES.includes(primary) ? [primary] : []),
+      ...secTags,
+    ];
+    if (all.includes(value)) {
+      if (value === primary) {
+        if (secTags.length === 0) return;
+        setBuildingCategory(secTags[0]);
+        setEditBuildingTags(secTags.slice(1));
+      } else {
+        setEditBuildingTags(secTags.filter((t) => t !== value));
+      }
+    } else {
+      if (all.length >= 3) return;
+      setEditBuildingTags([...secTags, value]);
+    }
+  }
+
+  function toggleEditFeature(key: string) {
+    setEditBuildingFeatures((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
+
+  function handleEditLocationChange(lat: number, lng: number, addr?: string) {
+    setEditLatitude(String(lat));
+    setEditLongitude(String(lng));
+    if (addr && !address.trim()) setAddress(addr);
+  }
+
   /* ── Handlers ─────────────────────────────────────────────────────── */
 
   function openEditModal() {
@@ -928,8 +998,21 @@ export default function BuildingDetailPage() {
     setName(building.name || "");
     setCode(building.code || "");
     setAddress(building.address || "");
-    setBuildingCategory(building.building_category || "residential");
-    setBuildingSubcategory(building.building_subcategory || "");
+
+    // Combinar category + tags, filtrar inválidos, deduplicar con Set
+    const rawTypes = [building.building_category, ...(building.building_tags ?? [])].filter(
+      (t): t is string => !!t && PROPERTY_TYPE_VALUES.includes(t),
+    );
+    const dedupedTypes = [...new Set(rawTypes)];
+    const initTypes = dedupedTypes.length > 0 ? dedupedTypes : ["residential"];
+    setBuildingCategory(initTypes[0]);
+    setEditBuildingTags(initTypes.slice(1));
+    setEditBuildingFeatures(building.building_features ?? {});
+    setEditLandSqm(building.land_sqm != null ? String(building.land_sqm) : "");
+    setEditConstructionSqm(building.construction_sqm != null ? String(building.construction_sqm) : "");
+    setEditDefaultUnitSqm(building.default_unit_sqm != null ? String(building.default_unit_sqm) : "");
+    setEditLatitude(building.latitude != null ? String(building.latitude) : "");
+    setEditLongitude(building.longitude != null ? String(building.longitude) : "");
     setIsEditModalOpen(true);
     setMsg("");
   }
@@ -938,21 +1021,31 @@ export default function BuildingDetailPage() {
     e.preventDefault();
     if (!user?.company_id || !building) { setMsg("No se encontró el edificio."); return; }
     if (!name.trim()) { setMsg("El nombre del edificio es obligatorio."); return; }
-    if (buildingCategory === "mixed_use" && !buildingSubcategory) {
-      setMsg("Debes seleccionar el tipo de uso mixto."); return;
-    }
     setSavingEdit(true);
     setMsg("");
+
+    const latNum  = editLatitude.trim()  ? Number(editLatitude)  : null;
+    const lngNum  = editLongitude.trim() ? Number(editLongitude) : null;
+
     const { error } = await supabase
       .from("buildings")
       .update({
-        name: name.trim(), code: code.trim() || null,
+        name: name.trim(),
+        code: code.trim() || null,
         address: address.trim() || null,
         building_category: buildingCategory,
-        building_subcategory: buildingCategory === "mixed_use" ? buildingSubcategory || null : null,
+        building_subcategory: null,
+        building_tags: editBuildingTags,
+        building_features: editBuildingFeatures,
+        land_sqm: editLandSqm.trim() ? Number(editLandSqm) : null,
+        construction_sqm: editConstructionSqm.trim() ? Number(editConstructionSqm) : null,
+        default_unit_sqm: buildingCategory !== "land" && editDefaultUnitSqm.trim() ? Number(editDefaultUnitSqm) : null,
+        latitude:  latNum !== null && Number.isFinite(latNum)  ? latNum  : null,
+        longitude: lngNum !== null && Number.isFinite(lngNum) ? lngNum : null,
       })
       .eq("id", building.id)
       .eq("company_id", user.company_id);
+
     setSavingEdit(false);
     if (error) { setMsg(`No se pudo actualizar el edificio. ${error.message}`); return; }
     setIsEditModalOpen(false);
@@ -1877,32 +1970,113 @@ export default function BuildingDetailPage() {
       ) : null}
 
       {/* ── Modal editar edificio ── */}
-      <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar edificio">
+      <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar propiedad">
         <form onSubmit={handleUpdateBuilding}>
-          <AppFormField label="Nombre del edificio" required>
+          {msg && isEditModalOpen ? <p style={errorBannerStyle}>{msg}</p> : null}
+
+          <AppFormField label="Nombre de la propiedad" required>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ej. Torre Central" style={INPUT_STYLE} />
           </AppFormField>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <AppFormField label="Código">
-              <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej. TC-001" style={INPUT_STYLE} />
-            </AppFormField>
-            <AppFormField label="Categoría" required>
-              <AppSelect value={buildingCategory} onChange={(e) => setBuildingCategory(e.target.value)}>
-                {BUILDING_CATEGORIES.map((item) => <option key={item.key} value={item.key}>{item.label}</option>)}
-              </AppSelect>
-            </AppFormField>
-          </div>
-          {buildingCategory === "mixed_use" ? (
-            <AppFormField label="Subcategoría de uso mixto" required>
-              <AppSelect value={buildingSubcategory} onChange={(e) => setBuildingSubcategory(e.target.value)}>
-                <option value="">Selecciona una subcategoría</option>
-                {MIXED_USE_SUBCATEGORIES.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}
-              </AppSelect>
-            </AppFormField>
-          ) : null}
-          <AppFormField label="Dirección">
-            <textarea value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Dirección del edificio" style={TEXTAREA_STYLE} />
+
+          <AppFormField label="Código">
+            <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ej. TC-001" style={INPUT_STYLE} />
           </AppFormField>
+
+          <AppFormField label="Tipo de propiedad" required>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+              {PROPERTY_TYPES.map((pt) => {
+                const PtIcon = ICON_MAP[pt.icon];
+                const orderIdx = editSelectedTypes.indexOf(pt.value);
+                const selected = orderIdx !== -1;
+                return (
+                  <button
+                    key={pt.value}
+                    type="button"
+                    onClick={() => toggleEditType(pt.value)}
+                    style={{
+                      position: "relative",
+                      display: "flex", flexDirection: "column", alignItems: "center",
+                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                      border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
+                      background: selected ? pt.color + "15" : "var(--bg-card)",
+                      color: selected ? pt.color : "var(--text-secondary)",
+                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {selected && (
+                      <span style={{
+                        position: "absolute", top: 4, left: 4,
+                        width: 16, height: 16, borderRadius: "50%",
+                        background: pt.color, color: "#fff",
+                        fontSize: 10, fontWeight: 700,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        {orderIdx + 1}
+                      </span>
+                    )}
+                    {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
+                    {pt.label}
+                  </button>
+                );
+              })}
+            </div>
+            {editSelectedTypes.length > 1 && (
+              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
+                  {PROPERTY_TYPES.find((pt) => pt.value === editSelectedTypes[0])?.label}
+                </strong>
+              </p>
+            )}
+          </AppFormField>
+
+          <div style={{ marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+              Superficie
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <AppFormField label="M² de terreno">
+                <input value={editLandSqm} onChange={(e) => setEditLandSqm(e.target.value)} type="number" placeholder="Ej: 500" style={INPUT_STYLE} />
+              </AppFormField>
+              <AppFormField label="M² de construcción">
+                <input value={editConstructionSqm} onChange={(e) => setEditConstructionSqm(e.target.value)} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
+              </AppFormField>
+            </div>
+            {buildingCategory !== "land" && (
+              <AppFormField label="M² por unidad (referencia)">
+                <input value={editDefaultUnitSqm} onChange={(e) => setEditDefaultUnitSqm(e.target.value)} type="number" placeholder="Ej: 65" style={INPUT_STYLE} />
+              </AppFormField>
+            )}
+          </div>
+
+          {editShowFeatures && (
+            <AppFormField label="Características">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                {BUILDING_FEATURES.map((feat) => {
+                  const active = !!editBuildingFeatures[feat.key];
+                  return (
+                    <label key={feat.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                      <input type="checkbox" checked={active} onChange={() => toggleEditFeature(feat.key)} />
+                      {feat.label}
+                    </label>
+                  );
+                })}
+              </div>
+            </AppFormField>
+          )}
+
+          <AppFormField label="Dirección">
+            <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ej. Av. Principal 123" style={INPUT_STYLE} />
+          </AppFormField>
+
+          <AppFormField label="Ubicación en el mapa (opcional)">
+            <LocationPicker
+              latitude={editLatNum}
+              longitude={editLngNum}
+              onLocationChange={handleEditLocationChange}
+            />
+          </AppFormField>
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setIsEditModalOpen(false)} disabled={savingEdit}>Cancelar</UiButton>
             <UiButton type="submit" disabled={savingEdit}>{savingEdit ? "Guardando..." : "Guardar cambios"}</UiButton>

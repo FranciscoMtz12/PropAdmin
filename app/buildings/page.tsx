@@ -63,7 +63,6 @@ import { BUILDING_CATEGORIES } from "@/lib/buildingCategories";
 import {
   getPropertyType,
   PROPERTY_TYPES,
-  PROPERTY_TAGS,
   BUILDING_FEATURES,
 } from "@/lib/property-types";
 import {
@@ -292,8 +291,13 @@ export default function BuildingsPage() {
 
   /* Multi-type selection: primary type = building_category, secondary = building_tags filtered to type values */
   const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
-  const selectedTypeTags = (buildingTags as string[]).filter((t) => PROPERTY_TYPE_VALUES.includes(t));
-  const selectedTypes = [buildingCategory, ...selectedTypeTags];
+  const selectedTypeTags = (buildingTags as string[]).filter(
+    (t) => PROPERTY_TYPE_VALUES.includes(t) && t !== buildingCategory,
+  );
+  const selectedTypes = [
+    ...(PROPERTY_TYPE_VALUES.includes(buildingCategory) ? [buildingCategory] : []),
+    ...selectedTypeTags,
+  ];
 
   const FEATURES_TYPES = ["commercial", "industrial", "industrial_park"];
   const showFeatures = selectedTypes.some((t) => FEATURES_TYPES.includes(t));
@@ -559,15 +563,23 @@ export default function BuildingsPage() {
 
   function openEditModal(building: Building) {
     setBuildingEditingId(building.id);
+
+    // Combinar category + tags, filtrar valores inválidos y deduplicar con Set
+    const rawTypes = [building.building_category, ...(building.building_tags ?? [])].filter(
+      (t): t is string => !!t && PROPERTY_TYPE_VALUES.includes(t),
+    );
+    const dedupedTypes = [...new Set(rawTypes)];
+    const initTypes = dedupedTypes.length > 0 ? dedupedTypes : ["residential"];
+
     reset({
       name: building.name || "",
       code: building.code || "",
       address: building.address || "",
-      building_category: building.building_category || "residential",
+      building_category: initTypes[0],
       building_subcategory: building.building_subcategory || "",
       latitude: building.latitude != null ? String(building.latitude) : "",
       longitude: building.longitude != null ? String(building.longitude) : "",
-      building_tags: building.building_tags ?? [],
+      building_tags: initTypes.slice(1),
       building_features: building.building_features ?? {},
       land_sqm: building.land_sqm != null ? String(building.land_sqm) : "",
       construction_sqm: building.construction_sqm != null ? String(building.construction_sqm) : "",
@@ -696,7 +708,7 @@ export default function BuildingsPage() {
             </UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
               <Plus size={16} />
-              Nuevo edificio
+              Nueva propiedad
             </UiButton>
           </>
         }
@@ -780,7 +792,7 @@ export default function BuildingsPage() {
           <AppEmptyState
             title="Todavía no hay edificios"
             description="Empieza creando tu primer edificio para construir el portafolio dentro de PropAdmin."
-            actionLabel="Crear edificio"
+            actionLabel="Nueva propiedad"
             onAction={() => setIsCreateModalOpen(true)}
           />
         ) : (
@@ -883,6 +895,43 @@ export default function BuildingsPage() {
                           {building.address || "Sin dirección registrada"}
                         </p>
                         {(() => {
+                          const typeTags = (building.building_tags ?? []).filter(
+                            (t) => PROPERTY_TYPE_VALUES.includes(t),
+                          );
+                          if (typeTags.length > 0) {
+                            const allTypes = [building.building_category, ...typeTags].filter(
+                              (t): t is string => !!t && PROPERTY_TYPE_VALUES.includes(t),
+                            );
+                            const dedupedTypes = [...new Set(allTypes)].slice(0, 3);
+                            return (
+                              <div>
+                                <span style={{
+                                  display: "inline-flex", alignItems: "center", gap: 4,
+                                  fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                                  borderRadius: 999, background: "#37415115", color: "#374151",
+                                }}>
+                                  Uso mixto
+                                </span>
+                                <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
+                                  {dedupedTypes.map((typeValue) => {
+                                    const typeDef = PROPERTY_TYPES.find((t) => t.value === typeValue);
+                                    if (!typeDef) return null;
+                                    const TypeIcon = ICON_MAP[typeDef.icon];
+                                    return (
+                                      <span key={typeValue} style={{
+                                        display: "inline-flex", alignItems: "center", gap: 3,
+                                        fontSize: 10, padding: "1px 6px", borderRadius: 999,
+                                        background: typeDef.color + "1a", color: typeDef.color, fontWeight: 500,
+                                      }}>
+                                        {TypeIcon && <TypeIcon size={10} />}
+                                        {typeDef.label}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            );
+                          }
                           const pt = getPropertyType(building.building_category);
                           const PtIcon = ICON_MAP[pt.icon];
                           return (
@@ -896,21 +945,6 @@ export default function BuildingsPage() {
                             </span>
                           );
                         })()}
-                        {(building.building_tags?.length ?? 0) > 0 && (
-                          <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 4 }}>
-                            {(building.building_tags ?? []).slice(0, 2).map((tag) => {
-                              const tagDef = PROPERTY_TAGS.find((t) => t.value === tag);
-                              return (
-                                <span key={tag} style={{
-                                  fontSize: 10, padding: "1px 6px", borderRadius: 999,
-                                  background: "#F3F4F6", color: "#4B5563", fontWeight: 500,
-                                }}>
-                                  {tagDef?.label ?? tag}
-                                </span>
-                              );
-                            })}
-                          </div>
-                        )}
                       </div>
 
                       {/* Dona — tamaño fijo, no se encoge */}
@@ -1148,7 +1182,7 @@ export default function BuildingsPage() {
       </div>
 
       {/* ── Modal de edición ── */}
-      <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar edificio">
+      <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar propiedad">
         <form onSubmit={handleUpdateBuilding}>
           <AppFormField label="Nombre del edificio" required>
             <input
@@ -1209,7 +1243,7 @@ export default function BuildingsPage() {
             {selectedTypes.length > 1 && (
               <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                 Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
-                  {PROPERTY_TYPES.find((pt) => pt.value === buildingCategory)?.label}
+                  {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
                 </strong>
               </p>
             )}
@@ -1350,7 +1384,7 @@ export default function BuildingsPage() {
       </Modal>
 
       {/* ── Modal de creación ── */}
-      <Modal open={isCreateModalOpen} onClose={closeCreateModal} title="Crear edificio">
+      <Modal open={isCreateModalOpen} onClose={closeCreateModal} title="Nueva propiedad">
         <form onSubmit={handleSubmitBuilding}>
           <AppFormField label="Nombre del edificio" required>
             <input
@@ -1411,7 +1445,7 @@ export default function BuildingsPage() {
             {selectedTypes.length > 1 && (
               <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                 Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
-                  {PROPERTY_TYPES.find((pt) => pt.value === buildingCategory)?.label}
+                  {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
                 </strong>
               </p>
             )}
