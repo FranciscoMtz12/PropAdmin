@@ -96,6 +96,9 @@ type Building = {
   building_tags: string[] | null;
   building_features: Record<string, boolean> | null;
   parent_building_id: string | null;
+  land_sqm: number | null;
+  construction_sqm: number | null;
+  default_unit_sqm: number | null;
 };
 
 type UnitForTrend = {
@@ -201,6 +204,9 @@ const buildingSchema = z.object({
   total_sqm: z.string().optional(),
   building_tags: z.array(z.string()).optional(),
   building_features: z.record(z.string(), z.boolean()).optional(),
+  land_sqm: z.string().optional(),
+  construction_sqm: z.string().optional(),
+  default_unit_sqm: z.string().optional(),
 });
 type BuildingFormValues = z.infer<typeof buildingSchema>;
 
@@ -215,6 +221,9 @@ const BUILDING_DEFAULTS: BuildingFormValues = {
   total_sqm: "",
   building_tags: [],
   building_features: {},
+  land_sqm: "",
+  construction_sqm: "",
+  default_unit_sqm: "",
 };
 
 /* LocationPicker — importación dinámica (ssr: false) porque usa Leaflet. */
@@ -353,7 +362,7 @@ export default function BuildingsPage() {
     /* 1. Edificios */
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id, land_sqm, construction_sqm, default_unit_sqm")
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
@@ -547,6 +556,9 @@ export default function BuildingsPage() {
       total_sqm: building.total_sqm != null ? String(building.total_sqm) : "",
       building_tags: building.building_tags ?? [],
       building_features: building.building_features ?? {},
+      land_sqm: building.land_sqm != null ? String(building.land_sqm) : "",
+      construction_sqm: building.construction_sqm != null ? String(building.construction_sqm) : "",
+      default_unit_sqm: building.default_unit_sqm != null ? String(building.default_unit_sqm) : "",
     });
     setIsEditModalOpen(true);
     setOpenActionsBuildingId(null);
@@ -591,6 +603,9 @@ export default function BuildingsPage() {
       total_sqm: data.total_sqm && data.total_sqm.trim() ? Number(data.total_sqm) : null,
       building_tags: data.building_tags?.length ? data.building_tags : null,
       building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
+      land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
+      construction_sqm: data.construction_sqm && data.construction_sqm.trim() ? Number(data.construction_sqm) : null,
+      default_unit_sqm: data.building_category !== "land" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
     });
     if (error) { setMsg(error.message); return; }
     setMsg("Edificio guardado correctamente.");
@@ -617,6 +632,9 @@ export default function BuildingsPage() {
         total_sqm: data.total_sqm && data.total_sqm.trim() ? Number(data.total_sqm) : null,
         building_tags: data.building_tags?.length ? data.building_tags : null,
         building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
+        land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
+        construction_sqm: data.construction_sqm && data.construction_sqm.trim() ? Number(data.construction_sqm) : null,
+        default_unit_sqm: data.building_category !== "land" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
       })
       .eq("id", buildingEditingId)
       .eq("company_id", user.company_id);
@@ -1180,6 +1198,40 @@ export default function BuildingsPage() {
             </AppFormField>
           )}
 
+          <div style={{ marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+              Superficie
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <AppFormField label="M² de terreno">
+                <input
+                  {...register("land_sqm")}
+                  type="number"
+                  placeholder="Ej: 500"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+              <AppFormField label="M² de construcción">
+                <input
+                  {...register("construction_sqm")}
+                  type="number"
+                  placeholder="Ej: 350"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+            </div>
+            {buildingCategory !== "land" && (
+              <AppFormField label="M² por unidad (referencia)">
+                <input
+                  {...register("default_unit_sqm")}
+                  type="number"
+                  placeholder="Ej: 65"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+            )}
+          </div>
+
           <AppFormField label="Etiquetas">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {PROPERTY_TAGS.map((tag) => {
@@ -1362,6 +1414,40 @@ export default function BuildingsPage() {
               />
             </AppFormField>
           )}
+
+          <div style={{ marginBottom: 4 }}>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+              Superficie
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <AppFormField label="M² de terreno">
+                <input
+                  {...register("land_sqm")}
+                  type="number"
+                  placeholder="Ej: 500"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+              <AppFormField label="M² de construcción">
+                <input
+                  {...register("construction_sqm")}
+                  type="number"
+                  placeholder="Ej: 350"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+            </div>
+            {buildingCategory !== "land" && (
+              <AppFormField label="M² por unidad (referencia)">
+                <input
+                  {...register("default_unit_sqm")}
+                  type="number"
+                  placeholder="Ej: 65"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+            )}
+          </div>
 
           <AppFormField label="Etiquetas">
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>

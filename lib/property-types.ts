@@ -32,3 +32,49 @@ export function getPropertyType(category: string | null | undefined) {
 export function getPropertyTypeLabel(category: string | null | undefined): string {
   return getPropertyType(category).label
 }
+
+export type PropertyLabels = {
+  units: string
+  leases: string
+  collections: string
+  building: string
+  unit: string
+}
+
+export function getPropertyLabels(category: string | null): PropertyLabels {
+  switch (category) {
+    case 'land':
+      return {
+        units:       'Secciones',
+        leases:      'Contratos de terreno',
+        collections: 'Cobranza de terreno',
+        building:    'Terreno',
+        unit:        'Sección',
+      }
+    case 'industrial':
+    case 'industrial_park':
+      return {
+        units:       'Naves / Espacios',
+        leases:      'Contratos',
+        collections: 'Cobranza',
+        building:    'Nave industrial',
+        unit:        'Espacio',
+      }
+    case 'commercial':
+      return {
+        units:       'Locales',
+        leases:      'Contratos comerciales',
+        collections: 'Cobranza',
+        building:    'Propiedad comercial',
+        unit:        'Local',
+      }
+    default:
+      return {
+        units:       'Unidades',
+        leases:      'Contratos',
+        collections: 'Cobranza',
+        building:    'Edificio',
+        unit:        'Unidad',
+      }
+  }
+}

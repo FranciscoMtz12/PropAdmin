@@ -34,18 +34,21 @@ import {
   Droplets,
   Edit3,
   Flame,
-  Gem,
+  FileClockIcon,
   FileImage,
   FileText,
   FolderOpen,
+  Gem,
   Home,
   ImageIcon,
+  LayoutGrid,
   Layers3,
   MapPin,
   MoreHorizontal,
   Package,
   Pencil,
   Plus,
+  Ruler,
   Settings2,
   Tags,
   Trash2,
@@ -76,6 +79,7 @@ import {
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
+import { getPropertyType, getPropertyLabels } from "@/lib/property-types";
 import {
   INPUT_STYLE,
   TEXTAREA_STYLE,
@@ -126,6 +130,9 @@ type Building = {
   building_subcategory: string | null;
   latitude: number | null;
   longitude: number | null;
+  land_sqm: number | null;
+  construction_sqm: number | null;
+  default_unit_sqm: number | null;
 };
 
 type BuildingFile = {
@@ -172,10 +179,21 @@ type CollectionRecord = {
 };
 
 type LeaseForTrend = {
-  unit_id: string;
+  unit_id: string | null;
   start_date: string | null;
   end_date: string | null;
   created_at: string;
+};
+
+type LandLease = {
+  id: string;
+  tenant_id: string;
+  tenant_name: string | null;
+  rent_amount: number;
+  start_date: string | null;
+  end_date: string | null;
+  status: string;
+  leased_sqm: number | null;
 };
 
 type TrendPoint = { label: string; total: number; occupied: number; pct: number };
@@ -511,6 +529,9 @@ export default function BuildingDetailPage() {
   /* Counts de tabs (cargados al inicio para evitar mostrar 0) */
   const [tabCounts, setTabCounts] = useState({ assets: 0, docs: 0, gallery: 0, services: 0, parking: 0 });
 
+  /* Contratos de terreno (building_id directo, unit_id IS NULL) */
+  const [landLeases, setLandLeases] = useState<LandLease[]>([]);
+
   /* Cajones de estacionamiento */
   const [parkingSpots, setParkingSpots]   = useState<ParkingSpot[]>([]);
   const [parkingLeases, setParkingLeases] = useState<BuildingLeaseForParking[]>([]);
@@ -562,7 +583,7 @@ export default function BuildingDetailPage() {
 
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, land_sqm, construction_sqm, default_unit_sqm")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
@@ -652,6 +673,32 @@ export default function BuildingDetailPage() {
       setLeasesForTrend((lData as LeaseForTrend[]) || []);
     } else {
       setLeasesForTrend([]);
+    }
+
+    /* Contratos de terreno: ligados al building con unit_id IS NULL */
+    if (b.building_category === "land") {
+      type LLRow = { id: string; tenant_id: string; rent_amount: number; start_date: string | null; end_date: string | null; status: string; leased_sqm: number | null };
+      const { data: llData } = await supabase
+        .from("leases")
+        .select("id, tenant_id, rent_amount, start_date, end_date, status, leased_sqm")
+        .eq("building_id", buildingId)
+        .is("unit_id", null)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      const llRows = (llData || []) as LLRow[];
+
+      /* Nombres de inquilinos */
+      const tIds = [...new Set(llRows.map((l) => l.tenant_id).filter(Boolean))];
+      const tenantNameMap: Record<string, string> = {};
+      if (tIds.length > 0) {
+        const { data: tData } = await supabase.from("tenants").select("id, full_name").in("id", tIds);
+        for (const t of (tData || []) as Array<{ id: string; full_name: string }>) {
+          tenantNameMap[t.id] = t.full_name;
+        }
+      }
+      setLandLeases(llRows.map((l) => ({ ...l, tenant_name: tenantNameMap[l.tenant_id] ?? null })));
+    } else {
+      setLandLeases([]);
     }
 
     // Unidades del edificio para BuildingServicesTab + servicios para Resumen
@@ -1089,13 +1136,15 @@ export default function BuildingDetailPage() {
   if (!building)      return <PageContainer>{msg || "No se encontró el edificio."}</PageContainer>;
 
   const categoryDefinition = getBuildingCategoryDefinition(building.building_category);
+  const labels = getPropertyLabels(building.building_category);
+  const isLand = building.building_category === "land";
 
   return (
     <PageContainer>
       <PageHeader
         title={building.name}
         titleIcon={<Building2 size={20} />}
-        subtitle="Vista general del inmueble — ocupación, cobranza y tendencia."
+        subtitle={`Vista general del ${labels.building.toLowerCase()} — ocupación, ${labels.collections.toLowerCase()} y tendencia.`}
         actions={
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             {/* Volver */}
@@ -1127,20 +1176,22 @@ export default function BuildingDetailPage() {
               <Pencil size={18} />
               <span>Editar</span>
             </button>
-            {/* Departamentos */}
-            <a
-              href={`/buildings/${building.id}/units`}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: "10px 12px", borderRadius: 10,
-                border: "1px solid var(--accent)", background: "var(--accent)",
-                color: "#ffffff", cursor: "pointer", textDecoration: "none",
-                fontSize: 11, fontWeight: 600,
-              }}
-            >
-              <Layers3 size={18} />
-              <span>Deptos</span>
-            </a>
+            {/* Unidades — oculto para terrenos */}
+            {!isLand && (
+              <a
+                href={`/buildings/${building.id}/units`}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 4, padding: "10px 12px", borderRadius: 10,
+                  border: "1px solid var(--accent)", background: "var(--accent)",
+                  color: "#ffffff", cursor: "pointer", textDecoration: "none",
+                  fontSize: 11, fontWeight: 600,
+                }}
+              >
+                <Layers3 size={18} />
+                <span>{labels.units}</span>
+              </a>
+            )}
             {/* Eliminar */}
             <button
               type="button"
@@ -1171,12 +1222,13 @@ export default function BuildingDetailPage() {
         activeKey={activeTab}
         onChange={setActiveTab}
         items={[
-          { key: "overview",  label: "Resumen",       icon: <Building2 size={16} /> },
-          { key: "assets",    label: "Assets",     icon: <Package size={16} />,    count: tabCounts.assets },
-          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
-          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
-          { key: "services",  label: "Servicios",  icon: <Wrench size={16} />,     count: tabCounts.services },
-          { key: "parking",   label: "Cajones",    icon: <Car size={16} />,        count: tabCounts.parking },
+          { key: "overview",   label: "Resumen",       icon: <Building2 size={16} /> },
+          ...(isLand ? [{ key: "leases", label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
+          { key: "assets",     label: "Assets",     icon: <Package size={16} />,    count: tabCounts.assets },
+          { key: "documents",  label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
+          { key: "gallery",    label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
+          { key: "services",   label: "Servicios",  icon: <Wrench size={16} />,     count: tabCounts.services },
+          ...(!isLand ? [{ key: "parking", label: "Cajones", icon: <Car size={16} />, count: tabCounts.parking }] : []),
         ]}
       />
 
@@ -1200,7 +1252,7 @@ export default function BuildingDetailPage() {
           {/* ── Información general: 2 columnas — datos | mapa ── */}
           <SectionCard
             title="Información general"
-            subtitle="Datos base del edificio."
+            subtitle={`Datos base del ${labels.building.toLowerCase()}.`}
             icon={<Building2 size={18} />}
             action={
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1267,6 +1319,36 @@ export default function BuildingDetailPage() {
               </div>
 
             </div>
+
+            {/* ── Métricas de superficie ── */}
+            {(building.land_sqm != null || building.construction_sqm != null || building.default_unit_sqm != null) && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginTop: 16 }}>
+                {building.land_sqm != null && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                    <Ruler size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {building.land_sqm.toLocaleString("es-MX")} m² terreno
+                    </span>
+                  </div>
+                )}
+                {building.construction_sqm != null && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                    <Building2 size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {building.construction_sqm.toLocaleString("es-MX")} m² construcción
+                    </span>
+                  </div>
+                )}
+                {building.default_unit_sqm != null && !isLand && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                    <LayoutGrid size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                      {building.default_unit_sqm.toLocaleString("es-MX")} m²/unidad
+                    </span>
+                  </div>
+                )}
+              </div>
+            )}
           </SectionCard>
 
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
@@ -1318,7 +1400,7 @@ export default function BuildingDetailPage() {
 
             {/* Col derecha: Cobranza del edificio con toggle 3/6 meses */}
             <SectionCard
-              title="Cobranza del edificio"
+              title={`${labels.collections} del ${labels.building.toLowerCase()}`}
               subtitle={`Últimos ${collectionMonths} meses`}
               icon={<CreditCard size={18} />}
               action={
@@ -1442,10 +1524,10 @@ export default function BuildingDetailPage() {
             <SectionCard title="Accesos rápidos" subtitle="Navega a los módulos del edificio." icon={<Layers3 size={18} />}>
               <div style={{ display: "grid", gap: 10 }}>
                 {[
-                  { title: "Tipologías",    desc: `${unitTypeCount} tipos de unidad registrados.`,       href: `/buildings/${building.id}/unit-types`, variant: undefined as "primary" | undefined },
-                  { title: "Departamentos", desc: `${totalUnits} unidades en el edificio.`,               href: `/buildings/${building.id}/units`,       variant: "primary" as "primary" | undefined },
-                  { title: "Limpieza",      desc: "Organiza las áreas de limpieza.",                      href: `/buildings/${building.id}/cleaning`,    variant: undefined as "primary" | undefined },
-                ].map((item) => (
+                  { title: "Tipologías",         desc: `${unitTypeCount} tipos de unidad registrados.`,       href: `/buildings/${building.id}/unit-types`, variant: undefined as "primary" | undefined, hidden: isLand },
+                  { title: labels.units,          desc: `${totalUnits} ${labels.unit.toLowerCase()}s en el ${labels.building.toLowerCase()}.`, href: `/buildings/${building.id}/units`, variant: "primary" as "primary" | undefined, hidden: isLand },
+                  { title: "Limpieza",            desc: "Organiza las áreas de limpieza.",                      href: `/buildings/${building.id}/cleaning`,    variant: undefined as "primary" | undefined, hidden: false },
+                ].filter(item => !item.hidden).map((item) => (
                   <AppCard key={item.href} style={{ padding: 14, borderRadius: 12 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                       <div>
@@ -1633,6 +1715,95 @@ export default function BuildingDetailPage() {
           units={buildingUnits}
         />
       ) : null}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: CONTRATOS DE TERRENO
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "leases" && isLand ? (() => {
+        const activeLeases = landLeases.filter((l) => l.status === "ACTIVE");
+        const totalLeasedSqm = activeLeases.reduce((s, l) => s + (l.leased_sqm ?? 0), 0);
+        const totalLandSqm = building.land_sqm ?? 0;
+        const availableSqm = Math.max(0, totalLandSqm - totalLeasedSqm);
+        const pctRented = totalLandSqm > 0 ? Math.min(100, Math.round((totalLeasedSqm / totalLandSqm) * 100)) : 0;
+
+        return (
+          <div style={{ display: "grid", gap: 20 }}>
+            <SectionCard
+              title={labels.leases}
+              subtitle={`${labels.building} — contratos activos y disponibilidad.`}
+              icon={<FileClockIcon size={18} />}
+            >
+              {/* Barra de ocupación del terreno */}
+              {building.land_sqm != null && (
+                <div style={{ marginBottom: 20 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+                    Ocupación del terreno
+                  </p>
+                  <div style={{ background: "var(--border-default)", borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 8 }}>
+                    <div style={{ width: `${pctRented}%`, height: "100%", background: "#10B981", borderRadius: 999, transition: "width 0.4s ease" }} />
+                  </div>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
+                    {totalLeasedSqm.toLocaleString("es-MX")} m² rentados
+                    {" · "}
+                    {availableSqm.toLocaleString("es-MX")} m² disponibles
+                    {" · "}
+                    {totalLandSqm.toLocaleString("es-MX")} m² totales
+                    {" · "}
+                    <strong style={{ color: "#10B981" }}>{pctRented}%</strong>
+                  </p>
+                </div>
+              )}
+
+              {landLeases.length === 0 ? (
+                <AppEmptyState
+                  title={`Sin ${labels.leases.toLowerCase()}`}
+                  description={`No hay contratos registrados para este ${labels.building.toLowerCase()}.`}
+                />
+              ) : (
+                <div style={{ display: "grid", gap: 10 }}>
+                  {landLeases.map((lease) => (
+                    <AppCard key={lease.id} style={{ padding: 16, borderRadius: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div>
+                          <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>
+                            {lease.tenant_name ?? "Arrendatario"}
+                          </strong>
+                          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
+                            {lease.start_date ?? "Sin fecha"}{lease.end_date ? ` → ${lease.end_date}` : " (sin vencimiento)"}
+                          </p>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
+                          {lease.leased_sqm != null && (
+                            <div style={{ textAlign: "right" }}>
+                              <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, margin: 0 }}>
+                                {lease.leased_sqm.toLocaleString("es-MX")} m²
+                              </p>
+                              <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "3px 0 0 0" }}>superficie</p>
+                            </div>
+                          )}
+                          <div style={{ textAlign: "right" }}>
+                            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, margin: 0 }}>
+                              {formatMXN(lease.rent_amount)}
+                            </p>
+                            <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "3px 0 0 0" }}>mensual</p>
+                          </div>
+                          <span style={{
+                            padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                            background: lease.status === "ACTIVE" ? "#dcfce7" : "#f3f4f6",
+                            color: lease.status === "ACTIVE" ? "#16a34a" : "#6b7280",
+                          }}>
+                            {lease.status === "ACTIVE" ? "Activo" : lease.status}
+                          </span>
+                        </div>
+                      </div>
+                    </AppCard>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        );
+      })() : null}
 
       {/* ══════════════════════════════════════════════════════════════
           TAB: CAJONES DE ESTACIONAMIENTO
