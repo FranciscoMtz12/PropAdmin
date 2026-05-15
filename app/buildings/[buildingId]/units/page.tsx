@@ -90,6 +90,7 @@ type UnitRow = {
   floor: number | null;
   status: string;
   rental_type: string | null;
+  notes: string | null;
   /* Datos de la tipología — vienen del JOIN, NO son columnas propias de units */
   unit_types: {
     name: string;
@@ -210,7 +211,7 @@ const errorTextStyle: React.CSSProperties = {
 
 const createUnitSchema = z.object({
   unitNumber: z.string().min(1, "El número es obligatorio"),
-  unitTypeId: z.string().min(1, "Debes seleccionar una tipología"),
+  unitTypeId: z.string().optional(),
   floor: z.string().optional(),
 });
 type CreateUnitValues = z.infer<typeof createUnitSchema>;
@@ -227,6 +228,42 @@ const CREATE_UNIT_DEFAULTS: CreateUnitValues = {
   unitTypeId: "",
   floor: "",
 };
+
+/* ─── Helpers de formulario por tipo ────────────────────────────────── */
+
+type CommercialFieldConfig = { label: string; placeholder: string; showFloor: boolean };
+
+function getCommercialFieldConfig(subtype: string | null | undefined): CommercialFieldConfig {
+  switch (subtype) {
+    case "local_comercial":  return { label: "Número de local",          placeholder: "Ej: Local 101, L-01",   showFloor: false };
+    case "oficinas":         return { label: "Número de oficina / suite", placeholder: "Ej: Suite 201, Piso 3", showFloor: true  };
+    case "showroom":         return { label: "Nombre del espacio",        placeholder: "Ej: Área principal",    showFloor: false };
+    default:                 return { label: "Número de espacio",         placeholder: "Ej: Esp-01",            showFloor: false };
+  }
+}
+
+type UnitNotes = {
+  /* commercial */
+  sqm?: number;
+  has_storage?: boolean;
+  has_bathroom?: boolean;
+  has_parking?: boolean;
+  has_independent_access?: boolean;
+  /* industrial */
+  almacen_sqm?: number;
+  oficina_sqm?: number;
+  patio_sqm?: number;
+  carga_sqm?: number;
+};
+
+function parseUnitNotes(raw: string | null | undefined): UnitNotes | null {
+  if (!raw) return null;
+  try { return JSON.parse(raw) as UnitNotes; }
+  catch { return null; }
+}
+
+const INIT_COMM_FLAGS = { has_storage: false, has_bathroom: false, has_parking: false, has_independent_access: false };
+const INIT_IND_AREAS  = { almacen_sqm: "", oficina_sqm: "", patio_sqm: "", carga_sqm: "" };
 
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
@@ -254,6 +291,13 @@ export default function BuildingUnitsPage() {
   });
   const createUnitNumber = createForm.watch("unitNumber");
   const createUnitTypeId = createForm.watch("unitTypeId");
+
+  /* Campos extra — commercial */
+  const [createSqm, setCreateSqm] = useState("");
+  const [createCommFlags, setCreateCommFlags] = useState({ ...INIT_COMM_FLAGS });
+
+  /* Campos extra — industrial */
+  const [createIndAreas, setCreateIndAreas] = useState({ ...INIT_IND_AREAS });
 
   /* Estado del modal de eliminar */
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -346,6 +390,7 @@ export default function BuildingUnitsPage() {
         floor,
         status,
         rental_type,
+        notes,
         unit_types(name, bedrooms, bathrooms)
       `)
       .eq("building_id", buildingId)
@@ -471,19 +516,47 @@ export default function BuildingUnitsPage() {
     if (!user?.company_id)  { setMsg("No se encontró la empresa del usuario."); return; }
     if (!building)           { setMsg("No se encontró el edificio."); return; }
 
+    const cat = building.building_category;
     const displayCode = generateDisplayCode(building.code, data.unitNumber);
+
+    /* Para residential_multi, tipología es obligatoria */
+    if (cat === "residential_multi" && !data.unitTypeId) {
+      createForm.setError("unitTypeId", { message: "Debes seleccionar una tipología" });
+      return;
+    }
+
+    /* Construir notes JSON según categoría */
+    let notesJson: string | null = null;
+    if (cat === "commercial") {
+      const sqmVal = parseFloat(createSqm);
+      const payload: UnitNotes = { ...createCommFlags };
+      if (!isNaN(sqmVal) && sqmVal > 0) payload.sqm = sqmVal;
+      if (Object.values(payload).some(Boolean)) notesJson = JSON.stringify(payload);
+    } else if (cat === "industrial" || cat === "industrial_park") {
+      const payload: UnitNotes = {};
+      const a = parseFloat(createIndAreas.almacen_sqm); if (!isNaN(a) && a > 0) payload.almacen_sqm = a;
+      const o = parseFloat(createIndAreas.oficina_sqm); if (!isNaN(o) && o > 0) payload.oficina_sqm = o;
+      const p = parseFloat(createIndAreas.patio_sqm);   if (!isNaN(p) && p > 0) payload.patio_sqm   = p;
+      const c = parseFloat(createIndAreas.carga_sqm);   if (!isNaN(c) && c > 0) payload.carga_sqm   = c;
+      if (Object.keys(payload).length > 0) notesJson = JSON.stringify(payload);
+    }
+
+    const insertRow: Record<string, unknown> = {
+      company_id:  user.company_id,
+      building_id: building.id,
+      unit_number: data.unitNumber.trim(),
+      display_code: displayCode,
+      floor:       data.floor && data.floor.trim() ? Number(data.floor) : null,
+      status:      "VACANT",
+      notes:       notesJson,
+    };
+    if (cat === "residential_multi" && data.unitTypeId) {
+      insertRow.unit_type_id = data.unitTypeId;
+    }
 
     const { data: newUnit, error } = await supabase
       .from("units")
-      .insert({
-        company_id:   user.company_id,
-        building_id:  building.id,
-        unit_type_id: data.unitTypeId,
-        unit_number:  data.unitNumber.trim(),
-        display_code: displayCode,
-        floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
-        status:       "VACANT",
-      })
+      .insert(insertRow)
       .select("id")
       .single();
 
@@ -492,17 +565,23 @@ export default function BuildingUnitsPage() {
       return;
     }
 
-    const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
-
-    if (cloneError) {
-      setMsg(`${labels.unit} creado, pero hubo un problema al clonar los assets base: ${cloneError}`);
-      await loadPageData();
-      return;
+    /* Clonar assets base solo para residential_multi con tipología */
+    if (cat === "residential_multi" && data.unitTypeId) {
+      const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
+      if (cloneError) {
+        setMsg(`${labels.unit} creado, pero hubo un problema al clonar los assets base: ${cloneError}`);
+        await loadPageData();
+        return;
+      }
     }
 
     createForm.reset(CREATE_UNIT_DEFAULTS);
+    setCreateSqm("");
+    setCreateCommFlags({ ...INIT_COMM_FLAGS });
+    setCreateIndAreas({ ...INIT_IND_AREAS });
     setIsCreateModalOpen(false);
-    setMsg(`${labels.unit} guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente.`);
+    const suffix = cat === "residential_multi" ? " Si la tipología tenía equipos base, ya se clonaron automáticamente." : "";
+    setMsg(`${labels.unit} guardado correctamente.${suffix}`);
     await loadPageData();
   });
 
@@ -644,8 +723,24 @@ export default function BuildingUnitsPage() {
     );
   }
 
+  const cat = building.building_category;
+  const isResidentialMulti = cat === "residential_multi";
+
   return (
     <PageContainer>
+      {/* Breadcrumb */}
+      <div style={{ padding: "18px 0 0 0", marginBottom: 4 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 13, color: "var(--text-secondary)" }}>
+          <a href="/dashboard" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Inicio</a>
+          <span style={{ color: "var(--text-muted)" }}>{">"}</span>
+          <a href="/buildings" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Propiedades</a>
+          <span style={{ color: "var(--text-muted)" }}>{">"}</span>
+          <a href={`/buildings/${building.id}`} style={{ color: "var(--text-secondary)", textDecoration: "none" }}>{building.name}</a>
+          <span style={{ color: "var(--text-muted)" }}>{">"}</span>
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{labels.units}</span>
+        </div>
+      </div>
+
       <PageHeader
         title={`${labels.units} — ${building.name}`}
         titleIcon={<DoorOpen size={20} />}
@@ -704,6 +799,21 @@ export default function BuildingUnitsPage() {
               const occupiedRooms = isByRoom ? (activeLeaseCountByUnitId.get(unit.id) ?? 0) : undefined;
               const totalRooms    = isByRoom ? (typeInfo?.bedrooms ?? 1) : undefined;
 
+              const unitNotes = parseUnitNotes(unit.notes);
+              const isCommercial = cat === "commercial";
+              const isIndustrial = cat === "industrial" || cat === "industrial_park";
+
+              /* Métricas de áreas industriales */
+              const indTotal = isIndustrial && unitNotes
+                ? ((unitNotes.almacen_sqm ?? 0) + (unitNotes.oficina_sqm ?? 0) + (unitNotes.patio_sqm ?? 0) + (unitNotes.carga_sqm ?? 0))
+                : 0;
+              const indParts = isIndustrial && unitNotes ? [
+                unitNotes.almacen_sqm ? `${unitNotes.almacen_sqm} m² almacén` : "",
+                unitNotes.oficina_sqm ? `${unitNotes.oficina_sqm} m² oficina` : "",
+                unitNotes.patio_sqm   ? `${unitNotes.patio_sqm} m² patio`     : "",
+                unitNotes.carga_sqm   ? `${unitNotes.carga_sqm} m² carga`     : "",
+              ].filter(Boolean) : [];
+
               return (
                 <div
                   key={unit.id}
@@ -727,10 +837,12 @@ export default function BuildingUnitsPage() {
                           {occupiedRooms}/{totalRooms} cuartos
                         </AppBadge>
                       ) : null}
-                      <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">
-                        <Layers3 size={12} />
-                        {typeInfo?.name || "Sin tipología"}
-                      </AppBadge>
+                      {isResidentialMulti && (
+                        <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">
+                          <Layers3 size={12} />
+                          {typeInfo?.name || "Sin tipología"}
+                        </AppBadge>
+                      )}
                     </div>
                   }
                   statusIndicator={
@@ -758,41 +870,49 @@ export default function BuildingUnitsPage() {
                     </div>
                   }
                 >
-                  {/* Detalles tipología + inquilino */}
-                  {(unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null || tenantName) && (
-                    <div style={{ marginTop: 8 }}>
-                      {(unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null) && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: 12, marginBottom: tenantName ? 6 : 0 }}>
-                          {unit.floor != null && (
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <Hash size={11} />
-                              Piso {unit.floor}
-                            </span>
-                          )}
-                          {typeInfo?.bedrooms != null && (
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <BedDouble size={11} />
-                              {typeInfo.bedrooms} rec.
-                            </span>
-                          )}
-                          {typeInfo?.bathrooms != null && (
-                            <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                              <Bath size={11} />
-                              {typeInfo.bathrooms} baño{typeInfo.bathrooms !== 1 ? "s" : ""}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {tenantName && (
-                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                          <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {tenantName}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                  <div style={{ marginTop: 8 }}>
+                    {/* Detalles residencial: tipología + piso + inquilino */}
+                    {isResidentialMulti && (unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null || tenantName) && (
+                      <>
+                        {(unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null) && (
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: 12, marginBottom: tenantName ? 6 : 0 }}>
+                            {unit.floor != null && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Hash size={11} />Piso {unit.floor}</span>}
+                            {typeInfo?.bedrooms != null && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><BedDouble size={11} />{typeInfo.bedrooms} rec.</span>}
+                            {typeInfo?.bathrooms != null && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Bath size={11} />{typeInfo.bathrooms} baño{typeInfo.bathrooms !== 1 ? "s" : ""}</span>}
+                          </div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Detalles commercial: m² + chips */}
+                    {isCommercial && unitNotes && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+                        {unitNotes.sqm ? <span style={{ fontWeight: 600 }}>{unitNotes.sqm} m²</span> : null}
+                        {unitNotes.has_storage           && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Bodega</AppBadge>}
+                        {unitNotes.has_bathroom          && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Sanitarios</AppBadge>}
+                        {unitNotes.has_parking           && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Estacionamiento</AppBadge>}
+                        {unitNotes.has_independent_access && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Acceso indep.</AppBadge>}
+                      </div>
+                    )}
+
+                    {/* Detalles industrial: total + desglose */}
+                    {isIndustrial && indTotal > 0 && (
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        <span style={{ fontWeight: 600, marginRight: 6 }}>{indTotal.toLocaleString("es-MX")} m² total</span>
+                        {indParts.length > 0 && <span style={{ color: "var(--text-muted)" }}>{indParts.join(" · ")}</span>}
+                      </div>
+                    )}
+
+                    {/* Inquilino — todos los tipos */}
+                    {tenantName && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
+                        <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {tenantName}
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </EntityCard>
                 </div>
               );
@@ -867,45 +987,137 @@ export default function BuildingUnitsPage() {
       {/* ── Modal: crear ── */}
       <Modal
         open={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          createForm.reset(CREATE_UNIT_DEFAULTS);
+          setCreateSqm("");
+          setCreateCommFlags({ ...INIT_COMM_FLAGS });
+          setCreateIndAreas({ ...INIT_IND_AREAS });
+        }}
         title={`Crear ${labels.unit.toLowerCase()}`}
-        subtitle="Los assets base de la tipología se clonarán automáticamente al guardar."
+        subtitle={isResidentialMulti ? "Los assets base de la tipología se clonarán automáticamente al guardar." : undefined}
       >
         <form onSubmit={onCreateUnit}>
-          <AppFormField label={`Número de ${labels.unit.toLowerCase()}`} required>
-            <input
-              {...createForm.register("unitNumber")}
-              placeholder="Ej. 101"
-              style={INPUT_STYLE}
-            />
-            {createForm.formState.errors.unitNumber ? (
-              <p style={errorTextStyle}>{createForm.formState.errors.unitNumber.message}</p>
-            ) : null}
-          </AppFormField>
+          {/* ── Número / nombre — siempre presente ── */}
+          {(() => {
+            if (cat === "commercial") {
+              const cfg = getCommercialFieldConfig(building.building_subtype);
+              return (
+                <AppFormField label={cfg.label} required>
+                  <input {...createForm.register("unitNumber")} placeholder={cfg.placeholder} style={INPUT_STYLE} />
+                  {createForm.formState.errors.unitNumber ? <p style={errorTextStyle}>{createForm.formState.errors.unitNumber.message}</p> : null}
+                </AppFormField>
+              );
+            }
+            if (cat === "industrial" || cat === "industrial_park") {
+              return (
+                <AppFormField label="Número / nombre de la nave" required>
+                  <input {...createForm.register("unitNumber")} placeholder="Ej: Nave 1, Bodega A" style={INPUT_STYLE} />
+                  {createForm.formState.errors.unitNumber ? <p style={errorTextStyle}>{createForm.formState.errors.unitNumber.message}</p> : null}
+                </AppFormField>
+              );
+            }
+            /* residential_multi y otros */
+            return (
+              <AppFormField label={`Número de ${labels.unit.toLowerCase()}`} required>
+                <input {...createForm.register("unitNumber")} placeholder="Ej. 101" style={INPUT_STYLE} />
+                {createForm.formState.errors.unitNumber ? <p style={errorTextStyle}>{createForm.formState.errors.unitNumber.message}</p> : null}
+              </AppFormField>
+            );
+          })()}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <AppFormField label="Tipología" required>
-              <AppSelect {...createForm.register("unitTypeId")}>
-                <option value="">Selecciona una tipología</option>
-                {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
-              </AppSelect>
-              {createForm.formState.errors.unitTypeId ? (
-                <p style={errorTextStyle}>{createForm.formState.errors.unitTypeId.message}</p>
-              ) : null}
-            </AppFormField>
+          {/* ── Campos específicos por categoría ── */}
+          {isResidentialMulti && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <AppFormField label="Tipología" required>
+                  <AppSelect {...createForm.register("unitTypeId")}>
+                    <option value="">Selecciona una tipología</option>
+                    {unitTypes.map((ut) => <option key={ut.id} value={ut.id}>{ut.name}</option>)}
+                  </AppSelect>
+                  {createForm.formState.errors.unitTypeId ? <p style={errorTextStyle}>{createForm.formState.errors.unitTypeId.message}</p> : null}
+                </AppFormField>
+                <AppFormField label="Piso">
+                  <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
+                </AppFormField>
+              </div>
+              {selectedTypeForCreate ? <TypePreview type={selectedTypeForCreate} /> : null}
+            </>
+          )}
+
+          {cat === "commercial" && (
+            <>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 16 }}>
+                <AppFormField label="M² totales">
+                  <input
+                    type="number" min={0} step="0.01"
+                    value={createSqm}
+                    onChange={e => setCreateSqm(e.target.value)}
+                    placeholder="Ej. 85"
+                    style={INPUT_STYLE}
+                  />
+                </AppFormField>
+                {getCommercialFieldConfig(building.building_subtype).showFloor && (
+                  <AppFormField label="Piso">
+                    <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
+                  </AppFormField>
+                )}
+              </div>
+              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Espacios incluidos</p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
+                {([ ["has_storage", "Bodega / trastienda"], ["has_bathroom", "Sanitarios"], ["has_parking", "Estacionamiento asignado"], ["has_independent_access", "Acceso independiente"] ] as const).map(([key, label]) => (
+                  <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", color: "var(--text-primary)" }}>
+                    <input
+                      type="checkbox"
+                      checked={createCommFlags[key]}
+                      onChange={e => setCreateCommFlags(prev => ({ ...prev, [key]: e.target.checked }))}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </>
+          )}
+
+          {(cat === "industrial" || cat === "industrial_park") && (() => {
+            const areas: [keyof typeof createIndAreas, string][] = [
+              ["almacen_sqm", "Almacén (m²)"],
+              ["oficina_sqm", "Oficina interna (m²)"],
+              ["patio_sqm",   "Patio de maniobras (m²)"],
+              ["carga_sqm",   "Área de carga/descarga (m²)"],
+            ];
+            const total = Object.values(createIndAreas).reduce((s, v) => s + (parseFloat(v) || 0), 0);
+            return (
+              <>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 8 }}>
+                  {areas.map(([key, label]) => (
+                    <AppFormField key={key} label={label}>
+                      <input
+                        type="number" min={0} step="0.01"
+                        value={createIndAreas[key]}
+                        onChange={e => setCreateIndAreas(prev => ({ ...prev, [key]: e.target.value }))}
+                        placeholder="0"
+                        style={INPUT_STYLE}
+                      />
+                    </AppFormField>
+                  ))}
+                </div>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                  Total: <strong>{total > 0 ? `${total.toLocaleString("es-MX")} m²` : "—"}</strong>
+                </p>
+                <AppFormField label="Piso">
+                  <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
+                </AppFormField>
+              </>
+            );
+          })()}
+
+          {/* Para tipos que no son residential_multi ni commercial ni industrial, mostrar solo Piso */}
+          {!isResidentialMulti && cat !== "commercial" && cat !== "industrial" && cat !== "industrial_park" && (
             <AppFormField label="Piso">
-              <input
-                type="number" min={0}
-                {...createForm.register("floor")}
-                placeholder="Ej. 1" style={INPUT_STYLE}
-              />
+              <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
             </AppFormField>
-          </div>
-
-          {/* Preview de recámaras/baños de la tipología seleccionada */}
-          {selectedTypeForCreate ? (
-            <TypePreview type={selectedTypeForCreate} />
-          ) : null}
+          )}
 
           {building.code && createUnitNumber && createUnitNumber.trim() ? (
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 16 }}>
@@ -917,7 +1129,13 @@ export default function BuildingUnitsPage() {
             <UiButton type="submit" disabled={createForm.formState.isSubmitting} variant="primary">
               {createForm.formState.isSubmitting ? "Guardando..." : `Guardar ${labels.unit.toLowerCase()}`}
             </UiButton>
-            <UiButton type="button" onClick={() => setIsCreateModalOpen(false)}>
+            <UiButton type="button" onClick={() => {
+              setIsCreateModalOpen(false);
+              createForm.reset(CREATE_UNIT_DEFAULTS);
+              setCreateSqm("");
+              setCreateCommFlags({ ...INIT_COMM_FLAGS });
+              setCreateIndAreas({ ...INIT_IND_AREAS });
+            }}>
               Cancelar
             </UiButton>
           </div>
