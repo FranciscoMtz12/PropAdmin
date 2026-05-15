@@ -23,6 +23,7 @@ type Props = {
   companyId: string
   buildingName: string
   units: { id: string; unit_number: string; display_code: string | null }[]
+  refreshKey?: number
 }
 
 const SERVICE_TYPE_ORDER: UtilityServiceType[] = ["electricity", "gas", "water", "internet", "other"]
@@ -43,7 +44,7 @@ function ServiceIcon({ type, size = 16 }: { type: UtilityServiceType; size?: num
   }
 }
 
-export default function BuildingServicesTab({ buildingId, companyId, buildingName: _buildingName, units }: Props) {
+export default function BuildingServicesTab({ buildingId, companyId, buildingName: _buildingName, units, refreshKey }: Props) {
   const [meters, setMeters]               = useState<BuildingUtilityMeter[]>([])
   const [placeholders, setPlaceholders]   = useState<BuildingUtilityMeter[]>([])
   const [subMetersMap, setSubMetersMap]   = useState<Record<string, BuildingUtilitySubMeter[]>>({})
@@ -114,7 +115,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
     }
   }
 
-  useEffect(() => { void loadData() }, [buildingId]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { void loadData() }, [buildingId, refreshKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   async function syncBillingConcept(conceptCode: string, shouldBeActive: boolean) {
     if (shouldBeActive) {

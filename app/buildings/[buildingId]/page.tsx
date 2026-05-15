@@ -649,9 +649,10 @@ export default function BuildingDetailPage() {
   const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
   const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigRow[]>([]);
   const [savingFeatureKey, setSavingFeatureKey] = useState<string | null>(null);
-  const [featureStatus, setFeatureStatus]       = useState<Record<string, "ok" | "pending" | "unchecked">>({});
-  const [featureToast, setFeatureToast]         = useState<string | null>(null);
-  const [featureWarnToast, setFeatureWarnToast] = useState<string | null>(null);
+  const [featureStatus, setFeatureStatus]         = useState<Record<string, "ok" | "pending" | "unchecked">>({});
+  const [featureToast, setFeatureToast]           = useState<string | null>(null);
+  const [featureWarnToast, setFeatureWarnToast]   = useState<string | null>(null);
+  const [servicesRefreshKey, setServicesRefreshKey] = useState(0);
   const [activeFeatureKeys, setActiveFeatureKeys] = useState<Set<string>>(new Set());
 
   /* Setup checklist */
@@ -1275,6 +1276,7 @@ export default function BuildingDetailPage() {
         await Promise.all(placeholders.map((ph) =>
           supabase.from("building_utility_meters").update({ deleted_at: now }).eq("id", ph.id)
         ));
+        setServicesRefreshKey((prev) => prev + 1);
 
       } else if (featureKey === "parking") {
         const { data: spots } = await supabase
@@ -1295,6 +1297,7 @@ export default function BuildingDetailPage() {
         await Promise.all((spots || []).map((s) =>
           supabase.from("parking_spots").update({ deleted_at: now }).eq("id", s.id)
         ));
+        void loadParkingData();
 
       } else if (featureKey === "cleaning") {
         const { data: schedules } = await supabase
@@ -1361,6 +1364,7 @@ export default function BuildingDetailPage() {
             billing_frequency: "monthly",
             description:       "PLACEHOLDER — completar configuración",
           });
+          setServicesRefreshKey((prev) => prev + 1);
         } else if (featureKey === "parking") {
           await supabase.from("parking_spots").insert({
             building_id: building.id,
@@ -1368,6 +1372,7 @@ export default function BuildingDetailPage() {
             spot_number: "1",
             status:      "vacant",
           });
+          void loadParkingData();
         } else if (featureKey === "cleaning") {
           await supabase.from("cleaning_building_schedules").insert({
             building_id:   building.id,
@@ -2563,6 +2568,7 @@ export default function BuildingDetailPage() {
           companyId={building.company_id}
           buildingName={building.name}
           units={buildingUnits}
+          refreshKey={servicesRefreshKey}
         />
       ) : null}
 
