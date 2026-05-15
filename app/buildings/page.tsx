@@ -1658,8 +1658,9 @@ export default function BuildingsPage() {
           {/* ── PASO 2: selector de features ── */}
           {createStep === 2 && (() => {
             const applicableFeatures = getDefaultFeatures(selectedTypes[0] ?? "");
-            const spaceFeatures   = applicableFeatures.filter((f) => f.category === "space");
-            const serviceFeatures = applicableFeatures.filter((f) => f.category === "service");
+            const visibleFeatures   = applicableFeatures.filter((f) => f.key !== "general_setup");
+            const spaceFeatures   = visibleFeatures.filter((f) => f.category === "space");
+            const serviceFeatures = visibleFeatures.filter((f) => f.category === "service");
 
             function FeatureCard({ feat }: { feat: typeof applicableFeatures[number] }) {
               const FeatIcon = FEATURE_ICON_MAP[feat.icon];
