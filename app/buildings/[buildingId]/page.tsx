@@ -1688,11 +1688,11 @@ export default function BuildingDetailPage() {
                             {a.label}
                           </span>
                         ))}
-                        {otherNotes && (
-                          <span style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
-                            {otherNotes.length > 40 ? otherNotes.slice(0, 40) + "..." : otherNotes}
+                        {otherNotes && String(otherNotes).split("\n").map((l) => l.trim()).filter((l) => l.length > 0).map((line, idx) => (
+                          <span key={idx} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
+                            {line.length > 40 ? line.slice(0, 38) + "…" : line}
                           </span>
-                        )}
+                        ))}
                       </div>
                     )}
                     {rentalMode && (
