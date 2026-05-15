@@ -651,6 +651,7 @@ export default function BuildingDetailPage() {
   const [savingFeatureKey, setSavingFeatureKey] = useState<string | null>(null);
   const [featureStatus, setFeatureStatus]       = useState<Record<string, "ok" | "pending" | "unchecked">>({});
   const [featureToast, setFeatureToast]         = useState<string | null>(null);
+  const [featureWarnToast, setFeatureWarnToast] = useState<string | null>(null);
   const [activeFeatureKeys, setActiveFeatureKeys] = useState<Set<string>>(new Set());
 
   /* Setup checklist */
@@ -1239,30 +1240,105 @@ export default function BuildingDetailPage() {
   async function handleToggleFeature(featureKey: string) {
     if (!building || !user?.company_id) return;
     setSavingFeatureKey(featureKey);
-    const existing = featureConfigs.find((c) => c.feature_key === featureKey);
-    const nextActive = !(existing?.is_active ?? false);
+    setFeatureWarnToast(null);
 
+    const existing   = featureConfigs.find((c) => c.feature_key === featureKey);
+    const nextActive = !(existing?.is_active ?? false);
+    const feat       = PROPERTY_FEATURES.find((f) => f.key === featureKey);
+
+    const METER_KEYS = ["electricity", "water", "gas", "internet"] as const;
+    type MeterKey    = typeof METER_KEYS[number];
+    const isMeterKey = (k: string): k is MeterKey => METER_KEYS.includes(k as MeterKey);
+
+    // ── Deactivation checks ───────────────────────────────────────────
+    if (!nextActive) {
+      const now = new Date().toISOString();
+
+      if (isMeterKey(featureKey)) {
+        const { data: meters } = await supabase
+          .from("building_utility_meters")
+          .select("id, active")
+          .eq("building_id", building.id)
+          .eq("service_type", featureKey)
+          .is("deleted_at", null);
+
+        const realMeters   = (meters || []).filter((m) => m.active === true);
+        const placeholders = (meters || []).filter((m) => m.active === false);
+
+        if (realMeters.length > 0) {
+          setFeatureWarnToast(`No puedes desactivar ${feat?.label ?? featureKey} porque ya tiene un medidor configurado. Elimínalo primero desde el tab Servicios.`);
+          setTimeout(() => setFeatureWarnToast(null), 6000);
+          setSavingFeatureKey(null);
+          return;
+        }
+
+        await Promise.all(placeholders.map((ph) =>
+          supabase.from("building_utility_meters").update({ deleted_at: now }).eq("id", ph.id)
+        ));
+
+      } else if (featureKey === "parking") {
+        const { data: spots } = await supabase
+          .from("parking_spots")
+          .select("id, tenant_id")
+          .eq("building_id", building.id)
+          .is("deleted_at", null);
+
+        const realSpots = (spots || []).filter((s) => s.tenant_id != null);
+
+        if (realSpots.length > 0) {
+          setFeatureWarnToast(`No puedes desactivar ${feat?.label ?? featureKey} porque hay cajones con tenants asignados. Libéralos primero desde el tab Cajones.`);
+          setTimeout(() => setFeatureWarnToast(null), 6000);
+          setSavingFeatureKey(null);
+          return;
+        }
+
+        await Promise.all((spots || []).map((s) =>
+          supabase.from("parking_spots").update({ deleted_at: now }).eq("id", s.id)
+        ));
+
+      } else if (featureKey === "cleaning") {
+        const { data: schedules } = await supabase
+          .from("cleaning_building_schedules")
+          .select("id")
+          .eq("building_id", building.id)
+          .is("deleted_at", null);
+
+        if ((schedules || []).length > 1) {
+          setFeatureWarnToast(`No puedes desactivar ${feat?.label ?? featureKey} porque ya tiene schedules configurados. Elimínalos primero desde el módulo de Limpieza.`);
+          setTimeout(() => setFeatureWarnToast(null), 6000);
+          setSavingFeatureKey(null);
+          return;
+        }
+
+        await Promise.all((schedules || []).map((s) =>
+          supabase.from("cleaning_building_schedules").update({ deleted_at: now }).eq("id", s.id)
+        ));
+      }
+
+      setFeatureStatus((prev) => ({ ...prev, [featureKey]: "pending" }));
+    }
+
+    // ── Update feature_config ─────────────────────────────────────────
     if (existing) {
       await supabase.from("building_feature_config").update({ is_active: nextActive }).eq("id", existing.id);
     } else {
-      const feat = PROPERTY_FEATURES.find((f) => f.key === featureKey);
       await supabase.from("building_feature_config").insert({
-        building_id: building.id,
-        company_id: user.company_id,
-        feature_key: featureKey,
+        building_id:      building.id,
+        company_id:       user.company_id,
+        feature_key:      featureKey,
         feature_category: feat?.category ?? "service",
-        is_active: true,
+        is_active:        true,
       });
     }
 
+    // ── Activation logic ──────────────────────────────────────────────
     if (nextActive) {
-      const feat = PROPERTY_FEATURES.find((f) => f.key === featureKey);
       if (feat && feat.tasks.length > 0) {
         const taskRows = feat.tasks.map((task) => ({
-          building_id: building.id,
-          company_id: user.company_id,
-          task_key: task.key,
-          feature_key: featureKey,
+          building_id:  building.id,
+          company_id:   user.company_id,
+          task_key:     task.key,
+          feature_key:  featureKey,
           is_completed: false,
         }));
         await supabase.from("building_setup_tasks").upsert(taskRows, {
@@ -1271,12 +1347,7 @@ export default function BuildingDetailPage() {
         });
       }
 
-      // Create placeholder if feature has no data yet
       if (featureStatus[featureKey] === "pending") {
-        const METER_KEYS = ["electricity", "water", "gas", "internet"] as const;
-        type MeterKey = typeof METER_KEYS[number];
-        const isMeterKey = (k: string): k is MeterKey => METER_KEYS.includes(k as MeterKey);
-
         if (isMeterKey(featureKey)) {
           await supabase.from("building_utility_meters").insert({
             building_id:       building.id,
@@ -1308,13 +1379,12 @@ export default function BuildingDetailPage() {
         }
 
         setFeatureStatus((prev) => ({ ...prev, [featureKey]: "ok" }));
-
-        const label = feat?.label ?? featureKey;
-        setFeatureToast(`✓ ${label} configurado — completa los detalles en el módulo correspondiente`);
+        setFeatureToast(`✓ ${feat?.label ?? featureKey} configurado — completa los detalles en el módulo correspondiente`);
         setTimeout(() => setFeatureToast(null), 4000);
       }
     }
 
+    // ── Reload configs ────────────────────────────────────────────────
     const { data } = await supabase
       .from("building_feature_config")
       .select("id, feature_key, is_active")
@@ -3157,6 +3227,16 @@ export default function BuildingDetailPage() {
                   </div>
                 )}
               </div>
+
+              {featureWarnToast && (
+                <div style={{
+                  marginTop: 16, padding: "10px 14px", borderRadius: 10,
+                  background: "#fff7ed", border: "1px solid #fed7aa",
+                  color: "#c2410c", fontSize: 13, fontWeight: 500,
+                }}>
+                  {featureWarnToast}
+                </div>
+              )}
 
               {featureToast && (
                 <div style={{
