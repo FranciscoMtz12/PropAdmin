@@ -2386,8 +2386,8 @@ export default function BuildingDetailPage() {
               subtitle={`${labels.building} — contratos activos y disponibilidad.`}
               icon={<FileClockIcon size={18} />}
             >
-              {/* Barra de ocupación del terreno */}
-              {building.land_sqm != null && (
+              {/* Barra de ocupación del terreno — solo para terrenos */}
+              {building.building_category === "land" && building.land_sqm != null && (
                 <div style={{ marginBottom: 20 }}>
                   <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
                     Ocupación del terreno
