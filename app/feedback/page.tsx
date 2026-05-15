@@ -192,9 +192,7 @@ export default function FeedbackPage() {
         />
       </AppGrid>
 
-      <div style={{ height: 16 }} />
-
-      <SectionCard title="Feedback recibido" icon={<MessageSquare size={18} />}>
+      <SectionCard title="Feedback recibido" icon={<MessageSquare size={18} />} style={{ marginTop: 16 }}>
         <AppTable<FeedbackRow>
           minWidth={900}
           columns={[

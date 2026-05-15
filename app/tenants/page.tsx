@@ -744,9 +744,7 @@ export default function TenantsPage() {
       </AppGrid>
       </motion.div>
 
-      <div style={{ height: 16 }} />
-
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }} style={{ marginTop: 16 }}>
       <SectionCard title="Filtros">
         <div
           className="tenants-filter-grid"
@@ -818,9 +816,7 @@ export default function TenantsPage() {
       </SectionCard>
       </motion.div>
 
-      <div style={{ height: 16 }} />
-
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }} style={{ marginTop: 16 }}>
       <SectionCard title="Listado de inquilinos">
         <div className="mod-table-wrap">
         <AppTable
@@ -996,9 +992,7 @@ export default function TenantsPage() {
       </SectionCard>
       </motion.div>
 
-      <div style={{ height: 16 }} />
-
-      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }}>
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.15 }} style={{ marginTop: 16 }}>
       <SectionCard title="Historial de precios de renta">
         {/* Filtro por edificio */}
         <div style={{ marginBottom: 18 }}>

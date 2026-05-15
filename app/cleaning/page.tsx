@@ -1505,9 +1505,7 @@ export default function CleaningPage() {
           </div>
         </SectionCard>
 
-        <div style={{ height: 16 }} />
-
-        <SectionCard title="Últimos 30 días" icon={<Clock3 size={18} />}>
+        <SectionCard title="Últimos 30 días" icon={<Clock3 size={18} />} style={{ marginTop: 16 }}>
           {historyRows.length === 0 ? (
             <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>Sin registros en el periodo.</div>
           ) : (

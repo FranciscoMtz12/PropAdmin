@@ -630,9 +630,7 @@ export default function InvoiceGenerationPage() {
         />
       </AppGrid>
 
-      <div style={{ height: 16 }} />
-
-      <AppCard style={{ marginBottom: 16 }}>
+      <AppCard style={{ marginTop: 16, marginBottom: 16 }}>
         <div
           style={{
             display: "flex",

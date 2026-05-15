@@ -476,11 +476,10 @@ export default function ReportedPaymentsPage() {
         />
       </AppGrid>
 
-      <div style={{ height: 16 }} />
-
       {pageError ? (
         <AppCard
           style={{
+            marginTop: 16,
             marginBottom: 18,
             border: "1px solid var(--metric-border-red)",
             background: "var(--metric-bg-red)",
@@ -519,7 +518,7 @@ export default function ReportedPaymentsPage() {
         </AppCard>
       ) : null}
 
-      <AppCard style={{ marginBottom: 16 }}>
+      <AppCard style={{ marginTop: 16, marginBottom: 16 }}>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           {(["pending_review", "approved", "rejected"] as ReviewTab[]).map(
             (tab) => {

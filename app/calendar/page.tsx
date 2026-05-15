@@ -2130,9 +2130,6 @@ export default function CalendarPage() {
         </AppCard>
       </SectionCard>
 
-      <div style={{ height: 16 }} />
-
-
       {hoveredEvent ? (
         <div
           style={{

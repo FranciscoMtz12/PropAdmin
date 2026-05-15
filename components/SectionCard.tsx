@@ -1,6 +1,6 @@
 "use client";
 
-import type { ReactNode } from "react";
+import React, { type ReactNode } from "react";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -20,17 +20,19 @@ export default function SectionCard({
   subtitle,
   icon,
   action,
+  style,
 }: {
   children: ReactNode;
   title?: string;
   subtitle?: string;
   icon?: ReactNode;
   action?: ReactNode;
+  style?: React.CSSProperties;
 }) {
   const { showDescriptions } = useTheme();
 
   return (
-    <AppCard style={{ padding: 24, borderRadius: 18 }}>
+    <AppCard style={{ padding: 24, borderRadius: 18, ...style }}>
       {title ? (
         <div
           style={{

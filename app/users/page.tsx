@@ -294,9 +294,7 @@ export default function UsersPage() {
         />
       </AppGrid>
 
-      <div style={{ height: 16 }} />
-
-      <SectionCard title="Listado de usuarios" icon={<Users size={18} />}>
+      <SectionCard title="Listado de usuarios" icon={<Users size={18} />} style={{ marginTop: 16 }}>
         <div className="mod-table-wrap">
         <AppTable<UserRow>
           minWidth={860}

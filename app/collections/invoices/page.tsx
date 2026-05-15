@@ -270,11 +270,10 @@ export default function AdminInvoicesPage() {
         />
       </AppGrid>
 
-      <div style={{ height: 16 }} />
-
       <SectionCard
         title="Listado administrativo"
         subtitle="Desde aquí puedes crear, revisar, editar y eliminar facturas sin salir del flujo de PropAdmin."
+        style={{ marginTop: 16 }}
       >
         <AppGrid minWidth={260} style={{ marginBottom: 18 }}>
           <AppCard>
