@@ -1,6 +1,6 @@
 export const PROPERTY_TYPES = [
   { value: 'residential_multi',  label: 'Residencial multifamiliar', icon: 'Building2', color: '#8B2252' },
-  { value: 'residential_single', label: 'Residencial unifamiliar',   icon: 'Home',      color: '#8B2252' },
+  { value: 'residential_single', label: 'Residencial unifamiliar',   icon: 'Home',      color: '#0369a1' },
   { value: 'commercial',         label: 'Comercial',                 icon: 'Store',     color: '#0369a1' },
   { value: 'industrial',         label: 'Industrial',                icon: 'Warehouse', color: '#b45309' },
   { value: 'industrial_park',    label: 'Parque Industrial',         icon: 'Factory',   color: '#b45309' },
