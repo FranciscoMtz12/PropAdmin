@@ -1476,7 +1476,7 @@ export default function BuildingDetailPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <SummaryItem label="Código"    value={building.code || "Sin código"}      icon={<Tags size={16} />} />
                 <SummaryItem label="Dirección" value={building.address || "Sin dirección"} icon={<MapPin size={16} />} />
-                <SummaryItem label="Categoría" value={categoryDefinition.label}            icon={<Building2 size={16} />} />
+                <SummaryItem label="Categoría" value={getPropertyType(building.building_category)?.label ?? building.building_category ?? ""}            icon={<Building2 size={16} />} />
                 {building.building_category === "mixed_use" && building.building_subcategory ? (
                   <SummaryItem
                     label="Subcategoría"
@@ -1563,8 +1563,8 @@ export default function BuildingDetailPage() {
             {!isLand && !isIndustrialPark && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />}>
               {totalUnits === 0 ? (
                 <AppEmptyState
-                  title="Sin unidades registradas"
-                  description="Crea departamentos para ver la distribución aquí."
+                  title={`Sin ${labels.units.toLowerCase()} registrados`}
+                  description={`Crea el primer ${labels.unit.toLowerCase()} para ver la distribución aquí.`}
                 />
               ) : (
                 <>
