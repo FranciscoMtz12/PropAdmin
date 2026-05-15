@@ -27,6 +27,41 @@ export const BUILDING_FEATURES = [
   { key: 'has_bathroom',     label: 'Baños'           },
 ]
 
+export const COMMERCIAL_SUBTYPES = [
+  { value: 'local_comercial',  label: 'Local comercial',  icon: 'Store',     description: 'Tienda, restaurante, consultorio u otro espacio de atención al público' },
+  { value: 'oficinas',         label: 'Oficinas',         icon: 'Briefcase', description: 'Edificio o piso de oficinas, coworking o corporativo' },
+  { value: 'plaza_comercial',  label: 'Plaza comercial',  icon: 'Building2', description: 'Conjunto de locales — contiene espacios hijos como una plaza o galería' },
+  { value: 'showroom',         label: 'Showroom',         icon: 'Monitor',   description: 'Espacio de exhibición y venta — concesionaria, mueblería, galería' },
+] as const
+
+export type CommercialSubtype = typeof COMMERCIAL_SUBTYPES[number]['value']
+
+export function getCommercialSubtype(subtype: string | null | undefined) {
+  return COMMERCIAL_SUBTYPES.find(s => s.value === subtype)
+}
+
+export const INDUSTRIAL_SUBTYPES = [
+  { value: 'nave_industrial', label: 'Nave industrial',       icon: 'Warehouse', description: 'Bodega o nave para manufactura, almacenamiento o distribución' },
+  { value: 'bodega',          label: 'Bodega',                icon: 'Package',   description: 'Espacio de almacenamiento' },
+  { value: 'planta',          label: 'Planta de producción',  icon: 'Factory',   description: 'Instalación para manufactura o procesamiento' },
+] as const
+
+export type IndustrialSubtype = typeof INDUSTRIAL_SUBTYPES[number]['value']
+
+export function getIndustrialSubtype(subtype: string | null | undefined) {
+  return INDUSTRIAL_SUBTYPES.find(s => s.value === subtype)
+}
+
+export function getSubtypeLabel(
+  category: string | null | undefined,
+  subtype: string | null | undefined,
+): string | undefined {
+  if (!subtype) return undefined
+  if (category === 'commercial') return getCommercialSubtype(subtype)?.label
+  if (category === 'industrial' || category === 'industrial_park') return getIndustrialSubtype(subtype)?.label
+  return undefined
+}
+
 export function getPropertyType(category: string | null | undefined) {
   return PROPERTY_TYPES.find(t => t.value === category) ?? PROPERTY_TYPES[0]
 }
@@ -43,8 +78,27 @@ export type PropertyLabels = {
   unit: string
 }
 
-export function getPropertyLabels(category: string | null): PropertyLabels {
+export function getPropertyLabels(category: string | null, subtype?: string | null): PropertyLabels {
   switch (category) {
+    case 'commercial':
+      switch (subtype) {
+        case 'plaza_comercial':
+          return { units: 'Locales', leases: 'Contratos', collections: 'Cobranza', building: 'Plaza comercial', unit: 'Local' }
+        case 'oficinas':
+          return { units: 'Oficinas', leases: 'Contratos', collections: 'Cobranza', building: 'Edificio de oficinas', unit: 'Oficina' }
+        case 'showroom':
+          return { units: 'Espacios', leases: 'Contratos', collections: 'Cobranza', building: 'Showroom', unit: 'Espacio' }
+        default:
+          return { units: 'Locales', leases: 'Contratos', collections: 'Cobranza', building: 'Local comercial', unit: 'Local' }
+      }
+    case 'industrial':
+    case 'industrial_park':
+      switch (subtype) {
+        case 'planta':
+          return { units: 'Áreas', leases: 'Contratos', collections: 'Cobranza', building: 'Planta de producción', unit: 'Área' }
+        default:
+          return { units: 'Naves / Espacios', leases: 'Contratos', collections: 'Cobranza', building: 'Nave industrial', unit: 'Espacio' }
+      }
     case 'residential_single':
       return {
         units:       'Habitaciones',
@@ -60,23 +114,6 @@ export function getPropertyLabels(category: string | null): PropertyLabels {
         collections: 'Cobranza de terreno',
         building:    'Terreno',
         unit:        'Sección',
-      }
-    case 'industrial':
-    case 'industrial_park':
-      return {
-        units:       'Naves / Espacios',
-        leases:      'Contratos',
-        collections: 'Cobranza',
-        building:    'Nave industrial',
-        unit:        'Espacio',
-      }
-    case 'commercial':
-      return {
-        units:       'Locales',
-        leases:      'Contratos comerciales',
-        collections: 'Cobranza',
-        building:    'Propiedad comercial',
-        unit:        'Local',
       }
     default:
       return {

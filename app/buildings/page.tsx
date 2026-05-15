@@ -44,6 +44,7 @@ import {
   LayoutGrid,
   Map as MapIcon,
   MapPin,
+  Monitor,
   MoreHorizontal,
   Package,
   Plus,
@@ -78,7 +79,10 @@ import AppFormField from "@/components/AppFormField";
 import AppEmptyState from "@/components/AppEmptyState";
 import {
   getPropertyType,
+  getSubtypeLabel,
   PROPERTY_TYPES,
+  COMMERCIAL_SUBTYPES,
+  INDUSTRIAL_SUBTYPES,
 } from "@/lib/property-types";
 import { PROPERTY_FEATURES, getDefaultFeatures } from "@/lib/property-features";
 import {
@@ -93,6 +97,10 @@ import {
 
 const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
   Building2, Home, Store, Warehouse, Factory, MapPin,
+};
+
+const SUBTYPE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  Store, Briefcase, Building2, Monitor, Warehouse, Package, Factory,
 };
 
 const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
@@ -125,6 +133,7 @@ type Building = {
   code: string | null;
   building_category: string | null;
   building_subcategory: string | null;
+  building_subtype: string | null;
   latitude: number | null;
   longitude: number | null;
   total_sqm: number | null;
@@ -324,6 +333,8 @@ export default function BuildingsPage() {
   });
 
   const [editHouseFeatures, setEditHouseFeatures] = useState<Record<string, unknown>>({});
+  const [createSubtype, setCreateSubtype] = useState<string>("local_comercial");
+  const [editSubtype, setEditSubtype] = useState<string>("");
 
   /* Estado del modal de creación en 2 pasos */
   const [createStep, setCreateStep] = useState<1 | 2>(1);
@@ -414,7 +425,7 @@ export default function BuildingsPage() {
     /* 1. Edificios */
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id, land_sqm, construction_sqm, default_unit_sqm")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, building_subtype, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id, land_sqm, construction_sqm, default_unit_sqm")
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
       .is("parent_building_id", null)
@@ -595,6 +606,7 @@ export default function BuildingsPage() {
     setIsCreateModalOpen(false);
     setCreateStep(1);
     setSelectedFeatureKeys([]);
+    setCreateSubtype("local_comercial");
     resetForm();
   }
 
@@ -637,6 +649,7 @@ export default function BuildingsPage() {
       default_unit_sqm: building.default_unit_sqm != null ? String(building.default_unit_sqm) : "",
     });
     setEditHouseFeatures((building.building_features as Record<string, unknown>) ?? {});
+    setEditSubtype(building.building_subtype ?? "");
     setIsEditModalOpen(true);
     setOpenActionsBuildingId(null);
     setMsg("");
@@ -676,6 +689,7 @@ export default function BuildingsPage() {
       address: data.address?.trim() || null,
       building_category: data.building_category,
       building_subcategory: null,
+      building_subtype: (data.building_category === "commercial" || data.building_category === "industrial") ? (createSubtype || null) : null,
       latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
       longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
       building_tags: data.building_tags?.length ? data.building_tags : null,
@@ -750,6 +764,7 @@ export default function BuildingsPage() {
         address: data.address?.trim() || null,
         building_category: data.building_category,
         building_subcategory: null,
+        building_subtype: (data.building_category === "commercial" || data.building_category === "industrial") ? (editSubtype || null) : null,
         latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
         longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
         building_tags: data.building_tags?.length ? data.building_tags : null,
@@ -1033,15 +1048,23 @@ export default function BuildingsPage() {
                           }
                           const pt = getPropertyType(building.building_category);
                           const PtIcon = ICON_MAP[pt.icon];
+                          const subtypeLabel = getSubtypeLabel(building.building_category, building.building_subtype);
                           return (
-                            <span style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                              borderRadius: 999, background: pt.color + "1a", color: pt.color,
-                            }}>
-                              {PtIcon && <PtIcon size={11} />}
-                              {pt.label}
-                            </span>
+                            <div>
+                              <span style={{
+                                display: "inline-flex", alignItems: "center", gap: 4,
+                                fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                                borderRadius: 999, background: pt.color + "1a", color: pt.color,
+                              }}>
+                                {PtIcon && <PtIcon size={11} />}
+                                {pt.label}
+                              </span>
+                              {subtypeLabel && (
+                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+                                  {subtypeLabel}
+                                </p>
+                              )}
+                            </div>
                           );
                         })()}
                       </div>
@@ -1351,6 +1374,38 @@ export default function BuildingsPage() {
             ) : null}
           </AppFormField>
 
+          {(buildingCategory === "commercial" || buildingCategory === "industrial") && (() => {
+            const subtypes = buildingCategory === "commercial" ? COMMERCIAL_SUBTYPES : INDUSTRIAL_SUBTYPES;
+            const label = buildingCategory === "commercial" ? "Tipo de espacio comercial" : "Tipo de instalación industrial";
+            const color = buildingCategory === "commercial" ? "#0369a1" : "#b45309";
+            const effective = subtypes.find(s => s.value === editSubtype) ? editSubtype : subtypes[0].value;
+            return (
+              <AppFormField label={label}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {subtypes.map((st) => {
+                    const StIcon = SUBTYPE_ICON_MAP[st.icon];
+                    const sel = effective === st.value;
+                    return (
+                      <button key={st.value} type="button" onClick={() => setEditSubtype(st.value)}
+                        style={{
+                          display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
+                          padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                          border: sel ? `2px solid ${color}` : "2px solid var(--border-default)",
+                          background: sel ? color + "12" : "var(--bg-card)",
+                          cursor: "pointer", transition: "all 0.15s ease",
+                        }}
+                      >
+                        {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </AppFormField>
+            );
+          })()}
+
           <div style={{ marginBottom: 4 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
               Superficie
@@ -1612,6 +1667,38 @@ export default function BuildingsPage() {
                   <p style={errorTextStyle}>{errors.building_category.message}</p>
                 ) : null}
               </AppFormField>
+
+              {(buildingCategory === "commercial" || buildingCategory === "industrial") && (() => {
+                const subtypes = buildingCategory === "commercial" ? COMMERCIAL_SUBTYPES : INDUSTRIAL_SUBTYPES;
+                const label = buildingCategory === "commercial" ? "Tipo de espacio comercial" : "Tipo de instalación industrial";
+                const color = buildingCategory === "commercial" ? "#0369a1" : "#b45309";
+                const effective = subtypes.find(s => s.value === createSubtype) ? createSubtype : subtypes[0].value;
+                return (
+                  <AppFormField label={label}>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      {subtypes.map((st) => {
+                        const StIcon = SUBTYPE_ICON_MAP[st.icon];
+                        const sel = effective === st.value;
+                        return (
+                          <button key={st.value} type="button" onClick={() => setCreateSubtype(st.value)}
+                            style={{
+                              display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
+                              padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                              border: sel ? `2px solid ${color}` : "2px solid var(--border-default)",
+                              background: sel ? color + "12" : "var(--bg-card)",
+                              cursor: "pointer", transition: "all 0.15s ease",
+                            }}
+                          >
+                            {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
+                            <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                            <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </AppFormField>
+                );
+              })()}
 
               <div style={{ marginBottom: 4 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>

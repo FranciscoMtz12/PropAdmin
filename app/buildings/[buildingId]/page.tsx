@@ -51,6 +51,7 @@ import {
   LayoutGrid,
   Layers3,
   MapPin,
+  Monitor,
   MoreHorizontal,
   Package,
   Pencil,
@@ -94,7 +95,7 @@ import {
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
-import { getPropertyType, getPropertyLabels, PROPERTY_TYPES } from "@/lib/property-types";
+import { getPropertyType, getPropertyLabels, getSubtypeLabel, PROPERTY_TYPES, COMMERCIAL_SUBTYPES, INDUSTRIAL_SUBTYPES } from "@/lib/property-types";
 import { PROPERTY_FEATURES, getDefaultFeatures, getFeatureByKey } from "@/lib/property-features";
 import {
   INPUT_STYLE,
@@ -155,6 +156,10 @@ const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: st
   Zap, Droplets, Flame, Wifi, ShieldCheck, Sparkles, Wrench, CheckSquare,
 };
 
+const SUBTYPE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  Store, Briefcase, Building2, Monitor, Warehouse, Package, Factory,
+};
+
 const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
 
 const HOUSE_AMENITIES: { key: string; label: string }[] = [
@@ -182,6 +187,7 @@ type Building = {
   code: string | null;
   building_category: string | null;
   building_subcategory: string | null;
+  building_subtype: string | null;
   latitude: number | null;
   longitude: number | null;
   land_sqm: number | null;
@@ -674,6 +680,7 @@ export default function BuildingDetailPage() {
   const [editConstructionSqm, setEditConstructionSqm] = useState("");
   const [editDefaultUnitSqm, setEditDefaultUnitSqm]   = useState("");
   const [editHouseFeatures, setEditHouseFeatures]     = useState<Record<string, unknown>>({});
+  const [editSubtype, setEditSubtype]                 = useState<string>("");
   const [editLatitude, setEditLatitude]               = useState("");
   const [editLongitude, setEditLongitude]             = useState("");
 
@@ -703,7 +710,7 @@ export default function BuildingDetailPage() {
 
     const { data, error } = await supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, land_sqm, construction_sqm, default_unit_sqm, building_tags, building_features, parent_building_id")
+      .select("id, company_id, name, address, code, building_category, building_subcategory, building_subtype, latitude, longitude, land_sqm, construction_sqm, default_unit_sqm, building_tags, building_features, parent_building_id")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
@@ -821,9 +828,9 @@ export default function BuildingDetailPage() {
 
     /* Bodegas hijas (industrial_park) + Áreas comunes */
     const [cbResult, caResult] = await Promise.all([
-      b.building_category === "industrial_park"
+      (b.building_category === "industrial_park" || b.building_subtype === "plaza_comercial")
         ? supabase.from("buildings")
-            .select("id, name, code, building_category, total_sqm, land_sqm, construction_sqm")
+            .select("id, name, code, building_category, building_subtype, total_sqm, land_sqm, construction_sqm")
             .eq("parent_building_id", buildingId)
             .eq("company_id", user.company_id)
             .is("deleted_at", null)
@@ -1136,6 +1143,7 @@ export default function BuildingDetailPage() {
     setEditConstructionSqm(building.construction_sqm != null ? String(building.construction_sqm) : "");
     setEditDefaultUnitSqm(building.default_unit_sqm != null ? String(building.default_unit_sqm) : "");
     setEditHouseFeatures(building.building_features ?? {});
+    setEditSubtype(building.building_subtype ?? "");
     setEditLatitude(building.latitude != null ? String(building.latitude) : "");
     setEditLongitude(building.longitude != null ? String(building.longitude) : "");
     setIsEditModalOpen(true);
@@ -1160,6 +1168,7 @@ export default function BuildingDetailPage() {
         address: address.trim() || null,
         building_category: buildingCategory,
         building_subcategory: null,
+        building_subtype: (buildingCategory === "commercial" || buildingCategory === "industrial") ? (editSubtype || null) : null,
         building_tags: editBuildingTags,
         building_features: Object.keys(editHouseFeatures).length ? editHouseFeatures : null,
         land_sqm: editLandSqm.trim() ? Number(editLandSqm) : null,
@@ -1432,11 +1441,13 @@ export default function BuildingDetailPage() {
     if (!bodegaName.trim()) { setBodegaMsg("El nombre es obligatorio."); return; }
     setSavingBodega(true);
     setBodegaMsg("");
+    const isLocalCreation = building.building_subtype === "plaza_comercial";
     const { error } = await supabase.from("buildings").insert({
       company_id: user.company_id,
       name: bodegaName.trim(),
       code: bodegaCode.trim() || null,
-      building_category: "industrial",
+      building_category: isLocalCreation ? "commercial" : "industrial",
+      building_subtype:  isLocalCreation ? "local_comercial" : null,
       parent_building_id: building.id,
       land_sqm: bodegaLandSqm.trim() ? Number(bodegaLandSqm) : null,
       construction_sqm: bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
@@ -1625,14 +1636,15 @@ export default function BuildingDetailPage() {
   if (!building)      return <PageContainer>{msg || "No se encontró el edificio."}</PageContainer>;
 
   const categoryDefinition = getBuildingCategoryDefinition(building.building_category);
-  const labels = getPropertyLabels(building.building_category);
-  const isLand             = building.building_category === "land";
-  const isCommercial       = building.building_category === "commercial";
-  const isIndustrial       = building.building_category === "industrial";
-  const isIndustrialPark   = building.building_category === "industrial_park";
+  const labels = getPropertyLabels(building.building_category, building.building_subtype);
+  const isLand              = building.building_category === "land";
+  const isCommercial        = building.building_category === "commercial";
+  const isIndustrial        = building.building_category === "industrial";
+  const isIndustrialPark    = building.building_category === "industrial_park";
   const isResidentialSingle = building.building_category === "residential_single";
+  const isPlazaComercial    = building.building_subtype === "plaza_comercial";
   const hasLeasesTab   = isLand || isCommercial || isIndustrial || isResidentialSingle;
-  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark && !isResidentialSingle
+  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark && !isResidentialSingle && !isPlazaComercial
                          && activeFeatureKeys.has("parking");
   const hasAssetsTab       = !isIndustrialPark;
   const hasServicesTab     = !isIndustrialPark
@@ -1640,14 +1652,24 @@ export default function BuildingDetailPage() {
                                  || activeFeatureKeys.has("gas") || activeFeatureKeys.has("internet")
                                  || tabCounts.services > 0);
   const hasBodegasTab      = isIndustrialPark;
+  const hasLocalesTab      = isPlazaComercial;
   const hasCommonAreasTab  = activeFeatureKeys.has("common_areas")
                              && ["residential_multi", "commercial", "industrial_park"].includes(building.building_category ?? "");
-  const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle;
+  const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle || isPlazaComercial;
 
-  function getBuildingDetailLabel(cat: string | null): string {
+  function getBuildingDetailLabel(cat: string | null, sub?: string | null): string {
+    if (cat === "commercial") {
+      switch (sub) {
+        case "plaza_comercial": return "Detalle de la plaza";
+        case "oficinas":        return "Detalle del edificio de oficinas";
+        case "showroom":        return "Detalle del showroom";
+        default:                return "Detalle del local";
+      }
+    }
+    if (cat === "industrial") {
+      return sub === "planta" ? "Detalle de la planta" : "Detalle de la nave";
+    }
     switch (cat) {
-      case "commercial":         return "Detalle de la propiedad";
-      case "industrial":         return "Detalle de la nave";
       case "industrial_park":    return "Detalle del parque";
       case "land":               return "Detalle del terreno";
       case "residential_single": return "Detalle de la casa";
@@ -1664,7 +1686,7 @@ export default function BuildingDetailPage() {
           <span style={{ color: "var(--text-muted)" }}>{">"}</span>
           <a href="/buildings" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Propiedades</a>
           <span style={{ color: "var(--text-muted)" }}>{">"}</span>
-          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{getBuildingDetailLabel(building.building_category)}</span>
+          <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{getBuildingDetailLabel(building.building_category, building.building_subtype)}</span>
         </div>
       </div>
 
@@ -1766,7 +1788,8 @@ export default function BuildingDetailPage() {
         items={[
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
-          ...(hasBodegasTab ? [{ key: "bodegas", label: "Bodegas",     icon: <Warehouse size={16} />,    count: childBuildings.length }] : []),
+          ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
+          ...(hasLocalesTab  ? [{ key: "locales",  label: "Locales",  icon: <Store size={16} />,     count: childBuildings.length }] : []),
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
@@ -1783,9 +1806,14 @@ export default function BuildingDetailPage() {
         <div style={{ display: "grid", gap: 24 }}>
 
           {/* ── Fila 1: métricas ── */}
-          {isIndustrialPark ? (
+          {isIndustrialPark || isPlazaComercial ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-              <MetricCard label="Bodegas" value={String(childBuildings.length)} icon={<Warehouse size={18} />} helper="Naves en el parque" />
+              <MetricCard
+                label={isPlazaComercial ? "Locales" : "Bodegas"}
+                value={String(childBuildings.length)}
+                icon={isPlazaComercial ? <Store size={18} /> : <Warehouse size={18} />}
+                helper={isPlazaComercial ? "Locales en la plaza" : "Naves en el parque"}
+              />
               {building.land_sqm != null && (
                 <MetricCard label="M² totales" value={`${building.land_sqm.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="M² de terreno" />
               )}
@@ -2126,7 +2154,15 @@ export default function BuildingDetailPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <SummaryItem label="Código"    value={building.code || "Sin código"}      icon={<Tags size={16} />} />
                 <SummaryItem label="Dirección" value={building.address || "Sin dirección"} icon={<MapPin size={16} />} />
-                <SummaryItem label="Categoría" value={getPropertyType(building.building_category)?.label ?? building.building_category ?? ""}            icon={<Building2 size={16} />} />
+                <SummaryItem
+                  label="Categoría"
+                  value={
+                    building.building_subtype
+                      ? `${getPropertyType(building.building_category)?.label ?? ""} — ${getSubtypeLabel(building.building_category, building.building_subtype) ?? building.building_subtype}`
+                      : (getPropertyType(building.building_category)?.label ?? building.building_category ?? "")
+                  }
+                  icon={<Building2 size={16} />}
+                />
                 {building.building_category === "mixed_use" && building.building_subcategory ? (
                   <SummaryItem
                     label="Subcategoría"
@@ -2766,6 +2802,50 @@ export default function BuildingDetailPage() {
         </div>
       ) : null}
 
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: LOCALES (plaza_comercial)
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "locales" && hasLocalesTab ? (
+        <div style={{ display: "grid", gap: 20 }}>
+          <SectionCard
+            title="Locales de la plaza"
+            subtitle="Espacios comerciales que forman parte de esta plaza."
+            icon={<Store size={18} />}
+            action={
+              <UiButton icon={<Plus size={15} />} onClick={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+                Agregar local
+              </UiButton>
+            }
+          >
+            {childBuildings.length === 0 ? (
+              <AppEmptyState
+                title="Sin locales registrados"
+                description="Agrega el primer local para comenzar a gestionar la plaza comercial."
+                actionLabel="Agregar primer local"
+                onAction={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+              />
+            ) : (
+              <div style={{ display: "grid", gap: 10 }}>
+                {childBuildings.map((cb) => (
+                  <AppCard key={cb.id} style={{ padding: 16, borderRadius: 14 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                      <div>
+                        <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>{cb.name}</strong>
+                        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
+                          {cb.code ? `Código: ${cb.code}` : "Sin código"}
+                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m² construcción` : ""}
+                        </p>
+                      </div>
+                      <UiButton href={`/buildings/${cb.id}`}>Ver detalle</UiButton>
+                    </div>
+                  </AppCard>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      ) : null}
+
       {/* ── Modal editar edificio ── */}
       <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar propiedad">
         <form onSubmit={handleUpdateBuilding}>
@@ -2826,6 +2906,38 @@ export default function BuildingDetailPage() {
               </p>
             )}
           </AppFormField>
+
+          {(buildingCategory === "commercial" || buildingCategory === "industrial") && (() => {
+            const subtypes = buildingCategory === "commercial" ? COMMERCIAL_SUBTYPES : INDUSTRIAL_SUBTYPES;
+            const label = buildingCategory === "commercial" ? "Tipo de espacio comercial" : "Tipo de instalación industrial";
+            const color = buildingCategory === "commercial" ? "#0369a1" : "#b45309";
+            const effective = subtypes.find(s => s.value === editSubtype) ? editSubtype : subtypes[0].value;
+            return (
+              <AppFormField label={label}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {subtypes.map((st) => {
+                    const StIcon = SUBTYPE_ICON_MAP[st.icon];
+                    const sel = effective === st.value;
+                    return (
+                      <button key={st.value} type="button" onClick={() => setEditSubtype(st.value)}
+                        style={{
+                          display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
+                          padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                          border: sel ? `2px solid ${color}` : "2px solid var(--border-default)",
+                          background: sel ? color + "12" : "var(--bg-card)",
+                          cursor: "pointer", transition: "all 0.15s ease",
+                        }}
+                      >
+                        {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
+                        <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                        <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </AppFormField>
+            );
+          })()}
 
           <div style={{ marginBottom: 4 }}>
             <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
@@ -2942,12 +3054,12 @@ export default function BuildingDetailPage() {
         </form>
       </Modal>
 
-      {/* ── Modal agregar bodega ── */}
-      <Modal open={isCreateBodegaOpen} onClose={() => { if (!savingBodega) setIsCreateBodegaOpen(false); }} title="Agregar bodega">
+      {/* ── Modal agregar bodega / local ── */}
+      <Modal open={isCreateBodegaOpen} onClose={() => { if (!savingBodega) setIsCreateBodegaOpen(false); }} title={isPlazaComercial ? "Agregar local" : "Agregar bodega"}>
         <form onSubmit={handleCreateBodega}>
           {bodegaMsg ? <p style={errorBannerStyle}>{bodegaMsg}</p> : null}
-          <AppFormField label="Nombre de la bodega" required>
-            <input value={bodegaName} onChange={(e) => setBodegaName(e.target.value)} placeholder="Ej. Bodega 1" style={INPUT_STYLE} />
+          <AppFormField label={isPlazaComercial ? "Nombre del local" : "Nombre de la bodega"} required>
+            <input value={bodegaName} onChange={(e) => setBodegaName(e.target.value)} placeholder={isPlazaComercial ? "Ej. Local 1" : "Ej. Bodega 1"} style={INPUT_STYLE} />
           </AppFormField>
           <AppFormField label="Código">
             <input value={bodegaCode} onChange={(e) => setBodegaCode(e.target.value)} placeholder="Ej. B-01" style={INPUT_STYLE} />
@@ -2962,7 +3074,7 @@ export default function BuildingDetailPage() {
           </div>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setIsCreateBodegaOpen(false)} disabled={savingBodega}>Cancelar</UiButton>
-            <UiButton type="submit" disabled={savingBodega}>{savingBodega ? "Guardando..." : "Crear bodega"}</UiButton>
+            <UiButton type="submit" disabled={savingBodega}>{savingBodega ? "Guardando..." : isPlazaComercial ? "Crear local" : "Crear bodega"}</UiButton>
           </div>
         </form>
       </Modal>
