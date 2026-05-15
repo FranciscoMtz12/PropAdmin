@@ -15,7 +15,7 @@
 
 import { useEffect, useMemo, useState, type ComponentType } from "react";
 import type { ReactNode } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
   BarChart, Bar,
@@ -545,9 +545,10 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: any[] }) 
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
 export default function BuildingDetailPage() {
-  const router    = useRouter();
-  const params    = useParams();
-  const buildingId = params.buildingId as string;
+  const router       = useRouter();
+  const params       = useParams();
+  const searchParams = useSearchParams();
+  const buildingId   = params.buildingId as string;
   const { user, loading } = useCurrentUser();
 
   /* Estado de datos */
@@ -561,7 +562,7 @@ export default function BuildingDetailPage() {
   const [buildingAssets, setBuildingAssets] = useState<BuildingAssetRow[]>([]);
 
   /* Estado de UI */
-  const [activeTab, setActiveTab]             = useState("overview");
+  const [activeTab, setActiveTab]             = useState(searchParams.get("tab") ?? "overview");
   const [msg, setMsg]                         = useState("");
   const [loadingBuilding, setLoadingBuilding] = useState(true);
   const [collectionMonths, setCollectionMonths] = useState<3 | 6>(3);
@@ -661,6 +662,11 @@ export default function BuildingDetailPage() {
   useEffect(() => {
     if (activeTab === "parking" && building && !loadingBuilding) void loadParkingData();
   }, [activeTab, building, loadingBuilding]);
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (tab) setActiveTab(tab);
+  }, [searchParams]);
 
   /* ── Carga de datos ──────────────────────────────────────────────── */
 

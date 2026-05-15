@@ -29,8 +29,8 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#8B2252',
     applicableTypes: ['residential_multi', 'commercial', 'industrial'],
     tasks: [
-      { key: 'add_first_unit', label: 'Registrar primer espacio', description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]/units' },
-      { key: 'add_unit_types', label: 'Configurar tipologías', description: 'Define los tipos de unidad disponibles', route: '/buildings/[id]/unit-types' },
+      { key: 'add_first_unit',  label: 'Registrar primer espacio', description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]?tab=overview' },
+      { key: 'add_unit_types',  label: 'Configurar tipologías',    description: 'Define los tipos de unidad disponibles',            route: '/buildings/[id]?tab=overview' },
     ],
   },
   {
@@ -42,7 +42,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#0369a1',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
-      { key: 'add_parking_spots', label: 'Registrar cajones', description: 'Da de alta los cajones disponibles' },
+      { key: 'add_parking_spots', label: 'Registrar cajones', description: 'Da de alta los cajones disponibles', route: '/buildings/[id]?tab=parking' },
     ],
   },
   {
@@ -54,7 +54,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#b45309',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
-      { key: 'setup_security_booth', label: 'Registrar caseta como activo', description: 'Agrega la caseta en el módulo de activos' },
+      { key: 'setup_security_booth', label: 'Registrar caseta como activo', description: 'Agrega la caseta en el módulo de activos', route: '/buildings/[id]?tab=assets' },
     ],
   },
   {
@@ -66,7 +66,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#0369a1',
     applicableTypes: ['commercial', 'industrial', 'industrial_park'],
     tasks: [
-      { key: 'setup_admin_office', label: 'Registrar oficina como activo', description: 'Agrega la oficina en el módulo de activos' },
+      { key: 'setup_admin_office', label: 'Registrar oficina como activo', description: 'Agrega la oficina en el módulo de activos', route: '/buildings/[id]?tab=assets' },
     ],
   },
   {
@@ -78,7 +78,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#b45309',
     applicableTypes: ['industrial', 'industrial_park', 'commercial'],
     tasks: [
-      { key: 'setup_loading_dock', label: 'Registrar muelle como activo', description: 'Agrega el muelle en el módulo de activos' },
+      { key: 'setup_loading_dock', label: 'Registrar muelle como activo', description: 'Agrega el muelle en el módulo de activos', route: '/buildings/[id]?tab=assets' },
     ],
   },
   {
@@ -90,7 +90,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#15803d',
     applicableTypes: ['residential_multi', 'commercial', 'industrial_park'],
     tasks: [
-      { key: 'setup_common_areas', label: 'Registrar áreas comunes', description: 'Define las áreas comunes disponibles' },
+      { key: 'setup_common_areas', label: 'Registrar áreas comunes', description: 'Define las áreas comunes disponibles', route: '/buildings/[id]?tab=assets' },
     ],
   },
   {
@@ -102,7 +102,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#6b7280',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial'],
     tasks: [
-      { key: 'setup_service_storage', label: 'Registrar bodega como activo', description: 'Agrega la bodega de servicio en activos' },
+      { key: 'setup_service_storage', label: 'Registrar bodega como activo', description: 'Agrega la bodega de servicio en activos', route: '/buildings/[id]?tab=assets' },
     ],
   },
   // SERVICIOS
@@ -115,7 +115,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#eab308',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park', 'land'],
     tasks: [
-      { key: 'add_electricity_meter', label: 'Configurar medidor de luz', description: 'Da de alta el medidor principal en Servicios', route: '/servicios' },
+      { key: 'add_electricity_meter', label: 'Configurar medidor de luz',   description: 'Da de alta el medidor principal en Servicios', route: '/buildings/[id]?tab=services' },
     ],
   },
   {
@@ -127,7 +127,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#0ea5e9',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
-      { key: 'add_water_meter', label: 'Configurar medidor de agua', description: 'Da de alta el medidor de agua en Servicios', route: '/servicios' },
+      { key: 'add_water_meter', label: 'Configurar medidor de agua', description: 'Da de alta el medidor de agua en Servicios', route: '/buildings/[id]?tab=services' },
     ],
   },
   {
@@ -139,7 +139,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#f97316',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial'],
     tasks: [
-      { key: 'add_gas_meter', label: 'Configurar medidor de gas', description: 'Da de alta el medidor de gas en Servicios', route: '/servicios' },
+      { key: 'add_gas_meter', label: 'Configurar medidor de gas', description: 'Da de alta el medidor de gas en Servicios', route: '/buildings/[id]?tab=services' },
     ],
   },
   {
@@ -151,7 +151,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#6366f1',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial_park'],
     tasks: [
-      { key: 'setup_internet', label: 'Configurar servicio de internet', description: 'Da de alta el servicio en Servicios', route: '/servicios' },
+      { key: 'setup_internet', label: 'Configurar servicio de internet', description: 'Da de alta el servicio en Servicios', route: '/buildings/[id]?tab=services' },
     ],
   },
   {
