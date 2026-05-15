@@ -217,6 +217,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
         </div>
       )}
 
+      <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {groups.map(group => (
         <SectionCard
           key={group.type}
@@ -337,6 +338,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
           </div>
         </SectionCard>
       ))}
+      </div>
 
       <UtilityMeterModal
         isOpen={meterModalOpen}
