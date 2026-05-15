@@ -615,7 +615,11 @@ export default function BuildingDetailPage() {
   const [landLeases, setLandLeases] = useState<LandLease[]>([]);
 
   /* Bodegas hijas (industrial_park) */
-  const [childBuildings, setChildBuildings] = useState<ChildBuilding[]>([]);
+  const [childBuildings, setChildBuildings]   = useState<ChildBuilding[]>([]);
+  const [commonAreas, setCommonAreas]         = useState<{ id: string; name: string }[]>([]);
+  const [addingCommonArea, setAddingCommonArea] = useState(false);
+  const [newCommonAreaName, setNewCommonAreaName] = useState("");
+  const [savingCommonArea, setSavingCommonArea]   = useState(false);
   const [isCreateBodegaOpen, setIsCreateBodegaOpen] = useState(false);
   const [savingBodega, setSavingBodega] = useState(false);
   const [bodegaName, setBodegaName] = useState("");
@@ -813,19 +817,24 @@ export default function BuildingDetailPage() {
       setLandLeases([]);
     }
 
-    /* Bodegas hijas (industrial_park) */
-    if (b.building_category === "industrial_park") {
-      const { data: cbData } = await supabase
-        .from("buildings")
-        .select("id, name, code, building_category, total_sqm, land_sqm, construction_sqm")
-        .eq("parent_building_id", buildingId)
-        .eq("company_id", user.company_id)
+    /* Bodegas hijas (industrial_park) + Áreas comunes */
+    const [cbResult, caResult] = await Promise.all([
+      b.building_category === "industrial_park"
+        ? supabase.from("buildings")
+            .select("id, name, code, building_category, total_sqm, land_sqm, construction_sqm")
+            .eq("parent_building_id", buildingId)
+            .eq("company_id", user.company_id)
+            .is("deleted_at", null)
+            .order("name")
+        : Promise.resolve({ data: [] }),
+      supabase.from("common_areas")
+        .select("id, name")
+        .eq("building_id", buildingId)
         .is("deleted_at", null)
-        .order("name");
-      setChildBuildings((cbData || []) as ChildBuilding[]);
-    } else {
-      setChildBuildings([]);
-    }
+        .order("created_at"),
+    ]);
+    setChildBuildings((cbResult.data || []) as ChildBuilding[]);
+    setCommonAreas((caResult.data || []) as { id: string; name: string }[]);
 
     // Unidades del edificio para BuildingServicesTab + servicios para Resumen
     const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
@@ -1274,11 +1283,12 @@ export default function BuildingDetailPage() {
             company_id:        user.company_id,
             service_type:      featureKey,
             meter_type:        "dedicated",
-            provider_name:     "Por configurar",
-            active:            true,
+            provider_name:     "Pendiente de configurar",
+            active:            false,
             contract_holder:   "company",
             billing_mode:      "charged",
             billing_frequency: "monthly",
+            description:       "PLACEHOLDER — completar configuración",
           });
         } else if (featureKey === "parking") {
           await supabase.from("parking_spots").insert({
@@ -1549,12 +1559,14 @@ export default function BuildingDetailPage() {
   const hasLeasesTab   = isLand || isCommercial || isIndustrial || isResidentialSingle;
   const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark && !isResidentialSingle
                          && activeFeatureKeys.has("parking");
-  const hasAssetsTab   = !isIndustrialPark;
-  const hasServicesTab = !isIndustrialPark
-                         && (activeFeatureKeys.has("electricity") || activeFeatureKeys.has("water")
-                             || activeFeatureKeys.has("gas") || activeFeatureKeys.has("internet")
-                             || tabCounts.services > 0);
-  const hasBodegasTab  = isIndustrialPark;
+  const hasAssetsTab       = !isIndustrialPark;
+  const hasServicesTab     = !isIndustrialPark
+                             && (activeFeatureKeys.has("electricity") || activeFeatureKeys.has("water")
+                                 || activeFeatureKeys.has("gas") || activeFeatureKeys.has("internet")
+                                 || tabCounts.services > 0);
+  const hasBodegasTab      = isIndustrialPark;
+  const hasCommonAreasTab  = activeFeatureKeys.has("common_areas")
+                             && ["residential_multi", "commercial", "industrial_park"].includes(building.building_category ?? "");
   const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle;
 
   function getBuildingDetailLabel(cat: string | null): string {
@@ -1683,8 +1695,9 @@ export default function BuildingDetailPage() {
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
-          ...(hasServicesTab ? [{ key: "services", label: "Servicios", icon: <Wrench size={16} />,       count: tabCounts.services }] : []),
-          ...(hasParkingTab  ? [{ key: "parking",  label: "Cajones",   icon: <Car size={16} />,          count: tabCounts.parking }] : []),
+          ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services }] : []),
+          ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking  }] : []),
+          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes", icon: <Trees size={16} />,   count: commonAreas.length }] : []),
         ]}
       />
 
@@ -2945,6 +2958,74 @@ export default function BuildingDetailPage() {
         onConfirm={() => void handleArchiveAsset()}
         onCancel={() => { if (!savingAsset) setAssetArchiveOpen(false); }}
       />
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: ÁREAS COMUNES
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "common_areas" && hasCommonAreasTab && (
+        <div style={{ display: "grid", gap: 20 }}>
+          <SectionCard
+            title="Áreas comunes"
+            icon={<Trees size={18} />}
+            action={
+              <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => { setNewCommonAreaName(""); setAddingCommonArea(true); }}>
+                Agregar área común
+              </UiButton>
+            }
+          >
+            {commonAreas.length === 0 ? (
+              <AppEmptyState
+                title="Sin áreas comunes registradas"
+                description="Registra jardines, roof garden, gimnasio, alberca u otros espacios compartidos."
+                actionLabel="+ Agregar área común"
+                onAction={() => { setNewCommonAreaName(""); setAddingCommonArea(true); }}
+              />
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {commonAreas.map((area) => (
+                  <div key={area.id} style={{
+                    display: "flex", alignItems: "center", gap: 10,
+                    padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-page)",
+                  }}>
+                    <Trees size={14} color="#15803d" />
+                    <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>{area.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+        </div>
+      )}
+
+      {/* ── Modal: agregar área común ── */}
+      <Modal open={addingCommonArea} onClose={() => { if (!savingCommonArea) setAddingCommonArea(false); }} title="Agregar área común">
+        <AppFormField label="Nombre del área" required>
+          <input
+            value={newCommonAreaName}
+            onChange={(e) => setNewCommonAreaName(e.target.value)}
+            placeholder="Ej: Jardín, Roof garden, Gimnasio..."
+            style={INPUT_STYLE}
+          />
+        </AppFormField>
+        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+          <UiButton
+            variant="primary"
+            disabled={savingCommonArea || !newCommonAreaName.trim()}
+            onClick={async () => {
+              if (!building || !newCommonAreaName.trim()) return;
+              setSavingCommonArea(true);
+              await supabase.from("common_areas").insert({ building_id: building.id, name: newCommonAreaName.trim() });
+              const { data } = await supabase.from("common_areas").select("id, name").eq("building_id", building.id).is("deleted_at", null).order("created_at");
+              setCommonAreas((data || []) as { id: string; name: string }[]);
+              setSavingCommonArea(false);
+              setAddingCommonArea(false);
+            }}
+          >
+            {savingCommonArea ? "Guardando..." : "Guardar"}
+          </UiButton>
+          <UiButton onClick={() => { if (!savingCommonArea) setAddingCommonArea(false); }}>Cancelar</UiButton>
+        </div>
+      </Modal>
 
       {/* ── Modal de configuración de features ── */}
       <Modal

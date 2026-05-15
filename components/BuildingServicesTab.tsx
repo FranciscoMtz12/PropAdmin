@@ -44,9 +44,10 @@ function ServiceIcon({ type, size = 16 }: { type: UtilityServiceType; size?: num
 }
 
 export default function BuildingServicesTab({ buildingId, companyId, buildingName: _buildingName, units }: Props) {
-  const [meters, setMeters]             = useState<BuildingUtilityMeter[]>([])
-  const [subMetersMap, setSubMetersMap] = useState<Record<string, BuildingUtilitySubMeter[]>>({})
-  const [loading, setLoading]           = useState(true)
+  const [meters, setMeters]               = useState<BuildingUtilityMeter[]>([])
+  const [placeholders, setPlaceholders]   = useState<BuildingUtilityMeter[]>([])
+  const [subMetersMap, setSubMetersMap]   = useState<Record<string, BuildingUtilitySubMeter[]>>({})
+  const [loading, setLoading]             = useState(true)
 
   const [meterModalOpen, setMeterModalOpen]       = useState(false)
   const [editingMeter, setEditingMeter]           = useState<BuildingUtilityMeter | null>(null)
@@ -57,17 +58,27 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
   async function loadData(): Promise<BuildingUtilityMeter[]> {
     setLoading(true)
     try {
-      const { data: metersData } = await supabase
-        .from("building_utility_meters")
-        .select("*")
-        .eq("building_id", buildingId)
-        .eq("active", true)
-        .is("deleted_at", null)
-        .order("service_type")
-        .order("created_at")
+      const [{ data: metersData }, { data: placeholderData }] = await Promise.all([
+        supabase
+          .from("building_utility_meters")
+          .select("*")
+          .eq("building_id", buildingId)
+          .eq("active", true)
+          .is("deleted_at", null)
+          .order("service_type")
+          .order("created_at"),
+        supabase
+          .from("building_utility_meters")
+          .select("*")
+          .eq("building_id", buildingId)
+          .eq("active", false)
+          .is("deleted_at", null)
+          .order("service_type"),
+      ])
 
       const loadedMeters = (metersData ?? []) as BuildingUtilityMeter[]
       setMeters(loadedMeters)
+      setPlaceholders((placeholderData ?? []) as BuildingUtilityMeter[])
 
       const ids = loadedMeters.map(m => m.id)
       const map: Record<string, BuildingUtilitySubMeter[]> = {}
@@ -161,13 +172,49 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
         </UiButton>
       </div>
 
-      {!loading && meters.length === 0 && (
+      {!loading && meters.length === 0 && placeholders.length === 0 && (
         <AppEmptyState
           title="Sin servicios configurados"
           description="Registra electricidad, gas, agua, internet y otros servicios del edificio."
           actionLabel="+ Agregar servicio"
           onAction={() => { setEditingMeter(null); setMeterModalOpen(true) }}
         />
+      )}
+
+      {placeholders.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 20 }}>
+          {placeholders.map((ph) => (
+            <div key={ph.id} style={{
+              padding: "14px 16px", borderRadius: 14,
+              border: "2px dashed #EF9F27",
+              background: "var(--bg-page)",
+              display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap",
+            }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                <span style={{ color: "#EF9F27", lineHeight: 0 }}>
+                  <ServiceIcon type={ph.service_type as UtilityServiceType} size={18} />
+                </span>
+                <div>
+                  <span style={{
+                    display: "inline-block", padding: "2px 8px", borderRadius: 999,
+                    background: "#FEF3C7", color: "#EF9F27", fontSize: 11, fontWeight: 700, marginBottom: 4,
+                  }}>
+                    Pendiente de configurar
+                  </span>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    Medidor de {SERVICE_TYPE_LABEL[ph.service_type as UtilityServiceType] ?? ph.service_type} — completa la configuración para activarlo
+                  </p>
+                </div>
+              </div>
+              <UiButton
+                variant="primary"
+                onClick={() => { setEditingMeter(ph); setMeterModalOpen(true) }}
+              >
+                Configurar ahora
+              </UiButton>
+            </div>
+          ))}
+        </div>
       )}
 
       {groups.map(group => (
