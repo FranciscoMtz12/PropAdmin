@@ -31,7 +31,9 @@ import {
   Briefcase,
   Building2,
   Car,
+  CheckCircle2,
   CheckSquare,
+  ChevronRight,
   CreditCard,
   Droplets,
   Edit3,
@@ -844,13 +846,13 @@ export default function BuildingDetailPage() {
       parking:  pCount ?? 0,
     });
 
-    /* Setup tasks pendientes */
+    /* Setup tasks — todas las no descartadas (pendientes + completadas) */
     const { data: tasksData } = await supabase
       .from("building_setup_tasks")
       .select("id, task_key, feature_key, is_completed, dismissed")
       .eq("building_id", buildingId)
-      .eq("is_completed", false)
-      .eq("dismissed", false);
+      .eq("dismissed", false)
+      .order("is_completed", { ascending: true });
     setSetupTasks((tasksData || []) as SetupTask[]);
 
     setLoadingBuilding(false);
@@ -1199,7 +1201,10 @@ export default function BuildingDetailPage() {
       completed_at: new Date().toISOString(),
       completed_by: user.id,
     }).eq("id", taskId);
-    setSetupTasks((prev) => prev.filter((t) => t.id !== taskId));
+    setSetupTasks((prev) =>
+      prev.map((t) => t.id === taskId ? { ...t, is_completed: true } : t)
+        .sort((a, b) => Number(a.is_completed) - Number(b.is_completed))
+    );
   }
 
   async function handleDismissAllTasks() {
@@ -1591,90 +1596,177 @@ export default function BuildingDetailPage() {
             </div>
           )}
 
-          {/* ── Setup checklist (visible solo cuando hay tareas pendientes) ── */}
-          {setupTasks.length > 0 && (
-            <div style={{
-              borderLeft: "4px solid #8B2252",
-              borderRadius: 12,
-              background: "rgba(139,34,82,0.04)",
-              border: "1px solid rgba(139,34,82,0.2)",
-              borderLeftWidth: 4,
-              padding: 20,
-            }}>
-              {/* Header */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <CheckSquare size={18} color="#8B2252" />
-                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
-                    Configuración pendiente
-                  </span>
-                  <span style={{
-                    background: "#8B2252", color: "#fff",
-                    borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700,
-                  }}>
-                    {setupTasks.length}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => void handleDismissAllTasks()}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "4px 8px", borderRadius: 6 }}
-                  title="Descartar todo"
-                >
-                  ✕
-                </button>
-              </div>
+          {/* ── Setup checklist ── */}
+          {setupTasks.length > 0 && (() => {
+            const pendingTasks   = setupTasks.filter((t) => !t.is_completed);
+            const completedTasks = setupTasks.filter((t) => t.is_completed);
+            const totalCount     = setupTasks.length;
+            const completedCount = completedTasks.length;
+            const allDone        = pendingTasks.length === 0;
+            const circ           = 2 * Math.PI * 12;
+            const dashOffset     = circ * (1 - completedCount / totalCount);
 
-              {/* Lista de tareas */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                {setupTasks.map((task) => {
-                  const feat = getFeatureByKey(task.feature_key);
-                  const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
-                  const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
-                  return (
-                    <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                      <input
-                        type="checkbox"
-                        checked={task.is_completed}
-                        onChange={() => void handleCompleteTask(task.id)}
-                        style={{ marginTop: 3, cursor: "pointer", accentColor: "#8B2252", flexShrink: 0 }}
+            return (
+              <div style={{
+                borderRadius: 12,
+                background: "rgba(139,34,82,0.04)",
+                border: "1px solid rgba(139,34,82,0.2)",
+                borderLeft: "4px solid #8B2252",
+                padding: 20,
+              }}>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: allDone ? 16 : 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <CheckSquare size={18} color="#8B2252" />
+                    <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                      Configuración pendiente
+                    </span>
+
+                    {/* Donut de progreso */}
+                    <svg width="32" height="32" style={{ flexShrink: 0 }}>
+                      <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-default)" strokeWidth="3" />
+                      <circle
+                        cx="16" cy="16" r="12"
+                        fill="none"
+                        stroke="#1D9E75"
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={dashOffset}
+                        transform="rotate(-90 16 16)"
                       />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        {resolvedRoute ? (
-                          <a
-                            href={resolvedRoute}
-                            style={{ fontSize: 13, fontWeight: 600, color: "#8B2252", textDecoration: "none" }}
-                          >
-                            {taskDef?.label ?? task.task_key}
-                          </a>
-                        ) : (
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                            {taskDef?.label ?? task.task_key}
-                          </span>
-                        )}
-                        {taskDef?.description && (
-                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                            {taskDef.description}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                      <text
+                        x="16" y="20"
+                        textAnchor="middle"
+                        fontSize="9"
+                        fill="var(--text-secondary)"
+                        fontWeight="600"
+                      >
+                        {Math.round((completedCount / totalCount) * 100)}%
+                      </text>
+                    </svg>
 
-              {/* Footer */}
-              <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
-                <button
-                  type="button"
-                  onClick={() => void handleDismissAllTasks()}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 12, padding: 0, textDecoration: "underline" }}
-                >
-                  Descartar todo
-                </button>
+                    {/* Badge de pendientes */}
+                    {pendingTasks.length > 0 && (
+                      <span style={{
+                        background: "#8B2252", color: "#fff",
+                        borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700,
+                      }}>
+                        {pendingTasks.length}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDismissAllTasks()}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "4px 8px", borderRadius: 6 }}
+                    title="Descartar todo"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {/* Estado: todo completado */}
+                {allDone ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
+                    <CheckCircle2 size={32} color="#1D9E75" />
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+                      ¡Propiedad configurada!
+                    </p>
+                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                      Todos los pasos de configuración están completos.
+                    </p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {/* Tareas pendientes */}
+                    {pendingTasks.map((task) => {
+                      const feat    = getFeatureByKey(task.feature_key);
+                      const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                      const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
+                      return (
+                        <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            onChange={() => void handleCompleteTask(task.id)}
+                            style={{ marginTop: 3, cursor: "pointer", accentColor: "#8B2252", flexShrink: 0 }}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            {resolvedRoute ? (
+                              <button
+                                type="button"
+                                onClick={() => router.push(resolvedRoute)}
+                                style={{
+                                  background: "none", border: "none", padding: 0,
+                                  display: "inline-flex", alignItems: "center", gap: 3,
+                                  cursor: "pointer",
+                                  fontSize: 13, fontWeight: 600, color: "#8B2252",
+                                }}
+                              >
+                                {taskDef?.label ?? task.task_key}
+                                <ChevronRight size={14} color="var(--text-muted)" />
+                              </button>
+                            ) : (
+                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                                {taskDef?.label ?? task.task_key}
+                              </span>
+                            )}
+                            {taskDef?.description && (
+                              <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                                {taskDef.description}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Separador + tareas completadas */}
+                    {completedTasks.length > 0 && (
+                      <>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                          <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>Completadas</span>
+                          <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                        </div>
+                        {completedTasks.map((task) => {
+                          const feat    = getFeatureByKey(task.feature_key);
+                          const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                          return (
+                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, opacity: 0.6 }}>
+                              <CheckCircle2 size={16} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)" }}>
+                                  {taskDef?.label ?? task.task_key}
+                                </span>
+                                {taskDef?.description && (
+                                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                                    {taskDef.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Footer */}
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleDismissAllTasks()}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 12, padding: 0, textDecoration: "underline" }}
+                  >
+                    Descartar todo
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ── Información general: 2 columnas — datos | mapa ── */}
           <SectionCard
