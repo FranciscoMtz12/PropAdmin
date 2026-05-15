@@ -696,6 +696,20 @@ export default function BuildingsPage() {
       if (taskRows.length > 0) {
         await supabase.from("building_setup_tasks").insert(taskRows);
       }
+
+      const generalSetupFeature = PROPERTY_FEATURES.find((f) => f.key === "general_setup");
+      if (generalSetupFeature) {
+        await supabase.from("building_setup_tasks").insert(
+          generalSetupFeature.tasks.map((task) => ({
+            building_id: newBuildingId,
+            company_id: user.company_id,
+            task_key: task.key,
+            feature_key: "general_setup",
+            is_completed: false,
+            dismissed: false,
+          }))
+        );
+      }
     }
 
     setMsg("Edificio guardado correctamente.");

@@ -2663,9 +2663,10 @@ export default function BuildingDetailPage() {
         title="Configuración de la propiedad"
       >
         {(() => {
-          const applicableFeatures = getDefaultFeatures(building?.building_category ?? "");
-          const spaceFeatures   = applicableFeatures.filter((f) => f.category === "space");
-          const serviceFeatures = applicableFeatures.filter((f) => f.category === "service");
+          const applicableFeatures  = getDefaultFeatures(building?.building_category ?? "");
+          const toggleableFeatures  = applicableFeatures.filter((f) => f.key !== "general_setup");
+          const spaceFeatures   = toggleableFeatures.filter((f) => f.category === "space");
+          const serviceFeatures = toggleableFeatures.filter((f) => f.category === "service");
 
           function ToggleRow({ feat }: { feat: typeof applicableFeatures[number] }) {
             const FeatIcon = FEATURE_ICON_MAP[feat.icon];
