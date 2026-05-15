@@ -383,6 +383,7 @@ export default function BuildingsPage() {
       .select("id, company_id, name, address, code, building_category, building_subcategory, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id, land_sqm, construction_sqm, default_unit_sqm")
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
+      .is("parent_building_id", null)
       .order("created_at", { ascending: false });
 
     if (error) {
