@@ -646,6 +646,7 @@ export default function BuildingDetailPage() {
   const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigRow[]>([]);
   const [savingFeatureKey, setSavingFeatureKey] = useState<string | null>(null);
   const [featureStatus, setFeatureStatus] = useState<Record<string, "ok" | "pending" | "unchecked">>({});
+  const [featureToast, setFeatureToast]   = useState<string | null>(null);
 
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
@@ -1165,9 +1166,10 @@ export default function BuildingDetailPage() {
       supabase.from("cleaning_building_schedules").select("id").eq("building_id", building.id).is("deleted_at", null),
       supabase.from("units").select("id").eq("building_id", building.id).is("deleted_at", null),
     ]);
-    setFeatureConfigs((configRes.data || []) as FeatureConfigRow[]);
+    const existingConfigs = (configRes.data || []) as FeatureConfigRow[];
     const meters = metersRes.data ?? [];
-    setFeatureStatus({
+
+    const newStatus: Record<string, "ok" | "pending" | "unchecked"> = {
       units:           (unitsRes.data?.length   ?? 0) > 0 ? "ok" : "pending",
       parking:         (parkingRes.data?.length  ?? 0) > 0 ? "ok" : "pending",
       cleaning:        (cleaningRes.data?.length ?? 0) > 0 ? "ok" : "pending",
@@ -1182,7 +1184,34 @@ export default function BuildingDetailPage() {
       service_storage: "unchecked",
       security_service:"unchecked",
       maintenance:     "unchecked",
-    });
+    };
+    setFeatureStatus(newStatus);
+
+    // Auto-activate features that already have real data in DB
+    const autoActivateKeys = (["units", "parking", "cleaning", "electricity", "water", "gas", "internet"] as const)
+      .filter((key) => newStatus[key] === "ok");
+
+    if (autoActivateKeys.length > 0 && user?.company_id) {
+      const upsertRows = autoActivateKeys.map((key) => {
+        const feat = PROPERTY_FEATURES.find((f) => f.key === key);
+        return {
+          building_id:      building.id,
+          company_id:       user.company_id,
+          feature_key:      key,
+          feature_category: feat?.category ?? "service",
+          is_active:        true,
+        };
+      });
+      await supabase.from("building_feature_config").upsert(upsertRows, { onConflict: "building_id,feature_key" });
+    }
+
+    // Reload configs after potential auto-activation
+    const { data: refreshed } = await supabase
+      .from("building_feature_config")
+      .select("id, feature_key, is_active")
+      .eq("building_id", building.id)
+      .is("deleted_at", null);
+    setFeatureConfigs((refreshed || []) as FeatureConfigRow[]);
   }
 
   async function handleToggleFeature(featureKey: string) {
@@ -1218,6 +1247,48 @@ export default function BuildingDetailPage() {
           onConflict: "building_id,task_key",
           ignoreDuplicates: true,
         });
+      }
+
+      // Create placeholder if feature has no data yet
+      if (featureStatus[featureKey] === "pending") {
+        const METER_KEYS = ["electricity", "water", "gas", "internet"] as const;
+        type MeterKey = typeof METER_KEYS[number];
+        const isMeterKey = (k: string): k is MeterKey => METER_KEYS.includes(k as MeterKey);
+
+        if (isMeterKey(featureKey)) {
+          await supabase.from("building_utility_meters").insert({
+            building_id:       building.id,
+            company_id:        user.company_id,
+            service_type:      featureKey,
+            meter_type:        "dedicated",
+            provider_name:     "Por configurar",
+            active:            true,
+            contract_holder:   "company",
+            billing_mode:      "charged",
+            billing_frequency: "monthly",
+          });
+        } else if (featureKey === "parking") {
+          await supabase.from("parking_spots").insert({
+            building_id: building.id,
+            company_id:  user.company_id,
+            spot_number: "1",
+            status:      "vacant",
+          });
+        } else if (featureKey === "cleaning") {
+          await supabase.from("cleaning_building_schedules").insert({
+            building_id:   building.id,
+            company_id:    user.company_id,
+            cleaning_type: "common",
+            day_of_week:   "monday",
+            time_block:    "morning",
+          });
+        }
+
+        setFeatureStatus((prev) => ({ ...prev, [featureKey]: "ok" }));
+
+        const label = feat?.label ?? featureKey;
+        setFeatureToast(`✓ ${label} configurado — completa los detalles en el módulo correspondiente`);
+        setTimeout(() => setFeatureToast(null), 4000);
       }
     }
 
@@ -2984,7 +3055,17 @@ export default function BuildingDetailPage() {
                 )}
               </div>
 
-              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
+              {featureToast && (
+                <div style={{
+                  marginTop: 16, padding: "10px 14px", borderRadius: 10,
+                  background: "#f0fdf4", border: "1px solid #bbf7d0",
+                  color: "#15803d", fontSize: 13, fontWeight: 500,
+                }}>
+                  {featureToast}
+                </div>
+              )}
+
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
                 <UiButton type="button" onClick={() => setIsFeaturesModalOpen(false)}>Cerrar</UiButton>
               </div>
             </>
