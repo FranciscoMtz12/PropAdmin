@@ -1,19 +1,21 @@
 export const PROPERTY_TYPES = [
-  { value: 'residential',     label: 'Residencial',       icon: 'Building2', color: '#8B2252' },
-  { value: 'commercial',      label: 'Comercial',         icon: 'Store',     color: '#0369a1' },
-  { value: 'industrial',      label: 'Industrial',        icon: 'Warehouse', color: '#b45309' },
-  { value: 'industrial_park', label: 'Parque Industrial', icon: 'Factory',   color: '#b45309' },
-  { value: 'land',            label: 'Terreno',           icon: 'MapPin',    color: '#15803d' },
+  { value: 'residential_multi',  label: 'Residencial multifamiliar', icon: 'Building2', color: '#8B2252' },
+  { value: 'residential_single', label: 'Residencial unifamiliar',   icon: 'Home',      color: '#8B2252' },
+  { value: 'commercial',         label: 'Comercial',                 icon: 'Store',     color: '#0369a1' },
+  { value: 'industrial',         label: 'Industrial',                icon: 'Warehouse', color: '#b45309' },
+  { value: 'industrial_park',    label: 'Parque Industrial',         icon: 'Factory',   color: '#b45309' },
+  { value: 'land',               label: 'Terreno',                   icon: 'MapPin',    color: '#15803d' },
 ] as const
 
 export type PropertyType = typeof PROPERTY_TYPES[number]['value']
 
 export const PROPERTY_TAGS = [
-  { value: 'residential', label: 'Residencial' },
-  { value: 'commercial',  label: 'Comercial'   },
-  { value: 'industrial',  label: 'Industrial'  },
-  { value: 'office',      label: 'Oficinas'    },
-  { value: 'land',        label: 'Terreno'     },
+  { value: 'residential_multi',  label: 'Residencial multifamiliar' },
+  { value: 'residential_single', label: 'Residencial unifamiliar'   },
+  { value: 'commercial',         label: 'Comercial'                 },
+  { value: 'industrial',         label: 'Industrial'                },
+  { value: 'office',             label: 'Oficinas'                  },
+  { value: 'land',               label: 'Terreno'                   },
 ]
 
 export const BUILDING_FEATURES = [
@@ -43,6 +45,14 @@ export type PropertyLabels = {
 
 export function getPropertyLabels(category: string | null): PropertyLabels {
   switch (category) {
+    case 'residential_single':
+      return {
+        units:       'Habitaciones',
+        leases:      'Contrato',
+        collections: 'Cobranza',
+        building:    'Casa',
+        unit:        'Habitación',
+      }
     case 'land':
       return {
         units:       'Secciones',

@@ -74,7 +74,6 @@ import UiButton from "@/components/UiButton";
 import AppSelect from "@/components/AppSelect";
 import AppFormField from "@/components/AppFormField";
 import AppEmptyState from "@/components/AppEmptyState";
-import { BUILDING_CATEGORIES } from "@/lib/buildingCategories";
 import {
   getPropertyType,
   PROPERTY_TYPES,
@@ -92,7 +91,7 @@ import {
 } from "@/lib/pageStyles";
 
 const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
-  Building2, Store, Warehouse, Factory, MapPin,
+  Building2, Home, Store, Warehouse, Factory, MapPin,
 };
 
 const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
@@ -233,7 +232,7 @@ const BUILDING_DEFAULTS: BuildingFormValues = {
   name: "",
   code: "",
   address: "",
-  building_category: "residential",
+  building_category: "residential_multi",
   building_subcategory: "",
   latitude: "",
   longitude: "",
@@ -673,7 +672,7 @@ export default function BuildingsPage() {
       building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
       land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
       construction_sqm: data.construction_sqm && data.construction_sqm.trim() ? Number(data.construction_sqm) : null,
-      default_unit_sqm: data.building_category !== "land" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
+      default_unit_sqm: data.building_category !== "land" && data.building_category !== "residential_single" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
     }).select("id").single();
     if (error || !newBuilding) { setMsg(error?.message ?? "Error al crear el edificio."); return; }
 
@@ -733,7 +732,7 @@ export default function BuildingsPage() {
         building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
         land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
         construction_sqm: data.construction_sqm && data.construction_sqm.trim() ? Number(data.construction_sqm) : null,
-        default_unit_sqm: data.building_category !== "land" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
+        default_unit_sqm: data.building_category !== "land" && data.building_category !== "residential_single" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
       })
       .eq("id", buildingEditingId)
       .eq("company_id", user.company_id);
@@ -853,9 +852,9 @@ export default function BuildingsPage() {
               onChange={(e) => setSelectedCategory(e.target.value)}
             >
               <option value="ALL">Todas las categorías</option>
-              {BUILDING_CATEGORIES.map((item, index) => (
-                <option key={`${item.key}-${index}`} value={item.key}>
-                  {item.label}
+              {PROPERTY_TYPES.map((pt, index) => (
+                <option key={`${pt.value}-${index}`} value={pt.value}>
+                  {pt.label}
                 </option>
               ))}
             </AppSelect>
@@ -1074,7 +1073,7 @@ export default function BuildingsPage() {
                           </p>
                           <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
                         </div>
-                        {building.total_sqm != null && building.building_category !== "residential" && (
+                        {building.total_sqm != null && building.building_category !== "residential_multi" && building.building_category !== "residential_single" && (
                           <div style={{ textAlign: "center" }}>
                             <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
                               {building.total_sqm.toLocaleString("es-MX")}
@@ -1278,7 +1277,7 @@ export default function BuildingsPage() {
           </AppFormField>
 
           <AppFormField label="Tipo de propiedad" required>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
               {PROPERTY_TYPES.map((pt) => {
                 const PtIcon = ICON_MAP[pt.icon];
                 const orderIdx = selectedTypes.indexOf(pt.value);
@@ -1350,7 +1349,7 @@ export default function BuildingsPage() {
                 />
               </AppFormField>
             </div>
-            {buildingCategory !== "land" && (
+            {buildingCategory !== "land" && buildingCategory !== "residential_single" && (
               <AppFormField label="M² por unidad (referencia)">
                 <input
                   {...register("default_unit_sqm")}
@@ -1487,7 +1486,7 @@ export default function BuildingsPage() {
               </AppFormField>
 
               <AppFormField label="Tipo de propiedad" required>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {PROPERTY_TYPES.map((pt) => {
                     const PtIcon = ICON_MAP[pt.icon];
                     const orderIdx = selectedTypes.indexOf(pt.value);
@@ -1549,7 +1548,7 @@ export default function BuildingsPage() {
                     <input {...register("construction_sqm")} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
                   </AppFormField>
                 </div>
-                {buildingCategory !== "land" && (
+                {buildingCategory !== "land" && buildingCategory !== "residential_single" && (
                   <AppFormField label="M² por unidad (referencia)">
                     <input {...register("default_unit_sqm")} type="number" placeholder="Ej: 65" style={INPUT_STYLE} />
                   </AppFormField>

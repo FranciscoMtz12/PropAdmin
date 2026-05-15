@@ -143,7 +143,7 @@ const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
 /* ─── Mapa de iconos de tipo de propiedad ─────────────────────────── */
 
 const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
-  Building2, Store, Warehouse, Factory, MapPin,
+  Building2, Home, Store, Warehouse, Factory, MapPin,
 };
 
 const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
@@ -762,8 +762,8 @@ export default function BuildingDetailPage() {
       setLeasesForTrend([]);
     }
 
-    /* Contratos directos del edificio (land, commercial, industrial) — unit_id IS NULL */
-    if (["land", "commercial", "industrial"].includes(b.building_category ?? "")) {
+    /* Contratos directos del edificio (land, commercial, industrial, residential_single) — unit_id IS NULL */
+    if (["land", "commercial", "industrial", "residential_single"].includes(b.building_category ?? "")) {
       type LLRow = { id: string; tenant_id: string; rent_amount: number; start_date: string | null; end_date: string | null; status: string; leased_sqm: number | null };
       const { data: llData } = await supabase
         .from("leases")
@@ -1120,7 +1120,7 @@ export default function BuildingDetailPage() {
         building_features: editBuildingFeatures,
         land_sqm: editLandSqm.trim() ? Number(editLandSqm) : null,
         construction_sqm: editConstructionSqm.trim() ? Number(editConstructionSqm) : null,
-        default_unit_sqm: buildingCategory !== "land" && editDefaultUnitSqm.trim() ? Number(editDefaultUnitSqm) : null,
+        default_unit_sqm: buildingCategory !== "land" && buildingCategory !== "residential_single" && editDefaultUnitSqm.trim() ? Number(editDefaultUnitSqm) : null,
         latitude:  latNum !== null && Number.isFinite(latNum)  ? latNum  : null,
         longitude: lngNum !== null && Number.isFinite(lngNum) ? lngNum : null,
       })
@@ -1415,24 +1415,26 @@ export default function BuildingDetailPage() {
 
   const categoryDefinition = getBuildingCategoryDefinition(building.building_category);
   const labels = getPropertyLabels(building.building_category);
-  const isLand         = building.building_category === "land";
-  const isCommercial   = building.building_category === "commercial";
-  const isIndustrial   = building.building_category === "industrial";
-  const isIndustrialPark = building.building_category === "industrial_park";
-  const hasLeasesTab   = isLand || isCommercial || isIndustrial;
-  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark;
+  const isLand             = building.building_category === "land";
+  const isCommercial       = building.building_category === "commercial";
+  const isIndustrial       = building.building_category === "industrial";
+  const isIndustrialPark   = building.building_category === "industrial_park";
+  const isResidentialSingle = building.building_category === "residential_single";
+  const hasLeasesTab   = isLand || isCommercial || isIndustrial || isResidentialSingle;
+  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark && !isResidentialSingle;
   const hasAssetsTab   = !isIndustrialPark;
   const hasServicesTab = !isIndustrialPark;
   const hasBodegasTab  = isIndustrialPark;
-  const hideUnitsUI    = isLand || isIndustrialPark;
+  const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle;
 
   function getBuildingDetailLabel(cat: string | null): string {
     switch (cat) {
-      case "commercial":    return "Detalle de la propiedad";
-      case "industrial":    return "Detalle de la nave";
-      case "industrial_park": return "Detalle del parque";
-      case "land":          return "Detalle del terreno";
-      default:              return "Detalle del edificio";
+      case "commercial":         return "Detalle de la propiedad";
+      case "industrial":         return "Detalle de la nave";
+      case "industrial_park":    return "Detalle del parque";
+      case "land":               return "Detalle del terreno";
+      case "residential_single": return "Detalle de la casa";
+      default:                   return "Detalle del edificio";
     }
   }
 
@@ -1583,6 +1585,22 @@ export default function BuildingDetailPage() {
                     value={`${building.land_sqm.toLocaleString("es-MX")} m²`}
                     icon={<MapPin size={18} />}
                     helper="M² de terreno registrados"
+                  />
+                ) : null
+              ) : isResidentialSingle ? (
+                building.construction_sqm != null ? (
+                  <MetricCard
+                    label="M² construidos"
+                    value={`${building.construction_sqm.toLocaleString("es-MX")} m²`}
+                    icon={<Building2 size={18} />}
+                    helper="Superficie de construcción"
+                  />
+                ) : building.land_sqm != null ? (
+                  <MetricCard
+                    label="M² de terreno"
+                    value={`${building.land_sqm.toLocaleString("es-MX")} m²`}
+                    icon={<MapPin size={18} />}
+                    helper="Superficie del terreno"
                   />
                 ) : null
               ) : (
@@ -1858,7 +1876,7 @@ export default function BuildingDetailPage() {
                     </span>
                   </div>
                 )}
-                {building.default_unit_sqm != null && !isLand && (
+                {building.default_unit_sqm != null && !isLand && !isResidentialSingle && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <LayoutGrid size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
@@ -1873,8 +1891,8 @@ export default function BuildingDetailPage() {
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
 
-            {/* Col izquierda: Distribución — oculta para terrenos y parques */}
-            {!isLand && !isIndustrialPark && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />}>
+            {/* Col izquierda: Distribución — oculta para terrenos, parques y residencial unifamiliar */}
+            {!isLand && !isIndustrialPark && !isResidentialSingle && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />}>
               {totalUnits === 0 ? (
                 <AppEmptyState
                   title={`Sin ${labels.units.toLowerCase()} registrados`}
@@ -1961,8 +1979,8 @@ export default function BuildingDetailPage() {
             </SectionCard>}
           </div>
 
-          {/* ── Fila 3: Tendencia de ocupación — oculta para terrenos y parques ── */}
-          {!isLand && !isIndustrialPark && <SectionCard
+          {/* ── Fila 3: Tendencia de ocupación — oculta para terrenos, parques y residencial unifamiliar ── */}
+          {!isLand && !isIndustrialPark && !isResidentialSingle && <SectionCard
             title="Tendencia de ocupación"
             subtitle="Últimos 12 meses — total de unidades vs. unidades ocupadas."
             icon={<Building2 size={18} />}
@@ -2502,7 +2520,7 @@ export default function BuildingDetailPage() {
                 <input value={editConstructionSqm} onChange={(e) => setEditConstructionSqm(e.target.value)} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
               </AppFormField>
             </div>
-            {buildingCategory !== "land" && (
+            {buildingCategory !== "land" && buildingCategory !== "residential_single" && (
               <AppFormField label="M² por unidad (referencia)">
                 <input value={editDefaultUnitSqm} onChange={(e) => setEditDefaultUnitSqm(e.target.value)} type="number" placeholder="Ej: 65" style={INPUT_STYLE} />
               </AppFormField>

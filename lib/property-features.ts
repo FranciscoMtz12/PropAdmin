@@ -27,7 +27,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'space',
     icon: 'LayoutGrid',
     color: '#8B2252',
-    applicableTypes: ['residential', 'commercial', 'industrial'],
+    applicableTypes: ['residential_multi', 'commercial', 'industrial'],
     tasks: [
       { key: 'add_first_unit', label: 'Registrar primer espacio', description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]/units' },
       { key: 'add_unit_types', label: 'Configurar tipologías', description: 'Define los tipos de unidad disponibles', route: '/buildings/[id]/unit-types' },
@@ -40,7 +40,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'space',
     icon: 'Car',
     color: '#0369a1',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
       { key: 'add_parking_spots', label: 'Registrar cajones', description: 'Da de alta los cajones disponibles' },
     ],
@@ -52,7 +52,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'space',
     icon: 'Shield',
     color: '#b45309',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
       { key: 'setup_security_booth', label: 'Registrar caseta como activo', description: 'Agrega la caseta en el módulo de activos' },
     ],
@@ -88,7 +88,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'space',
     icon: 'Trees',
     color: '#15803d',
-    applicableTypes: ['residential', 'commercial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'commercial', 'industrial_park'],
     tasks: [
       { key: 'setup_common_areas', label: 'Registrar áreas comunes', description: 'Define las áreas comunes disponibles' },
     ],
@@ -100,7 +100,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'space',
     icon: 'Package',
     color: '#6b7280',
-    applicableTypes: ['residential', 'commercial', 'industrial'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial'],
     tasks: [
       { key: 'setup_service_storage', label: 'Registrar bodega como activo', description: 'Agrega la bodega de servicio en activos' },
     ],
@@ -113,7 +113,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'Zap',
     color: '#eab308',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park', 'land'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park', 'land'],
     tasks: [
       { key: 'add_electricity_meter', label: 'Configurar medidor de luz', description: 'Da de alta el medidor principal en Servicios', route: '/servicios' },
     ],
@@ -125,7 +125,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'Droplets',
     color: '#0ea5e9',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
       { key: 'add_water_meter', label: 'Configurar medidor de agua', description: 'Da de alta el medidor de agua en Servicios', route: '/servicios' },
     ],
@@ -137,7 +137,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'Flame',
     color: '#f97316',
-    applicableTypes: ['residential', 'commercial', 'industrial'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial'],
     tasks: [
       { key: 'add_gas_meter', label: 'Configurar medidor de gas', description: 'Da de alta el medidor de gas en Servicios', route: '/servicios' },
     ],
@@ -149,7 +149,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'Wifi',
     color: '#6366f1',
-    applicableTypes: ['residential', 'commercial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial_park'],
     tasks: [
       { key: 'setup_internet', label: 'Configurar servicio de internet', description: 'Da de alta el servicio en Servicios', route: '/servicios' },
     ],
@@ -161,7 +161,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'ShieldCheck',
     color: '#b45309',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
       { key: 'setup_security_service', label: 'Registrar proveedor de vigilancia', description: 'Agrega el proveedor en el módulo de proveedores', route: '/suppliers' },
     ],
@@ -173,7 +173,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'Sparkles',
     color: '#06b6d4',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park'],
     tasks: [
       { key: 'setup_cleaning_schedule', label: 'Configurar programa de limpieza', description: 'Define el calendario de limpieza', route: '/cleaning' },
     ],
@@ -185,7 +185,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     category: 'service',
     icon: 'Wrench',
     color: '#8b5cf6',
-    applicableTypes: ['residential', 'commercial', 'industrial', 'industrial_park', 'land'],
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park', 'land'],
     tasks: [
       { key: 'setup_maintenance', label: 'Crear primer ticket de mantenimiento', description: 'Registra el primer mantenimiento de la propiedad', route: '/maintenance' },
     ],
