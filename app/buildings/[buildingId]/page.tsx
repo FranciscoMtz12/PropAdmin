@@ -28,8 +28,10 @@ import {
   AlertTriangle,
   Archive,
   ArrowLeft,
+  Briefcase,
   Building2,
   Car,
+  CheckSquare,
   CreditCard,
   Droplets,
   Edit3,
@@ -51,9 +53,15 @@ import {
   Plus,
   Ruler,
   Settings2,
+  Shield,
+  ShieldCheck,
+  Sliders,
+  Sparkles,
   Store,
   Tags,
   Trash2,
+  Trees,
+  Truck,
   Warehouse,
   Wifi,
   Wrench,
@@ -81,6 +89,7 @@ import {
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
 import { getPropertyType, getPropertyLabels, PROPERTY_TYPES, BUILDING_FEATURES } from "@/lib/property-types";
+import { PROPERTY_FEATURES, getFeatureByKey } from "@/lib/property-features";
 import {
   INPUT_STYLE,
   TEXTAREA_STYLE,
@@ -133,6 +142,11 @@ const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
 
 const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
   Building2, Store, Warehouse, Factory, MapPin,
+};
+
+const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  LayoutGrid, Car, Shield, Briefcase, Truck, Trees, Package,
+  Zap, Droplets, Flame, Wifi, ShieldCheck, Sparkles, Wrench, CheckSquare,
 };
 
 const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
@@ -229,6 +243,20 @@ type ChildBuilding = {
   total_sqm: number | null;
   land_sqm: number | null;
   construction_sqm: number | null;
+};
+
+type FeatureConfigRow = {
+  id: string;
+  feature_key: string;
+  is_active: boolean;
+};
+
+type SetupTask = {
+  id: string;
+  task_key: string;
+  feature_key: string;
+  is_completed: boolean;
+  dismissed: boolean;
 };
 
 type BuildingAssetRow = {
@@ -593,6 +621,14 @@ export default function BuildingDetailPage() {
   const [releaseSpot, setReleaseSpot]       = useState<ParkingSpot | null>(null);
   const [savingRelease, setSavingRelease]   = useState(false);
 
+  /* Features configurables */
+  const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
+  const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigRow[]>([]);
+  const [savingFeatureKey, setSavingFeatureKey] = useState<string | null>(null);
+
+  /* Setup checklist */
+  const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
+
   /* Formulario de asset */
   const [assetType, setAssetType]   = useState("ELEVATOR");
   const [assetName, setAssetName]   = useState("");
@@ -807,6 +843,15 @@ export default function BuildingDetailPage() {
       services: sCount ?? 0,
       parking:  pCount ?? 0,
     });
+
+    /* Setup tasks pendientes */
+    const { data: tasksData } = await supabase
+      .from("building_setup_tasks")
+      .select("id, task_key, feature_key, is_completed, dismissed")
+      .eq("building_id", buildingId)
+      .eq("is_completed", false)
+      .eq("dismissed", false);
+    setSetupTasks((tasksData || []) as SetupTask[]);
 
     setLoadingBuilding(false);
   }
@@ -1087,6 +1132,83 @@ export default function BuildingDetailPage() {
     setMsg("Edificio actualizado correctamente.");
   }
 
+  /* ── Features modal ─────────────────────────────────────────────── */
+
+  async function openFeaturesModal() {
+    if (!building) return;
+    setIsFeaturesModalOpen(true);
+    const { data } = await supabase
+      .from("building_feature_config")
+      .select("id, feature_key, is_active")
+      .eq("building_id", building.id)
+      .is("deleted_at", null);
+    setFeatureConfigs((data || []) as FeatureConfigRow[]);
+  }
+
+  async function handleToggleFeature(featureKey: string) {
+    if (!building || !user?.company_id) return;
+    setSavingFeatureKey(featureKey);
+    const existing = featureConfigs.find((c) => c.feature_key === featureKey);
+    const nextActive = !(existing?.is_active ?? false);
+
+    if (existing) {
+      await supabase.from("building_feature_config").update({ is_active: nextActive }).eq("id", existing.id);
+    } else {
+      const feat = PROPERTY_FEATURES.find((f) => f.key === featureKey);
+      await supabase.from("building_feature_config").insert({
+        building_id: building.id,
+        company_id: user.company_id,
+        feature_key: featureKey,
+        feature_category: feat?.category ?? "service",
+        is_active: true,
+      });
+    }
+
+    if (nextActive) {
+      const feat = PROPERTY_FEATURES.find((f) => f.key === featureKey);
+      if (feat && feat.tasks.length > 0) {
+        const taskRows = feat.tasks.map((task) => ({
+          building_id: building.id,
+          company_id: user.company_id,
+          task_key: task.key,
+          feature_key: featureKey,
+          is_completed: false,
+        }));
+        await supabase.from("building_setup_tasks").upsert(taskRows, {
+          onConflict: "building_id,task_key",
+          ignoreDuplicates: true,
+        });
+      }
+    }
+
+    const { data } = await supabase
+      .from("building_feature_config")
+      .select("id, feature_key, is_active")
+      .eq("building_id", building.id)
+      .is("deleted_at", null);
+    setFeatureConfigs((data || []) as FeatureConfigRow[]);
+    setSavingFeatureKey(null);
+  }
+
+  /* ── Setup checklist ─────────────────────────────────────────────── */
+
+  async function handleCompleteTask(taskId: string) {
+    if (!user) return;
+    await supabase.from("building_setup_tasks").update({
+      is_completed: true,
+      completed_at: new Date().toISOString(),
+      completed_by: user.id,
+    }).eq("id", taskId);
+    setSetupTasks((prev) => prev.filter((t) => t.id !== taskId));
+  }
+
+  async function handleDismissAllTasks() {
+    const ids = setupTasks.map((t) => t.id);
+    if (ids.length === 0) return;
+    await supabase.from("building_setup_tasks").update({ dismissed: true }).in("id", ids);
+    setSetupTasks([]);
+  }
+
   async function handleCreateBodega(e: React.FormEvent) {
     e.preventDefault();
     if (!user?.company_id || !building) return;
@@ -1327,7 +1449,7 @@ export default function BuildingDetailPage() {
         titleIcon={<Building2 size={20} />}
         subtitle={`Vista general del ${labels.building.toLowerCase()} — ocupación, ${labels.collections.toLowerCase()} y tendencia.`}
         actions={
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {/* Volver */}
             <a
               href="/buildings"
@@ -1356,6 +1478,21 @@ export default function BuildingDetailPage() {
             >
               <Pencil size={18} />
               <span>Editar</span>
+            </button>
+            {/* Features */}
+            <button
+              type="button"
+              onClick={() => void openFeaturesModal()}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 4, padding: "10px 12px", borderRadius: 10,
+                border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                color: "var(--text-primary)", cursor: "pointer",
+                fontSize: 11, fontWeight: 600,
+              }}
+            >
+              <Sliders size={18} />
+              <span>Features</span>
             </button>
             {/* Unidades — oculto para terrenos y parques industriales */}
             {!hideUnitsUI && (
@@ -1451,6 +1588,91 @@ export default function BuildingDetailPage() {
                   helper="Ocupadas sobre registradas"
                 />
               )}
+            </div>
+          )}
+
+          {/* ── Setup checklist (visible solo cuando hay tareas pendientes) ── */}
+          {setupTasks.length > 0 && (
+            <div style={{
+              borderLeft: "4px solid #8B2252",
+              borderRadius: 12,
+              background: "rgba(139,34,82,0.04)",
+              border: "1px solid rgba(139,34,82,0.2)",
+              borderLeftWidth: 4,
+              padding: 20,
+            }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <CheckSquare size={18} color="#8B2252" />
+                  <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                    Configuración pendiente
+                  </span>
+                  <span style={{
+                    background: "#8B2252", color: "#fff",
+                    borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700,
+                  }}>
+                    {setupTasks.length}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void handleDismissAllTasks()}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "4px 8px", borderRadius: 6 }}
+                  title="Descartar todo"
+                >
+                  ✕
+                </button>
+              </div>
+
+              {/* Lista de tareas */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {setupTasks.map((task) => {
+                  const feat = getFeatureByKey(task.feature_key);
+                  const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                  const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
+                  return (
+                    <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                      <input
+                        type="checkbox"
+                        checked={task.is_completed}
+                        onChange={() => void handleCompleteTask(task.id)}
+                        style={{ marginTop: 3, cursor: "pointer", accentColor: "#8B2252", flexShrink: 0 }}
+                      />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {resolvedRoute ? (
+                          <a
+                            href={resolvedRoute}
+                            style={{ fontSize: 13, fontWeight: 600, color: "#8B2252", textDecoration: "none" }}
+                          >
+                            {taskDef?.label ?? task.task_key}
+                          </a>
+                        ) : (
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                            {taskDef?.label ?? task.task_key}
+                          </span>
+                        )}
+                        {taskDef?.description && (
+                          <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                            {taskDef.description}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer */}
+              <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
+                <button
+                  type="button"
+                  onClick={() => void handleDismissAllTasks()}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 12, padding: 0, textDecoration: "underline" }}
+                >
+                  Descartar todo
+                </button>
+              </div>
             </div>
           )}
 
@@ -2332,6 +2554,107 @@ export default function BuildingDetailPage() {
         onConfirm={() => void handleArchiveAsset()}
         onCancel={() => { if (!savingAsset) setAssetArchiveOpen(false); }}
       />
+
+      {/* ── Modal de configuración de features ── */}
+      <Modal
+        open={isFeaturesModalOpen}
+        onClose={() => setIsFeaturesModalOpen(false)}
+        title="Configuración de la propiedad"
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+          {/* Espacios físicos */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+              Espacios físicos
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {PROPERTY_FEATURES.filter((f) => f.category === "space").map((feat) => {
+                const FeatIcon = FEATURE_ICON_MAP[feat.icon];
+                const config = featureConfigs.find((c) => c.feature_key === feat.key);
+                const isActive = config?.is_active ?? false;
+                const isSaving = savingFeatureKey === feat.key;
+                return (
+                  <div key={feat.key} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
+                      {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={15} color={feat.color} /></span>}
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{feat.label}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>{feat.description}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => void handleToggleFeature(feat.key)}
+                      style={{
+                        width: 44, height: 24, borderRadius: 12, flexShrink: 0,
+                        background: isActive ? feat.color : "#e5e7eb",
+                        border: "none", cursor: isSaving ? "wait" : "pointer",
+                        position: "relative", transition: "background 0.2s", padding: 0,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute", top: 3, left: isActive ? 23 : 3,
+                        width: 18, height: 18, borderRadius: "50%",
+                        background: "#fff", transition: "left 0.2s",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      }} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Servicios */}
+          <div>
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+              Servicios
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {PROPERTY_FEATURES.filter((f) => f.category === "service").map((feat) => {
+                const FeatIcon = FEATURE_ICON_MAP[feat.icon];
+                const config = featureConfigs.find((c) => c.feature_key === feat.key);
+                const isActive = config?.is_active ?? false;
+                const isSaving = savingFeatureKey === feat.key;
+                return (
+                  <div key={feat.key} style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
+                      {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={15} color={feat.color} /></span>}
+                      <div>
+                        <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{feat.label}</p>
+                        <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>{feat.description}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => void handleToggleFeature(feat.key)}
+                      style={{
+                        width: 44, height: 24, borderRadius: 12, flexShrink: 0,
+                        background: isActive ? feat.color : "#e5e7eb",
+                        border: "none", cursor: isSaving ? "wait" : "pointer",
+                        position: "relative", transition: "background 0.2s", padding: 0,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute", top: 3, left: isActive ? 23 : 3,
+                        width: 18, height: 18, borderRadius: "50%",
+                        background: "#fff", transition: "left 0.2s",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      }} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
+          <UiButton type="button" onClick={() => setIsFeaturesModalOpen(false)}>Cerrar</UiButton>
+        </div>
+      </Modal>
 
       {/* ── Modal eliminar edificio ── */}
       <DeleteConfirmModal

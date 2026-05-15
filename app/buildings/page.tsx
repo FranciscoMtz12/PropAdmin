@@ -30,19 +30,34 @@ import {
   Legend,
 } from "recharts";
 import {
+  Briefcase,
   Building2,
+  Car,
+  CheckSquare,
+  Droplets,
   Edit3,
   Factory,
   Filter,
+  Flame,
   Home,
+  LayoutGrid,
   Map as MapIcon,
   MapPin,
   MoreHorizontal,
+  Package,
   Plus,
+  Shield,
+  ShieldCheck,
+  Sparkles,
   Store,
   TrendingUp,
   Trash2,
+  Trees,
+  Truck,
   Warehouse,
+  Wifi,
+  Wrench,
+  Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -65,6 +80,7 @@ import {
   PROPERTY_TYPES,
   BUILDING_FEATURES,
 } from "@/lib/property-types";
+import { PROPERTY_FEATURES, getDefaultFeatures } from "@/lib/property-features";
 import {
   INPUT_STYLE,
   dropdownTriggerStyle,
@@ -77,6 +93,11 @@ import {
 
 const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
   Building2, Store, Warehouse, Factory, MapPin,
+};
+
+const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  LayoutGrid, Car, Shield, Briefcase, Truck, Trees, Package,
+  Zap, Droplets, Flame, Wifi, ShieldCheck, Sparkles, Wrench, CheckSquare,
 };
 
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
@@ -280,11 +301,16 @@ export default function BuildingsPage() {
     watch,
     setValue,
     getValues,
+    trigger,
     formState: { errors, isSubmitting },
   } = useForm<BuildingFormValues>({
     resolver: zodResolver(buildingSchema),
     defaultValues: BUILDING_DEFAULTS,
   });
+
+  /* Estado del modal de creación en 2 pasos */
+  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<string[]>([]);
   const buildingCategory = watch("building_category");
   const buildingTags = watch("building_tags") ?? [];
   const buildingFeatures = watch("building_features") ?? {};
@@ -559,7 +585,23 @@ export default function BuildingsPage() {
 
   function closeCreateModal() {
     setIsCreateModalOpen(false);
+    setCreateStep(1);
+    setSelectedFeatureKeys([]);
     resetForm();
+  }
+
+  async function handleNextStep() {
+    const isValid = await trigger(["name", "building_category"]);
+    if (!isValid) return;
+    const primaryType = getValues("building_category");
+    setSelectedFeatureKeys(getDefaultFeatures(primaryType).map((f) => f.key));
+    setCreateStep(2);
+  }
+
+  function toggleFeatureSelection(key: string) {
+    setSelectedFeatureKeys((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
   }
 
   function openEditModal(building: Building) {
@@ -614,10 +656,11 @@ export default function BuildingsPage() {
   }
 
   const handleSubmitBuilding = rhfSubmit(async (data) => {
+    if (createStep !== 2) return;
     setMsg("");
     if (!user?.company_id) { setMsg("No se encontró la empresa del usuario."); return; }
 
-    const { error } = await supabase.from("buildings").insert({
+    const { data: newBuilding, error } = await supabase.from("buildings").insert({
       company_id: user.company_id,
       name: data.name.trim(),
       code: data.code?.trim() || null,
@@ -631,8 +674,40 @@ export default function BuildingsPage() {
       land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
       construction_sqm: data.construction_sqm && data.construction_sqm.trim() ? Number(data.construction_sqm) : null,
       default_unit_sqm: data.building_category !== "land" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
-    });
-    if (error) { setMsg(error.message); return; }
+    }).select("id").single();
+    if (error || !newBuilding) { setMsg(error?.message ?? "Error al crear el edificio."); return; }
+
+    const newBuildingId = newBuilding.id;
+
+    if (selectedFeatureKeys.length > 0) {
+      await supabase.from("building_feature_config").insert(
+        selectedFeatureKeys.map((key) => {
+          const feat = PROPERTY_FEATURES.find((f) => f.key === key);
+          return {
+            building_id: newBuildingId,
+            company_id: user.company_id,
+            feature_key: key,
+            feature_category: feat?.category ?? "service",
+            is_active: true,
+          };
+        })
+      );
+
+      const taskRows = selectedFeatureKeys.flatMap((key) => {
+        const feat = PROPERTY_FEATURES.find((f) => f.key === key);
+        return (feat?.tasks ?? []).map((task) => ({
+          building_id: newBuildingId,
+          company_id: user.company_id,
+          task_key: task.key,
+          feature_key: key,
+          is_completed: false,
+        }));
+      });
+      if (taskRows.length > 0) {
+        await supabase.from("building_setup_tasks").insert(taskRows);
+      }
+    }
+
     setMsg("Edificio guardado correctamente.");
     closeCreateModal();
     await loadBuildings();
@@ -1384,162 +1459,238 @@ export default function BuildingsPage() {
         </div>
       </Modal>
 
-      {/* ── Modal de creación ── */}
-      <Modal open={isCreateModalOpen} onClose={closeCreateModal} title="Nueva propiedad">
+      {/* ── Modal de creación (2 pasos) ── */}
+      <Modal
+        open={isCreateModalOpen}
+        onClose={closeCreateModal}
+        title={createStep === 1 ? "Nueva propiedad" : "¿Qué tiene esta propiedad?"}
+      >
         <form onSubmit={handleSubmitBuilding}>
-          <AppFormField label="Nombre del edificio" required>
-            <input
-              {...register("name")}
-              placeholder="Ej. Torre Central"
-              style={INPUT_STYLE}
-            />
-            {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
-          </AppFormField>
-
-          <AppFormField label="Código">
-            <input
-              {...register("code")}
-              placeholder="Ej. TC-001"
-              style={INPUT_STYLE}
-            />
-          </AppFormField>
-
-          <AppFormField label="Tipo de propiedad" required>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-              {PROPERTY_TYPES.map((pt) => {
-                const PtIcon = ICON_MAP[pt.icon];
-                const orderIdx = selectedTypes.indexOf(pt.value);
-                const selected = orderIdx !== -1;
-                return (
-                  <button
-                    key={pt.value}
-                    type="button"
-                    onClick={() => toggleTypeSelection(pt.value)}
-                    style={{
-                      position: "relative",
-                      display: "flex", flexDirection: "column", alignItems: "center",
-                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
-                      border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
-                      background: selected ? pt.color + "15" : "var(--bg-card)",
-                      color: selected ? pt.color : "var(--text-secondary)",
-                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    {selected && (
-                      <span style={{
-                        position: "absolute", top: 4, left: 4,
-                        width: 16, height: 16, borderRadius: "50%",
-                        background: pt.color, color: "#fff",
-                        fontSize: 10, fontWeight: 700,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                      }}>
-                        {orderIdx + 1}
-                      </span>
-                    )}
-                    {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
-                    {pt.label}
-                  </button>
-                );
-              })}
-            </div>
-            {selectedTypes.length > 1 && (
-              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
-                Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
-                  {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
-                </strong>
-              </p>
-            )}
-            {errors.building_category ? (
-              <p style={errorTextStyle}>{errors.building_category.message}</p>
-            ) : null}
-          </AppFormField>
-
-          <div style={{ marginBottom: 4 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-              Superficie
-            </p>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <AppFormField label="M² de terreno">
+          {/* ── PASO 1: datos del edificio ── */}
+          {createStep === 1 && (
+            <>
+              <AppFormField label="Nombre del edificio" required>
                 <input
-                  {...register("land_sqm")}
-                  type="number"
-                  placeholder="Ej: 500"
+                  {...register("name")}
+                  placeholder="Ej. Torre Central"
+                  style={INPUT_STYLE}
+                />
+                {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
+              </AppFormField>
+
+              <AppFormField label="Código">
+                <input
+                  {...register("code")}
+                  placeholder="Ej. TC-001"
                   style={INPUT_STYLE}
                 />
               </AppFormField>
-              <AppFormField label="M² de construcción">
-                <input
-                  {...register("construction_sqm")}
-                  type="number"
-                  placeholder="Ej: 350"
-                  style={INPUT_STYLE}
-                />
-              </AppFormField>
-            </div>
-            {buildingCategory !== "land" && (
-              <AppFormField label="M² por unidad (referencia)">
-                <input
-                  {...register("default_unit_sqm")}
-                  type="number"
-                  placeholder="Ej: 65"
-                  style={INPUT_STYLE}
-                />
-              </AppFormField>
-            )}
-          </div>
 
-          {showFeatures && (
-            <AppFormField label="Características">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {BUILDING_FEATURES.map((feat) => {
-                  const active = !!(buildingFeatures as Record<string, boolean>)[feat.key];
-                  return (
-                    <label
-                      key={feat.key}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        cursor: "pointer", fontSize: 13, color: "var(--text-primary)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => toggleFeature(feat.key)}
-                      />
-                      {feat.label}
-                    </label>
-                  );
-                })}
+              <AppFormField label="Tipo de propiedad" required>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                  {PROPERTY_TYPES.map((pt) => {
+                    const PtIcon = ICON_MAP[pt.icon];
+                    const orderIdx = selectedTypes.indexOf(pt.value);
+                    const selected = orderIdx !== -1;
+                    return (
+                      <button
+                        key={pt.value}
+                        type="button"
+                        onClick={() => toggleTypeSelection(pt.value)}
+                        style={{
+                          position: "relative",
+                          display: "flex", flexDirection: "column", alignItems: "center",
+                          justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                          border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
+                          background: selected ? pt.color + "15" : "var(--bg-card)",
+                          color: selected ? pt.color : "var(--text-secondary)",
+                          cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                          transition: "all 0.15s ease",
+                        }}
+                      >
+                        {selected && (
+                          <span style={{
+                            position: "absolute", top: 4, left: 4,
+                            width: 16, height: 16, borderRadius: "50%",
+                            background: pt.color, color: "#fff",
+                            fontSize: 10, fontWeight: 700,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}>
+                            {orderIdx + 1}
+                          </span>
+                        )}
+                        {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
+                        {pt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                {selectedTypes.length > 1 && (
+                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                    Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
+                      {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
+                    </strong>
+                  </p>
+                )}
+                {errors.building_category ? (
+                  <p style={errorTextStyle}>{errors.building_category.message}</p>
+                ) : null}
+              </AppFormField>
+
+              <div style={{ marginBottom: 4 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                  Superficie
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <AppFormField label="M² de terreno">
+                    <input {...register("land_sqm")} type="number" placeholder="Ej: 500" style={INPUT_STYLE} />
+                  </AppFormField>
+                  <AppFormField label="M² de construcción">
+                    <input {...register("construction_sqm")} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
+                  </AppFormField>
+                </div>
+                {buildingCategory !== "land" && (
+                  <AppFormField label="M² por unidad (referencia)">
+                    <input {...register("default_unit_sqm")} type="number" placeholder="Ej: 65" style={INPUT_STYLE} />
+                  </AppFormField>
+                )}
               </div>
-            </AppFormField>
+
+              {showFeatures && (
+                <AppFormField label="Características">
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {BUILDING_FEATURES.map((feat) => {
+                      const active = !!(buildingFeatures as Record<string, boolean>)[feat.key];
+                      return (
+                        <label key={feat.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                          <input type="checkbox" checked={active} onChange={() => toggleFeature(feat.key)} />
+                          {feat.label}
+                        </label>
+                      );
+                    })}
+                  </div>
+                </AppFormField>
+              )}
+
+              <AppFormField label="Dirección">
+                <input {...register("address")} placeholder="Ej. Av. Principal 123" style={INPUT_STYLE} />
+              </AppFormField>
+
+              <AppFormField label="Ubicación en el mapa (opcional)">
+                <LocationPicker
+                  latitude={latitudeForPicker}
+                  longitude={longitudeForPicker}
+                  onLocationChange={handleLocationChange}
+                />
+              </AppFormField>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                  Siguiente →
+                </UiButton>
+                <UiButton type="button" onClick={closeCreateModal}>
+                  Cancelar
+                </UiButton>
+              </div>
+            </>
           )}
 
-          <AppFormField label="Dirección">
-            <input
-              {...register("address")}
-              placeholder="Ej. Av. Principal 123"
-              style={INPUT_STYLE}
-            />
-          </AppFormField>
+          {/* ── PASO 2: selector de features ── */}
+          {createStep === 2 && (
+            <>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
+                Selecciona los espacios y servicios disponibles. Puedes cambiar esto después.
+              </p>
 
-          {/* Ubicación en el mapa — buscador + mini mapa interactivo */}
-          <AppFormField label="Ubicación en el mapa (opcional)">
-            <LocationPicker
-              latitude={latitudeForPicker}
-              longitude={longitudeForPicker}
-              onLocationChange={handleLocationChange}
-            />
-          </AppFormField>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                {/* Columna espacios */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                    Espacios físicos
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {PROPERTY_FEATURES.filter((f) => f.category === "space").map((feat) => {
+                      const FeatIcon = FEATURE_ICON_MAP[feat.icon];
+                      const selected = selectedFeatureKeys.includes(feat.key);
+                      return (
+                        <button
+                          key={feat.key}
+                          type="button"
+                          onClick={() => toggleFeatureSelection(feat.key)}
+                          style={{
+                            display: "flex", alignItems: "flex-start", gap: 10,
+                            padding: "10px 12px", borderRadius: 10, width: "100%", textAlign: "left",
+                            border: selected ? `2px solid ${feat.color}` : "2px solid var(--border-default)",
+                            background: selected ? feat.color + "12" : "var(--bg-card)",
+                            cursor: "pointer", transition: "all 0.15s ease",
+                          }}
+                        >
+                          {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
+                          <div>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
+                              {feat.label}
+                            </p>
+                            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                              {feat.description}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
 
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={isSubmitting} variant="primary">
-              {isSubmitting ? "Guardando..." : "Guardar edificio"}
-            </UiButton>
-            <UiButton type="button" onClick={closeCreateModal}>
-              Cancelar
-            </UiButton>
-          </div>
+                {/* Columna servicios */}
+                <div>
+                  <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                    Servicios
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {PROPERTY_FEATURES.filter((f) => f.category === "service").map((feat) => {
+                      const FeatIcon = FEATURE_ICON_MAP[feat.icon];
+                      const selected = selectedFeatureKeys.includes(feat.key);
+                      return (
+                        <button
+                          key={feat.key}
+                          type="button"
+                          onClick={() => toggleFeatureSelection(feat.key)}
+                          style={{
+                            display: "flex", alignItems: "flex-start", gap: 10,
+                            padding: "10px 12px", borderRadius: 10, width: "100%", textAlign: "left",
+                            border: selected ? `2px solid ${feat.color}` : "2px solid var(--border-default)",
+                            background: selected ? feat.color + "12" : "var(--bg-card)",
+                            cursor: "pointer", transition: "all 0.15s ease",
+                          }}
+                        >
+                          {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
+                          <div>
+                            <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
+                              {feat.label}
+                            </p>
+                            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                              {feat.description}
+                            </p>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
+                <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+                  {isSubmitting ? "Creando..." : "Crear propiedad"}
+                </UiButton>
+                <UiButton type="button" onClick={() => setCreateStep(1)}>
+                  ← Atrás
+                </UiButton>
+                <UiButton type="button" onClick={closeCreateModal}>
+                  Cancelar
+                </UiButton>
+              </div>
+            </>
+          )}
         </form>
       </Modal>
     </PageContainer>
