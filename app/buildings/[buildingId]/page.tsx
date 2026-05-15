@@ -54,9 +54,11 @@ import {
   Pencil,
   Plus,
   Ruler,
+  Settings,
   Settings2,
   Shield,
   ShieldCheck,
+  SkipForward,
   Sliders,
   Sparkles,
   Store,
@@ -147,7 +149,7 @@ const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>>
 };
 
 const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
-  LayoutGrid, Car, Shield, Briefcase, Truck, Trees, Package,
+  LayoutGrid, Car, Shield, Briefcase, Truck, Trees, Package, Settings,
   Zap, Droplets, Flame, Wifi, ShieldCheck, Sparkles, Wrench, CheckSquare,
 };
 
@@ -1697,6 +1699,7 @@ export default function BuildingDetailPage() {
                     {pendingTasks.map((task) => {
                       const feat    = getFeatureByKey(task.feature_key);
                       const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                      if (!taskDef) return null;
                       const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
                       return (
                         <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -1750,22 +1753,23 @@ export default function BuildingDetailPage() {
                     {completedTasks.length > 0 && (
                       <>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                          <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
-                          <span style={{ fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap" }}>Completadas</span>
-                          <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                          <div style={{ flex: 1, height: 1, background: "#bbf7d0" }} />
+                          <span style={{ fontSize: 11, fontWeight: 500, color: "#1D9E75", whiteSpace: "nowrap" }}>Completadas</span>
+                          <div style={{ flex: 1, height: 1, background: "#bbf7d0" }} />
                         </div>
                         {completedTasks.map((task) => {
                           const feat    = getFeatureByKey(task.feature_key);
                           const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                          if (!taskDef) return null;
                           return (
-                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, opacity: 0.6 }}>
-                              <CheckCircle2 size={16} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
+                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: 8, background: "#f0fdf4" }}>
+                              <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-muted)" }}>
+                                <span style={{ fontSize: 13, fontWeight: 500, color: "#1D9E75" }}>
                                   {taskDef?.label ?? task.task_key}
                                 </span>
                                 {taskDef?.description && (
-                                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(21,128,61,0.7)" }}>
                                     {taskDef.description}
                                   </p>
                                 )}
@@ -1783,9 +1787,15 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={() => void handleDismissAllTasks()}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 12, padding: 0, textDecoration: "underline" }}
+                    style={{
+                      padding: "8px 16px", borderRadius: 8,
+                      border: "1px solid var(--border-default)", background: "transparent",
+                      fontSize: 13, color: "var(--text-secondary)", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}
                   >
-                    Descartar todo
+                    <SkipForward size={14} />
+                    Ya tengo experiencia, omitir configuración
                   </button>
                 </div>
               </div>

@@ -46,6 +46,7 @@ import {
   MoreHorizontal,
   Package,
   Plus,
+  Settings,
   Shield,
   ShieldCheck,
   Sparkles,
@@ -94,7 +95,7 @@ const ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>>
 };
 
 const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: string }>> = {
-  LayoutGrid, Car, Shield, Briefcase, Truck, Trees, Package,
+  LayoutGrid, Car, Shield, Briefcase, Truck, Trees, Package, Settings,
   Zap, Droplets, Flame, Wifi, ShieldCheck, Sparkles, Wrench, CheckSquare,
 };
 

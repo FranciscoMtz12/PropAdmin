@@ -29,8 +29,9 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#8B2252',
     applicableTypes: ['residential_multi', 'commercial', 'industrial'],
     tasks: [
-      { key: 'add_first_unit',  label: 'Registrar primer espacio', description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]?tab=overview' },
-      { key: 'add_unit_types',  label: 'Configurar tipologías',    description: 'Define los tipos de unidad disponibles',            route: '/buildings/[id]?tab=overview' },
+      { key: 'add_first_unit',  label: 'Registrar primer espacio',  description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]?tab=overview' },
+      { key: 'add_unit_types',  label: 'Configurar tipologías',     description: 'Define los tipos de unidad disponibles',            route: '/buildings/[id]?tab=overview' },
+      { key: 'add_first_lease', label: 'Registrar primer contrato', description: 'Da de alta el primer contrato de arrendamiento',    route: '/buildings/[id]?tab=leases'   },
     ],
   },
   {
@@ -187,6 +188,20 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#8b5cf6',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park', 'land'],
     tasks: [],
+  },
+  {
+    key: 'general_setup',
+    label: 'Configuración general',
+    description: 'Configuración básica de la propiedad',
+    category: 'space',
+    icon: 'Settings',
+    color: '#6b7280',
+    applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park', 'land'],
+    tasks: [
+      { key: 'upload_documents', label: 'Subir documentos',    description: 'Agrega escrituras, permisos u otros documentos', route: '/buildings/[id]?tab=documents' },
+      { key: 'add_photos',       label: 'Agregar fotos',       description: 'Sube fotos de la propiedad a la galería',         route: '/buildings/[id]?tab=gallery'   },
+      { key: 'add_first_asset',  label: 'Registrar activos',   description: 'Da de alta los activos de la propiedad',          route: '/buildings/[id]?tab=assets'    },
+    ],
   },
 ]
 
