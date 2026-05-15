@@ -5,6 +5,7 @@ export interface FeatureTask {
   label: string
   description: string
   route?: string
+  applicableTypes?: string[]
 }
 
 export interface PropertyFeature {
@@ -29,9 +30,9 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     color: '#8B2252',
     applicableTypes: ['residential_multi', 'commercial', 'industrial'],
     tasks: [
-      { key: 'add_first_unit',  label: 'Registrar primer espacio',  description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]?tab=overview' },
-      { key: 'add_unit_types',  label: 'Configurar tipologías',     description: 'Define los tipos de unidad disponibles',            route: '/buildings/[id]?tab=overview' },
-      { key: 'add_first_lease', label: 'Registrar primer contrato', description: 'Da de alta el primer contrato de arrendamiento',    route: '/buildings/[id]?tab=leases'   },
+      { key: 'add_first_unit',  label: 'Registrar primer espacio',  description: 'Da de alta al menos una unidad o espacio rentable', route: '/buildings/[id]?tab=overview', applicableTypes: ['residential_multi', 'commercial', 'industrial'] },
+      { key: 'add_unit_types',  label: 'Configurar tipologías',     description: 'Define los tipos de unidad disponibles',            route: '/buildings/[id]?tab=overview', applicableTypes: ['residential_multi'] },
+      { key: 'add_first_lease', label: 'Registrar primer contrato', description: 'Da de alta el primer contrato de arrendamiento',    route: '/buildings/[id]?tab=leases',   applicableTypes: ['residential_multi', 'commercial', 'industrial', 'residential_single', 'land'] },
     ],
   },
   {

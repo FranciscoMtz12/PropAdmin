@@ -1348,17 +1348,21 @@ export default function BuildingDetailPage() {
     // ── Activation logic ──────────────────────────────────────────────
     if (nextActive) {
       if (feat && feat.tasks.length > 0) {
-        const taskRows = feat.tasks.map((task) => ({
-          building_id:  building.id,
-          company_id:   user.company_id,
-          task_key:     task.key,
-          feature_key:  featureKey,
-          is_completed: false,
-        }));
-        await supabase.from("building_setup_tasks").upsert(taskRows, {
-          onConflict: "building_id,task_key",
-          ignoreDuplicates: true,
-        });
+        const taskRows = feat.tasks
+          .filter((task) => !task.applicableTypes || task.applicableTypes.includes(building.building_category ?? ""))
+          .map((task) => ({
+            building_id:  building.id,
+            company_id:   user.company_id,
+            task_key:     task.key,
+            feature_key:  featureKey,
+            is_completed: false,
+          }));
+        if (taskRows.length > 0) {
+          await supabase.from("building_setup_tasks").upsert(taskRows, {
+            onConflict: "building_id,task_key",
+            ignoreDuplicates: true,
+          });
+        }
       }
 
       if (featureStatus[featureKey] === "pending") {
@@ -1952,10 +1956,18 @@ export default function BuildingDetailPage() {
 
           {/* ── Setup checklist ── */}
           {setupTasks.length > 0 && (() => {
-            const pendingTasks   = setupTasks.filter((t) => !t.is_completed);
-            const completedTasks = setupTasks.filter((t) => t.is_completed);
-            const totalCount     = setupTasks.length;
+            const visibleSetupTasks = setupTasks.filter((t) => {
+              // Always show if feature/task is unknown (safe default)
+              const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
+              const task = feature?.tasks.find((tk) => tk.key === t.task_key);
+              if (!task?.applicableTypes) return true;
+              return task.applicableTypes.includes(building.building_category ?? "");
+            });
+            const pendingTasks   = visibleSetupTasks.filter((t) => !t.is_completed);
+            const completedTasks = visibleSetupTasks.filter((t) => t.is_completed);
+            const totalCount     = visibleSetupTasks.length;
             const completedCount = completedTasks.length;
+            if (totalCount === 0) return null;
             const allDone        = pendingTasks.length === 0;
             const circ           = 2 * Math.PI * 12;
             const dashOffset     = circ * (1 - completedCount / totalCount);

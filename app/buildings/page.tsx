@@ -718,13 +718,15 @@ export default function BuildingsPage() {
 
       const taskRows = selectedFeatureKeys.flatMap((key) => {
         const feat = PROPERTY_FEATURES.find((f) => f.key === key);
-        return (feat?.tasks ?? []).map((task) => ({
-          building_id: newBuildingId,
-          company_id: user.company_id,
-          task_key: task.key,
-          feature_key: key,
-          is_completed: false,
-        }));
+        return (feat?.tasks ?? [])
+          .filter((task) => !task.applicableTypes || task.applicableTypes.includes(data.building_category))
+          .map((task) => ({
+            building_id: newBuildingId,
+            company_id: user.company_id,
+            task_key: task.key,
+            feature_key: key,
+            is_completed: false,
+          }));
       });
       if (taskRows.length > 0) {
         await supabase.from("building_setup_tasks").insert(taskRows);
