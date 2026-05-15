@@ -43,6 +43,7 @@ import {
   FileImage,
   FileText,
   FolderOpen,
+  Bed,
   Gem,
   Home,
   ImageIcon,
@@ -155,6 +156,21 @@ const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: st
 
 const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
 
+const HOUSE_AMENITIES: { key: string; label: string }[] = [
+  { key: "has_living_room",      label: "Sala"              },
+  { key: "has_dining_room",      label: "Comedor"           },
+  { key: "has_integral_kitchen", label: "Cocina integral"   },
+  { key: "has_garden",           label: "Jardín/Patio"      },
+  { key: "has_roof_garden",      label: "Roof garden"       },
+  { key: "has_storage",          label: "Bodega"            },
+  { key: "has_service_room",     label: "Cuarto de servicio"},
+  { key: "has_service_bathroom", label: "Baño de servicio"  },
+  { key: "has_pool",             label: "Alberca"           },
+  { key: "has_cistern",          label: "Cisterna"          },
+  { key: "has_security",         label: "Vigilancia"        },
+  { key: "has_electric_gate",    label: "Portón eléctrico"  },
+];
+
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
 type Building = {
@@ -171,7 +187,7 @@ type Building = {
   construction_sqm: number | null;
   default_unit_sqm: number | null;
   building_tags: string[] | null;
-  building_features: Record<string, boolean> | null;
+  building_features: Record<string, unknown> | null;
   parent_building_id: string | null;
 };
 
@@ -647,6 +663,7 @@ export default function BuildingDetailPage() {
   const [editLandSqm, setEditLandSqm]                 = useState("");
   const [editConstructionSqm, setEditConstructionSqm] = useState("");
   const [editDefaultUnitSqm, setEditDefaultUnitSqm]   = useState("");
+  const [editHouseFeatures, setEditHouseFeatures]     = useState<Record<string, unknown>>({});
   const [editLatitude, setEditLatitude]               = useState("");
   const [editLongitude, setEditLongitude]             = useState("");
 
@@ -1091,6 +1108,7 @@ export default function BuildingDetailPage() {
     setEditLandSqm(building.land_sqm != null ? String(building.land_sqm) : "");
     setEditConstructionSqm(building.construction_sqm != null ? String(building.construction_sqm) : "");
     setEditDefaultUnitSqm(building.default_unit_sqm != null ? String(building.default_unit_sqm) : "");
+    setEditHouseFeatures(building.building_features ?? {});
     setEditLatitude(building.latitude != null ? String(building.latitude) : "");
     setEditLongitude(building.longitude != null ? String(building.longitude) : "");
     setIsEditModalOpen(true);
@@ -1116,7 +1134,7 @@ export default function BuildingDetailPage() {
         building_category: buildingCategory,
         building_subcategory: null,
         building_tags: editBuildingTags,
-        building_features: building.building_features,
+        building_features: Object.keys(editHouseFeatures).length ? editHouseFeatures : null,
         land_sqm: editLandSqm.trim() ? Number(editLandSqm) : null,
         construction_sqm: editConstructionSqm.trim() ? Number(editConstructionSqm) : null,
         default_unit_sqm: buildingCategory !== "land" && buildingCategory !== "residential_single" && editDefaultUnitSqm.trim() ? Number(editDefaultUnitSqm) : null,
@@ -1611,6 +1629,82 @@ export default function BuildingDetailPage() {
               )}
             </div>
           )}
+
+          {/* ── Ficha de la propiedad — solo residential_single ── */}
+          {isResidentialSingle && (() => {
+            const hf = building.building_features ?? {};
+            const bedrooms       = Number(hf.bedrooms ?? 0);
+            const fullBathrooms  = Number(hf.full_bathrooms ?? 0);
+            const parkingSpots   = Number(hf.parking_spots ?? 0);
+            const rentalMode     = hf.rental_mode as string | undefined;
+
+            const pills = [
+              { icon: <Bed size={14} />,      value: bedrooms,                      label: bedrooms === 1 ? "Recámara" : "Recámaras" },
+              { icon: <Droplets size={14} />, value: fullBathrooms,                  label: fullBathrooms === 1 ? "Baño" : "Baños"    },
+              { icon: <Car size={14} />,      value: parkingSpots,                   label: parkingSpots === 1 ? "Cajón" : "Cajones"  },
+              { icon: <Ruler size={14} />,    value: building.construction_sqm ?? 0, label: "m² const."                              },
+              { icon: <MapPin size={14} />,   value: building.land_sqm ?? 0,         label: "m² terreno"                             },
+            ].filter((p) => (p.value ?? 0) > 0);
+
+            const activeAmenities = HOUSE_AMENITIES.filter((a) => Boolean(hf[a.key]));
+            const hasAnyData = pills.length > 0 || activeAmenities.length > 0 || rentalMode;
+
+            return (
+              <SectionCard title="Ficha de la propiedad" icon={<Home size={18} />}>
+                {!hasAnyData ? (
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: 13 }}>
+                    <span>Sin ficha configurada</span>
+                    <button
+                      type="button"
+                      onClick={openEditModal}
+                      style={{ background: "none", border: "none", color: "#0369a1", cursor: "pointer", fontSize: 13, textDecoration: "underline", padding: 0 }}
+                    >
+                      Editar propiedad
+                    </button>
+                    <span>para agregar los detalles</span>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    {pills.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                        {pills.map((pill, i) => (
+                          <div key={i} style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-default)",
+                            background: "var(--bg-page)", fontSize: 13,
+                          }}>
+                            <span style={{ color: "var(--text-muted)", lineHeight: 0 }}>{pill.icon}</span>
+                            <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{pill.value}</span>
+                            <span style={{ color: "var(--text-muted)" }}>{pill.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {activeAmenities.length > 0 && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        {activeAmenities.map((a) => (
+                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
+                            {a.label}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {rentalMode && (
+                      <div>
+                        <span style={{
+                          padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600,
+                          background: rentalMode === "whole" ? "#0369a11a" : "#8B22521a",
+                          color:      rentalMode === "whole" ? "#0369a1"   : "#8B2252",
+                        }}>
+                          {rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </SectionCard>
+            );
+          })()}
 
           {/* ── Setup checklist ── */}
           {setupTasks.length > 0 && (() => {
@@ -2543,6 +2637,59 @@ export default function BuildingDetailPage() {
             )}
           </div>
 
+          {buildingCategory === "residential_single" && (() => {
+            const hf = editHouseFeatures;
+            const setHF = (key: string, val: unknown) => setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
+            return (
+              <div style={{ marginTop: 4 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                  Características de la casa
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <AppFormField label="Recámaras">
+                    <input type="number" value={String(hf.bedrooms ?? "")} onChange={(e) => setHF("bedrooms", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
+                  </AppFormField>
+                  <AppFormField label="Baños completos">
+                    <input type="number" value={String(hf.full_bathrooms ?? "")} onChange={(e) => setHF("full_bathrooms", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
+                  </AppFormField>
+                  <AppFormField label="Medios baños">
+                    <input type="number" value={String(hf.half_bathrooms ?? "")} onChange={(e) => setHF("half_bathrooms", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
+                  </AppFormField>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <AppFormField label="Cajones estacionamiento">
+                    <input type="number" value={String(hf.parking_spots ?? "")} onChange={(e) => setHF("parking_spots", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
+                  </AppFormField>
+                  <AppFormField label="Niveles/pisos">
+                    <input type="number" value={String(hf.floors ?? "")} onChange={(e) => setHF("floors", e.target.value ? Number(e.target.value) : undefined)} placeholder="1" style={INPUT_STYLE} />
+                  </AppFormField>
+                  <AppFormField label="Año de construcción">
+                    <input type="number" value={String(hf.year_built ?? "")} onChange={(e) => setHF("year_built", e.target.value ? Number(e.target.value) : undefined)} placeholder="Ej: 2005" style={INPUT_STYLE} />
+                  </AppFormField>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                  {HOUSE_AMENITIES.map((a) => (
+                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                      <input type="checkbox" checked={Boolean(hf[a.key])} onChange={(e) => setHF(a.key, e.target.checked)} style={{ accentColor: "#0369a1" }} />
+                      {a.label}
+                    </label>
+                  ))}
+                </div>
+                <AppFormField label="Modo de renta">
+                  <div style={{ display: "flex", gap: 20 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                      <input type="radio" checked={hf.rental_mode === "whole"} onChange={() => setHF("rental_mode", "whole")} style={{ accentColor: "#0369a1" }} />
+                      Casa completa
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                      <input type="radio" checked={hf.rental_mode === "by_room"} onChange={() => setHF("rental_mode", "by_room")} style={{ accentColor: "#8B2252" }} />
+                      Por cuartos
+                    </label>
+                  </div>
+                </AppFormField>
+              </div>
+            );
+          })()}
 
           <AppFormField label="Dirección">
             <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ej. Av. Principal 123" style={INPUT_STYLE} />

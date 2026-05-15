@@ -30,6 +30,7 @@ import {
   Legend,
 } from "recharts";
 import {
+  Bed,
   Briefcase,
   Building2,
   Car,
@@ -99,6 +100,21 @@ const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: st
   Zap, Droplets, Flame, Wifi, ShieldCheck, Sparkles, Wrench, CheckSquare,
 };
 
+const HOUSE_AMENITIES = [
+  { key: "has_living_room",       label: "Sala" },
+  { key: "has_dining_room",       label: "Comedor" },
+  { key: "has_integral_kitchen",  label: "Cocina integral" },
+  { key: "has_garden",            label: "Jardín/Patio" },
+  { key: "has_roof_garden",       label: "Roof garden" },
+  { key: "has_storage",           label: "Bodega" },
+  { key: "has_service_room",      label: "Cuarto de servicio" },
+  { key: "has_service_bathroom",  label: "Baño de servicio" },
+  { key: "has_pool",              label: "Alberca" },
+  { key: "has_cistern",           label: "Cisterna" },
+  { key: "has_security",          label: "Vigilancia" },
+  { key: "has_electric_gate",     label: "Portón eléctrico" },
+];
+
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
 type Building = {
@@ -113,7 +129,7 @@ type Building = {
   longitude: number | null;
   total_sqm: number | null;
   building_tags: string[] | null;
-  building_features: Record<string, boolean> | null;
+  building_features: Record<string, unknown> | null;
   parent_building_id: string | null;
   land_sqm: number | null;
   construction_sqm: number | null;
@@ -221,7 +237,7 @@ const buildingSchema = z.object({
   latitude: z.string().optional(),
   longitude: z.string().optional(),
   building_tags: z.array(z.string()).optional(),
-  building_features: z.record(z.string(), z.boolean()).optional(),
+  building_features: z.record(z.string(), z.unknown()).optional(),
   land_sqm: z.string().optional(),
   construction_sqm: z.string().optional(),
   default_unit_sqm: z.string().optional(),
@@ -306,6 +322,8 @@ export default function BuildingsPage() {
     resolver: zodResolver(buildingSchema),
     defaultValues: BUILDING_DEFAULTS,
   });
+
+  const [editHouseFeatures, setEditHouseFeatures] = useState<Record<string, unknown>>({});
 
   /* Estado del modal de creación en 2 pasos */
   const [createStep, setCreateStep] = useState<1 | 2>(1);
@@ -618,6 +636,7 @@ export default function BuildingsPage() {
       construction_sqm: building.construction_sqm != null ? String(building.construction_sqm) : "",
       default_unit_sqm: building.default_unit_sqm != null ? String(building.default_unit_sqm) : "",
     });
+    setEditHouseFeatures((building.building_features as Record<string, unknown>) ?? {});
     setIsEditModalOpen(true);
     setOpenActionsBuildingId(null);
     setMsg("");
@@ -734,7 +753,7 @@ export default function BuildingsPage() {
         latitude: data.latitude && data.latitude.trim() ? Number(data.latitude) : null,
         longitude: data.longitude && data.longitude.trim() ? Number(data.longitude) : null,
         building_tags: data.building_tags?.length ? data.building_tags : null,
-        building_features: data.building_features && Object.keys(data.building_features).length ? data.building_features : null,
+        building_features: Object.keys(editHouseFeatures).length ? editHouseFeatures : null,
         land_sqm: data.land_sqm && data.land_sqm.trim() ? Number(data.land_sqm) : null,
         construction_sqm: data.construction_sqm && data.construction_sqm.trim() ? Number(data.construction_sqm) : null,
         default_unit_sqm: data.building_category !== "land" && data.building_category !== "residential_single" && data.default_unit_sqm && data.default_unit_sqm.trim() ? Number(data.default_unit_sqm) : null,
@@ -1365,6 +1384,62 @@ export default function BuildingsPage() {
               </AppFormField>
             )}
           </div>
+
+          {buildingCategory === "residential_single" && (() => {
+            const hf = editHouseFeatures;
+            const setHF = (key: string, val: unknown) =>
+              setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
+            return (
+              <div style={{ marginBottom: 4 }}>
+                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                  Características de la casa
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+                  <AppFormField label="Recámaras">
+                    <input type="number" min={0} placeholder="Ej: 3" style={INPUT_STYLE}
+                      value={(hf.bedrooms as number | undefined) ?? ""}
+                      onChange={(e) => setHF("bedrooms", e.target.value ? Number(e.target.value) : undefined)} />
+                  </AppFormField>
+                  <AppFormField label="Baños">
+                    <input type="number" min={0} step={0.5} placeholder="Ej: 2" style={INPUT_STYLE}
+                      value={(hf.bathrooms as number | undefined) ?? ""}
+                      onChange={(e) => setHF("bathrooms", e.target.value ? Number(e.target.value) : undefined)} />
+                  </AppFormField>
+                  <AppFormField label="Cajones">
+                    <input type="number" min={0} placeholder="Ej: 2" style={INPUT_STYLE}
+                      value={(hf.parking_spots as number | undefined) ?? ""}
+                      onChange={(e) => setHF("parking_spots", e.target.value ? Number(e.target.value) : undefined)} />
+                  </AppFormField>
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                  {HOUSE_AMENITIES.map((a) => (
+                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                      <input type="checkbox" checked={!!(hf[a.key])}
+                        onChange={(e) => setHF(a.key, e.target.checked || undefined)}
+                        style={{ width: 15, height: 15, accentColor: "#0369a1", cursor: "pointer" }} />
+                      {a.label}
+                    </label>
+                  ))}
+                </div>
+                <AppFormField label="Modalidad de renta">
+                  <div style={{ display: "flex", gap: 12 }}>
+                    {[
+                      { value: "complete", label: "Casa completa" },
+                      { value: "by_room", label: "Por cuarto" },
+                    ].map((opt) => (
+                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                        <input type="radio" name="edit_rental_mode" value={opt.value}
+                          checked={(hf.rental_mode as string | undefined) === opt.value}
+                          onChange={() => setHF("rental_mode", opt.value)}
+                          style={{ accentColor: "#0369a1", cursor: "pointer" }} />
+                        {opt.label}
+                      </label>
+                    ))}
+                  </div>
+                </AppFormField>
+              </div>
+            );
+          })()}
 
           <AppFormField label="Dirección">
             <input
