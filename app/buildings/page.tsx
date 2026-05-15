@@ -1595,101 +1595,94 @@ export default function BuildingsPage() {
           )}
 
           {/* ── PASO 2: selector de features ── */}
-          {createStep === 2 && (
-            <>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
-                Selecciona los espacios y servicios disponibles. Puedes cambiar esto después.
-              </p>
+          {createStep === 2 && (() => {
+            const applicableFeatures = getDefaultFeatures(selectedTypes[0] ?? "");
+            const spaceFeatures   = applicableFeatures.filter((f) => f.category === "space");
+            const serviceFeatures = applicableFeatures.filter((f) => f.category === "service");
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                {/* Columna espacios */}
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                    Espacios físicos
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {PROPERTY_FEATURES.filter((f) => f.category === "space").map((feat) => {
-                      const FeatIcon = FEATURE_ICON_MAP[feat.icon];
-                      const selected = selectedFeatureKeys.includes(feat.key);
-                      return (
-                        <button
-                          key={feat.key}
-                          type="button"
-                          onClick={() => toggleFeatureSelection(feat.key)}
-                          style={{
-                            display: "flex", alignItems: "flex-start", gap: 10,
-                            padding: "10px 12px", borderRadius: 10, width: "100%", textAlign: "left",
-                            border: selected ? `2px solid ${feat.color}` : "2px solid var(--border-default)",
-                            background: selected ? feat.color + "12" : "var(--bg-card)",
-                            cursor: "pointer", transition: "all 0.15s ease",
-                          }}
-                        >
-                          {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
-                          <div>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
-                              {feat.label}
-                            </p>
-                            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
-                              {feat.description}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
+            function FeatureCard({ feat }: { feat: typeof applicableFeatures[number] }) {
+              const FeatIcon = FEATURE_ICON_MAP[feat.icon];
+              const selected = selectedFeatureKeys.includes(feat.key);
+              return (
+                <button
+                  key={feat.key}
+                  type="button"
+                  onClick={() => toggleFeatureSelection(feat.key)}
+                  style={{
+                    display: "flex", alignItems: "flex-start", gap: 10,
+                    padding: "10px 12px", borderRadius: 10, width: "100%", textAlign: "left",
+                    border: selected ? `2px solid ${feat.color}` : "2px solid var(--border-default)",
+                    background: selected ? feat.color + "12" : "var(--bg-card)",
+                    cursor: "pointer", transition: "all 0.15s ease",
+                  }}
+                >
+                  {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
+                  <div>
+                    <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
+                      {feat.label}
+                    </p>
+                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                      {feat.description}
+                    </p>
                   </div>
+                </button>
+              );
+            }
+
+            return (
+              <>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                  Selecciona los espacios y servicios disponibles. Puedes cambiar esto después.
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Sección: Espacios físicos */}
+                  {spaceFeatures.length > 0 && (
+                    <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                        <Building2 size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
+                        <div>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
+                          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {spaceFeatures.map((feat) => <FeatureCard key={feat.key} feat={feat} />)}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Sección: Servicios */}
+                  {serviceFeatures.length > 0 && (
+                    <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                        <Zap size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
+                        <div>
+                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
+                          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
+                        </div>
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        {serviceFeatures.map((feat) => <FeatureCard key={feat.key} feat={feat} />)}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Columna servicios */}
-                <div>
-                  <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                    Servicios
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                    {PROPERTY_FEATURES.filter((f) => f.category === "service").map((feat) => {
-                      const FeatIcon = FEATURE_ICON_MAP[feat.icon];
-                      const selected = selectedFeatureKeys.includes(feat.key);
-                      return (
-                        <button
-                          key={feat.key}
-                          type="button"
-                          onClick={() => toggleFeatureSelection(feat.key)}
-                          style={{
-                            display: "flex", alignItems: "flex-start", gap: 10,
-                            padding: "10px 12px", borderRadius: 10, width: "100%", textAlign: "left",
-                            border: selected ? `2px solid ${feat.color}` : "2px solid var(--border-default)",
-                            background: selected ? feat.color + "12" : "var(--bg-card)",
-                            cursor: "pointer", transition: "all 0.15s ease",
-                          }}
-                        >
-                          {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
-                          <div>
-                            <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
-                              {feat.label}
-                            </p>
-                            <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
-                              {feat.description}
-                            </p>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
+                  <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+                    {isSubmitting ? "Creando..." : "Crear propiedad"}
+                  </UiButton>
+                  <UiButton type="button" onClick={() => setCreateStep(1)}>
+                    ← Atrás
+                  </UiButton>
+                  <UiButton type="button" onClick={closeCreateModal}>
+                    Cancelar
+                  </UiButton>
                 </div>
-              </div>
-
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
-                <UiButton type="submit" variant="primary" disabled={isSubmitting}>
-                  {isSubmitting ? "Creando..." : "Crear propiedad"}
-                </UiButton>
-                <UiButton type="button" onClick={() => setCreateStep(1)}>
-                  ← Atrás
-                </UiButton>
-                <UiButton type="button" onClick={closeCreateModal}>
-                  Cancelar
-                </UiButton>
-              </div>
-            </>
-          )}
+              </>
+            );
+          })()}
         </form>
       </Modal>
     </PageContainer>
