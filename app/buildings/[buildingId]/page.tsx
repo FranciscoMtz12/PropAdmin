@@ -645,8 +645,9 @@ export default function BuildingDetailPage() {
   const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
   const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigRow[]>([]);
   const [savingFeatureKey, setSavingFeatureKey] = useState<string | null>(null);
-  const [featureStatus, setFeatureStatus] = useState<Record<string, "ok" | "pending" | "unchecked">>({});
-  const [featureToast, setFeatureToast]   = useState<string | null>(null);
+  const [featureStatus, setFeatureStatus]       = useState<Record<string, "ok" | "pending" | "unchecked">>({});
+  const [featureToast, setFeatureToast]         = useState<string | null>(null);
+  const [activeFeatureKeys, setActiveFeatureKeys] = useState<Set<string>>(new Set());
 
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
@@ -872,13 +873,25 @@ export default function BuildingDetailPage() {
     });
 
     /* Setup tasks — todas las no descartadas (pendientes + completadas) */
-    const { data: tasksData } = await supabase
-      .from("building_setup_tasks")
-      .select("id, task_key, feature_key, is_completed, dismissed")
-      .eq("building_id", buildingId)
-      .eq("dismissed", false)
-      .order("is_completed", { ascending: true });
+    const [{ data: tasksData }, { data: featConfigData }] = await Promise.all([
+      supabase
+        .from("building_setup_tasks")
+        .select("id, task_key, feature_key, is_completed, dismissed")
+        .eq("building_id", buildingId)
+        .eq("dismissed", false)
+        .order("is_completed", { ascending: true }),
+      supabase
+        .from("building_feature_config")
+        .select("feature_key, is_active")
+        .eq("building_id", buildingId)
+        .is("deleted_at", null),
+    ]);
     setSetupTasks((tasksData || []) as SetupTask[]);
+    setActiveFeatureKeys(new Set(
+      ((featConfigData || []) as Array<{ feature_key: string; is_active: boolean }>)
+        .filter((f) => f.is_active)
+        .map((f) => f.feature_key)
+    ));
 
     setLoadingBuilding(false);
   }
@@ -1298,6 +1311,11 @@ export default function BuildingDetailPage() {
       .eq("building_id", building.id)
       .is("deleted_at", null);
     setFeatureConfigs((data || []) as FeatureConfigRow[]);
+    setActiveFeatureKeys(new Set(
+      ((data || []) as Array<{ feature_key: string; is_active: boolean }>)
+        .filter((f) => f.is_active)
+        .map((f) => f.feature_key)
+    ));
     setSavingFeatureKey(null);
   }
 
@@ -1529,9 +1547,13 @@ export default function BuildingDetailPage() {
   const isIndustrialPark   = building.building_category === "industrial_park";
   const isResidentialSingle = building.building_category === "residential_single";
   const hasLeasesTab   = isLand || isCommercial || isIndustrial || isResidentialSingle;
-  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark && !isResidentialSingle;
+  const hasParkingTab  = !isLand && !isCommercial && !isIndustrial && !isIndustrialPark && !isResidentialSingle
+                         && activeFeatureKeys.has("parking");
   const hasAssetsTab   = !isIndustrialPark;
-  const hasServicesTab = !isIndustrialPark;
+  const hasServicesTab = !isIndustrialPark
+                         && (activeFeatureKeys.has("electricity") || activeFeatureKeys.has("water")
+                             || activeFeatureKeys.has("gas") || activeFeatureKeys.has("internet")
+                             || tabCounts.services > 0);
   const hasBodegasTab  = isIndustrialPark;
   const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle;
 
