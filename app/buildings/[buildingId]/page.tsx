@@ -29,6 +29,7 @@ import {
   Archive,
   ArrowLeft,
   Briefcase,
+  AlertCircle,
   Building2,
   Car,
   CheckCircle2,
@@ -644,6 +645,7 @@ export default function BuildingDetailPage() {
   const [isFeaturesModalOpen, setIsFeaturesModalOpen] = useState(false);
   const [featureConfigs, setFeatureConfigs] = useState<FeatureConfigRow[]>([]);
   const [savingFeatureKey, setSavingFeatureKey] = useState<string | null>(null);
+  const [featureStatus, setFeatureStatus] = useState<Record<string, "ok" | "pending" | "unchecked">>({});
 
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
@@ -1156,12 +1158,31 @@ export default function BuildingDetailPage() {
   async function openFeaturesModal() {
     if (!building) return;
     setIsFeaturesModalOpen(true);
-    const { data } = await supabase
-      .from("building_feature_config")
-      .select("id, feature_key, is_active")
-      .eq("building_id", building.id)
-      .is("deleted_at", null);
-    setFeatureConfigs((data || []) as FeatureConfigRow[]);
+    const [configRes, metersRes, parkingRes, cleaningRes, unitsRes] = await Promise.all([
+      supabase.from("building_feature_config").select("id, feature_key, is_active").eq("building_id", building.id).is("deleted_at", null),
+      supabase.from("building_utility_meters").select("id, service_type").eq("building_id", building.id).is("deleted_at", null),
+      supabase.from("parking_spots").select("id").eq("building_id", building.id).is("deleted_at", null),
+      supabase.from("cleaning_building_schedules").select("id").eq("building_id", building.id).is("deleted_at", null),
+      supabase.from("units").select("id").eq("building_id", building.id).is("deleted_at", null),
+    ]);
+    setFeatureConfigs((configRes.data || []) as FeatureConfigRow[]);
+    const meters = metersRes.data ?? [];
+    setFeatureStatus({
+      units:           (unitsRes.data?.length   ?? 0) > 0 ? "ok" : "pending",
+      parking:         (parkingRes.data?.length  ?? 0) > 0 ? "ok" : "pending",
+      cleaning:        (cleaningRes.data?.length ?? 0) > 0 ? "ok" : "pending",
+      electricity:     meters.some((m) => m.service_type === "electricity") ? "ok" : "pending",
+      water:           meters.some((m) => m.service_type === "water")       ? "ok" : "pending",
+      gas:             meters.some((m) => m.service_type === "gas")         ? "ok" : "pending",
+      internet:        meters.some((m) => m.service_type === "internet")    ? "ok" : "pending",
+      security_booth:  "unchecked",
+      admin_office:    "unchecked",
+      loading_dock:    "unchecked",
+      common_areas:    "unchecked",
+      service_storage: "unchecked",
+      security_service:"unchecked",
+      maintenance:     "unchecked",
+    });
   }
 
   async function handleToggleFeature(featureKey: string) {
@@ -2844,38 +2865,85 @@ export default function BuildingDetailPage() {
           const spaceFeatures   = toggleableFeatures.filter((f) => f.category === "space");
           const serviceFeatures = toggleableFeatures.filter((f) => f.category === "service");
 
+          const PENDING_HINTS: Record<string, { text: string; tab?: string; path?: string }> = {
+            electricity: { text: "Sin medidores configurados → Ir a Servicios",  tab: "services" },
+            water:       { text: "Sin medidor de agua → Ir a Servicios",          tab: "services" },
+            gas:         { text: "Sin medidor de gas → Ir a Servicios",           tab: "services" },
+            internet:    { text: "Sin servicio configurado → Ir a Servicios",     tab: "services" },
+            units:       { text: "Sin unidades registradas → Ir a Unidades",      tab: "overview" },
+            parking:     { text: "Sin cajones registrados → Ir a Cajones",        tab: "parking"  },
+            cleaning:    { text: "Sin schedules configurados → Ir a Limpieza",    path: "/cleaning" },
+          };
+
           function ToggleRow({ feat }: { feat: typeof applicableFeatures[number] }) {
             const FeatIcon = FEATURE_ICON_MAP[feat.icon];
             const config   = featureConfigs.find((c) => c.feature_key === feat.key);
             const isActive = config?.is_active ?? false;
             const isSaving = savingFeatureKey === feat.key;
+            const status   = featureStatus[feat.key] ?? "unchecked";
+            const hint     = PENDING_HINTS[feat.key];
             return (
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
-                <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
-                  {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={15} color={feat.color} /></span>}
-                  <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{feat.label}</p>
-                    <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>{feat.description}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
+                    {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={15} color={feat.color} /></span>}
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{feat.label}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>{feat.description}</p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                    {isActive && status === "ok" && (
+                      <span title="Configurado" style={{ lineHeight: 0 }}>
+                        <CheckCircle2 size={14} color="#1D9E75" />
+                      </span>
+                    )}
+                    {isActive && status === "pending" && (
+                      <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
+                        <AlertCircle size={14} color="#EF9F27" />
+                        <span style={{ fontSize: 10, color: "#EF9F27", fontWeight: 600 }}>Pendiente</span>
+                      </span>
+                    )}
+                    <button
+                      type="button"
+                      disabled={isSaving}
+                      onClick={() => void handleToggleFeature(feat.key)}
+                      style={{
+                        width: 44, height: 24, borderRadius: 12,
+                        background: isActive ? feat.color : "#e5e7eb",
+                        border: "none", cursor: isSaving ? "wait" : "pointer",
+                        position: "relative", transition: "background 0.2s", padding: 0,
+                      }}
+                    >
+                      <div style={{
+                        position: "absolute", top: 3, left: isActive ? 23 : 3,
+                        width: 18, height: 18, borderRadius: "50%",
+                        background: "#fff", transition: "left 0.2s",
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
+                      }} />
+                    </button>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  disabled={isSaving}
-                  onClick={() => void handleToggleFeature(feat.key)}
-                  style={{
-                    width: 44, height: 24, borderRadius: 12, flexShrink: 0,
-                    background: isActive ? feat.color : "#e5e7eb",
-                    border: "none", cursor: isSaving ? "wait" : "pointer",
-                    position: "relative", transition: "background 0.2s", padding: 0,
-                  }}
-                >
-                  <div style={{
-                    position: "absolute", top: 3, left: isActive ? 23 : 3,
-                    width: 18, height: 18, borderRadius: "50%",
-                    background: "#fff", transition: "left 0.2s",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.2)",
-                  }} />
-                </button>
+                {isActive && status === "pending" && hint && (
+                  <p style={{ margin: 0, fontSize: 11, color: "#EF9F27", paddingLeft: 23 }}>
+                    {hint.text.split("→")[0].trim()}{" → "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsFeaturesModalOpen(false);
+                        if (hint.tab) {
+                          setActiveTab(hint.tab);
+                          setTimeout(() => window.scrollTo({ top: 0, behavior: "smooth" }), 50);
+                        } else if (hint.path) {
+                          router.push(hint.path);
+                        }
+                      }}
+                      style={{ background: "none", border: "none", color: "#EF9F27", fontWeight: 700, fontSize: 11, cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                    >
+                      {hint.text.split("→")[1]?.trim()}
+                    </button>
+                  </p>
+                )}
               </div>
             );
           }
