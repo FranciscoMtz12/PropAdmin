@@ -90,7 +90,7 @@ import {
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
-import { getPropertyType, getPropertyLabels, PROPERTY_TYPES, BUILDING_FEATURES } from "@/lib/property-types";
+import { getPropertyType, getPropertyLabels, PROPERTY_TYPES } from "@/lib/property-types";
 import { PROPERTY_FEATURES, getDefaultFeatures, getFeatureByKey } from "@/lib/property-features";
 import {
   INPUT_STYLE,
@@ -152,7 +152,6 @@ const FEATURE_ICON_MAP: Record<string, ComponentType<{ size?: number; color?: st
 };
 
 const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
-const FEATURES_TYPES = ["commercial", "industrial", "industrial_park"];
 
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
@@ -604,7 +603,6 @@ export default function BuildingDetailPage() {
   const [bodegaCode, setBodegaCode] = useState("");
   const [bodegaLandSqm, setBodegaLandSqm] = useState("");
   const [bodegaConstructionSqm, setBodegaConstructionSqm] = useState("");
-  const [bodegaFeatures, setBodegaFeatures] = useState<Record<string, boolean>>({});
   const [bodegaMsg, setBodegaMsg] = useState("");
 
   /* Cajones de estacionamiento */
@@ -644,7 +642,6 @@ export default function BuildingDetailPage() {
   const [address, setAddress]                         = useState("");
   const [buildingCategory, setBuildingCategory]       = useState("residential");
   const [editBuildingTags, setEditBuildingTags]       = useState<string[]>([]);
-  const [editBuildingFeatures, setEditBuildingFeatures] = useState<Record<string, boolean>>({});
   const [editLandSqm, setEditLandSqm]                 = useState("");
   const [editConstructionSqm, setEditConstructionSqm] = useState("");
   const [editDefaultUnitSqm, setEditDefaultUnitSqm]   = useState("");
@@ -1042,8 +1039,6 @@ export default function BuildingDetailPage() {
     ...(PROPERTY_TYPE_VALUES.includes(buildingCategory) ? [buildingCategory] : []),
     ...editBuildingTags.filter((t) => PROPERTY_TYPE_VALUES.includes(t) && t !== buildingCategory),
   ];
-  const editShowFeatures = editSelectedTypes.some((t) => FEATURES_TYPES.includes(t));
-
   const editLatNum = editLatitude.trim() && Number.isFinite(Number(editLatitude)) ? Number(editLatitude) : null;
   const editLngNum = editLongitude.trim() && Number.isFinite(Number(editLongitude)) ? Number(editLongitude) : null;
 
@@ -1068,9 +1063,6 @@ export default function BuildingDetailPage() {
     }
   }
 
-  function toggleEditFeature(key: string) {
-    setEditBuildingFeatures((prev) => ({ ...prev, [key]: !prev[key] }));
-  }
 
   function handleEditLocationChange(lat: number, lng: number, addr?: string) {
     setEditLatitude(String(lat));
@@ -1094,7 +1086,6 @@ export default function BuildingDetailPage() {
     const initTypes = dedupedTypes.length > 0 ? dedupedTypes : ["residential"];
     setBuildingCategory(initTypes[0]);
     setEditBuildingTags(initTypes.slice(1));
-    setEditBuildingFeatures(building.building_features ?? {});
     setEditLandSqm(building.land_sqm != null ? String(building.land_sqm) : "");
     setEditConstructionSqm(building.construction_sqm != null ? String(building.construction_sqm) : "");
     setEditDefaultUnitSqm(building.default_unit_sqm != null ? String(building.default_unit_sqm) : "");
@@ -1123,7 +1114,7 @@ export default function BuildingDetailPage() {
         building_category: buildingCategory,
         building_subcategory: null,
         building_tags: editBuildingTags,
-        building_features: editBuildingFeatures,
+        building_features: building.building_features,
         land_sqm: editLandSqm.trim() ? Number(editLandSqm) : null,
         construction_sqm: editConstructionSqm.trim() ? Number(editConstructionSqm) : null,
         default_unit_sqm: buildingCategory !== "land" && buildingCategory !== "residential_single" && editDefaultUnitSqm.trim() ? Number(editDefaultUnitSqm) : null,
@@ -1234,13 +1225,12 @@ export default function BuildingDetailPage() {
       parent_building_id: building.id,
       land_sqm: bodegaLandSqm.trim() ? Number(bodegaLandSqm) : null,
       construction_sqm: bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
-      building_features: bodegaFeatures,
+      building_features: null,
     });
     setSavingBodega(false);
     if (error) { setBodegaMsg(`Error: ${error.message}`); return; }
     setIsCreateBodegaOpen(false);
-    setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm("");
-    setBodegaFeatures({}); setBodegaMsg("");
+    setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg("");
     await loadBuilding();
   }
 
@@ -2418,7 +2408,7 @@ export default function BuildingDetailPage() {
             subtitle="Naves industriales que forman parte de este parque."
             icon={<Warehouse size={18} />}
             action={
-              <UiButton icon={<Plus size={15} />} onClick={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaFeatures({}); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+              <UiButton icon={<Plus size={15} />} onClick={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
                 Agregar bodega
               </UiButton>
             }
@@ -2428,7 +2418,7 @@ export default function BuildingDetailPage() {
                 title="Sin bodegas registradas"
                 description="Agrega la primera bodega para comenzar a gestionar el parque industrial."
                 actionLabel="Agregar primera bodega"
-                onAction={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaFeatures({}); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+                onAction={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
               />
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
@@ -2533,21 +2523,6 @@ export default function BuildingDetailPage() {
             )}
           </div>
 
-          {editShowFeatures && (
-            <AppFormField label="Características">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {BUILDING_FEATURES.map((feat) => {
-                  const active = !!editBuildingFeatures[feat.key];
-                  return (
-                    <label key={feat.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
-                      <input type="checkbox" checked={active} onChange={() => toggleEditFeature(feat.key)} />
-                      {feat.label}
-                    </label>
-                  );
-                })}
-              </div>
-            </AppFormField>
-          )}
 
           <AppFormField label="Dirección">
             <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ej. Av. Principal 123" style={INPUT_STYLE} />
@@ -2586,16 +2561,6 @@ export default function BuildingDetailPage() {
               <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
             </AppFormField>
           </div>
-          <AppFormField label="Características">
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              {BUILDING_FEATURES.map((feat) => (
-                <label key={feat.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
-                  <input type="checkbox" checked={!!bodegaFeatures[feat.key]} onChange={() => setBodegaFeatures((prev) => ({ ...prev, [feat.key]: !prev[feat.key] }))} />
-                  {feat.label}
-                </label>
-              ))}
-            </div>
-          </AppFormField>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setIsCreateBodegaOpen(false)} disabled={savingBodega}>Cancelar</UiButton>
             <UiButton type="submit" disabled={savingBodega}>{savingBodega ? "Guardando..." : "Crear bodega"}</UiButton>

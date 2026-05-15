@@ -77,7 +77,6 @@ import AppEmptyState from "@/components/AppEmptyState";
 import {
   getPropertyType,
   PROPERTY_TYPES,
-  BUILDING_FEATURES,
 } from "@/lib/property-types";
 import { PROPERTY_FEATURES, getDefaultFeatures } from "@/lib/property-features";
 import {
@@ -312,7 +311,6 @@ export default function BuildingsPage() {
   const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<string[]>([]);
   const buildingCategory = watch("building_category");
   const buildingTags = watch("building_tags") ?? [];
-  const buildingFeatures = watch("building_features") ?? {};
 
   /* Multi-type selection: primary type = building_category, secondary = building_tags filtered to type values */
   const PROPERTY_TYPE_VALUES: string[] = PROPERTY_TYPES.map((pt) => pt.value);
@@ -323,9 +321,6 @@ export default function BuildingsPage() {
     ...(PROPERTY_TYPE_VALUES.includes(buildingCategory) ? [buildingCategory] : []),
     ...selectedTypeTags,
   ];
-
-  const FEATURES_TYPES = ["commercial", "industrial", "industrial_park"];
-  const showFeatures = selectedTypes.some((t) => FEATURES_TYPES.includes(t));
 
   function toggleTypeSelection(value: string) {
     const primary = getValues("building_category") as string;
@@ -344,11 +339,6 @@ export default function BuildingsPage() {
       if (all.length >= 3) return; // max 3
       setValue("building_tags", [...secTags, value]);
     }
-  }
-
-  function toggleFeature(key: string) {
-    const current = (getValues("building_features") as Record<string, boolean>) ?? {};
-    setValue("building_features", { ...current, [key]: !current[key] });
   }
 
   /* Coordenadas observadas como números (o null si están vacías/no válidas). */
@@ -1361,32 +1351,6 @@ export default function BuildingsPage() {
             )}
           </div>
 
-          {showFeatures && (
-            <AppFormField label="Características">
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {BUILDING_FEATURES.map((feat) => {
-                  const active = !!(buildingFeatures as Record<string, boolean>)[feat.key];
-                  return (
-                    <label
-                      key={feat.key}
-                      style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        cursor: "pointer", fontSize: 13, color: "var(--text-primary)",
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => toggleFeature(feat.key)}
-                      />
-                      {feat.label}
-                    </label>
-                  );
-                })}
-              </div>
-            </AppFormField>
-          )}
-
           <AppFormField label="Dirección">
             <input
               {...register("address")}
@@ -1554,22 +1518,6 @@ export default function BuildingsPage() {
                   </AppFormField>
                 )}
               </div>
-
-              {showFeatures && (
-                <AppFormField label="Características">
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    {BUILDING_FEATURES.map((feat) => {
-                      const active = !!(buildingFeatures as Record<string, boolean>)[feat.key];
-                      return (
-                        <label key={feat.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
-                          <input type="checkbox" checked={active} onChange={() => toggleFeature(feat.key)} />
-                          {feat.label}
-                        </label>
-                      );
-                    })}
-                  </div>
-                </AppFormField>
-              )}
 
               <AppFormField label="Dirección">
                 <input {...register("address")} placeholder="Ej. Av. Principal 123" style={INPUT_STYLE} />
