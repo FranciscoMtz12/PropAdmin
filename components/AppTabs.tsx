@@ -36,11 +36,10 @@ export default function AppTabs({
       className="app-tabs-container"
       style={{
         display: "flex",
+        flexWrap: "wrap",
         gap: "8px",
         borderBottom: "1px solid var(--border-default)",
         paddingBottom: "6px",
-        overflowX: "auto",
-        scrollbarWidth: "none",
       } as CSSProperties}
     >
       {normalizedTabs.map((item) => {
@@ -67,6 +66,7 @@ export default function AppTabs({
               fontWeight: 600,
               cursor: "pointer",
               whiteSpace: "nowrap",
+              minWidth: "fit-content",
               transition: "background 0.15s, border-color 0.15s, color 0.15s",
             }}
           >
