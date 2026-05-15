@@ -1710,7 +1710,17 @@ export default function BuildingDetailPage() {
                             {resolvedRoute ? (
                               <button
                                 type="button"
-                                onClick={() => router.push(resolvedRoute)}
+                                onClick={() => {
+                                  if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
+                                    const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
+                                    if (tabValue) {
+                                      setActiveTab(tabValue);
+                                      window.scrollTo({ top: 0, behavior: "smooth" });
+                                      return;
+                                    }
+                                  }
+                                  router.push(resolvedRoute);
+                                }}
                                 style={{
                                   background: "none", border: "none", padding: 0,
                                   display: "inline-flex", alignItems: "center", gap: 3,

@@ -186,9 +186,7 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     icon: 'Wrench',
     color: '#8b5cf6',
     applicableTypes: ['residential_multi', 'residential_single', 'commercial', 'industrial', 'industrial_park', 'land'],
-    tasks: [
-      { key: 'setup_maintenance', label: 'Crear primer ticket de mantenimiento', description: 'Registra el primer mantenimiento de la propiedad', route: '/maintenance' },
-    ],
+    tasks: [],
   },
 ]
 
