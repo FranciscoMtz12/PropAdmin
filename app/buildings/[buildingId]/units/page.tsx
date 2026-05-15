@@ -57,6 +57,7 @@ import {
   warnBannerStyle,
   errorBannerStyle,
 } from "@/lib/pageStyles";
+import { getPropertyLabels } from "@/lib/property-types";
 
 /* ─── Tipos ─────────────────────────────────────────────────────────── */
 
@@ -66,6 +67,8 @@ type Building = {
   name: string;
   code: string | null;
   address: string | null;
+  building_category: string | null;
+  building_subtype: string | null;
 };
 
 /* La tipología trae bedrooms y bathrooms desde la tabla unit_types */
@@ -206,14 +209,14 @@ const errorTextStyle: React.CSSProperties = {
 };
 
 const createUnitSchema = z.object({
-  unitNumber: z.string().min(1, "El número del departamento es obligatorio"),
+  unitNumber: z.string().min(1, "El número es obligatorio"),
   unitTypeId: z.string().min(1, "Debes seleccionar una tipología"),
   floor: z.string().optional(),
 });
 type CreateUnitValues = z.infer<typeof createUnitSchema>;
 
 const editUnitSchema = z.object({
-  unitNumber: z.string().min(1, "El número del departamento es obligatorio"),
+  unitNumber: z.string().min(1, "El número es obligatorio"),
   unitTypeId: z.string().optional(),
   floor: z.string().optional(),
 });
@@ -302,7 +305,7 @@ export default function BuildingUnitsPage() {
     /* 1. Edificio */
     const { data: buildingData, error: buildingError } = await supabase
       .from("buildings")
-      .select("id, company_id, name, code, address")
+      .select("id, company_id, name, code, address, building_category, building_subtype")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
@@ -485,21 +488,21 @@ export default function BuildingUnitsPage() {
       .single();
 
     if (error || !newUnit) {
-      setMsg(error?.message || "No se pudo crear el departamento.");
+      setMsg(error?.message || `No se pudo crear ${labels.unit.toLowerCase()}.`);
       return;
     }
 
     const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
 
     if (cloneError) {
-      setMsg(`El departamento se creó, pero hubo un problema al clonar los assets base: ${cloneError}`);
+      setMsg(`${labels.unit} creado, pero hubo un problema al clonar los assets base: ${cloneError}`);
       await loadPageData();
       return;
     }
 
     createForm.reset(CREATE_UNIT_DEFAULTS);
     setIsCreateModalOpen(false);
-    setMsg("Departamento guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente.");
+    setMsg(`${labels.unit} guardado correctamente. Si la tipología tenía equipos base, ya se clonaron automáticamente.`);
     await loadPageData();
   });
 
@@ -544,10 +547,10 @@ export default function BuildingUnitsPage() {
       .eq("id", editingUnit.id)
       .eq("company_id", user.company_id);
 
-    if (error) { setMsg(`No se pudo actualizar el departamento. ${error.message}`); return; }
+    if (error) { setMsg(`No se pudo actualizar ${labels.unit.toLowerCase()}. ${error.message}`); return; }
     setIsEditModalOpen(false);
     setEditingUnit(null);
-    setMsg("Departamento actualizado correctamente.");
+    setMsg(`${labels.unit} actualizado correctamente.`);
     await loadPageData();
   });
 
@@ -588,14 +591,14 @@ export default function BuildingUnitsPage() {
       .update({ deleted_at: now }).eq("id", uid).eq("company_id", user.company_id);
 
     if (error) {
-      setDeleteError(`No se pudo eliminar el departamento. ${error.message}`);
+      setDeleteError(`No se pudo eliminar ${labels.unit.toLowerCase()}. ${error.message}`);
       setDeleting(false);
       return;
     }
     setIsDeleteModalOpen(false);
     setUnitToDelete(null);
     setDeleting(false);
-    setMsg("Departamento archivado correctamente.");
+    setMsg(`${labels.unit} archivado correctamente.`);
     await loadPageData();
   }
 
@@ -610,6 +613,13 @@ export default function BuildingUnitsPage() {
       maintenance: units.filter((u) => normalizeStatus(u.status) === "MAINTENANCE").length,
     }),
     [units]
+  );
+
+  /* ── Labels dinámicos según tipo de propiedad ───────────────────────── */
+
+  const labels = useMemo(
+    () => getPropertyLabels(building?.building_category ?? null, building?.building_subtype ?? null),
+    [building]
   );
 
   /* ── Tipología seleccionada (para preview en modales) ─────────────── */
@@ -637,7 +647,7 @@ export default function BuildingUnitsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title={`Departamentos — ${building.name}`}
+        title={`${labels.units} — ${building.name}`}
         titleIcon={<DoorOpen size={20} />}
         subtitle="Crea, organiza y administra las unidades del edificio."
         actions={
@@ -645,7 +655,7 @@ export default function BuildingUnitsPage() {
             <UiButton href={`/buildings/${building.id}`}>Volver al edificio</UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
               <Plus size={16} />
-              Nuevo departamento
+              Nuevo {labels.unit.toLowerCase()}
             </UiButton>
           </>
         }
@@ -662,24 +672,26 @@ export default function BuildingUnitsPage() {
 
       {/* Métricas */}
       <AppGrid minWidth={180} gap={16} style={{ marginBottom: 24 }}>
-        <MetricCard label="Total"            value={stats.total}       icon={<Warehouse size={18} />} helper="Unidades registradas" />
-        <MetricCard label="Vacantes"         value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
-        <MetricCard label="Parciales"        value={stats.partial}     icon={<BedDouble size={18} />} helper="Rentadas por cuarto" variant="amber" />
-        <MetricCard label="Rentados"         value={stats.rented}      icon={<BedDouble size={18} />} helper="Con lease activo" variant="green" />
-        <MetricCard label="Mantenimiento"    value={stats.maintenance} icon={<Wrench size={18} />}   helper="Requieren atención" variant="amber" />
+        <MetricCard label="Total"         value={stats.total}       icon={<Warehouse size={18} />} helper="Unidades registradas" />
+        <MetricCard label="Vacantes"      value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
+        {["residential_multi", "residential_single"].includes(building.building_category ?? "") && (
+          <MetricCard label="Parciales"   value={stats.partial}     icon={<BedDouble size={18} />} helper="Rentadas por cuarto" variant="amber" />
+        )}
+        <MetricCard label="Rentados"      value={stats.rented}      icon={<BedDouble size={18} />} helper="Con lease activo" variant="green" />
+        <MetricCard label="Mantenimiento" value={stats.maintenance} icon={<Wrench size={18} />}    helper="Requieren atención" variant="amber" />
       </AppGrid>
 
       {/* Grid de departamentos */}
       <SectionCard
-        title="Departamentos del edificio"
+        title={`${labels.units} del edificio`}
         subtitle="Ordenados por número — entra al detalle o administra sus assets."
         icon={<FolderCog size={18} />}
       >
         {units.length === 0 ? (
           <AppEmptyState
-            title="Todavía no hay departamentos"
+            title={`Todavía no hay ${labels.units.toLowerCase()}`}
             description="Crea la primera unidad del edificio y, si su tipología tiene assets base, el sistema los clonará automáticamente."
-            actionLabel="Crear departamento"
+            actionLabel={`Crear ${labels.unit.toLowerCase()}`}
             onAction={() => setIsCreateModalOpen(true)}
           />
         ) : (
@@ -790,9 +802,9 @@ export default function BuildingUnitsPage() {
       </SectionCard>
 
       {/* ── Modal: editar ── */}
-      <Modal open={isEditModalOpen} onClose={closeEditModal} title="Editar departamento">
+      <Modal open={isEditModalOpen} onClose={closeEditModal} title={`Editar ${labels.unit.toLowerCase()}`}>
         <form onSubmit={onUpdateUnit}>
-          <AppFormField label="Número de departamento" required>
+          <AppFormField label={`Número de ${labels.unit.toLowerCase()}`} required>
             <input
               {...editForm.register("unitNumber")}
               placeholder="Ej. 101"
@@ -833,10 +845,10 @@ export default function BuildingUnitsPage() {
       </Modal>
 
       {/* ── Modal: eliminar ── */}
-      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar departamento" maxWidth="480px">
+      <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title={`Eliminar ${labels.unit.toLowerCase()}`} maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
           <div style={warnBannerStyle}>
-            ¿Eliminar el departamento <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo
+            ¿Eliminar {labels.unit.toLowerCase()} <strong>{unitToDelete?.unit_number}</strong>? Esta acción lo
             ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? <div style={errorBannerStyle}>{deleteError}</div> : null}
@@ -846,7 +858,7 @@ export default function BuildingUnitsPage() {
             </UiButton>
             <UiButton type="button" onClick={() => void handleDeleteUnit()} disabled={deleting}>
               <Trash2 size={16} />
-              {deleting ? "Eliminando..." : "Eliminar departamento"}
+              {deleting ? "Eliminando..." : `Eliminar ${labels.unit.toLowerCase()}`}
             </UiButton>
           </div>
         </div>
@@ -856,11 +868,11 @@ export default function BuildingUnitsPage() {
       <Modal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Crear departamento"
+        title={`Crear ${labels.unit.toLowerCase()}`}
         subtitle="Los assets base de la tipología se clonarán automáticamente al guardar."
       >
         <form onSubmit={onCreateUnit}>
-          <AppFormField label="Número de departamento" required>
+          <AppFormField label={`Número de ${labels.unit.toLowerCase()}`} required>
             <input
               {...createForm.register("unitNumber")}
               placeholder="Ej. 101"
@@ -903,7 +915,7 @@ export default function BuildingUnitsPage() {
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={createForm.formState.isSubmitting} variant="primary">
-              {createForm.formState.isSubmitting ? "Guardando..." : "Guardar departamento"}
+              {createForm.formState.isSubmitting ? "Guardando..." : `Guardar ${labels.unit.toLowerCase()}`}
             </UiButton>
             <UiButton type="button" onClick={() => setIsCreateModalOpen(false)}>
               Cancelar
