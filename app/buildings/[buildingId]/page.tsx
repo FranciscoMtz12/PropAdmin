@@ -1647,7 +1647,8 @@ export default function BuildingDetailPage() {
             ].filter((p) => (p.value ?? 0) > 0);
 
             const activeAmenities = HOUSE_AMENITIES.filter((a) => Boolean(hf[a.key]));
-            const hasAnyData = pills.length > 0 || activeAmenities.length > 0 || rentalMode;
+            const otherNotes = hf.other_notes as string | undefined;
+            const hasAnyData = pills.length > 0 || activeAmenities.length > 0 || otherNotes || rentalMode;
 
             return (
               <SectionCard title="Ficha de la propiedad" icon={<Home size={18} />}>
@@ -1680,13 +1681,18 @@ export default function BuildingDetailPage() {
                         ))}
                       </div>
                     )}
-                    {activeAmenities.length > 0 && (
+                    {(activeAmenities.length > 0 || otherNotes) && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {activeAmenities.map((a) => (
                           <span key={a.key} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
                             {a.label}
                           </span>
                         ))}
+                        {otherNotes && (
+                          <span style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
+                            {otherNotes.length > 40 ? otherNotes.slice(0, 40) + "..." : otherNotes}
+                          </span>
+                        )}
                       </div>
                     )}
                     {rentalMode && (
@@ -2667,13 +2673,36 @@ export default function BuildingDetailPage() {
                     <input type="number" value={String(hf.year_built ?? "")} onChange={(e) => setHF("year_built", e.target.value ? Number(e.target.value) : undefined)} placeholder="Ej: 2005" style={INPUT_STYLE} />
                   </AppFormField>
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   {HOUSE_AMENITIES.map((a) => (
                     <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
                       <input type="checkbox" checked={Boolean(hf[a.key])} onChange={(e) => setHF(a.key, e.target.checked)} style={{ accentColor: "#0369a1" }} />
                       {a.label}
                     </label>
                   ))}
+                </div>
+                <div style={{ marginBottom: 12 }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                    <input type="checkbox" checked={Boolean(hf.has_other)}
+                      onChange={(e) => {
+                        setHF("has_other", e.target.checked);
+                        if (!e.target.checked) setHF("other_notes", undefined);
+                      }}
+                      style={{ accentColor: "#0369a1" }} />
+                    Otro
+                  </label>
+                  {Boolean(hf.has_other) && (
+                    <div style={{ marginTop: 8 }}>
+                      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
+                      <textarea
+                        value={(hf.other_notes as string) ?? ""}
+                        onChange={(e) => setHF("other_notes", e.target.value || undefined)}
+                        placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
+                        rows={3}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
+                      />
+                    </div>
+                  )}
                 </div>
                 <AppFormField label="Modo de renta">
                   <div style={{ display: "flex", gap: 20 }}>
