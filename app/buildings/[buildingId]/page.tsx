@@ -630,8 +630,10 @@ export default function BuildingDetailPage() {
   const [savingBodega, setSavingBodega] = useState(false);
   const [bodegaName, setBodegaName] = useState("");
   const [bodegaCode, setBodegaCode] = useState("");
-  const [bodegaLandSqm, setBodegaLandSqm] = useState("");
   const [bodegaConstructionSqm, setBodegaConstructionSqm] = useState("");
+  const [bodegaFrenteMts, setBodegaFrenteMts] = useState("");   // local: frente en m
+  const [bodegaPatioSqm, setBodegaPatioSqm] = useState("");    // bodega: patio de maniobras m²
+  const [bodegaRampas, setBodegaRampas] = useState("");        // bodega: número de rampas
   const [bodegaMsg, setBodegaMsg] = useState("");
 
   /* Cajones de estacionamiento */
@@ -1442,6 +1444,13 @@ export default function BuildingDetailPage() {
     setSavingBodega(true);
     setBodegaMsg("");
     const isLocalCreation = building.building_subtype === "plaza_comercial";
+    const localFeatures: Record<string, unknown> = {};
+    if (isLocalCreation) {
+      if (bodegaFrenteMts.trim()) localFeatures.frente_metros = Number(bodegaFrenteMts);
+    } else {
+      if (bodegaPatioSqm.trim()) localFeatures.patio_sqm = Number(bodegaPatioSqm);
+      if (bodegaRampas.trim())   localFeatures.rampas    = Number(bodegaRampas);
+    }
     const { error } = await supabase.from("buildings").insert({
       company_id: user.company_id,
       name: bodegaName.trim(),
@@ -1449,14 +1458,13 @@ export default function BuildingDetailPage() {
       building_category: isLocalCreation ? "commercial" : "industrial",
       building_subtype:  isLocalCreation ? "local_comercial" : null,
       parent_building_id: building.id,
-      land_sqm: bodegaLandSqm.trim() ? Number(bodegaLandSqm) : null,
       construction_sqm: bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
-      building_features: null,
+      building_features: Object.keys(localFeatures).length ? localFeatures : null,
     });
     setSavingBodega(false);
     if (error) { setBodegaMsg(`Error: ${error.message}`); return; }
     setIsCreateBodegaOpen(false);
-    setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg("");
+    setBodegaName(""); setBodegaCode(""); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg("");
     await loadBuilding();
   }
 
@@ -2767,7 +2775,7 @@ export default function BuildingDetailPage() {
             subtitle="Naves industriales que forman parte de este parque."
             icon={<Warehouse size={18} />}
             action={
-              <UiButton icon={<Plus size={15} />} onClick={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+              <UiButton icon={<Plus size={15} />} onClick={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
                 Agregar bodega
               </UiButton>
             }
@@ -2777,7 +2785,7 @@ export default function BuildingDetailPage() {
                 title="Sin bodegas registradas"
                 description="Agrega la primera bodega para comenzar a gestionar el parque industrial."
                 actionLabel="Agregar primera bodega"
-                onAction={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+                onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
               />
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
@@ -2812,7 +2820,7 @@ export default function BuildingDetailPage() {
             subtitle="Espacios comerciales que forman parte de esta plaza."
             icon={<Store size={18} />}
             action={
-              <UiButton icon={<Plus size={15} />} onClick={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+              <UiButton icon={<Plus size={15} />} onClick={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
                 Agregar local
               </UiButton>
             }
@@ -2822,7 +2830,7 @@ export default function BuildingDetailPage() {
                 title="Sin locales registrados"
                 description="Agrega el primer local para comenzar a gestionar la plaza comercial."
                 actionLabel="Agregar primer local"
-                onAction={() => { setBodegaName(""); setBodegaCode(""); setBodegaLandSqm(""); setBodegaConstructionSqm(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+                onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
               />
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
@@ -3058,20 +3066,45 @@ export default function BuildingDetailPage() {
       <Modal open={isCreateBodegaOpen} onClose={() => { if (!savingBodega) setIsCreateBodegaOpen(false); }} title={isPlazaComercial ? "Agregar local" : "Agregar bodega"}>
         <form onSubmit={handleCreateBodega}>
           {bodegaMsg ? <p style={errorBannerStyle}>{bodegaMsg}</p> : null}
+
           <AppFormField label={isPlazaComercial ? "Nombre del local" : "Nombre de la bodega"} required>
-            <input value={bodegaName} onChange={(e) => setBodegaName(e.target.value)} placeholder={isPlazaComercial ? "Ej. Local 1" : "Ej. Bodega 1"} style={INPUT_STYLE} />
+            <input
+              value={bodegaName}
+              onChange={(e) => setBodegaName(e.target.value)}
+              placeholder={isPlazaComercial ? "Ej: Local A, Local 101, Farmacia" : "Ej: Bodega Norte, Nave 3"}
+              style={INPUT_STYLE}
+            />
           </AppFormField>
+
           <AppFormField label="Código">
-            <input value={bodegaCode} onChange={(e) => setBodegaCode(e.target.value)} placeholder="Ej. B-01" style={INPUT_STYLE} />
+            <input value={bodegaCode} onChange={(e) => setBodegaCode(e.target.value)} placeholder={isPlazaComercial ? "L-01" : "B-01"} style={INPUT_STYLE} />
           </AppFormField>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 4 }}>
-            <AppFormField label="M² de terreno">
-              <input value={bodegaLandSqm} onChange={(e) => setBodegaLandSqm(e.target.value)} type="number" placeholder="Ej: 500" style={INPUT_STYLE} />
-            </AppFormField>
-            <AppFormField label="M² de construcción">
-              <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
-            </AppFormField>
-          </div>
+
+          {isPlazaComercial ? (
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <AppFormField label="Metros cuadrados">
+                <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" min={0} step={0.5} placeholder="Ej: 85" style={INPUT_STYLE} />
+              </AppFormField>
+              <AppFormField label="Frente (m)">
+                <input value={bodegaFrenteMts} onChange={(e) => setBodegaFrenteMts(e.target.value)} type="number" min={0} step={0.1} placeholder="Ej: 8.5" style={INPUT_STYLE} />
+              </AppFormField>
+            </div>
+          ) : (
+            <>
+              <AppFormField label="M² de construcción">
+                <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" min={0} placeholder="Ej: 500" style={INPUT_STYLE} />
+              </AppFormField>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <AppFormField label="M² patio de maniobras">
+                  <input value={bodegaPatioSqm} onChange={(e) => setBodegaPatioSqm(e.target.value)} type="number" min={0} placeholder="Ej: 120" style={INPUT_STYLE} />
+                </AppFormField>
+                <AppFormField label="Número de rampas">
+                  <input value={bodegaRampas} onChange={(e) => setBodegaRampas(e.target.value)} type="number" min={0} placeholder="Ej: 2" style={INPUT_STYLE} />
+                </AppFormField>
+              </div>
+            </>
+          )}
+
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setIsCreateBodegaOpen(false)} disabled={savingBodega}>Cancelar</UiButton>
             <UiButton type="submit" disabled={savingBodega}>{savingBodega ? "Guardando..." : isPlazaComercial ? "Crear local" : "Crear bodega"}</UiButton>
