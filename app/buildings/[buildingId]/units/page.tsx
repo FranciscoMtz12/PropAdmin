@@ -1010,9 +1010,15 @@ export default function BuildingUnitsPage() {
               );
             }
             if (cat === "industrial" || cat === "industrial_park") {
+              const indLabel = building.building_subtype === "nave_industrial"
+                ? "Número de bodega"
+                : `Número / nombre de ${labels.unit.toLowerCase()}`;
+              const indPlaceholder = building.building_subtype === "nave_industrial"
+                ? "Ej: Bodega 1, B-01"
+                : "Ej: Nave 1, Espacio A";
               return (
-                <AppFormField label="Número / nombre de la nave" required>
-                  <input {...createForm.register("unitNumber")} placeholder="Ej: Nave 1, Bodega A" style={INPUT_STYLE} />
+                <AppFormField label={indLabel} required>
+                  <input {...createForm.register("unitNumber")} placeholder={indPlaceholder} style={INPUT_STYLE} />
                   {createForm.formState.errors.unitNumber ? <p style={errorTextStyle}>{createForm.formState.errors.unitNumber.message}</p> : null}
                 </AppFormField>
               );

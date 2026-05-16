@@ -92,12 +92,20 @@ export function getPropertyLabels(category: string | null, subtype?: string | nu
           return { units: 'Locales', leases: 'Contratos', collections: 'Cobranza', building: 'Local comercial', unit: 'Local' }
       }
     case 'industrial':
+      switch (subtype) {
+        case 'nave_industrial':
+          return { units: 'Bodegas',              leases: 'Contratos', collections: 'Cobranza', building: 'Nave industrial',     unit: 'Bodega' }
+        case 'planta':
+          return { units: 'Áreas de producción',  leases: 'Contratos', collections: 'Cobranza', building: 'Planta de producción', unit: 'Área'  }
+        default:
+          return { units: 'Espacios',             leases: 'Contratos', collections: 'Cobranza', building: 'Nave industrial',     unit: 'Espacio' }
+      }
     case 'industrial_park':
       switch (subtype) {
         case 'planta':
-          return { units: 'Áreas', leases: 'Contratos', collections: 'Cobranza', building: 'Planta de producción', unit: 'Área' }
+          return { units: 'Áreas de producción',  leases: 'Contratos', collections: 'Cobranza', building: 'Planta de producción', unit: 'Área'  }
         default:
-          return { units: 'Naves / Espacios', leases: 'Contratos', collections: 'Cobranza', building: 'Nave industrial', unit: 'Espacio' }
+          return { units: 'Naves / Espacios',     leases: 'Contratos', collections: 'Cobranza', building: 'Parque industrial',   unit: 'Espacio' }
       }
     case 'residential_single':
       return {
