@@ -91,6 +91,7 @@ type UnitRow = {
   status: string;
   rental_type: string | null;
   notes: string | null;
+  sqm: number | null;
   /* Datos de la tipología — vienen del JOIN, NO son columnas propias de units */
   unit_types: {
     name: string;
@@ -251,26 +252,6 @@ function getCommercialFieldConfig(subtype: string | null | undefined): Commercia
   }
 }
 
-type UnitNotes = {
-  /* commercial */
-  sqm?: number;
-  has_storage?: boolean;
-  has_bathroom?: boolean;
-  has_parking?: boolean;
-  has_independent_access?: boolean;
-  /* industrial */
-  almacen_sqm?: number;
-  oficina_sqm?: number;
-  patio_sqm?: number;
-  carga_sqm?: number;
-};
-
-function parseUnitNotes(raw: string | null | undefined): UnitNotes | null {
-  if (!raw) return null;
-  try { return JSON.parse(raw) as UnitNotes; }
-  catch { return null; }
-}
-
 const INIT_COMM_FLAGS = { has_storage: false, has_bathroom: false, has_parking: false, has_independent_access: false };
 const INIT_IND_AREAS  = { almacen_sqm: "", oficina_sqm: "", patio_sqm: "", carga_sqm: "" };
 
@@ -289,6 +270,7 @@ export default function BuildingUnitsPage() {
   const [tenantsByUnitId, setTenantsByUnitId] = useState<Map<string, string>>(new Map());
   const [activeLeaseCountByUnitId, setActiveLeaseCountByUnitId] = useState<Map<string, number>>(new Map());
   const [unitAreasMap, setUnitAreasMap] = useState<Record<string, UnitArea[]>>({});
+  const [unitAmenitiesMap, setUnitAmenitiesMap] = useState<Record<string, Set<string>>>({});
   const [loadingData, setLoadingData] = useState(true);
   const [msg, setMsg]                 = useState("");
 
@@ -401,6 +383,7 @@ export default function BuildingUnitsPage() {
         status,
         rental_type,
         notes,
+        sqm,
         unit_types(name, bedrooms, bathrooms)
       `)
       .eq("building_id", buildingId)
@@ -435,7 +418,25 @@ export default function BuildingUnitsPage() {
       setUnitAreasMap({});
     }
 
-    /* 5. Nombre del inquilino activo para unidades ocupadas */
+    /* 5. Amenidades de unidades commercial (unit_amenities) */
+    if (sorted.length > 0) {
+      const { data: unitAmenitiesData } = await supabase
+        .from("unit_amenities")
+        .select("unit_id, amenity_key")
+        .in("unit_id", sorted.map((u) => u.id))
+        .is("deleted_at", null);
+
+      const amenitiesMap: Record<string, Set<string>> = {};
+      (unitAmenitiesData || []).forEach((row: { unit_id: string; amenity_key: string }) => {
+        if (!amenitiesMap[row.unit_id]) amenitiesMap[row.unit_id] = new Set();
+        amenitiesMap[row.unit_id].add(row.amenity_key);
+      });
+      setUnitAmenitiesMap(amenitiesMap);
+    } else {
+      setUnitAmenitiesMap({});
+    }
+
+    /* 6. Nombre del inquilino activo para unidades ocupadas */
     const occupiedIds = sorted.filter((u) => isOccupied(u.status)).map((u) => u.id);
     const tenantMap = new Map<string, string>();
 
@@ -553,25 +554,22 @@ export default function BuildingUnitsPage() {
       return;
     }
 
-    /* Construir notes JSON según categoría */
-    let notesJson: string | null = null;
-    if (cat === "commercial") {
-      const sqmVal = parseFloat(createSqm);
-      const payload: UnitNotes = { ...createCommFlags };
-      if (!isNaN(sqmVal) && sqmVal > 0) payload.sqm = sqmVal;
-      if (Object.values(payload).some(Boolean)) notesJson = JSON.stringify(payload);
-    }
-    /* industrial: las áreas se insertan en unit_areas — notes queda null */
+    /* commercial: sqm → units.sqm, amenidades → unit_amenities, notes = null */
+    /* industrial: áreas → unit_areas, notes = null */
 
     const insertRow: Record<string, unknown> = {
-      company_id:  user.company_id,
-      building_id: building.id,
-      unit_number: data.unitNumber.trim(),
+      company_id:   user.company_id,
+      building_id:  building.id,
+      unit_number:  data.unitNumber.trim(),
       display_code: displayCode,
-      floor:       data.floor && data.floor.trim() ? Number(data.floor) : null,
-      status:      "VACANT",
-      notes:       notesJson,
+      floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
+      status:       "VACANT",
+      notes:        null,
     };
+    if (cat === "commercial") {
+      const sqmVal = parseFloat(createSqm);
+      if (!isNaN(sqmVal) && sqmVal > 0) insertRow.sqm = sqmVal;
+    }
     if (cat === "residential_multi" && data.unitTypeId) {
       insertRow.unit_type_id = data.unitTypeId;
     }
@@ -585,6 +583,22 @@ export default function BuildingUnitsPage() {
     if (error || !newUnit) {
       setMsg(error?.message || `No se pudo crear ${labels.unit.toLowerCase()}.`);
       return;
+    }
+
+    /* Insertar amenidades en unit_amenities para commercial */
+    if (cat === "commercial") {
+      const amenityKeys = ["has_storage", "has_bathroom", "has_parking", "has_independent_access"] as const;
+      const amenitiesToInsert = amenityKeys
+        .filter((key) => createCommFlags[key] === true)
+        .map((key) => ({
+          unit_id: newUnit.id,
+          company_id: building.company_id,
+          amenity_key: key,
+        }));
+
+      if (amenitiesToInsert.length > 0) {
+        await supabase.from("unit_amenities").insert(amenitiesToInsert);
+      }
     }
 
     /* Insertar áreas en unit_areas para industrial */
@@ -842,7 +856,6 @@ export default function BuildingUnitsPage() {
               const occupiedRooms = isByRoom ? (activeLeaseCountByUnitId.get(unit.id) ?? 0) : undefined;
               const totalRooms    = isByRoom ? (typeInfo?.bedrooms ?? 1) : undefined;
 
-              const unitNotes = parseUnitNotes(unit.notes);
               const isCommercial = cat === "commercial";
               const isIndustrial = cat === "industrial" || cat === "industrial_park";
 
@@ -921,14 +934,14 @@ export default function BuildingUnitsPage() {
                       </>
                     )}
 
-                    {/* Detalles commercial: m² + chips */}
-                    {isCommercial && unitNotes && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
-                        {unitNotes.sqm ? <span style={{ fontWeight: 600 }}>{unitNotes.sqm} m²</span> : null}
-                        {unitNotes.has_storage           && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Bodega</AppBadge>}
-                        {unitNotes.has_bathroom          && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Sanitarios</AppBadge>}
-                        {unitNotes.has_parking           && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Estacionamiento</AppBadge>}
-                        {unitNotes.has_independent_access && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Acceso indep.</AppBadge>}
+                    {/* Detalles commercial: m² + chips desde unit_amenities */}
+                    {isCommercial && (unit.sqm != null || (unitAmenitiesMap[unit.id]?.size ?? 0) > 0) && (
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 12, color: "var(--text-secondary)", alignItems: "center" }}>
+                        {unit.sqm ? <span style={{ fontWeight: 600 }}>{unit.sqm} m²</span> : null}
+                        {unitAmenitiesMap[unit.id]?.has("has_storage")            && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Bodega</AppBadge>}
+                        {unitAmenitiesMap[unit.id]?.has("has_bathroom")           && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Baños</AppBadge>}
+                        {unitAmenitiesMap[unit.id]?.has("has_parking")            && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Estacionamiento</AppBadge>}
+                        {unitAmenitiesMap[unit.id]?.has("has_independent_access") && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Acceso independiente</AppBadge>}
                       </div>
                     )}
 
