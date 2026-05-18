@@ -3487,9 +3487,9 @@ export default function BuildingDetailPage() {
                             void handleDeleteSchedule(s.id);
                           }
                         }}
-                        style={{ display: "inline-flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-muted)", borderRadius: 4, flexShrink: 0 }}
+                        style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", background: "transparent", border: "0.5px solid color-mix(in srgb, var(--color-text-danger, #dc2626) 30%, transparent)", cursor: "pointer", padding: "3px 10px", color: "var(--color-text-danger, #dc2626)", borderRadius: "var(--border-radius-sm, 6px)", fontSize: 12, fontWeight: 500, flexShrink: 0 }}
                       >
-                        <X size={12} />
+                        Eliminar
                       </button>
                     </div>
                   );
