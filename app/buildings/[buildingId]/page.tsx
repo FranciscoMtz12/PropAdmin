@@ -3440,7 +3440,7 @@ export default function BuildingDetailPage() {
             />
 
             {/* ── LIMPIEZA ── */}
-            <div id="services-cleaning-section" style={{ borderTop: "0.5px solid var(--border-default)", paddingTop: 24 }}>
+            <div id="services-cleaning-section" style={{ background: "var(--color-background-secondary, var(--bg-page))", borderRadius: "var(--border-radius-lg, 14px)", padding: 16, marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   LIMPIEZA
@@ -3460,11 +3460,11 @@ export default function BuildingDetailPage() {
                   Sin horarios de limpieza configurados
                 </p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: 12 }}>
                   {buildingSchedules.map(s => {
                     const borderColor = s.cleaning_type === 'common_area' ? '#3B82F6' : '#10B981';
                     return (
-                      <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, borderLeft: `3px solid ${borderColor}`, paddingLeft: 10, paddingTop: 4, paddingBottom: 4 }}>
+                      <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-md, 10px)", borderLeft: `3px solid ${borderColor}`, padding: "10px 14px", marginBottom: 6 }}>
                         <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>
                           {DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}
                           <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
@@ -3486,10 +3486,10 @@ export default function BuildingDetailPage() {
 
               {/* Últimos logs */}
               {recentCleaningLogs.length > 0 && (
-                <div style={{ marginTop: 8 }}>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
+                <div style={{ marginTop: 4 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {recentCleaningLogs.map(log => (
-                      <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--border-default)" }}>
+                      <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, background: "var(--color-background-secondary, var(--divider))", borderRadius: "var(--border-radius-md, 10px)", padding: "8px 12px" }}>
                         <span style={{ color: "var(--text-muted)", minWidth: 52, flexShrink: 0, fontSize: 12 }}>{formatShortDate(log.scheduled_date)}</span>
                         <span style={{ flex: 1, color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
                         <span style={{
@@ -3510,7 +3510,7 @@ export default function BuildingDetailPage() {
             </div>
 
             {/* ── MANTENIMIENTO ── */}
-            <div style={{ borderTop: "0.5px solid var(--border-default)", paddingTop: 24 }}>
+            <div style={{ background: "var(--color-background-secondary, var(--bg-page))", borderRadius: "var(--border-radius-lg, 14px)", padding: 16, marginBottom: 20 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                   MANTENIMIENTO
@@ -3535,7 +3535,7 @@ export default function BuildingDetailPage() {
                     const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
                     const age = daysAgo(ticket.created_at);
                     return (
-                      <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border-default)" }}>
+                      <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-md, 10px)", padding: "10px 14px", marginBottom: 6 }}>
                         <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
                         <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{ticket.title}</span>
                         <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>

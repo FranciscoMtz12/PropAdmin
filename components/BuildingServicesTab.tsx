@@ -72,9 +72,9 @@ function MeterRow({
   const hasSubs = meter.meter_type === "shared" && meter.billing_mode !== "included" && meter.billing_type !== "fixed"
 
   return (
-    <div style={{ borderBottom: "1px solid var(--border-default)" }}>
+    <div style={{ background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-md, 10px)", padding: "10px 14px", marginBottom: 6 }}>
       {/* Main row */}
-      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", flexWrap: "wrap" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         {/* Provider + meter number */}
         <div style={{ flex: 1, minWidth: 0, display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
@@ -145,7 +145,7 @@ function MeterRow({
 
       {/* Collapsible submeters */}
       {hasSubs && subs.length > 0 && (
-        <div style={{ paddingBottom: 8 }}>
+        <div style={{ marginTop: 6 }}>
           <button
             type="button"
             onClick={() => setSubsOpen(o => !o)}
@@ -301,7 +301,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
     .filter(g => g.meters.length > 0)
 
   return (
-    <div>
+    <div style={{ background: "var(--color-background-secondary, var(--bg-page))", borderRadius: "var(--border-radius-lg, 14px)", padding: 16, marginBottom: 20 }}>
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
         <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
@@ -353,7 +353,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
       {groups.map((group, gi) => (
         <div key={group.type} style={{ marginTop: gi > 0 ? 16 : 0 }}>
           {/* Group label */}
-          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
             <span style={{ color: SERVICE_TYPE_COLOR[group.type] ?? "var(--text-muted)" }}>
               <ServiceIcon type={group.type} size={12} />
             </span>
