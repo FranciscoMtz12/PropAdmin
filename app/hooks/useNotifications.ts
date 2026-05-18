@@ -12,42 +12,66 @@ export type ModuleStat = {
   severity: 'critical' | 'warning' | 'info'
 }
 
+type RowWithBuilding = { building_id: string | null; buildings: { name: string } | null }
+type LeaseRow = { id: string; unit_id: string | null; units: { building_id: string | null; buildings: { name: string } | null } | null }
+
+function groupByBuilding(rows: RowWithBuilding[]): Map<string, { name: string; count: number }> {
+  const map = new Map<string, { name: string; count: number }>()
+  for (const row of rows) {
+    const bid = row.building_id ?? 'unknown'
+    const bname = row.buildings?.name ?? 'Edificio'
+    const entry = map.get(bid)
+    if (entry) entry.count++
+    else map.set(bid, { name: bname, count: 1 })
+  }
+  return map
+}
+
+function leasesToBuildingRows(leases: LeaseRow[]): RowWithBuilding[] {
+  return leases.map(l => ({
+    building_id: l.units?.building_id ?? null,
+    buildings:   l.units?.buildings   ?? null,
+  }))
+}
+
 async function calculateNotifications(companyId: string): Promise<Notification[]> {
   const notifs: Notification[] = []
   const now = new Date()
 
-  // 1. Unidades pendientes de revisión
-  const { data: unitsNeedingReview } = await supabase
+  // 1. Unidades pendientes de revisión — una notificación por edificio
+  const { data: rawUnits } = await supabase
     .from('units')
-    .select('id')
+    .select('id, building_id, buildings(name)')
     .eq('company_id', companyId)
     .eq('needs_review', true)
     .is('deleted_at', null)
 
-  if (unitsNeedingReview && unitsNeedingReview.length > 0) {
-    const n = unitsNeedingReview.length
-    notifs.push({
-      id: 'units-review',
-      module: 'unidades',
-      severity: 'warning',
-      title: `${n} unidad${n > 1 ? 'es' : ''} pendiente${n > 1 ? 's' : ''} de revisión`,
-      description: 'Unidades duplicadas que requieren verificación de datos.',
-      action_route: null,
-      is_resolved: false,
-    })
+  if (rawUnits && rawUnits.length > 0) {
+    const byBuilding = groupByBuilding(rawUnits as unknown as RowWithBuilding[])
+    for (const [buildingId, { name, count }] of byBuilding.entries()) {
+      notifs.push({
+        id: `units-review-${buildingId}`,
+        module: 'unidades',
+        severity: 'warning',
+        title: `${count} unidad${count > 1 ? 'es' : ''} pendiente${count > 1 ? 's' : ''} de revisión`,
+        description: name,
+        action_route: null,
+        is_resolved: false,
+      })
+    }
   }
 
-  // 2. Contratos por vencer (menos de 30 días)
+  // 2. Contratos por vencer y vencidos — una notificación por edificio
   const thirtyDaysFromNow = new Date()
   thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30)
   const todayStr = now.toISOString().split('T')[0]
   const thirtyStr = thirtyDaysFromNow.toISOString().split('T')[0]
 
-  const [{ data: expiringLeases }, { data: expiredLeases }, { data: placeholderMeters }] =
+  const [{ data: rawExpiring }, { data: rawExpired }, { data: rawMeters }] =
     await Promise.all([
       supabase
         .from('leases')
-        .select('id')
+        .select('id, unit_id, units(building_id, buildings(name))')
         .eq('company_id', companyId)
         .eq('status', 'ACTIVE')
         .not('end_date', 'is', null)
@@ -57,7 +81,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
 
       supabase
         .from('leases')
-        .select('id')
+        .select('id, unit_id, units(building_id, buildings(name))')
         .eq('company_id', companyId)
         .eq('status', 'ACTIVE')
         .not('end_date', 'is', null)
@@ -66,49 +90,55 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
 
       supabase
         .from('building_utility_meters')
-        .select('id')
+        .select('id, building_id, buildings(name)')
         .eq('company_id', companyId)
         .eq('active', false)
         .is('deleted_at', null),
     ])
 
-  if (expiringLeases && expiringLeases.length > 0) {
-    const n = expiringLeases.length
-    notifs.push({
-      id: 'leases-expiring',
-      module: 'contratos',
-      severity: 'warning',
-      title: `${n} contrato${n > 1 ? 's' : ''} por vencer`,
-      description: 'Contratos que vencen en menos de 30 días.',
-      action_route: '/collections',
-      is_resolved: false,
-    })
+  if (rawExpiring && rawExpiring.length > 0) {
+    const byBuilding = groupByBuilding(leasesToBuildingRows(rawExpiring as unknown as LeaseRow[]))
+    for (const [buildingId, { name, count }] of byBuilding.entries()) {
+      notifs.push({
+        id: `leases-expiring-${buildingId}`,
+        module: 'contratos',
+        severity: 'warning',
+        title: `${count} contrato${count > 1 ? 's' : ''} por vencer`,
+        description: name,
+        action_route: '/collections',
+        is_resolved: false,
+      })
+    }
   }
 
-  if (expiredLeases && expiredLeases.length > 0) {
-    const n = expiredLeases.length
-    notifs.push({
-      id: 'leases-expired',
-      module: 'contratos',
-      severity: 'critical',
-      title: `${n} contrato${n > 1 ? 's' : ''} vencido${n > 1 ? 's' : ''}`,
-      description: 'Contratos vencidos sin renovar.',
-      action_route: '/collections',
-      is_resolved: false,
-    })
+  if (rawExpired && rawExpired.length > 0) {
+    const byBuilding = groupByBuilding(leasesToBuildingRows(rawExpired as unknown as LeaseRow[]))
+    for (const [buildingId, { name, count }] of byBuilding.entries()) {
+      notifs.push({
+        id: `leases-expired-${buildingId}`,
+        module: 'contratos',
+        severity: 'critical',
+        title: `${count} contrato${count > 1 ? 's' : ''} vencido${count > 1 ? 's' : ''}`,
+        description: name,
+        action_route: '/collections',
+        is_resolved: false,
+      })
+    }
   }
 
-  if (placeholderMeters && placeholderMeters.length > 0) {
-    const n = placeholderMeters.length
-    notifs.push({
-      id: 'meters-placeholder',
-      module: 'servicios',
-      severity: 'critical',
-      title: `${n} servicio${n > 1 ? 's' : ''} sin configurar`,
-      description: 'Servicios activos sin medidor configurado.',
-      action_route: null,
-      is_resolved: false,
-    })
+  if (rawMeters && rawMeters.length > 0) {
+    const byBuilding = groupByBuilding(rawMeters as unknown as RowWithBuilding[])
+    for (const [buildingId, { name, count }] of byBuilding.entries()) {
+      notifs.push({
+        id: `meters-placeholder-${buildingId}`,
+        module: 'servicios',
+        severity: 'critical',
+        title: `${count} servicio${count > 1 ? 's' : ''} sin configurar`,
+        description: name,
+        action_route: null,
+        is_resolved: false,
+      })
+    }
   }
 
   return notifs

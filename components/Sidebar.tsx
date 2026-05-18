@@ -240,10 +240,11 @@ function NavItem({
         height: 18,
         padding: "0 5px",
         borderRadius: 999,
-        background: SEVERITY_COLORS[notifBadge.severity].dot,
+        background: "transparent",
+        border: `1.5px solid ${SEVERITY_COLORS[notifBadge.severity].dot}`,
         fontSize: 11,
         fontWeight: 700,
-        color: "#fff",
+        color: SEVERITY_COLORS[notifBadge.severity].dot,
         lineHeight: 1,
         flexShrink: 0,
       }}
