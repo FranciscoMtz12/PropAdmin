@@ -21,6 +21,7 @@ import { z } from "zod";
 import {
   Bath,
   BedDouble,
+  Copy,
   DoorOpen,
   Edit3,
   FolderCog,
@@ -33,6 +34,7 @@ import {
   Warehouse,
   Wrench,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { sortByNatural } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -92,6 +94,7 @@ type UnitRow = {
   rental_type: string | null;
   notes: string | null;
   sqm: number | null;
+  needs_review: boolean | null;
   /* Datos de la tipología — vienen del JOIN, NO son columnas propias de units */
   unit_types: {
     name: string;
@@ -255,6 +258,36 @@ function getCommercialFieldConfig(subtype: string | null | undefined): Commercia
 const INIT_COMM_FLAGS = { has_storage: false, has_bathroom: false, has_parking: false, has_independent_access: false };
 const INIT_IND_AREAS  = { almacen_sqm: "", oficina_sqm: "", patio_sqm: "", carga_sqm: "" };
 
+/* ─── Helpers de numeración automática ──────────────────────────────── */
+
+function parseUnitPattern(unitNumber: string): { prefix: string; num: number; padLen: number } | null {
+  const m = unitNumber.match(/^(.*?)(\d+)$/);
+  if (!m) return null;
+  return { prefix: m[1], num: parseInt(m[2], 10), padLen: m[2].length };
+}
+
+function buildUnitNumber(prefix: string, num: number, padLen: number): string {
+  const s = String(num);
+  return prefix + (padLen > 1 ? s.padStart(padLen, "0") : s);
+}
+
+function generateBulkNumbers(base: string, count: number): string[] {
+  const parsed = parseUnitPattern(base);
+  if (!parsed) return Array.from({ length: count }, (_, i) => i === 0 ? base : `${base} ${i + 1}`);
+  const { prefix, num, padLen } = parsed;
+  return Array.from({ length: count }, (_, i) => buildUnitNumber(prefix, num + i, padLen));
+}
+
+function nextAvailableNumber(base: string, existingNumbers: string[]): string {
+  const parsed = parseUnitPattern(base);
+  if (!parsed) return base;
+  const { prefix, num, padLen } = parsed;
+  const existingSet = new Set(existingNumbers.map(n => n.toLowerCase()));
+  let candidate = num;
+  while (existingSet.has(buildUnitNumber(prefix, candidate, padLen).toLowerCase())) candidate++;
+  return buildUnitNumber(prefix, candidate, padLen);
+}
+
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
 export default function BuildingUnitsPage() {
@@ -290,6 +323,12 @@ export default function BuildingUnitsPage() {
 
   /* Campos extra — industrial */
   const [createIndAreas, setCreateIndAreas] = useState({ ...INIT_IND_AREAS });
+
+  /* Cantidad de unidades a crear en lote */
+  const [createCount, setCreateCount] = useState(1);
+
+  /* Estado de duplicar unidad */
+  const [duplicating, setDuplicating] = useState(false);
 
   /* Estado del modal de eliminar */
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -384,6 +423,7 @@ export default function BuildingUnitsPage() {
         rental_type,
         notes,
         sqm,
+        needs_review,
         unit_types(name, bedrooms, bathrooms)
       `)
       .eq("building_id", buildingId)
@@ -546,7 +586,7 @@ export default function BuildingUnitsPage() {
     if (!building)           { setMsg("No se encontró el edificio."); return; }
 
     const cat = building.building_category;
-    const displayCode = generateDisplayCode(building.code, data.unitNumber);
+    const isBulk = createCount > 1;
 
     /* Para residential_multi, tipología es obligatoria */
     if (cat === "residential_multi" && !data.unitTypeId) {
@@ -554,25 +594,150 @@ export default function BuildingUnitsPage() {
       return;
     }
 
-    /* commercial: sqm → units.sqm, amenidades → unit_amenities, notes = null */
-    /* industrial: áreas → unit_areas, notes = null */
+    /* Generar lista de números a crear */
+    const existingNumbers = units.map(u => u.unit_number);
+    let numbersToCreate: string[];
+    if (isBulk) {
+      const base = data.unitNumber.trim();
+      numbersToCreate = generateBulkNumbers(base, createCount);
+      /* Saltar los que ya existen */
+      const existingSet = new Set(existingNumbers.map(n => n.toLowerCase()));
+      const available: string[] = [];
+      let offset = 0;
+      const parsed = parseUnitPattern(base);
+      for (let i = 0; available.length < createCount; i++) {
+        let candidate: string;
+        if (parsed) {
+          candidate = buildUnitNumber(parsed.prefix, parsed.num + offset, parsed.padLen);
+        } else {
+          candidate = i === 0 ? base : `${base} ${offset + 1}`;
+        }
+        if (!existingSet.has(candidate.toLowerCase())) available.push(candidate);
+        offset++;
+        if (offset > 1000) break;
+      }
+      numbersToCreate = available;
+    } else {
+      numbersToCreate = [data.unitNumber.trim()];
+    }
 
+    /* Crear unidades */
+    const createdIds: string[] = [];
+    for (const unitNum of numbersToCreate) {
+      const displayCode = generateDisplayCode(building.code, unitNum);
+      const insertRow: Record<string, unknown> = {
+        company_id:   user.company_id,
+        building_id:  building.id,
+        unit_number:  unitNum,
+        display_code: displayCode,
+        floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
+        status:       "VACANT",
+        notes:        null,
+        needs_review: isBulk,
+      };
+      if (cat === "commercial") {
+        const sqmVal = parseFloat(createSqm);
+        if (!isNaN(sqmVal) && sqmVal > 0) insertRow.sqm = sqmVal;
+      }
+      if (cat === "residential_multi" && data.unitTypeId) {
+        insertRow.unit_type_id = data.unitTypeId;
+      }
+
+      const { data: newUnit, error } = await supabase
+        .from("units")
+        .insert(insertRow)
+        .select("id")
+        .single();
+
+      if (error || !newUnit) {
+        setMsg(error?.message || `No se pudo crear ${labels.unit.toLowerCase()}.`);
+        return;
+      }
+      createdIds.push(newUnit.id);
+
+      /* Amenidades commercial */
+      if (cat === "commercial") {
+        const amenityKeys = ["has_storage", "has_bathroom", "has_parking", "has_independent_access"] as const;
+        const amenitiesToInsert = amenityKeys
+          .filter((key) => createCommFlags[key] === true)
+          .map((key) => ({ unit_id: newUnit.id, company_id: building.company_id, amenity_key: key }));
+        if (amenitiesToInsert.length > 0) await supabase.from("unit_amenities").insert(amenitiesToInsert);
+      }
+
+      /* Áreas industrial */
+      if (cat === "industrial" || cat === "industrial_park") {
+        const areasToInsert = [
+          { area_type: "almacen", sqm: parseFloat(createIndAreas.almacen_sqm) },
+          { area_type: "oficina", sqm: parseFloat(createIndAreas.oficina_sqm) },
+          { area_type: "patio",   sqm: parseFloat(createIndAreas.patio_sqm) },
+          { area_type: "carga",   sqm: parseFloat(createIndAreas.carga_sqm) },
+        ].filter((a) => !isNaN(a.sqm) && a.sqm > 0);
+        if (areasToInsert.length > 0) {
+          await supabase.from("unit_areas").insert(
+            areasToInsert.map((a) => ({ unit_id: newUnit.id, company_id: building.company_id, area_type: a.area_type, sqm: a.sqm }))
+          );
+        }
+      }
+
+      /* Clonar assets base — solo para residential_multi con tipología */
+      if (cat === "residential_multi" && data.unitTypeId) {
+        const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
+        if (cloneError) {
+          setMsg(`${labels.unit} creado, pero hubo un problema al clonar los assets base: ${cloneError}`);
+          await loadPageData();
+          return;
+        }
+      }
+    }
+
+    createForm.reset(CREATE_UNIT_DEFAULTS);
+    setCreateSqm("");
+    setCreateCommFlags({ ...INIT_COMM_FLAGS });
+    setCreateIndAreas({ ...INIT_IND_AREAS });
+    setCreateCount(1);
+    setIsCreateModalOpen(false);
+    if (isBulk) {
+      setMsg(`${createdIds.length} ${labels.units.toLowerCase()} creados correctamente.`);
+    } else {
+      const suffix = cat === "residential_multi" ? " Si la tipología tenía equipos base, ya se clonaron automáticamente." : "";
+      setMsg(`${labels.unit} guardado correctamente.${suffix}`);
+    }
+    await loadPageData();
+  });
+
+  async function handleDuplicateUnit(unit: UnitRow) {
+    if (!user?.company_id || !building) return;
+    setDuplicating(true);
+    setOpenActionsUnitId(null);
+
+    const existingNumbers = units.map(u => u.unit_number);
+    const parsed = parseUnitPattern(unit.unit_number);
+    let newNumber: string;
+    if (parsed) {
+      /* Incrementar 1 desde el máximo con el mismo prefijo */
+      const samePrefix = existingNumbers
+        .map(n => parseUnitPattern(n))
+        .filter((p): p is NonNullable<typeof p> => p !== null && p.prefix === parsed.prefix)
+        .map(p => p.num);
+      const maxNum = samePrefix.length > 0 ? Math.max(...samePrefix) : parsed.num;
+      newNumber = nextAvailableNumber(buildUnitNumber(parsed.prefix, maxNum + 1, parsed.padLen), existingNumbers);
+    } else {
+      newNumber = nextAvailableNumber(`${unit.unit_number} 2`, existingNumbers);
+    }
+
+    const displayCode = generateDisplayCode(building.code, newNumber);
     const insertRow: Record<string, unknown> = {
       company_id:   user.company_id,
       building_id:  building.id,
-      unit_number:  data.unitNumber.trim(),
+      unit_number:  newNumber,
       display_code: displayCode,
-      floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
+      floor:        unit.floor,
       status:       "VACANT",
       notes:        null,
+      needs_review: true,
+      sqm:          unit.sqm,
     };
-    if (cat === "commercial") {
-      const sqmVal = parseFloat(createSqm);
-      if (!isNaN(sqmVal) && sqmVal > 0) insertRow.sqm = sqmVal;
-    }
-    if (cat === "residential_multi" && data.unitTypeId) {
-      insertRow.unit_type_id = data.unitTypeId;
-    }
+    if (unit.unit_type_id) insertRow.unit_type_id = unit.unit_type_id;
 
     const { data: newUnit, error } = await supabase
       .from("units")
@@ -581,66 +746,31 @@ export default function BuildingUnitsPage() {
       .single();
 
     if (error || !newUnit) {
-      setMsg(error?.message || `No se pudo crear ${labels.unit.toLowerCase()}.`);
+      toast.error(`No se pudo duplicar: ${error?.message || "error desconocido"}`);
+      setDuplicating(false);
       return;
     }
 
-    /* Insertar amenidades en unit_amenities para commercial */
-    if (cat === "commercial") {
-      const amenityKeys = ["has_storage", "has_bathroom", "has_parking", "has_independent_access"] as const;
-      const amenitiesToInsert = amenityKeys
-        .filter((key) => createCommFlags[key] === true)
-        .map((key) => ({
-          unit_id: newUnit.id,
-          company_id: building.company_id,
-          amenity_key: key,
-        }));
-
-      if (amenitiesToInsert.length > 0) {
-        await supabase.from("unit_amenities").insert(amenitiesToInsert);
-      }
+    /* Copiar unit_areas */
+    const srcAreas = unitAreasMap[unit.id] ?? [];
+    if (srcAreas.length > 0) {
+      await supabase.from("unit_areas").insert(
+        srcAreas.map(a => ({ unit_id: newUnit.id, company_id: building.company_id, area_type: a.area_type, sqm: a.sqm }))
+      );
     }
 
-    /* Insertar áreas en unit_areas para industrial */
-    if (cat === "industrial" || cat === "industrial_park") {
-      const areasToInsert = [
-        { area_type: "almacen", sqm: parseFloat(createIndAreas.almacen_sqm) },
-        { area_type: "oficina", sqm: parseFloat(createIndAreas.oficina_sqm) },
-        { area_type: "patio",   sqm: parseFloat(createIndAreas.patio_sqm) },
-        { area_type: "carga",   sqm: parseFloat(createIndAreas.carga_sqm) },
-      ].filter((a) => !isNaN(a.sqm) && a.sqm > 0);
-
-      if (areasToInsert.length > 0) {
-        await supabase.from("unit_areas").insert(
-          areasToInsert.map((a) => ({
-            unit_id: newUnit.id,
-            company_id: building.company_id,
-            area_type: a.area_type,
-            sqm: a.sqm,
-          }))
-        );
-      }
+    /* Copiar unit_amenities */
+    const srcAmenities = unitAmenitiesMap[unit.id];
+    if (srcAmenities && srcAmenities.size > 0) {
+      await supabase.from("unit_amenities").insert(
+        [...srcAmenities].map(key => ({ unit_id: newUnit.id, company_id: building.company_id, amenity_key: key }))
+      );
     }
 
-    /* Clonar assets base solo para residential_multi con tipología */
-    if (cat === "residential_multi" && data.unitTypeId) {
-      const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
-      if (cloneError) {
-        setMsg(`${labels.unit} creado, pero hubo un problema al clonar los assets base: ${cloneError}`);
-        await loadPageData();
-        return;
-      }
-    }
-
-    createForm.reset(CREATE_UNIT_DEFAULTS);
-    setCreateSqm("");
-    setCreateCommFlags({ ...INIT_COMM_FLAGS });
-    setCreateIndAreas({ ...INIT_IND_AREAS });
-    setIsCreateModalOpen(false);
-    const suffix = cat === "residential_multi" ? " Si la tipología tenía equipos base, ya se clonaron automáticamente." : "";
-    setMsg(`${labels.unit} guardado correctamente.${suffix}`);
+    setDuplicating(false);
+    toast.success("Unidad duplicada — revisa los datos antes de continuar");
     await loadPageData();
-  });
+  }
 
   function openDeleteModal(unit: UnitRow) {
     setUnitToDelete(unit);
@@ -868,8 +998,24 @@ export default function BuildingUnitsPage() {
                 <div
                   key={unit.id}
                   onClick={() => router.push(`/buildings/${building.id}/units/${unit.id}`)}
-                  style={{ cursor: "pointer" }}
+                  style={{ cursor: "pointer", position: "relative" }}
                 >
+                  {unit.needs_review && (
+                    <div
+                      title="Pendiente de revisión"
+                      style={{
+                        position: "absolute",
+                        top: 10,
+                        right: 10,
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: "#EF9F27",
+                        zIndex: 10,
+                        pointerEvents: "none",
+                      }}
+                    />
+                  )}
                 <EntityCard
                   title={unit.unit_number}
                   subtitle={unit.display_code || "—"}
@@ -913,8 +1059,9 @@ export default function BuildingUnitsPage() {
                       </button>
                       {openActionsUnitId === unit.id && (
                         <div style={dropdownMenuStyle}>
-                          <button type="button" onClick={() => openEditModal(unit)}   style={dropdownActionButtonStyle}><Edit3 size={14} /> Editar</button>
-                          <button type="button" onClick={() => openDeleteModal(unit)} style={dropdownDeleteItemStyle}><Trash2 size={14} /> Eliminar</button>
+                          <button type="button" onClick={() => openEditModal(unit)}                    style={dropdownActionButtonStyle}><Edit3  size={14} /> Editar</button>
+                          <button type="button" onClick={() => void handleDuplicateUnit(unit)} disabled={duplicating} style={dropdownActionButtonStyle}><Copy   size={14} /> Duplicar</button>
+                          <button type="button" onClick={() => openDeleteModal(unit)}                  style={dropdownDeleteItemStyle}><Trash2 size={14} /> Eliminar</button>
                         </div>
                       )}
                     </div>
@@ -1043,6 +1190,7 @@ export default function BuildingUnitsPage() {
           setCreateSqm("");
           setCreateCommFlags({ ...INIT_COMM_FLAGS });
           setCreateIndAreas({ ...INIT_IND_AREAS });
+          setCreateCount(1);
         }}
         title={`Crear ${labels.unit.toLowerCase()}`}
         subtitle={isResidentialMulti ? "Los assets base de la tipología se clonarán automáticamente al guardar." : undefined}
@@ -1181,9 +1329,36 @@ export default function BuildingUnitsPage() {
             </p>
           ) : null}
 
+          {/* ── Cantidad de espacios a crear ── */}
+          <AppFormField label="Cantidad de espacios a crear">
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={createCount}
+              onChange={e => setCreateCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+          {createCount > 1 && createUnitNumber.trim() ? (
+            <div style={{
+              padding: "10px 14px",
+              borderRadius: 10,
+              background: "var(--icon-bg-blue)",
+              border: "1px solid var(--metric-border-neutral)",
+              marginBottom: 12,
+              fontSize: 12,
+              color: "var(--badge-text-blue)",
+            }}>
+              <span style={{ fontWeight: 600 }}>Se crearán: </span>
+              {generateBulkNumbers(createUnitNumber.trim(), Math.min(createCount, 5)).join(", ")}
+              {createCount > 5 ? ` ... (+${createCount - 5} más)` : ""}
+            </div>
+          ) : null}
+
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={createForm.formState.isSubmitting} variant="primary">
-              {createForm.formState.isSubmitting ? "Guardando..." : `Guardar ${labels.unit.toLowerCase()}`}
+              {createForm.formState.isSubmitting ? "Guardando..." : createCount > 1 ? `Crear ${createCount} ${labels.units.toLowerCase()}` : `Guardar ${labels.unit.toLowerCase()}`}
             </UiButton>
             <UiButton type="button" onClick={() => {
               setIsCreateModalOpen(false);
@@ -1191,6 +1366,7 @@ export default function BuildingUnitsPage() {
               setCreateSqm("");
               setCreateCommFlags({ ...INIT_COMM_FLAGS });
               setCreateIndAreas({ ...INIT_IND_AREAS });
+              setCreateCount(1);
             }}>
               Cancelar
             </UiButton>

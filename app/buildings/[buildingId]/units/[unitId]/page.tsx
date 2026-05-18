@@ -30,6 +30,7 @@ import {
 } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
+  AlertCircle,
   BedDouble,
   Building2,
   Hash,
@@ -92,6 +93,7 @@ type UnitDetail = {
   status: string;
   rental_type: string | null;
   sqm: number | null;
+  needs_review: boolean | null;
   unit_types: { name: string; bedroom_count: number | null; bedrooms: number | null; bathrooms: number | null } | null;
 };
 
@@ -489,6 +491,7 @@ export default function UnitDetailPage() {
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
+  const [markingReviewed, setMarkingReviewed] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -536,6 +539,7 @@ export default function UnitDetailPage() {
         status,
         rental_type,
         sqm,
+        needs_review,
         unit_types(name, bedroom_count, bedrooms, bathrooms)
       `)
       .eq("id", unitId)
@@ -738,6 +742,20 @@ export default function UnitDetailPage() {
 
     setMsg(`${buildingLabels.unit} actualizado correctamente.`);
     setShowEditForm(false);
+    await loadPageData();
+  }
+
+  async function handleMarkReviewed() {
+    if (!user?.company_id || !unit) return;
+    setMarkingReviewed(true);
+    const { error } = await supabase
+      .from("units")
+      .update({ needs_review: false })
+      .eq("id", unit.id)
+      .eq("company_id", user.company_id);
+    setMarkingReviewed(false);
+    if (error) { setMsg("No se pudo marcar como revisado."); return; }
+    toast.success("Unidad marcada como revisada");
     await loadPageData();
   }
 
@@ -1226,6 +1244,31 @@ export default function UnitDetailPage() {
           </div>
         }
       />
+
+      {unit.needs_review && (
+        <div style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          padding: "12px 16px",
+          borderRadius: 12,
+          background: "#FEF3C7",
+          border: "1px solid #F59E0B",
+          marginBottom: 16,
+        }}>
+          <AlertCircle size={18} style={{ color: "#D97706", flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: 13, color: "#92400E", fontWeight: 500 }}>
+            Esta unidad fue creada por duplicación — revisa que todos los datos sean correctos
+          </span>
+          <UiButton
+            variant="secondary"
+            onClick={() => void handleMarkReviewed()}
+            disabled={markingReviewed}
+          >
+            {markingReviewed ? "Guardando..." : "Marcar como revisado"}
+          </UiButton>
+        </div>
+      )}
 
       {msg && !showEditForm && !showLeaseModal && !showDeleteLeaseModal ? (
         <AppCard>
