@@ -167,6 +167,8 @@ export function useNotifications(companyId: string) {
   useEffect(() => {
     if (!companyId) return
     void refetch()
+    const interval = setInterval(() => { void refetch() }, 60_000)
+    return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId])
 
@@ -178,7 +180,7 @@ export function useNotifications(companyId: string) {
 
   const moduleStats: ModuleStat[] = Object.entries(byModule).map(([module, notifs]) => ({
     module: module as NotificationModule,
-    count: notifs.length,
+    count: notifs.reduce((sum, n) => sum + (n.count ?? 1), 0),
     severity: notifs.some(n => n.severity === 'critical') ? 'critical'
             : notifs.some(n => n.severity === 'warning')  ? 'warning'
             : 'info',
