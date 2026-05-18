@@ -78,6 +78,15 @@ export type PropertyLabels = {
   unit: string
 }
 
+/** Devuelve "de la X" para sustantivos femeninos y "del X" para masculinos. */
+export function buildingOf(labels: PropertyLabels): string {
+  const feminine = ["Plaza", "Nave", "Planta", "Casa"]
+  const isFeminine = feminine.some((f) => labels.building.startsWith(f))
+  return isFeminine
+    ? `de la ${labels.building.toLowerCase()}`
+    : `del ${labels.building.toLowerCase()}`
+}
+
 export function getPropertyLabels(category: string | null, subtype?: string | null): PropertyLabels {
   switch (category) {
     case 'commercial':

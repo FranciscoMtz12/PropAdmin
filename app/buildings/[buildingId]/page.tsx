@@ -95,7 +95,7 @@ import {
   getBuildingCategoryDefinition,
   getMixedUseSubcategoryLabel,
 } from "@/lib/buildingCategories";
-import { getPropertyType, getPropertyLabels, getSubtypeLabel, PROPERTY_TYPES, COMMERCIAL_SUBTYPES, INDUSTRIAL_SUBTYPES } from "@/lib/property-types";
+import { getPropertyType, getPropertyLabels, buildingOf, getSubtypeLabel, PROPERTY_TYPES, COMMERCIAL_SUBTYPES, INDUSTRIAL_SUBTYPES } from "@/lib/property-types";
 import { PROPERTY_FEATURES, getDefaultFeatures, getFeatureByKey } from "@/lib/property-features";
 import {
   INPUT_STYLE,
@@ -1705,7 +1705,7 @@ export default function BuildingDetailPage() {
       <PageHeader
         title={building.name}
         titleIcon={<Building2 size={20} />}
-        subtitle={`Vista general del ${labels.building.toLowerCase()} — ocupación, ${labels.collections.toLowerCase()} y tendencia.`}
+        subtitle={`Vista general ${buildingOf(labels)} — ocupación, ${labels.collections.toLowerCase()} y tendencia.`}
         actions={
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
             {/* Volver */}
@@ -2246,7 +2246,7 @@ export default function BuildingDetailPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <Building2 size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                     <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                      {building.construction_sqm.toLocaleString("es-MX")} m² construcción
+                      {building.construction_sqm.toLocaleString("es-MX")} m²
                     </span>
                   </div>
                 )}
@@ -2808,7 +2808,7 @@ export default function BuildingDetailPage() {
                         <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>{cb.name}</strong>
                         <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
                           {cb.code ? `Código: ${cb.code}` : "Sin código"}
-                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m² construcción` : ""}
+                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m²` : ""}
                           {cb.land_sqm != null ? ` · ${cb.land_sqm.toLocaleString("es-MX")} m² terreno` : ""}
                         </p>
                       </div>
@@ -2853,7 +2853,7 @@ export default function BuildingDetailPage() {
                         <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>{cb.name}</strong>
                         <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
                           {cb.code ? `Código: ${cb.code}` : "Sin código"}
-                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m² construcción` : ""}
+                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m²` : ""}
                         </p>
                       </div>
                       <UiButton href={`/buildings/${cb.id}`}>Ver detalle</UiButton>
