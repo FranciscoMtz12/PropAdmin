@@ -3440,133 +3440,151 @@ export default function BuildingDetailPage() {
             />
 
             {/* ── LIMPIEZA ── */}
-            <div id="services-cleaning-section" style={{ background: "var(--color-background-secondary, var(--bg-page))", borderRadius: "var(--border-radius-lg, 14px)", padding: 16, marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  LIMPIEZA
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAddScheduleOpen(true)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-secondary)", cursor: "pointer" }}
-                >
-                  <Plus size={12} />Agregar horario
-                </button>
+            <div id="services-cleaning-section" style={{ background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-lg, 14px)", overflow: "hidden", marginBottom: 20 }}>
+              {/* Card header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <Sparkles size={14} color="var(--accent, #8B2252)" />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Limpieza</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <a href={`/cleaning?building_id=${building.id}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
+                    Ver historial completo →
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setAddScheduleOpen(true)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+                  >
+                    <Plus size={12} />Agregar horario
+                  </button>
+                </div>
               </div>
 
-              {/* Schedules como filas con borde izquierdo de color */}
+              {/* Schedules como filas flat */}
               {buildingSchedules.length === 0 ? (
-                <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
-                  Sin horarios de limpieza configurados
-                </p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", marginBottom: 12 }}>
-                  {buildingSchedules.map(s => {
-                    const borderColor = s.cleaning_type === 'common_area' ? '#3B82F6' : '#10B981';
-                    return (
-                      <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-md, 10px)", borderLeft: `3px solid ${borderColor}`, padding: "10px 14px", marginBottom: 6 }}>
-                        <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>
-                          {DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}
-                          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
-                            {CLEANING_TYPE_LABEL[s.cleaning_type] ?? s.cleaning_type}
-                          </span>
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => void handleDeleteSchedule(s.id)}
-                          style={{ display: "inline-flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-muted)", borderRadius: 4, flexShrink: 0 }}
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    );
-                  })}
+                <div style={{ padding: "14px 18px" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    Sin horarios de limpieza configurados
+                  </p>
                 </div>
+              ) : (
+                buildingSchedules.map((s, si) => {
+                  const borderColor = s.cleaning_type === 'common_area' ? '#378ADD' : '#10B981';
+                  const isLast = si === buildingSchedules.length - 1 && recentCleaningLogs.length === 0;
+                  return (
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px 10px 15px", borderLeft: `3px solid ${borderColor}`, background: "#FAFCFF", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
+                      <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>
+                        {DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}
+                        <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
+                          {CLEANING_TYPE_LABEL[s.cleaning_type] ?? s.cleaning_type}
+                        </span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm('¿Eliminar este horario de limpieza?')) {
+                            void handleDeleteSchedule(s.id);
+                          }
+                        }}
+                        style={{ display: "inline-flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-muted)", borderRadius: 4, flexShrink: 0 }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </div>
+                  );
+                })
               )}
 
               {/* Últimos logs */}
               {recentCleaningLogs.length > 0 && (
-                <div style={{ marginTop: 4 }}>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                    {recentCleaningLogs.map(log => (
-                      <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, background: "var(--color-background-secondary, var(--divider))", borderRadius: "var(--border-radius-md, 10px)", padding: "8px 12px" }}>
-                        <span style={{ color: "var(--text-muted)", minWidth: 52, flexShrink: 0, fontSize: 12 }}>{formatShortDate(log.scheduled_date)}</span>
-                        <span style={{ flex: 1, color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
-                        <span style={{
-                          padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, flexShrink: 0,
-                          background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
-                          color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
-                        }}>
-                          {log.status === 'completed' ? 'Completado' : log.status === 'skipped' ? 'Omitido' : 'Pendiente'}
-                        </span>
-                      </div>
-                    ))}
+                <>
+                  <div style={{ padding: "10px 18px 4px", borderTop: buildingSchedules.length > 0 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : undefined }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Últimos registros</span>
                   </div>
-                  <a href={`/cleaning?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
-                    Ver historial completo →
-                  </a>
-                </div>
+                  {recentCleaningLogs.map((log, li) => (
+                    <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 18px", borderBottom: li < recentCleaningLogs.length - 1 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : "none" }}>
+                      <span style={{ color: "var(--text-muted)", minWidth: 52, flexShrink: 0, fontSize: 12 }}>{formatShortDate(log.scheduled_date)}</span>
+                      <span style={{ flex: 1, fontSize: 13, color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
+                      <span style={{
+                        padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, flexShrink: 0,
+                        background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
+                        color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
+                      }}>
+                        {log.status === 'completed' ? 'Completado' : log.status === 'skipped' ? 'Omitido' : 'Pendiente'}
+                      </span>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
 
             {/* ── MANTENIMIENTO ── */}
-            <div style={{ background: "var(--color-background-secondary, var(--bg-page))", borderRadius: "var(--border-radius-lg, 14px)", padding: 16, marginBottom: 20 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                  MANTENIMIENTO
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setAddTicketOpen(true)}
-                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-secondary)", cursor: "pointer" }}
-                >
-                  <Plus size={12} />Nuevo ticket
-                </button>
+            <div style={{ background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-lg, 14px)", overflow: "hidden", marginBottom: 20 }}>
+              {/* Card header */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                  <Wrench size={14} color="var(--accent, #8B2252)" />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Mantenimiento</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <a href={`/maintenance?building_id=${building.id}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
+                    Ver todos los tickets →
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => setAddTicketOpen(true)}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+                  >
+                    <Plus size={12} />Nuevo ticket
+                  </button>
+                </div>
               </div>
 
               {/* Tickets abiertos */}
               {openTickets.length === 0 ? (
-                <p style={{ margin: "0 0 12px", fontSize: 13, color: "#10B981", fontWeight: 600 }}>
-                  ✅ Sin tickets pendientes
-                </p>
-              ) : (
-                <div style={{ display: "flex", flexDirection: "column", marginBottom: 12 }}>
-                  {openTickets.map(ticket => {
-                    const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
-                    const age = daysAgo(ticket.created_at);
-                    return (
-                      <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 10, background: "var(--color-background-primary, var(--bg-card))", border: "0.5px solid var(--color-border-tertiary, var(--border-default))", borderRadius: "var(--border-radius-md, 10px)", padding: "10px 14px", marginBottom: 6 }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                        <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{ticket.title}</span>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
-                          {age === 0 ? 'Hoy' : `Hace ${age} día${age === 1 ? '' : 's'}`}
-                        </span>
-                      </div>
-                    );
-                  })}
+                <div style={{ padding: "14px 18px" }}>
+                  <p style={{ margin: 0, fontSize: 13, color: "#10B981", fontWeight: 600 }}>
+                    Sin tickets pendientes
+                  </p>
                 </div>
+              ) : (
+                openTickets.map((ticket, ti) => {
+                  const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
+                  const pillBg = ticket.priority === 'urgent' ? '#fee2e2' : ticket.priority === 'high' ? '#ffedd5' : ticket.priority === 'medium' ? '#fef9c3' : '#f3f4f6';
+                  const pillColor = ticket.priority === 'urgent' ? '#991b1b' : ticket.priority === 'high' ? '#9a3412' : ticket.priority === 'medium' ? '#713f12' : '#6b7280';
+                  const priorityLabel = ticket.priority === 'urgent' ? 'Urgente' : ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja';
+                  const age = daysAgo(ticket.created_at);
+                  const isLast = ti === openTickets.length - 1 && upcomingPreventives.length === 0;
+                  return (
+                    <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
+                      <span style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                      <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{ticket.title}</span>
+                      <span style={{ padding: "2px 6px", borderRadius: 999, fontSize: 10, fontWeight: 600, background: pillBg, color: pillColor, flexShrink: 0 }}>
+                        {priorityLabel}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
+                        {age === 0 ? 'Hoy' : `Hace ${age} día${age === 1 ? '' : 's'}`}
+                      </span>
+                    </div>
+                  );
+                })
               )}
 
               {/* Preventivos próximos */}
               {upcomingPreventives.length > 0 && (
-                <div style={{ marginBottom: 12 }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Preventivos próximos
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column" }}>
-                    {upcomingPreventives.map(p => (
-                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--border-default)" }}>
-                        <span style={{ color: "var(--text-secondary)" }}>{p.assets?.[0]?.name ?? 'Activo'}</span>
-                        <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{formatShortDate(p.next_due_date)}</span>
-                      </div>
-                    ))}
+                <>
+                  <div style={{ padding: "10px 18px 4px", borderTop: openTickets.length > 0 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : undefined }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Preventivos próximos</span>
                   </div>
-                </div>
+                  {upcomingPreventives.map((p, pi) => (
+                    <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 18px", borderBottom: pi < upcomingPreventives.length - 1 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : "none" }}>
+                      <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{p.assets?.[0]?.name ?? 'Activo'}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatShortDate(p.next_due_date)}</span>
+                    </div>
+                  ))}
+                </>
               )}
-
-              <a href={`/maintenance?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 4, fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
-                Ver todos los tickets →
-              </a>
             </div>
           </div>
 
