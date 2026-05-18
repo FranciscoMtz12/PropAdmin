@@ -137,13 +137,13 @@ export default function AppTabs({
               <span
                 style={{
                   position: "absolute",
-                  top: -4,
-                  right: -4,
-                  width: 8,
-                  height: 8,
+                  top: -6,
+                  right: -6,
+                  width: 18,
+                  height: 18,
                   borderRadius: "50%",
                   background: "var(--brand-color, #8B2252)",
-                  border: "1.5px solid var(--color-background-primary)",
+                  border: "2px solid var(--color-background-primary)",
                   zIndex: 10,
                   pointerEvents: "none",
                 }}
