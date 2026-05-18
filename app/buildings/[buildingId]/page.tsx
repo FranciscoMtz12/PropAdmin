@@ -1071,20 +1071,16 @@ export default function BuildingDetailPage() {
     const tasks = (tasksData || []) as SetupTask[];
 
     /* Auto-completar tareas del checklist según datos existentes */
-    const hasLeasedUnit = (unitsData as UnitStatusRow[]).some(
-      u => ['RENTED', 'OCCUPIED', 'PARTIAL'].includes(u.status ?? '')
-    );
-
     const [
-      { count: parkingCount },
-      { count: elecCount },
-      { count: waterCount },
-      { count: gasCount },
-      { count: internetCount },
-      { count: cleaningCount },
-      { count: _leaseCount },
-      { count: docsCount },
-      { count: assetsCount },
+      parkingCount,
+      electricityCount,
+      waterCount,
+      gasCount,
+      internetCount,
+      cleaningCount,
+      leasesCount,
+      documentsCount,
+      assetsCount,
     ] = await Promise.all([
       supabase.from('parking_spots').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
       supabase.from('building_utility_meters').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).eq('service_type', 'electricity').is('deleted_at', null),
@@ -1097,21 +1093,26 @@ export default function BuildingDetailPage() {
       supabase.from('assets').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
     ]);
 
-    const autoCompleteMap: Record<string, boolean> = {
-      add_first_unit:          (allUnits?.length    ?? 0) > 0,
-      add_first_lease:         hasLeasedUnit,
-      add_parking:             (parkingCount        ?? 0) > 0,
-      setup_electricity:       (elecCount           ?? 0) > 0,
-      setup_water:             (waterCount          ?? 0) > 0,
-      setup_gas:               (gasCount            ?? 0) > 0,
-      setup_internet:          (internetCount       ?? 0) > 0,
-      setup_cleaning_schedule: (cleaningCount       ?? 0) > 0,
-      upload_first_document:   (docsCount           ?? 0) > 0,
-      add_first_asset:         (assetsCount         ?? 0) > 0,
-    };
+    const autoCompleteMap = [
+      { key: 'add_first_unit',          done: (allUnits?.length           ?? 0) > 0 },
+      { key: 'add_first_lease',         done: (leasesCount.count          ?? 0) > 0 },
+      { key: 'add_parking_spots',       done: (parkingCount.count         ?? 0) > 0 },
+      { key: 'add_electricity_meter',   done: (electricityCount.count     ?? 0) > 0 },
+      { key: 'add_water_meter',         done: (waterCount.count           ?? 0) > 0 },
+      { key: 'add_gas_meter',           done: (gasCount.count             ?? 0) > 0 },
+      { key: 'setup_internet',          done: (internetCount.count        ?? 0) > 0 },
+      { key: 'setup_cleaning_schedule', done: (cleaningCount.count        ?? 0) > 0 },
+      { key: 'upload_documents',        done: (documentsCount.count       ?? 0) > 0 },
+      { key: 'add_first_asset',         done: (assetsCount.count          ?? 0) > 0 },
+      { key: 'setup_common_areas',      done: (commonAreas?.length        ?? 0) > 0 },
+      { key: 'setup_admin_office',      done: false },
+      { key: 'setup_security_booth',    done: false },
+      { key: 'setup_service_storage',   done: false },
+      { key: 'setup_security_service',  done: false },
+    ];
 
     const keysToComplete = tasks
-      .filter(task => !task.is_completed && autoCompleteMap[task.task_key] === true)
+      .filter(task => !task.is_completed && autoCompleteMap.some(m => m.key === task.task_key && m.done))
       .map(task => task.task_key);
 
     if (keysToComplete.length > 0) {
