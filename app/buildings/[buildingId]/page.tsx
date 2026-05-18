@@ -787,6 +787,11 @@ export default function BuildingDetailPage() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
+  function handleTabChange(tab: string) {
+    setActiveTab(tab);
+    router.replace(`/buildings/${buildingId}?tab=${tab}`, { scroll: false });
+  }
+
   useEffect(() => {
     if (!createSpotOpen) return;
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -2123,7 +2128,7 @@ export default function BuildingDetailPage() {
       {/* ── Tabs ── */}
       <AppTabs
         activeKey={activeTab}
-        onChange={setActiveTab}
+        onChange={handleTabChange}
         items={[
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
@@ -2406,7 +2411,7 @@ export default function BuildingDetailPage() {
                                   if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
                                     const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
                                     if (tabValue) {
-                                      setActiveTab(tabValue);
+                                      handleTabChange(tabValue);
                                       window.scrollTo({ top: 0, behavior: "smooth" });
                                       return;
                                     }
@@ -2779,7 +2784,7 @@ export default function BuildingDetailPage() {
                     Sin servicios configurados.{" "}
                     <button
                       type="button"
-                      onClick={() => setActiveTab("services")}
+                      onClick={() => handleTabChange("services")}
                       style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, textDecoration: "underline" }}
                     >
                       Ir a Servicios →
