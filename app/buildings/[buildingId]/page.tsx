@@ -1070,28 +1070,57 @@ export default function BuildingDetailPage() {
 
     const tasks = (tasksData || []) as SetupTask[];
 
-    /* Auto-completar 'add_first_unit' cuando ya hay unidades */
-    if ((allUnits?.length ?? 0) > 0) {
-      const t = tasks.find(task => task.task_key === 'add_first_unit' && !task.is_completed);
-      if (t) {
-        await supabase.from('building_setup_tasks')
-          .update({ is_completed: true, completed_at: new Date().toISOString() })
-          .eq('id', t.id);
-        for (const task of tasks) { if (task.task_key === 'add_first_unit') task.is_completed = true; }
-      }
-    }
-
-    /* Auto-completar 'add_first_lease' cuando hay unidades con inquilino */
+    /* Auto-completar tareas del checklist según datos existentes */
     const hasLeasedUnit = (unitsData as UnitStatusRow[]).some(
       u => ['RENTED', 'OCCUPIED', 'PARTIAL'].includes(u.status ?? '')
     );
-    if (hasLeasedUnit) {
-      const t = tasks.find(task => task.task_key === 'add_first_lease' && !task.is_completed);
-      if (t) {
-        await supabase.from('building_setup_tasks')
-          .update({ is_completed: true, completed_at: new Date().toISOString() })
-          .eq('id', t.id);
-        for (const task of tasks) { if (task.task_key === 'add_first_lease') task.is_completed = true; }
+
+    const [
+      { count: parkingCount },
+      { count: elecCount },
+      { count: waterCount },
+      { count: gasCount },
+      { count: internetCount },
+      { count: cleaningCount },
+      { count: _leaseCount },
+      { count: docsCount },
+      { count: assetsCount },
+    ] = await Promise.all([
+      supabase.from('parking_spots').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
+      supabase.from('building_utility_meters').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).eq('service_type', 'electricity').is('deleted_at', null),
+      supabase.from('building_utility_meters').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).eq('service_type', 'water').is('deleted_at', null),
+      supabase.from('building_utility_meters').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).eq('service_type', 'gas').is('deleted_at', null),
+      supabase.from('building_utility_meters').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).eq('service_type', 'internet').is('deleted_at', null),
+      supabase.from('cleaning_building_schedules').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
+      supabase.from('leases').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
+      supabase.from('building_files').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
+      supabase.from('assets').select('id', { count: 'exact', head: true }).eq('building_id', buildingId).is('deleted_at', null),
+    ]);
+
+    const autoCompleteMap: Record<string, boolean> = {
+      add_first_unit:          (allUnits?.length    ?? 0) > 0,
+      add_first_lease:         hasLeasedUnit,
+      add_parking:             (parkingCount        ?? 0) > 0,
+      setup_electricity:       (elecCount           ?? 0) > 0,
+      setup_water:             (waterCount          ?? 0) > 0,
+      setup_gas:               (gasCount            ?? 0) > 0,
+      setup_internet:          (internetCount       ?? 0) > 0,
+      setup_cleaning_schedule: (cleaningCount       ?? 0) > 0,
+      upload_first_document:   (docsCount           ?? 0) > 0,
+      add_first_asset:         (assetsCount         ?? 0) > 0,
+    };
+
+    const keysToComplete = tasks
+      .filter(task => !task.is_completed && autoCompleteMap[task.task_key] === true)
+      .map(task => task.task_key);
+
+    if (keysToComplete.length > 0) {
+      await supabase.from('building_setup_tasks')
+        .update({ is_completed: true, completed_at: new Date().toISOString() })
+        .eq('building_id', buildingId)
+        .in('task_key', keysToComplete);
+      for (const task of tasks) {
+        if (keysToComplete.includes(task.task_key)) task.is_completed = true;
       }
     }
 

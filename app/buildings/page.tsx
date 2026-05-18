@@ -298,7 +298,6 @@ export default function BuildingsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { notifications } = useNotifications(user?.company_id ?? "");
-  if (notifications.length > 0) console.log('notifications con building_id:', notifications.map(n => ({ id: n.id, building_id: n.building_id, title: n.title })));
 
   /* Estado de datos */
   const [buildings, setBuildings] = useState<Building[]>([]);
