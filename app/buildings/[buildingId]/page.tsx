@@ -2394,6 +2394,8 @@ export default function BuildingDetailPage() {
       .filter(Boolean)
   );
 
+  const pendingSetupCount = setupTasks.filter(t => !t.is_completed && !t.dismissed).length;
+
   const pendingByTab = {
     services:  setupTasks.filter(t => !t.is_completed && !t.dismissed && ['add_electricity_meter','add_water_meter','add_gas_meter','setup_internet','setup_cleaning_schedule'].includes(t.task_key)),
     assets:    setupTasks.filter(t => !t.is_completed && !t.dismissed && ['setup_admin_office','setup_security_booth','setup_service_storage','add_first_asset','setup_loading_dock'].includes(t.task_key)),
@@ -2472,20 +2474,38 @@ export default function BuildingDetailPage() {
               <span>Editar</span>
             </button>
             {/* Features */}
-            <button
-              type="button"
-              onClick={() => void openFeaturesModal()}
-              style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: "10px 12px", borderRadius: 10,
-                border: "1px solid var(--border-default)", background: "var(--bg-card)",
-                color: "var(--text-primary)", cursor: "pointer",
-                fontSize: 11, fontWeight: 600,
-              }}
-            >
-              <Sliders size={18} />
-              <span>Features</span>
-            </button>
+            <span style={{ position: "relative", display: "inline-block" }}>
+              <button
+                type="button"
+                onClick={() => void openFeaturesModal()}
+                style={{
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 4, padding: "10px 12px", borderRadius: 10,
+                  border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                  color: "var(--text-primary)", cursor: "pointer",
+                  fontSize: 11, fontWeight: 600,
+                }}
+              >
+                <Sliders size={18} />
+                <span>Features</span>
+              </button>
+              {pendingSetupCount > 0 && (
+                <span
+                  style={{
+                    position: "absolute", top: -6, right: -6,
+                    width: 18, height: 18, borderRadius: "50%",
+                    border: "1.5px solid var(--accent, #8B2252)",
+                    color: "var(--accent, #8B2252)",
+                    background: "var(--bg-card)",
+                    fontSize: 10, fontWeight: 700,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    zIndex: 10, pointerEvents: "none",
+                  }}
+                >
+                  {pendingSetupCount}
+                </span>
+              )}
+            </span>
             {/* Unidades — oculto para terrenos y parques industriales */}
             {!hideUnitsUI && (
               <a
