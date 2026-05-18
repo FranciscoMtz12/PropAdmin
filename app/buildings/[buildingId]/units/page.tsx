@@ -99,6 +99,15 @@ type UnitRow = {
   } | null;
 };
 
+type UnitArea = {
+  id: string;
+  unit_id: string;
+  company_id: string;
+  area_type: string;
+  sqm: number | null;
+  notes: string | null;
+};
+
 /* ─── Helpers de estado ─────────────────────────────────────────────── */
 
 function normalizeStatus(status: string | null | undefined): string {
@@ -279,6 +288,7 @@ export default function BuildingUnitsPage() {
   const [units, setUnits]             = useState<UnitRow[]>([]);
   const [tenantsByUnitId, setTenantsByUnitId] = useState<Map<string, string>>(new Map());
   const [activeLeaseCountByUnitId, setActiveLeaseCountByUnitId] = useState<Map<string, number>>(new Map());
+  const [unitAreasMap, setUnitAreasMap] = useState<Record<string, UnitArea[]>>({});
   const [loadingData, setLoadingData] = useState(true);
   const [msg, setMsg]                 = useState("");
 
@@ -407,7 +417,25 @@ export default function BuildingUnitsPage() {
     const sorted = sortByNatural(raw, u => u.unit_number);
     setUnits(sorted);
 
-    /* 4. Nombre del inquilino activo para unidades ocupadas */
+    /* 4. Áreas de unidades (unit_areas) */
+    if (sorted.length > 0) {
+      const { data: unitAreasData } = await supabase
+        .from("unit_areas")
+        .select("*")
+        .in("unit_id", sorted.map((u) => u.id))
+        .is("deleted_at", null);
+
+      const areasMap: Record<string, UnitArea[]> = {};
+      (unitAreasData || []).forEach((area: UnitArea) => {
+        if (!areasMap[area.unit_id]) areasMap[area.unit_id] = [];
+        areasMap[area.unit_id].push(area);
+      });
+      setUnitAreasMap(areasMap);
+    } else {
+      setUnitAreasMap({});
+    }
+
+    /* 5. Nombre del inquilino activo para unidades ocupadas */
     const occupiedIds = sorted.filter((u) => isOccupied(u.status)).map((u) => u.id);
     const tenantMap = new Map<string, string>();
 
@@ -532,14 +560,8 @@ export default function BuildingUnitsPage() {
       const payload: UnitNotes = { ...createCommFlags };
       if (!isNaN(sqmVal) && sqmVal > 0) payload.sqm = sqmVal;
       if (Object.values(payload).some(Boolean)) notesJson = JSON.stringify(payload);
-    } else if (cat === "industrial" || cat === "industrial_park") {
-      const payload: UnitNotes = {};
-      const a = parseFloat(createIndAreas.almacen_sqm); if (!isNaN(a) && a > 0) payload.almacen_sqm = a;
-      const o = parseFloat(createIndAreas.oficina_sqm); if (!isNaN(o) && o > 0) payload.oficina_sqm = o;
-      const p = parseFloat(createIndAreas.patio_sqm);   if (!isNaN(p) && p > 0) payload.patio_sqm   = p;
-      const c = parseFloat(createIndAreas.carga_sqm);   if (!isNaN(c) && c > 0) payload.carga_sqm   = c;
-      if (Object.keys(payload).length > 0) notesJson = JSON.stringify(payload);
     }
+    /* industrial: las áreas se insertan en unit_areas — notes queda null */
 
     const insertRow: Record<string, unknown> = {
       company_id:  user.company_id,
@@ -563,6 +585,27 @@ export default function BuildingUnitsPage() {
     if (error || !newUnit) {
       setMsg(error?.message || `No se pudo crear ${labels.unit.toLowerCase()}.`);
       return;
+    }
+
+    /* Insertar áreas en unit_areas para industrial */
+    if (cat === "industrial" || cat === "industrial_park") {
+      const areasToInsert = [
+        { area_type: "almacen", sqm: parseFloat(createIndAreas.almacen_sqm) },
+        { area_type: "oficina", sqm: parseFloat(createIndAreas.oficina_sqm) },
+        { area_type: "patio",   sqm: parseFloat(createIndAreas.patio_sqm) },
+        { area_type: "carga",   sqm: parseFloat(createIndAreas.carga_sqm) },
+      ].filter((a) => !isNaN(a.sqm) && a.sqm > 0);
+
+      if (areasToInsert.length > 0) {
+        await supabase.from("unit_areas").insert(
+          areasToInsert.map((a) => ({
+            unit_id: newUnit.id,
+            company_id: building.company_id,
+            area_type: a.area_type,
+            sqm: a.sqm,
+          }))
+        );
+      }
     }
 
     /* Clonar assets base solo para residential_multi con tipología */
@@ -803,16 +846,10 @@ export default function BuildingUnitsPage() {
               const isCommercial = cat === "commercial";
               const isIndustrial = cat === "industrial" || cat === "industrial_park";
 
-              /* Métricas de áreas industriales */
-              const indTotal = isIndustrial && unitNotes
-                ? ((unitNotes.almacen_sqm ?? 0) + (unitNotes.oficina_sqm ?? 0) + (unitNotes.patio_sqm ?? 0) + (unitNotes.carga_sqm ?? 0))
-                : 0;
-              const indParts = isIndustrial && unitNotes ? [
-                unitNotes.almacen_sqm ? `${unitNotes.almacen_sqm} m² almacén` : "",
-                unitNotes.oficina_sqm ? `${unitNotes.oficina_sqm} m² oficina` : "",
-                unitNotes.patio_sqm   ? `${unitNotes.patio_sqm} m² patio`     : "",
-                unitNotes.carga_sqm   ? `${unitNotes.carga_sqm} m² carga`     : "",
-              ].filter(Boolean) : [];
+              /* Métricas de áreas industriales — desde unit_areas */
+              const areas = unitAreasMap[unit.id] ?? [];
+              const indTotal = isIndustrial ? areas.reduce((sum, a) => sum + (a.sqm ?? 0), 0) : 0;
+              const indParts = isIndustrial ? areas.map((a) => `${a.sqm} m² ${a.area_type}`) : [];
 
               return (
                 <div
