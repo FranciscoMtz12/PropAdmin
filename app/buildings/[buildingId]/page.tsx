@@ -684,6 +684,7 @@ export default function BuildingDetailPage() {
   const [childBuildings, setChildBuildings]   = useState<ChildBuilding[]>([]);
   /* Locales como units (plaza_comercial) */
   const [plazaLocales, setPlazaLocales]       = useState<PlazaLocal[]>([]);
+  const [unitsNeedingReview, setUnitsNeedingReview] = useState(0);
   const [commonAreas, setCommonAreas]         = useState<{ id: string; name: string }[]>([]);
   const [addingCommonArea, setAddingCommonArea] = useState(false);
   const [newCommonAreaName, setNewCommonAreaName] = useState("");
@@ -979,7 +980,7 @@ export default function BuildingDetailPage() {
     setBuildingAreas((areasResult.data || []) as BuildingArea[]);
 
     // Unidades del edificio para BuildingServicesTab + servicios para Resumen
-    const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
+    const [{ data: allUnits }, { data: utilMetersData }, { count: needsReviewCount }] = await Promise.all([
       supabase
         .from("units")
         .select("id, unit_number, display_code, sqm")
@@ -992,9 +993,16 @@ export default function BuildingDetailPage() {
         .eq("building_id", buildingId)
         .eq("active", true)
         .is("deleted_at", null),
+      supabase
+        .from("units")
+        .select("*", { count: "exact", head: true })
+        .eq("building_id", buildingId)
+        .eq("needs_review", true)
+        .is("deleted_at", null),
     ]);
     setBuildingUnits((allUnits || []) as UnitRow[]);
     setUtilityMeters((utilMetersData || []) as UtilityMeterForOverview[]);
+    setUnitsNeedingReview(needsReviewCount ?? 0);
 
     /* unit_areas por unidad — solo para edificios industriales (áreas automáticas en tab Superficies) */
     if (b.building_category === "industrial") {
@@ -1054,12 +1062,40 @@ export default function BuildingDetailPage() {
         .eq("building_id", buildingId)
         .is("deleted_at", null),
     ]);
-    setSetupTasks((tasksData || []) as SetupTask[]);
     setActiveFeatureKeys(new Set(
       ((featConfigData || []) as Array<{ feature_key: string; is_active: boolean }>)
         .filter((f) => f.is_active)
         .map((f) => f.feature_key)
     ));
+
+    const tasks = (tasksData || []) as SetupTask[];
+
+    /* Auto-completar 'add_first_unit' cuando ya hay unidades */
+    if ((allUnits?.length ?? 0) > 0) {
+      const t = tasks.find(task => task.task_key === 'add_first_unit' && !task.is_completed);
+      if (t) {
+        await supabase.from('building_setup_tasks')
+          .update({ is_completed: true, completed_at: new Date().toISOString() })
+          .eq('id', t.id);
+        for (const task of tasks) { if (task.task_key === 'add_first_unit') task.is_completed = true; }
+      }
+    }
+
+    /* Auto-completar 'add_first_lease' cuando hay unidades con inquilino */
+    const hasLeasedUnit = (unitsData as UnitStatusRow[]).some(
+      u => ['RENTED', 'OCCUPIED', 'PARTIAL'].includes(u.status ?? '')
+    );
+    if (hasLeasedUnit) {
+      const t = tasks.find(task => task.task_key === 'add_first_lease' && !task.is_completed);
+      if (t) {
+        await supabase.from('building_setup_tasks')
+          .update({ is_completed: true, completed_at: new Date().toISOString() })
+          .eq('id', t.id);
+        for (const task of tasks) { if (task.task_key === 'add_first_lease') task.is_completed = true; }
+      }
+    }
+
+    setSetupTasks(tasks.sort((a, b) => Number(a.is_completed) - Number(b.is_completed)));
 
     setLoadingBuilding(false);
   }
@@ -2133,7 +2169,7 @@ export default function BuildingDetailPage() {
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
-          ...(hasLocalesTab  ? [{ key: "locales",  label: "Locales",  icon: <Store size={16} />,     count: plazaLocales.length }] : []),
+          ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: '#EF9F27' } : undefined }] : []),
           ...(hasSuperficiesTab ? [{ key: "superficies", label: "Superficies", icon: <Ruler size={16} />, count: buildingAreas.length }] : []),
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
