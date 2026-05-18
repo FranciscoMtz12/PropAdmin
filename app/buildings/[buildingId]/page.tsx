@@ -271,6 +271,14 @@ type ChildBuilding = {
   construction_sqm: number | null;
 };
 
+type PlazaLocal = {
+  id: string;
+  unit_number: string;
+  display_code: string | null;
+  sqm: number | null;
+  status: string;
+};
+
 type FeatureConfigRow = {
   id: string;
   feature_key: string;
@@ -622,6 +630,8 @@ export default function BuildingDetailPage() {
 
   /* Bodegas hijas (industrial_park) */
   const [childBuildings, setChildBuildings]   = useState<ChildBuilding[]>([]);
+  /* Locales como units (plaza_comercial) */
+  const [plazaLocales, setPlazaLocales]       = useState<PlazaLocal[]>([]);
   const [commonAreas, setCommonAreas]         = useState<{ id: string; name: string }[]>([]);
   const [addingCommonArea, setAddingCommonArea] = useState(false);
   const [newCommonAreaName, setNewCommonAreaName] = useState("");
@@ -631,7 +641,6 @@ export default function BuildingDetailPage() {
   const [bodegaName, setBodegaName] = useState("");
   const [bodegaCode, setBodegaCode] = useState("");
   const [bodegaConstructionSqm, setBodegaConstructionSqm] = useState("");
-  const [bodegaFrenteMts, setBodegaFrenteMts] = useState("");   // local: frente en m
   const [bodegaPatioSqm, setBodegaPatioSqm] = useState("");    // bodega: patio de maniobras m²
   const [bodegaRampas, setBodegaRampas] = useState("");        // bodega: número de rampas
   const [bodegaMsg, setBodegaMsg] = useState("");
@@ -828,9 +837,9 @@ export default function BuildingDetailPage() {
       setLandLeases([]);
     }
 
-    /* Bodegas hijas (industrial_park) + Áreas comunes */
-    const [cbResult, caResult] = await Promise.all([
-      (b.building_category === "industrial_park" || b.building_subtype === "plaza_comercial")
+    /* Bodegas hijas (industrial_park) + Áreas comunes + Locales (plaza_comercial) */
+    const [cbResult, caResult, localesResult] = await Promise.all([
+      b.building_category === "industrial_park"
         ? supabase.from("buildings")
             .select("id, name, code, building_category, building_subtype, total_sqm, land_sqm, construction_sqm")
             .eq("parent_building_id", buildingId)
@@ -843,9 +852,17 @@ export default function BuildingDetailPage() {
         .eq("building_id", buildingId)
         .is("deleted_at", null)
         .order("created_at"),
+      b.building_subtype === "plaza_comercial"
+        ? supabase.from("units")
+            .select("id, unit_number, display_code, sqm, status")
+            .eq("building_id", buildingId)
+            .is("deleted_at", null)
+            .order("unit_number")
+        : Promise.resolve({ data: [] }),
     ]);
     setChildBuildings((cbResult.data || []) as ChildBuilding[]);
     setCommonAreas((caResult.data || []) as { id: string; name: string }[]);
+    setPlazaLocales((localesResult.data || []) as PlazaLocal[]);
 
     // Unidades del edificio para BuildingServicesTab + servicios para Resumen
     const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
@@ -1447,28 +1464,41 @@ export default function BuildingDetailPage() {
     if (!bodegaName.trim()) { setBodegaMsg("El nombre es obligatorio."); return; }
     setSavingBodega(true);
     setBodegaMsg("");
-    const isLocalCreation = building.building_subtype === "plaza_comercial";
-    const localFeatures: Record<string, unknown> = {};
-    if (isLocalCreation) {
-      if (bodegaFrenteMts.trim()) localFeatures.frente_metros = Number(bodegaFrenteMts);
+
+    let insertError: { message: string } | null = null;
+
+    if (building.building_subtype === "plaza_comercial") {
+      /* Plaza comercial: crear unit */
+      const { error } = await supabase.from("units").insert({
+        company_id:   user.company_id,
+        building_id:  building.id,
+        unit_number:  bodegaName.trim(),
+        display_code: bodegaCode.trim() || null,
+        sqm:          bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
+        status:       "VACANT",
+      });
+      insertError = error;
     } else {
+      /* Parque industrial: crear building hijo */
+      const localFeatures: Record<string, unknown> = {};
       if (bodegaPatioSqm.trim()) localFeatures.patio_sqm = Number(bodegaPatioSqm);
       if (bodegaRampas.trim())   localFeatures.rampas    = Number(bodegaRampas);
+      const { error } = await supabase.from("buildings").insert({
+        company_id:         user.company_id,
+        name:               bodegaName.trim(),
+        code:               bodegaCode.trim() || null,
+        building_category:  "industrial",
+        parent_building_id: building.id,
+        construction_sqm:   bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
+        building_features:  Object.keys(localFeatures).length ? localFeatures : null,
+      });
+      insertError = error;
     }
-    const { error } = await supabase.from("buildings").insert({
-      company_id: user.company_id,
-      name: bodegaName.trim(),
-      code: bodegaCode.trim() || null,
-      building_category: isLocalCreation ? "commercial" : "industrial",
-      building_subtype:  isLocalCreation ? "local_comercial" : null,
-      parent_building_id: building.id,
-      construction_sqm: bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
-      building_features: Object.keys(localFeatures).length ? localFeatures : null,
-    });
+
     setSavingBodega(false);
-    if (error) { setBodegaMsg(`Error: ${error.message}`); return; }
+    if (insertError) { setBodegaMsg(`Error: ${insertError.message}`); return; }
     setIsCreateBodegaOpen(false);
-    setBodegaName(""); setBodegaCode(""); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg("");
+    setBodegaName(""); setBodegaCode(""); setBodegaConstructionSqm(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg("");
     await loadBuilding();
   }
 
@@ -1801,7 +1831,7 @@ export default function BuildingDetailPage() {
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
-          ...(hasLocalesTab  ? [{ key: "locales",  label: "Locales",  icon: <Store size={16} />,     count: childBuildings.length }] : []),
+          ...(hasLocalesTab  ? [{ key: "locales",  label: "Locales",  icon: <Store size={16} />,     count: plazaLocales.length }] : []),
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
@@ -1820,17 +1850,28 @@ export default function BuildingDetailPage() {
           {/* ── Fila 1: métricas ── */}
           {isIndustrialPark || isPlazaComercial ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
-              <MetricCard
-                label={isPlazaComercial ? "Locales" : "Bodegas"}
-                value={String(childBuildings.length)}
-                icon={isPlazaComercial ? <Store size={18} /> : <Warehouse size={18} />}
-                helper={isPlazaComercial ? "Locales en la plaza" : "Naves en el parque"}
-              />
-              {building.land_sqm != null && (
-                <MetricCard label="M² totales" value={`${building.land_sqm.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="M² de terreno" />
-              )}
-              {building.construction_sqm != null && (
-                <MetricCard label="M² construcción" value={`${building.construction_sqm.toLocaleString("es-MX")} m²`} icon={<Building2 size={18} />} helper="M² construidos" />
+              {isPlazaComercial ? (
+                <>
+                  <MetricCard label="Locales" value={String(plazaLocales.length)} icon={<Store size={18} />} helper="Locales en la plaza" />
+                  <MetricCard label="Ocupados" value={String(plazaLocales.filter((l) => l.status === "OCCUPIED").length)} icon={<Store size={18} />} helper="Locales rentados" variant="green" />
+                  <MetricCard label="Disponibles" value={String(plazaLocales.filter((l) => l.status === "VACANT").length)} icon={<Store size={18} />} helper="Locales vacantes" variant="blue" />
+                  {(() => {
+                    const totalSqm = plazaLocales.reduce((s, l) => s + (l.sqm ?? 0), 0);
+                    return totalSqm > 0
+                      ? <MetricCard label="M² totales" value={`${totalSqm.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="Suma de m² de locales" />
+                      : null;
+                  })()}
+                </>
+              ) : (
+                <>
+                  <MetricCard label="Bodegas" value={String(childBuildings.length)} icon={<Warehouse size={18} />} helper="Naves en el parque" />
+                  {building.land_sqm != null && (
+                    <MetricCard label="M² totales" value={`${building.land_sqm.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="M² de terreno" />
+                  )}
+                  {building.construction_sqm != null && (
+                    <MetricCard label="M² construcción" value={`${building.construction_sqm.toLocaleString("es-MX")} m²`} icon={<Building2 size={18} />} helper="M² construidos" />
+                  )}
+                </>
               )}
             </div>
           ) : (
@@ -2787,7 +2828,7 @@ export default function BuildingDetailPage() {
             subtitle="Naves industriales que forman parte de este parque."
             icon={<Warehouse size={18} />}
             action={
-              <UiButton icon={<Plus size={15} />} onClick={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+              <UiButton icon={<Plus size={15} />} onClick={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(`B-${n}`); setBodegaConstructionSqm(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
                 Agregar bodega
               </UiButton>
             }
@@ -2797,7 +2838,7 @@ export default function BuildingDetailPage() {
                 title="Sin bodegas registradas"
                 description="Agrega la primera bodega para comenzar a gestionar el parque industrial."
                 actionLabel="Agregar primera bodega"
-                onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+                onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(`B-${n}`); setBodegaConstructionSqm(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
               />
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
@@ -2832,34 +2873,54 @@ export default function BuildingDetailPage() {
             subtitle="Espacios comerciales que forman parte de esta plaza."
             icon={<Store size={18} />}
             action={
-              <UiButton icon={<Plus size={15} />} onClick={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}>
+              <UiButton icon={<Plus size={15} />} onClick={() => {
+                const n = (plazaLocales.length + 1).toString().padStart(2, "0");
+                setBodegaName(""); setBodegaCode(`L-${n}`); setBodegaConstructionSqm(""); setBodegaMsg("");
+                setIsCreateBodegaOpen(true);
+              }}>
                 Agregar local
               </UiButton>
             }
           >
-            {childBuildings.length === 0 ? (
+            {plazaLocales.length === 0 ? (
               <AppEmptyState
                 title="Sin locales registrados"
                 description="Agrega el primer local para comenzar a gestionar la plaza comercial."
                 actionLabel="Agregar primer local"
-                onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(isPlazaComercial ? `L-${n}` : `B-${n}`); setBodegaConstructionSqm(""); setBodegaFrenteMts(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
+                onAction={() => {
+                  const n = (plazaLocales.length + 1).toString().padStart(2, "0");
+                  setBodegaName(""); setBodegaCode(`L-${n}`); setBodegaConstructionSqm(""); setBodegaMsg("");
+                  setIsCreateBodegaOpen(true);
+                }}
               />
             ) : (
               <div style={{ display: "grid", gap: 10 }}>
-                {childBuildings.map((cb) => (
-                  <AppCard key={cb.id} style={{ padding: 16, borderRadius: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <div>
-                        <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>{cb.name}</strong>
-                        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
-                          {cb.code ? `Código: ${cb.code}` : "Sin código"}
-                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m²` : ""}
-                        </p>
+                {plazaLocales.map((local) => {
+                  const occupied = local.status === "OCCUPIED";
+                  return (
+                    <AppCard key={local.id} style={{ padding: 16, borderRadius: 14 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                        <div>
+                          <strong style={{ fontSize: 14, display: "block", marginBottom: 4 }}>{local.unit_number}</strong>
+                          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
+                            {local.display_code ? `Código: ${local.display_code}` : "Sin código"}
+                            {local.sqm != null ? ` · ${local.sqm.toLocaleString("es-MX")} m²` : ""}
+                          </p>
+                        </div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                          <AppBadge
+                            backgroundColor={occupied ? "var(--badge-bg-green)" : "var(--badge-bg-blue)"}
+                            textColor={occupied ? "var(--badge-text-green)" : "var(--badge-text-blue)"}
+                            borderColor={occupied ? "var(--metric-border-green)" : "var(--metric-border-neutral)"}
+                          >
+                            {occupied ? "Rentado" : "Disponible"}
+                          </AppBadge>
+                          <UiButton href={`/buildings/${building.id}/units/${local.id}`}>Ver detalle</UiButton>
+                        </div>
                       </div>
-                      <UiButton href={`/buildings/${cb.id}`}>Ver detalle</UiButton>
-                    </div>
-                  </AppCard>
-                ))}
+                    </AppCard>
+                  );
+                })}
               </div>
             )}
           </SectionCard>
@@ -3093,14 +3154,9 @@ export default function BuildingDetailPage() {
           </AppFormField>
 
           {isPlazaComercial ? (
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <AppFormField label="Metros cuadrados">
-                <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" min={0} step={0.5} placeholder="Ej: 85" style={INPUT_STYLE} />
-              </AppFormField>
-              <AppFormField label="Frente (m)">
-                <input value={bodegaFrenteMts} onChange={(e) => setBodegaFrenteMts(e.target.value)} type="number" min={0} step={0.1} placeholder="Ej: 8.5" style={INPUT_STYLE} />
-              </AppFormField>
-            </div>
+            <AppFormField label="Metros cuadrados">
+              <input value={bodegaConstructionSqm} onChange={(e) => setBodegaConstructionSqm(e.target.value)} type="number" min={0} step={0.5} placeholder="Ej: 85" style={INPUT_STYLE} />
+            </AppFormField>
           ) : (
             <>
               <AppFormField label="M² de construcción">
