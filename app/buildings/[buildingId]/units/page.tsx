@@ -92,7 +92,6 @@ type UnitRow = {
   floor: number | null;
   status: string;
   rental_type: string | null;
-  notes: string | null;
   sqm: number | null;
   needs_review: boolean | null;
   /* Datos de la tipología — vienen del JOIN, NO son columnas propias de units */
@@ -423,7 +422,6 @@ export default function BuildingUnitsPage() {
         floor,
         status,
         rental_type,
-        notes,
         sqm,
         needs_review,
         unit_types(name, bedrooms, bathrooms)
@@ -634,7 +632,6 @@ export default function BuildingUnitsPage() {
         display_code: displayCode,
         floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
         status:       "VACANT",
-        notes:        null,
         needs_review: isBulk,
       };
       if (cat === "commercial") {
@@ -747,7 +744,6 @@ export default function BuildingUnitsPage() {
         display_code: displayCode,
         floor:        unit.floor,
         status:       "VACANT",
-        notes:        null,
         needs_review: true,
         sqm:          unit.sqm,
       };
