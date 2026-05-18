@@ -327,8 +327,10 @@ export default function BuildingUnitsPage() {
   /* Cantidad de unidades a crear en lote */
   const [createCount, setCreateCount] = useState(1);
 
-  /* Estado de duplicar unidad */
-  const [duplicating, setDuplicating] = useState(false);
+  /* Estado del modal de duplicar unidad */
+  const [pendingDupUnit, setPendingDupUnit] = useState<UnitRow | null>(null);
+  const [dupUnitCount, setDupUnitCount]     = useState(1);
+  const [duplicating, setDuplicating]       = useState(false);
 
   /* Estado del modal de eliminar */
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -705,71 +707,78 @@ export default function BuildingUnitsPage() {
     await loadPageData();
   });
 
-  async function handleDuplicateUnit(unit: UnitRow) {
-    if (!user?.company_id || !building) return;
+  async function handleDuplicateUnit() {
+    const unit = pendingDupUnit;
+    if (!user?.company_id || !building || !unit) return;
     setDuplicating(true);
-    setOpenActionsUnitId(null);
 
-    const existingNumbers = units.map(u => u.unit_number);
+    /* Calcular el máximo con el mismo prefijo una sola vez, luego iterar */
+    const existingNumbers = new Set(units.map(u => u.unit_number.toLowerCase()));
     const parsed = parseUnitPattern(unit.unit_number);
-    let newNumber: string;
+    let nextNum: number | null = null;
+    let basePrefix = "", basePad = 1;
     if (parsed) {
-      /* Incrementar 1 desde el máximo con el mismo prefijo */
-      const samePrefix = existingNumbers
-        .map(n => parseUnitPattern(n))
+      basePrefix = parsed.prefix; basePad = parsed.padLen;
+      const samePrefix = units
+        .map(u => parseUnitPattern(u.unit_number))
         .filter((p): p is NonNullable<typeof p> => p !== null && p.prefix === parsed.prefix)
         .map(p => p.num);
-      const maxNum = samePrefix.length > 0 ? Math.max(...samePrefix) : parsed.num;
-      newNumber = nextAvailableNumber(buildUnitNumber(parsed.prefix, maxNum + 1, parsed.padLen), existingNumbers);
-    } else {
-      newNumber = nextAvailableNumber(`${unit.unit_number} 2`, existingNumbers);
+      nextNum = (samePrefix.length > 0 ? Math.max(...samePrefix) : parsed.num) + 1;
     }
 
-    const displayCode = generateDisplayCode(building.code, newNumber);
-    const insertRow: Record<string, unknown> = {
-      company_id:   user.company_id,
-      building_id:  building.id,
-      unit_number:  newNumber,
-      display_code: displayCode,
-      floor:        unit.floor,
-      status:       "VACANT",
-      notes:        null,
-      needs_review: true,
-      sqm:          unit.sqm,
-    };
-    if (unit.unit_type_id) insertRow.unit_type_id = unit.unit_type_id;
+    let created = 0;
+    for (let i = 0; i < dupUnitCount; i++) {
+      let newNumber: string;
+      if (parsed && nextNum !== null) {
+        let n = nextNum;
+        let c = buildUnitNumber(basePrefix, n, basePad);
+        while (existingNumbers.has(c.toLowerCase())) { n++; c = buildUnitNumber(basePrefix, n, basePad); }
+        newNumber = c; nextNum = n + 1;
+      } else {
+        newNumber = nextAvailableNumber(`${unit.unit_number} 2`, [...existingNumbers]);
+      }
+      existingNumbers.add(newNumber.toLowerCase());
 
-    const { data: newUnit, error } = await supabase
-      .from("units")
-      .insert(insertRow)
-      .select("id")
-      .single();
+      const displayCode = generateDisplayCode(building.code, newNumber);
+      const insertRow: Record<string, unknown> = {
+        company_id:   user.company_id,
+        building_id:  building.id,
+        unit_number:  newNumber,
+        display_code: displayCode,
+        floor:        unit.floor,
+        status:       "VACANT",
+        notes:        null,
+        needs_review: true,
+        sqm:          unit.sqm,
+      };
+      if (unit.unit_type_id) insertRow.unit_type_id = unit.unit_type_id;
 
-    if (error || !newUnit) {
-      toast.error(`No se pudo duplicar: ${error?.message || "error desconocido"}`);
-      setDuplicating(false);
-      return;
-    }
+      const { data: newUnit, error } = await supabase.from("units").insert(insertRow).select("id").single();
+      if (error || !newUnit) { toast.error(`Error en copia ${i + 1}: ${error?.message || "error"}`); break; }
+      created++;
 
-    /* Copiar unit_areas */
-    const srcAreas = unitAreasMap[unit.id] ?? [];
-    if (srcAreas.length > 0) {
-      await supabase.from("unit_areas").insert(
-        srcAreas.map(a => ({ unit_id: newUnit.id, company_id: building.company_id, area_type: a.area_type, sqm: a.sqm }))
-      );
-    }
+      const srcAreas = unitAreasMap[unit.id] ?? [];
+      if (srcAreas.length > 0) {
+        await supabase.from("unit_areas").insert(
+          srcAreas.map(a => ({ unit_id: newUnit.id, company_id: building.company_id, area_type: a.area_type, sqm: a.sqm }))
+        );
+      }
 
-    /* Copiar unit_amenities */
-    const srcAmenities = unitAmenitiesMap[unit.id];
-    if (srcAmenities && srcAmenities.size > 0) {
-      await supabase.from("unit_amenities").insert(
-        [...srcAmenities].map(key => ({ unit_id: newUnit.id, company_id: building.company_id, amenity_key: key }))
-      );
+      const srcAmenities = unitAmenitiesMap[unit.id];
+      if (srcAmenities && srcAmenities.size > 0) {
+        await supabase.from("unit_amenities").insert(
+          [...srcAmenities].map(key => ({ unit_id: newUnit.id, company_id: building.company_id, amenity_key: key }))
+        );
+      }
     }
 
     setDuplicating(false);
-    toast.success("Unidad duplicada — revisa los datos antes de continuar");
-    await loadPageData();
+    setPendingDupUnit(null);
+    setDupUnitCount(1);
+    if (created > 0) {
+      toast.success(`${created} ${created === 1 ? "unidad duplicada" : "unidades duplicadas"} — revisa los datos`);
+      await loadPageData();
+    }
   }
 
   function openDeleteModal(unit: UnitRow) {
@@ -1060,7 +1069,7 @@ export default function BuildingUnitsPage() {
                       {openActionsUnitId === unit.id && (
                         <div style={dropdownMenuStyle}>
                           <button type="button" onClick={() => openEditModal(unit)}                    style={dropdownActionButtonStyle}><Edit3  size={14} /> Editar</button>
-                          <button type="button" onClick={() => void handleDuplicateUnit(unit)} disabled={duplicating} style={dropdownActionButtonStyle}><Copy   size={14} /> Duplicar</button>
+                          <button type="button" onClick={() => { setPendingDupUnit(unit); setDupUnitCount(1); setOpenActionsUnitId(null); }} style={dropdownActionButtonStyle}><Copy size={14} /> Duplicar</button>
                           <button type="button" onClick={() => openDeleteModal(unit)}                  style={dropdownDeleteItemStyle}><Trash2 size={14} /> Eliminar</button>
                         </div>
                       )}
@@ -1372,6 +1381,37 @@ export default function BuildingUnitsPage() {
             </UiButton>
           </div>
         </form>
+      </Modal>
+
+      {/* ── Modal duplicar unidad ── */}
+      <Modal
+        open={pendingDupUnit !== null}
+        onClose={() => { if (!duplicating) { setPendingDupUnit(null); setDupUnitCount(1); } }}
+        title={`Duplicar ${labels.unit.toLowerCase()}`}
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
+            ¿Cuántas copias quieres crear de <strong>{pendingDupUnit?.unit_number}</strong>?
+          </p>
+          <AppFormField label="Cantidad de copias">
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={dupUnitCount}
+              onChange={e => setDupUnitCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <UiButton variant="secondary" disabled={duplicating} onClick={() => { setPendingDupUnit(null); setDupUnitCount(1); }}>
+              Cancelar
+            </UiButton>
+            <UiButton variant="primary" disabled={duplicating} onClick={() => void handleDuplicateUnit()}>
+              {duplicating ? "Duplicando..." : `Duplicar${dupUnitCount > 1 ? ` (${dupUnitCount})` : ""}`}
+            </UiButton>
+          </div>
+        </div>
       </Modal>
     </PageContainer>
   );

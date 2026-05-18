@@ -707,6 +707,9 @@ export default function BuildingDetailPage() {
   const [savingLocal, setSavingLocal]               = useState(false);
   const [deletingLocal, setDeletingLocal]           = useState<PlazaLocal | null>(null);
   const [confirmingDeleteLocal, setConfirmingDeleteLocal] = useState(false);
+  const [duplicatingLocal, setDuplicatingLocal]     = useState<PlazaLocal | null>(null);
+  const [dupLocalCount, setDupLocalCount]           = useState(1);
+  const [dupLocalSaving, setDupLocalSaving]         = useState(false);
 
   /* Cajones de estacionamiento */
   const [parkingSpots, setParkingSpots]   = useState<ParkingSpot[]>([]);
@@ -1654,54 +1657,94 @@ export default function BuildingDetailPage() {
     await loadBuilding();
   }
 
-  async function handleDuplicateLocal(local: PlazaLocal) {
-    if (!user?.company_id || !building) return;
-    setOpenActionsLocalId(null);
+  async function handleDuplicateLocal() {
+    const local = duplicatingLocal;
+    if (!user?.company_id || !building || !local) return;
+    setDupLocalSaving(true);
 
-    /* Encontrar el siguiente número disponible con el mismo prefijo */
-    const m = local.unit_number.match(/^(.*?)(\d+)$/);
-    let newNumber: string;
-    if (m) {
-      const prefix = m[1];
-      const padLen = m[2].length;
-      const samePrefix = plazaLocales
-        .map(l => { const pm = l.unit_number.match(/^(.*?)(\d+)$/); return pm && pm[1] === prefix ? parseInt(pm[2], 10) : null; })
+    /* Patrones: unit_number para el nombre, display_code para el código */
+    const nameMatch = local.unit_number.match(/^(.*?)(\d+)$/);
+    const codeBase  = local.display_code ?? local.unit_number;
+    const codeMatch = codeBase.match(/^(.*?)(\d+)$/);
+
+    const existingNames = new Set(plazaLocales.map(l => l.unit_number.toLowerCase()));
+    const existingCodes = new Set(plazaLocales.map(l => (l.display_code ?? "").toLowerCase()));
+
+    /* Máximo actual por prefijo de nombre */
+    let nameNext = 2, namePrefix = "", namePad = 1;
+    if (nameMatch) {
+      namePrefix = nameMatch[1]; namePad = nameMatch[2].length;
+      const nums = plazaLocales
+        .map(l => { const m = l.unit_number.match(/^(.*?)(\d+)$/); return m && m[1] === namePrefix ? parseInt(m[2], 10) : null; })
         .filter((n): n is number => n !== null);
-      let candidate = (samePrefix.length > 0 ? Math.max(...samePrefix) : parseInt(m[2], 10)) + 1;
-      const existing = new Set(plazaLocales.map(l => l.unit_number.toLowerCase()));
-      while (existing.has((prefix + String(candidate).padStart(padLen, "0")).toLowerCase())) candidate++;
-      newNumber = prefix + (padLen > 1 ? String(candidate).padStart(padLen, "0") : String(candidate));
-    } else {
-      let candidate = `${local.unit_number} 2`;
-      const existing = new Set(plazaLocales.map(l => l.unit_number.toLowerCase()));
-      let i = 2;
-      while (existing.has(candidate.toLowerCase())) candidate = `${local.unit_number} ${++i}`;
-      newNumber = candidate;
+      nameNext = (nums.length > 0 ? Math.max(...nums) : parseInt(nameMatch[2], 10)) + 1;
     }
 
-    const { data: newLocal, error } = await supabase.from("units").insert({
-      company_id:   user.company_id,
-      building_id:  building.id,
-      unit_number:  newNumber,
-      display_code: building.code ? `${building.code}-${newNumber}` : newNumber,
-      sqm:          local.sqm,
-      status:       "VACANT",
-      needs_review: true,
-    }).select("id").single();
-
-    if (error || !newLocal) { toast.error(`No se pudo duplicar: ${error?.message ?? "error desconocido"}`); return; }
-
-    /* Copiar amenidades */
-    const { data: amenities } = await supabase.from("unit_amenities")
-      .select("amenity_key").eq("unit_id", local.id).is("deleted_at", null);
-    if (amenities && amenities.length > 0) {
-      await supabase.from("unit_amenities").insert(
-        amenities.map((a: { amenity_key: string }) => ({ unit_id: newLocal.id, company_id: building.company_id, amenity_key: a.amenity_key }))
-      );
+    /* Máximo actual por prefijo de código */
+    let codeNext = 2, codePrefix = "", codePad = 2, hasCodePattern = false;
+    if (codeMatch) {
+      hasCodePattern = true; codePrefix = codeMatch[1]; codePad = codeMatch[2].length;
+      const nums = plazaLocales
+        .map(l => { const m = (l.display_code ?? "").match(/^(.*?)(\d+)$/); return m && m[1] === codePrefix ? parseInt(m[2], 10) : null; })
+        .filter((n): n is number => n !== null);
+      codeNext = (nums.length > 0 ? Math.max(...nums) : parseInt(codeMatch[2], 10)) + 1;
     }
 
-    toast.success("Local duplicado — revisa los datos antes de continuar");
-    await loadBuilding();
+    let created = 0;
+    for (let i = 0; i < dupLocalCount; i++) {
+      /* unit_number */
+      let newName: string;
+      if (nameMatch) {
+        let n = nameNext;
+        let c = namePrefix + (namePad > 1 ? String(n).padStart(namePad, "0") : String(n));
+        while (existingNames.has(c.toLowerCase())) { n++; c = namePrefix + (namePad > 1 ? String(n).padStart(namePad, "0") : String(n)); }
+        newName = c; nameNext = n + 1;
+      } else {
+        let n = 2; let c = `${local.unit_number} ${n}`;
+        while (existingNames.has(c.toLowerCase())) c = `${local.unit_number} ${++n}`;
+        newName = c;
+      }
+      existingNames.add(newName.toLowerCase());
+
+      /* display_code */
+      let newCode: string | null = null;
+      if (hasCodePattern) {
+        let n = codeNext;
+        let c = codePrefix + String(n).padStart(codePad, "0");
+        while (existingCodes.has(c.toLowerCase())) { n++; c = codePrefix + String(n).padStart(codePad, "0"); }
+        newCode = c; codeNext = n + 1;
+        existingCodes.add(newCode.toLowerCase());
+      }
+
+      const { data: newLocal, error } = await supabase.from("units").insert({
+        company_id:   user.company_id,
+        building_id:  building.id,
+        unit_number:  newName,
+        display_code: newCode,
+        sqm:          local.sqm,
+        status:       "VACANT",
+        needs_review: true,
+      }).select("id").single();
+
+      if (error || !newLocal) { toast.error(`Error en copia ${i + 1}: ${error?.message ?? "error"}`); break; }
+      created++;
+
+      const { data: amenities } = await supabase.from("unit_amenities")
+        .select("amenity_key").eq("unit_id", local.id).is("deleted_at", null);
+      if (amenities && amenities.length > 0) {
+        await supabase.from("unit_amenities").insert(
+          amenities.map((a: { amenity_key: string }) => ({ unit_id: newLocal.id, company_id: building.company_id, amenity_key: a.amenity_key }))
+        );
+      }
+    }
+
+    setDupLocalSaving(false);
+    setDuplicatingLocal(null);
+    setDupLocalCount(1);
+    if (created > 0) {
+      toast.success(`${created} ${created === 1 ? "copia creada" : "copias creadas"} — revisa los datos`);
+      await loadBuilding();
+    }
   }
 
   async function handleDeleteLocal() {
@@ -3242,7 +3285,7 @@ export default function BuildingDetailPage() {
                                 <button type="button" style={dropdownActionButtonStyle} onClick={() => openEditLocal(local)}>
                                   <Edit3 size={14} /> Editar
                                 </button>
-                                <button type="button" style={dropdownActionButtonStyle} onClick={() => void handleDuplicateLocal(local)}>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => { setDuplicatingLocal(local); setDupLocalCount(1); setOpenActionsLocalId(null); }}>
                                   <Copy size={14} /> Duplicar
                                 </button>
                                 <button type="button" style={dropdownDeleteItemStyle} onClick={() => { setDeletingLocal(local); setOpenActionsLocalId(null); }}>
@@ -4182,6 +4225,37 @@ export default function BuildingDetailPage() {
         onConfirm={() => void handleDeleteLocal()}
         onCancel={() => { if (!confirmingDeleteLocal) setDeletingLocal(null); }}
       />
+
+      {/* ── Modal duplicar local ── */}
+      <Modal
+        open={duplicatingLocal !== null}
+        onClose={() => { if (!dupLocalSaving) { setDuplicatingLocal(null); setDupLocalCount(1); } }}
+        title="Duplicar local"
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
+            ¿Cuántas copias quieres crear de <strong>{duplicatingLocal?.unit_number}</strong>?
+          </p>
+          <AppFormField label="Cantidad de copias">
+            <input
+              type="number"
+              min={1}
+              max={50}
+              value={dupLocalCount}
+              onChange={e => setDupLocalCount(Math.min(50, Math.max(1, parseInt(e.target.value) || 1)))}
+              style={INPUT_STYLE}
+            />
+          </AppFormField>
+          <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+            <UiButton variant="secondary" disabled={dupLocalSaving} onClick={() => { setDuplicatingLocal(null); setDupLocalCount(1); }}>
+              Cancelar
+            </UiButton>
+            <UiButton variant="primary" disabled={dupLocalSaving} onClick={() => void handleDuplicateLocal()}>
+              {dupLocalSaving ? "Duplicando..." : `Duplicar${dupLocalCount > 1 ? ` (${dupLocalCount})` : ""}`}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
 
     </PageContainer>
   );
