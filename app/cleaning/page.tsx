@@ -889,6 +889,19 @@ export default function CleaningPage() {
     user?.role === "mantenimiento" ||
     Boolean(user?.is_superadmin);
 
+  useEffect(() => {
+    if (!selectedTask || !canEdit) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        if (!submittingCompletion) void completeTask();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedTask, canEdit, submittingCompletion]);
+
   return (
     <PageContainer>
       <PageHeader

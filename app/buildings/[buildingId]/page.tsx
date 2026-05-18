@@ -770,6 +770,32 @@ export default function BuildingDetailPage() {
     if (tab) setActiveTab(tab);
   }, [searchParams]);
 
+  useEffect(() => {
+    if (!createSpotOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (!savingSpot && newSpotNumber) void handleCreateSpot();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [createSpotOpen, savingSpot, newSpotNumber]);
+
+  useEffect(() => {
+    if (!areaCreateOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        if (!savingArea) void handleCreateArea();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [areaCreateOpen, savingArea, newAreaType, newAreaLabel, newAreaSqm]);
+
   /* ── Carga de datos ──────────────────────────────────────────────── */
 
   async function loadBuilding() {
