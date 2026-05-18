@@ -47,87 +47,91 @@ export default function AppTabs({
         const isActive = item.key === activeKey;
 
         return (
-          <button
-            key={item.key}
-            type="button"
-            className="app-tab-item"
-            onClick={() => onChange(item.key)}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "10px 14px",
-              borderRadius: 999,
-              border: isActive
-                ? "1px solid var(--accent)"
-                : "1px solid var(--border-default)",
-              background: isActive ? "var(--accent)" : "var(--bg-card)",
-              color: isActive ? "#ffffff" : "var(--text-secondary)",
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: "pointer",
-              whiteSpace: "nowrap",
-              minWidth: "fit-content",
-              transition: "background 0.15s, border-color 0.15s, color 0.15s",
-            }}
-          >
-            {item.icon ? (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  lineHeight: 0,
-                }}
-              >
-                {item.icon}
-              </span>
-            ) : null}
+          <span key={item.key} style={{ position: "relative", display: "inline-block" }}>
+            <button
+              type="button"
+              className="app-tab-item"
+              onClick={() => onChange(item.key)}
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 8,
+                padding: "10px 14px",
+                borderRadius: 999,
+                border: isActive
+                  ? "1px solid var(--accent)"
+                  : "1px solid var(--border-default)",
+                background: isActive ? "var(--accent)" : "var(--bg-card)",
+                color: isActive ? "#ffffff" : "var(--text-secondary)",
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+                minWidth: "fit-content",
+                transition: "background 0.15s, border-color 0.15s, color 0.15s",
+              }}
+            >
+              {item.icon ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    lineHeight: 0,
+                  }}
+                >
+                  {item.icon}
+                </span>
+              ) : null}
 
-            <span>{item.label}</span>
+              <span>{item.label}</span>
 
-            {typeof item.count === "number" ? (
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: 22,
-                  height: 22,
-                  padding: "0 8px",
-                  borderRadius: 999,
-                  background: isActive ? "rgba(255,255,255,0.25)" : "var(--divider)",
-                  color: isActive ? "#ffffff" : "var(--text-secondary)",
-                  fontSize: 12,
-                  fontWeight: 700,
-                }}
-              >
-                {item.count}
-              </span>
-            ) : null}
+              {typeof item.count === "number" ? (
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    minWidth: 22,
+                    height: 22,
+                    padding: "0 8px",
+                    borderRadius: 999,
+                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--divider)",
+                    color: isActive ? "#ffffff" : "var(--text-secondary)",
+                    fontSize: 12,
+                    fontWeight: 700,
+                  }}
+                >
+                  {item.count}
+                </span>
+              ) : null}
+            </button>
 
             {item.notifDot ? (
               <span
                 style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  minWidth: 16,
-                  height: 16,
-                  padding: "0 4px",
-                  borderRadius: 999,
-                  background: "transparent",
+                  position: "absolute",
+                  top: -6,
+                  right: -6,
+                  width: 18,
+                  height: 18,
+                  borderRadius: "50%",
                   border: `1.5px solid ${item.notifDot.color}`,
+                  color: item.notifDot.color,
+                  background: "var(--bg-card)",
                   fontSize: 10,
                   fontWeight: 700,
-                  color: item.notifDot.color,
-                  lineHeight: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  zIndex: 10,
+                  pointerEvents: "none",
                 }}
               >
                 {item.notifDot.count}
               </span>
             ) : null}
-          </button>
+          </span>
         );
       })}
     </div>
