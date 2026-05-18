@@ -39,6 +39,7 @@ import {
   Package,
   Pencil,
   Plus,
+  Ruler,
   Trash2,
   Users,
   XCircle,
@@ -47,6 +48,7 @@ import {
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { getPropertyLabels, buildingOf, BUILDING_FEATURES } from "@/lib/property-types";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -66,6 +68,8 @@ type Building = {
   name: string;
   code: string | null;
   address: string | null;
+  building_category: string | null;
+  building_subtype: string | null;
 };
 
 type UnitType = {
@@ -87,7 +91,14 @@ type UnitDetail = {
   floor: number | null;
   status: string;
   rental_type: string | null;
+  sqm: number | null;
   unit_types: { name: string; bedroom_count: number | null; bedrooms: number | null; bathrooms: number | null } | null;
+};
+
+type UnitAreaRow = {
+  id: string;
+  area_type: string;
+  sqm: number | null;
 };
 
 type Tenant = {
@@ -472,6 +483,9 @@ export default function UnitDetailPage() {
   const [showDeleteLeaseModal, setShowDeleteLeaseModal] = useState(false);
   const [leaseToDelete, setLeaseToDelete] = useState<LeaseRow | null>(null);
 
+  const [unitAmenities, setUnitAmenities] = useState<Set<string>>(new Set());
+  const [unitAreas, setUnitAreas] = useState<UnitAreaRow[]>([]);
+
   const [msg, setMsg] = useState("");
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
@@ -495,7 +509,7 @@ export default function UnitDetailPage() {
 
     const { data: buildingData, error: buildingError } = await supabase
       .from("buildings")
-      .select("id, company_id, name, code, address")
+      .select("id, company_id, name, code, address, building_category, building_subtype")
       .eq("id", buildingId)
       .eq("company_id", user.company_id)
       .is("deleted_at", null)
@@ -521,6 +535,7 @@ export default function UnitDetailPage() {
         floor,
         status,
         rental_type,
+        sqm,
         unit_types(name, bedroom_count, bedrooms, bathrooms)
       `)
       .eq("id", unitId)
@@ -552,6 +567,8 @@ export default function UnitDetailPage() {
       { data: tenantsData, error: tenantsError },
       { data: leaseData, error: leaseError },
       { data: assetData, error: assetError },
+      { data: amenitiesData },
+      { data: areasData },
     ] = await Promise.all([
       supabase
         .from("unit_types")
@@ -587,6 +604,21 @@ export default function UnitDetailPage() {
         .eq("building_id", buildingId)
         .eq("company_id", user.company_id)
         .is("deleted_at", null),
+
+      supabase
+        .from("unit_amenities")
+        .select("amenity_key")
+        .eq("unit_id", unitId)
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null),
+
+      supabase
+        .from("unit_areas")
+        .select("id, area_type, sqm")
+        .eq("unit_id", unitId)
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true }),
     ]);
 
     if (unitTypeError) {
@@ -602,13 +634,13 @@ export default function UnitDetailPage() {
     }
 
     if (leaseError) {
-      setMsg("No se pudo cargar el historial del departamento.");
+      setMsg("No se pudo cargar el historial de contratos.");
       setLoadingData(false);
       return;
     }
 
     if (assetError) {
-      setMsg("No se pudieron cargar los assets del departamento.");
+      setMsg("No se pudieron cargar los assets.");
       setLoadingData(false);
       return;
     }
@@ -617,6 +649,8 @@ export default function UnitDetailPage() {
     setTenants((tenantsData as Tenant[]) || []);
     setLeaseHistory((leaseData as LeaseRow[]) || []);
     setAssets((assetData as AssetMiniRow[]) || []);
+    setUnitAmenities(new Set((amenitiesData || []).map((r: { amenity_key: string }) => r.amenity_key)));
+    setUnitAreas((areasData as UnitAreaRow[]) || []);
     setLoadingData(false);
   }
 
@@ -668,11 +702,11 @@ export default function UnitDetailPage() {
     }
 
     if (!unitNumber.trim()) {
-      setMsg("El número del departamento es obligatorio.");
+      setMsg(`El número ${buildingOf(buildingLabels)} es obligatorio.`);
       return;
     }
 
-    if (!selectedUnitTypeId) {
+    if (hasUnitType && !selectedUnitTypeId) {
       setMsg("Debes seleccionar una tipología.");
       return;
     }
@@ -685,7 +719,7 @@ export default function UnitDetailPage() {
       .from("units")
       .update({
         unit_number: unitNumber.trim(),
-        unit_type_id: selectedUnitTypeId,
+        ...(hasUnitType ? { unit_type_id: selectedUnitTypeId } : {}),
         floor: floor.trim() ? Number(floor) : null,
         status,
         rental_type: rentalType,
@@ -702,7 +736,7 @@ export default function UnitDetailPage() {
       return;
     }
 
-    setMsg("Departamento actualizado correctamente.");
+    setMsg(`${buildingLabels.unit} actualizado correctamente.`);
     setShowEditForm(false);
     await loadPageData();
   }
@@ -772,6 +806,17 @@ export default function UnitDetailPage() {
       color: getAssetStatusColor(segmentStatus),
     }));
   }, [assets]);
+
+  const buildingLabels = useMemo(
+    () => getPropertyLabels(building?.building_category ?? null, building?.building_subtype ?? null),
+    [building?.building_category, building?.building_subtype]
+  );
+
+  const isCommercialUnit = building?.building_category === "commercial";
+  const isIndustrialUnit =
+    building?.building_category === "industrial" ||
+    building?.building_category === "industrial_park";
+  const hasUnitType = !isCommercialUnit && !isIndustrialUnit;
 
   async function openCreateLease() {
     setMsg("");
@@ -1131,7 +1176,7 @@ export default function UnitDetailPage() {
             fontWeight: 600,
           }}
         >
-          {loading ? "Cargando usuario..." : "Cargando departamento..."}
+          {loading ? "Cargando usuario..." : `Cargando ${buildingLabels.unit.toLowerCase()}...`}
         </div>
       </PageContainer>
     );
@@ -1145,12 +1190,12 @@ export default function UnitDetailPage() {
         <AppCard>
           <div style={{ display: "grid", gap: "14px" }}>
             <div style={{ color: "var(--badge-text-red)", fontWeight: 600 }}>
-              {msg || "No se encontró el departamento."}
+              {msg || `No se encontró el ${buildingLabels.unit.toLowerCase()}.`}
             </div>
 
             <div>
               <UiButton onClick={() => router.push(`/buildings/${buildingId}/units`)}>
-                Volver a departamentos
+                Volver a {buildingLabels.units.toLowerCase()}
               </UiButton>
             </div>
           </div>
@@ -1162,11 +1207,11 @@ export default function UnitDetailPage() {
   return (
     <PageContainer>
       <PageHeader
-        title={`Departamento ${unit.display_code || unit.unit_number}`}
+        title={`${buildingLabels.unit} ${unit.display_code || unit.unit_number}`}
         actions={
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <UiButton onClick={() => router.push(`/buildings/${buildingId}/units`)}>
-              Volver a departamentos
+              Volver a {buildingLabels.units.toLowerCase()}
             </UiButton>
 
             <UiButton
@@ -1193,23 +1238,37 @@ export default function UnitDetailPage() {
           value={unit.unit_number}
         />
 
-        <InfoStatCard
-          icon={<Layers3 size={18} />}
-          label="Tipología"
-          value={unit.unit_types?.name || "Sin tipología"}
-        />
+        {hasUnitType ? (
+          <InfoStatCard
+            icon={<Layers3 size={18} />}
+            label="Tipología"
+            value={unit.unit_types?.name || "Sin tipología"}
+          />
+        ) : null}
 
-        <InfoStatCard
-          icon={<BedDouble size={18} />}
-          label="Recámaras"
-          value={unit.unit_types?.bedrooms ?? "—"}
-        />
+        {hasUnitType ? (
+          <InfoStatCard
+            icon={<BedDouble size={18} />}
+            label="Recámaras"
+            value={unit.unit_types?.bedrooms ?? "—"}
+          />
+        ) : null}
 
-        <InfoStatCard
-          icon={<Home size={18} />}
-          label="Baños"
-          value={unit.unit_types?.bathrooms ?? "—"}
-        />
+        {hasUnitType ? (
+          <InfoStatCard
+            icon={<Home size={18} />}
+            label="Baños"
+            value={unit.unit_types?.bathrooms ?? "—"}
+          />
+        ) : null}
+
+        {isCommercialUnit ? (
+          <InfoStatCard
+            icon={<Ruler size={18} />}
+            label="M²"
+            value={unit.sqm != null ? `${unit.sqm} m²` : "—"}
+          />
+        ) : null}
 
         <InfoStatCard
           icon={<Building2 size={18} />}
@@ -1269,7 +1328,7 @@ export default function UnitDetailPage() {
 
       {activeTab === "summary" ? (
         <div style={{ display: "grid", gap: "18px", marginTop: "18px" }}>
-          <SectionCard title="Resumen del departamento">
+          <SectionCard title={`Resumen ${buildingOf(buildingLabels)}`}>
             <div style={{ display: "grid", gap: "18px" }}>
               <AppStatBar
                 title="Distribución de assets por estatus"
@@ -1295,29 +1354,106 @@ export default function UnitDetailPage() {
                   </div>
                 </AppCard>
 
-                <AppCard>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={miniLabelStyle}>Tipología</div>
-                    <div style={miniValueStyle}>
-                      {unit.unit_types?.name || "Sin tipología"}
+                {hasUnitType ? (
+                  <AppCard>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      <div style={miniLabelStyle}>Tipología</div>
+                      <div style={miniValueStyle}>
+                        {unit.unit_types?.name || "Sin tipología"}
+                      </div>
                     </div>
-                  </div>
-                </AppCard>
+                  </AppCard>
+                ) : null}
 
-                <AppCard>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={miniLabelStyle}>Recámaras</div>
-                    <div style={miniValueStyle}>{unit.unit_types?.bedrooms ?? "—"}</div>
-                  </div>
-                </AppCard>
+                {hasUnitType ? (
+                  <AppCard>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      <div style={miniLabelStyle}>Recámaras</div>
+                      <div style={miniValueStyle}>{unit.unit_types?.bedrooms ?? "—"}</div>
+                    </div>
+                  </AppCard>
+                ) : null}
 
-                <AppCard>
-                  <div style={{ display: "grid", gap: "8px" }}>
-                    <div style={miniLabelStyle}>Baños</div>
-                    <div style={miniValueStyle}>{unit.unit_types?.bathrooms ?? "—"}</div>
-                  </div>
-                </AppCard>
+                {hasUnitType ? (
+                  <AppCard>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      <div style={miniLabelStyle}>Baños</div>
+                      <div style={miniValueStyle}>{unit.unit_types?.bathrooms ?? "—"}</div>
+                    </div>
+                  </AppCard>
+                ) : null}
+
+                {isCommercialUnit ? (
+                  <AppCard>
+                    <div style={{ display: "grid", gap: "8px" }}>
+                      <div style={miniLabelStyle}>M²</div>
+                      <div style={miniValueStyle}>
+                        {unit.sqm != null ? `${unit.sqm} m²` : "—"}
+                      </div>
+                    </div>
+                  </AppCard>
+                ) : null}
               </AppGrid>
+
+              {isCommercialUnit ? (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                    Características
+                  </div>
+                  {unitAmenities.size > 0 ? (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {BUILDING_FEATURES.filter((f) => unitAmenities.has(f.key)).map((f) => (
+                        <span
+                          key={f.key}
+                          style={{
+                            padding: "6px 14px",
+                            borderRadius: 20,
+                            fontSize: 13,
+                            fontWeight: 600,
+                            background: "var(--icon-bg-neutral)",
+                            color: "var(--text-secondary)",
+                            border: "1px solid var(--border-default)",
+                          }}
+                        >
+                          {f.label}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 500 }}>
+                      Sin características registradas.
+                    </div>
+                  )}
+                </div>
+              ) : null}
+
+              {isIndustrialUnit && unitAreas.length > 0 ? (
+                <div style={{ display: "grid", gap: "12px" }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                    Áreas
+                  </div>
+                  {unitAreas.map((area) => (
+                    <AppCard key={area.id}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                        <div style={{ fontWeight: 600, color: "var(--text-primary)" }}>{area.area_type}</div>
+                        <div style={{ fontWeight: 700, color: "var(--text-primary)" }}>
+                          {area.sqm != null ? `${area.sqm} m²` : "—"}
+                        </div>
+                      </div>
+                    </AppCard>
+                  ))}
+                  {unitAreas.some((a) => a.sqm != null) ? (
+                    <AppCard>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+                        <div style={miniLabelStyle}>Total</div>
+                        <div style={{ ...miniValueStyle, fontSize: 15 }}>
+                          {unitAreas.reduce((sum, a) => sum + (a.sqm ?? 0), 0)} m²
+                        </div>
+                      </div>
+                    </AppCard>
+                  ) : null}
+                </div>
+              ) : null}
 
               <div
                 style={{
@@ -1327,7 +1463,7 @@ export default function UnitDetailPage() {
                   flexWrap: "wrap",
                 }}
               >
-                <UiButton onClick={handleOpenEdit}>Editar departamento</UiButton>
+                <UiButton onClick={handleOpenEdit}>Editar {buildingLabels.unit.toLowerCase()}</UiButton>
 
                 <AppCard>
                   <div
@@ -1340,7 +1476,7 @@ export default function UnitDetailPage() {
                     }}
                   >
                     <div>
-                      <div style={summaryCardTitleStyle}>Assets del departamento</div>
+                      <div style={summaryCardTitleStyle}>Assets {buildingOf(buildingLabels)}</div>
                       <div style={summaryCardTextStyle}>
                         Consulta los equipos instalados y su estado actual.
                       </div>
@@ -1603,7 +1739,7 @@ export default function UnitDetailPage() {
 
       {activeTab === "assets" ? (
         <div style={{ marginTop: "18px" }}>
-          <SectionCard title="Assets del departamento">
+          <SectionCard title={`Assets ${buildingOf(buildingLabels)}`}>
             {assets.length === 0 ? (
               <AppCard>
                 <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
@@ -1745,12 +1881,12 @@ export default function UnitDetailPage() {
       <Modal
         open={showEditForm}
         onClose={handleCancelEdit}
-        title="Editar departamento"
+        title={`Editar ${buildingLabels.unit.toLowerCase()}`}
       >
         <form onSubmit={handleUpdateUnit}>
           <div style={{ display: "grid", gap: "16px" }}>
             <div>
-              <label style={labelStyle}>Número de departamento</label>
+              <label style={labelStyle}>Número {buildingOf(buildingLabels)}</label>
               <input
                 value={unitNumber}
                 onChange={(e) => setUnitNumber(e.target.value)}
@@ -1758,20 +1894,22 @@ export default function UnitDetailPage() {
               />
             </div>
 
-            <div>
-              <label style={labelStyle}>Tipología</label>
-              <AppSelect
-                value={selectedUnitTypeId}
-                onChange={(e) => setSelectedUnitTypeId(e.target.value)}
-              >
-                <option value="">Selecciona una tipología</option>
-                {unitTypes.map((unitType) => (
-                  <option key={unitType.id} value={unitType.id}>
-                    {unitType.name}
-                  </option>
-                ))}
-              </AppSelect>
-            </div>
+            {hasUnitType ? (
+              <div>
+                <label style={labelStyle}>Tipología</label>
+                <AppSelect
+                  value={selectedUnitTypeId}
+                  onChange={(e) => setSelectedUnitTypeId(e.target.value)}
+                >
+                  <option value="">Selecciona una tipología</option>
+                  {unitTypes.map((unitType) => (
+                    <option key={unitType.id} value={unitType.id}>
+                      {unitType.name}
+                    </option>
+                  ))}
+                </AppSelect>
+              </div>
+            ) : null}
 
             <div>
               <label style={labelStyle}>Piso</label>

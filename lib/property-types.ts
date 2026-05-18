@@ -89,6 +89,8 @@ export function buildingOf(labels: PropertyLabels): string {
 
 export function getPropertyLabels(category: string | null, subtype?: string | null): PropertyLabels {
   switch (category) {
+    case 'residential_multi':
+      return { units: 'Departamentos', leases: 'Contratos', collections: 'Cobranza', building: 'Edificio residencial', unit: 'Departamento' }
     case 'commercial':
       switch (subtype) {
         case 'plaza_comercial':
