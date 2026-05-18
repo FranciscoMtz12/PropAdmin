@@ -357,6 +357,7 @@ type UnitRow = {
   id: string;
   unit_number: string;
   display_code: string | null;
+  sqm: number | null;
 };
 
 /* ─── Constantes ─────────────────────────────────────────────────────── */
@@ -664,6 +665,8 @@ export default function BuildingDetailPage() {
 
   /* Unidades del edificio (para BuildingServicesTab) */
   const [buildingUnits, setBuildingUnits] = useState<UnitRow[]>([]);
+  /* Áreas de unidades industriales — para cálculo automático en tab Superficies */
+  const [buildingUnitAreas, setBuildingUnitAreas] = useState<Array<{ area_type: string; sqm: number | null }>>([]);
 
   /* Servicios activos (para card en Resumen) */
   const [utilityMeters, setUtilityMeters] = useState<UtilityMeterForOverview[]>([]);
@@ -931,7 +934,7 @@ export default function BuildingDetailPage() {
     const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
       supabase
         .from("units")
-        .select("id, unit_number, display_code")
+        .select("id, unit_number, display_code, sqm")
         .eq("building_id", buildingId)
         .is("deleted_at", null)
         .order("unit_number"),
@@ -944,6 +947,23 @@ export default function BuildingDetailPage() {
     ]);
     setBuildingUnits((allUnits || []) as UnitRow[]);
     setUtilityMeters((utilMetersData || []) as UtilityMeterForOverview[]);
+
+    /* unit_areas por unidad — solo para edificios industriales (áreas automáticas en tab Superficies) */
+    if (b.building_category === "industrial") {
+      const uIds = ((allUnits || []) as UnitRow[]).map((u) => u.id);
+      if (uIds.length > 0) {
+        const { data: uaData } = await supabase
+          .from("unit_areas")
+          .select("area_type, sqm")
+          .in("unit_id", uIds)
+          .is("deleted_at", null);
+        setBuildingUnitAreas((uaData || []) as Array<{ area_type: string; sqm: number | null }>);
+      } else {
+        setBuildingUnitAreas([]);
+      }
+    } else {
+      setBuildingUnitAreas([]);
+    }
 
     // Counts de todos los tabs — consultas head:true, sin traer filas
     const [
@@ -3077,8 +3097,32 @@ export default function BuildingDetailPage() {
           TAB: SUPERFICIES (building_areas)
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "superficies" && hasSuperficiesTab ? (() => {
-        const total = buildingAreas.reduce((s, a) => s + (a.sqm ?? 0), 0);
-        const areaTypes = getAreaTypesForCategory(building.building_category);
+        /* ── Áreas calculadas automáticamente ── */
+        type AutoArea = { key: string; label: string; sqm: number; color: string };
+        const autoAreas: AutoArea[] = [];
+
+        if (isCommercial) {
+          const units = isPlazaComercial ? plazaLocales : buildingUnits;
+          const localesSqm = units.reduce((s, u) => s + (u.sqm ?? 0), 0);
+          if (localesSqm > 0) autoAreas.push({ key: "locales", label: "Locales comerciales", sqm: localesSqm, color: AREA_TYPE_COLORS.locales ?? "#8B2252" });
+        } else if (isIndustrial) {
+          const grouped: Record<string, number> = {};
+          for (const ua of buildingUnitAreas) {
+            grouped[ua.area_type] = (grouped[ua.area_type] ?? 0) + (ua.sqm ?? 0);
+          }
+          for (const [type, sqm] of Object.entries(grouped)) {
+            if (sqm > 0) autoAreas.push({ key: type, label: AREA_TYPE_LABELS[type] ?? type, sqm, color: AREA_TYPE_COLORS[type] ?? "#6B7280" });
+          }
+        } else if (isIndustrialPark) {
+          const navesSqm = childBuildings.reduce((s, cb) => s + (cb.construction_sqm ?? 0), 0);
+          if (navesSqm > 0) autoAreas.push({ key: "naves", label: "Naves / Bodegas", sqm: navesSqm, color: AREA_TYPE_COLORS.naves ?? "#6366F1" });
+        }
+
+        const autoTotal   = autoAreas.reduce((s, a) => s + a.sqm, 0);
+        const manualTotal = buildingAreas.reduce((s, a) => s + (a.sqm ?? 0), 0);
+        const grandTotal  = autoTotal + manualTotal;
+        const hasAnyAreas = autoAreas.length > 0 || buildingAreas.length > 0;
+        const areaTypes   = getAreaTypesForCategory(building.building_category);
 
         return (
           <div style={{ display: "grid", gap: 20 }}>
@@ -3098,7 +3142,7 @@ export default function BuildingDetailPage() {
                 </UiButton>
               }
             >
-              {buildingAreas.length === 0 ? (
+              {!hasAnyAreas ? (
                 <AppEmptyState
                   title="Sin áreas registradas"
                   description="Agrega la primera área para ver la distribución de superficies."
@@ -3113,8 +3157,61 @@ export default function BuildingDetailPage() {
                 />
               ) : (
                 <div style={{ display: "grid", gap: 12 }}>
+
+                  {/* ── Áreas automáticas ── */}
+                  {autoAreas.length > 0 ? (
+                    <>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Áreas calculadas automáticamente
+                      </div>
+                      {autoAreas.map((area) => {
+                        const pct = grandTotal > 0 ? Math.round((area.sqm / grandTotal) * 100) : 0;
+                        return (
+                          <AppCard key={area.key} style={{ padding: 16, background: "var(--badge-bg-blue)" }}>
+                            <div style={{ display: "grid", gap: 10 }}>
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                                <div>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                                    <strong style={{ fontSize: 14, color: "var(--text-primary)" }}>{area.label}</strong>
+                                    <span style={{ fontSize: 10, fontWeight: 700, background: "var(--icon-bg-blue)", color: "var(--badge-text-blue)", borderRadius: 999, padding: "2px 7px" }}>
+                                      Auto
+                                    </span>
+                                  </div>
+                                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+                                    Calculado de los espacios registrados
+                                  </span>
+                                </div>
+                                <div style={{ textAlign: "right", flexShrink: 0 }}>
+                                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                                    {area.sqm.toLocaleString("es-MX")} m²
+                                  </div>
+                                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{pct}%</div>
+                                </div>
+                              </div>
+                              <div style={{ height: 6, borderRadius: 999, background: "var(--bg-page)", overflow: "hidden" }}>
+                                <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: area.color }} />
+                              </div>
+                            </div>
+                          </AppCard>
+                        );
+                      })}
+                    </>
+                  ) : null}
+
+                  {/* ── Separador ── */}
+                  {autoAreas.length > 0 && buildingAreas.length > 0 ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 0" }}>
+                      <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                      <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                        Áreas adicionales
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                    </div>
+                  ) : null}
+
+                  {/* ── Áreas manuales ── */}
                   {buildingAreas.map((area) => {
-                    const pct = total > 0 ? Math.round(((area.sqm ?? 0) / total) * 100) : 0;
+                    const pct = grandTotal > 0 ? Math.round(((area.sqm ?? 0) / grandTotal) * 100) : 0;
                     const color = AREA_TYPE_COLORS[area.area_type] ?? "#6B7280";
                     return (
                       <AppCard key={area.id} style={{ padding: 16 }}>
@@ -3147,16 +3244,18 @@ export default function BuildingDetailPage() {
                       </AppCard>
                     );
                   })}
+
+                  {/* ── Total general ── */}
                   <AppCard style={{ padding: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)" }}>Total</span>
                       <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
-                        {total.toLocaleString("es-MX")} m²
+                        {grandTotal.toLocaleString("es-MX")} m²
                       </span>
                     </div>
-                    {building.construction_sqm != null && Math.abs(total - building.construction_sqm) > 1 ? (
+                    {building.construction_sqm != null && Math.abs(grandTotal - building.construction_sqm) > 1 ? (
                       <div style={{ marginTop: 6, fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
-                        Registrado en el edificio: {building.construction_sqm.toLocaleString("es-MX")} m² · Diferencia: {Math.abs(total - building.construction_sqm).toLocaleString("es-MX")} m²
+                        Registrado: {building.construction_sqm.toLocaleString("es-MX")} m² · Diferencia: {Math.abs(grandTotal - building.construction_sqm).toLocaleString("es-MX")} m²
                       </div>
                     ) : null}
                   </AppCard>
