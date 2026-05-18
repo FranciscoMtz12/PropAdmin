@@ -871,19 +871,6 @@ export default function CleaningPage() {
 
   /* ── Render ───────────────────────────────────────────────────── */
 
-  if (loading || loadingData) {
-    return (
-      <PageContainer>
-        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>Cargando limpieza...</div>
-      </PageContainer>
-    );
-  }
-
-  const selectedTaskLog = selectedTask ? getLogForTask(selectedTask) : undefined;
-  const selectedTaskChecklist = selectedTask
-    ? checklist.filter((c) => c.cleaning_type === selectedTask.cleaningType)
-    : [];
-
   const canEdit =
     user?.role === "superadmin" ||
     user?.role === "mantenimiento" ||
@@ -901,6 +888,19 @@ export default function CleaningPage() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedTask, canEdit, submittingCompletion]);
+
+  if (loading || loadingData) {
+    return (
+      <PageContainer>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)" }}>Cargando limpieza...</div>
+      </PageContainer>
+    );
+  }
+
+  const selectedTaskLog = selectedTask ? getLogForTask(selectedTask) : undefined;
+  const selectedTaskChecklist = selectedTask
+    ? checklist.filter((c) => c.cleaning_type === selectedTask.cleaningType)
+    : [];
 
   return (
     <PageContainer>
