@@ -3428,7 +3428,7 @@ export default function BuildingDetailPage() {
           {pendingByTab.services.length > 0 && (
             <TabPendingBanner tasks={pendingByTab.services} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
           )}
-          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
 
             {/* ── SUMINISTROS ── */}
             <BuildingServicesTab
@@ -3440,46 +3440,44 @@ export default function BuildingDetailPage() {
             />
 
             {/* ── LIMPIEZA ── */}
-            <div id="services-cleaning-section">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid var(--border-default)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Sparkles size={16} color="var(--accent)" />
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>Limpieza</h3>
-                </div>
-                <UiButton variant="secondary" icon={<Plus size={14} />} onClick={() => setAddScheduleOpen(true)}>
-                  Agregar horario
-                </UiButton>
+            <div id="services-cleaning-section" style={{ borderTop: "0.5px solid var(--border-default)", paddingTop: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  LIMPIEZA
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAddScheduleOpen(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-secondary)", cursor: "pointer" }}
+                >
+                  <Plus size={12} />Agregar horario
+                </button>
               </div>
 
-              {/* Schedules agrupados por tipo */}
+              {/* Schedules como filas con borde izquierdo de color */}
               {buildingSchedules.length === 0 ? (
-                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+                <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
                   Sin horarios de limpieza configurados
                 </p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
-                  {(['common_area', 'exterior'] as const).map(ctype => {
-                    const typeSchedules = buildingSchedules.filter(s => s.cleaning_type === ctype);
-                    if (typeSchedules.length === 0) return null;
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 12 }}>
+                  {buildingSchedules.map(s => {
+                    const borderColor = s.cleaning_type === 'common_area' ? '#3B82F6' : '#10B981';
                     return (
-                      <div key={ctype}>
-                        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                          {CLEANING_TYPE_LABEL[ctype]}
-                        </p>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {typeSchedules.map(s => (
-                            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: "var(--bg-card)", border: "1px solid var(--border-default)", fontSize: 13 }}>
-                              <span>{DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}</span>
-                              <button
-                                type="button"
-                                onClick={() => void handleDeleteSchedule(s.id)}
-                                style={{ display: "inline-flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 2, color: "var(--text-muted)", borderRadius: 4 }}
-                              >
-                                <X size={11} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
+                      <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, borderLeft: `3px solid ${borderColor}`, paddingLeft: 10, paddingTop: 4, paddingBottom: 4 }}>
+                        <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>
+                          {DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}
+                          <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
+                            {CLEANING_TYPE_LABEL[s.cleaning_type] ?? s.cleaning_type}
+                          </span>
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteSchedule(s.id)}
+                          style={{ display: "inline-flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-muted)", borderRadius: 4, flexShrink: 0 }}
+                        >
+                          <X size={12} />
+                        </button>
                       </div>
                     );
                   })}
@@ -3488,17 +3486,14 @@ export default function BuildingDetailPage() {
 
               {/* Últimos logs */}
               {recentCleaningLogs.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
-                    Últimas limpiezas
-                  </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
                     {recentCleaningLogs.map(log => (
-                      <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--border-default)" }}>
-                        <span style={{ color: "var(--text-muted)", minWidth: 56, flexShrink: 0 }}>{formatShortDate(log.scheduled_date)}</span>
-                        <span style={{ flex: 1 }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
+                      <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--border-default)" }}>
+                        <span style={{ color: "var(--text-muted)", minWidth: 52, flexShrink: 0, fontSize: 12 }}>{formatShortDate(log.scheduled_date)}</span>
+                        <span style={{ flex: 1, color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
                         <span style={{
-                          padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                          padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, flexShrink: 0,
                           background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
                           color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
                         }}>
@@ -3507,7 +3502,7 @@ export default function BuildingDetailPage() {
                       </div>
                     ))}
                   </div>
-                  <a href={`/cleaning?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 10, fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
+                  <a href={`/cleaning?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 8, fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
                     Ver historial completo →
                   </a>
                 </div>
@@ -3515,46 +3510,53 @@ export default function BuildingDetailPage() {
             </div>
 
             {/* ── MANTENIMIENTO ── */}
-            <div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid var(--border-default)" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <Wrench size={16} color="var(--accent)" />
-                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>Mantenimiento</h3>
-                </div>
-                <UiButton variant="secondary" icon={<Plus size={14} />} onClick={() => setAddTicketOpen(true)}>
-                  Nuevo ticket
-                </UiButton>
+            <div style={{ borderTop: "0.5px solid var(--border-default)", paddingTop: 24 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  MANTENIMIENTO
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setAddTicketOpen(true)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-secondary)", cursor: "pointer" }}
+                >
+                  <Plus size={12} />Nuevo ticket
+                </button>
               </div>
 
               {/* Tickets abiertos */}
               {openTickets.length === 0 ? (
-                <p style={{ margin: "0 0 16px", fontSize: 13, color: "#10B981", fontWeight: 600 }}>
+                <p style={{ margin: "0 0 12px", fontSize: 13, color: "#10B981", fontWeight: 600 }}>
                   ✅ Sin tickets pendientes
                 </p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-                  {openTickets.map(ticket => (
-                    <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
-                      <span style={{ fontSize: 15, flexShrink: 0 }}>{MAINT_PRIORITY_ICON[ticket.priority] ?? '⚪'}</span>
-                      <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{ticket.title}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
-                        {daysAgo(ticket.created_at) === 0 ? 'Hoy' : `Hace ${daysAgo(ticket.created_at)} día${daysAgo(ticket.created_at) === 1 ? '' : 's'}`}
-                      </span>
-                    </div>
-                  ))}
+                <div style={{ display: "flex", flexDirection: "column", marginBottom: 12 }}>
+                  {openTickets.map(ticket => {
+                    const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
+                    const age = daysAgo(ticket.created_at);
+                    return (
+                      <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border-default)" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
+                        <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{ticket.title}</span>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
+                          {age === 0 ? 'Hoy' : `Hace ${age} día${age === 1 ? '' : 's'}`}
+                        </span>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
               {/* Preventivos próximos */}
               {upcomingPreventives.length > 0 && (
-                <div style={{ marginBottom: 16 }}>
-                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                <div style={{ marginBottom: 12 }}>
+                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Preventivos próximos
                   </p>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                  <div style={{ display: "flex", flexDirection: "column" }}>
                     {upcomingPreventives.map(p => (
-                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "8px 0", borderBottom: "1px solid var(--border-default)" }}>
-                        <span>{p.assets?.[0]?.name ?? 'Activo'}</span>
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "7px 0", borderBottom: "1px solid var(--border-default)" }}>
+                        <span style={{ color: "var(--text-secondary)" }}>{p.assets?.[0]?.name ?? 'Activo'}</span>
                         <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{formatShortDate(p.next_due_date)}</span>
                       </div>
                     ))}
@@ -3562,7 +3564,7 @@ export default function BuildingDetailPage() {
                 </div>
               )}
 
-              <a href={`/maintenance?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 4, fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
+              <a href={`/maintenance?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 4, fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
                 Ver todos los tickets →
               </a>
             </div>
