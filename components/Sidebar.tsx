@@ -20,8 +20,6 @@ import {
   BarChart2,
   Building2,
   CalendarDays,
-  CircleAlert,
-  CircleX,
   CreditCard,
   DollarSign,
   FileText,
@@ -52,13 +50,10 @@ import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import type { NotificationModule } from "@/lib/notifications";
 
-type NavStatus = "done" | "partial" | "pending";
-
 type SidebarItem = {
   label: string;
   href?: string;
   icon: React.ComponentType<any>;
-  status: NavStatus;
   disabled?: boolean;
   notifModules?: NotificationModule[];
 };
@@ -74,63 +69,63 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, status: "done" },
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, notifModules: ["cobranza", "servicios", "unidades", "contratos", "mantenimiento", "propiedades", "compras"] },
     ],
   },
   {
     label: "GENERAL",
     items: [
-      { label: "Propiedades", href: "/buildings", icon: Building2,    status: "done", notifModules: ["unidades", "propiedades"] },
-      { label: "Analytics",  href: "/analytics", icon: BarChart2,    status: "done" },
-      { label: "Calendario", href: "/calendar",  icon: CalendarDays, status: "done" },
+      { label: "Propiedades", href: "/buildings", icon: Building2,    notifModules: ["unidades", "propiedades"] },
+      { label: "Analytics",  href: "/analytics", icon: BarChart2 },
+      { label: "Calendario", href: "/calendar",  icon: CalendarDays },
     ],
   },
   {
     label: "ADMINISTRACIÓN",
     items: [
-      { label: "Servicios",  href: "/servicios",   icon: Layers,      status: "done", notifModules: ["servicios"] },
-      { label: "Pagos",      href: "/payments",    icon: CreditCard,  status: "done" },
-      { label: "Cobranza",   href: "/collections", icon: DollarSign,  status: "done", notifModules: ["cobranza", "contratos"] },
-      { label: "Inquilinos", href: "/tenants",     icon: Users,       status: "done" },
+      { label: "Servicios",  href: "/servicios",   icon: Layers,     notifModules: ["servicios"] },
+      { label: "Pagos",      href: "/payments",    icon: CreditCard },
+      { label: "Cobranza",   href: "/collections", icon: DollarSign, notifModules: ["cobranza", "contratos"] },
+      { label: "Inquilinos", href: "/tenants",     icon: Users },
     ],
   },
   {
     label: "COMPRAS",
     items: [
-      { label: "Compras",      href: "/purchases", icon: ShoppingCart, status: "done", notifModules: ["compras"] },
-      { label: "Proveedores",  href: "/suppliers", icon: Truck,        status: "done" },
+      { label: "Compras",     href: "/purchases", icon: ShoppingCart, notifModules: ["compras"] },
+      { label: "Proveedores", href: "/suppliers", icon: Truck },
     ],
   },
   {
     label: "MANTENIMIENTO",
     items: [
-      { label: "Mantenimiento", href: "/maintenance", icon: Wrench,   status: "done", notifModules: ["mantenimiento"] },
-      { label: "Limpieza",      href: "/cleaning",    icon: Sparkles, status: "done" },
+      { label: "Mantenimiento", href: "/maintenance", icon: Wrench,   notifModules: ["mantenimiento"] },
+      { label: "Limpieza",      href: "/cleaning",    icon: Sparkles },
     ],
   },
   {
     label: "SISTEMA",
     items: [
-      { label: "Usuarios",  href: "/users",    icon: UserCog,      status: "done" },
-      { label: "Feedback",  href: "/feedback", icon: MessageSquare, status: "done" },
+      { label: "Usuarios", href: "/users",    icon: UserCog },
+      { label: "Feedback", href: "/feedback", icon: MessageSquare },
     ],
   },
 ];
 
 const TENANT_ITEMS: SidebarItem[] = [
-  { label: "Dashboard",              href: "/portal/dashboard",       icon: User2,      status: "partial" },
-  { label: "Mi contrato",            href: "/portal/contract",        icon: KeyRound,   status: "partial" },
-  { label: "Mis facturas / adeudos", href: "/portal/invoices",        icon: FileText,   status: "partial" },
-  { label: "Reportar pago",          href: "/portal/report-payment",  icon: CreditCard, status: "partial" },
-  { label: "Renovación de contrato", href: "/portal/renewal",         icon: BadgeCheck, status: "partial" },
+  { label: "Dashboard",              href: "/portal/dashboard",      icon: User2      },
+  { label: "Mi contrato",            href: "/portal/contract",       icon: KeyRound   },
+  { label: "Mis facturas / adeudos", href: "/portal/invoices",       icon: FileText   },
+  { label: "Reportar pago",          href: "/portal/report-payment", icon: CreditCard },
+  { label: "Renovación de contrato", href: "/portal/renewal",        icon: BadgeCheck },
 ];
 
 const FIELD_ITEMS: SidebarItem[] = [
-  { href: "/campo/dashboard",  label: "Dashboard",  icon: LayoutDashboard, status: "done" },
-  { href: "/campo/tickets",    label: "Tickets",    icon: Wrench,          status: "done" },
-  { href: "/campo/limpieza",   label: "Limpieza",   icon: Sparkles,        status: "done" },
-  { href: "/campo/assets",     label: "Assets",     icon: Package,         status: "done" },
-  { href: "/campo/medidores",  label: "Medidores",  icon: Zap,             status: "done" },
+  { href: "/campo/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/campo/tickets",   label: "Tickets",   icon: Wrench          },
+  { href: "/campo/limpieza",  label: "Limpieza",  icon: Sparkles        },
+  { href: "/campo/assets",    label: "Assets",    icon: Package         },
+  { href: "/campo/medidores", label: "Medidores", icon: Zap             },
 ];
 
 /* ─── Role-based section filtering ──────────────────────────────── */
@@ -154,12 +149,6 @@ function filterSections(sections: NavSection[], allowedPrefixes: string[]): NavS
 }
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
-
-function getStatusVisual(status: NavStatus) {
-  if (status === "done") return { icon: BadgeCheck, color: "#22C55E", label: "Listo" };
-  if (status === "partial") return { icon: CircleAlert, color: "#F59E0B", label: "Parcial" };
-  return { icon: CircleX, color: "#F87171", label: "Pendiente" };
-}
 
 function appendTenantPreviewToHref(href: string, tenantId?: string | null) {
   if (!tenantId) return href;
@@ -189,8 +178,6 @@ function NavItem({
   notifBadge?: { count: number; severity: 'critical' | 'warning' | 'info' } | null;
 }) {
   const Icon = item.icon;
-  const statusVisual = getStatusVisual(item.status);
-  const StatusIcon = statusVisual.icon;
   const resolvedHref =
     item.href && !item.disabled
       ? appendTenantPreviewToHref(item.href, previewTenantId)
@@ -240,40 +227,30 @@ function NavItem({
       >
         {item.label}
       </span>
-      {notifBadge && (
-        <span
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            justifyContent: "center",
-            minWidth: 16,
-            height: 16,
-            padding: "0 4px",
-            borderRadius: 999,
-            background: SEVERITY_COLORS[notifBadge.severity].dot,
-            fontSize: 10,
-            fontWeight: 700,
-            color: "#fff",
-            border: "2px solid rgba(0,0,0,0.25)",
-            lineHeight: 1,
-            flexShrink: 0,
-          }}
-        >
-          {notifBadge.count}
-        </span>
-      )}
     </div>
   );
 
-  const rightBlock = (
-    <div
-      className="sidebar-nav-status"
-      title={statusVisual.label}
-      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+  const rightBlock = notifBadge ? (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minWidth: 18,
+        height: 18,
+        padding: "0 5px",
+        borderRadius: 999,
+        background: SEVERITY_COLORS[notifBadge.severity].dot,
+        fontSize: 11,
+        fontWeight: 700,
+        color: "#fff",
+        lineHeight: 1,
+        flexShrink: 0,
+      }}
     >
-      <StatusIcon size={15} color={statusVisual.color} />
-    </div>
-  );
+      {notifBadge.count}
+    </span>
+  ) : null;
 
   if (resolvedHref) {
     return (
