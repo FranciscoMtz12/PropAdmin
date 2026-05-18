@@ -100,7 +100,7 @@ export function getPropertyLabels(category: string | null, subtype?: string | nu
         case 'showroom':
           return { units: 'Espacios', leases: 'Contratos', collections: 'Cobranza', building: 'Showroom', unit: 'Espacio' }
         default:
-          return { units: 'Locales', leases: 'Contratos', collections: 'Cobranza', building: 'Local comercial', unit: 'Local' }
+          return { units: 'Espacios', leases: 'Contratos', collections: 'Cobranza', building: 'Propiedad comercial', unit: 'Espacio' }
       }
     case 'industrial':
       switch (subtype) {

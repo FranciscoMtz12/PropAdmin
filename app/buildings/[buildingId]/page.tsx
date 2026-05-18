@@ -2005,6 +2005,7 @@ export default function BuildingDetailPage() {
         name:               bodegaName.trim(),
         code:               bodegaCode.trim() || null,
         building_category:  "industrial",
+        building_subtype:   "nave_industrial",
         parent_building_id: building.id,
         construction_sqm:   bodegaConstructionSqm.trim() ? Number(bodegaConstructionSqm) : null,
         building_features:  Object.keys(localFeatures).length ? localFeatures : null,
@@ -2555,7 +2556,27 @@ export default function BuildingDetailPage() {
         <div style={{ display: "grid", gap: 24 }}>
 
           {/* ── Fila 1: métricas ── */}
-          {isIndustrialPark || isPlazaComercial ? (
+          {isLand ? (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+              {building.land_sqm != null && (
+                <MetricCard label="M² de terreno" value={`${building.land_sqm.toLocaleString("es-MX")} m²`} icon={<MapPin size={18} />} helper="Superficie total del terreno" />
+              )}
+              {building.construction_sqm != null && (
+                <MetricCard label="M² construidos" value={`${building.construction_sqm.toLocaleString("es-MX")} m²`} icon={<Building2 size={18} />} helper="Superficie de construcción" />
+              )}
+              {building.address && (
+                <MetricCard label="Dirección" value={building.address} icon={<MapPin size={18} />} helper="Ubicación del terreno" />
+              )}
+              {building.latitude != null && building.longitude != null && (
+                <MetricCard
+                  label="Coordenadas"
+                  value={`${Number(building.latitude).toFixed(5)}, ${Number(building.longitude).toFixed(5)}`}
+                  icon={<MapPin size={18} />}
+                  helper="Ver en mapa"
+                />
+              )}
+            </div>
+          ) : isIndustrialPark || isPlazaComercial ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
               {isPlazaComercial ? (
                 <>
@@ -2584,16 +2605,7 @@ export default function BuildingDetailPage() {
           ) : (
             <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               <OccupancyDonutCard occupied={occupiedUnits} total={totalUnits} />
-              {isLand ? (
-                building.land_sqm != null ? (
-                  <MetricCard
-                    label="Superficie total"
-                    value={`${building.land_sqm.toLocaleString("es-MX")} m²`}
-                    icon={<MapPin size={18} />}
-                    helper="M² de terreno registrados"
-                  />
-                ) : null
-              ) : isResidentialSingle ? (
+              {isResidentialSingle ? (
                 building.construction_sqm != null ? (
                   <MetricCard
                     label="M² construidos"

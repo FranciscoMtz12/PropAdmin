@@ -703,8 +703,6 @@ export default function CalendarPage() {
       buildingSchedulesRes,
       unitSchedulesRes,
       maintenanceLogsRes,
-      expenseSchedulesRes,
-      expensePaymentsRes,
       collectionSchedulesRes,
       collectionRecordsRes,
     ] = await Promise.all([
@@ -748,25 +746,6 @@ export default function CalendarPage() {
         .eq("company_id", user.company_id)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
-
-      supabase
-        .from("expense_schedules")
-        .select(
-          "id, building_id, unit_id, expense_type, title, vendor_name, responsibility_type, applies_to, amount_estimated, due_day, active, notes, frequency_type, starts_on, ends_on, auto_generate"
-        )
-        .eq("company_id", user.company_id)
-        .eq("active", true)
-        .is("deleted_at", null)
-        .in("responsibility_type", ["company", "building"]),
-
-      supabase
-        .from("expense_payments")
-        .select(
-          "id, expense_schedule_id, company_id, building_id, unit_id, period_year, period_month, due_date, amount_due, status, paid_at, payment_reference, notes, created_at"
-        )
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null)
-        .order("due_date", { ascending: true }),
 
       supabase
         .from("collection_schedules")
@@ -823,18 +802,6 @@ export default function CalendarPage() {
       return;
     }
 
-    if (expenseSchedulesRes.error) {
-      setMsg("No se pudieron cargar las configuraciones de pagos.");
-      setLoadingPage(false);
-      return;
-    }
-
-    if (expensePaymentsRes.error) {
-      setMsg("No se pudieron cargar los registros de pagos.");
-      setLoadingPage(false);
-      return;
-    }
-
     if (collectionSchedulesRes.error) {
       setMsg("No se pudieron cargar las configuraciones de cobranza.");
       setLoadingPage(false);
@@ -853,8 +820,6 @@ export default function CalendarPage() {
     setBuildingSchedules((buildingSchedulesRes.data as CleaningBuildingSchedule[]) || []);
     setUnitSchedules((unitSchedulesRes.data as CleaningUnitSchedule[]) || []);
     setMaintenanceLogs((maintenanceLogsRes.data as MaintenanceLog[]) || []);
-    setExpenseSchedules((expenseSchedulesRes.data as ExpenseSchedule[]) || []);
-    setExpensePayments((expensePaymentsRes.data as ExpensePayment[]) || []);
     setCollectionSchedules((collectionSchedulesRes.data as CollectionSchedule[]) || []);
     setCollectionRecords((collectionRecordsRes.data as CollectionRecord[]) || []);
     setLoadingPage(false);

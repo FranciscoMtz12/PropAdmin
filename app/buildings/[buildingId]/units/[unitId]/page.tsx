@@ -1774,7 +1774,7 @@ export default function UnitDetailPage() {
               <AppCard>
                 <div style={{ display: "grid", gap: "12px" }}>
                   <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
-                    No hay leases activos para este departamento.
+                    No hay leases activos para esta {buildingLabels.unit.toLowerCase()}.
                   </div>
 
                   <div>
@@ -1795,7 +1795,7 @@ export default function UnitDetailPage() {
             {assets.length === 0 ? (
               <AppCard>
                 <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
-                  Todavía no hay assets registrados para este departamento.
+                  Todavía no hay assets registrados para esta {buildingLabels.unit.toLowerCase()}.
                 </div>
               </AppCard>
             ) : (
@@ -1847,7 +1847,7 @@ export default function UnitDetailPage() {
             {leaseHistory.length === 0 ? (
               <AppCard>
                 <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
-                  Todavía no hay historial de leases para este departamento.
+                  Todavía no hay historial de leases para esta {buildingLabels.unit.toLowerCase()}.
                 </div>
               </AppCard>
             ) : (
