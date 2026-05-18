@@ -58,6 +58,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         action_route: null,
         is_resolved: false,
         building_id: buildingId === 'unknown' ? null : buildingId,
+        count,
       })
     }
   }
@@ -109,6 +110,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         action_route: '/collections',
         is_resolved: false,
         building_id: buildingId === 'unknown' ? null : buildingId,
+        count,
       })
     }
   }
@@ -125,6 +127,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         action_route: '/collections',
         is_resolved: false,
         building_id: buildingId === 'unknown' ? null : buildingId,
+        count,
       })
     }
   }
@@ -141,6 +144,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         action_route: null,
         is_resolved: false,
         building_id: buildingId === 'unknown' ? null : buildingId,
+        count,
       })
     }
   }

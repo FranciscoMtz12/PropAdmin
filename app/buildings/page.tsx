@@ -931,10 +931,8 @@ export default function BuildingsPage() {
               const freeUnits = vacantByBuilding.get(building.id) || 0;
               const isHovered = hoveredBuildingId === building.id;
 
-              // TODO: remove — debug notifs por edificio
-              if (index === 0) console.log('notifications en portafolio:', notifications?.map(n => ({ id: n.id, title: n.title, building_id: n.building_id })));
-
               const buildingNotifs = notifications.filter(n => n.building_id === building.id);
+              const totalCount = buildingNotifs.reduce((sum, n) => sum + (n.count ?? 1), 0);
               const worstSeverity = buildingNotifs.some(n => n.severity === 'critical') ? 'critical'
                                   : buildingNotifs.some(n => n.severity === 'warning')  ? 'warning'
                                   : buildingNotifs.length > 0                           ? 'info'
@@ -1007,7 +1005,7 @@ export default function BuildingsPage() {
                           pointerEvents: "none",
                         }}
                       >
-                        {buildingNotifs.length}
+                        {totalCount}
                       </span>
                     )}
                     {/* Fila superior: info izq + dona der */}
