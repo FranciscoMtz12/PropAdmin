@@ -73,6 +73,7 @@ import {
   Warehouse,
   Wifi,
   Wrench,
+  X,
   Zap,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -644,6 +645,89 @@ const TASK_TAB_MAP: Record<string, string> = {
   add_first_unit:         'overview',
   setup_security_service: 'overview',
   setup_loading_dock:     'assets',
+}
+
+/* ─── Mapa task_key → label y ruta (derivado de PROPERTY_FEATURES) ─────── */
+
+const TASK_META: Record<string, { label: string; route?: string }> = {}
+for (const feat of PROPERTY_FEATURES) {
+  for (const task of feat.tasks) {
+    TASK_META[task.key] = { label: task.label, route: task.route }
+  }
+}
+
+/* ─── Banner de tareas pendientes por tab ────────────────────────────── */
+
+type SetupTaskLike = { id: string; task_key: string; feature_key: string; is_completed: boolean; dismissed: boolean }
+
+function TabPendingBanner({
+  tasks,
+  buildingId,
+  onNavigate,
+  onDismiss,
+}: {
+  tasks: SetupTaskLike[];
+  buildingId: string;
+  onNavigate: (route: string) => void;
+  onDismiss: (ids: string[]) => void;
+}) {
+  if (tasks.length === 0) return null;
+  return (
+    <div style={{
+      background: 'rgba(139, 34, 82, 0.05)',
+      borderLeft: '3px solid var(--brand-color, #8B2252)',
+      borderRadius: 'var(--border-radius-md, 8px)',
+      padding: '10px 14px',
+      marginBottom: 16,
+    }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tasks.length > 0 ? 6 : 0 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--brand-color, #8B2252)', fontSize: 13, fontWeight: 600 }}>
+          <Settings size={13} />
+          Pendiente en este módulo
+        </span>
+        <button
+          type="button"
+          onClick={() => onDismiss(tasks.map(t => t.id))}
+          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-secondary)', padding: 2, display: 'flex', alignItems: 'center' }}
+        >
+          <X size={14} />
+        </button>
+      </div>
+      <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {tasks.map(task => {
+          const meta = TASK_META[task.task_key];
+          const label = meta?.label ?? task.task_key;
+          const rawRoute = meta?.route;
+          const resolvedRoute = rawRoute?.replace('[id]', buildingId);
+          return (
+            <li key={task.id}>
+              <button
+                type="button"
+                onClick={() => { if (resolvedRoute) onNavigate(resolvedRoute); }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  cursor: resolvedRoute ? 'pointer' : 'default',
+                  padding: '3px 0',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  color: 'var(--text-primary)',
+                  fontSize: 13,
+                  textAlign: 'left',
+                  width: '100%',
+                }}
+              >
+                <span style={{ color: 'var(--brand-color, #8B2252)', fontSize: 9, lineHeight: 1 }}>●</span>
+                <span style={{ flex: 1 }}>{label}</span>
+                {resolvedRoute && <ChevronRight size={12} color="var(--text-muted)" />}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
 }
 
 /* ─── Página ─────────────────────────────────────────────────────────── */
@@ -1677,6 +1761,21 @@ export default function BuildingDetailPage() {
     setSetupTasks([]);
   }
 
+  async function handleDismissBannerTasks(ids: string[]) {
+    if (ids.length === 0) return;
+    await supabase.from("building_setup_tasks").update({ dismissed: true }).in("id", ids);
+    setSetupTasks(prev => prev.filter(t => !ids.includes(t.id)));
+  }
+
+  function handleBannerNavigate(route: string) {
+    if (route.includes('?tab=')) {
+      const tab = new URL(route, 'http://x').searchParams.get('tab');
+      if (tab) setActiveTab(tab);
+    } else {
+      router.push(route);
+    }
+  }
+
   async function handleCreateBodega(e: React.FormEvent) {
     e.preventDefault();
     if (!user?.company_id || !building) return;
@@ -2095,6 +2194,15 @@ export default function BuildingDetailPage() {
       .map(t => TASK_TAB_MAP[t.task_key])
       .filter(Boolean)
   );
+
+  const pendingByTab = {
+    services:  setupTasks.filter(t => !t.is_completed && !t.dismissed && ['add_electricity_meter','add_water_meter','add_gas_meter','setup_internet','setup_cleaning_schedule'].includes(t.task_key)),
+    assets:    setupTasks.filter(t => !t.is_completed && !t.dismissed && ['setup_admin_office','setup_security_booth','setup_service_storage','add_first_asset','setup_loading_dock'].includes(t.task_key)),
+    documents: setupTasks.filter(t => !t.is_completed && !t.dismissed && ['upload_documents'].includes(t.task_key)),
+    gallery:   setupTasks.filter(t => !t.is_completed && !t.dismissed && ['add_photos'].includes(t.task_key)),
+    leases:    setupTasks.filter(t => !t.is_completed && !t.dismissed && ['add_first_lease'].includes(t.task_key)),
+    parking:   setupTasks.filter(t => !t.is_completed && !t.dismissed && ['add_parking_spots'].includes(t.task_key)),
+  };
 
   function getBuildingDetailLabel(cat: string | null, sub?: string | null): string {
     if (cat === "commercial") {
@@ -2952,7 +3060,11 @@ export default function BuildingDetailPage() {
         }
 
         return (
-          <div style={{ display: "grid", gap: 24 }}>
+          <>
+            {pendingByTab.assets.length > 0 && (
+              <TabPendingBanner tasks={pendingByTab.assets} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+            )}
+            <div style={{ display: "grid", gap: 24 }}>
             {/* Métricas */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
               <MetricCard
@@ -3035,6 +3147,7 @@ export default function BuildingDetailPage() {
               )}
             </SectionCard>
           </div>
+          </>
         );
       })() : null}
 
@@ -3042,7 +3155,11 @@ export default function BuildingDetailPage() {
           TAB: DOCUMENTOS
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "documents" ? (
-        <SectionCard title="Documentos" subtitle="Planos, PDFs y otros archivos técnicos del edificio." icon={<FolderOpen size={18} />}>
+        <>
+          {pendingByTab.documents.length > 0 && (
+            <TabPendingBanner tasks={pendingByTab.documents} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+          )}
+          <SectionCard title="Documentos" subtitle="Planos, PDFs y otros archivos técnicos del edificio." icon={<FolderOpen size={18} />}>
           {documentFiles.length === 0 ? (
             <p style={{ margin: 0, color: "var(--text-secondary)" }}>Todavía no hay documentos registrados para este edificio.</p>
           ) : (
@@ -3065,13 +3182,18 @@ export default function BuildingDetailPage() {
             </div>
           )}
         </SectionCard>
+        </>
       ) : null}
 
       {/* ══════════════════════════════════════════════════════════════
           TAB: GALERÍA
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "gallery" ? (
-        <SectionCard title="Galería" subtitle="Renders y fotografías del edificio." icon={<FileImage size={18} />}>
+        <>
+          {pendingByTab.gallery.length > 0 && (
+            <TabPendingBanner tasks={pendingByTab.gallery} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+          )}
+          <SectionCard title="Galería" subtitle="Renders y fotografías del edificio." icon={<FileImage size={18} />}>
           {imageFiles.length === 0 ? (
             <p style={{ margin: 0, color: "var(--text-secondary)" }}>Todavía no hay imágenes registradas para este edificio.</p>
           ) : (
@@ -3095,6 +3217,7 @@ export default function BuildingDetailPage() {
             </AppGrid>
           )}
         </SectionCard>
+        </>
       ) : null}
 
 
@@ -3102,13 +3225,18 @@ export default function BuildingDetailPage() {
           TAB: SERVICIOS DEL EDIFICIO
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "services" && building ? (
-        <BuildingServicesTab
-          buildingId={building.id}
-          companyId={building.company_id}
-          buildingName={building.name}
-          units={buildingUnits}
-          refreshKey={servicesRefreshKey}
-        />
+        <>
+          {pendingByTab.services.length > 0 && (
+            <TabPendingBanner tasks={pendingByTab.services} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+          )}
+          <BuildingServicesTab
+            buildingId={building.id}
+            companyId={building.company_id}
+            buildingName={building.name}
+            units={buildingUnits}
+            refreshKey={servicesRefreshKey}
+          />
+        </>
       ) : null}
 
       {/* ══════════════════════════════════════════════════════════════
@@ -3122,7 +3250,11 @@ export default function BuildingDetailPage() {
         const pctRented = totalLandSqm > 0 ? Math.min(100, Math.round((totalLeasedSqm / totalLandSqm) * 100)) : 0;
 
         return (
-          <div style={{ display: "grid", gap: 20 }}>
+          <>
+            {pendingByTab.leases.length > 0 && (
+              <TabPendingBanner tasks={pendingByTab.leases} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+            )}
+            <div style={{ display: "grid", gap: 20 }}>
             <SectionCard
               title={labels.leases}
               subtitle={`${labels.building} — contratos activos y disponibilidad.`}
@@ -3197,6 +3329,7 @@ export default function BuildingDetailPage() {
               )}
             </SectionCard>
           </div>
+          </>
         );
       })() : null}
 
@@ -3204,7 +3337,11 @@ export default function BuildingDetailPage() {
           TAB: CAJONES DE ESTACIONAMIENTO
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "parking" ? (
-        <div style={{ display: "grid", gap: 20 }}>
+        <>
+          {pendingByTab.parking.length > 0 && (
+            <TabPendingBanner tasks={pendingByTab.parking} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+          )}
+          <div style={{ display: "grid", gap: 20 }}>
           <SectionCard
             title="Cajones de estacionamiento"
             subtitle="Espacios de estacionamiento del edificio."
@@ -3258,6 +3395,7 @@ export default function BuildingDetailPage() {
             )}
           </SectionCard>
         </div>
+        </>
       ) : null}
 
       {/* ══════════════════════════════════════════════════════════════
