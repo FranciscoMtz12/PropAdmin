@@ -1214,13 +1214,15 @@ export default function UnitDetailPage() {
               Volver a {buildingLabels.units.toLowerCase()}
             </UiButton>
 
-            <UiButton
-              onClick={() =>
-                router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
-              }
-            >
-              Administrar assets
-            </UiButton>
+            {!(isCommercialUnit && assets.length === 0) ? (
+              <UiButton
+                onClick={() =>
+                  router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
+                }
+              >
+                Administrar assets
+              </UiButton>
+            ) : null}
           </div>
         }
       />
@@ -1330,14 +1332,12 @@ export default function UnitDetailPage() {
         <div style={{ display: "grid", gap: "18px", marginTop: "18px" }}>
           <SectionCard title={`Resumen ${buildingOf(buildingLabels)}`}>
             <div style={{ display: "grid", gap: "18px" }}>
-              <AppStatBar
-                title="Distribución de assets por estatus"
-                segments={
-                  assetStatusSegments.length > 0
-                    ? assetStatusSegments
-                    : [{ label: "Sin assets", value: 0, color: "var(--text-placeholder)" }]
-                }
-              />
+              {assets.length > 0 ? (
+                <AppStatBar
+                  title="Distribución de assets por estatus"
+                  segments={assetStatusSegments}
+                />
+              ) : null}
 
               <AppGrid minWidth={240}>
                 <AppCard>
@@ -1396,35 +1396,42 @@ export default function UnitDetailPage() {
               </AppGrid>
 
               {isCommercialUnit ? (
-                <div style={{ display: "grid", gap: "12px" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
-                    Características
+                <AppCard>
+                  <div style={{ display: "grid", gap: "12px" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                      Información del local
+                    </div>
+                    {unit.sqm != null ? (
+                      <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
+                        Superficie: <strong>{unit.sqm} m²</strong>
+                      </div>
+                    ) : null}
+                    {unitAmenities.size > 0 ? (
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {BUILDING_FEATURES.filter((f) => unitAmenities.has(f.key)).map((f) => (
+                          <span
+                            key={f.key}
+                            style={{
+                              padding: "6px 14px",
+                              borderRadius: 20,
+                              fontSize: 13,
+                              fontWeight: 600,
+                              background: "var(--icon-bg-green)",
+                              color: "var(--badge-text-green)",
+                              border: "1px solid var(--metric-border-green)",
+                            }}
+                          >
+                            {f.label}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <div style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 500 }}>
+                        Sin características registradas.
+                      </div>
+                    )}
                   </div>
-                  {unitAmenities.size > 0 ? (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {BUILDING_FEATURES.filter((f) => unitAmenities.has(f.key)).map((f) => (
-                        <span
-                          key={f.key}
-                          style={{
-                            padding: "6px 14px",
-                            borderRadius: 20,
-                            fontSize: 13,
-                            fontWeight: 600,
-                            background: "var(--icon-bg-neutral)",
-                            color: "var(--text-secondary)",
-                            border: "1px solid var(--border-default)",
-                          }}
-                        >
-                          {f.label}
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <div style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 500 }}>
-                      Sin características registradas.
-                    </div>
-                  )}
-                </div>
+                </AppCard>
               ) : null}
 
               {isIndustrialUnit && unitAreas.length > 0 ? (
@@ -1465,32 +1472,34 @@ export default function UnitDetailPage() {
               >
                 <UiButton onClick={handleOpenEdit}>Editar {buildingLabels.unit.toLowerCase()}</UiButton>
 
-                <AppCard>
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "12px",
-                      justifyContent: "space-between",
-                      flexWrap: "wrap",
-                    }}
-                  >
-                    <div>
-                      <div style={summaryCardTitleStyle}>Assets {buildingOf(buildingLabels)}</div>
-                      <div style={summaryCardTextStyle}>
-                        Consulta los equipos instalados y su estado actual.
-                      </div>
-                    </div>
-
-                    <UiButton
-                      onClick={() =>
-                        router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
-                      }
+                {!(isCommercialUnit && assets.length === 0) ? (
+                  <AppCard>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        justifyContent: "space-between",
+                        flexWrap: "wrap",
+                      }}
                     >
-                      Abrir
-                    </UiButton>
-                  </div>
-                </AppCard>
+                      <div>
+                        <div style={summaryCardTitleStyle}>Assets {buildingOf(buildingLabels)}</div>
+                        <div style={summaryCardTextStyle}>
+                          Consulta los equipos instalados y su estado actual.
+                        </div>
+                      </div>
+
+                      <UiButton
+                        onClick={() =>
+                          router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
+                        }
+                      >
+                        Abrir
+                      </UiButton>
+                    </div>
+                  </AppCard>
+                ) : null}
               </div>
             </div>
           </SectionCard>

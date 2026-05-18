@@ -285,6 +285,14 @@ type FeatureConfigRow = {
   is_active: boolean;
 };
 
+type BuildingArea = {
+  id: string;
+  area_type: string;
+  area_label: string | null;
+  sqm: number | null;
+  notes: string | null;
+};
+
 type SetupTask = {
   id: string;
   task_key: string;
@@ -388,6 +396,44 @@ const ASSET_STATUS_OPTIONS = [
   { value: "inactive", label: "Inactivo" },
   { value: "pending",  label: "Pendiente" },
 ];
+
+const AREA_TYPE_LABELS: Record<string, string> = {
+  locales:         "Locales comerciales",
+  circulacion:     "Circulación",
+  estacionamiento: "Estacionamiento",
+  servicios:       "Área de servicios",
+  area_verde:      "Área verde",
+  naves:           "Naves / Bodegas",
+  patios_maniobra: "Patios de maniobra",
+  calles:          "Calles internas",
+  construccion:    "Construcción",
+  otro:            "Otro",
+};
+
+const AREA_TYPE_COLORS: Record<string, string> = {
+  locales:         "#8B2252",
+  estacionamiento: "#3B82F6",
+  circulacion:     "#9CA3AF",
+  area_verde:      "#10B981",
+  servicios:       "#F59E0B",
+  naves:           "#6366F1",
+  patios_maniobra: "#64748B",
+  calles:          "#94A3B8",
+  construccion:    "#78716C",
+  otro:            "#6B7280",
+};
+
+function getAreaTypesForCategory(cat: string | null): string[] {
+  if (cat === "commercial") return ["locales", "circulacion", "estacionamiento", "servicios", "area_verde", "otro"];
+  if (cat === "industrial" || cat === "industrial_park") return ["naves", "patios_maniobra", "calles", "area_verde", "servicios", "estacionamiento", "otro"];
+  if (cat === "land") return ["construccion", "area_verde", "circulacion", "otro"];
+  return ["otro"];
+}
+
+function getAreaTypeLabel(type: string, customLabel: string | null): string {
+  if (type === "otro" && customLabel) return customLabel;
+  return AREA_TYPE_LABELS[type] ?? type;
+}
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
@@ -675,6 +721,15 @@ export default function BuildingDetailPage() {
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
 
+  /* Áreas de superficie */
+  const [buildingAreas, setBuildingAreas] = useState<BuildingArea[]>([]);
+  const [areaCreateOpen, setAreaCreateOpen] = useState(false);
+  const [newAreaType, setNewAreaType] = useState("");
+  const [newAreaLabel, setNewAreaLabel] = useState("");
+  const [newAreaSqm, setNewAreaSqm] = useState("");
+  const [savingArea, setSavingArea] = useState(false);
+  const [areaMsg, setAreaMsg] = useState("");
+
   /* Formulario de asset */
   const [assetType, setAssetType]   = useState("ELEVATOR");
   const [assetName, setAssetName]   = useState("");
@@ -838,7 +893,7 @@ export default function BuildingDetailPage() {
     }
 
     /* Bodegas hijas (industrial_park) + Áreas comunes + Locales (plaza_comercial) */
-    const [cbResult, caResult, localesResult] = await Promise.all([
+    const [cbResult, caResult, localesResult, areasResult] = await Promise.all([
       b.building_category === "industrial_park"
         ? supabase.from("buildings")
             .select("id, name, code, building_category, building_subtype, total_sqm, land_sqm, construction_sqm")
@@ -859,10 +914,18 @@ export default function BuildingDetailPage() {
             .is("deleted_at", null)
             .order("unit_number")
         : Promise.resolve({ data: [] }),
+      supabase
+        .from("building_areas")
+        .select("id, area_type, area_label, sqm, notes")
+        .eq("building_id", buildingId)
+        .eq("company_id", user.company_id)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: true }),
     ]);
     setChildBuildings((cbResult.data || []) as ChildBuilding[]);
     setCommonAreas((caResult.data || []) as { id: string; name: string }[]);
     setPlazaLocales((localesResult.data || []) as PlazaLocal[]);
+    setBuildingAreas((areasResult.data || []) as BuildingArea[]);
 
     // Unidades del edificio para BuildingServicesTab + servicios para Resumen
     const [{ data: allUnits }, { data: utilMetersData }] = await Promise.all([
@@ -1670,6 +1733,43 @@ export default function BuildingDetailPage() {
     await loadBuilding();
   }
 
+  async function handleCreateArea() {
+    if (!user?.company_id || !building) return;
+    if (!newAreaType) { setAreaMsg("Selecciona un tipo de área."); return; }
+    const sqm = Number(newAreaSqm);
+    if (!newAreaSqm.trim() || !Number.isFinite(sqm) || sqm <= 0) {
+      setAreaMsg("Ingresa los m² (número mayor a cero).");
+      return;
+    }
+    setSavingArea(true);
+    setAreaMsg("");
+    const { error } = await supabase.from("building_areas").insert({
+      company_id: user.company_id,
+      building_id: building.id,
+      area_type: newAreaType,
+      area_label: newAreaType === "otro" ? newAreaLabel.trim() || null : null,
+      sqm,
+      notes: null,
+    });
+    setSavingArea(false);
+    if (error) { setAreaMsg(error.message); return; }
+    setAreaCreateOpen(false);
+    setNewAreaType("");
+    setNewAreaLabel("");
+    setNewAreaSqm("");
+    await loadBuilding();
+  }
+
+  async function handleDeleteArea(areaId: string) {
+    if (!user?.company_id) return;
+    await supabase
+      .from("building_areas")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("id", areaId)
+      .eq("company_id", user.company_id);
+    await loadBuilding();
+  }
+
   /* ── Render ──────────────────────────────────────────────────────── */
 
   if (loading)        return <PageContainer>Cargando usuario...</PageContainer>;
@@ -1698,6 +1798,7 @@ export default function BuildingDetailPage() {
   const hasCommonAreasTab  = activeFeatureKeys.has("common_areas")
                              && ["residential_multi", "commercial", "industrial_park"].includes(building.building_category ?? "");
   const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle || isPlazaComercial;
+  const hasSuperficiesTab = ["commercial", "industrial", "industrial_park", "land"].includes(building.building_category ?? "");
 
   function getBuildingDetailLabel(cat: string | null, sub?: string | null): string {
     if (cat === "commercial") {
@@ -1832,6 +1933,7 @@ export default function BuildingDetailPage() {
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
           ...(hasLocalesTab  ? [{ key: "locales",  label: "Locales",  icon: <Store size={16} />,     count: plazaLocales.length }] : []),
+          ...(hasSuperficiesTab ? [{ key: "superficies", label: "Superficies", icon: <Ruler size={16} />, count: buildingAreas.length }] : []),
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
@@ -2301,6 +2403,50 @@ export default function BuildingDetailPage() {
                 )}
               </div>
             )}
+            {hasSuperficiesTab && buildingAreas.length > 0 ? (() => {
+              const total = buildingAreas.reduce((s, a) => s + (a.sqm ?? 0), 0);
+              return (
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                    <Ruler size={14} style={{ color: "var(--text-muted)" }} />
+                    Distribución de superficies
+                  </div>
+                  <div style={{ display: "grid", gap: 8 }}>
+                    {buildingAreas.map((area) => {
+                      const pct = total > 0 ? Math.round(((area.sqm ?? 0) / total) * 100) : 0;
+                      const color = AREA_TYPE_COLORS[area.area_type] ?? "#6B7280";
+                      return (
+                        <div key={area.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" }}>
+                          <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {getAreaTypeLabel(area.area_type, area.area_label)}
+                          </div>
+                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap" }}>
+                            {(area.sqm ?? 0).toLocaleString("es-MX")} m²
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <div style={{ width: 80, height: 6, borderRadius: 999, background: "var(--bg-page)", overflow: "hidden" }}>
+                              <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: color }} />
+                            </div>
+                            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>{pct}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 8, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Total</span>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                        {total.toLocaleString("es-MX")} m²
+                      </span>
+                    </div>
+                    {building.construction_sqm != null && total > 0 && Math.abs(total - building.construction_sqm) > 1 ? (
+                      <div style={{ fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                        Registrado: {building.construction_sqm.toLocaleString("es-MX")} m² · Diferencia: {Math.abs(total - building.construction_sqm).toLocaleString("es-MX")} m²
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+              );
+            })() : null}
           </SectionCard>
 
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
@@ -2927,6 +3073,100 @@ export default function BuildingDetailPage() {
         </div>
       ) : null}
 
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: SUPERFICIES (building_areas)
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "superficies" && hasSuperficiesTab ? (() => {
+        const total = buildingAreas.reduce((s, a) => s + (a.sqm ?? 0), 0);
+        const areaTypes = getAreaTypesForCategory(building.building_category);
+
+        return (
+          <div style={{ display: "grid", gap: 20 }}>
+            <SectionCard
+              title="Distribución de superficies"
+              subtitle="Desglose de m² por tipo de área."
+              icon={<Ruler size={18} />}
+              action={
+                <UiButton icon={<Plus size={15} />} onClick={() => {
+                  setNewAreaType(areaTypes[0] || "otro");
+                  setNewAreaLabel("");
+                  setNewAreaSqm("");
+                  setAreaMsg("");
+                  setAreaCreateOpen(true);
+                }}>
+                  Agregar área
+                </UiButton>
+              }
+            >
+              {buildingAreas.length === 0 ? (
+                <AppEmptyState
+                  title="Sin áreas registradas"
+                  description="Agrega la primera área para ver la distribución de superficies."
+                  actionLabel="Agregar primera área"
+                  onAction={() => {
+                    setNewAreaType(areaTypes[0] || "otro");
+                    setNewAreaLabel("");
+                    setNewAreaSqm("");
+                    setAreaMsg("");
+                    setAreaCreateOpen(true);
+                  }}
+                />
+              ) : (
+                <div style={{ display: "grid", gap: 12 }}>
+                  {buildingAreas.map((area) => {
+                    const pct = total > 0 ? Math.round(((area.sqm ?? 0) / total) * 100) : 0;
+                    const color = AREA_TYPE_COLORS[area.area_type] ?? "#6B7280";
+                    return (
+                      <AppCard key={area.id} style={{ padding: 16 }}>
+                        <div style={{ display: "grid", gap: 10 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                            <div>
+                              <strong style={{ fontSize: 14, color: "var(--text-primary)", display: "block", marginBottom: 2 }}>
+                                {getAreaTypeLabel(area.area_type, area.area_label)}
+                              </strong>
+                              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                                {(area.sqm ?? 0).toLocaleString("es-MX")} m²
+                              </span>
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>{pct}%</span>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteArea(area.id)}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: 6, display: "flex", alignItems: "center" }}
+                                title="Eliminar área"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          <div style={{ height: 6, borderRadius: 999, background: "var(--bg-page)", overflow: "hidden" }}>
+                            <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: color }} />
+                          </div>
+                        </div>
+                      </AppCard>
+                    );
+                  })}
+                  <AppCard style={{ padding: 16 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)" }}>Total</span>
+                      <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
+                        {total.toLocaleString("es-MX")} m²
+                      </span>
+                    </div>
+                    {building.construction_sqm != null && Math.abs(total - building.construction_sqm) > 1 ? (
+                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                        Registrado en el edificio: {building.construction_sqm.toLocaleString("es-MX")} m² · Diferencia: {Math.abs(total - building.construction_sqm).toLocaleString("es-MX")} m²
+                      </div>
+                    ) : null}
+                  </AppCard>
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        );
+      })() : null}
+
       {/* ── Modal editar edificio ── */}
       <Modal open={isEditModalOpen} onClose={() => { if (!savingEdit) setIsEditModalOpen(false); }} title="Editar propiedad">
         <form onSubmit={handleUpdateBuilding}>
@@ -3550,6 +3790,78 @@ export default function BuildingDetailPage() {
         onConfirm={() => void handleReleaseSpot()}
         onCancel={() => { if (!savingRelease) setReleaseSpot(null); }}
       />
+
+      {/* ── Modal agregar área de superficie ── */}
+      <Modal
+        open={areaCreateOpen}
+        onClose={() => { setAreaCreateOpen(false); setAreaMsg(""); }}
+        title="Agregar área"
+      >
+        <div style={{ display: "grid", gap: 16 }}>
+          <div>
+            <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+              Tipo de área
+            </label>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {getAreaTypesForCategory(building.building_category).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setNewAreaType(t)}
+                  style={{
+                    padding: "8px 14px",
+                    borderRadius: 20,
+                    fontSize: 13,
+                    fontWeight: 600,
+                    border: newAreaType === t ? "2px solid var(--accent)" : "1px solid var(--border-default)",
+                    background: newAreaType === t ? "var(--icon-bg-blue)" : "var(--bg-card)",
+                    color: newAreaType === t ? "var(--badge-text-blue)" : "var(--text-primary)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {AREA_TYPE_LABELS[t] ?? t}
+                </button>
+              ))}
+            </div>
+          </div>
+          {newAreaType === "otro" ? (
+            <div>
+              <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+                Descripción personalizada
+              </label>
+              <input
+                value={newAreaLabel}
+                onChange={(e) => setNewAreaLabel(e.target.value)}
+                style={INPUT_STYLE}
+                placeholder="Ej. Bodega de materiales"
+              />
+            </div>
+          ) : null}
+          <div>
+            <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+              M²
+            </label>
+            <input
+              value={newAreaSqm}
+              onChange={(e) => setNewAreaSqm(e.target.value.replace(/[^\d.]/g, ""))}
+              style={INPUT_STYLE}
+              inputMode="decimal"
+              placeholder="0"
+            />
+          </div>
+          {areaMsg ? (
+            <div style={{ color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600 }}>{areaMsg}</div>
+          ) : null}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+            <UiButton variant="secondary" onClick={() => { setAreaCreateOpen(false); setAreaMsg(""); }}>
+              Cancelar
+            </UiButton>
+            <UiButton onClick={() => void handleCreateArea()} disabled={savingArea}>
+              {savingArea ? "Guardando..." : "Guardar"}
+            </UiButton>
+          </div>
+        </div>
+      </Modal>
     </PageContainer>
   );
 }
