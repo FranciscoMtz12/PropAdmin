@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Archive,
   ArrowLeft,
+  Copy,
   Briefcase,
   AlertCircle,
   Building2,
@@ -74,6 +75,7 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
+import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
@@ -277,6 +279,7 @@ type PlazaLocal = {
   display_code: string | null;
   sqm: number | null;
   status: string;
+  needs_review: boolean | null;
 };
 
 type FeatureConfigRow = {
@@ -694,6 +697,17 @@ export default function BuildingDetailPage() {
   const [bodegaRampas, setBodegaRampas] = useState("");        // bodega: número de rampas
   const [bodegaMsg, setBodegaMsg] = useState("");
 
+  /* Acciones en locales de plaza_comercial */
+  const [openActionsLocalId, setOpenActionsLocalId] = useState<string | null>(null);
+  const [editingLocal, setEditingLocal]             = useState<PlazaLocal | null>(null);
+  const [editLocalName, setEditLocalName]           = useState("");
+  const [editLocalCode, setEditLocalCode]           = useState("");
+  const [editLocalSqm, setEditLocalSqm]             = useState("");
+  const [editLocalMsg, setEditLocalMsg]             = useState("");
+  const [savingLocal, setSavingLocal]               = useState(false);
+  const [deletingLocal, setDeletingLocal]           = useState<PlazaLocal | null>(null);
+  const [confirmingDeleteLocal, setConfirmingDeleteLocal] = useState(false);
+
   /* Cajones de estacionamiento */
   const [parkingSpots, setParkingSpots]   = useState<ParkingSpot[]>([]);
   const [parkingLeases, setParkingLeases] = useState<BuildingLeaseForParking[]>([]);
@@ -938,7 +952,7 @@ export default function BuildingDetailPage() {
         .order("created_at"),
       b.building_subtype === "plaza_comercial"
         ? supabase.from("units")
-            .select("id, unit_number, display_code, sqm, status")
+            .select("id, unit_number, display_code, sqm, status, needs_review")
             .eq("building_id", buildingId)
             .is("deleted_at", null)
             .order("unit_number")
@@ -1608,6 +1622,99 @@ export default function BuildingDetailPage() {
     if (insertError) { setBodegaMsg(`Error: ${insertError.message}`); return; }
     setIsCreateBodegaOpen(false);
     setBodegaName(""); setBodegaCode(""); setBodegaConstructionSqm(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg("");
+    await loadBuilding();
+  }
+
+  /* ── Acciones en locales de plaza_comercial ──────────────────── */
+
+  function openEditLocal(local: PlazaLocal) {
+    setEditingLocal(local);
+    setEditLocalName(local.unit_number);
+    setEditLocalCode(local.display_code ?? "");
+    setEditLocalSqm(local.sqm != null ? String(local.sqm) : "");
+    setEditLocalMsg("");
+    setOpenActionsLocalId(null);
+  }
+
+  async function handleSaveLocal(e: React.FormEvent) {
+    e.preventDefault();
+    if (!user?.company_id || !editingLocal) return;
+    if (!editLocalName.trim()) { setEditLocalMsg("El nombre es obligatorio."); return; }
+    setSavingLocal(true);
+    setEditLocalMsg("");
+    const sqmVal = editLocalSqm.trim() ? parseFloat(editLocalSqm) : null;
+    const { error } = await supabase.from("units").update({
+      unit_number:  editLocalName.trim(),
+      display_code: editLocalCode.trim() || null,
+      sqm:          sqmVal !== null && !isNaN(sqmVal) ? sqmVal : null,
+    }).eq("id", editingLocal.id).eq("company_id", user.company_id);
+    setSavingLocal(false);
+    if (error) { setEditLocalMsg(error.message); return; }
+    setEditingLocal(null);
+    await loadBuilding();
+  }
+
+  async function handleDuplicateLocal(local: PlazaLocal) {
+    if (!user?.company_id || !building) return;
+    setOpenActionsLocalId(null);
+
+    /* Encontrar el siguiente número disponible con el mismo prefijo */
+    const m = local.unit_number.match(/^(.*?)(\d+)$/);
+    let newNumber: string;
+    if (m) {
+      const prefix = m[1];
+      const padLen = m[2].length;
+      const samePrefix = plazaLocales
+        .map(l => { const pm = l.unit_number.match(/^(.*?)(\d+)$/); return pm && pm[1] === prefix ? parseInt(pm[2], 10) : null; })
+        .filter((n): n is number => n !== null);
+      let candidate = (samePrefix.length > 0 ? Math.max(...samePrefix) : parseInt(m[2], 10)) + 1;
+      const existing = new Set(plazaLocales.map(l => l.unit_number.toLowerCase()));
+      while (existing.has((prefix + String(candidate).padStart(padLen, "0")).toLowerCase())) candidate++;
+      newNumber = prefix + (padLen > 1 ? String(candidate).padStart(padLen, "0") : String(candidate));
+    } else {
+      let candidate = `${local.unit_number} 2`;
+      const existing = new Set(plazaLocales.map(l => l.unit_number.toLowerCase()));
+      let i = 2;
+      while (existing.has(candidate.toLowerCase())) candidate = `${local.unit_number} ${++i}`;
+      newNumber = candidate;
+    }
+
+    const { data: newLocal, error } = await supabase.from("units").insert({
+      company_id:   user.company_id,
+      building_id:  building.id,
+      unit_number:  newNumber,
+      display_code: building.code ? `${building.code}-${newNumber}` : newNumber,
+      sqm:          local.sqm,
+      status:       "VACANT",
+      needs_review: true,
+    }).select("id").single();
+
+    if (error || !newLocal) { toast.error(`No se pudo duplicar: ${error?.message ?? "error desconocido"}`); return; }
+
+    /* Copiar amenidades */
+    const { data: amenities } = await supabase.from("unit_amenities")
+      .select("amenity_key").eq("unit_id", local.id).is("deleted_at", null);
+    if (amenities && amenities.length > 0) {
+      await supabase.from("unit_amenities").insert(
+        amenities.map((a: { amenity_key: string }) => ({ unit_id: newLocal.id, company_id: building.company_id, amenity_key: a.amenity_key }))
+      );
+    }
+
+    toast.success("Local duplicado — revisa los datos antes de continuar");
+    await loadBuilding();
+  }
+
+  async function handleDeleteLocal() {
+    if (!user?.company_id || !deletingLocal) return;
+    setConfirmingDeleteLocal(true);
+    const now = new Date().toISOString();
+    await supabase.from("leases").update({ deleted_at: now, status: "ENDED" })
+      .eq("unit_id", deletingLocal.id).eq("status", "ACTIVE").is("deleted_at", null);
+    const { error } = await supabase.from("units").update({ deleted_at: now })
+      .eq("id", deletingLocal.id).eq("company_id", user.company_id);
+    setConfirmingDeleteLocal(false);
+    if (error) { toast.error(error.message); return; }
+    setDeletingLocal(null);
     await loadBuilding();
   }
 
@@ -3090,16 +3197,26 @@ export default function BuildingDetailPage() {
                 {plazaLocales.map((local) => {
                   const occupied = local.status === "OCCUPIED";
                   return (
-                    <AppCard key={local.id} style={{ padding: 16, borderRadius: 14 }}>
+                    <AppCard key={local.id} style={{ padding: 16, borderRadius: 14, position: "relative" }}>
+                      {local.needs_review && (
+                        <div
+                          title="Pendiente de revisión"
+                          style={{
+                            position: "absolute", top: 10, right: 10,
+                            width: 10, height: 10, borderRadius: "50%",
+                            background: "#EF9F27", zIndex: 1, pointerEvents: "none",
+                          }}
+                        />
+                      )}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
                           <strong style={{ fontSize: 14, display: "block", marginBottom: 4 }}>{local.unit_number}</strong>
                           <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
                             {local.display_code ? `Código: ${local.display_code}` : "Sin código"}
                             {local.sqm != null ? ` · ${local.sqm.toLocaleString("es-MX")} m²` : ""}
                           </p>
                         </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                           <AppBadge
                             backgroundColor={occupied ? "var(--badge-bg-green)" : "var(--badge-bg-blue)"}
                             textColor={occupied ? "var(--badge-text-green)" : "var(--badge-text-blue)"}
@@ -3107,7 +3224,33 @@ export default function BuildingDetailPage() {
                           >
                             {occupied ? "Rentado" : "Disponible"}
                           </AppBadge>
-                          <UiButton href={`/buildings/${building.id}/units/${local.id}`}>Ver detalle</UiButton>
+                          {/* Menú de 3 puntos */}
+                          <div style={{ position: "relative" }}>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setOpenActionsLocalId(openActionsLocalId === local.id ? null : local.id); }}
+                              style={dropdownTriggerStyle}
+                              aria-label="Más acciones"
+                            >
+                              <MoreHorizontal size={16} />
+                            </button>
+                            {openActionsLocalId === local.id && (
+                              <div style={dropdownMenuStyle}>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => router.push(`/buildings/${building.id}/units/${local.id}`)}>
+                                  <Store size={14} /> Ver detalle
+                                </button>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => openEditLocal(local)}>
+                                  <Edit3 size={14} /> Editar
+                                </button>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => void handleDuplicateLocal(local)}>
+                                  <Copy size={14} /> Duplicar
+                                </button>
+                                <button type="button" style={dropdownDeleteItemStyle} onClick={() => { setDeletingLocal(local); setOpenActionsLocalId(null); }}>
+                                  <Trash2 size={14} /> Eliminar
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </AppCard>
@@ -3987,6 +4130,59 @@ export default function BuildingDetailPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Modal editar local ── */}
+      <Modal
+        open={editingLocal !== null}
+        onClose={() => { if (!savingLocal) setEditingLocal(null); }}
+        title="Editar local"
+      >
+        <form onSubmit={(e) => void handleSaveLocal(e)}>
+          <div style={{ display: "grid", gap: 14 }}>
+            <AppFormField label="Nombre del local" required>
+              <input
+                value={editLocalName}
+                onChange={e => setEditLocalName(e.target.value)}
+                placeholder="Ej. Local 1"
+                style={INPUT_STYLE}
+              />
+            </AppFormField>
+            <AppFormField label="Código">
+              <input
+                value={editLocalCode}
+                onChange={e => setEditLocalCode(e.target.value)}
+                placeholder="Ej. L-01"
+                style={INPUT_STYLE}
+              />
+            </AppFormField>
+            <AppFormField label="M²">
+              <input
+                type="number" min={0} step="0.01"
+                value={editLocalSqm}
+                onChange={e => setEditLocalSqm(e.target.value)}
+                placeholder="Ej. 85"
+                style={INPUT_STYLE}
+              />
+            </AppFormField>
+            {editLocalMsg ? <p style={{ color: "var(--badge-text-red)", fontSize: 13, margin: 0 }}>{editLocalMsg}</p> : null}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+              <UiButton type="button" variant="secondary" onClick={() => setEditingLocal(null)} disabled={savingLocal}>Cancelar</UiButton>
+              <UiButton type="submit" variant="primary" disabled={savingLocal}>{savingLocal ? "Guardando..." : "Guardar"}</UiButton>
+            </div>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Confirmar eliminar local ── */}
+      <DeleteConfirmModal
+        open={deletingLocal !== null}
+        title="Eliminar local"
+        description={deletingLocal ? `¿Eliminar ${deletingLocal.unit_number}? Esta acción lo ocultará del sistema.` : ""}
+        confirmText={confirmingDeleteLocal ? "Eliminando..." : "Eliminar local"}
+        onConfirm={() => void handleDeleteLocal()}
+        onCancel={() => { if (!confirmingDeleteLocal) setDeletingLocal(null); }}
+      />
+
     </PageContainer>
   );
 }
