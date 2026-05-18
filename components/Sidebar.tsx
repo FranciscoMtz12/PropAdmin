@@ -48,6 +48,9 @@ import SettingsModal from "@/components/SettingsModal";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
+import { useNotifications } from "@/app/hooks/useNotifications";
+import { SEVERITY_COLORS } from "@/lib/notifications";
+import type { NotificationModule } from "@/lib/notifications";
 
 type NavStatus = "done" | "partial" | "pending";
 
@@ -57,6 +60,7 @@ type SidebarItem = {
   icon: React.ComponentType<any>;
   status: NavStatus;
   disabled?: boolean;
+  notifModules?: NotificationModule[];
 };
 
 type NavSection = {
@@ -76,7 +80,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "GENERAL",
     items: [
-      { label: "Propiedades", href: "/buildings", icon: Building2,    status: "done" },
+      { label: "Propiedades", href: "/buildings", icon: Building2,    status: "done", notifModules: ["unidades", "propiedades"] },
       { label: "Analytics",  href: "/analytics", icon: BarChart2,    status: "done" },
       { label: "Calendario", href: "/calendar",  icon: CalendarDays, status: "done" },
     ],
@@ -84,23 +88,23 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "ADMINISTRACIÓN",
     items: [
-      { label: "Servicios",  href: "/servicios", icon: Layers,       status: "done" },
-      { label: "Pagos",      href: "/payments",  icon: CreditCard,   status: "done" },
-      { label: "Cobranza",   href: "/collections", icon: DollarSign,   status: "done" },
-      { label: "Inquilinos", href: "/tenants",   icon: Users,        status: "done" },
+      { label: "Servicios",  href: "/servicios",   icon: Layers,      status: "done", notifModules: ["servicios"] },
+      { label: "Pagos",      href: "/payments",    icon: CreditCard,  status: "done" },
+      { label: "Cobranza",   href: "/collections", icon: DollarSign,  status: "done", notifModules: ["cobranza", "contratos"] },
+      { label: "Inquilinos", href: "/tenants",     icon: Users,       status: "done" },
     ],
   },
   {
     label: "COMPRAS",
     items: [
-      { label: "Compras",      href: "/purchases", icon: ShoppingCart, status: "done" },
+      { label: "Compras",      href: "/purchases", icon: ShoppingCart, status: "done", notifModules: ["compras"] },
       { label: "Proveedores",  href: "/suppliers", icon: Truck,        status: "done" },
     ],
   },
   {
     label: "MANTENIMIENTO",
     items: [
-      { label: "Mantenimiento", href: "/maintenance", icon: Wrench,   status: "done" },
+      { label: "Mantenimiento", href: "/maintenance", icon: Wrench,   status: "done", notifModules: ["mantenimiento"] },
       { label: "Limpieza",      href: "/cleaning",    icon: Sparkles, status: "done" },
     ],
   },
@@ -176,11 +180,13 @@ function NavItem({
   pathname,
   accentColor,
   previewTenantId,
+  notifBadge,
 }: {
   item: SidebarItem;
   pathname: string;
   accentColor: string;
   previewTenantId?: string | null;
+  notifBadge?: { count: number; severity: 'critical' | 'warning' | 'info' } | null;
 }) {
   const Icon = item.icon;
   const statusVisual = getStatusVisual(item.status);
@@ -234,6 +240,28 @@ function NavItem({
       >
         {item.label}
       </span>
+      {notifBadge && (
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            minWidth: 16,
+            height: 16,
+            padding: "0 4px",
+            borderRadius: 999,
+            background: SEVERITY_COLORS[notifBadge.severity].dot,
+            fontSize: 10,
+            fontWeight: 700,
+            color: "#fff",
+            border: "2px solid rgba(0,0,0,0.25)",
+            lineHeight: 1,
+            flexShrink: 0,
+          }}
+        >
+          {notifBadge.count}
+        </span>
+      )}
     </div>
   );
 
@@ -321,6 +349,7 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, logoUrl, logoDarkUrl, shortName, isDark, toggleDark } = useTheme();
+  const { moduleStats } = useNotifications(user?.company_id ?? "");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
@@ -337,6 +366,17 @@ export default function Sidebar() {
     const allowed = ROLE_ALLOWED[user?.role ?? ""] ?? ["/dashboard"];
     return filterSections(ALL_ADMIN_SECTIONS, allowed);
   })();
+
+  function getItemBadge(item: SidebarItem) {
+    if (!item.notifModules?.length) return null;
+    const relevant = moduleStats.filter(s => item.notifModules!.includes(s.module));
+    if (relevant.length === 0) return null;
+    const count = relevant.reduce((sum, s) => sum + s.count, 0);
+    const severity = relevant.some(s => s.severity === 'critical') ? 'critical'
+                   : relevant.some(s => s.severity === 'warning')  ? 'warning'
+                   : 'info';
+    return { count, severity } as { count: number; severity: 'critical' | 'warning' | 'info' };
+  }
 
   if (isHiddenRoute) return null;
 
@@ -523,6 +563,7 @@ export default function Sidebar() {
                         item={item}
                         pathname={pathname}
                         accentColor={accentColor}
+                        notifBadge={getItemBadge(item)}
                       />
                     ))}
                   </div>

@@ -28,6 +28,8 @@ import {
 import {
   AlertTriangle,
   CalendarClock,
+  CheckCircle2,
+  Circle,
   DoorOpen,
   LayoutDashboard,
   Sparkles,
@@ -35,11 +37,15 @@ import {
   Wrench,
   Wallet,
   Calendar,
+  Bell,
+  ClipboardList,
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useNotifications } from "@/app/hooks/useNotifications";
+import { SEVERITY_COLORS, MODULE_LABELS } from "@/lib/notifications";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -302,6 +308,12 @@ export default function DashboardPage() {
   const isMantenimiento = role === 'mantenimiento';
   void isSuperOrAdmin;
 
+  const { notifications, loading: notifLoading } = useNotifications(user?.company_id ?? "");
+
+  /* ── Checklist mensual ─────────────────────────────────────── */
+  const [checklistResults, setChecklistResults] = useState<Record<string, boolean>>({});
+  const [checklistLoading, setChecklistLoading] = useState(true);
+
   const [loadingData, setLoadingData] = useState(true);
 
   /* ── Datos crudos de Supabase ──────────────────────────────────── */
@@ -333,6 +345,10 @@ export default function DashboardPage() {
   /* Carga inicial cuando el usuario está listo */
   useEffect(() => {
     if (user?.company_id) void loadDashboard();
+  }, [user?.company_id]);
+
+  useEffect(() => {
+    if (user?.company_id) void loadChecklist(user.company_id);
   }, [user?.company_id]);
 
   async function loadDashboard() {
@@ -446,6 +462,55 @@ export default function DashboardPage() {
     setMaintenanceLogs((maintenanceRes.data as MaintenanceLog[]) || []);
 
     setLoadingData(false);
+  }
+
+  async function loadChecklist(companyId: string) {
+    setChecklistLoading(true);
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const thirtyDays = new Date();
+    thirtyDays.setDate(thirtyDays.getDate() + 30);
+    const thirtyStr = thirtyDays.toISOString().split('T')[0];
+
+    const [
+      { count: cobrosCount },
+      { count: vencidosCount },
+      { count: lecturasCount },
+      { count: contratosCount },
+    ] = await Promise.all([
+      supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('period_year', year)
+        .eq('period_month', month),
+      supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('status', 'overdue')
+        .is('deleted_at', null),
+      supabase.from('building_utility_readings')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('period_year', year)
+        .eq('period_month', month)
+        .is('deleted_at', null),
+      supabase.from('leases')
+        .select('id', { count: 'exact', head: true })
+        .eq('company_id', companyId)
+        .eq('status', 'ACTIVE')
+        .not('end_date', 'is', null)
+        .lte('end_date', thirtyStr)
+        .is('deleted_at', null),
+    ]);
+
+    setChecklistResults({
+      generar_cobros:     (cobrosCount ?? 0) > 0,
+      revisar_vencidos:   (vencidosCount ?? 0) === 0,
+      lecturas_servicios: (lecturasCount ?? 0) > 0,
+      revisar_contratos:  (contratosCount ?? 0) === 0,
+    });
+    setChecklistLoading(false);
   }
 
   /* ─── Lookup maps ─────────────────────────────────────────────── */
@@ -1700,6 +1765,174 @@ export default function DashboardPage() {
         </div>
       </div>
       </motion.div>
+
+      {/* ══ FILA 5: NOTIFICACIONES + CHECKLIST MENSUAL ═══════════════ */}
+      <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.32 }}>
+      <div
+        className="dashboard-grid-2"
+        style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20, marginTop: 24 }}
+      >
+        {/* ── Card: Notificaciones activas ──────────────────────── */}
+        <SectionCard
+          title="Notificaciones activas"
+          subtitle="Estado operativo del portafolio"
+          icon={<Bell size={18} />}
+        >
+          {notifLoading ? (
+            <p style={{ color: c.textMuted, fontSize: 14 }}>Calculando...</p>
+          ) : notifications.length === 0 ? (
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
+              <CheckCircle2 size={36} color="#22C55E" />
+              <p style={{ margin: 0, fontWeight: 700, color: "#22C55E", fontSize: 15 }}>Todo al día</p>
+              <p style={{ margin: 0, fontSize: 12, color: c.textMuted, textAlign: "center" }}>
+                No hay alertas operativas pendientes.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {notifications.map(notif => {
+                const col = SEVERITY_COLORS[notif.severity];
+                return (
+                  <div
+                    key={notif.id}
+                    style={{
+                      display: "flex",
+                      gap: 12,
+                      padding: "10px 14px",
+                      borderRadius: 10,
+                      background: col.bg,
+                      borderLeft: `4px solid ${col.border}`,
+                    }}
+                  >
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
+                        <span
+                          style={{
+                            display: "inline-block",
+                            width: 8,
+                            height: 8,
+                            borderRadius: "50%",
+                            background: col.dot,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <span style={{ fontSize: 11, fontWeight: 700, color: col.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                          {MODULE_LABELS[notif.module]}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: col.text }}>{notif.title}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: 12, color: col.text, opacity: 0.8 }}>{notif.description}</p>
+                    </div>
+                    {notif.action_route && (
+                      <a
+                        href={notif.action_route}
+                        style={{
+                          alignSelf: "center",
+                          flexShrink: 0,
+                          fontSize: 12,
+                          fontWeight: 700,
+                          color: col.text,
+                          textDecoration: "underline",
+                          whiteSpace: "nowrap",
+                        }}
+                      >
+                        Ver →
+                      </a>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </SectionCard>
+
+        {/* ── Card: Checklist mensual ────────────────────────────── */}
+        {(() => {
+          const now = new Date();
+          const monthName = now.toLocaleDateString("es-MX", { month: "long" });
+          const monthCapitalized = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+          const TASKS = [
+            { key: 'generar_cobros',     label: 'Generar cobros del mes',       route: '/collections/invoice-generation' },
+            { key: 'revisar_vencidos',   label: 'Revisar cobros vencidos',       route: '/collections' },
+            { key: 'lecturas_servicios', label: 'Capturar lecturas del mes',     route: '/servicios' },
+            { key: 'revisar_contratos',  label: 'Revisar contratos por vencer',  route: '/collections' },
+          ];
+          const allDone = !checklistLoading && TASKS.every(t => checklistResults[t.key]);
+          return (
+            <SectionCard
+              title={`Pendientes de ${monthCapitalized} ${now.getFullYear()}`}
+              subtitle="Tareas recurrentes del mes"
+              icon={<ClipboardList size={18} />}
+            >
+              {checklistLoading ? (
+                <p style={{ color: c.textMuted, fontSize: 14 }}>Calculando...</p>
+              ) : allDone ? (
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
+                  <CheckCircle2 size={36} color="#22C55E" />
+                  <p style={{ margin: 0, fontWeight: 700, color: "#22C55E", fontSize: 15 }}>Mes al día</p>
+                  <p style={{ margin: 0, fontSize: 12, color: c.textMuted, textAlign: "center" }}>
+                    Todas las tareas del mes están completadas.
+                  </p>
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {TASKS.map(task => {
+                    const done = Boolean(checklistResults[task.key]);
+                    return (
+                      <div
+                        key={task.key}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 10,
+                          padding: "10px 14px",
+                          borderRadius: 10,
+                          background: done ? "var(--metric-bg-green)" : "var(--bg-page)",
+                          border: `1px solid ${done ? "var(--metric-border-green)" : "var(--border-default)"}`,
+                        }}
+                      >
+                        {done ? (
+                          <CheckCircle2 size={18} color="var(--badge-text-green)" style={{ flexShrink: 0 }} />
+                        ) : (
+                          <Circle size={18} color="var(--text-muted)" style={{ flexShrink: 0 }} />
+                        )}
+                        <span
+                          style={{
+                            flex: 1,
+                            fontSize: 13,
+                            fontWeight: done ? 600 : 500,
+                            color: done ? "var(--badge-text-green)" : "var(--text-primary)",
+                            textDecoration: done ? "line-through" : "none",
+                            opacity: done ? 0.75 : 1,
+                          }}
+                        >
+                          {task.label}
+                        </span>
+                        {!done && (
+                          <a
+                            href={task.route}
+                            style={{
+                              fontSize: 12,
+                              fontWeight: 700,
+                              color: "var(--accent)",
+                              textDecoration: "none",
+                              flexShrink: 0,
+                            }}
+                          >
+                            Ir →
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+          );
+        })()}
+      </div>
+      </motion.div>
+
     </PageContainer>
   );
 }
