@@ -57,6 +57,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         description: name,
         action_route: null,
         is_resolved: false,
+        building_id: buildingId === 'unknown' ? null : buildingId,
       })
     }
   }
@@ -107,6 +108,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         description: name,
         action_route: '/collections',
         is_resolved: false,
+        building_id: buildingId === 'unknown' ? null : buildingId,
       })
     }
   }
@@ -122,6 +124,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         description: name,
         action_route: '/collections',
         is_resolved: false,
+        building_id: buildingId === 'unknown' ? null : buildingId,
       })
     }
   }
@@ -137,6 +140,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
         description: name,
         action_route: null,
         is_resolved: false,
+        building_id: buildingId === 'unknown' ? null : buildingId,
       })
     }
   }

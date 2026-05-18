@@ -9,6 +9,7 @@ export type Notification = {
   description: string
   action_route: string | null
   is_resolved: boolean
+  building_id?: string | null
 }
 
 export const NOTIFICATION_TYPES = {

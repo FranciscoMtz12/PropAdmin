@@ -68,6 +68,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/app/hooks/useNotifications";
+import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -295,6 +297,7 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
 export default function BuildingsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
+  const { notifications } = useNotifications(user?.company_id ?? "");
 
   /* Estado de datos */
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -928,6 +931,12 @@ export default function BuildingsPage() {
               const freeUnits = vacantByBuilding.get(building.id) || 0;
               const isHovered = hoveredBuildingId === building.id;
 
+              const buildingNotifs = notifications.filter(n => n.building_id === building.id);
+              const worstSeverity = buildingNotifs.some(n => n.severity === 'critical') ? 'critical'
+                                  : buildingNotifs.some(n => n.severity === 'warning')  ? 'warning'
+                                  : buildingNotifs.length > 0                           ? 'info'
+                                  : null;
+
               return (
                 <motion.div
                   key={building.id}
@@ -936,6 +945,32 @@ export default function BuildingsPage() {
                   transition={{ duration: 0.3, delay: index * 0.06 }}
                   style={{ overflow: "visible", position: "relative", width: "100%", maxWidth: "100%", minWidth: 0 }}
                 >
+                {worstSeverity && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: -7,
+                      right: -7,
+                      zIndex: 10,
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minWidth: 20,
+                      height: 20,
+                      padding: "0 5px",
+                      borderRadius: 999,
+                      background: "var(--bg-card)",
+                      border: `1.5px solid ${SEVERITY_COLORS[worstSeverity].dot}`,
+                      fontSize: 11,
+                      fontWeight: 700,
+                      color: SEVERITY_COLORS[worstSeverity].dot,
+                      lineHeight: 1,
+                      pointerEvents: "none",
+                    }}
+                  >
+                    {buildingNotifs.length}
+                  </span>
+                )}
                 {/* Wrapper clickeable — toda la card navega al detalle */}
                 <div
                   onClick={() => router.push(`/buildings/${building.id}`)}
