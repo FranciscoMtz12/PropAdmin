@@ -3480,17 +3480,26 @@ export default function BuildingDetailPage() {
                           {CLEANING_TYPE_LABEL[s.cleaning_type] ?? s.cleaning_type}
                         </span>
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (window.confirm('¿Eliminar este horario de limpieza?')) {
-                            void handleDeleteSchedule(s.id);
-                          }
-                        }}
-                        style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", background: "transparent", border: "0.5px solid color-mix(in srgb, var(--color-text-danger, #dc2626) 30%, transparent)", cursor: "pointer", padding: "3px 10px", color: "var(--color-text-danger, #dc2626)", borderRadius: "var(--border-radius-sm, 6px)", fontSize: 12, fontWeight: 500, flexShrink: 0 }}
-                      >
-                        Eliminar
-                      </button>
+                      <div style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        <button
+                          type="button"
+                          onClick={() => toast('Próximamente')}
+                          style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-secondary)", fontSize: 12 }}
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm('¿Eliminar este horario de limpieza?')) {
+                              void handleDeleteSchedule(s.id);
+                            }
+                          }}
+                          style={{ background: "transparent", border: "none", cursor: "pointer", padding: 4, color: "var(--color-text-danger, #dc2626)", display: "inline-flex", alignItems: "center" }}
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
                     </div>
                   );
                 })
