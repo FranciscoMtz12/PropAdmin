@@ -5,6 +5,7 @@ import {
   AlertTriangle, Droplets, Flame, Info,
   Plus, Settings, Settings2, Trash2, Wifi, Zap,
 } from "lucide-react"
+
 import { supabase } from "@/lib/supabaseClient"
 import SectionCard from "@/components/SectionCard"
 import AppCard from "@/components/AppCard"
@@ -157,12 +158,10 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
 
   return (
     <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Servicios del edificio</h3>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-secondary)" }}>
-            Electricidad, gas, agua, internet y otros servicios del inmueble.
-          </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid var(--border-default)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Zap size={16} color="var(--accent)" />
+          <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>Suministros</h3>
         </div>
         <UiButton
           variant="primary"

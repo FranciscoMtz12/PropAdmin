@@ -305,6 +305,37 @@ type SetupTask = {
   dismissed: boolean;
 };
 
+type BuildingSchedule = {
+  id: string;
+  cleaning_type: string;
+  day_of_week: string;
+  time_block: string;
+};
+
+type CleaningLog = {
+  id: string;
+  cleaning_type: string;
+  scheduled_date: string;
+  status: string;
+  completed_at: string | null;
+};
+
+type MaintenanceTicket = {
+  id: string;
+  title: string;
+  priority: string;
+  status: string;
+  created_at: string;
+  performed_at: string | null;
+};
+
+type PreventivePlan = {
+  id: string;
+  next_due_date: string;
+  interval_months: number;
+  assets: { name: string; asset_type: string }[] | null;
+};
+
 type BuildingAssetRow = {
   id: string;
   asset_type: string;
@@ -440,6 +471,21 @@ function getAreaTypeLabel(type: string, customLabel: string | null): string {
   return AREA_TYPE_LABELS[type] ?? type;
 }
 
+const DAY_LABELS_MAP: Record<string, string> = {
+  monday: 'Lun', tuesday: 'Mar', wednesday: 'Mié',
+  thursday: 'Jue', friday: 'Vie', saturday: 'Sáb', sunday: 'Dom',
+};
+
+const CLEANING_TYPE_LABEL: Record<string, string> = {
+  common_area:   'Áreas comunes',
+  exterior:      'Exterior',
+  unit_interior: 'Interior de unidad',
+};
+
+const MAINT_PRIORITY_ICON: Record<string, string> = {
+  urgent: '🔴', high: '🟠', medium: '🟡', low: '⚪',
+};
+
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
 function formatFileSize(bytes: number | null) {
@@ -463,6 +509,15 @@ function formatMXN(v: number) {
   return new Intl.NumberFormat("es-MX", {
     style: "currency", currency: "MXN", maximumFractionDigits: 0,
   }).format(v || 0);
+}
+
+function daysAgo(dateStr: string): number {
+  return Math.max(0, Math.floor((Date.now() - new Date(dateStr).getTime()) / 86400000));
+}
+
+function formatShortDate(dateStr: string): string {
+  const d = new Date(dateStr + (dateStr.includes('T') ? '' : 'T00:00:00'));
+  return `${d.getDate()} ${MONTH_LABELS[d.getMonth()]}`;
 }
 
 /** Devuelve los últimos N meses como {year, month, label} en orden ascendente */
@@ -845,6 +900,25 @@ export default function BuildingDetailPage() {
   const [servicesRefreshKey, setServicesRefreshKey] = useState(0);
   const [activeFeatureKeys, setActiveFeatureKeys] = useState<Set<string>>(new Set());
 
+  /* Servicios: limpieza y mantenimiento (lazy) */
+  const [servicesTabLoaded, setServicesTabLoaded] = useState(false);
+  const [buildingSchedules, setBuildingSchedules] = useState<BuildingSchedule[]>([]);
+  const [recentCleaningLogs, setRecentCleaningLogs] = useState<CleaningLog[]>([]);
+  const [openTickets, setOpenTickets] = useState<MaintenanceTicket[]>([]);
+  const [upcomingPreventives, setUpcomingPreventives] = useState<PreventivePlan[]>([]);
+  /* Modales: agregar horario de limpieza */
+  const [addScheduleOpen, setAddScheduleOpen] = useState(false);
+  const [addScheduleType, setAddScheduleType] = useState('common_area');
+  const [addScheduleDays, setAddScheduleDays] = useState<string[]>([]);
+  const [addScheduleBlock, setAddScheduleBlock] = useState('morning');
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  /* Modales: nuevo ticket de mantenimiento */
+  const [addTicketOpen, setAddTicketOpen] = useState(false);
+  const [newTicketTitle, setNewTicketTitle] = useState('');
+  const [newTicketDesc, setNewTicketDesc] = useState('');
+  const [newTicketPriority, setNewTicketPriority] = useState('medium');
+  const [savingTicket, setSavingTicket] = useState(false);
+
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
 
@@ -888,6 +962,14 @@ export default function BuildingDetailPage() {
   useEffect(() => {
     if (activeTab === "parking" && building && !loadingBuilding) void loadParkingData();
   }, [activeTab, building, loadingBuilding]);
+
+  useEffect(() => {
+    if (activeTab === 'services' && building && !servicesTabLoaded) {
+      void loadServicesTabData();
+      setServicesTabLoaded(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, building, servicesTabLoaded]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -1292,6 +1374,119 @@ export default function BuildingDetailPage() {
       setParkingLeases([]);
     }
     setLoadingParking(false);
+  }
+
+  /* ── Servicios: limpieza y mantenimiento ──────────────────────── */
+
+  async function loadServicesTabData() {
+    if (!building) return;
+    const today = new Date().toISOString().split('T')[0];
+    const [
+      { data: schedulesData },
+      { data: logsData },
+      { data: ticketsData },
+      { data: preventivesData },
+    ] = await Promise.all([
+      supabase
+        .from('cleaning_building_schedules')
+        .select('id, cleaning_type, day_of_week, time_block')
+        .eq('building_id', building.id)
+        .is('deleted_at', null)
+        .order('day_of_week'),
+      supabase
+        .from('cleaning_logs')
+        .select('id, cleaning_type, scheduled_date, status, completed_at')
+        .eq('building_id', building.id)
+        .is('deleted_at', null)
+        .order('scheduled_date', { ascending: false })
+        .limit(5),
+      supabase
+        .from('maintenance_logs')
+        .select('id, title, priority, status, created_at, performed_at')
+        .eq('building_id', building.id)
+        .eq('company_id', building.company_id)
+        .not('status', 'eq', 'DONE')
+        .is('deleted_at', null)
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('preventive_plans')
+        .select('id, next_due_date, interval_months, assets(name, asset_type)')
+        .eq('company_id', building.company_id)
+        .gte('next_due_date', today)
+        .order('next_due_date')
+        .limit(3),
+    ]);
+    setBuildingSchedules((schedulesData || []) as BuildingSchedule[]);
+    setRecentCleaningLogs((logsData || []) as CleaningLog[]);
+    setOpenTickets((ticketsData || []) as MaintenanceTicket[]);
+    setUpcomingPreventives((preventivesData || []) as PreventivePlan[]);
+  }
+
+  async function handleAddSchedule() {
+    if (!building || addScheduleDays.length === 0) return;
+    setSavingSchedule(true);
+    await Promise.all(
+      addScheduleDays.map(day =>
+        supabase.from('cleaning_building_schedules').insert({
+          building_id: building.id,
+          company_id: building.company_id,
+          cleaning_type: addScheduleType,
+          day_of_week: day,
+          time_block: addScheduleBlock,
+        })
+      )
+    );
+    setAddScheduleOpen(false);
+    setAddScheduleDays([]);
+    setAddScheduleType('common_area');
+    setAddScheduleBlock('morning');
+    setSavingSchedule(false);
+    const { data } = await supabase
+      .from('cleaning_building_schedules')
+      .select('id, cleaning_type, day_of_week, time_block')
+      .eq('building_id', building.id)
+      .is('deleted_at', null)
+      .order('day_of_week');
+    setBuildingSchedules((data || []) as BuildingSchedule[]);
+  }
+
+  async function handleDeleteSchedule(scheduleId: string) {
+    await supabase.from('cleaning_building_schedules')
+      .update({ deleted_at: new Date().toISOString() })
+      .eq('id', scheduleId);
+    setBuildingSchedules(prev => prev.filter(s => s.id !== scheduleId));
+  }
+
+  async function handleAddTicket() {
+    if (!building || !newTicketTitle.trim()) return;
+    setSavingTicket(true);
+    const today = new Date().toISOString().split('T')[0];
+    await supabase.from('maintenance_logs').insert({
+      building_id: building.id,
+      company_id: building.company_id,
+      title: newTicketTitle.trim(),
+      description: newTicketDesc.trim() || null,
+      priority: newTicketPriority,
+      status: 'OPEN',
+      log_type: 'corrective',
+      performed_at: today,
+    });
+    setAddTicketOpen(false);
+    setNewTicketTitle('');
+    setNewTicketDesc('');
+    setNewTicketPriority('medium');
+    setSavingTicket(false);
+    const { data } = await supabase
+      .from('maintenance_logs')
+      .select('id, title, priority, status, created_at, performed_at')
+      .eq('building_id', building.id)
+      .eq('company_id', building.company_id)
+      .not('status', 'eq', 'DONE')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    setOpenTickets((data || []) as MaintenanceTicket[]);
   }
 
   async function handleCreateSpot() {
@@ -1768,6 +1963,10 @@ export default function BuildingDetailPage() {
   }
 
   function handleBannerNavigate(route: string) {
+    if (route === '/cleaning') {
+      document.getElementById('services-cleaning-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
     if (route.includes('?tab=')) {
       const tab = new URL(route, 'http://x').searchParams.get('tab');
       if (tab) setActiveTab(tab);
@@ -3229,13 +3428,228 @@ export default function BuildingDetailPage() {
           {pendingByTab.services.length > 0 && (
             <TabPendingBanner tasks={pendingByTab.services} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
           )}
-          <BuildingServicesTab
-            buildingId={building.id}
-            companyId={building.company_id}
-            buildingName={building.name}
-            units={buildingUnits}
-            refreshKey={servicesRefreshKey}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+
+            {/* ── SUMINISTROS ── */}
+            <BuildingServicesTab
+              buildingId={building.id}
+              companyId={building.company_id}
+              buildingName={building.name}
+              units={buildingUnits}
+              refreshKey={servicesRefreshKey}
+            />
+
+            {/* ── LIMPIEZA ── */}
+            <div id="services-cleaning-section">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid var(--border-default)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Sparkles size={16} color="var(--accent)" />
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>Limpieza</h3>
+                </div>
+                <UiButton variant="secondary" icon={<Plus size={14} />} onClick={() => setAddScheduleOpen(true)}>
+                  Agregar horario
+                </UiButton>
+              </div>
+
+              {/* Schedules agrupados por tipo */}
+              {buildingSchedules.length === 0 ? (
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  Sin horarios de limpieza configurados
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16, marginBottom: 16 }}>
+                  {(['common_area', 'exterior'] as const).map(ctype => {
+                    const typeSchedules = buildingSchedules.filter(s => s.cleaning_type === ctype);
+                    if (typeSchedules.length === 0) return null;
+                    return (
+                      <div key={ctype}>
+                        <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          {CLEANING_TYPE_LABEL[ctype]}
+                        </p>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                          {typeSchedules.map(s => (
+                            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 10px", borderRadius: 8, background: "var(--bg-card)", border: "1px solid var(--border-default)", fontSize: 13 }}>
+                              <span>{DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}</span>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteSchedule(s.id)}
+                                style={{ display: "inline-flex", alignItems: "center", background: "none", border: "none", cursor: "pointer", padding: 2, color: "var(--text-muted)", borderRadius: 4 }}
+                              >
+                                <X size={11} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Últimos logs */}
+              {recentCleaningLogs.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Últimas limpiezas
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                    {recentCleaningLogs.map(log => (
+                      <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 13, padding: "6px 0", borderBottom: "1px solid var(--border-default)" }}>
+                        <span style={{ color: "var(--text-muted)", minWidth: 56, flexShrink: 0 }}>{formatShortDate(log.scheduled_date)}</span>
+                        <span style={{ flex: 1 }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
+                        <span style={{
+                          padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                          background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
+                          color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
+                        }}>
+                          {log.status === 'completed' ? 'Completado' : log.status === 'skipped' ? 'Omitido' : 'Pendiente'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <a href={`/cleaning?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 10, fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
+                    Ver historial completo →
+                  </a>
+                </div>
+              )}
+            </div>
+
+            {/* ── MANTENIMIENTO ── */}
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20, paddingBottom: 14, borderBottom: "1px solid var(--border-default)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Wrench size={16} color="var(--accent)" />
+                  <h3 style={{ margin: 0, fontSize: 15, fontWeight: 500 }}>Mantenimiento</h3>
+                </div>
+                <UiButton variant="secondary" icon={<Plus size={14} />} onClick={() => setAddTicketOpen(true)}>
+                  Nuevo ticket
+                </UiButton>
+              </div>
+
+              {/* Tickets abiertos */}
+              {openTickets.length === 0 ? (
+                <p style={{ margin: "0 0 16px", fontSize: 13, color: "#10B981", fontWeight: 600 }}>
+                  ✅ Sin tickets pendientes
+                </p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                  {openTickets.map(ticket => (
+                    <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 10, background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
+                      <span style={{ fontSize: 15, flexShrink: 0 }}>{MAINT_PRIORITY_ICON[ticket.priority] ?? '⚪'}</span>
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 500 }}>{ticket.title}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
+                        {daysAgo(ticket.created_at) === 0 ? 'Hoy' : `Hace ${daysAgo(ticket.created_at)} día${daysAgo(ticket.created_at) === 1 ? '' : 's'}`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Preventivos próximos */}
+              {upcomingPreventives.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                    Preventivos próximos
+                  </p>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+                    {upcomingPreventives.map(p => (
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13, padding: "8px 0", borderBottom: "1px solid var(--border-default)" }}>
+                        <span>{p.assets?.[0]?.name ?? 'Activo'}</span>
+                        <span style={{ color: "var(--text-muted)", fontSize: 12 }}>{formatShortDate(p.next_due_date)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <a href={`/maintenance?building_id=${building.id}`} style={{ display: "inline-block", marginTop: 4, fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>
+                Ver todos los tickets →
+              </a>
+            </div>
+          </div>
+
+          {/* Modal: agregar horario de limpieza */}
+          <Modal
+            open={addScheduleOpen}
+            title="Agregar horario de limpieza"
+            onClose={() => { setAddScheduleOpen(false); setAddScheduleDays([]); }}
+            maxWidth={480}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div>
+                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Tipo</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([{ value: 'common_area', label: 'Áreas comunes' }, { value: 'exterior', label: 'Exterior' }]).map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setAddScheduleType(opt.value)} style={{ padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: addScheduleType === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleType === opt.value ? "var(--accent)" : "var(--bg-card)", color: addScheduleType === opt.value ? "#fff" : "var(--text-secondary)" }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Días</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {(['monday','tuesday','wednesday','thursday','friday','saturday'] as const).map(day => (
+                    <button key={day} type="button" onClick={() => setAddScheduleDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])} style={{ padding: "7px 12px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: addScheduleDays.includes(day) ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleDays.includes(day) ? "var(--accent)" : "var(--bg-card)", color: addScheduleDays.includes(day) ? "#fff" : "var(--text-secondary)" }}>
+                      {DAY_LABELS_MAP[day]}
+                    </button>
+                  ))}
+                </div>
+                {addScheduleDays.length === 0 && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#EF4444" }}>Selecciona al menos un día.</p>}
+              </div>
+              <div>
+                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Turno</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  {([{ value: 'morning', label: 'Mañana' }, { value: 'afternoon', label: 'Tarde' }]).map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setAddScheduleBlock(opt.value)} style={{ padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: addScheduleBlock === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleBlock === opt.value ? "var(--accent)" : "var(--bg-card)", color: addScheduleBlock === opt.value ? "#fff" : "var(--text-secondary)" }}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+                <UiButton variant="secondary" onClick={() => { setAddScheduleOpen(false); setAddScheduleDays([]); }}>Cancelar</UiButton>
+                <UiButton variant="primary" onClick={() => void handleAddSchedule()} disabled={savingSchedule || addScheduleDays.length === 0}>
+                  {savingSchedule ? 'Guardando...' : 'Guardar'}
+                </UiButton>
+              </div>
+            </div>
+          </Modal>
+
+          {/* Modal: nuevo ticket de mantenimiento */}
+          <Modal
+            open={addTicketOpen}
+            title="Nuevo ticket de mantenimiento"
+            onClose={() => setAddTicketOpen(false)}
+            maxWidth={520}
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600 }}>Título *</p>
+                <input value={newTicketTitle} onChange={e => setNewTicketTitle(e.target.value)} placeholder="Ej: Fuga en tubería del 3er piso" style={INPUT_STYLE} />
+              </div>
+              <div>
+                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600 }}>Descripción (opcional)</p>
+                <textarea value={newTicketDesc} onChange={e => setNewTicketDesc(e.target.value)} rows={3} placeholder="Describe el problema en detalle..." style={TEXTAREA_STYLE} />
+              </div>
+              <div>
+                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Prioridad</p>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {([{ value: 'low', label: 'Baja' }, { value: 'medium', label: 'Media' }, { value: 'high', label: 'Alta' }, { value: 'urgent', label: 'Urgente' }]).map(opt => (
+                    <button key={opt.value} type="button" onClick={() => setNewTicketPriority(opt.value)} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, border: newTicketPriority === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: newTicketPriority === opt.value ? "var(--accent)" : "var(--bg-card)", color: newTicketPriority === opt.value ? "#fff" : "var(--text-secondary)" }}>
+                      <span>{MAINT_PRIORITY_ICON[opt.value]}</span>{opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+                <UiButton variant="secondary" onClick={() => setAddTicketOpen(false)}>Cancelar</UiButton>
+                <UiButton variant="primary" onClick={() => void handleAddTicket()} disabled={savingTicket || !newTicketTitle.trim()}>
+                  {savingTicket ? 'Creando...' : 'Crear ticket'}
+                </UiButton>
+              </div>
+            </div>
+          </Modal>
         </>
       ) : null}
 
