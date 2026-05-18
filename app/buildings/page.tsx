@@ -931,6 +931,9 @@ export default function BuildingsPage() {
               const freeUnits = vacantByBuilding.get(building.id) || 0;
               const isHovered = hoveredBuildingId === building.id;
 
+              // TODO: remove — debug notifs por edificio
+              if (index === 0) console.log('notifications en portafolio:', notifications?.map(n => ({ id: n.id, title: n.title, building_id: n.building_id })));
+
               const buildingNotifs = notifications.filter(n => n.building_id === building.id);
               const worstSeverity = buildingNotifs.some(n => n.severity === 'critical') ? 'critical'
                                   : buildingNotifs.some(n => n.severity === 'warning')  ? 'warning'
