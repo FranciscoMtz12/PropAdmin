@@ -15,6 +15,7 @@ type TabItem = {
   icon?: ReactNode;
   count?: number;
   notifDot?: { count: number; color: string };
+  pendingDot?: boolean;
 };
 
 type AppTabsProps = {
@@ -130,6 +131,23 @@ export default function AppTabs({
               >
                 {item.notifDot.count}
               </span>
+            ) : null}
+
+            {item.pendingDot && !item.notifDot ? (
+              <span
+                style={{
+                  position: "absolute",
+                  top: -4,
+                  right: -4,
+                  width: 8,
+                  height: 8,
+                  borderRadius: "50%",
+                  background: "var(--brand-color, #8B2252)",
+                  border: "1.5px solid var(--color-background-primary)",
+                  zIndex: 10,
+                  pointerEvents: "none",
+                }}
+              />
             ) : null}
           </span>
         );

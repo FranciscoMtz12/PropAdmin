@@ -624,6 +624,28 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: any[] }) 
   );
 }
 
+/* ─── Mapa task_key → tab para bolitas de setup pendiente ────────────── */
+
+const TASK_TAB_MAP: Record<string, string> = {
+  add_electricity_meter:  'services',
+  add_water_meter:        'services',
+  add_gas_meter:          'services',
+  setup_internet:         'services',
+  setup_cleaning_schedule:'services',
+  add_parking_spots:      'parking',
+  setup_common_areas:     'common_areas',
+  setup_admin_office:     'assets',
+  setup_security_booth:   'assets',
+  setup_service_storage:  'assets',
+  add_first_asset:        'assets',
+  upload_documents:       'documents',
+  add_photos:             'gallery',
+  add_first_lease:        'leases',
+  add_first_unit:         'overview',
+  setup_security_service: 'overview',
+  setup_loading_dock:     'assets',
+}
+
 /* ─── Página ─────────────────────────────────────────────────────────── */
 
 export default function BuildingDetailPage() {
@@ -2067,6 +2089,13 @@ export default function BuildingDetailPage() {
   const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle || isPlazaComercial;
   const hasSuperficiesTab = ["commercial", "industrial", "industrial_park", "land"].includes(building.building_category ?? "");
 
+  const tabsWithPendingTasks = new Set(
+    setupTasks
+      .filter(t => !t.is_completed && !t.dismissed)
+      .map(t => TASK_TAB_MAP[t.task_key])
+      .filter(Boolean)
+  );
+
   function getBuildingDetailLabel(cat: string | null, sub?: string | null): string {
     if (cat === "commercial") {
       switch (sub) {
@@ -2196,17 +2225,17 @@ export default function BuildingDetailPage() {
         activeKey={activeTab}
         onChange={handleTabChange}
         items={[
-          { key: "overview",  label: "Resumen",    icon: <Building2 size={16} /> },
-          ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length }] : []),
+          { key: "overview",  label: "Resumen",    icon: <Building2 size={16} />, pendingDot: tabsWithPendingTasks.has('overview') },
+          ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length, pendingDot: tabsWithPendingTasks.has('leases') }] : []),
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
           ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: '#EF9F27' } : undefined }] : []),
           ...(hasSuperficiesTab ? [{ key: "superficies", label: "Superficies", icon: <Ruler size={16} />, count: buildingAreas.length }] : []),
-          ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets }] : []),
-          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs },
-          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery },
-          ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services }] : []),
-          ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking  }] : []),
-          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes", icon: <Trees size={16} />,   count: commonAreas.length }] : []),
+          ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets,    pendingDot: tabsWithPendingTasks.has('assets')       }] : []),
+          { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs,    pendingDot: tabsWithPendingTasks.has('documents') },
+          { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery, pendingDot: tabsWithPendingTasks.has('gallery')   },
+          ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services, pendingDot: tabsWithPendingTasks.has('services')     }] : []),
+          ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking,  pendingDot: tabsWithPendingTasks.has('parking')      }] : []),
+          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
         ]}
       />
 
