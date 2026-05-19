@@ -127,6 +127,10 @@ export default function RegisterPage() {
   const [brandColor, setBrandColor] = useState("#8B2252");
   const [logoFile, setLogoFile]     = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState("");
+  const [step4Err, setStep4Err]     = useState<Record<string,string>>({});
+
+  // ── step 2: tipo inline error
+  const [step2Err, setStep2Err]     = useState("");
 
   // ─────────────────────────────────────────────────────────
   function validateStep1() {
@@ -154,6 +158,13 @@ export default function RegisterPage() {
     return Object.keys(e).length === 0;
   }
 
+  function validateStep4() {
+    const e: Record<string,string> = {};
+    if (!shortName.trim()) e.shortName = "El nombre corto es obligatorio";
+    setStep4Err(e);
+    return Object.keys(e).length === 0;
+  }
+
   function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -166,8 +177,12 @@ export default function RegisterPage() {
   function nextStep() {
     setGlobalError("");
     if (step === 0 && !validateStep1()) return;
-    if (step === 1 && !orgType) { setGlobalError("Selecciona un tipo de cuenta"); return; }
+    if (step === 1) {
+      if (!orgType) { setStep2Err("Selecciona un tipo de cuenta para continuar"); return; }
+      setStep2Err("");
+    }
     if (step === 2 && !validateStep3()) return;
+    if (step === 3 && !validateStep4()) return;
     setStep((s) => Math.min(s + 1, STEPS.length - 1));
   }
 
@@ -374,35 +389,40 @@ export default function RegisterPage() {
       flex: 1,
     };
     return (
-      <div style={{ display: "flex", gap: "1rem" }}>
-        {(["empresa", "personal"] as const).map((t) => {
-          const active = orgType === t;
-          return (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setOrgType(t)}
-              style={{
-                ...cardBase,
-                background: active ? "rgba(139,34,82,.3)" : "rgba(255,255,255,.04)",
-                border: active ? "1px solid #8B2252" : "1px solid rgba(255,255,255,.15)",
-                color: "#fff",
-                textAlign: "left",
-              }}
-            >
-              <span style={{ fontSize: 28 }}>{t === "empresa" ? "🏢" : "👤"}</span>
-              <span style={{ fontWeight: 600, fontSize: 15 }}>
-                {t === "empresa" ? "Empresa" : "Personal"}
-              </span>
-              <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 1.4 }}>
-                {t === "empresa"
-                  ? "Persona moral, administra múltiples propiedades"
-                  : "Persona física, propiedades propias"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+      <>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {(["empresa", "personal"] as const).map((t) => {
+            const active = orgType === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setOrgType(t)}
+                style={{
+                  ...cardBase,
+                  background: active ? "rgba(139,34,82,.3)" : "rgba(255,255,255,.04)",
+                  border: active ? "1px solid #8B2252" : "1px solid rgba(255,255,255,.15)",
+                  color: "#fff",
+                  textAlign: "left",
+                }}
+              >
+                <span style={{ fontSize: 28 }}>{t === "empresa" ? "🏢" : "👤"}</span>
+                <span style={{ fontWeight: 600, fontSize: 15 }}>
+                  {t === "empresa" ? "Empresa" : "Personal"}
+                </span>
+                <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 1.4 }}>
+                  {t === "empresa"
+                    ? "Persona moral, administra múltiples propiedades"
+                    : "Persona física, propiedades propias"}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {step2Err && (
+          <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>{step2Err}</p>
+        )}
+      </>
     );
   }
 
@@ -454,9 +474,10 @@ export default function RegisterPage() {
             placeholder={orgType === "empresa" ? companyName.slice(0, 20) : fullName.split(" ")[0]}
             style={inputStyle}
           />
-          <p style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginTop: 4 }}>
-            Como aparecerá en la plataforma
-          </p>
+          {step4Err.shortName
+            ? <p style={errStyle}>{step4Err.shortName}</p>
+            : <p style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Como aparecerá en la plataforma</p>
+          }
         </div>
 
         <div>
