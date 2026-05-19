@@ -114,14 +114,14 @@ export default function AppTabs({
                   position: "absolute",
                   top: -6,
                   right: -6,
-                  width: 18,
-                  height: 18,
-                  borderRadius: "50%",
-                  border: `1.5px solid ${item.notifDot.color}`,
-                  color: item.notifDot.color,
-                  background: "var(--bg-card)",
+                  minWidth: item.notifDot.count > 1 ? 20 : 18,
+                  height: item.notifDot.count > 1 ? 20 : 18,
+                  padding: item.notifDot.count > 1 ? "0 4px" : 0,
+                  borderRadius: 999,
+                  background: item.notifDot.color,
                   fontSize: 10,
                   fontWeight: 700,
+                  color: "#ffffff",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -129,7 +129,7 @@ export default function AppTabs({
                   pointerEvents: "none",
                 }}
               >
-                {item.notifDot.count}
+                {item.notifDot.count > 1 ? item.notifDot.count : null}
               </span>
             ) : null}
 

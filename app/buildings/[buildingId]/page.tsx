@@ -4058,14 +4058,10 @@ export default function BuildingDetailPage() {
                           style={{
                             position: "absolute", top: -6, right: -6,
                             width: 18, height: 18, borderRadius: "50%",
-                            border: "1.5px solid #EF9F27",
-                            color: "#EF9F27",
-                            background: "var(--color-background-primary)",
-                            fontSize: 10, fontWeight: 600,
-                            display: "flex", alignItems: "center", justifyContent: "center",
+                            background: "#EF9F27",
                             zIndex: 2, pointerEvents: "none",
                           }}
-                        >!</div>
+                        />
                       )}
                       <EntityCard
                         title={local.unit_number}

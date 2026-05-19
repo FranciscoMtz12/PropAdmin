@@ -992,20 +992,19 @@ export default function BuildingsPage() {
                           display: "inline-flex",
                           alignItems: "center",
                           justifyContent: "center",
-                          minWidth: 20,
-                          height: 20,
-                          padding: "0 5px",
+                          minWidth: totalCount > 1 ? 20 : 18,
+                          height: totalCount > 1 ? 20 : 18,
+                          padding: totalCount > 1 ? "0 5px" : 0,
                           borderRadius: 999,
-                          background: "var(--bg-card)",
-                          border: `1.5px solid ${SEVERITY_COLORS[worstSeverity].dot}`,
+                          background: SEVERITY_COLORS[worstSeverity].dot,
                           fontSize: 11,
                           fontWeight: 700,
-                          color: SEVERITY_COLORS[worstSeverity].dot,
+                          color: "#ffffff",
                           lineHeight: 1,
                           pointerEvents: "none",
                         }}
                       >
-                        {totalCount}
+                        {totalCount > 1 ? totalCount : null}
                       </span>
                     )}
                     {/* Fila superior: info izq + dona der */}

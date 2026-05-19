@@ -997,18 +997,11 @@ export default function BuildingUnitsPage() {
                         width: 18,
                         height: 18,
                         borderRadius: "50%",
-                        border: "1.5px solid #EF9F27",
-                        color: "#EF9F27",
-                        background: "var(--color-background-primary)",
-                        fontSize: 10,
-                        fontWeight: 600,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
+                        background: "#EF9F27",
                         zIndex: 10,
                         pointerEvents: "none",
                       }}
-                    >!</div>
+                    />
                   )}
                 <EntityCard
                   title={unit.unit_number}
