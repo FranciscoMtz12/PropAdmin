@@ -982,6 +982,13 @@ export default function PurchasesPage() {
       return;
     }
 
+    /* Bloquear si todos los materiales del ticket ya fueron pedidos */
+    const progress = ticketProgress[order.id];
+    if (progress && progress.itemTotal > 0 && progress.itemReceived >= progress.itemTotal) {
+      toast.error("Todos los materiales del ticket ya fueron pedidos.");
+      return;
+    }
+
     const items = itemsByOrderId[order.id] ?? [];
     const faltanteItems = items.filter(
       (it) => it.quantity_received != null && it.quantity_received < it.quantity
@@ -2053,7 +2060,19 @@ export default function PurchasesPage() {
                               {items.map((it, idx) => (
                                 <tr key={it.id} style={{ borderTop: "1px solid var(--border-default)" }}>
                                   <td style={tdStyle}>{idx + 1}</td>
-                                  <td style={{ ...tdStyle, textAlign: "left" }}>{it.description}</td>
+                                  <td style={{ ...tdStyle, textAlign: "left" }}>
+                                    <span>{it.description}</span>
+                                    {it.quantity_received != null && Number(it.quantity_received) >= Number(it.quantity) && (
+                                      <span style={{
+                                        display: "inline-block", marginLeft: 8,
+                                        padding: "1px 7px", borderRadius: 999,
+                                        background: "#dcfce7", color: "#15803d",
+                                        fontSize: 11, fontWeight: 600,
+                                      }}>
+                                        Ya surtido en {o.folio}
+                                      </span>
+                                    )}
+                                  </td>
                                   <td style={tdStyle}>{it.quantity}</td>
                                   <td style={tdStyle}>{it.unit}</td>
                                   {hasPrices ? (

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import { useCurrentUser } from "@/contexts/UserContext";
 
 /*
@@ -128,21 +129,31 @@ export default function RouteGuard() {
     if (adminPublic) { router.replace("/dashboard"); return; }
   }, [pathname, router, user, loading]);
 
-  if (loading || isValidating) return (
-    <div style={{
-      position: "fixed", inset: 0,
-      background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      zIndex: 9999,
-    }}>
-      <img
-        src="/brands/saproa/saproa-stacked-dark.png"
-        alt="SAPROA"
-        className="splash-logo"
-        style={{ width: 160, height: 160, objectFit: "contain" }}
-      />
-    </div>
-  );
+  const showSplash = loading || isValidating;
 
-  return null;
+  return (
+    <AnimatePresence>
+      {showSplash && (
+        <motion.div
+          key="splash"
+          initial={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 1.15 }}
+          transition={{ duration: 0.6, ease: "easeOut" }}
+          style={{
+            position: "fixed", inset: 0,
+            background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            zIndex: 9999,
+          }}
+        >
+          <img
+            src="/brands/saproa/saproa-stacked-dark.png"
+            alt="SAPROA"
+            className="splash-logo"
+            style={{ width: 160, height: 160, objectFit: "contain" }}
+          />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
 }

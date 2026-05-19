@@ -3497,7 +3497,7 @@ export default function BuildingDetailPage() {
             {/* Métricas */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
               <MetricCard
-                label="Total assets"
+                label="Total equipamiento"
                 value={buildingAssets.length}
                 icon={<Package size={18} />}
               />
@@ -3517,7 +3517,7 @@ export default function BuildingDetailPage() {
 
             {/* Lista */}
             <SectionCard
-              title="Assets del edificio"
+              title="Equipamiento del edificio"
               subtitle="Equipos e instalaciones de áreas comunes."
               icon={<Package size={18} />}
               action={

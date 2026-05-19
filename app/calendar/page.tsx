@@ -38,7 +38,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  CreditCard,
   Filter,
   Sparkles,
   Wallet,
@@ -100,53 +99,6 @@ type MaintenanceLog = {
   building_id: string | null;
   unit_id: string | null;
   asset_id: string | null;
-};
-
-type ExpenseFrequencyType = "monthly" | "bimonthly";
-
-type ExpenseSchedule = {
-  id: string;
-  building_id: string;
-  unit_id: string | null;
-  expense_type:
-    | "electricity"
-    | "water"
-    | "gas"
-    | "internet"
-    | "phone"
-    | "maintenance_service"
-    | "security"
-    | "cleaning_service"
-    | "other";
-  title: string;
-  vendor_name: string | null;
-  responsibility_type: "company" | "building" | "tenant";
-  applies_to: "building" | "unit";
-  amount_estimated: number | null;
-  due_day: number;
-  active: boolean;
-  notes: string | null;
-  frequency_type: ExpenseFrequencyType | null;
-  starts_on: string | null;
-  ends_on: string | null;
-  auto_generate: boolean | null;
-};
-
-type ExpensePayment = {
-  id: string;
-  expense_schedule_id: string;
-  company_id: string;
-  building_id: string;
-  unit_id: string | null;
-  period_year: number;
-  period_month: number;
-  due_date: string;
-  amount_due: number;
-  status: "pending" | "paid" | "overdue";
-  paid_at: string | null;
-  payment_reference: string | null;
-  notes: string | null;
-  created_at: string;
 };
 
 type CollectionSchedule = {
@@ -279,12 +231,6 @@ const PAYMENTS_COLORS = {
   background: "#EFF6FF",
   border: "#93C5FD",
   text: "#1D4ED8",
-};
-
-const PAYMENTS_PROJECTED_COLORS = {
-  background: "#F8FBFF",
-  border: "#DBEAFE",
-  text: "#3B82F6",
 };
 
 const COLLECTIONS_COLORS = {
@@ -482,40 +428,6 @@ function getMonthListWithinRange(start: Date, end: Date) {
   return months;
 }
 
-function isExpenseScheduleActiveForPeriod(
-  schedule: ExpenseSchedule,
-  currentYear: number,
-  currentMonth: number
-) {
-  const startsOn = schedule.starts_on ? parseDateOnly(schedule.starts_on) : null;
-  const endsOn = schedule.ends_on ? parseDateOnly(schedule.ends_on) : null;
-  const currentDate = new Date(currentYear, currentMonth - 1, 1);
-
-  if (startsOn && currentDate < new Date(startsOn.getFullYear(), startsOn.getMonth(), 1)) {
-    return false;
-  }
-
-  if (endsOn && currentDate > new Date(endsOn.getFullYear(), endsOn.getMonth(), 1)) {
-    return false;
-  }
-
-  const frequency = schedule.frequency_type || "monthly";
-  if (frequency === "monthly") return true;
-
-  if (!startsOn) return true;
-
-  const startIndex = startsOn.getFullYear() * 12 + startsOn.getMonth();
-  const currentIndex = currentYear * 12 + (currentMonth - 1);
-
-  return (currentIndex - startIndex) % 2 === 0;
-}
-
-function getPaymentStatusLabel(status: ExpensePayment["status"]) {
-  if (status === "paid") return "Pagado";
-  if (status === "overdue") return "Vencido";
-  return "Pendiente";
-}
-
 function getCollectionStatusLabel(status: CollectionRecord["status"]) {
   if (status === "collected") return "Cobrado";
   if (status === "overdue") return "Vencido";
@@ -525,7 +437,6 @@ function getCollectionStatusLabel(status: CollectionRecord["status"]) {
 function getEventIcon(event: CalendarEvent) {
   if (event.module === "cleaning") return <Sparkles size={11} />;
   if (event.module === "maintenance") return <Wrench size={11} />;
-  if (event.module === "payments") return <CreditCard size={11} />;
   return <Wallet size={11} />;
 }
 
@@ -651,8 +562,6 @@ export default function CalendarPage() {
   const [buildingSchedules, setBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
   const [unitSchedules, setUnitSchedules] = useState<CleaningUnitSchedule[]>([]);
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
-  const [expenseSchedules, setExpenseSchedules] = useState<ExpenseSchedule[]>([]);
-  const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
   const [collectionSchedules, setCollectionSchedules] = useState<CollectionSchedule[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
 
@@ -669,7 +578,6 @@ export default function CalendarPage() {
 
   const [showCleaning, setShowCleaning] = useState(true);
   const [showMaintenance, setShowMaintenance] = useState(true);
-  const [showPayments, setShowPayments] = useState(true);
   const [showCollections, setShowCollections] = useState(true);
 
   const [hoveredEvent, setHoveredEvent] = useState<HoveredEventState | null>(null);
@@ -845,7 +753,6 @@ export default function CalendarPage() {
     const buildingMap = new Map<string, Building>();
     const unitMap = new Map<string, Unit>();
     const leaseMap = new Map<string, LeaseRow>();
-    const expenseScheduleMap = new Map<string, ExpenseSchedule>();
     const collectionScheduleMap = new Map<string, CollectionSchedule>();
 
     buildings.forEach((building) => buildingMap.set(building.id, building));
@@ -854,7 +761,6 @@ export default function CalendarPage() {
       const leaseId = getLeaseId(lease);
       if (leaseId) leaseMap.set(leaseId, lease);
     });
-    expenseSchedules.forEach((schedule) => expenseScheduleMap.set(schedule.id, schedule));
     collectionSchedules.forEach((schedule) => collectionScheduleMap.set(schedule.id, schedule));
 
     const filteredUnitSchedules =
@@ -866,16 +772,6 @@ export default function CalendarPage() {
       selectedBuildingId === "all"
         ? maintenanceLogs
         : maintenanceLogs.filter((item) => item.building_id === selectedBuildingId);
-
-    const filteredExpenseSchedules =
-      selectedBuildingId === "all"
-        ? expenseSchedules
-        : expenseSchedules.filter((item) => item.building_id === selectedBuildingId);
-
-    const filteredExpensePayments =
-      selectedBuildingId === "all"
-        ? expensePayments
-        : expensePayments.filter((item) => item.building_id === selectedBuildingId);
 
     const filteredCollectionRecords =
       selectedBuildingId === "all"
@@ -1014,130 +910,6 @@ export default function CalendarPage() {
       }
     });
 
-    const paymentEvents: CalendarEvent[] = [];
-
-    filteredExpensePayments.forEach((payment) => {
-      const schedule = expenseScheduleMap.get(payment.expense_schedule_id);
-      if (!schedule) return;
-      if (schedule.responsibility_type === "tenant") return;
-
-      const dueDateKey = getDateOnlyKey(payment.due_date);
-      const dueDayKey = getDayKeyFromDateValue(dueDateKey);
-      if (!dueDateKey || dueDayKey === "sunday") return;
-
-      const building =
-        buildingMap.get(payment.building_id) || buildingMap.get(schedule.building_id);
-      const unit =
-        (payment.unit_id ? unitMap.get(payment.unit_id) : null) ||
-        (schedule.unit_id ? unitMap.get(schedule.unit_id) : null);
-
-      const buildingName = building?.name || "Edificio";
-      const unitLabel = unit?.display_code || unit?.unit_number || "General";
-      const scopeLabel =
-        schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
-      const amountLabel = formatCurrency(payment.amount_due);
-      const statusLabel = getPaymentStatusLabel(payment.status);
-
-      paymentEvents.push({
-        id: `payment-${payment.id}`,
-        module: "payments",
-        recurrence: "dated",
-        dayKey: dueDayKey,
-        isoDate: dueDateKey,
-        title: `${schedule.title} · ${statusLabel}`,
-        compactLabel: schedule.title,
-        subtitle: `${buildingName} · ${scopeLabel} · ${amountLabel}`,
-        colorBackground: PAYMENTS_COLORS.background,
-        colorBorder: PAYMENTS_COLORS.border,
-        colorText: PAYMENTS_COLORS.text,
-        detailItems: [
-          { label: "Módulo", value: "Pagos" },
-          { label: "Tipo", value: "Registro real" },
-          { label: "Edificio", value: buildingName },
-          { label: "Alcance", value: scopeLabel },
-          { label: "Concepto", value: schedule.title },
-          { label: "Fecha límite", value: dueDateKey },
-          { label: "Monto", value: amountLabel },
-          { label: "Estado", value: statusLabel },
-          { label: "Proveedor", value: schedule.vendor_name || "Sin proveedor" },
-        ],
-      });
-    });
-
-    const visibleRange = getVisibleRange(referenceDate, viewMode);
-    const visibleMonths = getMonthListWithinRange(visibleRange.start, visibleRange.end);
-
-    const existingRealPaymentKeys = new Set(
-      filteredExpensePayments.map(
-        (payment) => `${payment.expense_schedule_id}-${payment.period_year}-${payment.period_month}`
-      )
-    );
-
-    filteredExpenseSchedules.forEach((schedule) => {
-      if (!schedule.active) return;
-      if (schedule.responsibility_type === "tenant") return;
-
-      const building = buildingMap.get(schedule.building_id);
-      const unit = schedule.unit_id ? unitMap.get(schedule.unit_id) : null;
-
-      const buildingName = building?.name || "Edificio";
-      const unitLabel = unit?.display_code || unit?.unit_number || "General";
-      const scopeLabel =
-        schedule.applies_to === "unit" ? `Unidad ${unitLabel}` : "Todo el edificio";
-
-      visibleMonths.forEach(({ year, month }) => {
-        if (!isExpenseScheduleActiveForPeriod(schedule, year, month)) return;
-
-        const realKey = `${schedule.id}-${year}-${month}`;
-        if (existingRealPaymentKeys.has(realKey)) return;
-
-        const projectedDueDate = buildDueDateKey(year, month, schedule.due_day);
-
-        if (
-          projectedDueDate < dateToIsoKey(visibleRange.start) ||
-          projectedDueDate > dateToIsoKey(visibleRange.end)
-        ) {
-          return;
-        }
-
-        const dueDayKey = getDayKeyFromDateValue(projectedDueDate);
-        if (!projectedDueDate || dueDayKey === "sunday") return;
-
-        const amountLabel =
-          schedule.amount_estimated !== null
-            ? formatCurrency(schedule.amount_estimated)
-            : "Sin monto estimado";
-
-        paymentEvents.push({
-          id: `projected-payment-${schedule.id}-${year}-${month}`,
-          module: "payments",
-          recurrence: "dated",
-          dayKey: dueDayKey,
-          isoDate: projectedDueDate,
-          title: `${schedule.title} · Proyectado`,
-          compactLabel: `${schedule.title} · Proy.`,
-          subtitle: `${buildingName} · ${scopeLabel} · ${amountLabel}`,
-          colorBackground: PAYMENTS_PROJECTED_COLORS.background,
-          colorBorder: PAYMENTS_PROJECTED_COLORS.border,
-          colorText: PAYMENTS_PROJECTED_COLORS.text,
-          detailItems: [
-            { label: "Módulo", value: "Pagos" },
-            { label: "Tipo", value: "Proyección" },
-            { label: "Edificio", value: buildingName },
-            { label: "Alcance", value: scopeLabel },
-            { label: "Concepto", value: schedule.title },
-            { label: "Fecha límite", value: projectedDueDate },
-            { label: "Monto estimado", value: amountLabel },
-            {
-              label: "Frecuencia",
-              value: schedule.frequency_type === "bimonthly" ? "Bimestral" : "Mensual",
-            },
-            { label: "Proveedor", value: schedule.vendor_name || "Sin proveedor" },
-          ],
-        });
-      });
-    });
-
     const collectionEvents: CalendarEvent[] = [];
 
     filteredCollectionRecords.forEach((record) => {
@@ -1190,7 +962,6 @@ export default function CalendarPage() {
     return [
       ...unitEvents,
       ...maintenanceEvents,
-      ...paymentEvents,
       ...collectionEvents,
     ].sort((a, b) => {
       if (a.isoDate !== b.isoDate) return a.isoDate.localeCompare(b.isoDate);
@@ -1204,8 +975,6 @@ export default function CalendarPage() {
     buildingSchedules,
     unitSchedules,
     maintenanceLogs,
-    expenseSchedules,
-    expensePayments,
     collectionSchedules,
     collectionRecords,
     selectedBuildingId,
@@ -1217,11 +986,10 @@ export default function CalendarPage() {
     return allEvents.filter((event) => {
       if (event.module === "cleaning" && !showCleaning) return false;
       if (event.module === "maintenance" && !showMaintenance) return false;
-      if (event.module === "payments" && !showPayments) return false;
       if (event.module === "collections" && !showCollections) return false;
       return true;
     });
-  }, [allEvents, showCleaning, showMaintenance, showPayments, showCollections]);
+  }, [allEvents, showCleaning, showMaintenance, showCollections]);
 
   const getEventsForDate = useMemo(() => {
     return (isoDate: string) => {
@@ -1576,7 +1344,6 @@ export default function CalendarPage() {
             >
               {renderModuleToggle("Limpieza", showCleaning, () => setShowCleaning((prev) => !prev), "cleaning")}
               {renderModuleToggle("Mantenimiento", showMaintenance, () => setShowMaintenance((prev) => !prev), "maintenance")}
-              {renderModuleToggle("Pagos", showPayments, () => setShowPayments((prev) => !prev), "payments")}
               {renderModuleToggle("Cobranza", showCollections, () => setShowCollections((prev) => !prev), "collections")}
             </div>
 
