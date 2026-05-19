@@ -983,6 +983,8 @@ export default function BuildingDetailPage() {
   const [renameNewName, setRenameNewName]             = useState("");
   const [deletingSection, setDeletingSection]         = useState<string | null>(null);
   const galleryFileInputRef                           = useRef<HTMLInputElement>(null);
+  const [dragItem, setDragItem]                       = useState<{ fileId: string; fromSection: string } | null>(null);
+  const [dragOverKey, setDragOverKey]                 = useState<string | null>(null);
 
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
@@ -1657,6 +1659,12 @@ export default function BuildingDetailPage() {
     const imgs = (data ?? []) as BuildingFile[];
     setGalleryFiles(imgs);
     setTabCounts(prev => ({ ...prev, gallery: imgs.length }));
+    /* Seed pending sections on first load when no DB photos exist */
+    if (imgs.length === 0) {
+      const cat  = building?.building_category ?? "";
+      const seed = SECTION_SUGGESTIONS[cat] ?? SECTION_SUGGESTIONS.residential_multi;
+      setPendingSections(seed);
+    }
   }
 
   async function handleGalleryUpload(fileList: FileList, sectionName: string) {
@@ -1714,6 +1722,35 @@ export default function BuildingDetailPage() {
     if (error) { toast.error("Error al eliminar sección"); return; }
     setDeletingSection(null);
     await loadGalleryData();
+  }
+
+  async function handleDrop(toSection: string, toIndex: number) {
+    if (!dragItem) return;
+    const { fileId, fromSection } = dragItem;
+    setDragItem(null);
+    setDragOverKey(null);
+
+    if (fromSection === toSection) {
+      /* Reorder within the same section */
+      const sectionFiles = (galleryFilesBySection[fromSection] ?? []).slice();
+      const fromIndex    = sectionFiles.findIndex(f => f.id === fileId);
+      if (fromIndex === -1 || fromIndex === toIndex) return;
+      const [moved] = sectionFiles.splice(fromIndex, 1);
+      sectionFiles.splice(toIndex, 0, moved);
+      /* Optimistic update */
+      setGalleryFiles(prev => [
+        ...prev.filter(f => f.file_category !== fromSection),
+        ...sectionFiles,
+      ]);
+      /* Persist */
+      await Promise.all(
+        sectionFiles.map((f, i) => supabase.from("building_files").update({ sort_order: i }).eq("id", f.id))
+      );
+    } else {
+      /* Move to a different section */
+      setGalleryFiles(prev => prev.map(f => f.id === fileId ? { ...f, file_category: toSection } : f));
+      await supabase.from("building_files").update({ file_category: toSection }).eq("id", fileId);
+    }
   }
 
   /* ── Derivaciones ─────────────────────────────────────────────────── */
@@ -3701,55 +3738,81 @@ export default function BuildingDetailPage() {
                       </div>
                     }
                   >
-                    {sectionFiles.length === 0 ? (
-                      <div
-                        onClick={() => {
-                          setUploadTargetSection(sectionName);
-                          galleryFileInputRef.current?.click();
-                        }}
-                        style={{
-                          border: "2px dashed var(--border-default)",
-                          borderRadius: 12,
-                          padding: "40px 20px",
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          gap: 10,
-                          cursor: "pointer",
-                          color: "var(--text-muted)",
-                        }}
-                      >
-                        <ImageIcon size={28} />
-                        <span style={{ fontSize: 14 }}>Haz clic para agregar fotos</span>
-                      </div>
-                    ) : (
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-                        {visibleFiles.map((file, idx) => {
-                          const isOverlaySlot  = idx === 2 && overflow > 0;
-                          const globalIdx      = galleryFiles.findIndex(f => f.id === file.id);
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
+                      {sectionFiles.length === 0 ? (
+                        /* 3 grey placeholder tiles when section has no photos */
+                        <>
+                          {[0, 1, 2].map((i) => (
+                            <div
+                              key={`ph-${i}`}
+                              style={{ aspectRatio: "1", borderRadius: 10, background: "var(--bg-page)", border: "1.5px dashed var(--border-default)" }}
+                            />
+                          ))}
+                        </>
+                      ) : (
+                        /* Real photo tiles */
+                        visibleFiles.map((file, idx) => {
+                          const isOverlaySlot = idx === 2 && overflow > 0;
+                          const globalIdx     = galleryFiles.findIndex(f => f.id === file.id);
+                          const cellKey       = `${sectionName}-${idx}`;
+                          const isDragging    = dragItem?.fileId === file.id;
+                          const isDropTarget  = dragOverKey === cellKey;
                           return (
                             <div
                               key={file.id}
-                              style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", cursor: "pointer", background: "var(--bg-page)" }}
-                              onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
+                              draggable
+                              onDragStart={() => setDragItem({ fileId: file.id, fromSection: sectionName })}
+                              onDragEnd={() => { setDragItem(null); setDragOverKey(null); }}
+                              onDragOver={(e) => { e.preventDefault(); setDragOverKey(cellKey); }}
+                              onDrop={() => void handleDrop(sectionName, idx)}
+                              style={{
+                                position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden",
+                                cursor: "grab", background: "var(--bg-page)",
+                                opacity: isDragging ? 0.4 : 1,
+                                outline: isDropTarget ? "2px solid #8B2252" : "none",
+                                transition: "opacity 0.15s, outline 0.1s",
+                              }}
+                              onClick={() => { if (!dragItem) setLightboxIndex(globalIdx >= 0 ? globalIdx : 0); }}
                             >
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={file.public_url ?? ""}
                                 alt={file.file_name}
-                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                                draggable={false}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block", pointerEvents: "none" }}
                               />
                               {isOverlaySlot && (
-                                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
                                   <span style={{ color: "white", fontSize: 22, fontWeight: 700 }}>+{overflow}</span>
                                 </div>
                               )}
                             </div>
                           );
-                        })}
-                      </div>
-                    )}
+                        })
+                      )}
+                      {/* "+" add tile — always last */}
+                      {(() => {
+                        const addKey = `${sectionName}-add`;
+                        const isAddTarget = dragOverKey === addKey;
+                        return (
+                          <div
+                            onDragOver={(e) => { e.preventDefault(); setDragOverKey(addKey); }}
+                            onDrop={() => void handleDrop(sectionName, sectionFiles.length)}
+                            onClick={() => { setUploadTargetSection(sectionName); galleryFileInputRef.current?.click(); }}
+                            style={{
+                              aspectRatio: "1", borderRadius: 10,
+                              background: "var(--bg-page)",
+                              border: isAddTarget ? "2px solid #8B2252" : "1.5px dashed var(--border-default)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              cursor: "pointer",
+                              transition: "border 0.1s",
+                            }}
+                          >
+                            <Plus size={20} color="#8B2252" />
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </SectionCard>
                 );
               })}
