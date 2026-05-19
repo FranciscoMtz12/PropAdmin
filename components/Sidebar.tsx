@@ -345,7 +345,7 @@ export default function Sidebar() {
     if (isSuperAdmin) return ALL_ADMIN_SECTIONS;
     // titular: todo excepto /users y /feedback (panel superadmin)
     if (user?.role === "titular") {
-      const TITULAR_DENIED = ["/users", "/feedback"];
+      const TITULAR_DENIED = ["/feedback"];
       return ALL_ADMIN_SECTIONS
         .map(section => ({
           ...section,

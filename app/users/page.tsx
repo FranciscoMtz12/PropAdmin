@@ -24,6 +24,7 @@ import Modal from "@/components/Modal";
 
 type UserRole =
   | "superadmin"
+  | "titular"
   | "administracion"
   | "directivo"
   | "compras"
@@ -46,6 +47,7 @@ type CompanyRow = { id: string; name: string };
 
 const ROLE_ORDER: UserRole[] = [
   "superadmin",
+  "titular",
   "administracion",
   "directivo",
   "compras",
@@ -54,17 +56,19 @@ const ROLE_ORDER: UserRole[] = [
 ];
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  superadmin: "Superadmin",
+  superadmin:     "Superadmin",
+  titular:        "Titular",
   administracion: "Administración",
-  directivo: "Directivo",
-  compras: "Compras",
-  mantenimiento: "Mantenimiento",
-  field: "Campo",
-  tenant: "Inquilino",
+  directivo:      "Directivo",
+  compras:        "Compras",
+  mantenimiento:  "Mantenimiento",
+  field:          "Campo",
+  tenant:         "Inquilino",
 };
 
 const ROLE_STYLE: Record<UserRole, { bg: string; fg: string }> = {
   superadmin:     { bg: "#F3E8FF", fg: "#7C3AED" },
+  titular:        { bg: "#FEF3C7", fg: "#92400E" },
   administracion: { bg: "var(--badge-bg-blue)",  fg: "var(--badge-text-blue)" },
   directivo:      { bg: "var(--badge-bg-gray)",  fg: "var(--badge-text-gray)" },
   compras:        { bg: "#FFEDD5", fg: "#EA580C" },
@@ -77,7 +81,7 @@ const createSchema = z.object({
   full_name: z.string().min(1, "Nombre obligatorio"),
   email: z.string().min(1, "Email obligatorio").email("Email inválido"),
   password: z.string().min(8, "Mínimo 8 caracteres"),
-  role: z.enum(["superadmin", "administracion", "directivo", "compras", "mantenimiento", "field"]),
+  role: z.enum(["superadmin", "titular", "administracion", "directivo", "compras", "mantenimiento", "field"]),
   company_id: z.string().min(1, "Selecciona una empresa"),
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -92,6 +96,8 @@ export default function UsersPage() {
   const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
 
   const isSuperadmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
+  const isTitular = user?.role === "titular";
+  const canAccessUsers = isSuperadmin || isTitular;
 
   const createForm = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
@@ -107,24 +113,30 @@ export default function UsersPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace("/"); return; }
-    if (!isSuperadmin) { router.replace("/dashboard"); return; }
+    if (!canAccessUsers) { router.replace("/dashboard"); return; }
+    // Pre-fill company_id for titular so they don't need to select it
+    if (isTitular && user.company_id) {
+      createForm.setValue("company_id", user.company_id);
+    }
     void loadData();
-  }, [loading, user, isSuperadmin, router]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user, canAccessUsers]);
 
   async function loadData() {
     setLoadingData(true);
 
-    const [usersRes, companiesRes] = await Promise.all([
-      supabase
-        .from("app_users")
-        .select("id, full_name, email, role, is_superadmin, company_id, created_at")
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("companies")
-        .select("id, name")
-        .is("deleted_at", null)
-        .order("name", { ascending: true }),
-    ]);
+    // titular: only their company's users + no multi-company selector needed
+    const usersQuery = supabase
+      .from("app_users")
+      .select("id, full_name, email, role, is_superadmin, company_id, created_at")
+      .order("created_at", { ascending: false });
+    if (isTitular && user?.company_id) usersQuery.eq("company_id", user.company_id);
+
+    const companiesQuery = isTitular
+      ? supabase.from("companies").select("id, name").eq("id", user!.company_id)
+      : supabase.from("companies").select("id, name").is("deleted_at", null).order("name", { ascending: true });
+
+    const [usersRes, companiesRes] = await Promise.all([usersQuery, companiesQuery]);
 
     if (usersRes.error) {
       console.error("app_users fetch failed", usersRes.error);
@@ -230,7 +242,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!user || !isSuperadmin) return null;
+  if (!user || !canAccessUsers) return null;
 
   const totalUsers = rows.length;
   const totalAdmins = rows.filter((r) =>
@@ -315,15 +327,15 @@ export default function UsersPage() {
               header: "Email",
               render: (row) => <span style={{ fontSize: 13 }}>{row.email}</span>,
             },
-            {
+            ...(!isTitular ? [{
               key: "company",
               header: "Empresa",
-              render: (row) => (
+              render: (row: UserRow) => (
                 <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
                   {row.company_name}
                 </span>
               ),
-            },
+            }] : []),
             {
               key: "role",
               header: "Rol",
@@ -419,16 +431,18 @@ export default function UsersPage() {
             </AppSelect>
           </Field>
 
-          <Field label="Empresa" error={createForm.formState.errors.company_id?.message}>
-            <AppSelect {...createForm.register("company_id")}>
-              <option value="">Selecciona una empresa</option>
-              {companies.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </AppSelect>
-          </Field>
+          {!isTitular && (
+            <Field label="Empresa" error={createForm.formState.errors.company_id?.message}>
+              <AppSelect {...createForm.register("company_id")}>
+                <option value="">Selecciona una empresa</option>
+                {companies.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </AppSelect>
+            </Field>
+          )}
 
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
             <UiButton
