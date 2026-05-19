@@ -243,33 +243,27 @@ export default function RegisterPage() {
         }
       }
 
-      // 4. Insert company
+      // 4. Insert company via SECURITY DEFINER RPC (bypasses RLS for new users)
       const compName = orgType === "empresa" ? companyName.trim() : fullName.trim();
       console.error('Insertando company con:', { name: compName, short_name: shortName.trim() || compName, phone: phone.trim() || null, tax_id: rfc.trim() || null, brand_color: brandColor });
-      const { data: company, error: compErr } = await supabase
-        .from("companies")
-        .insert({
-          name: compName,
-          short_name: shortName.trim() || compName,
-          phone: phone.trim() || null,
-          address: address.trim() || null,
-          tax_id: rfc.trim() || null,
-          brand_color: brandColor,
-          logo_url: logoUrl || null,
-          plan_tier: "empresa_pro",
-          max_users: 999,
-          max_properties: 999,
-          max_units: 999,
-        })
-        .select("id")
-        .single();
+      const { data: companyId, error: compErr } = await supabase.rpc(
+        "create_company_on_register",
+        {
+          p_name:        compName,
+          p_short_name:  shortName.trim() || compName,
+          p_phone:       phone.trim() || "",
+          p_address:     address.trim() || "",
+          p_tax_id:      rfc.trim() || "",
+          p_brand_color: brandColor || "#8B2252",
+          p_logo_url:    logoUrl || "",
+        }
+      );
       console.error('Company insert error:', JSON.stringify(compErr));
-      if (compErr || !company) {
+      if (compErr || !companyId) {
         setGlobalError("Error al crear la empresa. Intenta de nuevo.");
         setSubmitting(false);
         return;
       }
-      const companyId = company.id;
 
       // 5. Insert app_user
       const { error: userErr } = await supabase.from("app_users").insert({
