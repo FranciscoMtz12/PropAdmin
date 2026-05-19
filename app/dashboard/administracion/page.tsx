@@ -101,7 +101,7 @@ export default function DashboardAdministracionPage() {
     try {
       const [
         unitsRes, leasesRes, tenantsRes, buildingsRes,
-        collRes, utilMRes, utilInvRes, cfeMRes, cfeBillRes,
+        collRes, utilMRes, utilInvRes,
       ] = await Promise.all([
         supabase.from("units")
           .select("id, status, building_id, unit_number, display_code")
@@ -123,12 +123,6 @@ export default function DashboardAdministracionPage() {
           .eq("company_id", cid).eq("active", true).is("deleted_at", null),
         supabase.from("building_utility_invoices")
           .select("id, building_utility_meter_id")
-          .eq("company_id", cid).eq("period_year", year).eq("period_month", month).is("deleted_at", null),
-        supabase.from("cfe_meters")
-          .select("id")
-          .eq("company_id", cid).eq("service_type", "shared").is("deleted_at", null),
-        supabase.from("electricity_bills")
-          .select("id, cfe_meter_id")
           .eq("company_id", cid).eq("period_year", year).eq("period_month", month).is("deleted_at", null),
       ]);
 
@@ -155,10 +149,8 @@ export default function DashboardAdministracionPage() {
       type MRow = { id: string; meter_type: string; billing_mode: string; contract_holder: string };
       const utilM      = (utilMRes.data  || []) as MRow[];
       const invoicedIds = new Set((utilInvRes.data || []).map((i: any) => i.building_utility_meter_id as string));
-      const billedCfeIds = new Set((cfeBillRes.data || []).map((b: any) => b.cfe_meter_id as string));
       const pendingUtil = utilM.filter(m => chargesMeter(m) && !invoicedIds.has(m.id)).length;
-      const pendingCfe  = (cfeMRes.data || []).filter((m: any) => !billedCfeIds.has(m.id as string)).length;
-      setServices(pendingUtil + pendingCfe);
+      setServices(pendingUtil);
 
       /* Contratos por vencer */
       const tenantMap   = new Map(((tenantsRes.data || []) as Array<{ id: string; full_name: string }>).map(t => [t.id, t.full_name]));

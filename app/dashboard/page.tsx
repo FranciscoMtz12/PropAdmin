@@ -7,7 +7,7 @@
   Fila 1 — Tres donas: Ocupación | Cobranza del mes | Portafolio de edificios
   Fila 2 — BarChart: Cobrado vs Pendiente últimos 6 meses
   Fila 3 — Dos cards: Agenda de hoy | Unidades disponibles
-  Fila 4 — Tres tablas operativas: Cobros vencidos | Pagos admin | Contratos por vencer
+  Fila 4 — Dos tablas operativas: Cobros vencidos | Contratos por vencer
 */
 
 import { useEffect, useMemo, useState } from "react";
@@ -35,7 +35,6 @@ import {
   Sparkles,
   TrendingUp,
   Wrench,
-  Wallet,
   Calendar,
   Bell,
   ClipboardList,
@@ -97,13 +96,6 @@ type CollectionRecord = {
   amount_due: number;
   amount_collected: number | null;
   status: string;
-};
-
-type ExpenseSchedule = {
-  id: string;
-  title: string;
-  due_day: number | null;
-  amount_estimated: number | null;
 };
 
 type CleaningBuildingSchedule = {
@@ -270,15 +262,6 @@ type OverdueRow = {
   daysOverdue: number;
 };
 
-type UpcomingPaymentRow = {
-  id: string;
-  title: string;
-  amount: string;
-  dueDateLabel: string;
-  /** "overdue" → vence antes de hoy | "upcoming" → hoy o próximos 7 días */
-  paymentStatus: "overdue" | "upcoming";
-};
-
 type ExpiringLeaseRow = {
   id: string;
   tenantName: string;
@@ -323,7 +306,6 @@ export default function DashboardPage() {
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
-  const [expenseSchedules, setExpenseSchedules] = useState<ExpenseSchedule[]>([]);
   /* Agenda de hoy */
   const [cleaningBuildingSchedules, setCleaningBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
   const [cleaningUnitSchedules, setCleaningUnitSchedules] = useState<CleaningUnitSchedule[]>([]);
@@ -373,7 +355,6 @@ export default function DashboardPage() {
       tenantsRes,
       buildingsRes,
       collectionRes,
-      expenseSchedulesRes,
       cleaningBuildingRes,
       cleaningUnitRes,
       maintenanceRes,
@@ -422,13 +403,6 @@ export default function DashboardPage() {
         .gte("due_date", sixMonthsAgoKey)
         .order("due_date", { ascending: true }),
 
-      /* Schedules de gastos — título, día de cobro, monto estimado, próxima fecha */
-      supabase
-        .from("expense_schedules")
-        .select("id, title, due_day, amount_estimated")
-        .eq("company_id", user.company_id)
-        .eq("active", true),
-
       /* Limpiezas de edificios activas — filtramos por día en memo */
       supabase
         .from("cleaning_building_schedules")
@@ -456,7 +430,6 @@ export default function DashboardPage() {
     setTenants((tenantsRes.data as Tenant[]) || []);
     setBuildings((buildingsRes.data as Building[]) || []);
     setCollectionRecords((collectionRes.data as CollectionRecord[]) || []);
-    setExpenseSchedules((expenseSchedulesRes.data as ExpenseSchedule[]) || []);
     setCleaningBuildingSchedules((cleaningBuildingRes.data as CleaningBuildingSchedule[]) || []);
     setCleaningUnitSchedules((cleaningUnitRes.data as CleaningUnitSchedule[])||[]);
     setMaintenanceLogs((maintenanceRes.data as MaintenanceLog[]) || []);
@@ -648,11 +621,6 @@ export default function DashboardPage() {
     const buildingCleanings = cleaningBuildingSchedules.filter((s) => matchesDay(s.day_of_week));
     const unitCleanings = cleaningUnitSchedules.filter((s) => matchesDay(s.day_of_week));
     const maintenances: MaintenanceLog[] = [];
-    const paymentsDueToday = expenseSchedules.filter((s) => {
-      if (s.due_day == null) return false;
-      const d = String(s.due_day).padStart(2, "0");
-      return todayKey.slice(-2) === d;
-    });
 
     const totalCleanings = buildingCleanings.length + unitCleanings.length;
 
@@ -661,10 +629,9 @@ export default function DashboardPage() {
       unitCleanings: unitCleanings.length,
       totalCleanings,
       maintenances: maintenances.length,
-      paymentsDueToday: paymentsDueToday.length,
-      hasActivity: totalCleanings > 0 || maintenances.length > 0 || paymentsDueToday.length > 0,
+      hasActivity: totalCleanings > 0 || maintenances.length > 0,
     };
-  }, [cleaningBuildingSchedules, cleaningUnitSchedules, maintenanceLogs, expenseSchedules]);
+  }, [cleaningBuildingSchedules, cleaningUnitSchedules, maintenanceLogs]);
 
   /* ─── FILA 3, Card B: Unidades disponibles ───────────────────── */
 
@@ -710,41 +677,7 @@ export default function DashboardPage() {
       });
   }, [collectionRecords, leaseMap, tenantMap, buildingMap, unitMap]);
 
-  /* ─── FILA 4, Tabla 2: Próximos pagos admin (top 5) ─────────── */
-  /*
-    Calcula la fecha de vencimiento de cada schedule usando due_day + mes actual.
-    Ejemplo: due_day=10, mes actual=abril 2026 → "2026-04-10"
-    Muestra schedules cuya fecha calculada es ≤ hoy+7 (incluye vencidos).
-  */
-  const upcomingPaymentRows = useMemo<UpcomingPaymentRow[]>(() => {
-    const today = todayDateKey();
-    const sevenDaysLater = addDays(today, 7);
-    const now = new Date();
-    const currentYear = now.getFullYear();
-    const currentMonthStr = String(now.getMonth() + 1).padStart(2, "0");
-
-    return expenseSchedules
-      .filter((s) => s.due_day != null)
-      .map((s) => {
-        /* Construir fecha: YYYY-MM-DD usando due_day del mes actual */
-        const dayStr = String(s.due_day!).padStart(2, "0");
-        const dueDateKey = `${currentYear}-${currentMonthStr}-${dayStr}`;
-        return { s, dueDateKey };
-      })
-      /* Solo mostrar los que vencen hoy o antes, o hasta los próximos 7 días */
-      .filter(({ dueDateKey }) => dueDateKey <= sevenDaysLater)
-      .sort((a, b) => a.dueDateKey.localeCompare(b.dueDateKey))
-      .slice(0, 5)
-      .map(({ s, dueDateKey }) => ({
-        id: s.id,
-        title: s.title,
-        amount: formatMXN(s.amount_estimated ?? 0),
-        dueDateLabel: formatDateLabel(dueDateKey),
-        paymentStatus: dueDateKey < today ? "overdue" : "upcoming",
-      }));
-  }, [expenseSchedules]);
-
-  /* ─── FILA 4, Tabla 3: Contratos por vencer — 90 días (top 5) ── */
+  /* ─── FILA 4, Tabla 2: Contratos por vencer — 90 días (top 5) ── */
 
   const expiringLeaseRows = useMemo<ExpiringLeaseRow[]>(() => {
     const today = todayDateKey();
@@ -1381,45 +1314,6 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {/* Pagos que vencen hoy */}
-              {agendaHoy.paymentsDueToday > 0 && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 14,
-                    padding: "12px 14px",
-                    background: "var(--metric-bg-amber)",
-                    border: "1px solid var(--metric-border-amber)",
-                    borderRadius: 12,
-                  }}
-                >
-                  <div
-                    style={{
-                      width: 38,
-                      height: 38,
-                      background: "var(--icon-bg-amber)",
-                      borderRadius: 10,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      flexShrink: 0,
-                      color: "var(--icon-color-amber)",
-                    }}
-                  >
-                    <Wallet size={18} />
-                  </div>
-                  <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "var(--metric-value-amber)" }}>
-                      {agendaHoy.paymentsDueToday}{" "}
-                      {agendaHoy.paymentsDueToday === 1 ? "pago vence" : "pagos vencen"} hoy
-                    </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
-                      Gastos administrativos
-                    </p>
-                  </div>
-                </div>
-              )}
             </div>
           )}
         </SectionCard>
@@ -1484,7 +1378,7 @@ export default function DashboardPage() {
 
       </motion.div>
 
-      {/* ══ FILA 4: TRES TABLAS OPERATIVAS ═══════════════════════════ */}
+      {/* ══ FILA 4: DOS TABLAS OPERATIVAS ════════════════════════════ */}
       {/*
         Usamos minmax(0, 1fr) en lugar de 1fr para que cada columna
         pueda encogerse por debajo de su contenido mínimo y no rompa
@@ -1495,7 +1389,7 @@ export default function DashboardPage() {
         className="dashboard-grid-3"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
           gap: 24,
           alignItems: "start",
         }}
@@ -1581,89 +1475,7 @@ export default function DashboardPage() {
           )}
         </SectionCard>
 
-        {/* ── Tabla 2: Pagos administrativos próximos ───────────── */}
-        <SectionCard
-          title="Pagos administrativos"
-          subtitle="Próximos 7 días · top 5"
-          icon={<CalendarClock size={18} />}
-        >
-          {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: 14 }}>Cargando...</p>
-          ) : upcomingPaymentRows.length === 0 ? (
-            <AppEmptyState
-              title="Sin pagos próximos"
-              description="No hay pagos administrativos en los próximos 7 días."
-            />
-          ) : (
-            <div className="dashboard-table-mobile">
-            <AppTable
-              minWidth={0}
-              rows={upcomingPaymentRows}
-              columns={[
-                {
-                  key: "title",
-                  header: "Concepto",
-                  render: (row) => (
-                    /* overflow:hidden evita que texto largo expanda la card */
-                    <div style={{ overflow: "hidden" }}>
-                      <span
-                        style={{
-                          fontWeight: 600,
-                          fontSize: 13,
-                          display: "block",
-                          color: c.textPrimary,
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {row.title}
-                      </span>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          color: c.textMuted,
-                          display: "block",
-                          overflow: "hidden",
-                          textOverflow: "ellipsis",
-                          whiteSpace: "nowrap",
-                        }}
-                      >
-                        {row.dueDateLabel}
-                      </span>
-                    </div>
-                  ),
-                },
-                {
-                  key: "amount",
-                  header: "Monto",
-                  align: "right",
-                  render: (row) => (
-                    <div style={{ textAlign: "right" }}>
-                      <span
-                        style={{ fontWeight: 700, fontSize: 13, display: "block" }}
-                      >
-                        {row.amount}
-                      </span>
-                      {row.paymentStatus === "overdue" ? (
-                        <AppBadge variant="red" style={{ whiteSpace: "nowrap" }}>
-                          Vencido
-                        </AppBadge>
-                      ) : (
-                        <AppBadge variant="amber" style={{ whiteSpace: "nowrap" }}>
-                          Próximo
-                        </AppBadge>
-                      )}
-                    </div>
-                  ),
-                },
-              ]}
-            />
-            </div>
-          )}
-        </SectionCard>
-
-        {/* ── Tabla 3: Contratos por vencer ─────────────────────── */}
+        {/* ── Tabla 2: Contratos por vencer ─────────────────────── */}
         {/*
           overflow:hidden en el wrapper evita que la card se expanda horizontalmente
           cuando el contenido de la tabla es más ancho que 1/3 del grid.

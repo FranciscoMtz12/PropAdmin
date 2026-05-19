@@ -9,17 +9,7 @@ import {
   Clock3,
   Home,
   TrendingUp,
-  TrendingDown,
   KeyRound,
-  Zap,
-  Droplet,
-  Flame,
-  Globe,
-  Phone,
-  Wrench,
-  Shield,
-  Sparkles,
-  Package,
 } from "lucide-react";
 import {
   BarChart,
@@ -32,9 +22,6 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-  PieChart,
-  Pie,
-  Cell,
 } from "recharts";
 
 import { supabase } from "@/lib/supabaseClient";
@@ -49,17 +36,6 @@ import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
 
 /* ═══ Tipos ═══════════════════════════════════════════════════════ */
-
-type ExpenseType =
-  | "electricity"
-  | "water"
-  | "gas"
-  | "internet"
-  | "phone"
-  | "maintenance_service"
-  | "security"
-  | "cleaning_service"
-  | "other";
 
 type Unit = {
   id: string;
@@ -94,15 +70,6 @@ type CollectionRecord = {
 };
 type Tenant = { id: string; full_name: string };
 type Building = { id: string; name: string };
-type ExpensePayment = {
-  id: string;
-  expense_schedule_id: string;
-  building_id: string;
-  period_year: number;
-  period_month: number;
-  amount_due: number;
-};
-type ExpenseSchedule = { id: string; expense_type: ExpenseType };
 
 /* ═══ Constantes visuales ═════════════════════════════════════════ */
 
@@ -114,42 +81,6 @@ const BUILDING_COLORS = [
 const MONTH_LABELS_SHORT = [
   "Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic",
 ];
-
-const EXPENSE_TYPE_LABEL: Record<ExpenseType, string> = {
-  electricity: "Electricidad",
-  water: "Agua",
-  gas: "Gas",
-  internet: "Internet",
-  phone: "Teléfono",
-  maintenance_service: "Mantenimiento",
-  security: "Seguridad",
-  cleaning_service: "Limpieza",
-  other: "Otros",
-};
-
-const EXPENSE_TYPE_COLOR: Record<string, string> = {
-  Electricidad: "#F59E0B",
-  Agua: "#3B82F6",
-  Gas: "#F97316",
-  Internet: "#6366F1",
-  Teléfono: "#8B5CF6",
-  Mantenimiento: "#10B981",
-  Seguridad: "#EF4444",
-  Limpieza: "#14B8A6",
-  Otros: "#94A3B8",
-};
-
-const EXPENSE_TYPE_ICON: Record<ExpenseType, React.ReactNode> = {
-  electricity: <Zap size={14} />,
-  water: <Droplet size={14} />,
-  gas: <Flame size={14} />,
-  internet: <Globe size={14} />,
-  phone: <Phone size={14} />,
-  maintenance_service: <Wrench size={14} />,
-  security: <Shield size={14} />,
-  cleaning_service: <Sparkles size={14} />,
-  other: <Package size={14} />,
-};
 
 /* ═══ Helpers ═════════════════════════════════════════════════════ */
 
@@ -195,8 +126,6 @@ export default function AnalyticsPage() {
   const [leases, setLeases] = useState<Lease[]>([]);
   const [tenants, setTenants] = useState<Tenant[]>([]);
   const [buildings, setBuildings] = useState<Building[]>([]);
-  const [expensePayments, setExpensePayments] = useState<ExpensePayment[]>([]);
-  const [expenseSchedules, setExpenseSchedules] = useState<ExpenseSchedule[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
@@ -217,14 +146,11 @@ export default function AnalyticsPage() {
     setLoadingData(true);
 
     const today = new Date();
-    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 5, 1)
-      .toISOString()
-      .slice(0, 10);
     const twelveMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 11, 1)
       .toISOString()
       .slice(0, 10);
 
-    const [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, paymentsRes, schedulesRes, collectionsRes] =
+    const [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, collectionsRes] =
       await Promise.all([
         supabase
           .from("units")
@@ -252,17 +178,6 @@ export default function AnalyticsPage() {
           .eq("company_id", user.company_id)
           .is("deleted_at", null),
         supabase
-          .from("expense_payments")
-          .select("id, expense_schedule_id, building_id, period_year, period_month, amount_due")
-          .eq("company_id", user.company_id)
-          .is("deleted_at", null)
-          .gte("due_date", sixMonthsAgo),
-        supabase
-          .from("expense_schedules")
-          .select("id, expense_type")
-          .eq("company_id", user.company_id)
-          .is("deleted_at", null),
-        supabase
           .from("collection_records")
           .select("id, unit_id, lease_id, building_id, period_year, period_month, due_date, amount_due, amount_collected, status, paid_at")
           .eq("company_id", user.company_id)
@@ -270,7 +185,7 @@ export default function AnalyticsPage() {
           .gte("due_date", twelveMonthsAgo),
       ]);
 
-    const errs = [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, paymentsRes, schedulesRes, collectionsRes]
+    const errs = [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, collectionsRes]
       .filter((r) => r.error);
     if (errs.length) {
       errs.forEach((r) => console.error("analytics fetch failed", r.error));
@@ -281,8 +196,6 @@ export default function AnalyticsPage() {
     setLeases((leasesRes.data as Lease[]) || []);
     setTenants((tenantsRes.data as Tenant[]) || []);
     setBuildings((buildingsRes.data as Building[]) || []);
-    setExpensePayments((paymentsRes.data as ExpensePayment[]) || []);
-    setExpenseSchedules((schedulesRes.data as ExpenseSchedule[]) || []);
     setCollectionRecords((collectionsRes.data as CollectionRecord[]) || []);
     setLoadingData(false);
   }
@@ -293,7 +206,6 @@ export default function AnalyticsPage() {
   const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
   const tenantById = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
   const unitById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
-  const scheduleById = useMemo(() => new Map(expenseSchedules.map((s) => [s.id, s])), [expenseSchedules]);
 
   const activeLeases = useMemo(() => leases.filter((l) => l.status === "ACTIVE"), [leases]);
 
@@ -401,25 +313,6 @@ export default function AnalyticsPage() {
 
   const maxRotation = rotationRanking[0]?.count ?? 1;
 
-  /* ── Distribución gastos del mes actual por categoría ─────────── */
-  const expenseDonutData = useMemo(() => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = now.getMonth() + 1;
-    const totals: Record<string, number> = {};
-    expensePayments.forEach((p) => {
-      if (p.period_year !== year || p.period_month !== month) return;
-      const sch = scheduleById.get(p.expense_schedule_id);
-      const cat = sch ? EXPENSE_TYPE_LABEL[sch.expense_type] : "Otros";
-      totals[cat] = (totals[cat] ?? 0) + (p.amount_due ?? 0);
-    });
-    return Object.entries(totals).map(([name, value]) => ({
-      name,
-      value,
-      color: EXPENSE_TYPE_COLOR[name] ?? "#94A3B8",
-    }));
-  }, [expensePayments, scheduleById]);
-
   /* ── Contratos más largos ─────────────────────────────────────── */
   const longestLeases = useMemo(() => {
     return activeLeases
@@ -442,73 +335,6 @@ export default function AnalyticsPage() {
       .sort((a, b) => b.duration - a.duration)
       .slice(0, 10);
   }, [activeLeases, unitById, buildingById, tenantById]);
-
-  /* ── Gasto por persona (categoría) mes actual y mes anterior ──── */
-  const expensePerPersonByCategory = useMemo(() => {
-    const now = new Date();
-    const curY = now.getFullYear();
-    const curM = now.getMonth() + 1;
-    const prevDate = new Date(curY, curM - 2, 1);
-    const prevY = prevDate.getFullYear();
-    const prevM = prevDate.getMonth() + 1;
-
-    const curTotals: Record<string, number> = {};
-    const prevTotals: Record<string, number> = {};
-    expensePayments.forEach((p) => {
-      const sch = scheduleById.get(p.expense_schedule_id);
-      if (!sch) return;
-      const cat = sch.expense_type;
-      if (p.period_year === curY && p.period_month === curM) {
-        curTotals[cat] = (curTotals[cat] ?? 0) + (p.amount_due ?? 0);
-      } else if (p.period_year === prevY && p.period_month === prevM) {
-        prevTotals[cat] = (prevTotals[cat] ?? 0) + (p.amount_due ?? 0);
-      }
-    });
-
-    const persons = Math.max(1, estimatedPeople);
-    return (Object.keys(EXPENSE_TYPE_LABEL) as ExpenseType[])
-      .map((cat) => {
-        const total = curTotals[cat] ?? 0;
-        const prevTotal = prevTotals[cat] ?? 0;
-        const perPerson = total / persons;
-        const delta = prevTotal > 0 ? ((total - prevTotal) / prevTotal) * 100 : 0;
-        return { category: cat, label: EXPENSE_TYPE_LABEL[cat], total, perPerson, delta };
-      })
-      .filter((r) => r.total > 0)
-      .sort((a, b) => b.total - a.total);
-  }, [expensePayments, scheduleById, estimatedPeople]);
-
-  /* ── Line: gasto por persona últimos 6 meses por categoría ────── */
-  const expensePerPersonLine = useMemo(() => {
-    const now = new Date();
-    const months: { y: number; m: number }[] = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({ y: d.getFullYear(), m: d.getMonth() + 1 });
-    }
-    const persons = Math.max(1, estimatedPeople);
-    return months.map(({ y, m }) => {
-      const label = MONTH_LABELS_SHORT[m - 1] + " " + String(y).slice(2);
-      const row: Record<string, string | number> = { mes: label };
-      expensePayments
-        .filter((p) => p.period_year === y && p.period_month === m)
-        .forEach((p) => {
-          const sch = scheduleById.get(p.expense_schedule_id);
-          if (!sch) return;
-          const catLabel = EXPENSE_TYPE_LABEL[sch.expense_type];
-          row[catLabel] = ((row[catLabel] as number) ?? 0) + (p.amount_due ?? 0) / persons;
-        });
-      return row;
-    });
-  }, [expensePayments, scheduleById, estimatedPeople]);
-
-  const expenseLineCategories = useMemo(() => {
-    const cats = new Set<string>();
-    expensePerPersonLine.forEach((r) =>
-      Object.keys(r).filter((k) => k !== "mes").forEach((k) => cats.add(k))
-    );
-    return Array.from(cats);
-  }, [expensePerPersonLine]);
 
   /* ── Line: ocupación histórica 6 meses ────────────────────────── */
   const occupancyHistory = useMemo(() => {
@@ -685,8 +511,6 @@ export default function AnalyticsPage() {
 
   if (!user || !hasAccess) return null;
 
-  const monthTotalExpense = expensePerPersonByCategory.reduce((s, r) => s + r.total, 0);
-
   return (
     <PageContainer>
       <PageHeader title="Analytics" titleIcon={<BarChart2 size={18} />} />
@@ -805,58 +629,28 @@ export default function AnalyticsPage() {
 
       <div style={{ height:16 }} />
 
-      {/* ════ SECCIÓN 4: Rotación + Donut gastos ══════════════════════════ */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:16, marginBottom:16 }} className="dashboard-grid-2">
-        <SectionCard title="Mayor rotación" icon={<TrendingUp size={18} />} subtitle="Unidades con más inquilinos históricos">
-          {rotationRanking.length === 0 ? (
-            <AppEmptyState title="Sin rotación" description="No hay historial suficiente." />
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {rotationRanking.map((r) => (
-                <div key={r.unitId} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    {r.label} · {r.building}
-                  </div>
-                  <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius:5, overflow:"hidden" }}>
-                    <div style={{ width:`${(r.count / maxRotation) * 100}%`, height:"100%", background:"#EC4899" }} />
-                  </div>
-                  <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
-                    {r.count} {r.count === 1 ? "contrato" : "contratos"}
-                  </div>
+      {/* ════ SECCIÓN 4: Mayor rotación ═══════════════════════════════════ */}
+      <SectionCard title="Mayor rotación" icon={<TrendingUp size={18} />} subtitle="Unidades con más inquilinos históricos" style={{ marginBottom:16 }}>
+        {rotationRanking.length === 0 ? (
+          <AppEmptyState title="Sin rotación" description="No hay historial suficiente." />
+        ) : (
+          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+            {rotationRanking.map((r) => (
+              <div key={r.unitId} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  {r.label} · {r.building}
                 </div>
-              ))}
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard title="Gastos del mes por categoría" icon={<BarChart2 size={18} />}>
-          {expenseDonutData.length === 0 ? (
-            <AppEmptyState title="Sin gastos" description="No hay pagos registrados este mes." />
-          ) : (
-            <div style={{ display:"flex", gap:"1rem", alignItems:"center", flexWrap:"wrap" }}>
-              <div style={{ width:150, height:150, flexShrink:0 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={expenseDonutData} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" strokeWidth={0}>
-                      {expenseDonutData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-                    </Pie>
-                    <Tooltip formatter={(v) => formatCurrency(Number(v))} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius:5, overflow:"hidden" }}>
+                  <div style={{ width:`${(r.count / maxRotation) * 100}%`, height:"100%", background:"#EC4899" }} />
+                </div>
+                <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
+                  {r.count} {r.count === 1 ? "contrato" : "contratos"}
+                </div>
               </div>
-              <div style={{ flex:1, display:"flex", flexDirection:"column", gap:4, minWidth:150 }}>
-                {expenseDonutData.map((e, i) => (
-                  <div key={i} style={{ display:"flex", alignItems:"center", gap:6, fontSize:11 }}>
-                    <div style={{ width:8, height:8, background:e.color, borderRadius:2 }} />
-                    <span style={{ color:"var(--text-secondary)", flex:1 }}>{e.name}</span>
-                    <span style={{ fontWeight:600 }}>{formatCurrency(e.value)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </SectionCard>
-      </div>
+            ))}
+          </div>
+        )}
+      </SectionCard>
 
       {/* ════ SECCIÓN 5: Contratos más largos ═════════════════════════════ */}
       <SectionCard title="Inquilinos más leales" icon={<KeyRound size={18} />} subtitle="Contratos activos ordenados por duración">
@@ -897,60 +691,6 @@ export default function AnalyticsPage() {
               </tbody>
             </table>
           </div>
-        )}
-      </SectionCard>
-
-      <div style={{ height:16 }} />
-
-      {/* ════ SECCIÓN 6: Gasto por persona ════════════════════════════════ */}
-      <SectionCard title="Gasto por persona" icon={<Users size={18} />} subtitle={`Sobre ${estimatedPeople} personas estimadas`}>
-        {expensePerPersonByCategory.length === 0 ? (
-          <AppEmptyState title="Sin gastos este mes" description="No hay pagos registrados para este periodo." />
-        ) : (
-          <>
-            <div style={{ display:"flex", flexDirection:"column", gap:8, marginBottom:16 }}>
-              {expensePerPersonByCategory.map((r) => {
-                const DeltaIcon = r.delta >= 0 ? TrendingUp : TrendingDown;
-                const deltaColor = r.delta > 5 ? "#EF4444" : r.delta < -5 ? "#10B981" : "var(--text-muted)";
-                return (
-                  <div key={r.category} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius:8 }}>
-                    <div style={{ width:28, height:28, borderRadius:8, background:"var(--icon-bg-neutral)", display:"grid", placeItems:"center", color:"var(--text-secondary)", flexShrink:0 }}>
-                      {EXPENSE_TYPE_ICON[r.category]}
-                    </div>
-                    <div style={{ flex:1, fontSize:13, fontWeight:600, color:"var(--text-primary)" }}>{r.label}</div>
-                    <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:110, textAlign:"right" }}>
-                      <strong style={{ color:"var(--text-primary)" }}>{formatCurrency(r.perPerson)}</strong>
-                      <span style={{ fontSize:10, color:"var(--text-muted)" }}> / persona</span>
-                    </div>
-                    <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:120, textAlign:"right" }}>
-                      Total: <strong style={{ color:"var(--text-primary)" }}>{formatCurrency(r.total)}</strong>
-                    </div>
-                    <div style={{ display:"flex", alignItems:"center", gap:3, fontSize:11, minWidth:65, justifyContent:"flex-end", color:deltaColor, fontWeight:600 }}>
-                      <DeltaIcon size={12} />
-                      {r.delta >= 0 ? "+" : ""}{r.delta.toFixed(1)}%
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            <div style={{ fontSize:11, color:"var(--text-muted)", marginBottom:6 }}>
-              Total del mes: <strong style={{ color:"var(--text-primary)" }}>{formatCurrency(monthTotalExpense)}</strong>
-            </div>
-            {expenseLineCategories.length > 0 && (
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={expensePerPersonLine} margin={{ top:4, right:12, left:0, bottom:4 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-                  <XAxis dataKey="mes" tick={{ fontSize:10, fill:"var(--text-muted)" }} />
-                  <YAxis tick={{ fontSize:10, fill:"var(--text-muted)" }} tickFormatter={(v) => `$${Number(v).toLocaleString("es-MX", { notation:"compact" })}`} />
-                  <Tooltip formatter={(v) => formatCurrency(Number(v))} contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:8, fontSize:11 }} />
-                  <Legend wrapperStyle={{ fontSize:10, paddingTop:6 }} />
-                  {expenseLineCategories.map((cat) => (
-                    <Line key={cat} type="monotone" dataKey={cat} stroke={EXPENSE_TYPE_COLOR[cat] ?? "#94A3B8"} strokeWidth={2} dot={{ r:2.5 }} activeDot={{ r:4 }} />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </>
         )}
       </SectionCard>
 
