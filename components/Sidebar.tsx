@@ -106,8 +106,9 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "SISTEMA",
     items: [
-      { label: "Usuarios", href: "/users",    icon: UserCog },
-      { label: "Feedback", href: "/feedback", icon: MessageSquare },
+      { label: "Configuración", href: "/settings",  icon: Settings },
+      { label: "Usuarios",      href: "/users",      icon: UserCog },
+      { label: "Feedback",      href: "/feedback",   icon: MessageSquare },
     ],
   },
 ];

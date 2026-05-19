@@ -21,7 +21,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
   Más adelante conviene reforzar con auth SSR + middleware.
 */
 
-const ADMIN_PUBLIC_ROUTES = ["/login"];
+const ADMIN_PUBLIC_ROUTES = ["/login", "/register"];
 const PORTAL_PUBLIC_ROUTES = ["/portal/login"];
 
 function isPortalPath(pathname: string) {
