@@ -111,6 +111,7 @@ import {
 } from "@/lib/pageStyles";
 import AssetTypeIcon from "@/components/AssetTypeIcon";
 import AppBadge from "@/components/AppBadge";
+import EntityCard from "@/components/EntityCard";
 import BuildingServicesTab from "@/components/BuildingServicesTab";
 import type { UtilityServiceType } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
@@ -861,6 +862,10 @@ export default function BuildingDetailPage() {
 
   /* Acciones en locales de plaza_comercial */
   const [openActionsLocalId, setOpenActionsLocalId] = useState<string | null>(null);
+  /* Acciones en bodegas de industrial_park */
+  const [openActionsBodegaId, setOpenActionsBodegaId] = useState<string | null>(null);
+  const [bodegaOccupied, setBodegaOccupied] = useState<Set<string>>(new Set());
+  const [bodegasOccupiedLoaded, setBodegasOccupiedLoaded] = useState(false);
   const [editingLocal, setEditingLocal]             = useState<PlazaLocal | null>(null);
   const [editLocalName, setEditLocalName]           = useState("");
   const [editLocalCode, setEditLocalCode]           = useState("");
@@ -970,6 +975,22 @@ export default function BuildingDetailPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, building, servicesTabLoaded]);
+
+  useEffect(() => {
+    if (activeTab !== 'bodegas' || bodegasOccupiedLoaded || childBuildings.length === 0) return;
+    const ids = childBuildings.map(cb => cb.id);
+    void (async () => {
+      const { data } = await supabase
+        .from('leases')
+        .select('building_id')
+        .in('building_id', ids)
+        .eq('status', 'ACTIVE')
+        .is('deleted_at', null);
+      setBodegaOccupied(new Set((data ?? []).map((r: { building_id: string }) => r.building_id)));
+      setBodegasOccupiedLoaded(true);
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, childBuildings, bodegasOccupiedLoaded]);
 
   useEffect(() => {
     const tab = searchParams.get("tab");
@@ -3860,6 +3881,15 @@ export default function BuildingDetailPage() {
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "bodegas" && hasBodegasTab ? (
         <div style={{ display: "grid", gap: 20 }}>
+          {/* Métricas */}
+          {childBuildings.length > 0 && (
+            <AppGrid minWidth={160} gap={16}>
+              <MetricCard label="Total"       value={String(childBuildings.length)}                                    icon={<Warehouse size={18} />} helper="Bodegas en el parque" />
+              <MetricCard label="Disponibles" value={String(childBuildings.filter(cb => !bodegaOccupied.has(cb.id)).length)} icon={<Warehouse size={18} />} helper="Sin lease activo" variant="blue" />
+              <MetricCard label="Rentadas"    value={String(childBuildings.filter(cb => bodegaOccupied.has(cb.id)).length)}  icon={<Warehouse size={18} />} helper="Con lease activo" variant="green" />
+              {(() => { const total = childBuildings.reduce((s, cb) => s + (cb.construction_sqm ?? 0), 0); return total > 0 ? <MetricCard label="M² construcción" value={`${total.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="Suma de m² construidos" /> : null; })()}
+            </AppGrid>
+          )}
           <SectionCard
             title="Bodegas del parque"
             subtitle="Naves industriales que forman parte de este parque."
@@ -3878,22 +3908,57 @@ export default function BuildingDetailPage() {
                 onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(`B-${n}`); setBodegaConstructionSqm(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
               />
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
-                {childBuildings.map((cb) => (
-                  <AppCard key={cb.id} style={{ padding: 16, borderRadius: 14 }}>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                      <div>
-                        <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>{cb.name}</strong>
-                        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
-                          {cb.code ? `Código: ${cb.code}` : "Sin código"}
-                          {cb.construction_sqm != null ? ` · ${cb.construction_sqm.toLocaleString("es-MX")} m²` : ""}
-                          {cb.land_sqm != null ? ` · ${cb.land_sqm.toLocaleString("es-MX")} m² terreno` : ""}
-                        </p>
-                      </div>
-                      <UiButton href={`/buildings/${cb.id}`}>Ver detalle</UiButton>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+                {childBuildings.map((cb) => {
+                  const isOccupied = bodegaOccupied.has(cb.id);
+                  return (
+                    <div key={cb.id} style={{ position: "relative" }}>
+                      <EntityCard
+                        title={cb.name}
+                        subtitle={cb.code ?? "Sin código"}
+                        badge={
+                          <AppBadge
+                            backgroundColor={isOccupied ? "var(--badge-bg-green)" : "var(--badge-bg-blue)"}
+                            textColor={isOccupied ? "var(--badge-text-green)" : "var(--badge-text-blue)"}
+                            borderColor={isOccupied ? "var(--metric-border-green)" : "var(--metric-border-neutral)"}
+                          >
+                            {isOccupied ? "Rentada" : "Disponible"}
+                          </AppBadge>
+                        }
+                        onClick={() => router.push(`/buildings/${cb.id}`)}
+                        actions={
+                          <div style={{ position: "relative" }}>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); setOpenActionsBodegaId(openActionsBodegaId === cb.id ? null : cb.id); }}
+                              style={dropdownTriggerStyle}
+                              aria-label="Más acciones"
+                            >
+                              <MoreHorizontal size={16} />
+                            </button>
+                            {openActionsBodegaId === cb.id && (
+                              <div style={dropdownMenuStyle}>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => { router.push(`/buildings/${cb.id}`); setOpenActionsBodegaId(null); }}>
+                                  <Warehouse size={14} /> Ver detalle
+                                </button>
+                                <button type="button" style={dropdownDeleteItemStyle} onClick={() => setOpenActionsBodegaId(null)}>
+                                  <Trash2 size={14} /> Eliminar
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        }
+                      >
+                        {(cb.construction_sqm != null || cb.land_sqm != null) && (
+                          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+                            {cb.construction_sqm != null && <span style={{ fontWeight: 600 }}>{cb.construction_sqm.toLocaleString("es-MX")} m² construcción</span>}
+                            {cb.land_sqm != null && <span style={{ marginLeft: cb.construction_sqm != null ? 8 : 0 }}>{cb.land_sqm.toLocaleString("es-MX")} m² terreno</span>}
+                          </div>
+                        )}
+                      </EntityCard>
                     </div>
-                  </AppCard>
-                ))}
+                  );
+                })}
               </div>
             )}
           </SectionCard>
@@ -3905,6 +3970,15 @@ export default function BuildingDetailPage() {
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "locales" && hasLocalesTab ? (
         <div style={{ display: "grid", gap: 20 }}>
+          {/* Métricas */}
+          {plazaLocales.length > 0 && (
+            <AppGrid minWidth={160} gap={16}>
+              <MetricCard label="Total"       value={String(plazaLocales.length)}                                           icon={<Store size={18} />} helper="Locales en la plaza" />
+              <MetricCard label="Disponibles" value={String(plazaLocales.filter(l => l.status !== "OCCUPIED").length)}      icon={<Store size={18} />} helper="Sin lease activo" variant="blue" />
+              <MetricCard label="Rentados"    value={String(plazaLocales.filter(l => l.status === "OCCUPIED").length)}       icon={<Store size={18} />} helper="Con lease activo" variant="green" />
+              {(() => { const total = plazaLocales.reduce((s, l) => s + (l.sqm ?? 0), 0); return total > 0 ? <MetricCard label="M² totales" value={`${total.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="Suma de m² de locales" /> : null; })()}
+            </AppGrid>
+          )}
           <SectionCard
             title="Locales de la plaza"
             subtitle="Espacios comerciales que forman parte de esta plaza."
@@ -3931,30 +4005,25 @@ export default function BuildingDetailPage() {
                 }}
               />
             ) : (
-              <div style={{ display: "grid", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
                 {plazaLocales.map((local) => {
                   const occupied = local.status === "OCCUPIED";
                   return (
-                    <AppCard key={local.id} style={{ padding: 16, borderRadius: 14, position: "relative" }}>
+                    <div key={local.id} style={{ position: "relative" }}>
                       {local.needs_review && (
                         <div
                           title="Pendiente de revisión"
                           style={{
-                            position: "absolute", top: 10, right: 10,
+                            position: "absolute", top: 10, left: 10,
                             width: 10, height: 10, borderRadius: "50%",
-                            background: "#EF9F27", zIndex: 1, pointerEvents: "none",
+                            background: "#EF9F27", zIndex: 2, pointerEvents: "none",
                           }}
                         />
                       )}
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <strong style={{ fontSize: 14, display: "block", marginBottom: 4 }}>{local.unit_number}</strong>
-                          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
-                            {local.display_code ? `Código: ${local.display_code}` : "Sin código"}
-                            {local.sqm != null ? ` · ${local.sqm.toLocaleString("es-MX")} m²` : ""}
-                          </p>
-                        </div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                      <EntityCard
+                        title={local.unit_number}
+                        subtitle={local.display_code ? `Código: ${local.display_code}` : "Sin código"}
+                        badge={
                           <AppBadge
                             backgroundColor={occupied ? "var(--badge-bg-green)" : "var(--badge-bg-blue)"}
                             textColor={occupied ? "var(--badge-text-green)" : "var(--badge-text-blue)"}
@@ -3962,7 +4031,9 @@ export default function BuildingDetailPage() {
                           >
                             {occupied ? "Rentado" : "Disponible"}
                           </AppBadge>
-                          {/* Menú de 3 puntos */}
+                        }
+                        onClick={() => router.push(`/buildings/${building.id}/units/${local.id}`)}
+                        actions={
                           <div style={{ position: "relative" }}>
                             <button
                               type="button"
@@ -3974,10 +4045,10 @@ export default function BuildingDetailPage() {
                             </button>
                             {openActionsLocalId === local.id && (
                               <div style={dropdownMenuStyle}>
-                                <button type="button" style={dropdownActionButtonStyle} onClick={() => router.push(`/buildings/${building.id}/units/${local.id}`)}>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => { router.push(`/buildings/${building.id}/units/${local.id}`); setOpenActionsLocalId(null); }}>
                                   <Store size={14} /> Ver detalle
                                 </button>
-                                <button type="button" style={dropdownActionButtonStyle} onClick={() => openEditLocal(local)}>
+                                <button type="button" style={dropdownActionButtonStyle} onClick={() => { openEditLocal(local); setOpenActionsLocalId(null); }}>
                                   <Edit3 size={14} /> Editar
                                 </button>
                                 <button type="button" style={dropdownActionButtonStyle} onClick={() => { setDuplicatingLocal(local); setDupLocalCount(1); setOpenActionsLocalId(null); }}>
@@ -3989,9 +4060,15 @@ export default function BuildingDetailPage() {
                               </div>
                             )}
                           </div>
-                        </div>
-                      </div>
-                    </AppCard>
+                        }
+                      >
+                        {local.sqm != null && (
+                          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+                            <span style={{ fontWeight: 600 }}>{local.sqm.toLocaleString("es-MX")} m²</span>
+                          </div>
+                        )}
+                      </EntityCard>
+                    </div>
                   );
                 })}
               </div>
