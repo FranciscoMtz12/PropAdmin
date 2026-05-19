@@ -821,7 +821,7 @@ export default function DashboardPage() {
       <PageHeader
         title="Dashboard"
         titleIcon={<LayoutDashboard size={20} />}
-        subtitle="Vista general del portafolio: ocupación, cobranza y alertas operativas."
+        subtitle={role === "titular" ? "General" : "Vista general del portafolio: ocupación, cobranza y alertas operativas."}
         actions={<UiButton href="/buildings">Ver edificios</UiButton>}
       />
 

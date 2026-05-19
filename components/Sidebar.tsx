@@ -343,6 +343,16 @@ export default function Sidebar() {
 
   const activeSections: NavSection[] = (() => {
     if (isSuperAdmin) return ALL_ADMIN_SECTIONS;
+    // titular: todo excepto /users y /feedback (panel superadmin)
+    if (user?.role === "titular") {
+      const TITULAR_DENIED = ["/users", "/feedback"];
+      return ALL_ADMIN_SECTIONS
+        .map(section => ({
+          ...section,
+          items: section.items.filter(item => !TITULAR_DENIED.some(d => item.href?.startsWith(d))),
+        }))
+        .filter(section => section.items.length > 0);
+    }
     const allowed = ROLE_ALLOWED[user?.role ?? ""] ?? ["/dashboard"];
     return filterSections(ALL_ADMIN_SECTIONS, allowed);
   })();
