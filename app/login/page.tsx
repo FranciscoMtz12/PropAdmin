@@ -292,6 +292,37 @@ export default function LoginPage() {
         </form>
       </div>
 
+      {/* Register link */}
+      {(process.env.NEXT_PUBLIC_REGISTRATION_MODE ?? "invite_only") !== "disabled" && (
+        <div
+          style={{
+            position: "relative",
+            zIndex: 2,
+            marginTop: "1.25rem",
+            fontSize: 13,
+            color: "rgba(255,255,255,.45)",
+            textAlign: "center",
+          }}
+        >
+          ¿No tienes cuenta?{" "}
+          <button
+            type="button"
+            onClick={() => router.push("/register")}
+            style={{
+              background: "none",
+              border: "none",
+              color: "#c96fa0",
+              fontSize: 13,
+              cursor: "pointer",
+              textDecoration: "underline",
+              padding: 0,
+            }}
+          >
+            Regístrate
+          </button>
+        </div>
+      )}
+
       {/* Footer */}
       <div
         style={{
