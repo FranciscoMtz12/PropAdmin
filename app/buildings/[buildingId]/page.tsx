@@ -28,14 +28,17 @@ import {
   AlertTriangle,
   Archive,
   ArrowLeft,
+  Ban,
   Copy,
   Briefcase,
   AlertCircle,
   Building2,
   Car,
+  Check,
   CheckCircle2,
   CheckSquare,
   ChevronRight,
+  Clock,
   CreditCard,
   Droplets,
   Edit3,
@@ -48,6 +51,7 @@ import {
   Bed,
   Gem,
   Home,
+  Minus,
   ImageIcon,
   LayoutGrid,
   Layers3,
@@ -612,6 +616,38 @@ function OccupancyDonutCard({ occupied, total }: { occupied: number; total: numb
         </div>
       </div>
     </AppCard>
+  );
+}
+
+/* ─── Indicador de estado: círculo sólido con ícono ─────────────────── */
+
+function getStatusIndicator(status: string) {
+  switch ((status ?? "").toUpperCase()) {
+    case "OCCUPIED":
+    case "RENTED":
+      return { bg: "#1D9E75", icon: "Check" };
+    case "VACANT":
+      return { bg: "#378ADD", icon: "Home" };
+    case "PARTIAL":
+      return { bg: "#EF9F27", icon: "Clock" };
+    case "MAINTENANCE":
+    case "OUT_OF_SERVICE":
+      return { bg: "#E24B4A", icon: "Ban" };
+    default:
+      return { bg: "#888780", icon: "Minus" };
+  }
+}
+
+function StatusCircle({ status }: { status: string }) {
+  const ind = getStatusIndicator(status);
+  return (
+    <div style={{ width: 32, height: 32, borderRadius: "50%", background: ind.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      {ind.icon === "Check" && <Check size={15} color="white" strokeWidth={3} />}
+      {ind.icon === "Home"  && <Home  size={15} color="white" strokeWidth={2} />}
+      {ind.icon === "Clock" && <Clock size={15} color="white" strokeWidth={2} />}
+      {ind.icon === "Ban"   && <Ban   size={15} color="white" strokeWidth={2} />}
+      {ind.icon === "Minus" && <Minus size={15} color="white" strokeWidth={3} />}
+    </div>
   );
 }
 
@@ -3970,14 +4006,20 @@ export default function BuildingDetailPage() {
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "locales" && hasLocalesTab ? (
         <div style={{ display: "grid", gap: 20 }}>
-          {/* Métricas */}
+          {/* Métricas + Dona de ocupación */}
           {plazaLocales.length > 0 && (
-            <AppGrid minWidth={160} gap={16}>
-              <MetricCard label="Total"       value={String(plazaLocales.length)}                                           icon={<Store size={18} />} helper="Locales en la plaza" />
-              <MetricCard label="Disponibles" value={String(plazaLocales.filter(l => l.status !== "OCCUPIED").length)}      icon={<Store size={18} />} helper="Sin lease activo" variant="blue" />
-              <MetricCard label="Rentados"    value={String(plazaLocales.filter(l => l.status === "OCCUPIED").length)}       icon={<Store size={18} />} helper="Con lease activo" variant="green" />
-              {(() => { const total = plazaLocales.reduce((s, l) => s + (l.sqm ?? 0), 0); return total > 0 ? <MetricCard label="M² totales" value={`${total.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="Suma de m² de locales" /> : null; })()}
-            </AppGrid>
+            <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <OccupancyDonutCard
+                occupied={plazaLocales.filter(l => l.status === "OCCUPIED").length}
+                total={plazaLocales.length}
+              />
+              <AppGrid minWidth={130} gap={12}>
+                <MetricCard label="Total"       value={String(plazaLocales.length)}                                           icon={<Store size={18} />} helper="Locales en la plaza" />
+                <MetricCard label="Disponibles" value={String(plazaLocales.filter(l => l.status !== "OCCUPIED").length)}      icon={<Store size={18} />} helper="Sin lease activo" variant="blue" />
+                <MetricCard label="Rentados"    value={String(plazaLocales.filter(l => l.status === "OCCUPIED").length)}       icon={<Store size={18} />} helper="Con lease activo" variant="green" />
+                {(() => { const total = plazaLocales.reduce((s, l) => s + (l.sqm ?? 0), 0); return total > 0 ? <MetricCard label="M² totales" value={`${total.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="Suma de m² de locales" /> : null; })()}
+              </AppGrid>
+            </div>
           )}
           <SectionCard
             title="Locales de la plaza"
@@ -4032,6 +4074,7 @@ export default function BuildingDetailPage() {
                             {occupied ? "Rentado" : "Disponible"}
                           </AppBadge>
                         }
+                        statusIndicator={<StatusCircle status={local.status ?? "VACANT"} />}
                         onClick={() => router.push(`/buildings/${building.id}/units/${local.id}`)}
                         actions={
                           <div style={{ position: "relative" }}>

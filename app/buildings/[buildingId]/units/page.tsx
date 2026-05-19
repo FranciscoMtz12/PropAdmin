@@ -19,14 +19,19 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import {
+  Ban,
   Bath,
   BedDouble,
+  Check,
+  Clock,
   Copy,
   DoorOpen,
   Edit3,
   FolderCog,
   Hash,
+  Home,
   Layers3,
+  Minus,
   MoreHorizontal,
   Plus,
   Trash2,
@@ -159,58 +164,35 @@ function getUnitStatusBadge(status: string | null | undefined) {
   };
 }
 
-/* ─── Componente: mini dona de estado ───────────────────────────────── */
+/* ─── Indicador de estado: círculo sólido con ícono ─────────────────── */
 
-function MiniStatusRing({ status, occupiedRooms, totalRooms }: { status: string; occupiedRooms?: number; totalRooms?: number }) {
-  const s = normalizeStatus(status);
-  const r = 14;
-  const circ = 2 * Math.PI * r;
-
-  /* Dona proporcional para unidades by_room con datos reales */
-  if (occupiedRooms !== undefined && totalRooms !== undefined && totalRooms > 0) {
-    const fraction = Math.min(occupiedRooms / totalRooms, 1);
-    const filled   = circ * fraction;
-    const color    = fraction === 0 ? "#9CA3AF" : fraction < 1 ? "#F59E0B" : "#10B981";
-    return (
-      <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
-        <circle cx="20" cy="20" r={r} fill="none" stroke="#E5E7EB" strokeWidth="6" />
-        {filled > 0 ? (
-          <circle
-            cx="20" cy="20" r={r} fill="none"
-            stroke={color} strokeWidth="6"
-            strokeDasharray={`${filled} ${circ}`}
-            style={{ transform: "rotate(-90deg)", transformOrigin: "20px 20px" }}
-          />
-        ) : null}
-      </svg>
-    );
+function getStatusIndicator(status: string) {
+  switch ((status ?? "").toUpperCase()) {
+    case "OCCUPIED":
+    case "RENTED":
+      return { bg: "#1D9E75", icon: "Check" };
+    case "VACANT":
+      return { bg: "#378ADD", icon: "Home" };
+    case "PARTIAL":
+      return { bg: "#EF9F27", icon: "Clock" };
+    case "MAINTENANCE":
+    case "OUT_OF_SERVICE":
+      return { bg: "#E24B4A", icon: "Ban" };
+    default:
+      return { bg: "#888780", icon: "Minus" };
   }
+}
 
-  if (s === "PARTIAL") {
-    /* Dona partida: mitad verde, mitad gris */
-    const half = circ / 2;
-    return (
-      <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
-        <circle cx="20" cy="20" r={r} fill="none" stroke="#9CA3AF" strokeWidth="6" />
-        <circle
-          cx="20" cy="20" r={r} fill="none"
-          stroke="#10B981" strokeWidth="6"
-          strokeDasharray={`${half} ${circ}`}
-          style={{ transform: "rotate(-90deg)", transformOrigin: "20px 20px" }}
-        />
-      </svg>
-    );
-  }
-
-  const color =
-    s === "RENTED" || s === "OCCUPIED" ? "#10B981"
-    : s === "MAINTENANCE"              ? "#EF4444"
-    : "#9CA3AF";
-
+function StatusCircle({ status }: { status: string }) {
+  const ind = getStatusIndicator(status);
   return (
-    <svg width="40" height="40" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <circle cx="20" cy="20" r="14" fill="none" stroke={color} strokeWidth="6" />
-    </svg>
+    <div style={{ width: 32, height: 32, borderRadius: "50%", background: ind.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      {ind.icon === "Check" && <Check size={15} color="white" strokeWidth={3} />}
+      {ind.icon === "Home"  && <Home  size={15} color="white" strokeWidth={2} />}
+      {ind.icon === "Clock" && <Clock size={15} color="white" strokeWidth={2} />}
+      {ind.icon === "Ban"   && <Ban   size={15} color="white" strokeWidth={2} />}
+      {ind.icon === "Minus" && <Minus size={15} color="white" strokeWidth={3} />}
+    </div>
   );
 }
 
@@ -1046,9 +1028,7 @@ export default function BuildingUnitsPage() {
                       )}
                     </div>
                   }
-                  statusIndicator={
-                    <MiniStatusRing status={unit.status} occupiedRooms={occupiedRooms} totalRooms={totalRooms} />
-                  }
+                  statusIndicator={<StatusCircle status={unit.status} />}
                   actions={
                     <div
                       style={{ position: "relative" }}
