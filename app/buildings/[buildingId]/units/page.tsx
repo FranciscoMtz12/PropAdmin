@@ -164,34 +164,34 @@ function getUnitStatusBadge(status: string | null | undefined) {
   };
 }
 
-/* ─── Indicador de estado: círculo sólido con ícono ─────────────────── */
+/* ─── Indicador de estado: círculo outline con ícono ────────────────── */
 
 function getStatusIndicator(status: string) {
   switch ((status ?? "").toUpperCase()) {
     case "OCCUPIED":
     case "RENTED":
-      return { bg: "#1D9E75", icon: "Check" };
+      return { color: "#1D9E75", icon: "Check" };
     case "VACANT":
-      return { bg: "#378ADD", icon: "Home" };
+      return { color: "#378ADD", icon: "Home" };
     case "PARTIAL":
-      return { bg: "#EF9F27", icon: "Clock" };
+      return { color: "#EF9F27", icon: "Clock" };
     case "MAINTENANCE":
     case "OUT_OF_SERVICE":
-      return { bg: "#E24B4A", icon: "Ban" };
+      return { color: "#E24B4A", icon: "Ban" };
     default:
-      return { bg: "#888780", icon: "Minus" };
+      return { color: "#888780", icon: "Minus" };
   }
 }
 
 function StatusCircle({ status }: { status: string }) {
   const ind = getStatusIndicator(status);
   return (
-    <div style={{ width: 32, height: 32, borderRadius: "50%", background: ind.bg, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      {ind.icon === "Check" && <Check size={15} color="white" strokeWidth={3} />}
-      {ind.icon === "Home"  && <Home  size={15} color="white" strokeWidth={2} />}
-      {ind.icon === "Clock" && <Clock size={15} color="white" strokeWidth={2} />}
-      {ind.icon === "Ban"   && <Ban   size={15} color="white" strokeWidth={2} />}
-      {ind.icon === "Minus" && <Minus size={15} color="white" strokeWidth={3} />}
+    <div style={{ width: 32, height: 32, borderRadius: "50%", border: `2px solid ${ind.color}`, background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+      {ind.icon === "Check" && <Check size={15} color={ind.color} strokeWidth={2.5} />}
+      {ind.icon === "Home"  && <Home  size={15} color={ind.color} strokeWidth={2.5} />}
+      {ind.icon === "Clock" && <Clock size={15} color={ind.color} strokeWidth={2.5} />}
+      {ind.icon === "Ban"   && <Ban   size={15} color={ind.color} strokeWidth={2.5} />}
+      {ind.icon === "Minus" && <Minus size={15} color={ind.color} strokeWidth={2.5} />}
     </div>
   );
 }
@@ -992,16 +992,23 @@ export default function BuildingUnitsPage() {
                       title="Pendiente de revisión"
                       style={{
                         position: "absolute",
-                        top: 10,
-                        right: 10,
-                        width: 10,
-                        height: 10,
+                        top: -6,
+                        right: -6,
+                        width: 18,
+                        height: 18,
                         borderRadius: "50%",
-                        background: "#EF9F27",
+                        border: "1.5px solid #EF9F27",
+                        color: "#EF9F27",
+                        background: "var(--color-background-primary)",
+                        fontSize: 10,
+                        fontWeight: 600,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
                         zIndex: 10,
                         pointerEvents: "none",
                       }}
-                    />
+                    >!</div>
                   )}
                 <EntityCard
                   title={unit.unit_number}
