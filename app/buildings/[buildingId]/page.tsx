@@ -3738,15 +3738,22 @@ export default function BuildingDetailPage() {
                       </div>
                     }
                   >
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 8 }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                       {sectionFiles.length === 0 ? (
-                        /* 3 grey placeholder tiles when section has no photos */
+                        /* 2 grey placeholder tiles when section has no photos */
                         <>
-                          {[0, 1, 2].map((i) => (
+                          {[0, 1].map((i) => (
                             <div
                               key={`ph-${i}`}
-                              style={{ aspectRatio: "1", borderRadius: 10, background: "var(--bg-page)", border: "1.5px dashed var(--border-default)" }}
-                            />
+                              style={{
+                                aspectRatio: "1/1", borderRadius: 10,
+                                background: "var(--bg-page)",
+                                border: "1.5px dashed var(--border-default)",
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                              }}
+                            >
+                              <ImageIcon size={24} color="var(--text-muted)" />
+                            </div>
                           ))}
                         </>
                       ) : (
