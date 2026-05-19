@@ -132,6 +132,10 @@ export default function RegisterPage() {
   // ── step 2: tipo inline error
   const [step2Err, setStep2Err]     = useState("");
 
+  // ── invite validation
+  const [invitationId, setInvitationId] = useState<string | null>(null);
+  const [validatingToken, setValidatingToken] = useState(false);
+
   // ─────────────────────────────────────────────────────────
   function validateStep1() {
     const e: Record<string,string> = {};
@@ -174,9 +178,27 @@ export default function RegisterPage() {
     reader.readAsDataURL(file);
   }
 
-  function nextStep() {
+  async function nextStep() {
     setGlobalError("");
-    if (step === 0 && !validateStep1()) return;
+    if (step === 0) {
+      if (!validateStep1()) return;
+      if (REGISTRATION_MODE === "invite_only") {
+        setValidatingToken(true);
+        const { data: inv, error: invErr } = await supabase
+          .from("invitations")
+          .select("id")
+          .eq("token", inviteCode.trim())
+          .is("used_at", null)
+          .gt("expires_at", new Date().toISOString())
+          .single();
+        setValidatingToken(false);
+        if (invErr || !inv) {
+          setStep1Err((e) => ({ ...e, inviteCode: "Código de invitación inválido o ya utilizado" }));
+          return;
+        }
+        setInvitationId(inv.id);
+      }
+    }
     if (step === 1) {
       if (!orgType) { setStep2Err("Selecciona un tipo de cuenta para continuar"); return; }
       setStep2Err("");
@@ -403,7 +425,9 @@ export default function RegisterPage() {
                   textAlign: "left",
                 }}
               >
-                <span style={{ fontSize: 28 }}>{t === "empresa" ? "🏢" : "👤"}</span>
+                <span style={{ display: "flex", alignItems: "center", color: active ? "#fff" : "rgba(255,255,255,.6)" }}>
+                  {t === "empresa" ? <Building2 size={40} /> : <User size={40} />}
+                </span>
                 <span style={{ fontWeight: 600, fontSize: 15 }}>
                   {t === "empresa" ? "Empresa" : "Personal"}
                 </span>
@@ -552,7 +576,7 @@ export default function RegisterPage() {
           {logoPreview
             // eslint-disable-next-line @next/next/no-img-element
             ? <img src={logoPreview} alt="" style={{ width: 52, height: 52, objectFit: "contain", borderRadius: 4 }} />
-            : "🏢"}
+            : orgType === "empresa" ? <Building2 size={32} color="#fff" /> : <User size={32} color="#fff" />}
         </div>
 
         <div>
@@ -703,9 +727,10 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={nextStep}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: "#8B2252", border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: "pointer" }}
+              disabled={validatingToken}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
             >
-              Continuar <ArrowRight size={15} />
+              {validatingToken ? "Verificando..." : <>{" "}Continuar <ArrowRight size={15} /></>}
             </button>
           )}
         </div>
