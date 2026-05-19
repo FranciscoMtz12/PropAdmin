@@ -96,6 +96,11 @@ export default function RouteGuard() {
     const skipGranular = user.role === "superadmin" || user.is_superadmin;
 
     if (!skipGranular) {
+      if (user.role === "titular") {
+        const denied = ["/users", "/feedback"];
+        if (denied.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
+        return;
+      }
       if (user.role === "compras") {
         const allowed = ["/dashboard", "/purchases", "/suppliers"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/purchases"); return; }

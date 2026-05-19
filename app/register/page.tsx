@@ -271,7 +271,7 @@ export default function RegisterPage() {
         p_company_id: companyId,
         p_full_name:  orgType === "empresa" ? (fullName.trim() || compName) : fullName.trim(),
         p_email:      email.toLowerCase().trim(),
-        p_role:       "administracion",
+        p_role:       "titular",
       });
       console.error('App users insert error:', JSON.stringify(userErr));
       if (userErr) {

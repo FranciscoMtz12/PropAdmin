@@ -132,6 +132,7 @@ const FIELD_ITEMS: SidebarItem[] = [
 /* ─── Role-based section filtering ──────────────────────────────── */
 
 const ROLE_ALLOWED: Record<string, string[]> = {
+  titular:        ["/dashboard", "/buildings", "/analytics", "/servicios", "/payments", "/cobranza", "/collections", "/tenants", "/purchases", "/suppliers", "/maintenance", "/cleaning", "/settings"],
   administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/cobranza", "/collections", "/tenants"],
   directivo:      ["/dashboard", "/buildings", "/analytics", "/cobranza", "/collections", "/tenants"],
   compras:        ["/dashboard", "/purchases", "/suppliers"],

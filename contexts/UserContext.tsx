@@ -9,7 +9,7 @@ type AdminUser = {
   full_name: string;
   company_id: string;
   is_superadmin: boolean;
-  role: "superadmin" | "administracion" | "directivo" | "compras" | "mantenimiento" | "field";
+  role: "superadmin" | "titular" | "administracion" | "directivo" | "compras" | "mantenimiento" | "field";
 };
 
 type TenantUser = {
