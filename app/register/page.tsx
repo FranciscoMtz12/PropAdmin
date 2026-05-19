@@ -225,6 +225,7 @@ export default function RegisterPage() {
         return;
       }
       const userId = authData.user.id;
+      console.error('Auth result:', userId);
 
       // 3. Upload logo if provided
       let logoUrl = "";
@@ -244,6 +245,7 @@ export default function RegisterPage() {
 
       // 4. Insert company
       const compName = orgType === "empresa" ? companyName.trim() : fullName.trim();
+      console.error('Insertando company con:', { name: compName, short_name: shortName.trim() || compName, phone: phone.trim() || null, tax_id: rfc.trim() || null, brand_color: brandColor });
       const { data: company, error: compErr } = await supabase
         .from("companies")
         .insert({
@@ -261,6 +263,7 @@ export default function RegisterPage() {
         })
         .select("id")
         .single();
+      console.error('Company insert error:', JSON.stringify(compErr));
       if (compErr || !company) {
         setGlobalError("Error al crear la empresa. Intenta de nuevo.");
         setSubmitting(false);
@@ -277,6 +280,7 @@ export default function RegisterPage() {
         role: "admin",
         is_superadmin: false,
       });
+      console.error('App users insert error:', JSON.stringify(userErr));
       if (userErr) {
         setGlobalError("Error al registrar el usuario. Intenta de nuevo.");
         setSubmitting(false);
