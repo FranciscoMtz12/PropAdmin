@@ -13,7 +13,7 @@
   - Sección Info general | Facturación | Accesos rápidos permanece al fondo
 */
 
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import type { ReactNode } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
@@ -510,6 +510,15 @@ function getFileCategoryLabel(cat: string) {
   return map[cat] || "Otro";
 }
 
+const SECTION_SUGGESTIONS: Record<string, string[]> = {
+  residential_multi:  ["Fachada", "Áreas comunes", "Estacionamiento", "Departamentos"],
+  residential_single: ["Fachada", "Interior", "Jardín", "Cochera"],
+  commercial:         ["Fachada", "Locales", "Áreas comunes"],
+  industrial:         ["Fachada", "Naves", "Patios", "Oficinas"],
+  industrial_park:    ["Fachada", "Naves", "Patios", "Oficinas"],
+  land:               ["Fachada", "Terreno", "Linderos"],
+};
+
 function formatMXN(v: number) {
   return new Intl.NumberFormat("es-MX", {
     style: "currency", currency: "MXN", maximumFractionDigits: 0,
@@ -960,6 +969,21 @@ export default function BuildingDetailPage() {
   const [newTicketPriority, setNewTicketPriority] = useState('medium');
   const [savingTicket, setSavingTicket] = useState(false);
 
+  /* Galería (lazy) */
+  const [galleryLoaded, setGalleryLoaded]             = useState(false);
+  const [galleryFiles, setGalleryFiles]               = useState<BuildingFile[]>([]);
+  const [galleryUploadProgress, setGalleryUploadProgress] = useState<number | null>(null);
+  const [lightboxIndex, setLightboxIndex]             = useState<number | null>(null);
+  const [newSectionOpen, setNewSectionOpen]           = useState(false);
+  const [newSectionName, setNewSectionName]           = useState("");
+  const [uploadTargetSection, setUploadTargetSection] = useState("");
+  const [pendingSections, setPendingSections]         = useState<string[]>([]);
+  const [sectionMenuOpen, setSectionMenuOpen]         = useState<string | null>(null);
+  const [renamingSection, setRenamingSection]         = useState<string | null>(null);
+  const [renameNewName, setRenameNewName]             = useState("");
+  const [deletingSection, setDeletingSection]         = useState<string | null>(null);
+  const galleryFileInputRef                           = useRef<HTMLInputElement>(null);
+
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
 
@@ -1011,6 +1035,14 @@ export default function BuildingDetailPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, building, servicesTabLoaded]);
+
+  useEffect(() => {
+    if (activeTab === 'gallery' && building && !galleryLoaded) {
+      void loadGalleryData();
+      setGalleryLoaded(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, building, galleryLoaded]);
 
   useEffect(() => {
     if (activeTab !== 'bodegas' || bodegasOccupiedLoaded || childBuildings.length === 0) return;
@@ -1610,10 +1642,100 @@ export default function BuildingDetailPage() {
     await loadParkingData();
   }
 
+  /* ── Galería ────────────────────────────────────────────────────────── */
+
+  async function loadGalleryData() {
+    const { data } = await supabase
+      .from("building_files")
+      .select("*")
+      .eq("building_id", buildingId)
+      .eq("file_type", "image")
+      .is("deleted_at", null)
+      .order("file_category", { ascending: true })
+      .order("sort_order",    { ascending: true })
+      .order("created_at",    { ascending: true });
+    const imgs = (data ?? []) as BuildingFile[];
+    setGalleryFiles(imgs);
+    setTabCounts(prev => ({ ...prev, gallery: imgs.length }));
+  }
+
+  async function handleGalleryUpload(fileList: FileList, sectionName: string) {
+    if (!sectionName.trim()) return;
+    setGalleryUploadProgress(0);
+    const total = fileList.length;
+    for (let i = 0; i < total; i++) {
+      const file = fileList[i];
+      const ext  = (file.name.split(".").pop() ?? "jpg").toLowerCase();
+      const path = `${buildingId}/${sectionName}/${Date.now()}-${i}.${ext}`;
+      const { error: upErr } = await supabase.storage.from("building-gallery").upload(path, file, { upsert: false });
+      if (upErr) { toast.error(`Error subiendo ${file.name}`); continue; }
+      const { data: urlData } = supabase.storage.from("building-gallery").getPublicUrl(path);
+      await supabase.from("building_files").insert({
+        building_id:     buildingId,
+        file_name:       file.name,
+        file_type:       "image",
+        file_category:   sectionName.trim(),
+        storage_path:    path,
+        public_url:      urlData.publicUrl,
+        mime_type:       file.type,
+        file_size_bytes: file.size,
+        sort_order:      galleryFiles.length + i,
+        is_cover:        false,
+      });
+      setGalleryUploadProgress(Math.round(((i + 1) / total) * 100));
+    }
+    setGalleryUploadProgress(null);
+    setPendingSections(prev => prev.filter(s => s !== sectionName));
+    await loadGalleryData();
+  }
+
+  async function handleRenameSection(oldName: string, newName: string) {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    const { error } = await supabase.from("building_files")
+      .update({ file_category: trimmed })
+      .eq("building_id", buildingId)
+      .eq("file_category", oldName)
+      .eq("file_type", "image")
+      .is("deleted_at", null);
+    if (error) { toast.error("Error al renombrar sección"); return; }
+    setRenamingSection(null);
+    setPendingSections(prev => prev.map(s => s === oldName ? trimmed : s));
+    await loadGalleryData();
+  }
+
+  async function handleDeleteSection(sectionName: string) {
+    const { error } = await supabase.from("building_files")
+      .update({ deleted_at: new Date().toISOString() })
+      .eq("building_id", buildingId)
+      .eq("file_category", sectionName)
+      .eq("file_type", "image")
+      .is("deleted_at", null);
+    if (error) { toast.error("Error al eliminar sección"); return; }
+    setDeletingSection(null);
+    await loadGalleryData();
+  }
+
   /* ── Derivaciones ─────────────────────────────────────────────────── */
 
   const documentFiles = useMemo(() => files.filter((f) => f.file_type === "document"), [files]);
   const imageFiles    = useMemo(() => files.filter((f) => f.file_type === "image"),    [files]);
+
+  const galleryFilesBySection = useMemo(() => {
+    const map: Record<string, BuildingFile[]> = {};
+    for (const f of galleryFiles) {
+      const cat = f.file_category || "Sin sección";
+      if (!map[cat]) map[cat] = [];
+      map[cat].push(f);
+    }
+    return map;
+  }, [galleryFiles]);
+
+  const gallerySections = useMemo(() => {
+    const fromFiles = [...new Set(galleryFiles.map(f => f.file_category || "Sin sección"))];
+    const extras    = pendingSections.filter(s => !fromFiles.includes(s));
+    return [...fromFiles, ...extras];
+  }, [galleryFiles, pendingSections]);
 
   /* Ocupación: RENTED, OCCUPIED y PARTIAL cuentan como ocupadas */
   const occupiedUnits    = unitStatuses.filter((u) => {
@@ -3460,33 +3582,325 @@ export default function BuildingDetailPage() {
       ══════════════════════════════════════════════════════════════ */}
       {activeTab === "gallery" ? (
         <>
+          {/* Hidden file input */}
+          <input
+            ref={galleryFileInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length > 0) {
+                void handleGalleryUpload(e.target.files, uploadTargetSection || "Fachada");
+              }
+              e.target.value = "";
+            }}
+          />
+
           {pendingByTab.gallery.length > 0 && (
             <TabPendingBanner tasks={pendingByTab.gallery} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
           )}
-          <SectionCard title="Galería" subtitle="Renders y fotografías del edificio." icon={<FileImage size={18} />}>
-          {imageFiles.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--text-secondary)" }}>Todavía no hay imágenes registradas para este edificio.</p>
-          ) : (
-            <AppGrid minWidth={260} gap={12}>
-              {imageFiles.map((file) => (
-                <div key={file.id} style={{ border: "1px solid var(--border-default)", borderRadius: 14, overflow: "hidden", background: "var(--bg-card)" }}>
-                  {file.public_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={file.public_url} alt={file.file_name} style={{ width: "100%", height: 180, objectFit: "cover", display: "block" }} />
-                  ) : (
-                    <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-page)", color: "var(--text-muted)" }}>
-                      <ImageIcon size={22} />
-                    </div>
-                  )}
-                  <div style={{ padding: 14 }}>
-                    <strong style={{ display: "block", marginBottom: 4 }}>{file.file_name}</strong>
-                    <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>{getFileCategoryLabel(file.file_category)}</p>
-                  </div>
-                </div>
-              ))}
-            </AppGrid>
+
+          {/* Header */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>
+              {galleryFiles.length} foto{galleryFiles.length !== 1 ? "s" : ""} · {gallerySections.length} sección{gallerySections.length !== 1 ? "es" : ""}
+            </p>
+            <div style={{ display: "flex", gap: 8 }}>
+              <UiButton onClick={() => setNewSectionOpen(true)}>
+                Nueva sección
+              </UiButton>
+              <UiButton
+                variant="primary"
+                icon={<Plus size={15} />}
+                onClick={() => {
+                  setUploadTargetSection(gallerySections[0] ?? "Fachada");
+                  galleryFileInputRef.current?.click();
+                }}
+              >
+                Subir fotos
+              </UiButton>
+            </div>
+          </div>
+
+          {/* Progreso de subida */}
+          {galleryUploadProgress !== null && (
+            <div style={{ padding: "10px 14px", background: "var(--badge-bg-blue)", borderRadius: 10, marginBottom: 16, fontSize: 14, color: "var(--badge-text-blue)", fontWeight: 600 }}>
+              Subiendo... {galleryUploadProgress}%
+            </div>
           )}
-        </SectionCard>
+
+          {/* Secciones */}
+          {gallerySections.length === 0 ? (
+            <AppEmptyState
+              title="Sin fotos"
+              description="Crea una sección y sube las primeras fotos del edificio."
+              actionLabel="Nueva sección"
+              onAction={() => setNewSectionOpen(true)}
+            />
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {gallerySections.map((sectionName) => {
+                const sectionFiles  = galleryFilesBySection[sectionName] ?? [];
+                const visibleFiles  = sectionFiles.slice(0, 3);
+                const overflow      = Math.max(0, sectionFiles.length - 3);
+                return (
+                  <SectionCard
+                    key={sectionName}
+                    title={sectionName}
+                    subtitle={`${sectionFiles.length} foto${sectionFiles.length !== 1 ? "s" : ""}`}
+                    icon={<FolderOpen size={18} />}
+                    action={
+                      <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <UiButton
+                          icon={<Plus size={14} />}
+                          onClick={() => {
+                            setUploadTargetSection(sectionName);
+                            galleryFileInputRef.current?.click();
+                          }}
+                        >
+                          Agregar
+                        </UiButton>
+                        <div style={{ position: "relative" }}>
+                          <button
+                            type="button"
+                            style={dropdownTriggerStyle}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSectionMenuOpen(sectionMenuOpen === sectionName ? null : sectionName);
+                            }}
+                          >
+                            <MoreHorizontal size={16} />
+                          </button>
+                          {sectionMenuOpen === sectionName && (
+                            <div style={dropdownMenuStyle}>
+                              <button
+                                type="button"
+                                style={dropdownActionButtonStyle}
+                                onClick={() => {
+                                  setRenamingSection(sectionName);
+                                  setRenameNewName(sectionName);
+                                  setSectionMenuOpen(null);
+                                }}
+                              >
+                                <Edit3 size={14} /> Renombrar
+                              </button>
+                              <button
+                                type="button"
+                                style={dropdownDeleteItemStyle}
+                                onClick={() => {
+                                  setDeletingSection(sectionName);
+                                  setSectionMenuOpen(null);
+                                }}
+                              >
+                                <Trash2 size={14} /> Eliminar sección
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    }
+                  >
+                    {sectionFiles.length === 0 ? (
+                      <div
+                        onClick={() => {
+                          setUploadTargetSection(sectionName);
+                          galleryFileInputRef.current?.click();
+                        }}
+                        style={{
+                          border: "2px dashed var(--border-default)",
+                          borderRadius: 12,
+                          padding: "40px 20px",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 10,
+                          cursor: "pointer",
+                          color: "var(--text-muted)",
+                        }}
+                      >
+                        <ImageIcon size={28} />
+                        <span style={{ fontSize: 14 }}>Haz clic para agregar fotos</span>
+                      </div>
+                    ) : (
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
+                        {visibleFiles.map((file, idx) => {
+                          const isOverlaySlot  = idx === 2 && overflow > 0;
+                          const globalIdx      = galleryFiles.findIndex(f => f.id === file.id);
+                          return (
+                            <div
+                              key={file.id}
+                              style={{ position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden", cursor: "pointer", background: "var(--bg-page)" }}
+                              onClick={() => setLightboxIndex(globalIdx >= 0 ? globalIdx : 0)}
+                            >
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img
+                                src={file.public_url ?? ""}
+                                alt={file.file_name}
+                                style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                              />
+                              {isOverlaySlot && (
+                                <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <span style={{ color: "white", fontSize: 22, fontWeight: 700 }}>+{overflow}</span>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </SectionCard>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ── Lightbox ── */}
+          {lightboxIndex !== null && (() => {
+            const file = galleryFiles[lightboxIndex];
+            return (
+              <div
+                style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.92)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center" }}
+                onClick={() => setLightboxIndex(null)}
+              >
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}
+                  style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center" }}
+                >
+                  <X size={22} />
+                </button>
+                {lightboxIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => (prev ?? 1) - 1); }}
+                    style={{ position: "absolute", left: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: 8, padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
+                  >
+                    ‹
+                  </button>
+                )}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={file?.public_url ?? ""}
+                  alt={file?.file_name ?? ""}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 8 }}
+                />
+                <p style={{ position: "absolute", bottom: 20, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0, pointerEvents: "none" }}>
+                  {file?.file_name} · {lightboxIndex + 1}/{galleryFiles.length}
+                </p>
+                {lightboxIndex < galleryFiles.length - 1 && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => (prev ?? 0) + 1); }}
+                    style={{ position: "absolute", right: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: 8, padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
+                  >
+                    ›
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* ── Modal: Nueva sección ── */}
+          <Modal
+            open={newSectionOpen}
+            onClose={() => { setNewSectionOpen(false); setNewSectionName(""); }}
+            title="Nueva sección"
+          >
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <AppFormField label="Nombre de la sección" required>
+                <input
+                  value={newSectionName}
+                  onChange={(e) => setNewSectionName(e.target.value)}
+                  placeholder="Ej. Fachada, Áreas comunes…"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+              <div>
+                <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--text-secondary)" }}>Sugerencias</p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {[...(SECTION_SUGGESTIONS[building?.building_category ?? ""] ?? SECTION_SUGGESTIONS.residential_multi), "Otro"].map((sug) => (
+                    <button
+                      key={sug}
+                      type="button"
+                      onClick={() => setNewSectionName(sug === "Otro" ? "" : sug)}
+                      style={{
+                        padding: "4px 12px", borderRadius: 999,
+                        border: `1px solid ${newSectionName === sug ? "var(--accent)" : "var(--border-default)"}`,
+                        background: newSectionName === sug ? "var(--accent)" : "var(--bg-card)",
+                        color: newSectionName === sug ? "#ffffff" : "var(--text-secondary)",
+                        fontSize: 12, cursor: "pointer",
+                      }}
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                <UiButton onClick={() => { setNewSectionOpen(false); setNewSectionName(""); }}>Cancelar</UiButton>
+                <UiButton
+                  variant="primary"
+                  disabled={!newSectionName.trim()}
+                  onClick={() => {
+                    const n = newSectionName.trim();
+                    if (!n) return;
+                    setPendingSections(prev => prev.includes(n) ? prev : [...prev, n]);
+                    setNewSectionOpen(false);
+                    setNewSectionName("");
+                  }}
+                >
+                  Crear sección
+                </UiButton>
+              </div>
+            </div>
+          </Modal>
+
+          {/* ── Modal: Renombrar sección ── */}
+          {renamingSection !== null && (
+            <Modal open title={`Renombrar "${renamingSection}"`} onClose={() => setRenamingSection(null)}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <AppFormField label="Nuevo nombre" required>
+                  <input
+                    value={renameNewName}
+                    onChange={(e) => setRenameNewName(e.target.value)}
+                    placeholder="Nombre de la sección…"
+                    style={INPUT_STYLE}
+                    autoFocus
+                  />
+                </AppFormField>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <UiButton onClick={() => setRenamingSection(null)}>Cancelar</UiButton>
+                  <UiButton
+                    variant="primary"
+                    disabled={!renameNewName.trim() || renameNewName.trim() === renamingSection}
+                    onClick={() => void handleRenameSection(renamingSection, renameNewName)}
+                  >
+                    Renombrar
+                  </UiButton>
+                </div>
+              </div>
+            </Modal>
+          )}
+
+          {/* ── Modal: Eliminar sección ── */}
+          {deletingSection !== null && (
+            <Modal open title="Eliminar sección" onClose={() => setDeletingSection(null)}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <p style={{ margin: 0, color: "var(--text-secondary)" }}>
+                  ¿Eliminar la sección <strong>{deletingSection}</strong> y todas sus fotos? Esta acción no se puede deshacer.
+                </p>
+                <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                  <UiButton onClick={() => setDeletingSection(null)}>Cancelar</UiButton>
+                  <UiButton variant="primary" onClick={() => void handleDeleteSection(deletingSection)}>
+                    Eliminar
+                  </UiButton>
+                </div>
+              </div>
+            </Modal>
+          )}
         </>
       ) : null}
 
