@@ -265,14 +265,13 @@ export default function RegisterPage() {
         return;
       }
 
-      // 5. Insert app_user
-      const { error: userErr } = await supabase.from("app_users").insert({
-        id: userId,
-        company_id: companyId,
-        full_name: orgType === "empresa" ? (fullName.trim() || compName) : fullName.trim(),
-        email: email.toLowerCase().trim(),
-        role: "admin",
-        is_superadmin: false,
+      // 5. Insert app_user via SECURITY DEFINER RPC (bypasses RLS for new users)
+      const { error: userErr } = await supabase.rpc("create_app_user_on_register", {
+        p_id:         userId,
+        p_company_id: companyId,
+        p_full_name:  orgType === "empresa" ? (fullName.trim() || compName) : fullName.trim(),
+        p_email:      email.toLowerCase().trim(),
+        p_role:       "admin",
       });
       console.error('App users insert error:', JSON.stringify(userErr));
       if (userErr) {
