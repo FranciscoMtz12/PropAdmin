@@ -354,6 +354,9 @@ export default function PurchasesPage() {
   /* PDF loading state */
   const [generatingPdfId, setGeneratingPdfId] = useState<string | null>(null);
 
+  /* Banner dismiss state */
+  const [dismissedCampoOCIds, setDismissedCampoOCIds] = useState<Set<string>>(new Set());
+
   /* ── Load ──────────────────────────────────────────────────────── */
 
   useEffect(() => {
@@ -1531,6 +1534,17 @@ export default function PurchasesPage() {
 
   const monthLabel = `${MONTH_LABELS_LONG[selectedMonth - 1]} ${selectedYear}`;
 
+  // Banner data — computed after guard so early return doesn't block hooks
+  const _oneDayAgo  = Date.now() - 86400000;
+  const _oneHourAgo = Date.now() -  3600000;
+  const overdueOCsBanner = orders.filter(o => o.status === 'pending' && new Date(o.created_at).getTime() < _oneDayAgo);
+  const partialOCsBanner = orders.filter(o => o.status === 'partial');
+  const campoOCsBanner   = orders.filter(o =>
+    (o.version_type !== null || o.parent_order_id !== null) &&
+    new Date(o.created_at).getTime() >= _oneHourAgo &&
+    !dismissedCampoOCIds.has(o.id)
+  );
+
   return (
     <PageContainer>
       {/* Input oculto para subir PDF firmado — fuera del loop para un único ref */}
@@ -1561,6 +1575,71 @@ export default function PurchasesPage() {
           </>
         }
       />
+
+      {/* ── Banners de pendientes ──────────────────────────────────── */}
+      {overdueOCsBanner.length > 0 && (
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#DC2626" }}>
+              {overdueOCsBanner.length} orden{overdueOCsBanner.length !== 1 ? "es" : ""} llevan más de 1 día pendiente{overdueOCsBanner.length !== 1 ? "s" : ""} de aprobación
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {overdueOCsBanner.map(o => (
+              <button key={o.id} type="button"
+                onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {o.folio}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {partialOCsBanner.length > 0 && (
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+              {partialOCsBanner.length} orden{partialOCsBanner.length !== 1 ? "es" : ""} surtidas parcialmente requieren seguimiento
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {partialOCsBanner.map(o => (
+              <button key={o.id} type="button"
+                onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {o.folio}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {campoOCsBanner.length > 0 && (
+        <div style={{ marginBottom: 20, borderRadius: 12, background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>
+              {campoOCsBanner.length} orden{campoOCsBanner.length !== 1 ? "es" : ""} nuevas de campo sin revisar
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {campoOCsBanner.map(o => (
+              <button key={o.id} type="button"
+                onClick={() => {
+                  setDismissedCampoOCIds(prev => new Set([...prev, o.id]));
+                  setSearch(o.folio);
+                  setFilterStatus("ALL");
+                }}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {o.folio}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Navegador de mes (igual que /collections) */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>

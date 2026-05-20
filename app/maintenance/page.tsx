@@ -654,6 +654,7 @@ export default function MaintenancePage() {
   const [calendarBuildings, setCalendarBuildings] = useState<BuildingOption[]>([]);
   const [selectedBuildingId, setSelectedBuildingId] = useState("ALL");
   const [viewMode, setViewMode]               = useState<ViewMode>("week");
+  const [dismissedNewTicketIds, setDismissedNewTicketIds] = useState<Set<string>>(new Set());
   const [referenceDate, setReferenceDate]     = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1422,6 +1423,14 @@ export default function MaintenancePage() {
 
   // ─── RENDER ───────────────────────────────────────────────────────────────
 
+  // Banner data
+  const _24hAgo          = Date.now() - 86400000;
+  const _15daysLater     = new Date(Date.now() + 15 * 86400000).toISOString().split('T')[0];
+  const _todayMaint      = new Date().toISOString().split('T')[0];
+  const urgentTicketsBanner  = tickets.filter(t => (t.priority || '').toLowerCase() === 'urgent' && t.status !== 'resolved');
+  const newTicketsBanner     = tickets.filter(t => t.status === 'open' && new Date(t.created_at).getTime() >= _24hAgo && !dismissedNewTicketIds.has(t.id));
+  const preventiveBanner     = recentLogs.filter(l => l.log_type === 'preventive' && l.next_due_at && l.next_due_at >= _todayMaint && l.next_due_at <= _15daysLater);
+
   return (
     <PageContainer>
       <PageHeader
@@ -1443,6 +1452,66 @@ export default function MaintenancePage() {
       {msg ? (
         <div style={{ ...errorBannerStyle, marginBottom: 16 }}>{msg}</div>
       ) : null}
+
+      {/* ── Banners de pendientes ──────────────────────────────────── */}
+      {urgentTicketsBanner.length > 0 && (
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#DC2626" }}>
+              {urgentTicketsBanner.length} ticket{urgentTicketsBanner.length !== 1 ? "s" : ""} urgente{urgentTicketsBanner.length !== 1 ? "s" : ""} sin resolver
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {urgentTicketsBanner.map(t => (
+              <button key={t.id} type="button"
+                onClick={() => { setFilterPriority("urgent"); setActiveMainTab("tickets"); }}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {getTicketNumber(t)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {preventiveBanner.length > 0 && (
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+              {preventiveBanner.length} mantenimiento{preventiveBanner.length !== 1 ? "s" : ""} preventivo{preventiveBanner.length !== 1 ? "s" : ""} programado{preventiveBanner.length !== 1 ? "s" : ""} en los próximos 15 días
+            </span>
+            <button type="button" onClick={() => setActiveMainTab("calendar")}
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              Ver calendario
+            </button>
+          </div>
+        </div>
+      )}
+
+      {newTicketsBanner.length > 0 && (
+        <div style={{ marginBottom: 20, borderRadius: 12, background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>
+              {newTicketsBanner.length} ticket{newTicketsBanner.length !== 1 ? "s" : ""} nuevo{newTicketsBanner.length !== 1 ? "s" : ""} sin revisar (últimas 24h)
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {newTicketsBanner.map(t => (
+              <button key={t.id} type="button"
+                onClick={() => {
+                  setDismissedNewTicketIds(prev => new Set([...prev, t.id]));
+                  setSearchQuery(getTicketNumber(t));
+                  setActiveMainTab("tickets");
+                }}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {getTicketNumber(t)}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ── Tabs principales ──────────────────────────────────────── */}
       <AppTabs

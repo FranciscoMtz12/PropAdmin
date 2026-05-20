@@ -1,4 +1,4 @@
-export type NotificationSeverity = 'critical' | 'warning' | 'info'
+export type NotificationSeverity = 'critical' | 'warning' | 'brand' | 'info'
 export type NotificationModule = 'cobranza' | 'servicios' | 'unidades' | 'contratos' | 'mantenimiento' | 'propiedades' | 'compras'
 
 export type Notification = {
@@ -27,6 +27,7 @@ export const NOTIFICATION_TYPES = {
 export const SEVERITY_COLORS: Record<NotificationSeverity, { bg: string; border: string; text: string; dot: string }> = {
   critical: { bg: '#FCEBEB', border: '#E24B4A', text: '#A32D2D', dot: '#E24B4A' },
   warning:  { bg: '#FAEEDA', border: '#EF9F27', text: '#854F0B', dot: '#EF9F27' },
+  brand:    { bg: '#FDF4FF', border: '#8B2252', text: '#6B1240', dot: '#8B2252' },
   info:     { bg: '#E6F1FB', border: '#378ADD', text: '#185FA5', dot: '#378ADD' },
 }
 

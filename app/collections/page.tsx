@@ -332,6 +332,7 @@ export default function CollectionsPage() {
   const [loadingPage, setLoadingPage]     = useState(true);
   const [generating, setGenerating]       = useState(false);
   const [markingIds, setMarkingIds]       = useState<Set<string>>(new Set());
+  const [missingReadingsCount, setMissingReadingsCount] = useState(0);
 
   const [filterBuildingId, setFilterBuildingId] = useState("all");
   const [filterStatus, setFilterStatus]         = useState<CollectionStatusFilter>("all");
@@ -380,6 +381,32 @@ export default function CollectionsPage() {
     void loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, user?.company_id]);
+
+  useEffect(() => {
+    if (user?.company_id) void loadReadingsStatus(user.company_id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id]);
+
+  async function loadReadingsStatus(companyId: string) {
+    const { data: activeMeters } = await supabase
+      .from('building_utility_meters').select('id')
+      .eq('company_id', companyId).eq('active', true).eq('meter_type', 'shared').is('deleted_at', null);
+    if (!activeMeters?.length) return;
+    const meterIds = activeMeters.map((m: { id: string }) => m.id);
+    const { data: subMeters } = await supabase
+      .from('building_utility_sub_meters').select('id')
+      .in('building_utility_meter_id', meterIds).is('deleted_at', null);
+    if (!subMeters?.length) return;
+    const smIds = subMeters.map((sm: { id: string }) => sm.id);
+    const now = new Date();
+    const { data: readings } = await supabase
+      .from('building_utility_readings').select('building_utility_sub_meter_id')
+      .in('building_utility_sub_meter_id', smIds)
+      .eq('period_year', now.getFullYear()).eq('period_month', now.getMonth() + 1)
+      .is('deleted_at', null);
+    const readSet = new Set((readings ?? []).map((r: { building_utility_sub_meter_id: string }) => r.building_utility_sub_meter_id));
+    setMissingReadingsCount(smIds.filter(id => !readSet.has(id)).length);
+  }
 
   async function loadData() {
     if (!user?.company_id) return;
@@ -1069,12 +1096,75 @@ export default function CollectionsPage() {
 
   const monthLabel = `${MONTH_LABELS_LONG[selectedMonth - 1]} ${selectedYear}`;
 
+  // Banner data
+  const _today5       = new Date(Date.now() + 5 * 86400000).toISOString().split('T')[0];
+  const _todayStr     = getTodayDateKey();
+  const overdueRecordsBanner  = records.filter(r => r.status === 'overdue');
+  const dueSoonRecordsBanner  = records.filter(r => r.status === 'pending' && r.due_date >= _todayStr && r.due_date <= _today5);
+  const _unitLabelMap = new Map(units.map(u => [u.id, u.display_code ?? u.unit_number ?? u.id.slice(0, 6)]));
+
   // ── JSX ───────────────────────────────────────────────────────────────────────
 
   return (
     <PageContainer>
       {/* ── Header ── */}
       <PageHeader title="Cobranza" titleIcon={<Wallet size={18} />} />
+
+      {/* ── Banners de pendientes ──────────────────────────────────── */}
+      {overdueRecordsBanner.length > 0 && (
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#DC2626" }}>
+              {overdueRecordsBanner.length} cobro{overdueRecordsBanner.length !== 1 ? "s" : ""} vencido{overdueRecordsBanner.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {overdueRecordsBanner.slice(0, 12).map(r => (
+              <button key={r.id} type="button"
+                onClick={() => setFilterStatus("overdue")}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                {_unitLabelMap.get(r.unit_id) ?? r.unit_id.slice(0, 6)}
+              </button>
+            ))}
+            {overdueRecordsBanner.length > 12 && (
+              <button type="button" onClick={() => setFilterStatus("overdue")}
+                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>
+                +{overdueRecordsBanner.length - 12} más
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {dueSoonRecordsBanner.length > 0 && (
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+              {dueSoonRecordsBanner.length} cobro{dueSoonRecordsBanner.length !== 1 ? "s" : ""} vence{dueSoonRecordsBanner.length !== 1 ? "n" : ""} en los próximos 5 días
+            </span>
+            <button type="button" onClick={() => setFilterStatus("pending")}
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              Ver pendientes
+            </button>
+          </div>
+        </div>
+      )}
+
+      {missingReadingsCount > 0 && (
+        <div style={{ marginBottom: 20, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+              Hay lecturas de medidores pendientes de capturar ({missingReadingsCount} sin registrar)
+            </span>
+            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+              Ir a Servicios
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* ── Navegador de mes + acción principal ── */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>

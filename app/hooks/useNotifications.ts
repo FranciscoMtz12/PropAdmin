@@ -9,7 +9,7 @@ export type { Notification }
 export type ModuleStat = {
   module: NotificationModule
   count: number
-  severity: 'critical' | 'warning' | 'info'
+  severity: 'critical' | 'warning' | 'brand' | 'info'
 }
 
 type RowWithBuilding = { building_id: string | null; buildings: { name: string } | null }
@@ -149,6 +149,95 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
     }
   }
 
+  // ─── Batch 2: Compras, Cobranza records, Mantenimiento ───────────────────
+  const b2TodayStr       = now.toISOString().split('T')[0]
+  const b2FiveDaysLater    = new Date(now.getTime() + 5  * 86400000).toISOString().split('T')[0]
+  const b2FifteenDaysLater = new Date(now.getTime() + 15 * 86400000).toISOString().split('T')[0]
+  const oneDayAgo        = new Date(now.getTime() - 86400000).toISOString()
+  const oneHourAgo       = new Date(now.getTime() -  3600000).toISOString()
+
+  const [
+    { data: rawOverdueOCs },
+    { data: rawPartialOCs },
+    { data: rawCampoOCs },
+    { data: rawOverdueRecords },
+    { data: rawDueSoonRecords },
+    { data: rawUrgentTickets },
+    { data: rawNewTickets },
+    { data: rawPreventiveTickets },
+    { data: rawActiveSharedMeters },
+  ] = await Promise.all([
+    supabase.from('purchase_orders').select('id').eq('company_id', companyId).eq('status', 'pending').lt('created_at', oneDayAgo).is('deleted_at', null),
+    supabase.from('purchase_orders').select('id').eq('company_id', companyId).eq('status', 'partial').is('deleted_at', null),
+    supabase.from('purchase_orders').select('id').eq('company_id', companyId).or('version_type.not.is.null,parent_order_id.not.is.null').gte('created_at', oneHourAgo).is('deleted_at', null),
+    supabase.from('collection_records').select('id').eq('company_id', companyId).eq('status', 'overdue').is('deleted_at', null),
+    supabase.from('collection_records').select('id').eq('company_id', companyId).eq('status', 'pending').gte('due_date', b2TodayStr).lte('due_date', b2FiveDaysLater).is('deleted_at', null),
+    supabase.from('maintenance_logs').select('id').eq('company_id', companyId).eq('priority', 'urgent').neq('status', 'resolved').is('deleted_at', null),
+    supabase.from('maintenance_logs').select('id').eq('company_id', companyId).eq('status', 'open').gte('created_at', oneDayAgo).is('deleted_at', null),
+    supabase.from('maintenance_logs').select('id').eq('company_id', companyId).eq('log_type', 'preventive').not('next_due_at', 'is', null).gte('next_due_at', b2TodayStr).lte('next_due_at', b2FifteenDaysLater).is('deleted_at', null),
+    supabase.from('building_utility_meters').select('id').eq('company_id', companyId).eq('active', true).eq('meter_type', 'shared').is('deleted_at', null),
+  ])
+
+  // Utility readings check for cobranza
+  let missingReadingsCount = 0
+  const sharedMeterIds = (rawActiveSharedMeters ?? []).map((m: { id: string }) => m.id)
+  if (sharedMeterIds.length > 0) {
+    const { data: rawSubMeters } = await supabase
+      .from('building_utility_sub_meters').select('id')
+      .in('building_utility_meter_id', sharedMeterIds).is('deleted_at', null)
+    const smIds = (rawSubMeters ?? []).map((sm: { id: string }) => sm.id)
+    if (smIds.length > 0) {
+      const { data: rawCurrentReadings } = await supabase
+        .from('building_utility_readings').select('building_utility_sub_meter_id')
+        .in('building_utility_sub_meter_id', smIds)
+        .eq('period_year', now.getFullYear()).eq('period_month', now.getMonth() + 1)
+        .is('deleted_at', null)
+      const readSet = new Set((rawCurrentReadings ?? []).map((r: { building_utility_sub_meter_id: string }) => r.building_utility_sub_meter_id))
+      missingReadingsCount = smIds.filter((id: string) => !readSet.has(id)).length
+    }
+  }
+
+  // ── Compras ──
+  const overdueOCCount = rawOverdueOCs?.length ?? 0
+  if (overdueOCCount > 0) {
+    notifs.push({ id: 'compras-overdue', module: 'compras', severity: 'critical', title: `${overdueOCCount} orden${overdueOCCount !== 1 ? 'es' : ''} sin atender`, description: 'Pendiente >1 día sin aprobación', action_route: '/purchases', is_resolved: false, count: overdueOCCount })
+  }
+  const partialOCCount = rawPartialOCs?.length ?? 0
+  if (partialOCCount > 0) {
+    notifs.push({ id: 'compras-partial', module: 'compras', severity: 'warning', title: `${partialOCCount} orden${partialOCCount !== 1 ? 'es' : ''} surtidas parcialmente`, description: 'Requieren seguimiento', action_route: '/purchases', is_resolved: false, count: partialOCCount })
+  }
+  const campoOCCount = rawCampoOCs?.length ?? 0
+  if (campoOCCount > 0) {
+    notifs.push({ id: 'compras-campo', module: 'compras', severity: 'brand', title: `${campoOCCount} orden${campoOCCount !== 1 ? 'es' : ''} nuevas de campo`, description: 'Sin revisar', action_route: '/purchases', is_resolved: false, count: campoOCCount })
+  }
+
+  // ── Cobranza records ──
+  const overdueRecordCount = rawOverdueRecords?.length ?? 0
+  if (overdueRecordCount > 0) {
+    notifs.push({ id: 'cobranza-overdue', module: 'cobranza', severity: 'critical', title: `${overdueRecordCount} cobro${overdueRecordCount !== 1 ? 's' : ''} vencido${overdueRecordCount !== 1 ? 's' : ''}`, description: 'Requieren atención inmediata', action_route: '/collections', is_resolved: false, count: overdueRecordCount })
+  }
+  const dueSoonCount = rawDueSoonRecords?.length ?? 0
+  if (dueSoonCount > 0) {
+    notifs.push({ id: 'cobranza-due-soon', module: 'cobranza', severity: 'warning', title: `${dueSoonCount} cobro${dueSoonCount !== 1 ? 's' : ''} vence${dueSoonCount !== 1 ? 'n' : ''} pronto`, description: 'Próximos 5 días', action_route: '/collections', is_resolved: false, count: dueSoonCount })
+  }
+  if (missingReadingsCount > 0) {
+    notifs.push({ id: 'cobranza-lecturas', module: 'cobranza', severity: 'warning', title: `${missingReadingsCount} lectura${missingReadingsCount !== 1 ? 's' : ''} sin capturar`, description: 'Medidores del mes actual', action_route: '/servicios', is_resolved: false, count: missingReadingsCount })
+  }
+
+  // ── Mantenimiento ──
+  const urgentCount = rawUrgentTickets?.length ?? 0
+  if (urgentCount > 0) {
+    notifs.push({ id: 'mantenimiento-urgent', module: 'mantenimiento', severity: 'critical', title: `${urgentCount} ticket${urgentCount !== 1 ? 's' : ''} urgente${urgentCount !== 1 ? 's' : ''} sin resolver`, description: 'Requieren atención inmediata', action_route: '/maintenance', is_resolved: false, count: urgentCount })
+  }
+  const newTicketCount = rawNewTickets?.length ?? 0
+  if (newTicketCount > 0) {
+    notifs.push({ id: 'mantenimiento-new', module: 'mantenimiento', severity: 'brand', title: `${newTicketCount} ticket${newTicketCount !== 1 ? 's' : ''} nuevo${newTicketCount !== 1 ? 's' : ''} sin revisar`, description: 'Últimas 24 horas', action_route: '/maintenance', is_resolved: false, count: newTicketCount })
+  }
+  const preventiveCount = rawPreventiveTickets?.length ?? 0
+  if (preventiveCount > 0) {
+    notifs.push({ id: 'mantenimiento-preventive', module: 'mantenimiento', severity: 'warning', title: `${preventiveCount} mantenimiento${preventiveCount !== 1 ? 's' : ''} preventivo${preventiveCount !== 1 ? 's' : ''} próximo${preventiveCount !== 1 ? 's' : ''}`, description: 'Próximos 15 días', action_route: '/maintenance', is_resolved: false, count: preventiveCount })
+  }
+
   return notifs
 }
 
@@ -183,6 +272,7 @@ export function useNotifications(companyId: string) {
     count: notifs.reduce((sum, n) => sum + (n.count ?? 1), 0),
     severity: notifs.some(n => n.severity === 'critical') ? 'critical'
             : notifs.some(n => n.severity === 'warning')  ? 'warning'
+            : notifs.some(n => n.severity === 'brand')    ? 'brand'
             : 'info',
   }))
 

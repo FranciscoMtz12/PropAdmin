@@ -177,7 +177,7 @@ function NavItem({
   pathname: string;
   accentColor: string;
   previewTenantId?: string | null;
-  notifBadge?: { count: number; severity: 'critical' | 'warning' | 'info' } | null;
+  notifBadge?: { count: number; severity: 'critical' | 'warning' | 'brand' | 'info' } | null;
 }) {
   const Icon = item.icon;
   const resolvedHref =
@@ -232,6 +232,7 @@ function NavItem({
     </div>
   );
 
+  const badgeColor = notifBadge?.severity === 'brand' ? accentColor : notifBadge ? SEVERITY_COLORS[notifBadge.severity].dot : '';
   const rightBlock = notifBadge ? (
     <span
       style={{
@@ -243,10 +244,10 @@ function NavItem({
         padding: "0 5px",
         borderRadius: 999,
         background: "transparent",
-        border: `1.5px solid ${SEVERITY_COLORS[notifBadge.severity].dot}`,
+        border: `1.5px solid ${badgeColor}`,
         fontSize: 11,
         fontWeight: 700,
-        color: SEVERITY_COLORS[notifBadge.severity].dot,
+        color: badgeColor,
         lineHeight: 1,
         flexShrink: 0,
       }}
@@ -364,8 +365,9 @@ export default function Sidebar() {
     const count = relevant.reduce((sum, s) => sum + s.count, 0);
     const severity = relevant.some(s => s.severity === 'critical') ? 'critical'
                    : relevant.some(s => s.severity === 'warning')  ? 'warning'
+                   : relevant.some(s => s.severity === 'brand')    ? 'brand'
                    : 'info';
-    return { count, severity } as { count: number; severity: 'critical' | 'warning' | 'info' };
+    return { count, severity } as { count: number; severity: 'critical' | 'warning' | 'brand' | 'info' };
   }
 
   if (isHiddenRoute) return null;
