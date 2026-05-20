@@ -8,6 +8,8 @@
 */
 
 import React from "react";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem } from "@/lib/animations";
 import AppCard from "@/components/AppCard";
 import UiButton from "@/components/UiButton";
 
@@ -26,7 +28,10 @@ export default function AppEmptyState({
 }: AppEmptyStateProps) {
   return (
     <AppCard>
-      <div
+      <motion.div
+        variants={staggerContainer}
+        initial="hidden"
+        animate="show"
         style={{
           display: "flex",
           flexDirection: "column",
@@ -34,13 +39,12 @@ export default function AppEmptyState({
           gap: 10,
         }}
       >
-        <div>
+        <motion.div variants={staggerItem}>
           <strong
             style={{
               display: "block",
               fontSize: 16,
               marginBottom: 6,
-              /* var(--text-primary): #101828 light / #F1F5F9 dark */
               color: "var(--text-primary)",
             }}
           >
@@ -49,21 +53,22 @@ export default function AppEmptyState({
           <p
             style={{
               margin: 0,
-              /* var(--text-muted): #667085 light / #94A3B8 dark */
               color: "var(--text-muted)",
               fontSize: 14,
             }}
           >
             {description}
           </p>
-        </div>
+        </motion.div>
 
         {actionLabel && onAction ? (
-          <UiButton onClick={onAction} variant="primary">
-            {actionLabel}
-          </UiButton>
+          <motion.div variants={staggerItem}>
+            <UiButton onClick={onAction} variant="primary">
+              {actionLabel}
+            </UiButton>
+          </motion.div>
         ) : null}
-      </div>
+      </motion.div>
     </AppCard>
   );
 }

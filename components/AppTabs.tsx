@@ -1,6 +1,8 @@
 "use client";
 
 import type { CSSProperties, ReactNode } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { fadeIn } from "@/lib/animations";
 
 /*
   Tabs horizontales reutilizables para PropAdmin.
@@ -8,6 +10,16 @@ import type { CSSProperties, ReactNode } from "react";
   Acepta tanto items= como tabs= y normaliza internamente.
   Theming: usa variables CSS para responder al dark/light mode.
 */
+
+export function AppTabPanel({ activeKey, children }: { activeKey: string; children: ReactNode }) {
+  return (
+    <AnimatePresence mode="wait">
+      <motion.div key={activeKey} variants={fadeIn} initial="hidden" animate="show">
+        {children}
+      </motion.div>
+    </AnimatePresence>
+  );
+}
 
 type TabItem = {
   key: string;

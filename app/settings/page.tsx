@@ -12,7 +12,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
-import AppTabs from "@/components/AppTabs";
+import AppTabs, { AppTabPanel } from "@/components/AppTabs";
 
 // ─── Types ─────────────────────────────────────────────────────────
 
@@ -386,6 +386,8 @@ export default function SettingsPage() {
         <AppTabs items={tabs} activeKey={activeTab} onChange={setActiveTab} />
       </div>
 
+      <AppTabPanel activeKey={activeTab}>
+
       {/* ── General ──────────────────────────────────────────────── */}
       {activeTab === "general" && (
         <SectionCard title="Datos generales">
@@ -668,6 +670,8 @@ export default function SettingsPage() {
           </div>
         </SectionCard>
       )}
+
+      </AppTabPanel>
     </PageContainer>
   );
 }

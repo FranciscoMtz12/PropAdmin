@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
+import { AnimatePresence, motion } from "framer-motion";
 import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -1415,7 +1416,16 @@ export default function CollectionsPage() {
                   </div>
 
                   {/* Contenido expandido */}
-                  {isExpanded ? (
+                  <AnimatePresence>
+                  {isExpanded && (
+                    <motion.div
+                      key="expanded"
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      style={{ overflow: "hidden" }}
+                    >
                     <div style={expandedBodyStyle}>
                       {/* Tabla de conceptos */}
                       <div style={conceptsTableStyle}>
@@ -1585,7 +1595,9 @@ export default function CollectionsPage() {
                         </button>
                       </div>
                     </div>
-                  ) : null}
+                    </motion.div>
+                  )}
+                  </AnimatePresence>
                 </div>
               );
             })}

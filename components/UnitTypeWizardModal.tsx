@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { slideStep } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
@@ -466,6 +468,7 @@ function StepIndicator({ step }: { step: number }) {
 
 export default function UnitTypeWizardModal({ open, buildingId, companyId, onClose, onSuccess }: Props) {
   const [step, setStep]           = useState(1);
+  const [stepDir, setStepDir]     = useState<"left" | "right">("right");
   const [s1, setS1]               = useState<Step1>({ ...S1 });
   const [s2, setS2]               = useState<Step2>({ ...S2 });
   const [eq, setEq]               = useState<Equipment>(JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment);
@@ -501,14 +504,14 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function goNext() {
     if (step === 1) {
       if (!s1.name.trim()) { setS1Error("El nombre de la tipología es obligatorio."); return; }
-      setS1Error(""); setStep(2);
+      setS1Error(""); setStepDir("right"); setStep(2);
     } else if (step === 2) {
-      setEq(syncBedroomArray(s2)); setStep(3);
+      setEq(syncBedroomArray(s2)); setStepDir("right"); setStep(3);
     } else if (step === 3) {
-      setStep(4);
+      setStepDir("right"); setStep(4);
     }
   }
-  function goBack() { setStep((p) => Math.max(1, p - 1)); }
+  function goBack() { setStepDir("left"); setStep((p) => Math.max(1, p - 1)); }
 
   function toggleBlock(key: string) {
     setExpandedBlocks((prev) => prev.has(key) ? new Set() : new Set([key]));
@@ -629,6 +632,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   return (
     <Modal open={open} title={STEP_TITLES[step - 1] ?? ""} onClose={handleClose} maxWidth={560}>
       <StepIndicator step={step} />
+
+      <AnimatePresence mode="wait">
+        <motion.div key={step} variants={slideStep(stepDir)} initial="hidden" animate="show" exit="hidden" style={{ overflow: "hidden" }}>
 
       {/* ── PASO 1: Información ── */}
       {step === 1 && (
@@ -1032,6 +1038,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           </div>
         );
       })()}
+
+        </motion.div>
+      </AnimatePresence>
 
       {/* ── Nav buttons ── */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, gap: 10 }}>

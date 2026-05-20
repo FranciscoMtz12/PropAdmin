@@ -24,6 +24,8 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 
@@ -590,40 +592,47 @@ export default function AnalyticsPage() {
         {typologyPerformance.length === 0 ? (
           <AppEmptyState title="Sin tipologías" description="Crea tipologías para ver análisis." />
         ) : (
-          <AppGrid minWidth={220}>
+          <motion.div
+            variants={staggerContainer}
+            initial="hidden"
+            animate="show"
+            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}
+          >
             {typologyPerformance.map((t) => {
               const demandColor =
                 t.demand === "alta" ? "green" : t.demand === "media" ? "amber" : "gray";
               const demandLabel =
                 t.demand === "alta" ? "Alta demanda" : t.demand === "media" ? "Media demanda" : "Baja demanda";
               return (
-                <AppCard key={t.id} style={{ padding: 14 }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-                    <div>
-                      <div style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)" }}>{t.name}</div>
-                      <div style={{ fontSize:11, color:"var(--text-muted)" }}>{t.bedrooms} recámara{t.bedrooms === 1 ? "" : "s"}</div>
-                    </div>
-                    <AppBadge variant={demandColor}>{demandLabel}</AppBadge>
-                  </div>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:12 }}>
-                    <div>
-                      <div style={{ color:"var(--text-muted)", fontSize:10 }}>Ocupación</div>
-                      <div style={{ fontWeight:600, fontSize:15, color:"var(--text-primary)" }}>
-                        {t.rate.toFixed(0)}%
+                <motion.div key={t.id} variants={staggerItem}>
+                  <AppCard style={{ padding: 14 }}>
+                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+                      <div>
+                        <div style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)" }}>{t.name}</div>
+                        <div style={{ fontSize:11, color:"var(--text-muted)" }}>{t.bedrooms} recámara{t.bedrooms === 1 ? "" : "s"}</div>
                       </div>
-                      <div style={{ color:"var(--text-muted)", fontSize:10 }}>{t.occupied}/{t.total}</div>
+                      <AppBadge variant={demandColor}>{demandLabel}</AppBadge>
                     </div>
-                    <div>
-                      <div style={{ color:"var(--text-muted)", fontSize:10 }}>Días vacío promedio</div>
-                      <div style={{ fontWeight:600, fontSize:15, color:"var(--text-primary)" }}>
-                        {t.avgVacancy !== null ? `${t.avgVacancy}d` : "Sin datos"}
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:12 }}>
+                      <div>
+                        <div style={{ color:"var(--text-muted)", fontSize:10 }}>Ocupación</div>
+                        <div style={{ fontWeight:600, fontSize:15, color:"var(--text-primary)" }}>
+                          {t.rate.toFixed(0)}%
+                        </div>
+                        <div style={{ color:"var(--text-muted)", fontSize:10 }}>{t.occupied}/{t.total}</div>
+                      </div>
+                      <div>
+                        <div style={{ color:"var(--text-muted)", fontSize:10 }}>Días vacío promedio</div>
+                        <div style={{ fontWeight:600, fontSize:15, color:"var(--text-primary)" }}>
+                          {t.avgVacancy !== null ? `${t.avgVacancy}d` : "Sin datos"}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </AppCard>
+                  </AppCard>
+                </motion.div>
               );
             })}
-          </AppGrid>
+          </motion.div>
         )}
       </SectionCard>
 

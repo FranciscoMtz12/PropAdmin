@@ -1,4 +1,8 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { scaleIn } from "@/lib/animations";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 
@@ -48,6 +52,7 @@ export default function MetricCard({
   const valueColor = variant ? VARIANT_VALUE_COLOR[variant] : "var(--text-primary)";
 
   return (
+    <motion.div variants={scaleIn} initial="hidden" animate="show">
     <AppCard style={cardStyle}>
       <div
         style={{
@@ -89,5 +94,6 @@ export default function MetricCard({
         {icon ? <AppIconBox size={40} radius={12}>{icon}</AppIconBox> : null}
       </div>
     </AppCard>
+    </motion.div>
   );
 }

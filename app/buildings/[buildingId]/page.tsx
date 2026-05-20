@@ -94,6 +94,8 @@ import {
   Zap,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import { motion } from "framer-motion";
+import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
@@ -3776,9 +3778,14 @@ export default function BuildingDetailPage() {
                 onAction={() => setIsTypologiesWizardOpen(true)}
               />
             ) : (
-              <div style={{ display: "grid", gap: 12 }}>
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+                style={{ display: "grid", gap: 12 }}
+              >
                 {buildingUnitTypes.map((ut) => (
-                  <div key={ut.id} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 18, background: "var(--bg-card)" }}>
+                  <motion.div key={ut.id} variants={staggerItem} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 18, background: "var(--bg-card)" }}>
                     {/* Header */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -3890,9 +3897,9 @@ export default function BuildingDetailPage() {
                       <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}`}>Ver tipología</UiButton>
                       <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}/assets`}>Administrar equipamiento</UiButton>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
           </SectionCard>
         </div>
