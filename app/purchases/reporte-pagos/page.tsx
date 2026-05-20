@@ -791,6 +791,49 @@ export default function ReportePagosPage() {
         }
       />
 
+      {/* ── Banners de pagos ─────────────────────────────────────── */}
+      {(() => {
+        const sevenDaysAgoMs = Date.now() - 7 * 86400000
+        const overdueOCs = unreportedOCs.filter(o => o.sent_at && new Date(o.sent_at).getTime() < sevenDaysAgoMs)
+        const recentOCs  = unreportedOCs.filter(o => !o.sent_at || new Date(o.sent_at).getTime() >= sevenDaysAgoMs)
+        const MAX_FOLIOS = 10
+        return (
+          <>
+            {overdueOCs.length > 0 && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FCEBEB", border: "1.5px solid #E24B4A", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0, marginTop: 5 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#A32D2D", marginBottom: 4 }}>
+                    {overdueOCs.length} OC{overdueOCs.length !== 1 ? "s" : ""} facturada{overdueOCs.length !== 1 ? "s" : ""} sin reportar — más de 7 días
+                  </div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                    {overdueOCs.slice(0, MAX_FOLIOS).map(o => (
+                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: "#E24B4A22", color: "#A32D2D" }}>
+                        {o.folio}
+                      </span>
+                    ))}
+                    {overdueOCs.length > MAX_FOLIOS && (
+                      <span style={{ fontSize: 11, color: "#A32D2D", alignSelf: "center" }}>+{overdueOCs.length - MAX_FOLIOS} más</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            {recentOCs.length > 0 && (
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FAEEDA", border: "1.5px solid #EF9F27", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF9F27", flexShrink: 0, marginTop: 5 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "#854F0B" }}>
+                    {recentOCs.length} OC{recentOCs.length !== 1 ? "s" : ""} facturada{recentOCs.length !== 1 ? "s" : ""} pendiente{recentOCs.length !== 1 ? "s" : ""} de reportar
+                  </div>
+                  <div style={{ fontSize: 12, color: "#854F0B", marginTop: 2 }}>Listas para incluir en el próximo reporte a pagos</div>
+                </div>
+              </div>
+            )}
+          </>
+        )
+      })()}
+
       {/* Navegador de mes */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
         <div style={monthNavStyle}>

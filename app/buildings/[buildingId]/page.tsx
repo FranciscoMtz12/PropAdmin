@@ -95,6 +95,8 @@ import {
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useNotifications } from "@/app/hooks/useNotifications";
+import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -893,6 +895,7 @@ export default function BuildingDetailPage() {
   const searchParams = useSearchParams();
   const buildingId   = params.buildingId as string;
   const { user, loading } = useCurrentUser();
+  const { notifications: allNotifications } = useNotifications(user?.company_id ?? "");
 
   /* Estado de datos */
   const [building, setBuilding]             = useState<Building | null>(null);
@@ -3128,6 +3131,34 @@ export default function BuildingDetailPage() {
                 )}
               </SectionCard>
             );
+          })()}
+
+          {/* ── Notificaciones del edificio ── */}
+          {(() => {
+            const buildingNotifs = allNotifications.filter(n => n.building_id === buildingId)
+            if (buildingNotifs.length === 0) return null
+            // Sort by severity: critical > warning > brand > info
+            const order = { critical: 0, warning: 1, brand: 2, info: 3 }
+            const sorted = [...buildingNotifs].sort((a, b) => order[a.severity] - order[b.severity])
+            return (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {sorted.map(notif => {
+                  const col = notif.severity === 'brand' ? { bg: '#FDF4FF', border: '#8B2252', text: '#6B1240', dot: '#8B2252' } : SEVERITY_COLORS[notif.severity]
+                  return (
+                    <div key={notif.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: 10, background: col.bg, borderLeft: `4px solid ${col.border}` }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: col.dot, flexShrink: 0, marginTop: 4 }} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: col.text }}>{notif.title}</p>
+                        {notif.description && <p style={{ margin: "2px 0 0", fontSize: 12, color: col.text, opacity: 0.8 }}>{notif.description}</p>}
+                      </div>
+                      {notif.action_route && (
+                        <a href={notif.action_route} style={{ alignSelf: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: col.text, textDecoration: "underline", whiteSpace: "nowrap" }}>Ver →</a>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )
           })()}
 
           {/* ── Setup checklist ── */}

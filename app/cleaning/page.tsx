@@ -919,6 +919,33 @@ export default function CleaningPage() {
         }
       />
 
+      {/* ── Banners de limpieza ──────────────────────────────────── */}
+      {(() => {
+        const todayKey = new Date().toISOString().split("T")[0]
+        const overdueLogs = logs.filter(l => l.scheduled_date < todayKey && l.status === "pending")
+        const todayLogs   = logs.filter(l => l.scheduled_date === todayKey && l.status === "pending")
+        return (
+          <>
+            {overdueLogs.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FCEBEB", border: "1.5px solid #E24B4A", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0 }} />
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#A32D2D" }}>
+                  {overdueLogs.length} limpieza{overdueLogs.length !== 1 ? "s" : ""} de días anteriores sin completar
+                </div>
+              </div>
+            )}
+            {todayLogs.length > 0 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FAEEDA", border: "1.5px solid #EF9F27", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF9F27", flexShrink: 0 }} />
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#854F0B" }}>
+                  {todayLogs.length} limpieza{todayLogs.length !== 1 ? "s" : ""} de hoy pendiente{todayLogs.length !== 1 ? "s" : ""}
+                </div>
+              </div>
+            )}
+          </>
+        )
+      })()}
+
       {/* Tabs pills + navegador de semana */}
       <div style={{ display: "flex", alignItems: "center", marginBottom: 16, gap: 8, flexWrap: "wrap" }}>
         {([

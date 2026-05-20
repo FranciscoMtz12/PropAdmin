@@ -423,6 +423,22 @@ export default function CampoComprasPage() {
         </p>
       </div>
 
+      {/* ── Banner nuevas OCs ──────────────────────────────────── */}
+      {!loadingData && (() => {
+        const oneDayAgo = Date.now() - 86400000
+        const newOrders = orders.filter(o => o.sent_at && new Date(o.sent_at).getTime() >= oneDayAgo)
+        if (newOrders.length === 0) return null
+        return (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: "var(--bg-card)", border: "1.5px solid var(--accent)", marginBottom: 16 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+              {newOrders.length} orden{newOrders.length !== 1 ? "es" : ""} nueva{newOrders.length !== 1 ? "s" : ""} en las últimas 24 h —{" "}
+              {newOrders.map(o => o.folio).join(", ")}
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Lista */}
       {loadingData ? (
         <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 14 }}>

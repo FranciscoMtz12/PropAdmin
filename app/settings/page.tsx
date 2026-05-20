@@ -339,11 +339,16 @@ export default function SettingsPage() {
   }
 
   // ─── tabs ────────────────────────────────────────────────────────────
+  const pendingFiscal    = !fLegal.trim() || !fTaxId.trim()
+  const pendingContacto  = !cAdminEmail.trim() || !cPurchEmail.trim()
+  const pendingMarca     = !mLogoUrl || mColor === "#8B2252" || mColor === ""
+  const totalPendingConfig = (pendingFiscal ? 1 : 0) + (pendingContacto ? 1 : 0) + (pendingMarca ? 1 : 0)
+
   const tabs = [
     { key: "general",      label: "General",      icon: <Building2 size={14} /> },
-    { key: "fiscal",       label: "Fiscal",       icon: <CreditCard size={14} /> },
-    { key: "contacto",     label: "Contacto",     icon: <Mail size={14} /> },
-    { key: "marca",        label: "Marca",        icon: <Palette size={14} /> },
+    { key: "fiscal",       label: "Fiscal",       icon: <CreditCard size={14} />, count: pendingFiscal ? 1 : 0 },
+    { key: "contacto",     label: "Contacto",     icon: <Mail size={14} />, count: pendingContacto ? 1 : 0 },
+    { key: "marca",        label: "Marca",        icon: <Palette size={14} />, count: pendingMarca ? 1 : 0 },
     { key: "invitaciones", label: "Invitaciones", icon: <Send size={14} />, count: invitations.filter(i => !i.used_at && new Date(i.expires_at) > new Date()).length },
   ];
 
@@ -362,6 +367,15 @@ export default function SettingsPage() {
         subtitle={company?.short_name ?? company?.name ?? ""}
         titleIcon={<Shield size={20} />}
       />
+
+      {totalPendingConfig > 0 && (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "var(--bg-card)", border: "1.5px solid var(--accent)", marginBottom: 16 }}>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+          <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+            {totalPendingConfig} sección{totalPendingConfig !== 1 ? "es" : ""} con información pendiente de completar — revisa las pestañas marcadas
+          </div>
+        </div>
+      )}
 
       <div style={{ marginBottom: "1.5rem" }}>
         <AppTabs items={tabs} activeKey={activeTab} onChange={setActiveTab} />

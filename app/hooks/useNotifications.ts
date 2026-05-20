@@ -238,6 +238,52 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
     notifs.push({ id: 'mantenimiento-preventive', module: 'mantenimiento', severity: 'warning', title: `${preventiveCount} mantenimiento${preventiveCount !== 1 ? 's' : ''} preventivo${preventiveCount !== 1 ? 's' : ''} próximo${preventiveCount !== 1 ? 's' : ''}`, description: 'Próximos 15 días', action_route: '/maintenance', is_resolved: false, count: preventiveCount })
   }
 
+  // ─── Batch 3: Pagos + Configuración ─────────────────────────────
+  const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000)
+
+  const [{ data: rawInvoicedOCs }, { data: rawPRIds }, { data: rawCompany }] = await Promise.all([
+    supabase.from('purchase_orders').select('id, sent_at').eq('company_id', companyId).eq('status', 'invoiced').is('deleted_at', null),
+    supabase.from('payment_reports').select('id').eq('company_id', companyId).is('deleted_at', null),
+    supabase.from('companies').select('logo_url, tax_id, legal_name, admin_contact_email, purchases_contact_email, brand_color').eq('id', companyId).single(),
+  ])
+
+  // Subtract OCs already included in a payment report
+  let claimedOCIds = new Set<string>()
+  const prIds = (rawPRIds ?? []).map((r: { id: string }) => r.id)
+  if (prIds.length > 0) {
+    const { data: rawPRItems } = await supabase
+      .from('payment_report_items').select('purchase_order_id').in('payment_report_id', prIds)
+    claimedOCIds = new Set((rawPRItems ?? []).map((i: { purchase_order_id: string }) => i.purchase_order_id))
+  }
+
+  type InvoicedOC = { id: string; sent_at: string | null }
+  const unreportedOCs = (rawInvoicedOCs ?? [] as InvoicedOC[]).filter((o: InvoicedOC) => !claimedOCIds.has(o.id))
+  const overdueUnreportedCount = unreportedOCs.filter((o: InvoicedOC) => o.sent_at && new Date(o.sent_at) < sevenDaysAgo).length
+  const pendingUnreportedCount = unreportedOCs.filter((o: InvoicedOC) => !o.sent_at || new Date(o.sent_at) >= sevenDaysAgo).length
+
+  if (overdueUnreportedCount > 0) {
+    notifs.push({ id: 'pagos-overdue', module: 'pagos', severity: 'critical', title: `${overdueUnreportedCount} OC${overdueUnreportedCount !== 1 ? 's' : ''} facturada${overdueUnreportedCount !== 1 ? 's' : ''} sin reportar`, description: 'Más de 7 días sin incluir en reporte a pagos', action_route: '/purchases/reporte-pagos', is_resolved: false, count: overdueUnreportedCount })
+  }
+  if (pendingUnreportedCount > 0) {
+    notifs.push({ id: 'pagos-pending', module: 'pagos', severity: 'warning', title: `${pendingUnreportedCount} OC${pendingUnreportedCount !== 1 ? 's' : ''} facturada${pendingUnreportedCount !== 1 ? 's' : ''} pendiente${pendingUnreportedCount !== 1 ? 's' : ''}`, description: 'Listas para incluir en reporte a pagos', action_route: '/purchases/reporte-pagos', is_resolved: false, count: pendingUnreportedCount })
+  }
+
+  // ── Configuración — onboarding pendiente ──
+  type CompanyCheck = { logo_url: string | null; tax_id: string | null; legal_name: string | null; admin_contact_email: string | null; purchases_contact_email: string | null; brand_color: string | null }
+  const co = rawCompany as CompanyCheck | null
+  if (co) {
+    const pendingConfigs = [
+      !co.logo_url,
+      !co.tax_id || !co.legal_name,
+      !co.admin_contact_email,
+      !co.purchases_contact_email,
+      !co.brand_color || co.brand_color === '#8B2252',
+    ].filter(Boolean).length
+    if (pendingConfigs > 0) {
+      notifs.push({ id: 'configuracion-onboarding', module: 'configuracion', severity: 'brand', title: `${pendingConfigs} campo${pendingConfigs !== 1 ? 's' : ''} de configuración pendiente${pendingConfigs !== 1 ? 's' : ''}`, description: 'Completa el perfil de tu empresa', action_route: '/settings', is_resolved: false, count: pendingConfigs })
+    }
+  }
+
   return notifs
 }
 

@@ -1,5 +1,5 @@
 export type NotificationSeverity = 'critical' | 'warning' | 'brand' | 'info'
-export type NotificationModule = 'cobranza' | 'servicios' | 'unidades' | 'contratos' | 'mantenimiento' | 'propiedades' | 'compras'
+export type NotificationModule = 'cobranza' | 'servicios' | 'unidades' | 'contratos' | 'mantenimiento' | 'propiedades' | 'compras' | 'pagos' | 'configuracion'
 
 export type Notification = {
   id: string
@@ -39,4 +39,6 @@ export const MODULE_LABELS: Record<NotificationModule, string> = {
   mantenimiento: 'Mantenimiento',
   propiedades:   'Propiedades',
   compras:       'Compras',
+  pagos:         'Pagos',
+  configuracion: 'Configuración',
 }

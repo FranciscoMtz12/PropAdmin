@@ -69,7 +69,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "",
     items: [
-      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, notifModules: ["cobranza", "servicios", "unidades", "contratos", "mantenimiento", "propiedades", "compras"] },
+      { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, notifModules: ["cobranza", "servicios", "unidades", "contratos", "mantenimiento", "propiedades", "compras", "pagos", "configuracion"] },
     ],
   },
   {
@@ -84,7 +84,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
     label: "ADMINISTRACIÓN",
     items: [
       { label: "Servicios",  href: "/servicios",   icon: Layers,     notifModules: ["servicios"] },
-      { label: "Pagos",      href: "/payments",    icon: CreditCard },
+      { label: "Pagos",      href: "/payments",    icon: CreditCard, notifModules: ["pagos"] },
       { label: "Cobranza",   href: "/collections", icon: DollarSign, notifModules: ["cobranza", "contratos"] },
       { label: "Inquilinos", href: "/tenants",     icon: Users },
     ],
@@ -106,7 +106,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "SISTEMA",
     items: [
-      { label: "Configuración", href: "/settings",  icon: Settings },
+      { label: "Configuración", href: "/settings",  icon: Settings, notifModules: ["configuracion"] },
       { label: "Usuarios",      href: "/users",      icon: UserCog },
       { label: "Feedback",      href: "/feedback",   icon: MessageSquare },
     ],
