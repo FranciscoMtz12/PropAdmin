@@ -2,11 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, CreditCard, Mail, Palette, Send, Shield, Trash2, Upload, X } from "lucide-react";
+import { Building2, CreditCard, Mail, Monitor, Palette, Send, Shield, Trash2, Upload, X } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -110,6 +111,7 @@ function formatDate(iso: string) {
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
+  const { uiTheme, setUiTheme } = useTheme();
   const router = useRouter();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
@@ -344,12 +346,15 @@ export default function SettingsPage() {
   const pendingMarca     = !mLogoUrl || mColor === "#8B2252" || mColor === ""
   const totalPendingConfig = (pendingFiscal ? 1 : 0) + (pendingContacto ? 1 : 0) + (pendingMarca ? 1 : 0)
 
+  const canChangeTheme = user?.role === "superadmin" || Boolean(user?.is_superadmin) || user?.role === "titular";
+
   const tabs = [
     { key: "general",      label: "General",      icon: <Building2 size={14} /> },
     { key: "fiscal",       label: "Fiscal",       icon: <CreditCard size={14} />, count: pendingFiscal ? 1 : 0 },
     { key: "contacto",     label: "Contacto",     icon: <Mail size={14} />, count: pendingContacto ? 1 : 0 },
     { key: "marca",        label: "Marca",        icon: <Palette size={14} />, count: pendingMarca ? 1 : 0 },
     { key: "invitaciones", label: "Invitaciones", icon: <Send size={14} />, count: invitations.filter(i => !i.used_at && new Date(i.expires_at) > new Date()).length },
+    ...(canChangeTheme ? [{ key: "apariencia", label: "Apariencia", icon: <Monitor size={14} /> }] : []),
   ];
 
   if (loading) {
@@ -591,6 +596,77 @@ export default function SettingsPage() {
             )}
           </SectionCard>
         </div>
+      )}
+
+      {/* ── Apariencia ───────────────────────────────────────────── */}
+      {canChangeTheme && activeTab === "apariencia" && (
+        <SectionCard
+          title="Apariencia"
+          subtitle="Elige el estilo visual de la interfaz. El cambio es inmediato."
+          icon={<Monitor size={18} />}
+        >
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+            {(
+              [
+                { key: "clasico",    label: "Clásico",    previewRadius: 8,  btnRadius: 6,  desc: "Bordes estándar, limpio y profesional" },
+                { key: "super_soft", label: "Super Soft", previewRadius: 28, btnRadius: 14, desc: "Bordes muy redondeados, look moderno y suave" },
+              ] as const
+            ).map(({ key, label, previewRadius, btnRadius, desc }) => {
+              const isActive = uiTheme === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => setUiTheme(key)}
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 14,
+                    padding: 16,
+                    borderRadius: 12,
+                    border: isActive ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                    background: isActive ? "var(--bg-card)" : "var(--bg-card)",
+                    cursor: "pointer",
+                    textAlign: "left",
+                    flex: "1 1 200px",
+                    maxWidth: 280,
+                    transition: "border-color 0.15s",
+                    outline: "none",
+                  }}
+                >
+                  {/* Preview miniatura */}
+                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div style={{ background: "var(--bg-card)", borderRadius: previewRadius, padding: "10px 14px", border: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ width: 22, height: 22, borderRadius: previewRadius, background: "var(--accent)", flexShrink: 0 }} />
+                      <div style={{ flex: 1 }}>
+                        <div style={{ height: 7, borderRadius: 4, background: "var(--border-default)", marginBottom: 4 }} />
+                        <div style={{ height: 5, borderRadius: 4, background: "var(--border-subtle)", width: "55%" }} />
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <div style={{ flex: 1, height: 26, borderRadius: btnRadius, background: "var(--accent)", opacity: 0.85 }} />
+                      <div style={{ flex: 1, height: 26, borderRadius: btnRadius, background: "var(--border-default)" }} />
+                    </div>
+                  </div>
+                  {/* Label */}
+                  <div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 14, fontWeight: 700, color: isActive ? "var(--accent)" : "var(--text-primary)" }}>
+                        {label}
+                      </span>
+                      {isActive && (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: 20, padding: "1px 7px" }}>
+                          Activo
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        </SectionCard>
       )}
     </PageContainer>
   );

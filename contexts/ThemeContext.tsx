@@ -46,6 +46,8 @@ type ThemeContextType = {
   toggleDark: () => void;
   showDescriptions: boolean;
   setShowDescriptions: (v: boolean) => void;
+  uiTheme: 'clasico' | 'super_soft';
+  setUiTheme: (theme: 'clasico' | 'super_soft') => void;
 };
 
 /* ─── Valor por defecto (antes de cargar empresa) ────────────────── */
@@ -73,6 +75,8 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleDark: () => {},
   showDescriptions: true,
   setShowDescriptions: () => {},
+  uiTheme: 'clasico',
+  setUiTheme: () => {},
 });
 
 /* ─── Genera iniciales del short_name para el logo de fallback ───── */
@@ -109,6 +113,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [adminContactEmail, setAdminContactEmail] = useState("");
   const [isDark, setIsDark] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true);
+  const [uiTheme, setUiThemeState] = useState<'clasico' | 'super_soft'>('clasico');
 
   /* ── Leer preferencia de modo guardada o del sistema (solo en cliente) ── */
   useEffect(() => {
@@ -131,6 +136,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", accentColor);
   }, [accentColor]);
+
+  /* ── Aplicar data-theme en <html> cuando cambie uiTheme ────────── */
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", uiTheme);
+  }, [uiTheme]);
 
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
@@ -172,7 +182,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadUserPreferences(userId: string) {
     const { data } = await supabase
       .from("user_preferences")
-      .select("dark_mode, show_descriptions")
+      .select("dark_mode, show_descriptions, ui_theme")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -180,6 +190,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (typeof data.show_descriptions === "boolean") {
       setShowDescriptions(data.show_descriptions);
+    }
+    if (data.ui_theme === "super_soft" || data.ui_theme === "clasico") {
+      setUiThemeState(data.ui_theme);
     }
     // dark_mode se sincroniza desde SettingsModal al cambiar; aquí solo cargamos show_descriptions
     // para no sobreescribir la preferencia de localStorage en el primer render
@@ -189,6 +202,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const next = !isDark;
     setIsDark(next);
     localStorage.setItem("prop-theme", next ? "dark" : "light");
+  }
+
+  function setUiTheme(theme: 'clasico' | 'super_soft') {
+    setUiThemeState(theme);
+    if (user?.id) {
+      void supabase.from("user_preferences").upsert(
+        { user_id: user.id, ui_theme: theme },
+        { onConflict: "user_id" },
+      );
+    }
   }
 
   return (
@@ -214,6 +237,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         toggleDark,
         showDescriptions,
         setShowDescriptions,
+        uiTheme,
+        setUiTheme,
       }}
     >
       {children}

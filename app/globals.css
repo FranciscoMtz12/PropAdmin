@@ -96,6 +96,14 @@
   /* ── Separadores internos de cards ────────────────────────────── */
   --divider: #F1F5F9;
 
+  /* ── Tokens de tema UI (sobreescritos por [data-theme="super_soft"]) ── */
+  --border-radius-sm: 6px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+  --card-shadow:    none;
+  --sidebar-radius: 0;
+
   /* ── Espaciado global ──────────────────────────────────────────── */
   --card-gap:     16px;
   --section-gap:  24px;
@@ -198,6 +206,19 @@
   --text-subtle:  #475569;
   --background:   #0F1623;
   --foreground:   #F1F5F9;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Tema Super Soft — activado con data-theme="super_soft" en <html>
+   ════════════════════════════════════════════════════════════════════ */
+
+[data-theme="super_soft"] {
+  --border-radius-sm: 14px;
+  --border-radius-md: 20px;
+  --border-radius-lg: 28px;
+  --border-radius-xl: 32px;
+  --card-shadow:    0 2px 12px rgba(0,0,0,0.06);
+  --sidebar-radius: 0 28px 28px 0;
 }
 
 /* ════════════════════════════════════════════════════════════════════
@@ -804,7 +825,7 @@ a {
     padding-right: 10px !important;
     margin-left: 0 !important;
     margin-right: 0 !important;
-    border-radius: 12px !important;
+    border-radius: var(--border-radius-lg) !important;
   }
   .page-container {
     padding-left: 0 !important;

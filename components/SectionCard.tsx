@@ -32,7 +32,7 @@ export default function SectionCard({
   const { showDescriptions } = useTheme();
 
   return (
-    <AppCard style={{ padding: 24, borderRadius: 18, ...style }}>
+    <AppCard style={{ padding: 24, borderRadius: "var(--border-radius-lg)", ...style }}>
       {title ? (
         <div
           style={{

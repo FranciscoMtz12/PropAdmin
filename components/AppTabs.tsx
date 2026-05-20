@@ -58,7 +58,7 @@ export default function AppTabs({
                 alignItems: "center",
                 gap: 8,
                 padding: "10px 14px",
-                borderRadius: 999,
+                borderRadius: "var(--border-radius-md)",
                 border: isActive
                   ? "1px solid var(--accent)"
                   : "1px solid var(--border-default)",

@@ -460,7 +460,9 @@ export default function Sidebar() {
         flexDirection: "column",
         justifyContent: "space-between",
         borderRight: "1px solid rgba(255,255,255,0.06)",
-        transition: "background 0.2s",
+        borderRadius: "var(--sidebar-radius)",
+        boxShadow: "var(--card-shadow)",
+        transition: "background 0.2s, border-radius 0.3s, box-shadow 0.3s",
       }}
     >
       {/* ── Barra de acento superior (3px) ──────────────────────── */}
