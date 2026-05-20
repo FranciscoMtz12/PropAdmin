@@ -8,7 +8,7 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
 import {
-  BedDouble, Box, Car, Check, ChevronDown, ChevronUp,
+  BedDouble, Box, Car, Check, ChevronDown,
   Shirt, Sofa, Sun, TreePine, UtensilsCrossed, Wrench, Plus, X,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -591,13 +591,36 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             </span>
           )}
         </div>
-        {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+        <motion.span
+          animate={{ rotate: isOpen ? 180 : 0 }}
+          transition={{ duration: 0.2 }}
+          style={{ display: "inline-flex" }}
+        >
+          <ChevronDown size={16} />
+        </motion.span>
       </button>
     );
   }
   function blockBody(children: React.ReactNode, key: string) {
-    if (!expandedBlocks.has(key)) return null;
-    return <div style={{ padding: 14, border: "1px solid var(--border-default)", borderTop: "none", borderRadius: "0 0 10px 10px" }}>{children}</div>;
+    const isOpen = expandedBlocks.has(key);
+    return (
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            key="body"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+            style={{ overflow: "hidden" }}
+          >
+            <div style={{ padding: 14, border: "1px solid var(--border-default)", borderTop: "none", borderRadius: "0 0 10px 10px" }}>
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
   }
   function eqRow(label: string, children: React.ReactNode) {
     return (
