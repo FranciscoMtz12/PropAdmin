@@ -16,7 +16,7 @@
   Funcionalidad CRUD intacta: crear / editar / eliminar edificio.
 */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import {
@@ -339,8 +339,8 @@ export default function BuildingsPage() {
   const [createSubtype, setCreateSubtype] = useState<string>("local_comercial");
   const [editSubtype, setEditSubtype] = useState<string>("");
 
-  /* Estado del modal de creación en 2 pasos */
-  const [createStep, setCreateStep] = useState<1 | 2>(1);
+  /* Estado del modal de creación en 4 pasos */
+  const [createStep, setCreateStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<string[]>([]);
   const buildingCategory = watch("building_category");
   const buildingTags = watch("building_tags") ?? [];
@@ -614,11 +614,19 @@ export default function BuildingsPage() {
   }
 
   async function handleNextStep() {
-    const isValid = await trigger(["name", "building_category"]);
-    if (!isValid) return;
-    const primaryType = getValues("building_category");
-    setSelectedFeatureKeys(getDefaultFeatures(primaryType).map((f) => f.key));
-    setCreateStep(2);
+    if (createStep === 1) {
+      const isValid = await trigger(["building_category"]);
+      if (!isValid) return;
+      setCreateStep(2);
+    } else if (createStep === 2) {
+      const isValid = await trigger(["name"]);
+      if (!isValid) return;
+      const primaryType = getValues("building_category");
+      setSelectedFeatureKeys(getDefaultFeatures(primaryType).map((f) => f.key));
+      setCreateStep(3);
+    } else if (createStep === 3) {
+      setCreateStep(4);
+    }
   }
 
   function toggleFeatureSelection(key: string) {
@@ -681,7 +689,7 @@ export default function BuildingsPage() {
   }
 
   const handleSubmitBuilding = rhfSubmit(async (data) => {
-    if (createStep !== 2) return;
+    if (createStep !== 4) return;
     setMsg("");
     if (!user?.company_id) { setMsg("No se encontró la empresa del usuario."); return; }
 
@@ -1628,33 +1636,52 @@ export default function BuildingsPage() {
         </div>
       </Modal>
 
-      {/* ── Modal de creación (2 pasos) ── */}
+      {/* ── Modal de creación (4 pasos) ── */}
       <Modal
         open={isCreateModalOpen}
         onClose={closeCreateModal}
-        title={createStep === 1 ? "Nueva propiedad" : "¿Qué tiene esta propiedad?"}
+        title={
+          createStep === 1 ? "Tipo de propiedad" :
+          createStep === 2 ? "Información básica" :
+          createStep === 3 ? "Características" :
+          "Resumen"
+        }
       >
         <form onSubmit={handleSubmitBuilding}>
-          {/* ── PASO 1: datos del edificio ── */}
+
+          {/* ── Indicador de progreso ── */}
+          <div style={{ display: "flex", alignItems: "center", marginBottom: 24 }}>
+            {([
+              { n: 1 as const, label: "Tipo" },
+              { n: 2 as const, label: "Info" },
+              { n: 3 as const, label: "Caracts." },
+              { n: 4 as const, label: "Resumen" },
+            ]).map(({ n, label }, i) => (
+              <div key={n} style={{ display: "flex", alignItems: "center", ...(i < 3 ? { flex: 1 } : {}) }}>
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                  <div style={{
+                    width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+                    background: createStep >= n ? "#8B2252" : "var(--border-default)",
+                    color: createStep >= n ? "#fff" : "var(--text-muted)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 11, fontWeight: 700,
+                  }}>
+                    {n}
+                  </div>
+                  <span style={{ fontSize: 9, color: createStep >= n ? "#8B2252" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
+                    {label}
+                  </span>
+                </div>
+                {i < 3 && (
+                  <div style={{ flex: 1, height: 2, background: createStep > n ? "#8B2252" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* ── PASO 1: Tipo de propiedad ── */}
           {createStep === 1 && (
             <>
-              <AppFormField label="Nombre del edificio" required>
-                <input
-                  {...register("name")}
-                  placeholder="Ej. Torre Central"
-                  style={INPUT_STYLE}
-                />
-                {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
-              </AppFormField>
-
-              <AppFormField label="Código">
-                <input
-                  {...register("code")}
-                  placeholder="Ej. TC-001"
-                  style={INPUT_STYLE}
-                />
-              </AppFormField>
-
               <AppFormField label="Tipo de propiedad" required>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                   {PROPERTY_TYPES.map((pt) => {
@@ -1669,7 +1696,7 @@ export default function BuildingsPage() {
                         style={{
                           position: "relative",
                           display: "flex", flexDirection: "column", alignItems: "center",
-                          justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                          justifyContent: "center", gap: 6, padding: "16px 8px", borderRadius: 12,
                           border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                           background: selected ? pt.color + "15" : "var(--bg-card)",
                           color: selected ? pt.color : "var(--text-secondary)",
@@ -1679,8 +1706,8 @@ export default function BuildingsPage() {
                       >
                         {selected && (
                           <span style={{
-                            position: "absolute", top: 4, left: 4,
-                            width: 16, height: 16, borderRadius: "50%",
+                            position: "absolute", top: 6, left: 6,
+                            width: 18, height: 18, borderRadius: "50%",
                             background: pt.color, color: "#fff",
                             fontSize: 10, fontWeight: 700,
                             display: "flex", alignItems: "center", justifyContent: "center",
@@ -1688,7 +1715,7 @@ export default function BuildingsPage() {
                             {orderIdx + 1}
                           </span>
                         )}
-                        {PtIcon && <PtIcon size={18} color={selected ? pt.color : "var(--text-muted)"} />}
+                        {PtIcon && <PtIcon size={22} color={selected ? pt.color : "var(--text-muted)"} />}
                         {pt.label}
                       </button>
                     );
@@ -1738,6 +1765,37 @@ export default function BuildingsPage() {
                 );
               })()}
 
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+                <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                  Siguiente →
+                </UiButton>
+                <UiButton type="button" onClick={closeCreateModal}>
+                  Cancelar
+                </UiButton>
+              </div>
+            </>
+          )}
+
+          {/* ── PASO 2: Información básica ── */}
+          {createStep === 2 && (
+            <>
+              <AppFormField label="Nombre de la propiedad" required>
+                <input
+                  {...register("name")}
+                  placeholder="Ej. Torre Central"
+                  style={INPUT_STYLE}
+                />
+                {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
+              </AppFormField>
+
+              <AppFormField label="Código (opcional)">
+                <input
+                  {...register("code")}
+                  placeholder="Ej. TC-001"
+                  style={INPUT_STYLE}
+                />
+              </AppFormField>
+
               <div style={{ marginBottom: 4 }}>
                 <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                   Superficie
@@ -1773,6 +1831,9 @@ export default function BuildingsPage() {
                 <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
                   Siguiente →
                 </UiButton>
+                <UiButton type="button" onClick={() => setCreateStep(1)}>
+                  ← Atrás
+                </UiButton>
                 <UiButton type="button" onClick={closeCreateModal}>
                   Cancelar
                 </UiButton>
@@ -1780,8 +1841,8 @@ export default function BuildingsPage() {
             </>
           )}
 
-          {/* ── PASO 2: selector de features ── */}
-          {createStep === 2 && (() => {
+          {/* ── PASO 3: Características ── */}
+          {createStep === 3 && (() => {
             const applicableFeatures = getDefaultFeatures(selectedTypes[0] ?? "");
             const visibleFeatures   = applicableFeatures.filter((f) => f.key !== "general_setup");
             const spaceFeatures   = visibleFeatures.filter((f) => f.category === "space");
@@ -1792,7 +1853,6 @@ export default function BuildingsPage() {
               const selected = selectedFeatureKeys.includes(feat.key);
               return (
                 <button
-                  key={feat.key}
                   type="button"
                   onClick={() => toggleFeatureSelection(feat.key)}
                   style={{
@@ -1823,7 +1883,6 @@ export default function BuildingsPage() {
                 </p>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {/* Sección: Espacios físicos */}
                   {spaceFeatures.length > 0 && (
                     <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -1839,7 +1898,6 @@ export default function BuildingsPage() {
                     </div>
                   )}
 
-                  {/* Sección: Servicios */}
                   {serviceFeatures.length > 0 && (
                     <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
@@ -1857,10 +1915,89 @@ export default function BuildingsPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
+                  <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                    Siguiente →
+                  </UiButton>
+                  <UiButton type="button" onClick={() => setCreateStep(2)}>
+                    ← Atrás
+                  </UiButton>
+                  <UiButton type="button" onClick={closeCreateModal}>
+                    Cancelar
+                  </UiButton>
+                </div>
+              </>
+            );
+          })()}
+
+          {/* ── PASO 4: Resumen ── */}
+          {createStep === 4 && (() => {
+            const primaryType = PROPERTY_TYPES.find((pt) => pt.value === buildingCategory);
+            const subtypeLabel = (buildingCategory === "commercial" || buildingCategory === "industrial")
+              ? [...COMMERCIAL_SUBTYPES, ...INDUSTRIAL_SUBTYPES].find((st) => st.value === createSubtype)?.label
+              : null;
+            const nameVal    = getValues("name");
+            const codeVal    = getValues("code");
+            const addressVal = getValues("address");
+            const landVal    = getValues("land_sqm");
+            const constVal   = getValues("construction_sqm");
+            const unitVal    = getValues("default_unit_sqm");
+            const visibleFeatures = getDefaultFeatures(selectedTypes[0] ?? "")
+              .filter((f) => f.key !== "general_setup" && selectedFeatureKeys.includes(f.key));
+
+            const row = (label: string, content: ReactNode) => (
+              <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 8, alignItems: "flex-start" }}>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, paddingTop: 2 }}>{label}</span>
+                <span>{content}</span>
+              </div>
+            );
+
+            return (
+              <>
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                  Revisa los datos antes de crear la propiedad.
+                </p>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24, padding: 16, borderRadius: 12, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                  {row("Tipo", (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                      {primaryType && (
+                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: primaryType.color + "18", color: primaryType.color }}>
+                          {primaryType.label}
+                        </span>
+                      )}
+                      {subtypeLabel && (
+                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                          {subtypeLabel}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                  {row("Nombre", <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{nameVal || "—"}</span>)}
+                  {codeVal ? row("Código", <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{codeVal}</span>) : null}
+                  {(landVal || constVal || unitVal) ? row("Superficie", (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {landVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{landVal} m² terreno</span>}
+                      {constVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{constVal} m² const.</span>}
+                      {unitVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{unitVal} m² por unidad</span>}
+                    </div>
+                  )) : null}
+                  {addressVal ? row("Dirección", <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{addressVal}</span>) : null}
+                  {visibleFeatures.length > 0 ? row("Características", (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {visibleFeatures.map((f) => (
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: 8, fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                          {f.label}
+                        </span>
+                      ))}
+                    </div>
+                  )) : null}
+                </div>
+
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <UiButton type="submit" variant="primary" disabled={isSubmitting}>
                     {isSubmitting ? "Creando..." : "Crear propiedad"}
                   </UiButton>
-                  <UiButton type="button" onClick={() => setCreateStep(1)}>
+                  <UiButton type="button" onClick={() => setCreateStep(3)}>
                     ← Atrás
                   </UiButton>
                   <UiButton type="button" onClick={closeCreateModal}>

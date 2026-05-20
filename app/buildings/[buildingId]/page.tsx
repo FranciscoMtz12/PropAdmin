@@ -138,6 +138,8 @@ import type { UtilityServiceType } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
 import { sortByNatural } from "@/lib/sort-utils";
 import UnitTypeWizardModal from "@/components/UnitTypeWizardModal";
+import CommercialTypologyModal from "@/components/CommercialTypologyModal";
+import IndustrialTypologyModal from "@/components/IndustrialTypologyModal";
 
 /* LocationPicker — edición de ubicación en el mapa. */
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
@@ -264,6 +266,23 @@ type UnitTypeForTab = {
   stove_type: string;
   asset_template_count: number;
   assets: UnitTypeAsset[];
+  /* Commercial fields */
+  sqm_min: number | null;
+  sqm_max: number | null;
+  entrega: string | null;
+  has_ac: boolean;
+  has_electricity_220: boolean;
+  has_three_phase: boolean;
+  has_gas_line: boolean;
+  has_water_meter: boolean;
+  has_network: boolean;
+  /* Industrial fields */
+  sqm_bodega: number | null;
+  sqm_oficina: number | null;
+  sqm_patio: number | null;
+  altura_libre: number | null;
+  capacidad_electrica: string | null;
+  acceso_tipo: string | null;
 };
 
 type BuildingBillingConceptCode = "rent" | "electricity" | "water" | "gas" | "amenities";
@@ -1676,11 +1695,11 @@ export default function BuildingDetailPage() {
     if (!user?.company_id || !buildingId) return;
     const { data: utData } = await supabase
       .from("unit_types")
-      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, has_fridge, has_washer, has_dryer, stove_type")
+      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, has_fridge, has_washer, has_dryer, stove_type, sqm_min, sqm_max, entrega, has_ac, has_electricity_220, has_three_phase, has_gas_line, has_water_meter, has_network, sqm_bodega, sqm_oficina, sqm_patio, altura_libre, capacidad_electrica, acceso_tipo")
       .eq("building_id", buildingId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
-    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; has_fridge: boolean; has_washer: boolean; has_dryer: boolean; stove_type: string }>;
+    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; has_fridge: boolean; has_washer: boolean; has_dryer: boolean; stove_type: string; sqm_min: number | null; sqm_max: number | null; entrega: string | null; has_ac: boolean; has_electricity_220: boolean; has_three_phase: boolean; has_gas_line: boolean; has_water_meter: boolean; has_network: boolean; sqm_bodega: number | null; sqm_oficina: number | null; sqm_patio: number | null; altura_libre: number | null; capacidad_electrica: string | null; acceso_tipo: string | null }>;
     const ids = rows.map((r) => r.id);
     let assetsMap: Record<string, UnitTypeAsset[]> = {};
     if (ids.length > 0) {
@@ -3795,8 +3814,27 @@ export default function BuildingDetailPage() {
                         <div>
                           <p style={{ fontWeight: 700, margin: "0 0 3px", fontSize: 15, color: "var(--text-primary)" }}>{ut.name}</p>
                           <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
-                            {ut.bedrooms} rec. · {ut.bathrooms} baño{ut.bathrooms !== 1 ? "s" : ""}
-                            {ut.asset_template_count > 0 ? ` · ${ut.asset_template_count} equipo${ut.asset_template_count !== 1 ? "s" : ""}` : ""}
+                            {building.building_category === "commercial" ? (
+                              <>
+                                {ut.entrega ? `${ut.entrega} · ` : ""}
+                                {ut.sqm_min != null || ut.sqm_max != null
+                                  ? `${ut.sqm_min ?? "?"} – ${ut.sqm_max ?? "?"} m²`
+                                  : "Sin m² definidos"}
+                                {[ut.has_ac, ut.has_electricity_220, ut.has_three_phase, ut.has_gas_line, ut.has_water_meter, ut.has_network].filter(Boolean).length > 0
+                                  ? ` · ${[ut.has_ac, ut.has_electricity_220, ut.has_three_phase, ut.has_gas_line, ut.has_water_meter, ut.has_network].filter(Boolean).length} instal.`
+                                  : ""}
+                              </>
+                            ) : building.building_category === "industrial" || building.building_category === "industrial_park" ? (
+                              <>
+                                {(() => { const total = (ut.sqm_bodega ?? 0) + (ut.sqm_oficina ?? 0) + (ut.sqm_patio ?? 0); return total > 0 ? `${total.toLocaleString("es-MX")} m² totales` : "Sin áreas definidas"; })()}
+                                {ut.altura_libre != null ? ` · Alt. ${ut.altura_libre} m` : ""}
+                              </>
+                            ) : (
+                              <>
+                                {ut.bedrooms} rec. · {ut.bathrooms} baño{ut.bathrooms !== 1 ? "s" : ""}
+                                {ut.asset_template_count > 0 ? ` · ${ut.asset_template_count} equipo${ut.asset_template_count !== 1 ? "s" : ""}` : ""}
+                              </>
+                            )}
                           </p>
                         </div>
                       </div>
@@ -6296,20 +6334,46 @@ export default function BuildingDetailPage() {
         </div>
       </Modal>
 
-      {/* ── Wizard nueva tipología (tab Tipologías) ── */}
-      {building && (
-        <UnitTypeWizardModal
-          open={isTypologiesWizardOpen}
-          buildingId={building.id}
-          companyId={building.company_id}
-          onClose={() => setIsTypologiesWizardOpen(false)}
-          onSuccess={async () => {
-            setIsTypologiesWizardOpen(false);
-            setTypologiesTabLoaded(false);
-            await loadTypologiesTabData();
-          }}
-        />
-      )}
+      {/* ── Wizard nueva tipología — adaptativo por categoría ── */}
+      {building && (() => {
+        const bc = building.building_category;
+        const handleCreated = async () => {
+          setIsTypologiesWizardOpen(false);
+          setTypologiesTabLoaded(false);
+          await loadTypologiesTabData();
+        };
+        if (bc === "commercial") {
+          return (
+            <CommercialTypologyModal
+              open={isTypologiesWizardOpen}
+              buildingId={building.id}
+              companyId={building.company_id}
+              onClose={() => setIsTypologiesWizardOpen(false)}
+              onCreated={() => void handleCreated()}
+            />
+          );
+        }
+        if (bc === "industrial" || bc === "industrial_park") {
+          return (
+            <IndustrialTypologyModal
+              open={isTypologiesWizardOpen}
+              buildingId={building.id}
+              companyId={building.company_id}
+              onClose={() => setIsTypologiesWizardOpen(false)}
+              onCreated={() => void handleCreated()}
+            />
+          );
+        }
+        return (
+          <UnitTypeWizardModal
+            open={isTypologiesWizardOpen}
+            buildingId={building.id}
+            companyId={building.company_id}
+            onClose={() => setIsTypologiesWizardOpen(false)}
+            onSuccess={() => void handleCreated()}
+          />
+        );
+      })()}
 
       {/* ── Modal editar tipología (tab Tipologías) ── */}
       <Modal

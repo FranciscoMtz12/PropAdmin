@@ -290,6 +290,7 @@ export default function BuildingUnitsPage() {
 
   /* Estado del formulario de creación */
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [createModalStep, setCreateModalStep] = useState<0 | 1>(1);
 
   const createForm = useForm<CreateUnitValues>({
     resolver: zodResolver(createUnitSchema),
@@ -900,6 +901,15 @@ export default function BuildingUnitsPage() {
   const cat = building.building_category;
   const isResidentialMulti = cat === "residential_multi";
 
+  function openCreateModal() {
+    if (isResidentialMulti && unitTypes.length > 0) {
+      setCreateModalStep(0);
+    } else {
+      setCreateModalStep(1);
+    }
+    setIsCreateModalOpen(true);
+  }
+
   return (
     <PageContainer>
       {/* Breadcrumb */}
@@ -922,7 +932,7 @@ export default function BuildingUnitsPage() {
         actions={
           <>
             <UiButton href={`/buildings/${building.id}`}>Volver al edificio</UiButton>
-            <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
+            <UiButton onClick={openCreateModal} variant="primary">
               <Plus size={16} />
               Nuevo {labels.unit.toLowerCase()}
             </UiButton>
@@ -961,7 +971,7 @@ export default function BuildingUnitsPage() {
             title={`Todavía no hay ${labels.units.toLowerCase()}`}
             description="Crea la primera unidad del edificio y, si su tipología tiene equipamiento base, el sistema lo clonará automáticamente."
             actionLabel={`Crear ${labels.unit.toLowerCase()}`}
-            onAction={() => setIsCreateModalOpen(true)}
+            onAction={openCreateModal}
           />
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
@@ -1171,15 +1181,68 @@ export default function BuildingUnitsPage() {
         open={isCreateModalOpen}
         onClose={() => {
           setIsCreateModalOpen(false);
+          setCreateModalStep(1);
           createForm.reset(CREATE_UNIT_DEFAULTS);
           setCreateSqm("");
           setCreateCommFlags({ ...INIT_COMM_FLAGS });
           setCreateIndAreas({ ...INIT_IND_AREAS });
           setCreateCount(1);
         }}
-        title={`Crear ${labels.unit.toLowerCase()}`}
-        subtitle={isResidentialMulti ? "El equipamiento base de la tipología se clonará automáticamente al guardar." : undefined}
+        title={createModalStep === 0 ? "¿Con qué tipología?" : `Crear ${labels.unit.toLowerCase()}`}
+        subtitle={createModalStep === 1 && isResidentialMulti ? "El equipamiento base de la tipología se clonará automáticamente al guardar." : undefined}
       >
+
+        {/* ── PASO 0: selección de tipología (solo residential_multi) ── */}
+        {createModalStep === 0 && (
+          <div>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+              Selecciona una tipología como base o empieza desde cero.
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
+              {unitTypes.map((ut) => (
+                <button
+                  key={ut.id}
+                  type="button"
+                  onClick={() => {
+                    createForm.setValue("unitTypeId", ut.id);
+                    setCreateModalStep(1);
+                  }}
+                  style={{
+                    display: "flex", alignItems: "center", gap: 14,
+                    padding: "12px 16px", borderRadius: 12,
+                    border: "1.5px solid var(--border-default)",
+                    background: "var(--bg-card)",
+                    cursor: "pointer", textAlign: "left",
+                    transition: "border-color 0.15s ease",
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{ut.name}</p>
+                    {(ut.bedrooms != null || ut.bathrooms != null) && (
+                      <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-muted)", display: "flex", gap: 10 }}>
+                        {ut.bedrooms != null && <span>{ut.bedrooms} rec.</span>}
+                        {ut.bathrooms != null && <span>{ut.bathrooms} baño{ut.bathrooms !== 1 ? "s" : ""}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <span style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, flexShrink: 0 }}>Usar →</span>
+                </button>
+              ))}
+            </div>
+            <UiButton
+              type="button"
+              onClick={() => {
+                createForm.setValue("unitTypeId", "");
+                setCreateModalStep(1);
+              }}
+            >
+              Empezar desde cero
+            </UiButton>
+          </div>
+        )}
+
+        {/* ── PASO 1: formulario de creación ── */}
+        {createModalStep === 1 && (
         <form onSubmit={onCreateUnit}>
           {/* ── Número / nombre — siempre presente ── */}
           {(() => {
@@ -1345,8 +1408,14 @@ export default function BuildingUnitsPage() {
             <UiButton type="submit" disabled={createForm.formState.isSubmitting} variant="primary">
               {createForm.formState.isSubmitting ? "Guardando..." : createCount > 1 ? `Crear ${createCount} ${labels.units.toLowerCase()}` : `Guardar ${labels.unit.toLowerCase()}`}
             </UiButton>
+            {isResidentialMulti && unitTypes.length > 0 && (
+              <UiButton type="button" onClick={() => setCreateModalStep(0)}>
+                ← Tipología
+              </UiButton>
+            )}
             <UiButton type="button" onClick={() => {
               setIsCreateModalOpen(false);
+              setCreateModalStep(1);
               createForm.reset(CREATE_UNIT_DEFAULTS);
               setCreateSqm("");
               setCreateCommFlags({ ...INIT_COMM_FLAGS });
@@ -1357,6 +1426,7 @@ export default function BuildingUnitsPage() {
             </UiButton>
           </div>
         </form>
+        )}
       </Modal>
 
       {/* ── Modal duplicar unidad ── */}
