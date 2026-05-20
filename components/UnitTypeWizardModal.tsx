@@ -44,7 +44,6 @@ type LavanderiaEq = {
 };
 type CuartoMaquinasEq = {
   boiler: string; boilerCapacity: string; boilerCount: number;
-  centroCarga: string; cisterna: string; hidroneumatico: string;
 };
 type EquiposFuncionalesEq = {
   boiler: string; boilerCapacity: string; boilerCount: number;
@@ -83,7 +82,7 @@ const DEFAULT_EQ: Equipment = {
   sala: { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [] },
   cocina: { ac: "NONE", stoveType: "NONE", stoveBurners: "4Q", oven: "NONE", fridge: "NONE", fridgeModel: "", others: [] },
   lavanderia: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, centroCarga: "NO", washer: "NO", dryer: "NONE" },
-  cuartoMaquinas: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, centroCarga: "NO", cisterna: "NO", hidroneumatico: "NO" },
+  cuartoMaquinas: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1 },
   equiposFuncionales: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, centroCarga: "NO", washer: "NO", dryer: "NONE" },
   aireCentral: { capacity: "1T" },
   comedor: { ac: "NONE", furniture: "NONE" },
@@ -417,9 +416,6 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
   // Cuarto de máquinas
   if (s2.hasCuartoMaquinas) {
     addBoiler(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, " - Cuarto de máquinas");
-    if (eq.cuartoMaquinas.centroCarga === "YES") add("OTHER", "Centro de carga eléctrica - Cuarto de máquinas");
-    if (eq.cuartoMaquinas.cisterna === "YES") add("OTHER", "Cisterna - Cuarto de máquinas");
-    if (eq.cuartoMaquinas.hidroneumatico === "YES") add("OTHER", "Hidroneumático - Cuarto de máquinas");
   }
 
   // Equipos funcionales (solo si no hay Lavandería ni Cuarto de máquinas)
@@ -555,9 +551,6 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
       const cnt = m.boilerCount > 1 ? ` × ${m.boilerCount}` : "";
       items.push(`${BOILER_NAME[m.boiler] ?? m.boiler}${cap}${cnt}`);
     }
-    if (m.centroCarga === "YES") items.push("Centro de carga eléctrica");
-    if (m.cisterna === "YES") items.push("Cisterna");
-    if (m.hidroneumatico === "YES") items.push("Hidroneumático");
     groups.push({ key: "cuartoMaquinas", label: "Cuarto de máquinas", Icon: Wrench, items });
   }
 
@@ -849,7 +842,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     return (l.boiler !== "NONE" ? 1 : 0) + (l.centroCarga === "YES" ? 1 : (l.washer === "YES" ? 1 : 0) + (l.dryer !== "NONE" ? 1 : 0));
   }
   function cuartoMaquinasCount(m: CuartoMaquinasEq) {
-    return (m.boiler !== "NONE" ? 1 : 0) + (m.centroCarga === "YES" ? 1 : 0) + (m.cisterna === "YES" ? 1 : 0) + (m.hidroneumatico === "YES" ? 1 : 0);
+    return m.boiler !== "NONE" ? 1 : 0;
   }
   function funcionalesCount(f: EquiposFuncionalesEq) {
     return (f.boiler !== "NONE" ? 1 : 0) + (f.centroCarga === "YES" ? 1 : (f.washer === "YES" ? 1 : 0) + (f.dryer !== "NONE" ? 1 : 0));
@@ -1191,19 +1184,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     (v) => setCuartoMaq("boilerCapacity", v),
                     (v) => setCuartoMaq("boilerCount", v),
                   )}
-                  {eqRow("Centro de carga eléctrica", (
-                    <Radio value={eq.cuartoMaquinas.centroCarga} onChange={(v) => setCuartoMaq("centroCarga", v)}
-                      options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                  ))}
-                  {eqRow("Cisterna", (
-                    <Radio value={eq.cuartoMaquinas.cisterna} onChange={(v) => setCuartoMaq("cisterna", v)}
-                      options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                  ))}
-                  {eqRow("Hidroneumático", (
-                    <Radio value={eq.cuartoMaquinas.hidroneumatico} onChange={(v) => setCuartoMaq("hidroneumatico", v)}
-                      options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                  ))}
-                </div>,
+</div>,
                 "cuartoMaquinas"
               )}
             </div>
