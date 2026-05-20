@@ -29,6 +29,7 @@ import {
   Archive,
   ArrowLeft,
   Ban,
+  Bath,
   Copy,
   Briefcase,
   AlertCircle,
@@ -54,17 +55,21 @@ import {
   List,
   Search,
   Upload,
+  UtensilsCrossed,
   Bed,
+  BedDouble,
   Gem,
   Home,
   Minus,
   ImageIcon,
   LayoutGrid,
+  LayoutPanelTop,
   Layers3,
   MapPin,
   Monitor,
   MoreHorizontal,
   Package,
+  PackageOpen,
   Pencil,
   Plus,
   Ruler,
@@ -74,6 +79,7 @@ import {
   ShieldCheck,
   SkipForward,
   Sliders,
+  Sofa,
   Sparkles,
   Store,
   Tags,
@@ -126,6 +132,7 @@ import BuildingServicesTab from "@/components/BuildingServicesTab";
 import type { UtilityServiceType } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
 import { sortByNatural } from "@/lib/sort-utils";
+import UnitTypeWizardModal from "@/components/UnitTypeWizardModal";
 
 /* LocationPicker — edición de ubicación en el mapa. */
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
@@ -236,6 +243,18 @@ type UnitStatusRow = {
 };
 
 type UnitTypeRow = { id: string };
+
+type UnitTypeForTab = {
+  id: string;
+  name: string;
+  bedrooms: number;
+  bathrooms: number;
+  has_living_room: boolean;
+  has_dining_room: boolean;
+  has_patio: boolean;
+  stove_type: string;
+  asset_template_count: number;
+};
 
 type BuildingBillingConceptCode = "rent" | "electricity" | "water" | "gas" | "amenities";
 
@@ -1004,6 +1023,21 @@ export default function BuildingDetailPage() {
   const [newTicketPriority, setNewTicketPriority] = useState('medium');
   const [savingTicket, setSavingTicket] = useState(false);
 
+  /* Tipologías (lazy) */
+  const [buildingUnitTypes, setBuildingUnitTypes] = useState<UnitTypeForTab[]>([]);
+  const [typologiesTabLoaded, setTypologiesTabLoaded] = useState(false);
+  const [isTypologiesWizardOpen, setIsTypologiesWizardOpen] = useState(false);
+  const [openActionsUnitTypeIdTab, setOpenActionsUnitTypeIdTab] = useState<string | null>(null);
+  const [editUTModal, setEditUTModal] = useState<UnitTypeForTab | null>(null);
+  const [editUTName, setEditUTName] = useState("");
+  const [editUTBedrooms, setEditUTBedrooms] = useState(1);
+  const [editUTBathrooms, setEditUTBathrooms] = useState(1);
+  const [editUTStoveType, setEditUTStoveType] = useState<"NONE" | "GAS" | "ELECTRIC">("NONE");
+  const [editUTMsg, setEditUTMsg] = useState("");
+  const [savingUnitTypeEdit, setSavingUnitTypeEdit] = useState(false);
+  const [deleteUTTarget, setDeleteUTTarget] = useState<UnitTypeForTab | null>(null);
+  const [deletingUT, setDeletingUT] = useState(false);
+
   /* Galería (lazy) */
   const [galleryLoaded, setGalleryLoaded]             = useState(false);
   const [galleryFiles, setGalleryFiles]               = useState<BuildingFile[]>([]);
@@ -1095,6 +1129,14 @@ export default function BuildingDetailPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, building, galleryLoaded]);
+
+  useEffect(() => {
+    if (activeTab === 'typologies' && building && !typologiesTabLoaded) {
+      void loadTypologiesTabData();
+      setTypologiesTabLoaded(true);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, building, typologiesTabLoaded]);
 
   useEffect(() => {
     if (activeTab !== 'bodegas' || bodegasOccupiedLoaded || childBuildings.length === 0) return;
@@ -1562,6 +1604,31 @@ export default function BuildingDetailPage() {
     setRecentCleaningLogs((logsData || []) as CleaningLog[]);
     setOpenTickets((ticketsData || []) as MaintenanceTicket[]);
     setUpcomingPreventives((preventivesData || []) as PreventivePlan[]);
+  }
+
+  async function loadTypologiesTabData() {
+    if (!user?.company_id || !buildingId) return;
+    const { data: utData } = await supabase
+      .from("unit_types")
+      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, stove_type")
+      .eq("building_id", buildingId)
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false });
+    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; stove_type: string }>;
+    const ids = rows.map((r) => r.id);
+    let countMap: Record<string, number> = {};
+    if (ids.length > 0) {
+      const { data: acData } = await supabase
+        .from("unit_type_assets")
+        .select("unit_type_id")
+        .in("unit_type_id", ids)
+        .is("deleted_at", null);
+      for (const row of (acData || []) as Array<{ unit_type_id: string }>) {
+        countMap[row.unit_type_id] = (countMap[row.unit_type_id] || 0) + 1;
+      }
+    }
+    setBuildingUnitTypes(rows.map((r) => ({ ...r, asset_template_count: countMap[r.id] || 0 })));
+    setUnitTypeCount(rows.length);
   }
 
   async function handleAddSchedule() {
@@ -2733,6 +2800,7 @@ export default function BuildingDetailPage() {
   const hasCommonAreasTab  = activeFeatureKeys.has("common_areas")
                              && ["residential_multi", "commercial", "industrial_park"].includes(building.building_category ?? "");
   const hideUnitsUI    = isLand || isIndustrialPark || isResidentialSingle || isPlazaComercial;
+  const hasTypologiesTab = !hideUnitsUI;
   const hasSuperficiesTab = ["commercial", "industrial", "industrial_park", "land"].includes(building.building_category ?? "");
 
   const tabsWithPendingTasks = new Set(
@@ -2887,7 +2955,8 @@ export default function BuildingDetailPage() {
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
           ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: '#EF9F27' } : undefined }] : []),
           ...(hasSuperficiesTab ? [{ key: "superficies", label: "Superficies", icon: <Ruler size={16} />, count: buildingAreas.length }] : []),
-          ...(hasAssetsTab  ? [{ key: "assets",  label: "Activos",     icon: <Package size={16} />,      count: tabCounts.assets,    pendingDot: tabsWithPendingTasks.has('assets')       }] : []),
+          ...(hasTypologiesTab ? [{ key: "typologies", label: "Tipologías", icon: <LayoutPanelTop size={16} />, count: unitTypeCount }] : []),
+          ...(hasAssetsTab  ? [{ key: "assets",  label: "Equipamiento", icon: <Package size={16} />,      count: tabCounts.assets,    pendingDot: tabsWithPendingTasks.has('assets')       }] : []),
           { key: "documents", label: "Documentos", icon: <FolderOpen size={16} />, count: tabCounts.docs,    pendingDot: tabsWithPendingTasks.has('documents') },
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery, pendingDot: tabsWithPendingTasks.has('gallery')   },
           ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services, pendingDot: tabsWithPendingTasks.has('services')     }] : []),
@@ -3582,27 +3651,122 @@ export default function BuildingDetailPage() {
               )}
             </SectionCard>
 
-            {/* Accesos rápidos */}
-            <SectionCard title="Accesos rápidos" subtitle="Navega a los módulos del edificio." icon={<Layers3 size={18} />}>
-              <div style={{ display: "grid", gap: 10 }}>
-                {[
-                  { title: "Tipologías",         desc: `${unitTypeCount} tipos de unidad registrados.`,       href: `/buildings/${building.id}/unit-types`, variant: undefined as "primary" | undefined, hidden: hideUnitsUI },
-                  { title: labels.units,          desc: `${totalUnits} ${labels.unit.toLowerCase()}s en el ${labels.building.toLowerCase()}.`, href: `/buildings/${building.id}/units`, variant: "primary" as "primary" | undefined, hidden: hideUnitsUI },
-                  { title: "Limpieza",            desc: "Organiza las áreas de limpieza.",                      href: `/buildings/${building.id}/cleaning`,    variant: undefined as "primary" | undefined, hidden: false },
-                ].filter(item => !item.hidden).map((item) => (
-                  <AppCard key={item.href} style={{ padding: 14, borderRadius: 12 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                      <div>
-                        <strong style={{ display: "block", marginBottom: 2, fontSize: 14 }}>{item.title}</strong>
-                        <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>{item.desc}</p>
+          </div>}
+        </div>
+      ) : null}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: TIPOLOGÍAS
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "typologies" && hasTypologiesTab ? (
+        <div style={{ display: "grid", gap: 24 }}>
+          <SectionCard
+            title="Tipologías del edificio"
+            subtitle="Cada tipología define los datos base y el equipamiento plantilla de los departamentos."
+            icon={<LayoutPanelTop size={18} />}
+            action={
+              <UiButton variant="primary" onClick={() => { setMsg(""); setIsTypologiesWizardOpen(true); }}>
+                <Plus size={15} /> Nueva tipología
+              </UiButton>
+            }
+          >
+            {buildingUnitTypes.length === 0 ? (
+              <AppEmptyState
+                title="Sin tipologías registradas"
+                description="Define los tipos de departamento para asignarlos a las unidades."
+                actionLabel="+ Nueva tipología"
+                onAction={() => setIsTypologiesWizardOpen(true)}
+              />
+            ) : (
+              <div style={{ display: "grid", gap: 12 }}>
+                {buildingUnitTypes.map((ut) => (
+                  <div key={ut.id} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 18, background: "var(--bg-card)" }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
+                      <div style={{ width: 42, height: 42, borderRadius: 14, background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <LayoutPanelTop size={18} />
                       </div>
-                      <UiButton href={item.href} variant={item.variant}>Abrir</UiButton>
+                      <div>
+                        <p style={{ fontWeight: "bold", marginBottom: 4, margin: "0 0 4px" }}>{ut.name}</p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Plantilla base del edificio</p>
+                      </div>
                     </div>
-                  </AppCard>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
+                      <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 12 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}><BedDouble size={15} /><span style={{ fontSize: 13 }}>Recámaras</span></div>
+                        <strong>{ut.bedrooms}</strong>
+                      </div>
+                      <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 12 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}><Bath size={15} /><span style={{ fontSize: 13 }}>Baños</span></div>
+                        <strong>{ut.bathrooms}</strong>
+                      </div>
+                      <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 12 }}>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}><PackageOpen size={15} /><span style={{ fontSize: 13 }}>Equipamiento base</span></div>
+                        <strong>{ut.asset_template_count}</strong>
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
+                        <Sofa size={12} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        Sala: {ut.has_living_room ? "Sí" : "No"}
+                      </span>
+                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
+                        <UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: "middle" }} />
+                        Comedor: {ut.has_dining_room ? "Sí" : "No"}
+                      </span>
+                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
+                        Patio: {ut.has_patio ? "Sí" : "No"}
+                      </span>
+                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
+                        Estufa: {ut.stove_type === "GAS" ? "Gas" : ut.stove_type === "ELECTRIC" ? "Eléctrica" : "Sin estufa"}
+                      </span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}`}>Ver tipología</UiButton>
+                        <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}/assets`}>Administrar equipamiento base</UiButton>
+                      </div>
+                      <div style={{ position: "relative" }}>
+                        <button
+                          type="button"
+                          onClick={() => setOpenActionsUnitTypeIdTab(openActionsUnitTypeIdTab === ut.id ? null : ut.id)}
+                          style={dropdownTriggerStyle}
+                          aria-label="Más acciones"
+                        >
+                          <MoreHorizontal size={16} />
+                        </button>
+                        {openActionsUnitTypeIdTab === ut.id && (
+                          <div style={dropdownMenuStyle}>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditUTModal(ut);
+                                setEditUTName(ut.name);
+                                setEditUTBedrooms(ut.bedrooms);
+                                setEditUTBathrooms(ut.bathrooms);
+                                setEditUTStoveType(ut.stove_type as "NONE" | "GAS" | "ELECTRIC");
+                                setEditUTMsg("");
+                                setOpenActionsUnitTypeIdTab(null);
+                              }}
+                              style={dropdownActionButtonStyle}
+                            >
+                              <Edit3 size={14} /> Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => { setDeleteUTTarget(ut); setOpenActionsUnitTypeIdTab(null); }}
+                              style={dropdownDeleteItemStyle}
+                            >
+                              <Trash2 size={14} /> Eliminar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
-            </SectionCard>
-          </div>}
+            )}
+          </SectionCard>
         </div>
       ) : null}
 
@@ -5996,6 +6160,109 @@ export default function BuildingDetailPage() {
           </div>
         </div>
       </Modal>
+
+      {/* ── Wizard nueva tipología (tab Tipologías) ── */}
+      {building && (
+        <UnitTypeWizardModal
+          open={isTypologiesWizardOpen}
+          buildingId={building.id}
+          companyId={building.company_id}
+          onClose={() => setIsTypologiesWizardOpen(false)}
+          onSuccess={async () => {
+            setIsTypologiesWizardOpen(false);
+            setTypologiesTabLoaded(false);
+            await loadTypologiesTabData();
+          }}
+        />
+      )}
+
+      {/* ── Modal editar tipología (tab Tipologías) ── */}
+      <Modal
+        open={editUTModal !== null}
+        onClose={() => { if (!savingUnitTypeEdit) { setEditUTModal(null); setEditUTMsg(""); } }}
+        title="Editar tipología"
+      >
+        {editUTMsg ? <p style={errorBannerStyle}>{editUTMsg}</p> : null}
+        <AppFormField label="Nombre" required>
+          <input
+            value={editUTName}
+            onChange={(e) => setEditUTName(e.target.value)}
+            placeholder="Ej. Tipo A"
+            style={INPUT_STYLE}
+          />
+        </AppFormField>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <AppFormField label="Recámaras">
+            <input type="number" min={0} value={editUTBedrooms} onChange={(e) => setEditUTBedrooms(Number(e.target.value))} style={INPUT_STYLE} />
+          </AppFormField>
+          <AppFormField label="Baños">
+            <input type="number" min={0} value={editUTBathrooms} onChange={(e) => setEditUTBathrooms(Number(e.target.value))} style={INPUT_STYLE} />
+          </AppFormField>
+        </div>
+        <AppFormField label="Tipo de estufa">
+          <AppSelect value={editUTStoveType} onChange={(e) => setEditUTStoveType(e.target.value as "NONE" | "GAS" | "ELECTRIC")}>
+            <option value="NONE">Sin estufa</option>
+            <option value="GAS">Gas</option>
+            <option value="ELECTRIC">Eléctrica</option>
+          </AppSelect>
+        </AppFormField>
+        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
+          <UiButton variant="secondary" onClick={() => { setEditUTModal(null); setEditUTMsg(""); }} disabled={savingUnitTypeEdit}>Cancelar</UiButton>
+          <UiButton
+            variant="primary"
+            disabled={savingUnitTypeEdit || !editUTName.trim()}
+            onClick={async () => {
+              if (!editUTModal || !editUTName.trim()) return;
+              setSavingUnitTypeEdit(true);
+              const { error } = await supabase
+                .from("unit_types")
+                .update({ name: editUTName.trim(), bedrooms: editUTBedrooms, bathrooms: editUTBathrooms, stove_type: editUTStoveType })
+                .eq("id", editUTModal.id)
+                .eq("building_id", buildingId);
+              if (error) {
+                setEditUTMsg(error.message);
+                setSavingUnitTypeEdit(false);
+                return;
+              }
+              setEditUTModal(null);
+              setSavingUnitTypeEdit(false);
+              setTypologiesTabLoaded(false);
+              await loadTypologiesTabData();
+              toast.success("Tipología actualizada");
+            }}
+          >
+            {savingUnitTypeEdit ? "Guardando..." : "Guardar cambios"}
+          </UiButton>
+        </div>
+      </Modal>
+
+      {/* ── Modal eliminar tipología (tab Tipologías) ── */}
+      <DeleteConfirmModal
+        open={deleteUTTarget !== null}
+        title="Eliminar tipología"
+        description={deleteUTTarget ? `¿Eliminar "${deleteUTTarget.name}"? Esta acción la ocultará del sistema pero conservará toda su información.` : ""}
+        confirmText={deletingUT ? "Eliminando..." : "Eliminar tipología"}
+        onConfirm={async () => {
+          if (!deleteUTTarget) return;
+          setDeletingUT(true);
+          const { error } = await supabase
+            .from("unit_types")
+            .update({ deleted_at: new Date().toISOString() })
+            .eq("id", deleteUTTarget.id)
+            .eq("building_id", buildingId);
+          if (error) {
+            toast.error("No se pudo eliminar la tipología");
+            setDeletingUT(false);
+            return;
+          }
+          setDeleteUTTarget(null);
+          setDeletingUT(false);
+          setTypologiesTabLoaded(false);
+          await loadTypologiesTabData();
+          toast.success("Tipología eliminada");
+        }}
+        onCancel={() => { if (!deletingUT) setDeleteUTTarget(null); }}
+      />
 
     </PageContainer>
   );
