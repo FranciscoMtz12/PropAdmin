@@ -15,7 +15,7 @@ import { usePathname } from "next/navigation";
 export default function MainContentWrapper({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
-  if (pathname?.startsWith("/campo")) {
+  if (pathname?.startsWith("/campo") || pathname?.startsWith("/p/")) {
     return <>{children}</>;
   }
 

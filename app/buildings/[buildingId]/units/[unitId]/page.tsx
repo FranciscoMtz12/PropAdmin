@@ -41,6 +41,7 @@ import {
   Pencil,
   Plus,
   Ruler,
+  Share2,
   Trash2,
   Users,
   XCircle,
@@ -492,6 +493,7 @@ export default function UnitDetailPage() {
   const [saving, setSaving] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [markingReviewed, setMarkingReviewed] = useState(false);
+  const [sharingLink, setSharingLink] = useState(false);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -743,6 +745,47 @@ export default function UnitDetailPage() {
     setMsg(`${buildingLabels.unit} actualizado correctamente.`);
     setShowEditForm(false);
     await loadPageData();
+  }
+
+  async function handleShare() {
+    if (!user?.id || !user?.company_id || !unitId) return;
+    setSharingLink(true);
+    try {
+      const { data: existing } = await supabase
+        .from("unit_share_tokens")
+        .select("token")
+        .eq("unit_id", unitId)
+        .eq("active", true)
+        .limit(1)
+        .maybeSingle();
+
+      let shareToken = existing?.token;
+
+      if (!shareToken) {
+        const { data: created, error } = await supabase
+          .from("unit_share_tokens")
+          .insert({ unit_id: unitId, company_id: user.company_id, created_by: user.id })
+          .select("token")
+          .single();
+        if (error || !created) { toast.error("No se pudo generar el enlace"); return; }
+        shareToken = created.token;
+      }
+
+      const url = `https://saproa.com/p/${shareToken}`;
+      try {
+        await navigator.clipboard.writeText(url);
+      } catch {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast.success("Enlace copiado");
+    } finally {
+      setSharingLink(false);
+    }
   }
 
   async function handleMarkReviewed() {
@@ -1241,6 +1284,14 @@ export default function UnitDetailPage() {
                 Administrar equipamiento
               </UiButton>
             ) : null}
+
+            <UiButton
+              onClick={() => void handleShare()}
+              disabled={sharingLink}
+              icon={<Share2 size={15} />}
+            >
+              {sharingLink ? "Generando..." : "Compartir"}
+            </UiButton>
           </div>
         }
       />

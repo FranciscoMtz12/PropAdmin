@@ -14,7 +14,8 @@ export default function SidebarGate() {
     pathname === "/register" ||
     pathname === "/portal/login" ||
     pathname === "/campo/login" ||
-    pathname.startsWith("/campo");
+    pathname.startsWith("/campo") ||
+    pathname.startsWith("/p/");
 
   if (isPublicRoute) return null;
 

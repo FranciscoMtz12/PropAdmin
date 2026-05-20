@@ -95,6 +95,7 @@ export default function GlobalBreadcrumbs() {
     pathname === "/portal/login" ||
     pathname.startsWith("/portal") ||
     pathname.startsWith("/campo") ||
+    pathname.startsWith("/p/") ||
     /* La página de detalle de edificio renderiza su propio breadcrumb dinámico */
     /^\/buildings\/[^/]+$/.test(pathname)
   ) {

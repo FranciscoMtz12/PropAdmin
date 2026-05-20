@@ -45,6 +45,10 @@ function isPublicHome(pathname: string) {
   return pathname === "/";
 }
 
+function isPublicFicha(pathname: string) {
+  return pathname.startsWith("/p/") || pathname === "/p";
+}
+
 export default function RouteGuard() {
   const pathname = usePathname();
   const router = useRouter();
@@ -62,6 +66,9 @@ export default function RouteGuard() {
     const publicHome = isPublicHome(pathname);
 
     if (publicHome) return;
+
+    // Public unit share pages — no auth required
+    if (isPublicFicha(pathname)) return;
 
     // Campo routes handle their own auth/role redirect internally
     if (campoPath) return;
