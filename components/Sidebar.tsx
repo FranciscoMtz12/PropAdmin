@@ -232,7 +232,7 @@ function NavItem({
     </div>
   );
 
-  const badgeColor = notifBadge?.severity === 'brand' ? accentColor : notifBadge ? SEVERITY_COLORS[notifBadge.severity].dot : '';
+  const badgeColor = (notifBadge?.severity === 'brand' || notifBadge?.severity === 'info') ? accentColor : notifBadge ? SEVERITY_COLORS[notifBadge.severity].dot : '';
   const rightBlock = notifBadge ? (
     <span
       style={{

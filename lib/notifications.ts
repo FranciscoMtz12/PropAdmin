@@ -28,7 +28,7 @@ export const SEVERITY_COLORS: Record<NotificationSeverity, { bg: string; border:
   critical: { bg: '#FCEBEB', border: '#E24B4A', text: '#A32D2D', dot: '#E24B4A' },
   warning:  { bg: '#FAEEDA', border: '#EF9F27', text: '#854F0B', dot: '#EF9F27' },
   brand:    { bg: '#FDF4FF', border: '#8B2252', text: '#6B1240', dot: '#8B2252' },
-  info:     { bg: '#E6F1FB', border: '#378ADD', text: '#185FA5', dot: '#378ADD' },
+  info:     { bg: '#FDF4FF', border: 'var(--accent)', text: 'var(--accent)', dot: 'var(--accent)' },
 }
 
 export const MODULE_LABELS: Record<NotificationModule, string> = {
