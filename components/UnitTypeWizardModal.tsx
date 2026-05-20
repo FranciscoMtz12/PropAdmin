@@ -6,8 +6,8 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
 import {
-  Bath, BedDouble, Box, Car, Check, ChevronDown, ChevronUp,
-  Settings2, Shirt, Sofa, Sun, TreePine, UtensilsCrossed, Wrench, Plus, X,
+  BedDouble, Box, Car, Check, ChevronDown, ChevronUp,
+  Shirt, Sofa, Sun, TreePine, UtensilsCrossed, Wrench, Plus, X,
 } from "lucide-react";
 import toast from "react-hot-toast";
 
@@ -30,19 +30,19 @@ type Step2 = {
   customSpaces: string[];
 };
 type BedroomEq = {
-  ac: string;             // NONE | MINI_1T | MINI_1_5T | MINI_2T | MINI_3T
+  ac: string;             // NONE | MINI_1T…3T | CENTRAL_1T…3T | FAN_COIL_1T…3T
   fan: string;            // NO | YES
   heater: string;         // NONE | GAS | ELECTRIC
   bed: string;            // NONE | INDIVIDUAL | MATRIMONIAL | QUEEN | KING
   closet: string;         // NONE | ARMARIO | CLOSET | WALK_IN
   tv: string;             // NO | YES
-  furnitureOther: string;
+  furnitureOther: string[];
 };
 type SalaEq = {
-  ac: string;             // NONE | MINI_1T | MINI_1_5T | MINI_2T
+  ac: string;             // NONE | MINI_1T…3T | CENTRAL_1T…3T | FAN_COIL_1T…3T
   fan: string;            // NO | YES
   furniture: string[];    // SALA | TV | MESA_CENTRO
-  furnitureOther: string;
+  furnitureOther: string[];
 };
 type CocinaEq = {
   stoveType: string;      // NONE | GAS | ELECTRIC | INDUCTION
@@ -85,11 +85,11 @@ const S2: Step2 = {
 };
 const DEFAULT_BEDROOM_EQ: BedroomEq = {
   ac: "NONE", fan: "NO", heater: "NONE",
-  bed: "NONE", closet: "NONE", tv: "NO", furnitureOther: "",
+  bed: "NONE", closet: "NONE", tv: "NO", furnitureOther: [],
 };
 const DEFAULT_EQ: Equipment = {
   bedrooms: [{ ...DEFAULT_BEDROOM_EQ }],
-  sala:      { ac: "NONE", fan: "NO", furniture: [], furnitureOther: "" },
+  sala:      { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [] },
   cocina:    { stoveType: "NONE", stoveBurners: "4Q", oven: "NONE", fridge: "NONE", fridgeModel: "", others: [] },
   lavanderia:{ centroCarga: "NO", washer: "NO", dryer: "NONE" },
   area:      { boiler: "NONE", boilerCapacity: "60L", centroCarga: "NO", washer: "NO", dryer: "NONE" },
@@ -191,6 +191,66 @@ function IncludeToggle({ included, onInclude, onExclude, children }: {
   );
 }
 
+/* ─── AC helpers ─────────────────────────────────────────────────────── */
+
+function acTypeOf(v: string): string {
+  if (v.startsWith("FAN_COIL")) return "FAN_COIL";
+  if (v.startsWith("CENTRAL")) return "CENTRAL";
+  if (v.startsWith("MINI")) return "MINI";
+  return "NONE";
+}
+
+function acCapOf(v: string): string {
+  if (v.endsWith("_1_5T")) return "1_5T";
+  if (v.endsWith("_3T")) return "3T";
+  if (v.endsWith("_2T")) return "2T";
+  return "1T";
+}
+
+/* ─── Pills input (text + Agregar + removable pills) ────────────────── */
+
+function PillsInput({ value, onChange, placeholder = "Agregar..." }: {
+  value: string[]; onChange: (v: string[]) => void; placeholder?: string;
+}) {
+  const [input, setInput] = useState("");
+  function add() {
+    const t = input.trim();
+    if (!t) return;
+    onChange([...value, t]);
+    setInput("");
+  }
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div style={{ display: "flex", gap: 6 }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder={placeholder}
+          style={{ flex: 1, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }}
+        />
+        <button type="button" onClick={add}
+          style={{ padding: "0 12px", borderRadius: 8, border: "none", background: ACCENT, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+          Agregar
+        </button>
+      </div>
+      {value.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+          {value.map((item, idx) => (
+            <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "#f9eaf3", color: ACCENT }}>
+              {item}
+              <button type="button" onClick={() => onChange(value.filter((_, i) => i !== idx))}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: ACCENT, display: "flex", alignItems: "center" }}>
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ─── Asset-row generator ────────────────────────────────────────────── */
 
 type AssetRow = { asset_type: string; name: string; status: string; notes: string | null; sort_order: number };
@@ -205,8 +265,12 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
   for (let i = 0; i < s2.bedrooms; i++) {
     const b = eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ;
     const sfx = s2.bedrooms > 1 ? ` - Recámara ${i + 1}` : " - Recámara";
-    const acMap: Record<string, string> = { MINI_1T: "Minisplit 1 Ton", MINI_1_5T: "Minisplit 1.5 Ton", MINI_2T: "Minisplit 2 Ton", MINI_3T: "Minisplit 3 Ton" };
-    if (b.ac !== "NONE" && acMap[b.ac]) add("MINISPLIT", `${acMap[b.ac]}${sfx}`);
+    const acMap: Record<string, string> = {
+      MINI_1T: "Minisplit 1 ton", MINI_1_5T: "Minisplit 1.5 ton", MINI_2T: "Minisplit 2 ton", MINI_3T: "Minisplit 3 ton",
+      CENTRAL_1T: "Aire central 1 ton", CENTRAL_1_5T: "Aire central 1.5 ton", CENTRAL_2T: "Aire central 2 ton", CENTRAL_3T: "Aire central 3 ton",
+      FAN_COIL_1T: "Fan & coil 1 ton", FAN_COIL_1_5T: "Fan & coil 1.5 ton", FAN_COIL_2T: "Fan & coil 2 ton", FAN_COIL_3T: "Fan & coil 3 ton",
+    };
+    if (b.ac !== "NONE" && acMap[b.ac]) add(b.ac.startsWith("MINI") ? "MINISPLIT" : "OTHER", `${acMap[b.ac]}${sfx}`);
     if (b.fan === "YES") add("FAN", `Ventilador de techo${sfx}`);
     if (b.heater !== "NONE") add("OTHER", `Calefactor ${b.heater === "GAS" ? "gas" : "eléctrico"}${sfx}`);
     const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king" };
@@ -214,16 +278,20 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
     const closetMap: Record<string, string> = { ARMARIO: "Armario", CLOSET: "Closet", WALK_IN: "Walk-in closet" };
     if (b.closet !== "NONE" && closetMap[b.closet]) add("OTHER", `${closetMap[b.closet]}${sfx}`);
     if (b.tv === "YES") add("OTHER", `Televisión${sfx}`);
-    if (b.furnitureOther.trim()) add("OTHER", `${b.furnitureOther.trim()}${sfx}`);
+    for (const f of b.furnitureOther) add("OTHER", `${f}${sfx}`);
   }
 
   if (s2.hasSala) {
-    const acMap: Record<string, string> = { MINI_1T: "Minisplit 1 Ton - Sala", MINI_1_5T: "Minisplit 1.5 Ton - Sala", MINI_2T: "Minisplit 2 Ton - Sala" };
-    if (eq.sala.ac !== "NONE" && acMap[eq.sala.ac]) add("MINISPLIT", acMap[eq.sala.ac]);
+    const acMap: Record<string, string> = {
+      MINI_1T: "Minisplit 1 ton - Sala", MINI_1_5T: "Minisplit 1.5 ton - Sala", MINI_2T: "Minisplit 2 ton - Sala", MINI_3T: "Minisplit 3 ton - Sala",
+      CENTRAL_1T: "Aire central 1 ton - Sala", CENTRAL_1_5T: "Aire central 1.5 ton - Sala", CENTRAL_2T: "Aire central 2 ton - Sala", CENTRAL_3T: "Aire central 3 ton - Sala",
+      FAN_COIL_1T: "Fan & coil 1 ton - Sala", FAN_COIL_1_5T: "Fan & coil 1.5 ton - Sala", FAN_COIL_2T: "Fan & coil 2 ton - Sala", FAN_COIL_3T: "Fan & coil 3 ton - Sala",
+    };
+    if (eq.sala.ac !== "NONE" && acMap[eq.sala.ac]) add(eq.sala.ac.startsWith("MINI") ? "MINISPLIT" : "OTHER", acMap[eq.sala.ac]);
     if (eq.sala.fan === "YES") add("FAN", "Ventilador de techo - Sala");
     const furMap: Record<string, string> = { SALA: "Juego de sala", TV: "Televisión - Sala", MESA_CENTRO: "Mesa de centro - Sala" };
     for (const f of eq.sala.furniture) if (furMap[f]) add("OTHER", furMap[f]);
-    if (eq.sala.furnitureOther.trim()) add("OTHER", `${eq.sala.furnitureOther.trim()} - Sala`);
+    for (const f of eq.sala.furnitureOther) add("OTHER", `${f} - Sala`);
   }
 
   if (s2.hasCocina) {
@@ -283,7 +351,11 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
   for (let i = 0; i < s2.bedrooms; i++) {
     const b = eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ;
     const items: string[] = [];
-    const acMap: Record<string, string> = { MINI_1T: "Minisplit 1 Ton", MINI_1_5T: "Minisplit 1.5 Ton", MINI_2T: "Minisplit 2 Ton", MINI_3T: "Minisplit 3 Ton" };
+    const acMap: Record<string, string> = {
+      MINI_1T: "Minisplit 1 ton", MINI_1_5T: "Minisplit 1.5 ton", MINI_2T: "Minisplit 2 ton", MINI_3T: "Minisplit 3 ton",
+      CENTRAL_1T: "Aire central 1 ton", CENTRAL_1_5T: "Aire central 1.5 ton", CENTRAL_2T: "Aire central 2 ton", CENTRAL_3T: "Aire central 3 ton",
+      FAN_COIL_1T: "Fan & coil 1 ton", FAN_COIL_1_5T: "Fan & coil 1.5 ton", FAN_COIL_2T: "Fan & coil 2 ton", FAN_COIL_3T: "Fan & coil 3 ton",
+    };
     if (b.ac !== "NONE" && acMap[b.ac]) items.push(acMap[b.ac]);
     if (b.fan === "YES") items.push("Ventilador de techo");
     if (b.heater !== "NONE") items.push(`Calefactor ${b.heater === "GAS" ? "gas" : "eléctrico"}`);
@@ -292,18 +364,22 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
     const closetMap: Record<string, string> = { ARMARIO: "Armario", CLOSET: "Closet", WALK_IN: "Walk-in closet" };
     if (b.closet !== "NONE" && closetMap[b.closet]) items.push(closetMap[b.closet]);
     if (b.tv === "YES") items.push("Televisión");
-    if (b.furnitureOther.trim()) items.push(b.furnitureOther.trim());
+    for (const f of b.furnitureOther) items.push(f);
     groups.push({ key: `bed-${i}`, label: s2.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara", Icon: BedDouble, items });
   }
 
   if (s2.hasSala) {
     const items: string[] = [];
-    const acMap: Record<string, string> = { MINI_1T: "Minisplit 1 Ton", MINI_1_5T: "Minisplit 1.5 Ton", MINI_2T: "Minisplit 2 Ton" };
+    const acMap: Record<string, string> = {
+      MINI_1T: "Minisplit 1 ton", MINI_1_5T: "Minisplit 1.5 ton", MINI_2T: "Minisplit 2 ton", MINI_3T: "Minisplit 3 ton",
+      CENTRAL_1T: "Aire central 1 ton", CENTRAL_1_5T: "Aire central 1.5 ton", CENTRAL_2T: "Aire central 2 ton", CENTRAL_3T: "Aire central 3 ton",
+      FAN_COIL_1T: "Fan & coil 1 ton", FAN_COIL_1_5T: "Fan & coil 1.5 ton", FAN_COIL_2T: "Fan & coil 2 ton", FAN_COIL_3T: "Fan & coil 3 ton",
+    };
     if (eq.sala.ac !== "NONE" && acMap[eq.sala.ac]) items.push(acMap[eq.sala.ac]);
     if (eq.sala.fan === "YES") items.push("Ventilador de techo");
     const furMap: Record<string, string> = { SALA: "Juego de sala", TV: "Televisión", MESA_CENTRO: "Mesa de centro" };
     for (const f of eq.sala.furniture) if (furMap[f]) items.push(furMap[f]);
-    if (eq.sala.furnitureOther.trim()) items.push(eq.sala.furnitureOther.trim());
+    for (const f of eq.sala.furnitureOther) items.push(f);
     groups.push({ key: "sala", label: "Sala", Icon: Sofa, items });
   }
 
@@ -435,7 +511,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function goBack() { setStep((p) => Math.max(1, p - 1)); }
 
   function toggleBlock(key: string) {
-    setExpandedBlocks((prev) => { const n = new Set(prev); if (n.has(key)) n.delete(key); else n.add(key); return n; });
+    setExpandedBlocks((prev) => prev.has(key) ? new Set() : new Set([key]));
   }
 
   function toggleSpace(key: keyof Step2 & string) { setS2((p) => ({ ...p, [key]: !p[key] })); }
@@ -533,10 +609,10 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function bedroomCount(b: BedroomEq) {
     return (b.ac !== "NONE" ? 1 : 0) + (b.fan === "YES" ? 1 : 0) + (b.heater !== "NONE" ? 1 : 0)
       + (b.bed !== "NONE" ? 1 : 0) + (b.closet !== "NONE" ? 1 : 0) + (b.tv === "YES" ? 1 : 0)
-      + (b.furnitureOther.trim() ? 1 : 0);
+      + b.furnitureOther.length;
   }
   function salaCount(s: SalaEq) {
-    return (s.ac !== "NONE" ? 1 : 0) + (s.fan === "YES" ? 1 : 0) + s.furniture.length + (s.furnitureOther.trim() ? 1 : 0);
+    return (s.ac !== "NONE" ? 1 : 0) + (s.fan === "YES" ? 1 : 0) + s.furniture.length + s.furnitureOther.length;
   }
   function cocinaCount(c: CocinaEq) {
     return (c.stoveType !== "NONE" ? 1 : 0) + (c.oven !== "NONE" ? 1 : 0) + (c.fridge !== "NONE" ? 1 : 0) + c.others.length;
@@ -546,9 +622,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     return (l.washer === "YES" ? 1 : 0) + (l.dryer !== "NONE" ? 1 : 0);
   }
   function areaCount(a: AreaServicioEq) {
-    const base = (a.boiler !== "NONE" ? 1 : 0);
-    if (a.centroCarga === "YES") return base + 1;
-    return base + (a.washer === "YES" ? 1 : 0) + (a.dryer !== "NONE" ? 1 : 0);
+    return (a.boiler !== "NONE" ? 1 : 0);
   }
 
   /* ─── Render ──────────────────────────────────────────────────────── */
@@ -668,14 +742,20 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 {blockBody(
                   <div>
                     {eqRow("Aire acondicionado", (
-                      <IncludeToggle
-                        included={bEq.ac !== "NONE"}
-                        onExclude={() => setBedEq(i, "ac", "NONE")}
-                        onInclude={() => setBedEq(i, "ac", "MINI_1T")}
-                      >
-                        <Radio value={bEq.ac} onChange={(v) => setBedEq(i, "ac", v)}
-                          options={[{value:"MINI_1T",label:"1 ton"},{value:"MINI_1_5T",label:"1.5 ton"},{value:"MINI_2T",label:"2 ton"},{value:"MINI_3T",label:"3 ton"}]} />
-                      </IncludeToggle>
+                      <div style={{ display: "grid", gap: 8 }}>
+                        <Radio
+                          value={acTypeOf(bEq.ac)}
+                          onChange={(t) => setBedEq(i, "ac", t === "NONE" ? "NONE" : `${t}_${acTypeOf(bEq.ac) !== "NONE" ? acCapOf(bEq.ac) : "1T"}`)}
+                          options={[{value:"NONE",label:"No incluye"},{value:"MINI",label:"Minisplit"},{value:"CENTRAL",label:"Aire central"},{value:"FAN_COIL",label:"Fan & coil"}]}
+                        />
+                        {acTypeOf(bEq.ac) !== "NONE" && (
+                          <Radio
+                            value={acCapOf(bEq.ac)}
+                            onChange={(cap) => setBedEq(i, "ac", `${acTypeOf(bEq.ac)}_${cap}`)}
+                            options={[{value:"1T",label:"1 ton"},{value:"1_5T",label:"1.5 ton"},{value:"2T",label:"2 ton"},{value:"3T",label:"3 ton"}]}
+                          />
+                        )}
+                      </div>
                     ))}
                     {eqRow("Ventilador de techo", (
                       <Radio value={bEq.fan} onChange={(v) => setBedEq(i, "fan", v)}
@@ -704,8 +784,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                         options={[{value:"NO",label:"No"},{value:"YES",label:"Sí"}]} />
                     ))}
                     {eqRow("Otro mobiliario", (
-                      <input value={bEq.furnitureOther} onChange={(e) => setBedEq(i, "furnitureOther", e.target.value)}
-                        placeholder="Ej. Escritorio, Buró..." style={{ ...STEP_INPUT, fontSize: 12 }} />
+                      <PillsInput value={bEq.furnitureOther} onChange={(v) => setBedEq(i, "furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />
                     ))}
                   </div>,
                   bKey
@@ -721,14 +800,20 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               {blockBody(
                 <div>
                   {eqRow("Aire acondicionado", (
-                    <IncludeToggle
-                      included={eq.sala.ac !== "NONE"}
-                      onExclude={() => setSala("ac", "NONE")}
-                      onInclude={() => setSala("ac", "MINI_1T")}
-                    >
-                      <Radio value={eq.sala.ac} onChange={(v) => setSala("ac", v)}
-                        options={[{value:"MINI_1T",label:"1 ton"},{value:"MINI_1_5T",label:"1.5 ton"},{value:"MINI_2T",label:"2 ton"}]} />
-                    </IncludeToggle>
+                    <div style={{ display: "grid", gap: 8 }}>
+                      <Radio
+                        value={acTypeOf(eq.sala.ac)}
+                        onChange={(t) => setSala("ac", t === "NONE" ? "NONE" : `${t}_${acTypeOf(eq.sala.ac) !== "NONE" ? acCapOf(eq.sala.ac) : "1T"}`)}
+                        options={[{value:"NONE",label:"No incluye"},{value:"MINI",label:"Minisplit"},{value:"CENTRAL",label:"Aire central"},{value:"FAN_COIL",label:"Fan & coil"}]}
+                      />
+                      {acTypeOf(eq.sala.ac) !== "NONE" && (
+                        <Radio
+                          value={acCapOf(eq.sala.ac)}
+                          onChange={(cap) => setSala("ac", `${acTypeOf(eq.sala.ac)}_${cap}`)}
+                          options={[{value:"1T",label:"1 ton"},{value:"1_5T",label:"1.5 ton"},{value:"2T",label:"2 ton"},{value:"3T",label:"3 ton"}]}
+                        />
+                      )}
+                    </div>
                   ))}
                   {eqRow("Ventilador de techo", (
                     <Radio value={eq.sala.fan} onChange={(v) => setSala("fan", v)}
@@ -738,8 +823,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     <div style={{ display: "grid", gap: 8 }}>
                       <Pills value={eq.sala.furniture} onChange={(v) => setSala("furniture", v)}
                         options={[{value:"SALA",label:"Juego de sala"},{value:"TV",label:"Televisión"},{value:"MESA_CENTRO",label:"Mesa de centro"}]} />
-                      <input value={eq.sala.furnitureOther} onChange={(e) => setSala("furnitureOther", e.target.value)}
-                        placeholder="Otro mobiliario (opcional)" style={{ ...STEP_INPUT, fontSize: 12 }} />
+                      <PillsInput value={eq.sala.furnitureOther} onChange={(v) => setSala("furnitureOther", v)} placeholder="Otro mobiliario..." />
                     </div>
                   ))}
                 </div>,
@@ -842,22 +926,6 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                       )}
                     </div>
                   ))}
-                  {eqRow("Centro de lavado vertical", (
-                    <Radio value={eq.area.centroCarga} onChange={(v) => setArea("centroCarga", v)}
-                      options={[{value:"NO",label:"No"},{value:"YES",label:"Sí"}]} />
-                  ))}
-                  {!s2.hasLavanderia && eq.area.centroCarga !== "YES" && (
-                    <>
-                      {eqRow("Lavadora", (
-                        <Radio value={eq.area.washer} onChange={(v) => setArea("washer", v)}
-                          options={[{value:"NO",label:"No"},{value:"YES",label:"Sí"}]} />
-                      ))}
-                      {eqRow("Secadora", (
-                        <Radio value={eq.area.dryer} onChange={(v) => setArea("dryer", v)}
-                          options={[{value:"NONE",label:"No incluye"},{value:"GAS",label:"Gas"},{value:"ELECTRIC",label:"Eléctrica"}]} />
-                      ))}
-                    </>
-                  )}
                 </div>,
                 "area"
               )}
@@ -880,36 +948,6 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             </div>
           )}
 
-          {/* Non-configurable spaces info */}
-          {[s2.hasPatio && "Patio", s2.hasCajon && "Cajón", s2.hasBodega && "Bodega", s2.hasTerraza && "Terraza"].filter(Boolean).map((lbl) => (
-            <div key={lbl as string} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, background: "var(--bg-card)" }}>
-              <Settings2 size={15} color="var(--text-muted)" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{lbl as string}</span>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>Solo se documenta su existencia</span>
-            </div>
-          ))}
-
-          {s2.bathroomsComplete > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, background: "var(--bg-card)" }}>
-              <Bath size={15} color="var(--text-muted)" />
-              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                {s2.bathroomsComplete} baño{s2.bathroomsComplete !== 1 ? "s" : ""} completo{s2.bathroomsComplete !== 1 ? "s" : ""}
-                {s2.bathroomsHalf > 0 ? ` · ${s2.bathroomsHalf} medio${s2.bathroomsHalf !== 1 ? "s" : ""} baño${s2.bathroomsHalf !== 1 ? "s" : ""}` : ""}
-              </span>
-            </div>
-          )}
-
-          {s2.customSpaces.length > 0 && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 10, background: "var(--bg-card)" }}>
-              <Settings2 size={15} color="var(--text-muted)" />
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                {s2.customSpaces.map((cs, i) => (
-                  <span key={i} style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{cs}{i < s2.customSpaces.length - 1 ? " ·" : ""}</span>
-                ))}
-              </div>
-              <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>Solo se documenta su existencia</span>
-            </div>
-          )}
         </div>
       )}
 
