@@ -137,6 +137,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty("--accent", accentColor);
   }, [accentColor]);
 
+  /* ── Aplicar data-theme desde localStorage inmediatamente (antes de Supabase) ── */
+  useEffect(() => {
+    const saved = localStorage.getItem("ui_theme");
+    const theme = (saved === "super_soft" || saved === "clasico") ? saved : "clasico";
+    document.documentElement.setAttribute("data-theme", theme);
+    if (theme !== "clasico") setUiThemeState(theme);
+  }, []);
+
   /* ── Aplicar data-theme en <html> cuando cambie uiTheme ────────── */
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", uiTheme);
@@ -192,6 +200,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setShowDescriptions(data.show_descriptions);
     }
     if (data.ui_theme === "super_soft" || data.ui_theme === "clasico") {
+      localStorage.setItem("ui_theme", data.ui_theme);
       setUiThemeState(data.ui_theme);
     }
     // dark_mode se sincroniza desde SettingsModal al cambiar; aquí solo cargamos show_descriptions
@@ -205,6 +214,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   function setUiTheme(theme: 'clasico' | 'super_soft') {
+    localStorage.setItem("ui_theme", theme);
     setUiThemeState(theme);
     if (user?.id) {
       void supabase.from("user_preferences").upsert(
