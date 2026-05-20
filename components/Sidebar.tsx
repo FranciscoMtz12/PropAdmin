@@ -75,7 +75,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "GENERAL",
     items: [
-      { label: "Propiedades", href: "/buildings", icon: Building2,    notifModules: ["unidades", "propiedades"] },
+      { label: "Propiedades", href: "/buildings", icon: Building2,    notifModules: ["unidades", "propiedades", "servicios", "contratos"] },
       { label: "Analytics",  href: "/analytics", icon: BarChart2 },
       { label: "Calendario", href: "/calendar",  icon: CalendarDays },
     ],
