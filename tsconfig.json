@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "Usersfcomt.claudeskillsgstack"]
+  "exclude": ["node_modules", "Usersfcomt.claudeskillsgstack", "scripts", "e2e"]
 }
