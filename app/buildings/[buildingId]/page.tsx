@@ -79,6 +79,7 @@ import {
   ShieldCheck,
   SkipForward,
   Sliders,
+  Shirt,
   Sofa,
   Sparkles,
   Store,
@@ -245,6 +246,7 @@ type UnitStatusRow = {
 };
 
 type UnitTypeRow = { id: string };
+type UnitTypeAsset = { name: string; asset_type: string };
 
 type UnitTypeForTab = {
   id: string;
@@ -254,8 +256,12 @@ type UnitTypeForTab = {
   has_living_room: boolean;
   has_dining_room: boolean;
   has_patio: boolean;
+  has_fridge: boolean;
+  has_washer: boolean;
+  has_dryer: boolean;
   stove_type: string;
   asset_template_count: number;
+  assets: UnitTypeAsset[];
 };
 
 type BuildingBillingConceptCode = "rent" | "electricity" | "water" | "gas" | "amenities";
@@ -885,6 +891,61 @@ function TabPendingBanner({
       </ul>
     </div>
   );
+}
+
+/* ─── Tipologías: agrupar assets por espacio ─────────────────────────── */
+
+const UT_SPACE_ICONS: Record<string, ComponentType<{ size?: number; color?: string }>> = {
+  Sala: Sofa, Cocina: UtensilsCrossed, Lavandería: Shirt,
+  "Área de servicio": Wrench, Comedor: UtensilsCrossed, Otros: PackageOpen,
+};
+const COMEDOR_ASSET_NAMES = new Set(["Comedor completo", "Mesa de comedor", "Mesa con sillas"]);
+const COCINA_OTHER_NAMES  = new Set(["Microondas", "Lavavajillas", "Campana extractora"]);
+
+function groupUTAssets(
+  assets: UnitTypeAsset[],
+  bedrooms: number,
+): Array<{ key: string; label: string; items: string[] }> {
+  const map = new Map<string, string[]>();
+  function push(k: string, v: string) {
+    if (!map.has(k)) map.set(k, []);
+    map.get(k)!.push(v);
+  }
+  const bedSuffixes: Array<[string, string]> =
+    bedrooms > 1
+      ? Array.from({ length: bedrooms }, (_, i) => [`Recámara ${i + 1}`, ` - Recámara ${i + 1}`] as [string, string])
+      : [["Recámara", " - Recámara"]];
+
+  for (const asset of assets) {
+    let placed = false;
+    for (const [label, sfx] of bedSuffixes) {
+      if (asset.name.endsWith(sfx)) { push(label, asset.name.slice(0, -sfx.length)); placed = true; break; }
+    }
+    if (placed) continue;
+
+    if (asset.name.endsWith(" - Sala") || asset.name === "Juego de sala") {
+      push("Sala", asset.name.endsWith(" - Sala") ? asset.name.slice(0, -7) : asset.name);
+    } else if (asset.name.endsWith(" - Lavandería")) {
+      push("Lavandería", asset.name.slice(0, -13));
+    } else if (asset.name.endsWith(" - Área de servicio")) {
+      push("Área de servicio", asset.name.slice(0, -19));
+    } else if (asset.asset_type === "BOILER") {
+      push("Área de servicio", asset.name);
+    } else if (asset.asset_type === "STOVE" || asset.asset_type === "FRIDGE") {
+      push("Cocina", asset.name);
+    } else if (asset.asset_type === "WASHER" || asset.asset_type === "DRYER") {
+      push("Lavandería", asset.name);
+    } else if (COMEDOR_ASSET_NAMES.has(asset.name)) {
+      push("Comedor", asset.name);
+    } else if (COCINA_OTHER_NAMES.has(asset.name) || asset.name.startsWith("Horno")) {
+      push("Cocina", asset.name);
+    } else {
+      push("Otros", asset.name);
+    }
+  }
+
+  const order = [...bedSuffixes.map(([l]) => l), "Sala", "Cocina", "Lavandería", "Área de servicio", "Comedor", "Otros"];
+  return order.filter((l) => map.has(l)).map((l) => ({ key: l, label: l, items: map.get(l)! }));
 }
 
 /* ─── Página ─────────────────────────────────────────────────────────── */
@@ -1613,24 +1674,30 @@ export default function BuildingDetailPage() {
     if (!user?.company_id || !buildingId) return;
     const { data: utData } = await supabase
       .from("unit_types")
-      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, stove_type")
+      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, has_fridge, has_washer, has_dryer, stove_type")
       .eq("building_id", buildingId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
-    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; stove_type: string }>;
+    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; has_fridge: boolean; has_washer: boolean; has_dryer: boolean; stove_type: string }>;
     const ids = rows.map((r) => r.id);
-    let countMap: Record<string, number> = {};
+    let assetsMap: Record<string, UnitTypeAsset[]> = {};
     if (ids.length > 0) {
       const { data: acData } = await supabase
         .from("unit_type_assets")
-        .select("unit_type_id")
+        .select("unit_type_id, name, asset_type")
         .in("unit_type_id", ids)
-        .is("deleted_at", null);
-      for (const row of (acData || []) as Array<{ unit_type_id: string }>) {
-        countMap[row.unit_type_id] = (countMap[row.unit_type_id] || 0) + 1;
+        .is("deleted_at", null)
+        .order("sort_order", { ascending: true });
+      for (const row of (acData || []) as Array<{ unit_type_id: string; name: string; asset_type: string }>) {
+        if (!assetsMap[row.unit_type_id]) assetsMap[row.unit_type_id] = [];
+        assetsMap[row.unit_type_id].push({ name: row.name, asset_type: row.asset_type });
       }
     }
-    setBuildingUnitTypes(rows.map((r) => ({ ...r, asset_template_count: countMap[r.id] || 0 })));
+    setBuildingUnitTypes(rows.map((r) => ({
+      ...r,
+      asset_template_count: (assetsMap[r.id] || []).length,
+      assets: assetsMap[r.id] || [],
+    })));
     setUnitTypeCount(rows.length);
   }
 
@@ -3712,51 +3779,21 @@ export default function BuildingDetailPage() {
               <div style={{ display: "grid", gap: 12 }}>
                 {buildingUnitTypes.map((ut) => (
                   <div key={ut.id} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 18, background: "var(--bg-card)" }}>
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 14 }}>
-                      <div style={{ width: 42, height: 42, borderRadius: 14, background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                        <LayoutPanelTop size={18} />
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
+                      <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <LayoutPanelTop size={17} />
+                        </div>
+                        <div>
+                          <p style={{ fontWeight: 700, margin: "0 0 3px", fontSize: 15, color: "var(--text-primary)" }}>{ut.name}</p>
+                          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
+                            {ut.bedrooms} rec. · {ut.bathrooms} baño{ut.bathrooms !== 1 ? "s" : ""}
+                            {ut.asset_template_count > 0 ? ` · ${ut.asset_template_count} equipo${ut.asset_template_count !== 1 ? "s" : ""}` : ""}
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <p style={{ fontWeight: "bold", marginBottom: 4, margin: "0 0 4px" }}>{ut.name}</p>
-                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Plantilla base del edificio</p>
-                      </div>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 10, marginBottom: 14 }}>
-                      <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 12 }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}><BedDouble size={15} /><span style={{ fontSize: 13 }}>Recámaras</span></div>
-                        <strong>{ut.bedrooms}</strong>
-                      </div>
-                      <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 12 }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}><Bath size={15} /><span style={{ fontSize: 13 }}>Baños</span></div>
-                        <strong>{ut.bathrooms}</strong>
-                      </div>
-                      <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 12 }}>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}><PackageOpen size={15} /><span style={{ fontSize: 13 }}>Equipamiento base</span></div>
-                        <strong>{ut.asset_template_count}</strong>
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
-                        <Sofa size={12} style={{ marginRight: 6, verticalAlign: "middle" }} />
-                        Sala: {ut.has_living_room ? "Sí" : "No"}
-                      </span>
-                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
-                        <UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: "middle" }} />
-                        Comedor: {ut.has_dining_room ? "Sí" : "No"}
-                      </span>
-                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
-                        Patio: {ut.has_patio ? "Sí" : "No"}
-                      </span>
-                      <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12 }}>
-                        Estufa: {ut.stove_type === "GAS" ? "Gas" : ut.stove_type === "ELECTRIC" ? "Eléctrica" : "Sin estufa"}
-                      </span>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}`}>Ver tipología</UiButton>
-                        <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}/assets`}>Administrar equipamiento base</UiButton>
-                      </div>
-                      <div style={{ position: "relative" }}>
+                      <div style={{ position: "relative", flexShrink: 0 }}>
                         <button
                           type="button"
                           onClick={() => setOpenActionsUnitTypeIdTab(openActionsUnitTypeIdTab === ut.id ? null : ut.id)}
@@ -3792,6 +3829,66 @@ export default function BuildingDetailPage() {
                           </div>
                         )}
                       </div>
+                    </div>
+
+                    {/* Equipment grid */}
+                    {(() => {
+                      const groups = groupUTAssets(ut.assets, ut.bedrooms);
+                      return groups.length > 0 ? (
+                        <div style={{ marginBottom: 14 }}>
+                          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                            EQUIPAMIENTO POR ESPACIO
+                          </p>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 8 }}>
+                            {groups.map((g) => {
+                              const SpaceIcon = g.label.startsWith("Recámara") ? BedDouble : (UT_SPACE_ICONS[g.label] ?? PackageOpen);
+                              return (
+                                <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden" }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 10px", background: "var(--bg-input)" }}>
+                                    <SpaceIcon size={13} color="var(--accent)" />
+                                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
+                                  </div>
+                                  <div style={{ padding: "8px 10px", display: "grid", gap: 3 }}>
+                                    {g.items.map((item, j) => (
+                                      <div key={j} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-secondary)" }}>
+                                        <div style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+                                        {item}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}>Sin equipamiento plantilla configurado.</p>
+                      );
+                    })()}
+
+                    {/* Other spaces badges */}
+                    {(() => {
+                      const badges: string[] = [
+                        ...(ut.has_patio ? ["Patio"] : []),
+                        ...(ut.bathrooms > 0 ? [`${ut.bathrooms} Baño${ut.bathrooms !== 1 ? "s" : ""}`] : []),
+                        ...(ut.has_living_room && !groupUTAssets(ut.assets, ut.bedrooms).some(g => g.label === "Sala") ? ["Sala"] : []),
+                        ...(ut.has_dining_room && !groupUTAssets(ut.assets, ut.bedrooms).some(g => g.label === "Comedor") ? ["Comedor"] : []),
+                      ];
+                      return badges.length > 0 ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
+                          {badges.map((b) => (
+                            <span key={b} style={{ padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                              {b}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
+
+                    {/* Action buttons */}
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}`}>Ver tipología</UiButton>
+                      <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}/assets`}>Administrar equipamiento</UiButton>
                     </div>
                   </div>
                 ))}
