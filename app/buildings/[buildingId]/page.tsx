@@ -44,10 +44,16 @@ import {
   Edit3,
   Factory,
   Flame,
+  Download,
+  ExternalLink,
   FileClockIcon,
   FileImage,
   FileText,
+  Folder,
   FolderOpen,
+  List,
+  Search,
+  Upload,
   Bed,
   Gem,
   Home,
@@ -500,14 +506,43 @@ function formatFileSize(bytes: number | null) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+const DOC_CATEGORIES: Array<{ key: string; label: string; color: string; bg: string; border: string }> = [
+  { key: "contratos",          label: "Contratos",            color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
+  { key: "facturas",           label: "Facturas",             color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
+  { key: "fotos",              label: "Fotos",                color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+  { key: "permisos_licencias", label: "Permisos y licencias", color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
+  { key: "planos",             label: "Planos",               color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
+  { key: "otros",              label: "Otros",                color: "#6b7280", bg: "#f9fafb", border: "#d1d5db" },
+];
+
 function getFileCategoryLabel(cat: string) {
-  const map: Record<string, string> = {
+  const found = DOC_CATEGORIES.find((c) => c.key === cat);
+  if (found) return found.label;
+  const legacy: Record<string, string> = {
     architectural_plan: "Plano arquitectónico",
     render:             "Render",
     photo:              "Fotografía",
     technical_document: "Documento técnico",
   };
-  return map[cat] || "Otro";
+  return legacy[cat] || cat || "Otro";
+}
+
+function getDocCategoryMeta(cat: string) {
+  return DOC_CATEGORIES.find((c) => c.key === cat) ?? { key: cat, label: cat || "Otro", color: "#6b7280", bg: "#f9fafb", border: "#d1d5db" };
+}
+
+function getDocFileIcon(mimeType: string | null, fileName: string): { color: string; bg: string } {
+  const ext = (fileName.split(".").pop() ?? "").toLowerCase();
+  const mime = mimeType ?? "";
+  if (mime.startsWith("image/") || ["jpg","jpeg","png","gif","webp","svg","avif"].includes(ext))
+    return { color: "#7c3aed", bg: "#f5f3ff" };
+  if (mime === "application/pdf" || ext === "pdf")
+    return { color: "#dc2626", bg: "#fef2f2" };
+  if (mime.includes("word") || ["doc","docx"].includes(ext))
+    return { color: "#2563eb", bg: "#eff6ff" };
+  if (mime.includes("excel") || mime.includes("spreadsheet") || ["xls","xlsx","csv"].includes(ext))
+    return { color: "#16a34a", bg: "#f0fdf4" };
+  return { color: "#6b7280", bg: "#f9fafb" };
 }
 
 const SECTION_SUGGESTIONS: Record<string, string[]> = {
@@ -985,6 +1020,21 @@ export default function BuildingDetailPage() {
   const galleryFileInputRef                           = useRef<HTMLInputElement>(null);
   const [dragItem, setDragItem]                       = useState<{ fileId: string; fromSection: string } | null>(null);
   const [dragOverKey, setDragOverKey]                 = useState<string | null>(null);
+
+  /* Documentos */
+  const docFileInputRef                               = useRef<HTMLInputElement>(null);
+  const [docsViewMode, setDocsViewMode]               = useState<"grid" | "list">("list");
+  const [docsSearch, setDocsSearch]                   = useState("");
+  const [docsActiveCat, setDocsActiveCat]             = useState<string | null>(null);
+  const [docsUploadOpen, setDocsUploadOpen]           = useState(false);
+  const [docsUploadCat, setDocsUploadCat]             = useState("otros");
+  const [docsPendingFiles, setDocsPendingFiles]       = useState<File[]>([]);
+  const [docsUploading, setDocsUploading]             = useState(false);
+  const [docsDeleteTarget, setDocsDeleteTarget]       = useState<BuildingFile | null>(null);
+  const [docsDeleting, setDocsDeleting]               = useState(false);
+  const [docsNewFolderOpen, setDocsNewFolderOpen]     = useState(false);
+  const [docsNewFolderName, setDocsNewFolderName]     = useState("");
+  const [docsCustomCats, setDocsCustomCats]           = useState<string[]>([]);
 
   /* Setup checklist */
   const [setupTasks, setSetupTasks] = useState<SetupTask[]>([]);
@@ -1750,6 +1800,87 @@ export default function BuildingDetailPage() {
       /* Move to a different section */
       setGalleryFiles(prev => prev.map(f => f.id === fileId ? { ...f, file_category: toSection } : f));
       await supabase.from("building_files").update({ file_category: toSection }).eq("id", fileId);
+    }
+  }
+
+  /* ── Documentos: handlers ─────────────────────────────────────────── */
+
+  function handleDocFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const selected = Array.from(e.target.files ?? []);
+    if (selected.length === 0) return;
+    setDocsPendingFiles(selected);
+    setDocsUploadOpen(true);
+    e.target.value = "";
+  }
+
+  async function handleDocUploadConfirm() {
+    if (!user?.company_id || docsPendingFiles.length === 0) return;
+    setDocsUploading(true);
+    const cid = user.company_id;
+    let uploadedCount = 0;
+    for (const file of docsPendingFiles) {
+      const ext  = file.name.split(".").pop() ?? "bin";
+      const slug = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const path = `${buildingId}/${slug}`;
+      const bucket = file.type.startsWith("image/") ? "building-gallery" : "building-documents";
+      const { error: upErr } = await supabase.storage.from(bucket).upload(path, file, { upsert: false });
+      if (upErr) { toast.error(`Error subiendo ${file.name}`); continue; }
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(path);
+      await supabase.from("building_files").insert({
+        building_id:     buildingId,
+        company_id:      cid,
+        file_name:       file.name,
+        file_type:       "document",
+        file_category:   docsUploadCat,
+        storage_path:    path,
+        public_url:      urlData.publicUrl,
+        mime_type:       file.type || null,
+        file_size_bytes: file.size,
+        sort_order:      0,
+        is_cover:        false,
+      });
+      uploadedCount++;
+    }
+    /* Reload files */
+    const { data: fresh } = await supabase
+      .from("building_files")
+      .select("id, building_id, file_name, file_type, file_category, storage_path, public_url, mime_type, file_size_bytes, notes, sort_order, is_cover, created_at")
+      .eq("building_id", buildingId)
+      .is("deleted_at", null)
+      .order("is_cover", { ascending: false })
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false });
+    if (fresh) setFiles(fresh as BuildingFile[]);
+    setDocsUploading(false);
+    setDocsUploadOpen(false);
+    setDocsPendingFiles([]);
+    if (uploadedCount > 0) toast.success(`${uploadedCount} archivo${uploadedCount > 1 ? "s" : ""} subido${uploadedCount > 1 ? "s" : ""}`);
+  }
+
+  async function handleDocDelete() {
+    if (!docsDeleteTarget) return;
+    setDocsDeleting(true);
+    await supabase.from("building_files").update({ deleted_at: new Date().toISOString() }).eq("id", docsDeleteTarget.id);
+    setFiles((prev) => prev.filter((f) => f.id !== docsDeleteTarget.id));
+    setDocsDeleteTarget(null);
+    setDocsDeleting(false);
+    toast.success("Documento eliminado");
+  }
+
+  function handleDocClick(file: BuildingFile) {
+    if (!file.public_url) return;
+    const ext  = (file.file_name.split(".").pop() ?? "").toLowerCase();
+    const mime = file.mime_type ?? "";
+    const openable = mime.startsWith("image/") || mime === "application/pdf" || ext === "pdf";
+    if (openable) {
+      window.open(file.public_url, "_blank", "noopener,noreferrer");
+    } else {
+      const a = document.createElement("a");
+      a.href = file.public_url;
+      a.download = file.file_name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
     }
   }
 
@@ -3583,36 +3714,345 @@ export default function BuildingDetailPage() {
       {/* ══════════════════════════════════════════════════════════════
           TAB: DOCUMENTOS
       ══════════════════════════════════════════════════════════════ */}
-      {activeTab === "documents" ? (
-        <>
-          {pendingByTab.documents.length > 0 && (
-            <TabPendingBanner tasks={pendingByTab.documents} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
-          )}
-          <SectionCard title="Documentos" subtitle="Planos, PDFs y otros archivos técnicos del edificio." icon={<FolderOpen size={18} />}>
-          {documentFiles.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--text-secondary)" }}>Todavía no hay documentos registrados para este edificio.</p>
-          ) : (
-            <div style={{ display: "grid", gap: 12 }}>
-              {documentFiles.map((file) => (
-                <AppCard key={file.id} style={{ padding: 16, borderRadius: 14 }}>
-                  <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                    <AppIconBox size={40} radius={12} background="var(--icon-bg-blue)" color="var(--icon-color-blue)">
-                      <FileText size={18} />
-                    </AppIconBox>
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <strong style={{ display: "block", marginBottom: 4 }}>{file.file_name}</strong>
-                      <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>
-                        {getFileCategoryLabel(file.file_category)} · {formatFileSize(file.file_size_bytes)}
-                      </p>
-                    </div>
-                  </div>
-                </AppCard>
-              ))}
+      {activeTab === "documents" ? (() => {
+        /* Derived data */
+        const allDocCatKeys = [
+          ...DOC_CATEGORIES.map((c) => c.key),
+          ...docsCustomCats.filter((k) => !DOC_CATEGORIES.some((c) => c.key === k)),
+        ];
+        /* Also collect any categories present in files but not in the lists above */
+        documentFiles.forEach((f) => {
+          if (f.file_category && !allDocCatKeys.includes(f.file_category)) {
+            allDocCatKeys.push(f.file_category);
+          }
+        });
+
+        const searchLower = docsSearch.toLowerCase();
+        const filteredDocs = documentFiles.filter((f) => {
+          if (docsActiveCat && f.file_category !== docsActiveCat) return false;
+          if (searchLower && !f.file_name.toLowerCase().includes(searchLower)) return false;
+          return true;
+        });
+
+        const canDelete = user?.role === "superadmin" || user?.is_superadmin || user?.role === "titular";
+
+        return (
+          <>
+            {pendingByTab.documents.length > 0 && (
+              <TabPendingBanner tasks={pendingByTab.documents} buildingId={buildingId as string} onNavigate={handleBannerNavigate} onDismiss={handleDismissBannerTasks} />
+            )}
+
+            {/* Hidden file input */}
+            <input
+              ref={docFileInputRef}
+              type="file"
+              multiple
+              style={{ display: "none" }}
+              onChange={handleDocFileSelect}
+            />
+
+            {/* ── Toolbar ── */}
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginBottom: 20 }}>
+              <UiButton
+                variant="primary"
+                icon={<Upload size={15} />}
+                onClick={() => docFileInputRef.current?.click()}
+              >
+                Subir archivo
+              </UiButton>
+              <UiButton
+                variant="secondary"
+                icon={<Folder size={15} />}
+                onClick={() => { setDocsNewFolderName(""); setDocsNewFolderOpen(true); }}
+              >
+                Nueva carpeta
+              </UiButton>
+              <div style={{ flex: 1, minWidth: 180, position: "relative" }}>
+                <Search size={14} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)", pointerEvents: "none" }} />
+                <input
+                  value={docsSearch}
+                  onChange={(e) => setDocsSearch(e.target.value)}
+                  placeholder="Buscar por nombre..."
+                  style={{ ...INPUT_STYLE, paddingLeft: 32, width: "100%", boxSizing: "border-box" as const }}
+                />
+              </div>
+              <div style={{ display: "flex", border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
+                <button
+                  type="button"
+                  onClick={() => setDocsViewMode("grid")}
+                  title="Vista cuadrícula"
+                  style={{ padding: "7px 10px", border: "none", background: docsViewMode === "grid" ? "var(--bg-card-hover)" : "transparent", cursor: "pointer", color: docsViewMode === "grid" ? "var(--text-primary)" : "var(--text-muted)", display: "flex", alignItems: "center" }}
+                >
+                  <LayoutGrid size={15} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setDocsViewMode("list")}
+                  title="Vista lista"
+                  style={{ padding: "7px 10px", border: "none", borderLeft: "1px solid var(--border-default)", background: docsViewMode === "list" ? "var(--bg-card-hover)" : "transparent", cursor: "pointer", color: docsViewMode === "list" ? "var(--text-primary)" : "var(--text-muted)", display: "flex", alignItems: "center" }}
+                >
+                  <List size={15} />
+                </button>
+              </div>
             </div>
-          )}
-        </SectionCard>
-        </>
-      ) : null}
+
+            {/* ── Breadcrumb ── */}
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}>
+              <button
+                type="button"
+                onClick={() => setDocsActiveCat(null)}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: docsActiveCat ? "var(--text-link, #2563eb)" : "var(--text-primary)", fontWeight: docsActiveCat ? 400 : 600, fontSize: 13 }}
+              >
+                Documentos
+              </button>
+              {docsActiveCat && (
+                <>
+                  <ChevronRight size={13} />
+                  <span style={{ color: "var(--text-primary)", fontWeight: 600 }}>
+                    {getFileCategoryLabel(docsActiveCat)}
+                  </span>
+                </>
+              )}
+            </div>
+
+            {/* ── Folder grid (only at root level) ── */}
+            {!docsActiveCat && !docsSearch && (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 28 }}>
+                {allDocCatKeys.map((catKey) => {
+                  const meta  = getDocCategoryMeta(catKey);
+                  const count = documentFiles.filter((f) => f.file_category === catKey).length;
+                  return (
+                    <button
+                      key={catKey}
+                      type="button"
+                      onClick={() => setDocsActiveCat(catKey)}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8,
+                        padding: 14, borderRadius: 12,
+                        border: `1.5px solid ${meta.border}`,
+                        background: meta.bg,
+                        cursor: "pointer", textAlign: "left",
+                        transition: "box-shadow 0.15s",
+                      }}
+                    >
+                      <Folder size={22} color={meta.color} />
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{meta.label}</span>
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{count} archivo{count !== 1 ? "s" : ""}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* ── File list / grid ── */}
+            <SectionCard
+              title={docsActiveCat ? getFileCategoryLabel(docsActiveCat) : "Archivos recientes"}
+              subtitle={docsActiveCat ? undefined : "Todos los documentos del edificio"}
+              icon={docsActiveCat ? <Folder size={18} /> : <FolderOpen size={18} />}
+            >
+              {filteredDocs.length === 0 ? (
+                <AppEmptyState
+                  title="Sin documentos"
+                  description={docsSearch ? `No hay archivos que coincidan con "${docsSearch}".` : "Sube el primer archivo con el botón Subir archivo."}
+                />
+              ) : docsViewMode === "list" ? (
+                /* ── LIST VIEW ── */
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
+                        <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Nombre</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Categoría</th>
+                        <th style={{ textAlign: "right", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Fecha</th>
+                        <th style={{ textAlign: "right", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Tamaño</th>
+                        {canDelete && <th style={{ width: 40 }} />}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredDocs.map((file) => {
+                        const { color, bg } = getDocFileIcon(file.mime_type, file.file_name);
+                        const catMeta = getDocCategoryMeta(file.file_category);
+                        const ext = (file.file_name.split(".").pop() ?? "").toLowerCase();
+                        const isOpenable = (file.mime_type ?? "").startsWith("image/") || (file.mime_type ?? "") === "application/pdf" || ext === "pdf";
+                        return (
+                          <tr
+                            key={file.id}
+                            style={{ borderBottom: "1px solid var(--border-subtle, var(--border-default))" }}
+                          >
+                            <td style={{ padding: "10px 10px" }}>
+                              <button
+                                type="button"
+                                onClick={() => handleDocClick(file)}
+                                style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", minWidth: 0, width: "100%", textAlign: "left" }}
+                              >
+                                <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 8, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <FileText size={16} color={color} />
+                                </span>
+                                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-primary)", fontWeight: 500, maxWidth: 260 }}>
+                                  {file.file_name}
+                                </span>
+                                {isOpenable
+                                  ? <ExternalLink size={12} style={{ flexShrink: 0, color: "var(--text-muted)" }} />
+                                  : <Download size={12} style={{ flexShrink: 0, color: "var(--text-muted)" }} />
+                                }
+                              </button>
+                            </td>
+                            <td style={{ padding: "10px 10px", whiteSpace: "nowrap" }}>
+                              <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: catMeta.bg, color: catMeta.color, border: `1px solid ${catMeta.border}` }}>
+                                {catMeta.label}
+                              </span>
+                            </td>
+                            <td style={{ padding: "10px 10px", textAlign: "right", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                              {formatShortDate(file.created_at)}
+                            </td>
+                            <td style={{ padding: "10px 10px", textAlign: "right", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+                              {formatFileSize(file.file_size_bytes)}
+                            </td>
+                            {canDelete && (
+                              <td style={{ padding: "10px 6px", textAlign: "center" }}>
+                                <button
+                                  type="button"
+                                  title="Eliminar"
+                                  onClick={() => setDocsDeleteTarget(file)}
+                                  style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", borderRadius: 6 }}
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                /* ── GRID VIEW ── */
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+                  {filteredDocs.map((file) => {
+                    const { color, bg } = getDocFileIcon(file.mime_type, file.file_name);
+                    const catMeta = getDocCategoryMeta(file.file_category);
+                    return (
+                      <div
+                        key={file.id}
+                        style={{ position: "relative", border: "1px solid var(--border-default)", borderRadius: 12, padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 8 }}
+                      >
+                        <div style={{ width: 40, height: 40, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <FileText size={20} color={color} />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDocClick(file)}
+                          style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
+                          title={file.file_name}
+                        >
+                          <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                            {file.file_name}
+                          </span>
+                        </button>
+                        <span style={{ display: "inline-block", padding: "1px 7px", borderRadius: 999, fontSize: 10, fontWeight: 600, background: catMeta.bg, color: catMeta.color, border: `1px solid ${catMeta.border}`, alignSelf: "flex-start" }}>
+                          {catMeta.label}
+                        </span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{formatFileSize(file.file_size_bytes)}</span>
+                        {canDelete && (
+                          <button
+                            type="button"
+                            title="Eliminar"
+                            onClick={() => setDocsDeleteTarget(file)}
+                            style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-muted)", borderRadius: 6, display: "flex", alignItems: "center" }}
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+
+            {/* ── Modal: upload ── */}
+            <Modal
+              open={docsUploadOpen}
+              title={`Subir archivo${docsPendingFiles.length > 1 ? "s" : ""}`}
+              onClose={() => { setDocsUploadOpen(false); setDocsPendingFiles([]); }}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+                  {docsPendingFiles.map((f) => f.name).join(", ")}
+                </p>
+                <AppFormField label="Carpeta">
+                  <AppSelect
+                    value={docsUploadCat}
+                    onChange={(e) => setDocsUploadCat(e.target.value)}
+                  >
+                    {DOC_CATEGORIES.map((c) => (
+                      <option key={c.key} value={c.key}>{c.label}</option>
+                    ))}
+                    {docsCustomCats
+                      .filter((k) => !DOC_CATEGORIES.some((c) => c.key === k))
+                      .map((k) => <option key={k} value={k}>{k}</option>)}
+                  </AppSelect>
+                </AppFormField>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <UiButton variant="secondary" onClick={() => { setDocsUploadOpen(false); setDocsPendingFiles([]); }}>
+                    Cancelar
+                  </UiButton>
+                  <UiButton variant="primary" disabled={docsUploading} onClick={() => void handleDocUploadConfirm()}>
+                    {docsUploading ? "Subiendo…" : "Subir"}
+                  </UiButton>
+                </div>
+              </div>
+            </Modal>
+
+            {/* ── Modal: nueva carpeta ── */}
+            <Modal
+              open={docsNewFolderOpen}
+              title="Nueva carpeta"
+              onClose={() => setDocsNewFolderOpen(false)}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                <AppFormField label="Nombre de la carpeta">
+                  <input
+                    value={docsNewFolderName}
+                    onChange={(e) => setDocsNewFolderName(e.target.value)}
+                    placeholder="Ej. Permisos 2025"
+                    style={INPUT_STYLE}
+                  />
+                </AppFormField>
+                <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+                  <UiButton variant="secondary" onClick={() => setDocsNewFolderOpen(false)}>Cancelar</UiButton>
+                  <UiButton
+                    variant="primary"
+                    disabled={!docsNewFolderName.trim()}
+                    onClick={() => {
+                      const key = docsNewFolderName.trim().toLowerCase().replace(/\s+/g, "_");
+                      if (key && !docsCustomCats.includes(key) && !DOC_CATEGORIES.some((c) => c.key === key)) {
+                        setDocsCustomCats((prev) => [...prev, key]);
+                      }
+                      setDocsNewFolderName("");
+                      setDocsNewFolderOpen(false);
+                    }}
+                  >
+                    Crear
+                  </UiButton>
+                </div>
+              </div>
+            </Modal>
+
+            {/* ── Modal: delete confirm ── */}
+            {docsDeleteTarget && (
+              <DeleteConfirmModal
+                open={!!docsDeleteTarget}
+                title="Eliminar documento"
+                description={`¿Eliminar "${docsDeleteTarget.file_name}"? Esta acción no se puede deshacer.`}
+                onCancel={() => setDocsDeleteTarget(null)}
+                onConfirm={() => { void handleDocDelete(); }}
+              />
+            )}
+          </>
+        );
+      })() : null}
 
       {/* ══════════════════════════════════════════════════════════════
           TAB: GALERÍA
