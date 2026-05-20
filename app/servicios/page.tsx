@@ -557,6 +557,7 @@ export default function ServiciosPage() {
   const [generatingFixedMeter, setGeneratingFixedMeter] = useState<string | null>(null);
   const [generatingPdfsMeter, setGeneratingPdfsMeter]   = useState<string | null>(null);
   const [uploadInvoiceMeter, setUploadInvoiceMeter]     = useState<{ meter: BuildingUtilityMeter; building: { id: string; name: string } } | null>(null);
+  const [pendingBuildings, setPendingBuildings] = useState<{ id: string; name: string; count: number }[]>([]);
 
   function prevPeriod() {
     setPeriod(p => p.month === 1 ? { year: p.year - 1, month: 12 } : { ...p, month: p.month - 1 });
@@ -573,6 +574,33 @@ export default function ServiciosPage() {
   useEffect(() => {
     if (user?.company_id) void loadData();
   }, [user?.company_id, period.year, period.month]);
+
+  useEffect(() => {
+    if (user?.company_id) void loadPendingMeters();
+  }, [user?.company_id]);
+
+  async function loadPendingMeters() {
+    if (!user?.company_id) return;
+    const { data } = await supabase
+      .from("building_utility_meters")
+      .select("id, building_id, buildings(name)")
+      .eq("company_id", user.company_id)
+      .eq("active", false)
+      .is("deleted_at", null);
+    if (!data) return;
+    const byBuilding = new Map<string, { name: string; count: number }>();
+    type PendingRow = { building_id: string; buildings: { name: string } | null };
+    for (const row of data as unknown as PendingRow[]) {
+      const bid = row.building_id;
+      const bname = row.buildings?.name ?? "Edificio";
+      const entry = byBuilding.get(bid);
+      if (entry) entry.count++;
+      else byBuilding.set(bid, { name: bname, count: 1 });
+    }
+    setPendingBuildings(
+      [...byBuilding.entries()].map(([id, { name, count }]) => ({ id, name, count }))
+    );
+  }
 
   async function loadData() {
     if (!user?.company_id) return;
@@ -1100,6 +1128,45 @@ export default function ServiciosPage() {
         titleIcon={<Layers size={20} />}
         subtitle="Facturación mensual de servicios por edificio"
       />
+
+      {pendingBuildings.length > 0 && (
+        <div
+          style={{
+            marginBottom: 20,
+            borderRadius: 12,
+            background: "#fffbeb",
+            border: "1px solid #f59e0b",
+            padding: "14px 16px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+            <AlertTriangle size={16} style={{ color: "#d97706", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>
+              Servicios pendientes de atención
+            </span>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {pendingBuildings.map(b => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => router.push(`/buildings/${b.id}`)}
+                style={{
+                  display: "flex", alignItems: "center", justifyContent: "space-between",
+                  padding: "7px 10px", borderRadius: 8, gap: 8,
+                  background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
+                  cursor: "pointer", textAlign: "left", width: "100%",
+                }}
+              >
+                <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>{b.name}</span>
+                <span style={{ fontSize: 12, color: "#b45309", flexShrink: 0 }}>
+                  {b.count} servicio{b.count !== 1 ? "s" : ""} sin configurar
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <PeriodSelector
         year={period.year}
