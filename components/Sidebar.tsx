@@ -125,7 +125,7 @@ const FIELD_ITEMS: SidebarItem[] = [
   { href: "/campo/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/campo/tickets",   label: "Tickets",   icon: Wrench          },
   { href: "/campo/limpieza",  label: "Limpieza",  icon: Sparkles        },
-  { href: "/campo/assets",    label: "Assets",    icon: Package         },
+  { href: "/campo/assets",    label: "Equipamiento",    icon: Package         },
   { href: "/campo/medidores", label: "Medidores", icon: Zap             },
 ];
 

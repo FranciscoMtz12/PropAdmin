@@ -219,7 +219,7 @@ export default function CampoAssetsPage() {
 
       {/* ── Título ───────────────────────────────────────────────── */}
       <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
-        Activos
+        Equipamiento
       </h2>
 
       {/* ── Filtro edificio ──────────────────────────────────────── */}

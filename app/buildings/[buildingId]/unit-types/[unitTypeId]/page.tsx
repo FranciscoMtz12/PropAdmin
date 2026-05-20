@@ -350,11 +350,11 @@ export default function UnitTypeDetailPage() {
       <PageHeader
         title={`Tipología ${unitType.name}`}
         titleIcon={<LayoutPanelTop size={20} />}
-        subtitle="La tipología define la configuración base del departamento y también los assets plantilla que se clonan al crear una unidad nueva."
+        subtitle="La tipología define la configuración base del departamento y también el equipamiento plantilla que se clona al crear una unidad nueva."
         actions={
           <>
             <UiButton href={`/buildings/${building.id}/unit-types`}>Volver a tipologías</UiButton>
-            <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Administrar assets base</UiButton>
+            <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Administrar equipamiento base</UiButton>
             <div style={{ position: "relative" }} ref={actionsMenuRef}>
               <button
                 type="button"
@@ -404,7 +404,7 @@ export default function UnitTypeDetailPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
         <div style={{ border: "1px solid var(--border-default)", borderRadius: "16px", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Recámaras</p><strong style={{ fontSize: "28px" }}>{unitType.bedrooms}</strong></div><BedDouble size={18} /></div></div>
         <div style={{ border: "1px solid var(--border-default)", borderRadius: "16px", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Baños</p><strong style={{ fontSize: "28px" }}>{unitType.bathrooms}</strong></div><Bath size={18} /></div></div>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "16px", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Assets base</p><strong style={{ fontSize: "28px" }}>{templateAssets.length}</strong></div><PackageSearch size={18} /></div></div>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "16px", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Equipamiento base</p><strong style={{ fontSize: "28px" }}>{templateAssets.length}</strong></div><PackageSearch size={18} /></div></div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
@@ -420,9 +420,9 @@ export default function UnitTypeDetailPage() {
           </div>
         </SectionCard>
 
-        <SectionCard title="Assets base configurados" subtitle="Vista rápida de los equipos plantilla de esta tipología." icon={<PackageSearch size={18} />}>
+        <SectionCard title="Equipamiento base configurado" subtitle="Vista rápida de los equipos plantilla de esta tipología." icon={<PackageSearch size={18} />}>
           {templateAssets.length === 0 ? (
-            <p style={{ margin: 0 }}>Todavía no hay assets base configurados.</p>
+            <p style={{ margin: 0 }}>Todavía no hay equipamiento base configurado.</p>
           ) : (
             <div style={{ display: "grid", gap: "12px" }}>
               {templateAssets.slice(0, 4).map((asset) => (

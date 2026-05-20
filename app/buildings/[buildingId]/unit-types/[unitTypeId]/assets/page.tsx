@@ -64,7 +64,7 @@ const templateAssetSchema = z.object({
     "FAN",
     "OTHER",
   ]),
-  assetName: z.string().min(1, "El nombre del asset base es obligatorio"),
+  assetName: z.string().min(1, "El nombre del equipo base es obligatorio"),
   assetStatus: z.enum(["ACTIVE", "INACTIVE"]),
   notes: z.string().optional(),
   sortOrder: z.string().optional(),
@@ -231,7 +231,7 @@ export default function UnitTypeAssetsPage() {
 
     if (templateAssetError) {
       console.error("unit_type_assets fetch failed", templateAssetError);
-      setMsg("No se pudieron cargar los assets base.");
+      setMsg("No se pudieron cargar los equipos base.");
       setLoadingData(false);
       return;
     }
@@ -302,7 +302,7 @@ export default function UnitTypeAssetsPage() {
           color: "black",
         }}
       >
-        Cargando assets base...
+        Cargando equipamiento base...
       </div>
     );
   }
@@ -335,7 +335,7 @@ export default function UnitTypeAssetsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title={`Assets base — ${unitType.name}`}
+        title={`Equipamiento base — ${unitType.name}`}
         titleIcon={<LayoutPanelTop size={20} />}
         subtitle="Configura los equipos plantilla de la tipología con el mismo patrón visual del resto del sistema."
         actions={
@@ -345,7 +345,7 @@ export default function UnitTypeAssetsPage() {
             </UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
               <Plus size={16} />
-              Nuevo asset base
+              Nuevo equipamiento base
             </UiButton>
           </>
         }
@@ -363,12 +363,12 @@ export default function UnitTypeAssetsPage() {
       ) : null}
 
       <SectionCard
-        title="Assets base"
+        title="Equipamiento base"
         subtitle="Estos equipos se clonan cuando se crea un departamento de esta tipología."
         icon={<PackageOpen size={18} />}
       >
         {templateAssets.length === 0 ? (
-          <p>Todavía no hay assets base para esta tipología.</p>
+          <p>Todavía no hay equipamiento base para esta tipología.</p>
         ) : (
           <div style={{ display: "grid", gap: "12px" }}>
             {templateAssets.map((asset) => (
@@ -433,7 +433,7 @@ export default function UnitTypeAssetsPage() {
                   style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}
                 >
                   <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets/${asset.id}`}>
-                    Ver asset base
+                    Ver equipamiento base
                   </UiButton>
 
                   <div
@@ -584,12 +584,12 @@ export default function UnitTypeAssetsPage() {
       <Modal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Crear asset base"
+        title="Crear equipamiento base"
         subtitle="El formulario aparece solo cuando lo necesitas para que la página principal quede más limpia."
       >
         <form onSubmit={handleCreateTemplateAsset}>
           <div style={{ marginBottom: "16px" }}>
-            <label style={{ display: "block", marginBottom: "8px" }}>Tipo de asset</label>
+            <label style={{ display: "block", marginBottom: "8px" }}>Tipo de equipamiento</label>
             <select
               {...register("assetType")}
               style={{
@@ -650,7 +650,7 @@ export default function UnitTypeAssetsPage() {
             <label style={{ display: "block", marginBottom: "8px" }}>Notas</label>
             <textarea
               {...register("notes")}
-              placeholder="Notas opcionales sobre este asset base"
+              placeholder="Notas opcionales sobre este equipo base"
               style={{
                 width: "100%",
                 padding: "12px",
@@ -678,7 +678,7 @@ export default function UnitTypeAssetsPage() {
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={isSubmitting} variant="primary">
-              {isSubmitting ? "Guardando..." : "Guardar asset base"}
+              {isSubmitting ? "Guardando..." : "Guardar equipamiento base"}
             </UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(false)}>Cancelar</UiButton>
           </div>

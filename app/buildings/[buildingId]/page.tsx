@@ -3653,13 +3653,13 @@ export default function BuildingDetailPage() {
               icon={<Package size={18} />}
               action={
                 <UiButton variant="primary" onClick={openCreateAssetModal}>
-                  <Plus size={15} /> Agregar asset
+                  <Plus size={15} /> Agregar equipamiento
                 </UiButton>
               }
             >
               {buildingAssets.length === 0 ? (
                 <AppEmptyState
-                  title="Sin assets registrados"
+                  title="Sin equipamiento registrado"
                   description="Registra los equipos e instalaciones del edificio."
                 />
               ) : (
@@ -5472,11 +5472,11 @@ export default function BuildingDetailPage() {
       </Modal>
 
       {/* ── Modal crear asset ── */}
-      <Modal open={assetCreateOpen} onClose={() => { if (!savingAsset) setAssetCreateOpen(false); }} title="Agregar asset">
+      <Modal open={assetCreateOpen} onClose={() => { if (!savingAsset) setAssetCreateOpen(false); }} title="Agregar equipamiento">
         <form onSubmit={handleCreateAsset}>
           {assetModalMsg ? <p style={errorBannerStyle}>{assetModalMsg}</p> : null}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <AppFormField label="Tipo de asset" required>
+            <AppFormField label="Tipo de equipamiento" required>
               <AppSelect value={assetType} onChange={(e) => setAssetType(e.target.value)}>
                 {BUILDING_ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </AppSelect>
@@ -5495,17 +5495,17 @@ export default function BuildingDetailPage() {
           </AppFormField>
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
             <UiButton type="button" variant="secondary" onClick={() => setAssetCreateOpen(false)} disabled={savingAsset}>Cancelar</UiButton>
-            <UiButton type="submit" variant="primary" disabled={savingAsset}>{savingAsset ? "Guardando..." : "Crear asset"}</UiButton>
+            <UiButton type="submit" variant="primary" disabled={savingAsset}>{savingAsset ? "Guardando..." : "Crear equipamiento"}</UiButton>
           </div>
         </form>
       </Modal>
 
       {/* ── Modal editar asset ── */}
-      <Modal open={assetEditOpen} onClose={() => { if (!savingAsset) setAssetEditOpen(false); }} title="Editar asset">
+      <Modal open={assetEditOpen} onClose={() => { if (!savingAsset) setAssetEditOpen(false); }} title="Editar equipamiento">
         <form onSubmit={handleEditAsset}>
           {assetModalMsg ? <p style={errorBannerStyle}>{assetModalMsg}</p> : null}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
-            <AppFormField label="Tipo de asset" required>
+            <AppFormField label="Tipo de equipamiento" required>
               <AppSelect value={assetType} onChange={(e) => setAssetType(e.target.value)}>
                 {BUILDING_ASSET_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
               </AppSelect>
@@ -5532,9 +5532,9 @@ export default function BuildingDetailPage() {
       {/* ── Modal eliminar asset ── */}
       <DeleteConfirmModal
         open={assetArchiveOpen}
-        title="Eliminar asset"
-        description={selectedAsset ? `¿Eliminar "${selectedAsset.name}"? El registro se ocultará pero se conserva en la base de datos.` : "¿Eliminar este asset?"}
-        confirmText={savingAsset ? "Eliminando..." : "Eliminar asset"}
+        title="Eliminar equipamiento"
+        description={selectedAsset ? `¿Eliminar "${selectedAsset.name}"? El registro se ocultará pero se conserva en la base de datos.` : "¿Eliminar este equipamiento?"}
+        confirmText={savingAsset ? "Eliminando..." : "Eliminar equipamiento"}
         onConfirm={() => void handleArchiveAsset()}
         onCancel={() => { if (!savingAsset) setAssetArchiveOpen(false); }}
       />

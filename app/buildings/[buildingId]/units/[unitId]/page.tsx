@@ -644,7 +644,7 @@ export default function UnitDetailPage() {
     }
 
     if (assetError) {
-      setMsg("No se pudieron cargar los assets.");
+      setMsg("No se pudieron cargar los equipos.");
       setLoadingData(false);
       return;
     }
@@ -1238,7 +1238,7 @@ export default function UnitDetailPage() {
                   router.push(`/buildings/${buildingId}/units/${unitId}/assets`)
                 }
               >
-                Administrar assets
+                Administrar equipamiento
               </UiButton>
             ) : null}
           </div>
@@ -1357,7 +1357,7 @@ export default function UnitDetailPage() {
             },
             {
               key: "assets",
-              label: "Assets",
+              label: "Equipamiento",
               icon: <Package size={16} />,
               count: assets.length,
             },
@@ -1377,7 +1377,7 @@ export default function UnitDetailPage() {
             <div style={{ display: "grid", gap: "18px" }}>
               {assets.length > 0 ? (
                 <AppStatBar
-                  title="Distribución de assets por estatus"
+                  title="Distribución de equipamiento por estatus"
                   segments={assetStatusSegments}
                 />
               ) : null}
@@ -1527,7 +1527,7 @@ export default function UnitDetailPage() {
                       }}
                     >
                       <div>
-                        <div style={summaryCardTitleStyle}>Assets {buildingOf(buildingLabels)}</div>
+                        <div style={summaryCardTitleStyle}>Equipamiento {buildingOf(buildingLabels)}</div>
                         <div style={summaryCardTextStyle}>
                           Consulta los equipos instalados y su estado actual.
                         </div>
@@ -1791,11 +1791,11 @@ export default function UnitDetailPage() {
 
       {activeTab === "assets" ? (
         <div style={{ marginTop: "18px" }}>
-          <SectionCard title={`Assets ${buildingOf(buildingLabels)}`}>
+          <SectionCard title={`Equipamiento ${buildingOf(buildingLabels)}`}>
             {assets.length === 0 ? (
               <AppCard>
                 <div style={{ color: "var(--text-muted)", fontWeight: 500 }}>
-                  Todavía no hay assets registrados para esta {buildingLabels.unit.toLowerCase()}.
+                  Todavía no hay equipamiento registrado para esta {buildingLabels.unit.toLowerCase()}.
                 </div>
               </AppCard>
             ) : (

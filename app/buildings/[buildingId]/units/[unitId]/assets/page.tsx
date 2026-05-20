@@ -127,7 +127,7 @@ const assetSchema = z.object({
     "FAN",
     "OTHER",
   ]),
-  assetName: z.string().min(1, "El nombre del asset es obligatorio"),
+  assetName: z.string().min(1, "El nombre del equipo es obligatorio"),
   assetStatus: z.enum(["ACTIVE", "PENDING", "INACTIVE"]),
   notes: z.string().optional(),
 });
@@ -289,7 +289,7 @@ export default function UnitAssetsPage() {
       .order("created_at", { ascending: false });
 
     if (assetError) {
-      setMsg("No se pudieron cargar los assets.");
+      setMsg("No se pudieron cargar los equipos.");
       setLoadingData(false);
       return;
     }
@@ -346,7 +346,7 @@ export default function UnitAssetsPage() {
             fontWeight: 600,
           }}
         >
-          {loading ? "Cargando usuario..." : "Cargando assets..."}
+          {loading ? "Cargando usuario..." : "Cargando equipamiento..."}
         </div>
       </PageContainer>
     );
@@ -383,7 +383,7 @@ export default function UnitAssetsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title={`Assets · ${unitDisplay}`}
+        title={`Equipamiento · ${unitDisplay}`}
         subtitle={`Administra los equipos y activos del departamento en ${building.name}.`}
         actions={
           <div style={{ display: "flex", gap: "10px" }}>
@@ -398,7 +398,7 @@ export default function UnitAssetsPage() {
               variant="primary"
               icon={<Plus size={16} />}
             >
-              Crear asset
+              Crear equipamiento
             </UiButton>
           </div>
         }
@@ -414,7 +414,7 @@ export default function UnitAssetsPage() {
         {assets.length === 0 ? (
           <AppCard>
             <div style={{ padding: "8px 2px", color: "var(--text-muted)", fontWeight: 500 }}>
-              Todavía no hay assets registrados para este departamento.
+              Todavía no hay equipamiento registrado para este departamento.
             </div>
           </AppCard>
         ) : (
@@ -503,7 +503,7 @@ export default function UnitAssetsPage() {
                       variant="secondary"
                       onClick={() => router.push(`/buildings/${buildingId}/units/${unitId}/assets/${asset.id}`)}
                     >
-                      Ver asset
+                      Ver equipamiento
                     </UiButton>
                     <div
                       style={{ position: "relative" }}
@@ -567,13 +567,13 @@ export default function UnitAssetsPage() {
       <Modal
         open={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
-        title="Crear asset"
+        title="Crear equipamiento"
         subtitle="El formulario se abre bajo demanda para mantener más limpia la página principal."
       >
         <form onSubmit={handleCreateAsset}>
           <div style={{ display: "grid", gap: "16px" }}>
             <div>
-              <label style={labelStyle}>Tipo de asset</label>
+              <label style={labelStyle}>Tipo de equipamiento</label>
               <select {...register("assetType")} style={INPUT_STYLE}>
                 <option value="MINISPLIT">MINISPLIT</option>
                 <option value="CENTRAL_AC">CENTRAL_AC</option>
@@ -629,7 +629,7 @@ export default function UnitAssetsPage() {
               </UiButton>
 
               <UiButton type="submit" variant="primary" disabled={isSubmitting}>
-                {isSubmitting ? "Guardando..." : "Guardar asset"}
+                {isSubmitting ? "Guardando..." : "Guardar equipamiento"}
               </UiButton>
             </div>
           </div>

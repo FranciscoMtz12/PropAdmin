@@ -1238,9 +1238,9 @@ export default function CampoTicketsPage() {
 
                 {form.buildingId && buildingAssets.length > 0 && (
                   <div>
-                    <label style={labelStyle}>Asset relacionado (opcional)</label>
+                    <label style={labelStyle}>Equipamiento relacionado (opcional)</label>
                     <select value={form.assetId} onChange={e => setField("assetId", e.target.value)} style={inputStyle}>
-                      <option value="">Sin asset específico</option>
+                      <option value="">Sin equipamiento específico</option>
                       {buildingAssets.map(a => (
                         <option key={a.id} value={a.id}>{a.asset_type ? `[${a.asset_type}] ` : ""}{a.name}</option>
                       ))}

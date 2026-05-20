@@ -664,7 +664,7 @@ export default function BuildingUnitsPage() {
       if (cat === "residential_multi" && data.unitTypeId) {
         const cloneError = await cloneTemplateAssetsToUnit(newUnit.id, data.unitTypeId);
         if (cloneError) {
-          setMsg(`${labels.unit} creado, pero hubo un problema al clonar los assets base: ${cloneError}`);
+          setMsg(`${labels.unit} creado, pero hubo un problema al clonar el equipamiento base: ${cloneError}`);
           await loadPageData();
           return;
         }
@@ -953,13 +953,13 @@ export default function BuildingUnitsPage() {
       {/* Grid de departamentos */}
       <SectionCard
         title={`${labels.units} del edificio`}
-        subtitle="Ordenados por número — entra al detalle o administra sus assets."
+        subtitle="Ordenados por número — entra al detalle o administra su equipamiento."
         icon={<FolderCog size={18} />}
       >
         {units.length === 0 ? (
           <AppEmptyState
             title={`Todavía no hay ${labels.units.toLowerCase()}`}
-            description="Crea la primera unidad del edificio y, si su tipología tiene assets base, el sistema los clonará automáticamente."
+            description="Crea la primera unidad del edificio y, si su tipología tiene equipamiento base, el sistema lo clonará automáticamente."
             actionLabel={`Crear ${labels.unit.toLowerCase()}`}
             onAction={() => setIsCreateModalOpen(true)}
           />
@@ -1178,7 +1178,7 @@ export default function BuildingUnitsPage() {
           setCreateCount(1);
         }}
         title={`Crear ${labels.unit.toLowerCase()}`}
-        subtitle={isResidentialMulti ? "Los assets base de la tipología se clonarán automáticamente al guardar." : undefined}
+        subtitle={isResidentialMulti ? "El equipamiento base de la tipología se clonará automáticamente al guardar." : undefined}
       >
         <form onSubmit={onCreateUnit}>
           {/* ── Número / nombre — siempre presente ── */}

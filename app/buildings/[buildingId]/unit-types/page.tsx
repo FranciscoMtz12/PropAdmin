@@ -35,6 +35,7 @@ import SectionCard from "@/components/SectionCard";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import { Bath, BedDouble, Edit3, LayoutPanelTop, MoreHorizontal, PackageOpen, Plus, Sofa, Trash2, UtensilsCrossed } from "lucide-react";
+import UnitTypeWizardModal from "@/components/UnitTypeWizardModal";
 
 /*
   Tipo TypeScript para el edificio actual.
@@ -172,6 +173,7 @@ export default function BuildingUnitTypesPage() {
   });
 
   const [isFormModalOpen, setIsFormModalOpen] = useState(false);
+  const [isWizardOpen, setIsWizardOpen] = useState(false);
 
   /*
     Si editingUnitTypeId tiene valor, estamos editando.
@@ -514,7 +516,7 @@ export default function BuildingUnitTypesPage() {
         actions={
           <>
             <UiButton href={`/buildings/${building.id}`}>Volver al edificio</UiButton>
-            <UiButton onClick={() => { resetForm(); setMsg(""); setIsFormModalOpen(true); }} variant="primary">
+            <UiButton onClick={() => { setMsg(""); setIsWizardOpen(true); }} variant="primary">
               <Plus size={16} />
               Nueva tipología
             </UiButton>
@@ -524,7 +526,7 @@ export default function BuildingUnitTypesPage() {
 
       {msg ? <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: "16px" }}>{msg}</p> : null}
 
-      <SectionCard title="Tipologías del edificio" subtitle="Cada tipología puede tener sus datos base y sus assets plantilla." icon={<LayoutPanelTop size={18} />}>
+      <SectionCard title="Tipologías del edificio" subtitle="Cada tipología puede tener sus datos base y su equipamiento plantilla." icon={<LayoutPanelTop size={18} />}>
         {unitTypes.length === 0 ? (
           <p>Todavía no hay tipologías creadas para este edificio.</p>
         ) : (
@@ -544,7 +546,7 @@ export default function BuildingUnitTypesPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "14px" }}>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
-                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Assets base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Equipamiento base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
@@ -557,7 +559,7 @@ export default function BuildingUnitTypesPage() {
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}`}>Ver tipología</UiButton>
-                    <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Administrar assets base</UiButton>
+                    <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Administrar equipamiento base</UiButton>
                   </div>
                   <div
                     style={{ position: "relative" }}
@@ -591,6 +593,16 @@ export default function BuildingUnitTypesPage() {
         )}
       </SectionCard>
 
+      {building && (
+        <UnitTypeWizardModal
+          open={isWizardOpen}
+          buildingId={building.id}
+          companyId={building.company_id}
+          onClose={() => setIsWizardOpen(false)}
+          onSuccess={async () => { setIsWizardOpen(false); await loadPageData(); }}
+        />
+      )}
+
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
           <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
@@ -612,7 +624,7 @@ export default function BuildingUnitTypesPage() {
       <Modal
         open={isFormModalOpen}
         onClose={() => { setIsFormModalOpen(false); if (editingUnitTypeId) { handleCancelEdit(); } }}
-        title={editingUnitTypeId ? "Editar tipología" : "Crear tipología"}
+        title="Editar tipología"
         subtitle="El formulario ya no ocupa espacio fijo en la página principal."
       >
         <form onSubmit={onSubmitUnitType}>
@@ -655,7 +667,7 @@ export default function BuildingUnitTypesPage() {
 
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={isSubmitting} variant="primary">
-              {isSubmitting ? "Guardando..." : editingUnitTypeId ? "Actualizar tipología" : "Guardar tipología"}
+              {isSubmitting ? "Guardando..." : "Actualizar tipología"}
             </UiButton>
             <UiButton onClick={() => { setIsFormModalOpen(false); if (editingUnitTypeId) { handleCancelEdit(); } }}>Cancelar</UiButton>
           </div>

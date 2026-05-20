@@ -126,7 +126,7 @@ export default function UnitTypeAssetDetailPage() {
       .eq("unit_type_id", unitTypeId)
       .single();
     if (templateAssetError) {
-      setMsg("No se pudo cargar el asset base.");
+      setMsg("No se pudo cargar el equipo base.");
       setLoadingData(false);
       return;
     }
@@ -161,7 +161,7 @@ export default function UnitTypeAssetDetailPage() {
       return;
     }
     if (!assetName.trim()) {
-      setMsg("El nombre del asset base es obligatorio.");
+      setMsg("El nombre del equipo base es obligatorio.");
       return;
     }
 
@@ -184,14 +184,14 @@ export default function UnitTypeAssetDetailPage() {
       return;
     }
 
-    setMsg("Asset base actualizado correctamente.");
+    setMsg("Equipo base actualizado correctamente.");
     setShowEditForm(false);
     await loadPageData();
   }
 
   if (loading) return <PageContainer>Cargando usuario...</PageContainer>;
   if (!user) return null;
-  if (loadingData) return <PageContainer>Cargando asset base...</PageContainer>;
+  if (loadingData) return <PageContainer>Cargando equipo base...</PageContainer>;
   if (!building || !unitType || !templateAsset) return <PageContainer>{msg || "No se encontró el equipo base."}</PageContainer>;
 
   return (
@@ -199,13 +199,13 @@ export default function UnitTypeAssetDetailPage() {
       <PageHeader
         title={templateAsset.name}
         titleIcon={<LayoutPanelTop size={20} />}
-        subtitle="Este asset todavía es una plantilla de tipología. Luego se clona al crear un departamento real de este tipo."
+        subtitle="Este equipo todavía es una plantilla de tipología. Luego se clona al crear un departamento real de este tipo."
         actions={
           <>
-            <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Volver a assets base</UiButton>
+            <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Volver a equipamiento base</UiButton>
             <UiButton onClick={() => setShowEditForm(true)} variant="primary">
               <PencilLine size={16} />
-              Editar asset base
+              Editar equipo base
             </UiButton>
           </>
         }
@@ -223,7 +223,7 @@ export default function UnitTypeAssetDetailPage() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Edificio</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{building.name}</p></div>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Tipología</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.name}</p></div>
-          <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Tipo de asset</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{templateAsset.asset_type}</p></div>
+          <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Tipo de equipamiento</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{templateAsset.asset_type}</p></div>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: 14, padding: 14 }}><strong>Notas</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{templateAsset.notes || "Sin notas"}</p></div>
         </div>
       </SectionCard>
@@ -231,12 +231,12 @@ export default function UnitTypeAssetDetailPage() {
       <Modal
         open={showEditForm}
         onClose={cancelEditForm}
-        title="Editar asset base"
+        title="Editar equipo base"
         subtitle="La edición se abre en modal para mantener limpia la pantalla principal."
       >
         <form onSubmit={handleUpdateTemplateAsset}>
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: "block", marginBottom: 8 }}>Tipo de asset</label>
+            <label style={{ display: "block", marginBottom: 8 }}>Tipo de equipamiento</label>
             <select value={assetType} onChange={(e) => setAssetType(e.target.value)} style={{ width: "100%", padding: 12, border: "1px solid var(--border-default)", borderRadius: 10, background: "var(--bg-card)" }}>
               <option value="MINISPLIT">Minisplit</option>
               <option value="CENTRAL_AC">A/C central</option>
@@ -271,7 +271,7 @@ export default function UnitTypeAssetDetailPage() {
           </div>
           {msg && showEditForm ? <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: 12 }}>{msg}</p> : null}
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <UiButton type="submit" disabled={saving} variant="primary">{saving ? "Guardando..." : "Actualizar asset base"}</UiButton>
+            <UiButton type="submit" disabled={saving} variant="primary">{saving ? "Guardando..." : "Actualizar equipo base"}</UiButton>
             <UiButton onClick={cancelEditForm}>Cancelar</UiButton>
           </div>
         </form>
