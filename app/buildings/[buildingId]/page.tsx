@@ -2955,14 +2955,14 @@ export default function BuildingDetailPage() {
             <a
               href="/buildings"
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: "10px 12px", borderRadius: 10,
+                display: "flex", alignItems: "center",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
                 border: "1px solid var(--border-default)", background: "var(--bg-card)",
                 color: "var(--text-primary)", cursor: "pointer", textDecoration: "none",
-                fontSize: 11, fontWeight: 600,
+                fontSize: 12, fontWeight: 600,
               }}
             >
-              <ArrowLeft size={18} />
+              <ArrowLeft size={16} />
               <span>Volver</span>
             </a>
             {/* Editar */}
@@ -2970,14 +2970,14 @@ export default function BuildingDetailPage() {
               type="button"
               onClick={openEditModal}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: "10px 12px", borderRadius: 10,
+                display: "flex", alignItems: "center",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
                 border: "1px solid var(--border-default)", background: "var(--bg-card)",
                 color: "var(--text-primary)", cursor: "pointer",
-                fontSize: 11, fontWeight: 600,
+                fontSize: 12, fontWeight: 600,
               }}
             >
-              <Pencil size={18} />
+              <Pencil size={16} />
               <span>Editar</span>
             </button>
             {/* Configuración */}
@@ -2985,14 +2985,14 @@ export default function BuildingDetailPage() {
               type="button"
               onClick={() => void openFeaturesModal()}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: "10px 12px", borderRadius: 10,
+                display: "flex", alignItems: "center",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
                 border: "1px solid var(--border-default)", background: "var(--bg-card)",
                 color: "var(--text-primary)", cursor: "pointer",
-                fontSize: 11, fontWeight: 600,
+                fontSize: 12, fontWeight: 600,
               }}
             >
-              <Sliders size={18} />
+              <Sliders size={16} />
               <span>Configuración</span>
             </button>
             {/* Unidades — oculto para terrenos y parques industriales */}
@@ -3000,14 +3000,14 @@ export default function BuildingDetailPage() {
               <a
                 href={`/buildings/${building.id}/units`}
                 style={{
-                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                  gap: 4, padding: "10px 12px", borderRadius: 10,
+                  display: "flex", alignItems: "center",
+                  gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
                   border: "1px solid var(--accent)", background: "var(--accent)",
                   color: "#ffffff", cursor: "pointer", textDecoration: "none",
-                  fontSize: 11, fontWeight: 600,
+                  fontSize: 12, fontWeight: 600,
                 }}
               >
-                <Layers3 size={18} />
+                <Layers3 size={16} />
                 <span>{labels.units}</span>
               </a>
             )}
@@ -3016,14 +3016,14 @@ export default function BuildingDetailPage() {
               type="button"
               onClick={() => setIsDeleteModalOpen(true)}
               style={{
-                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                gap: 4, padding: "10px 12px", borderRadius: 10,
+                display: "flex", alignItems: "center",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
                 border: "1px solid #dc2626", background: "transparent",
                 color: "#dc2626", cursor: "pointer",
-                fontSize: 11, fontWeight: 600,
+                fontSize: 12, fontWeight: 600,
               }}
             >
-              <Trash2 size={18} />
+              <Trash2 size={16} />
               <span>Eliminar</span>
             </button>
           </div>

@@ -68,7 +68,7 @@ export default function UiButton({
           {icon}
         </span>
       ) : null}
-      <span>{children}</span>
+      <span style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}>{children}</span>
     </>
   );
 

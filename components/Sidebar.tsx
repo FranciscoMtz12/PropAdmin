@@ -186,7 +186,7 @@ function NavItem({
     justifyContent: "space-between",
     gap: 12,
     padding: "11px 14px 11px 11px",
-    borderRadius: 12,
+    borderRadius: "var(--border-radius-md, 12px)",
     textDecoration: "none",
     background: active ? "rgba(255,255,255,0.10)" : "transparent",
     borderLeft: active ? `3px solid ${accentColor}` : "3px solid transparent",
@@ -485,7 +485,7 @@ export default function Sidebar() {
             ) : (
               <div
                 style={{
-                  width: 38, height: 38, borderRadius: 10,
+                  width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
                   background: accentColor,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontWeight: 800, fontSize: 14, color: "#ffffff",
@@ -605,7 +605,7 @@ export default function Sidebar() {
             onClick={handleLogout}
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
-              padding: "10px 12px", borderRadius: 12,
+              padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
               border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
               color: "#FFFFFF", fontWeight: 700, fontSize: 13, cursor: "pointer",
             }}
