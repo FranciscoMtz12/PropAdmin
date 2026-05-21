@@ -5987,7 +5987,7 @@ export default function BuildingDetailPage() {
                       >
                         <X size={13} />
                       </button>
-                      <IconComponent size={28} color="var(--accent)" />
+                      <div style={{ color: "var(--accent)", lineHeight: 0 }}><IconComponent size={28} /></div>
                       <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginTop: 8, lineHeight: 1.3 }}>
                         {area.name}
                       </span>
