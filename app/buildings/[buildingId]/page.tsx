@@ -28,6 +28,8 @@ import {
   AlertTriangle,
   Archive,
   ArrowLeft,
+  ArrowUpDown,
+  Baby,
   Ban,
   Bath,
   Copy,
@@ -45,6 +47,7 @@ import {
   Edit3,
   Factory,
   Flame,
+  Dumbbell,
   Download,
   ExternalLink,
   FileClockIcon,
@@ -52,6 +55,7 @@ import {
   FileText,
   Folder,
   FolderOpen,
+  Leaf,
   List,
   Search,
   Upload,
@@ -70,6 +74,7 @@ import {
   MoreHorizontal,
   Package,
   PackageOpen,
+  PartyPopper,
   Pencil,
   Plus,
   Ruler,
@@ -82,12 +87,14 @@ import {
   Shirt,
   Sofa,
   Sparkles,
+  Sun,
   Store,
   Tags,
   Trash2,
   Trees,
   Truck,
   Warehouse,
+  Waves,
   Wifi,
   Wrench,
   X,
@@ -544,6 +551,37 @@ const CLEANING_TYPE_LABEL: Record<string, string> = {
 const MAINT_PRIORITY_ICON: Record<string, string> = {
   urgent: '🔴', high: '🟠', medium: '🟡', low: '⚪',
 };
+
+/* ─── Áreas / Amenidades ─────────────────────────────────────────────── */
+
+type AreaEntry = { name: string; icon: React.ComponentType<{ size?: number }> };
+
+const AMENITIES: AreaEntry[] = [
+  { name: "Alberca",                   icon: Waves         },
+  { name: "Gimnasio",                  icon: Dumbbell      },
+  { name: "Jardín",                    icon: Leaf          },
+  { name: "Roof garden",               icon: Building2     },
+  { name: "Terraza",                   icon: Sun           },
+  { name: "Salón de eventos",          icon: PartyPopper   },
+  { name: "Área de asadores",          icon: Flame         },
+  { name: "Juegos infantiles",         icon: Baby          },
+  { name: "Estacionamiento de visitas",icon: Car           },
+];
+
+const BUILDING_SPACES: AreaEntry[] = [
+  { name: "Cuarto de vigilancia", icon: Shield      },
+  { name: "Cuarto de limpieza",   icon: Sparkles    },
+  { name: "Bodega general",       icon: Package     },
+  { name: "Elevador",             icon: ArrowUpDown },
+  { name: "Baños del edificio",   icon: Bath        },
+  { name: "Cuarto de blancos",    icon: Shirt       },
+  { name: "Cuarto de máquinas",   icon: Settings    },
+  { name: "Cuarto técnico",       icon: Wifi        },
+];
+
+const COMMON_AREA_ICON_MAP: Record<string, React.ComponentType<{ size?: number }>> = Object.fromEntries(
+  [...AMENITIES, ...BUILDING_SPACES].map(({ name, icon }) => [name, icon])
+);
 
 /* ─── Helpers ───────────────────────────────────────────────────────── */
 
@@ -1032,9 +1070,11 @@ export default function BuildingDetailPage() {
   const [plazaLocales, setPlazaLocales]       = useState<PlazaLocal[]>([]);
   const [unitsNeedingReview, setUnitsNeedingReview] = useState(0);
   const [commonAreas, setCommonAreas]         = useState<{ id: string; name: string }[]>([]);
-  const [addingCommonArea, setAddingCommonArea] = useState(false);
-  const [newCommonAreaName, setNewCommonAreaName] = useState("");
-  const [savingCommonArea, setSavingCommonArea]   = useState(false);
+  const [addingCommonArea, setAddingCommonArea]       = useState(false);
+  const [savingCommonArea, setSavingCommonArea]       = useState(false);
+  const [selectedAreaNames, setSelectedAreaNames]     = useState<Set<string>>(new Set());
+  const [customAreaInput, setCustomAreaInput]         = useState("");
+  const [pendingCustomAreas, setPendingCustomAreas]   = useState<string[]>([]);
   const [isCreateBodegaOpen, setIsCreateBodegaOpen] = useState(false);
   const [savingBodega, setSavingBodega] = useState(false);
   const [bodegaName, setBodegaName] = useState("");
@@ -3056,7 +3096,7 @@ export default function BuildingDetailPage() {
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery, pendingDot: tabsWithPendingTasks.has('gallery')   },
           ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services, pendingDot: tabsWithPendingTasks.has('services')     }] : []),
           ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking,  pendingDot: tabsWithPendingTasks.has('parking')      }] : []),
-          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
+          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas / Amenidades", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
         ]}
       />
 
@@ -5887,67 +5927,200 @@ export default function BuildingDetailPage() {
       {activeTab === "common_areas" && hasCommonAreasTab && (
         <div style={{ display: "grid", gap: 20 }}>
           <SectionCard
-            title="Áreas comunes"
+            title="Áreas / Amenidades"
             icon={<Trees size={18} />}
             action={
-              <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => { setNewCommonAreaName(""); setAddingCommonArea(true); }}>
-                Agregar área común
+              <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => {
+                setSelectedAreaNames(new Set());
+                setPendingCustomAreas([]);
+                setCustomAreaInput("");
+                setAddingCommonArea(true);
+              }}>
+                + Agregar área
               </UiButton>
             }
           >
             {commonAreas.length === 0 ? (
               <AppEmptyState
-                title="Sin áreas comunes registradas"
+                title="Sin áreas registradas"
                 description="Registra jardines, roof garden, gimnasio, alberca u otros espacios compartidos."
-                actionLabel="+ Agregar área común"
-                onAction={() => { setNewCommonAreaName(""); setAddingCommonArea(true); }}
+                actionLabel="+ Agregar área"
+                onAction={() => { setSelectedAreaNames(new Set()); setPendingCustomAreas([]); setCustomAreaInput(""); setAddingCommonArea(true); }}
               />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {commonAreas.map((area) => (
-                  <div key={area.id} style={{
-                    display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)",
-                  }}>
-                    <Trees size={14} color="#15803d" />
-                    <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>{area.name}</span>
-                  </div>
-                ))}
+                {commonAreas.map((area) => {
+                  const IconComponent = COMMON_AREA_ICON_MAP[area.name] ?? Trees;
+                  return (
+                    <div key={area.id} style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      padding: "10px 14px", borderRadius: "var(--border-radius-md)",
+                      border: "1px solid var(--border-default)", background: "var(--bg-page)",
+                    }}>
+                      <IconComponent size={15} />
+                      <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500, flex: 1 }}>{area.name}</span>
+                      <button
+                        type="button"
+                        title="Eliminar"
+                        onClick={async () => {
+                          await supabase.from("common_areas").update({ deleted_at: new Date().toISOString() }).eq("id", area.id);
+                          setCommonAreas(prev => prev.filter(a => a.id !== area.id));
+                        }}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", padding: 4, borderRadius: "var(--border-radius-sm)" }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </SectionCard>
         </div>
       )}
 
-      {/* ── Modal: agregar área común ── */}
-      <Modal open={addingCommonArea} onClose={() => { if (!savingCommonArea) setAddingCommonArea(false); }} title="Agregar área común">
-        <AppFormField label="Nombre del área" required>
-          <input
-            value={newCommonAreaName}
-            onChange={(e) => setNewCommonAreaName(e.target.value)}
-            placeholder="Ej: Jardín, Roof garden, Gimnasio..."
-            style={INPUT_STYLE}
-          />
-        </AppFormField>
-        <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-          <UiButton
-            variant="primary"
-            disabled={savingCommonArea || !newCommonAreaName.trim()}
-            onClick={async () => {
-              if (!building || !newCommonAreaName.trim()) return;
-              setSavingCommonArea(true);
-              await supabase.from("common_areas").insert({ building_id: building.id, name: newCommonAreaName.trim() });
-              const { data } = await supabase.from("common_areas").select("id, name").eq("building_id", building.id).is("deleted_at", null).order("created_at");
-              setCommonAreas((data || []) as { id: string; name: string }[]);
-              setSavingCommonArea(false);
-              setAddingCommonArea(false);
-            }}
-          >
-            {savingCommonArea ? "Guardando..." : "Guardar"}
-          </UiButton>
-          <UiButton onClick={() => { if (!savingCommonArea) setAddingCommonArea(false); }}>Cancelar</UiButton>
-        </div>
-      </Modal>
+      {/* ── Modal: agregar área / amenidad ── */}
+      {(() => {
+        const openModal = () => { setSelectedAreaNames(new Set()); setPendingCustomAreas([]); setCustomAreaInput(""); setAddingCommonArea(true); };
+        const closeModal = () => { if (!savingCommonArea) { setAddingCommonArea(false); setSelectedAreaNames(new Set()); setPendingCustomAreas([]); setCustomAreaInput(""); } };
+        const registeredNames = new Set(commonAreas.map(a => a.name));
+        const totalSelected = selectedAreaNames.size + pendingCustomAreas.length;
+
+        const toggleArea = (name: string) => {
+          if (registeredNames.has(name)) return;
+          setSelectedAreaNames(prev => {
+            const next = new Set(prev);
+            next.has(name) ? next.delete(name) : next.add(name);
+            return next;
+          });
+        };
+
+        const addCustom = () => {
+          const val = customAreaInput.trim();
+          if (!val) return;
+          setPendingCustomAreas(prev => [...prev, val]);
+          setCustomAreaInput("");
+        };
+
+        const handleSave = async () => {
+          if (!building) return;
+          const allToSave = [...selectedAreaNames, ...pendingCustomAreas];
+          if (allToSave.length === 0) return;
+          setSavingCommonArea(true);
+          await Promise.all(allToSave.map(name => supabase.from("common_areas").insert({ building_id: building.id, name })));
+          const { data } = await supabase.from("common_areas").select("id, name").eq("building_id", building.id).is("deleted_at", null).order("created_at");
+          setCommonAreas((data || []) as { id: string; name: string }[]);
+          setSavingCommonArea(false);
+          setAddingCommonArea(false);
+          setSelectedAreaNames(new Set());
+          setPendingCustomAreas([]);
+          setCustomAreaInput("");
+        };
+
+        const renderAreaCard = ({ name, icon: Icon }: AreaEntry) => {
+          const already = registeredNames.has(name);
+          const selected = selectedAreaNames.has(name);
+          return (
+            <motion.button
+              key={name}
+              variants={staggerItem}
+              type="button"
+              disabled={already}
+              onClick={() => toggleArea(name)}
+              style={{
+                display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                gap: 6, padding: "12px 8px", cursor: already ? "default" : "pointer",
+                borderRadius: "var(--border-radius-lg)",
+                border: selected ? "2px solid var(--accent)" : "1px solid var(--border-default)",
+                background: selected ? "color-mix(in srgb, var(--accent) 12%, var(--bg-card))" : "var(--bg-card)",
+                color: selected ? "var(--accent)" : already ? "var(--text-muted)" : "var(--text-primary)",
+                opacity: already ? 0.5 : 1,
+                transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                textAlign: "center", fontSize: 12, fontWeight: 500,
+                position: "relative", whiteSpace: "normal", lineHeight: 1.3,
+                minHeight: 72,
+              }}
+            >
+              <Icon size={18} />
+              <span>{name}</span>
+              {already && (
+                <span style={{
+                  position: "absolute", top: -7, right: -7, fontSize: 10, fontWeight: 700,
+                  background: "var(--bg-card)", color: "var(--text-muted)",
+                  borderRadius: 999, padding: "1px 5px", border: "1px solid var(--border-default)",
+                }}>✓</span>
+              )}
+            </motion.button>
+          );
+        };
+
+        return (
+          <Modal open={addingCommonArea} onClose={closeModal} title="Agregar área" maxWidth={620}>
+            {/* Sección 1: Amenidades */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Amenidades</p>
+            <motion.div variants={staggerContainer} initial="hidden" animate="show"
+              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 20 }}
+            >
+              {AMENITIES.map(renderAreaCard)}
+            </motion.div>
+
+            <div style={{ borderTop: "1px solid var(--border-default)", marginBottom: 20 }} />
+
+            {/* Sección 2: Espacios del edificio */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Espacios del edificio</p>
+            <motion.div variants={staggerContainer} initial="hidden" animate="show"
+              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 20 }}
+            >
+              {BUILDING_SPACES.map(renderAreaCard)}
+            </motion.div>
+
+            <div style={{ borderTop: "1px solid var(--border-default)", marginBottom: 20 }} />
+
+            {/* Sección 3: Personalizada */}
+            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Otra</p>
+            <div style={{ display: "flex", gap: 8, marginBottom: pendingCustomAreas.length > 0 ? 10 : 20 }}>
+              <input
+                value={customAreaInput}
+                onChange={e => setCustomAreaInput(e.target.value)}
+                onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+                placeholder="Ej: Cuarto de TV, Sala de juntas..."
+                style={{ ...INPUT_STYLE, flex: 1 }}
+              />
+              <UiButton disabled={!customAreaInput.trim()} onClick={addCustom}>+ Agregar</UiButton>
+            </div>
+            {pendingCustomAreas.length > 0 && (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 20 }}>
+                {pendingCustomAreas.map((name, i) => (
+                  <span key={i} style={{
+                    display: "inline-flex", alignItems: "center", gap: 4,
+                    padding: "4px 10px", borderRadius: 999,
+                    background: "var(--bg-card-hover)", border: "1px solid var(--border-default)",
+                    fontSize: 12, color: "var(--text-primary)", fontWeight: 500,
+                  }}>
+                    {name}
+                    <button type="button" onClick={() => setPendingCustomAreas(prev => prev.filter((_, j) => j !== i))}
+                      style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)", display: "flex", lineHeight: 0 }}>
+                      <X size={12} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
+            {/* Acciones */}
+            <div style={{ display: "flex", gap: 10, borderTop: "1px solid var(--border-default)", paddingTop: 16 }}>
+              <UiButton
+                variant="primary"
+                disabled={savingCommonArea || totalSelected === 0}
+                onClick={handleSave}
+              >
+                {savingCommonArea ? "Guardando..." : `Guardar${totalSelected > 0 ? ` (${totalSelected})` : ""}`}
+              </UiButton>
+              <UiButton onClick={closeModal}>Cancelar</UiButton>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* ── Modal de configuración de features ── */}
       <Modal
