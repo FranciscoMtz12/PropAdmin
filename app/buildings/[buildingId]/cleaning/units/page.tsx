@@ -461,7 +461,7 @@ export default function CleaningUnitsPage() {
                               <MoreHorizontal size={16} />
                             </button>
                             {openActionsRowId === row.id && (
-                              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
+                              <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12))", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
                                 <a
                                   href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
                                   style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600 }}

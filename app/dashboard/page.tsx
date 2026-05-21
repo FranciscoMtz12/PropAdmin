@@ -215,10 +215,10 @@ function MXNTooltip({
       style={{
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",
-        borderRadius: 10,
+        borderRadius: "var(--border-radius-md)",
         padding: "12px 16px",
         fontSize: 13,
-        boxShadow: "0 4px 12px rgba(0,0,0,0.12)",
+        boxShadow: "var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12))",
       }}
     >
       <p
@@ -1240,7 +1240,7 @@ export default function DashboardPage() {
                     padding: "12px 14px",
                     background: "var(--metric-bg-green)",
                     border: "1px solid var(--metric-border-green)",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                   }}
                 >
                   <div
@@ -1248,7 +1248,7 @@ export default function DashboardPage() {
                       width: 38,
                       height: 38,
                       background: "var(--icon-bg-green)",
-                      borderRadius: 10,
+                      borderRadius: "var(--border-radius-md)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1284,7 +1284,7 @@ export default function DashboardPage() {
                     padding: "12px 14px",
                     background: "var(--metric-bg-neutral)",
                     border: "1px solid var(--metric-border-neutral)",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                   }}
                 >
                   <div
@@ -1292,7 +1292,7 @@ export default function DashboardPage() {
                       width: 38,
                       height: 38,
                       background: "var(--icon-bg-blue)",
-                      borderRadius: 10,
+                      borderRadius: "var(--border-radius-md)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -1611,7 +1611,7 @@ export default function DashboardPage() {
                       display: "flex",
                       gap: 12,
                       padding: "10px 14px",
-                      borderRadius: 10,
+                      borderRadius: "var(--border-radius-md)",
                       background: col.bg,
                       borderLeft: `4px solid ${col.border}`,
                     }}
@@ -1698,7 +1698,7 @@ export default function DashboardPage() {
                           alignItems: "center",
                           gap: 10,
                           padding: "10px 14px",
-                          borderRadius: 10,
+                          borderRadius: "var(--border-radius-md)",
                           background: done ? "var(--metric-bg-green)" : "var(--bg-page)",
                           border: `1px solid ${done ? "var(--metric-border-green)" : "var(--border-default)"}`,
                         }}

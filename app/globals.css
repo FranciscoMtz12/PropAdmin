@@ -97,12 +97,18 @@
   --divider: #F1F5F9;
 
   /* ── Tokens de tema UI (sobreescritos por [data-theme="super_soft"]) ── */
-  --border-radius-sm: 6px;
-  --border-radius-md: 8px;
-  --border-radius-lg: 12px;
-  --border-radius-xl: 16px;
+  --border-radius-sm:   6px;
+  --border-radius-md:   8px;
+  --border-radius-lg:   12px;
+  --border-radius-xl:   16px;
+  --border-radius-full: 999px;
   --card-shadow:    none;
   --sidebar-radius: 0;
+
+  /* ── Sombras escalables ────────────────────────────────────────── */
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.12);
+  --shadow-lg: 0 20px 60px rgba(0,0,0,0.25);
 
   /* ── Espaciado global ──────────────────────────────────────────── */
   --card-gap:     16px;

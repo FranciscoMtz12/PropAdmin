@@ -82,8 +82,8 @@ const dropdownTriggerStyle: React.CSSProperties = {
 
 const dropdownMenuStyle: React.CSSProperties = {
   position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 160,
-  borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-card)",
-  boxShadow: "0 10px 28px rgba(15,23,42,0.12)", padding: 6, display: "grid", gap: 4, zIndex: 30,
+  borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-card)",
+  boxShadow: "var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12))", padding: 6, display: "grid", gap: 4, zIndex: 30,
 };
 
 const dropdownItemStyle: React.CSSProperties = {

@@ -30,7 +30,7 @@ export default function AppStatBar({
     <div
       style={{
         border: "1px solid var(--border-default)",
-        borderRadius: 16,
+        borderRadius: "var(--border-radius-xl)",
         padding: 18,
         background: "var(--bg-card)",
       }}
@@ -55,7 +55,7 @@ export default function AppStatBar({
           display: "flex",
           width: "100%",
           height: 12,
-          borderRadius: 999,
+          borderRadius: "var(--border-radius-full, 999px)",
           overflow: "hidden",
           background: "var(--divider)",
           marginBottom: 14,
@@ -88,7 +88,7 @@ export default function AppStatBar({
               style={{
                 width: 10,
                 height: 10,
-                borderRadius: 999,
+                borderRadius: "var(--border-radius-full, 999px)",
                 background: segment.color,
                 display: "inline-block",
               }}

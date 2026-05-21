@@ -91,7 +91,7 @@ export default function MetricCard({
           ) : null}
         </div>
 
-        {icon ? <AppIconBox size={40} radius={12}>{icon}</AppIconBox> : null}
+        {icon ? <AppIconBox size={40} radius="var(--border-radius-md)">{icon}</AppIconBox> : null}
       </div>
     </AppCard>
     </motion.div>

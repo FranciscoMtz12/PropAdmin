@@ -22,7 +22,7 @@ export default function AppSelect({ children, style, ...props }: AppSelectProps)
         width: "100%",
         padding: 12,
         border: "1px solid var(--border-default)",
-        borderRadius: 10,
+        borderRadius: "var(--border-radius-md)",
         background: "var(--bg-input)",
         color: "var(--text-primary)",
         outline: "none",

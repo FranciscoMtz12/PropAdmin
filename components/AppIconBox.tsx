@@ -51,7 +51,7 @@ export default function AppIconBox({
 }: {
   children: ReactNode;
   size?: number;
-  radius?: number;
+  radius?: number | string;
   variant?: IconVariant;
   background?: string;
   color?: string;

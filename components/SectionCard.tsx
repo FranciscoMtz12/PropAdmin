@@ -46,7 +46,7 @@ export default function SectionCard({
         >
           <div style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
             {icon ? (
-              <AppIconBox size={40} radius={12} variant="neutral">
+              <AppIconBox size={40} radius="var(--border-radius-md)" variant="neutral">
                 {icon}
               </AppIconBox>
             ) : null}

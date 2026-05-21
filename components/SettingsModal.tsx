@@ -160,10 +160,10 @@ export default function SettingsModal({
           maxWidth: 480,
           maxHeight: "calc(100vh - 48px)",
           overflowY: "auto",
-          borderRadius: 20,
+          borderRadius: "var(--border-radius-xl)",
           background: "var(--bg-card)",
           border: "1px solid var(--border-default)",
-          boxShadow: "0 24px 64px rgba(0, 0, 0, 0.28)",
+          boxShadow: "var(--shadow-lg, 0 20px 60px rgba(0,0,0,0.25))",
           padding: "24px 24px 28px",
         }}
       >
@@ -196,7 +196,7 @@ export default function SettingsModal({
               justifyContent: "center",
               width: 32,
               height: 32,
-              borderRadius: 8,
+              borderRadius: "var(--border-radius-md)",
               border: "1px solid var(--border-default)",
               background: "var(--bg-page)",
               color: "var(--text-muted)",
@@ -311,7 +311,7 @@ function ToggleRow({
         justifyContent: "space-between",
         gap: 12,
         padding: "12px 14px",
-        borderRadius: 12,
+        borderRadius: "var(--border-radius-lg)",
         background: "var(--bg-page)",
         border: "1px solid var(--border-default)",
       }}
@@ -322,7 +322,7 @@ function ToggleRow({
           style={{
             width: 32,
             height: 32,
-            borderRadius: 8,
+            borderRadius: "var(--border-radius-md)",
             background: "var(--icon-bg-neutral)",
             color: "var(--icon-color-neutral)",
             display: "flex",
@@ -398,7 +398,7 @@ function InfoRow({
         justifyContent: "space-between",
         gap: 12,
         padding: "12px 14px",
-        borderRadius: 12,
+        borderRadius: "var(--border-radius-lg)",
         background: "var(--bg-page)",
         border: "1px solid var(--border-default)",
       }}
@@ -408,7 +408,7 @@ function InfoRow({
           style={{
             width: 32,
             height: 32,
-            borderRadius: 8,
+            borderRadius: "var(--border-radius-md)",
             background: "var(--icon-bg-neutral)",
             color: "var(--icon-color-neutral)",
             display: "flex",

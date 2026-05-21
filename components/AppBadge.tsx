@@ -65,7 +65,7 @@ export default function AppBadge({
         alignItems: "center",
         gap: 6,
         padding: "6px 10px",
-        borderRadius: 999,
+        borderRadius: "var(--border-radius-full, 999px)",
         fontSize: 13,
         fontWeight: 600,
         lineHeight: 1,

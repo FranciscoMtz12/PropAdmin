@@ -66,7 +66,7 @@ export default function Modal({
               background: "var(--bg-card)",
               borderRadius: "var(--border-radius-lg)",
               border: "1px solid var(--border-default)",
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.25)",
+              boxShadow: "var(--shadow-lg, 0 20px 60px rgba(0,0,0,0.25))",
               padding: "24px",
               color: "var(--text-primary)",
               ...contentStyle,

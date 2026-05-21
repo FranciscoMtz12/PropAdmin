@@ -750,7 +750,7 @@ function SummaryItem({
   label: string; value: string; icon: ReactNode;
 }) {
   return (
-    <AppCard style={{ padding: 16, borderRadius: 14 }}>
+    <AppCard style={{ padding: 16 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</p>
@@ -3804,11 +3804,11 @@ export default function BuildingDetailPage() {
                 style={{ display: "grid", gap: 12 }}
               >
                 {buildingUnitTypes.map((ut) => (
-                  <motion.div key={ut.id} variants={staggerItem} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 18, background: "var(--bg-card)" }}>
+                  <motion.div key={ut.id} variants={staggerItem} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 18, background: "var(--bg-card)" }}>
                     {/* Header */}
                     <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 14 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                        <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <LayoutPanelTop size={17} />
                         </div>
                         <div>
@@ -4004,7 +4004,7 @@ export default function BuildingDetailPage() {
                   {buildingAssets.map((asset) => {
                     const typeLabel = BUILDING_ASSET_TYPES.find((t) => t.value === asset.asset_type)?.label || asset.asset_type;
                     return (
-                      <AppCard key={asset.id} style={{ padding: 16, borderRadius: 16 }}>
+                      <AppCard key={asset.id} style={{ padding: 16 }}>
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                           <AssetTypeIcon assetType={asset.asset_type} size={18} />
                           <div style={{ flex: 1, minWidth: 0 }}>

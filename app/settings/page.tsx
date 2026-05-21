@@ -120,7 +120,7 @@ const IS: React.CSSProperties = {
   width: "100%", padding: ".6rem .85rem",
   background: "var(--bg-input, var(--bg-card))",
   border: "1px solid var(--border-default)",
-  borderRadius: 8, color: "var(--text-primary)",
+  borderRadius: "var(--border-radius-md)", color: "var(--text-primary)",
   fontSize: 14, outline: "none", boxSizing: "border-box",
 };
 
@@ -150,7 +150,7 @@ function SaveBtn({ saving, onClick, label = "Guardar" }: { saving: boolean; onCl
       style={{
         padding: ".55rem 1.25rem",
         background: saving ? "var(--accent-muted, #6B1A3F)" : "var(--accent, #8B2252)",
-        border: "none", borderRadius: 8, color: "#fff",
+        border: "none", borderRadius: "var(--border-radius-sm)", color: "#fff",
         fontSize: 13, fontWeight: 600,
         cursor: saving ? "not-allowed" : "pointer",
         opacity: saving ? 0.7 : 1, transition: "opacity .15s",
@@ -939,7 +939,7 @@ export default function SettingsPage() {
                       key={key}
                       type="button"
                       onClick={() => setUiTheme(key)}
-                      style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: 12, border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", maxWidth: 280, transition: "border-color 0.15s", outline: "none" }}
+                      style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: "var(--border-radius-lg)", border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", maxWidth: 280, transition: "border-color 0.15s", outline: "none" }}
                     >
                       <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                         <div style={{ background: "var(--bg-card)", borderRadius: previewR, padding: "10px 14px", border: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 10 }}>
@@ -997,7 +997,7 @@ export default function SettingsPage() {
                     key={key}
                     type="button"
                     onClick={() => { if ((key === "dark") !== isDark) toggleDark(); }}
-                    style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: 12, border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", maxWidth: 280, transition: "border-color 0.15s", outline: "none" }}
+                    style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: "var(--border-radius-lg)", border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", maxWidth: 280, transition: "border-color 0.15s", outline: "none" }}
                   >
                     {/* Preview */}
                     <div style={{ background: bgPage, borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1097,7 +1097,7 @@ export default function SettingsPage() {
                   { label: "Usuarios",    value: "Ilimitados" },
                   { label: "Unidades",    value: "Ilimitadas" },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ padding: "14px 16px", borderRadius: 10, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                  <div key={label} style={{ padding: "14px 16px", borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
                     <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
                   </div>
@@ -1112,7 +1112,7 @@ export default function SettingsPage() {
                   { label: "Versión de la app",   value: "1.0.0" },
                   { label: "Fecha de creación",   value: company?.created_at ? formatDate(company.created_at) : "—" },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <span style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 160, fontWeight: 500 }}>{label}</span>
                     <span style={{ fontSize: 13, color: "var(--text-primary)", fontFamily: "monospace", wordBreak: "break-all" }}>{value}</span>
                   </div>
@@ -1121,7 +1121,7 @@ export default function SettingsPage() {
             </SectionCard>
 
             <SectionCard title="Zona de peligro" style={{ border: "1.5px solid rgba(226,75,74,.4)", background: "rgba(226,75,74,.02)" }}>
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 8, background: "rgba(226,75,74,.07)", border: "1px solid rgba(226,75,74,.18)", marginBottom: 18 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(226,75,74,.07)", border: "1px solid rgba(226,75,74,.18)", marginBottom: 18 }}>
                 <AlertTriangle size={16} color="#E24B4A" style={{ flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: 13, color: "var(--text-primary)", margin: 0, lineHeight: 1.55 }}>
                   Las acciones en esta sección pueden tener consecuencias irreversibles. Procede con precaución.

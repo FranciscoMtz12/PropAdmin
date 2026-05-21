@@ -51,7 +51,7 @@ export default function PageHeader({
         transition={{ duration: 0.3 }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          {titleIcon ? <AppIconBox size={46} radius={14}>{titleIcon}</AppIconBox> : null}
+          {titleIcon ? <AppIconBox size={46} radius="var(--border-radius-lg)">{titleIcon}</AppIconBox> : null}
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
             {/* Barra vertical de acento a la izquierda del título */}
@@ -60,7 +60,7 @@ export default function PageHeader({
                 width: 4,
                 alignSelf: "stretch",
                 minHeight: 36,
-                borderRadius: 99,
+                borderRadius: "var(--border-radius-full, 999px)",
                 background: "var(--accent)",
                 flexShrink: 0,
                 transition: "background 0.3s",

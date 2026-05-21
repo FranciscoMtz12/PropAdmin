@@ -37,7 +37,7 @@ export default function AppTable<T>({
       <div
         style={{
           border: "1px dashed var(--border-dashed)",
-          borderRadius: 16,
+          borderRadius: "var(--border-radius-xl)",
           padding: 20,
           background: "var(--bg-table-empty)",
           color: "var(--text-muted)",
@@ -55,7 +55,7 @@ export default function AppTable<T>({
         width: "100%",
         overflowX: "auto",
         border: "1px solid var(--border-default)",
-        borderRadius: 16,
+        borderRadius: "var(--border-radius-xl)",
         background: "var(--bg-card)",
       }}
     >
