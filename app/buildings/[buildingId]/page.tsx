@@ -750,13 +750,13 @@ function SummaryItem({
   label: string; value: string; icon: ReactNode;
 }) {
   return (
-    <AppCard style={{ padding: 16 }}>
+    <AppCard style={{ padding: 16, borderRadius: "var(--border-radius-md)" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
           <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</p>
           <strong style={{ display: "block", lineHeight: 1.2 }}>{value}</strong>
         </div>
-        <AppIconBox size={38} radius={12}>{icon}</AppIconBox>
+        <AppIconBox size={38} radius="var(--border-radius-md)">{icon}</AppIconBox>
       </div>
     </AppCard>
   );
