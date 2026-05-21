@@ -40,14 +40,14 @@ type CocinaEq = {
   fridge: string; fridgeModel: string; others: string[];
 };
 type LavanderiaEq = {
-  boiler: string; boilerCapacity: string; boilerCount: number;
+  boiler: string; boilerCapacity: string; boilerCount: number; boilerServices: string;
   centroCarga: string; washer: string; dryer: string;
 };
 type CuartoMaquinasEq = {
-  boiler: string; boilerCapacity: string; boilerCount: number;
+  boiler: string; boilerCapacity: string; boilerCount: number; boilerServices: string;
 };
 type EquiposFuncionalesEq = {
-  boiler: string; boilerCapacity: string; boilerCount: number;
+  boiler: string; boilerCapacity: string; boilerCount: number; boilerServices: string;
   centroCarga: string; washer: string; dryer: string;
 };
 type AireCentralEq = { capacity: string };
@@ -83,10 +83,10 @@ const DEFAULT_EQ: Equipment = {
   cuartoServicio: { ...DEFAULT_BEDROOM_EQ },
   sala: { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [], guestBath: "NONE", guestBathShower: "NONE" },
   cocina: { ac: "NONE", hasHalfBath: false, stoveType: "NONE", stoveBurners: "4Q", oven: "NONE", fridge: "NONE", fridgeModel: "", others: [] },
-  lavanderia: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, centroCarga: "NO", washer: "NO", dryer: "NONE" },
-  cuartoMaquinas: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1 },
-  equiposFuncionales: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, centroCarga: "NO", washer: "NO", dryer: "NONE" },
-  aireCentral: { capacity: "1T" },
+  lavanderia: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, boilerServices: "1", centroCarga: "NO", washer: "NO", dryer: "NONE" },
+  cuartoMaquinas: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, boilerServices: "1" },
+  equiposFuncionales: { boiler: "NONE", boilerCapacity: "60L", boilerCount: 1, boilerServices: "1", centroCarga: "NO", washer: "NO", dryer: "NONE" },
+  aireCentral: { capacity: "5" },
   comedor: { ac: "NONE", furniture: "NONE" },
 };
 
@@ -237,6 +237,7 @@ function acTypeOf(v: string): string {
 
 function acCapOf(v: string): string {
   if (v.endsWith("_1_5T")) return "1_5T";
+  if (v.endsWith("_5T")) return "5T";
   if (v.endsWith("_3T")) return "3T";
   if (v.endsWith("_2T")) return "2T";
   return "1T";
@@ -272,6 +273,7 @@ function AcSection({ value, onChange }: { value: string; onChange: (v: string) =
             { value: "1_5T", label: "1.5 ton" },
             { value: "2T", label: "2 ton" },
             { value: "3T", label: "3 ton" },
+            ...(t === "FAN_COIL" ? [{ value: "5T", label: "5 ton" }] : []),
           ]}
         />
       </Expand>
@@ -341,7 +343,8 @@ const BOILER_NAME: Record<string, string> = {
   DEP_GAS: "Boiler depósito gas", DEP_ELEC: "Boiler depósito eléctrico",
   DEP_SOLAR: "Boiler depósito solar", PASO_GAS: "Boiler de paso gas", PASO_ELEC: "Boiler de paso eléctrico",
 };
-const IS_DEP = (b: string) => ["DEP_GAS", "DEP_ELEC", "DEP_SOLAR"].includes(b);
+const IS_DEP  = (b: string) => ["DEP_GAS", "DEP_ELEC", "DEP_SOLAR"].includes(b);
+const IS_PASO = (b: string) => ["PASO_GAS", "PASO_ELEC"].includes(b);
 
 const SHOWER_OPTIONS = [
   { value: "NONE",     label: "No incluye" },
@@ -384,18 +387,19 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
   function add(asset_type: string, name: string) {
     rows.push({ asset_type, name, status: "ACTIVE", notes: null, sort_order: idx++ });
   }
-  function addBoiler(boiler: string, boilerCapacity: string, boilerCount: number, sfx: string) {
+  function addBoiler(boiler: string, boilerCapacity: string, boilerCount: number, boilerServices: string, sfx: string) {
     if (boiler === "NONE") return;
     const n = BOILER_NAME[boiler] ?? boiler;
     const cap = IS_DEP(boiler) ? ` ${boilerCapacity}` : "";
-    const cnt = boilerCount > 1 ? ` × ${boilerCount}` : "";
-    add("BOILER", `${n}${cap}${cnt}${sfx}`);
+    const cnt = IS_DEP(boiler) && boilerCount > 1 ? ` × ${boilerCount}` : "";
+    const svc = IS_PASO(boiler) && boilerServices !== "1" ? ` ${boilerServices} salidas` : "";
+    add("BOILER", `${n}${cap}${cnt}${svc}${sfx}`);
   }
   function addAC(ac: string, sfx: string) {
     const t = acTypeOf(ac);
     if (t === "NONE" || t === "CENTRAL") return;
     const c = acCapOf(ac);
-    const capStr = c === "1_5T" ? "1.5 ton" : c === "2T" ? "2 ton" : c === "3T" ? "3 ton" : "1 ton";
+    const capStr = capLabel(c);
     if (t === "MINI") add("MINISPLIT", `Minisplit ${capStr}${sfx}`);
     else add("OTHER", `Fan & coil ${capStr}${sfx}`);
   }
@@ -473,7 +477,7 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
 
   // Lavandería
   if (s2.hasLavanderia) {
-    addBoiler(eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount, " - Lavandería");
+    if (!s2.hasCuartoMaquinas) addBoiler(eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount, eq.lavanderia.boilerServices, " - Lavandería");
     if (eq.lavanderia.centroCarga === "YES") add("OTHER", "Centro de lavado vertical - Lavandería");
     else {
       if (eq.lavanderia.washer === "YES") add("WASHER", "Lavadora - Lavandería");
@@ -483,13 +487,13 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
 
   // Cuarto de máquinas
   if (s2.hasCuartoMaquinas) {
-    addBoiler(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, " - Cuarto de máquinas");
+    addBoiler(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, eq.cuartoMaquinas.boilerServices, " - Cuarto de máquinas");
   }
 
   // Equipos funcionales (solo si no hay Lavandería ni Cuarto de máquinas)
   if (!s2.hasLavanderia && !s2.hasCuartoMaquinas) {
     const f = eq.equiposFuncionales;
-    addBoiler(f.boiler, f.boilerCapacity, f.boilerCount, "");
+    addBoiler(f.boiler, f.boilerCapacity, f.boilerCount, f.boilerServices, "");
     if (f.centroCarga === "YES") add("OTHER", "Centro de lavado vertical");
     else {
       if (f.washer === "YES") add("WASHER", "Lavadora");
@@ -507,8 +511,7 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
   // Sistema de aire central (one system asset)
   const centralSpaces = getCentralSpaces(s2, eq);
   if (centralSpaces.length > 0) {
-    const cs = capLabel(eq.aireCentral.capacity);
-    add("OTHER", `Sistema de aire central ${cs}`);
+    add("OTHER", `Sistema de aire central ${eq.aireCentral.capacity} ton`);
   }
 
   return rows;
@@ -616,10 +619,11 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
   if (s2.hasLavanderia) {
     const items: string[] = [];
     const l = eq.lavanderia;
-    if (l.boiler !== "NONE") {
+    if (!s2.hasCuartoMaquinas && l.boiler !== "NONE") {
       const cap = IS_DEP(l.boiler) ? ` ${l.boilerCapacity}` : "";
-      const cnt = l.boilerCount > 1 ? ` × ${l.boilerCount}` : "";
-      items.push(`${BOILER_NAME[l.boiler] ?? l.boiler}${cap}${cnt}`);
+      const cnt = IS_DEP(l.boiler) && l.boilerCount > 1 ? ` × ${l.boilerCount}` : "";
+      const svc = IS_PASO(l.boiler) && l.boilerServices !== "1" ? ` ${l.boilerServices} salidas` : "";
+      items.push(`${BOILER_NAME[l.boiler] ?? l.boiler}${cap}${cnt}${svc}`);
     }
     if (l.centroCarga === "YES") items.push("Centro de lavado vertical");
     else {
@@ -635,8 +639,9 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
     const m = eq.cuartoMaquinas;
     if (m.boiler !== "NONE") {
       const cap = IS_DEP(m.boiler) ? ` ${m.boilerCapacity}` : "";
-      const cnt = m.boilerCount > 1 ? ` × ${m.boilerCount}` : "";
-      items.push(`${BOILER_NAME[m.boiler] ?? m.boiler}${cap}${cnt}`);
+      const cnt = IS_DEP(m.boiler) && m.boilerCount > 1 ? ` × ${m.boilerCount}` : "";
+      const svc = IS_PASO(m.boiler) && m.boilerServices !== "1" ? ` ${m.boilerServices} salidas` : "";
+      items.push(`${BOILER_NAME[m.boiler] ?? m.boiler}${cap}${cnt}${svc}`);
     }
     groups.push({ key: "cuartoMaquinas", label: "Cuarto de máquinas", Icon: Wrench, items });
   }
@@ -647,8 +652,9 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
     const f = eq.equiposFuncionales;
     if (f.boiler !== "NONE") {
       const cap = IS_DEP(f.boiler) ? ` ${f.boilerCapacity}` : "";
-      const cnt = f.boilerCount > 1 ? ` × ${f.boilerCount}` : "";
-      items.push(`${BOILER_NAME[f.boiler] ?? f.boiler}${cap}${cnt}`);
+      const cnt = IS_DEP(f.boiler) && f.boilerCount > 1 ? ` × ${f.boilerCount}` : "";
+      const svc = IS_PASO(f.boiler) && f.boilerServices !== "1" ? ` ${f.boilerServices} salidas` : "";
+      items.push(`${BOILER_NAME[f.boiler] ?? f.boiler}${cap}${cnt}${svc}`);
     }
     if (f.centroCarga === "YES") items.push("Centro de lavado vertical");
     else {
@@ -678,7 +684,7 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
       Icon: Wind,
       items: [
         `Espacios: ${centralSpaces.join(", ")}`,
-        `Tonelaje: ${capLabel(eq.aireCentral.capacity)}`,
+        `Tonelaje: ${eq.aireCentral.capacity} ton`,
       ],
     });
   }
@@ -845,19 +851,28 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
   /* ── Boiler rows helper ── */
   function boilerRows(
-    boiler: string, boilerCapacity: string, boilerCount: number,
-    onBoiler: (v: string) => void, onCapacity: (v: string) => void, onCount: (v: number) => void
+    boiler: string, boilerCapacity: string, boilerCount: number, boilerServices: string,
+    onBoiler: (v: string) => void, onCapacity: (v: string) => void, onCount: (v: number) => void,
+    onServices: (v: string) => void
   ) {
     return (
       <>
         {eqRow("Boiler", (
           <div style={{ display: "grid", gap: 8 }}>
             <Radio value={boiler} onChange={onBoiler} options={BOILER_OPTIONS} />
-            <Expand show={IS_DEP(boiler)} id="boiler-cap">
-              <Pills value={[boilerCapacity]} onChange={(v) => onCapacity(v[v.length - 1] ?? "60L")} options={BOILER_CAP_OPTIONS} />
+            <Expand show={IS_DEP(boiler)} id="boiler-dep">
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Capacidad</div>
+                <Radio value={boilerCapacity} onChange={onCapacity} options={BOILER_CAP_OPTIONS} />
+                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 4 }}>Cantidad</div>
+                <Radio value={String(boilerCount)} onChange={(v) => onCount(Number(v))} options={[{ value: "1", label: "1" }, { value: "2", label: "2" }]} />
+              </div>
             </Expand>
-            <Expand show={boiler !== "NONE"} id="boiler-count">
-              <Counter label="Cantidad" value={boilerCount} onChange={onCount} min={1} max={10} />
+            <Expand show={IS_PASO(boiler)} id="boiler-svc">
+              <div style={{ display: "grid", gap: 6 }}>
+                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Servicios (salidas de agua caliente)</div>
+                <Radio value={boilerServices} onChange={onServices} options={[{ value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4+", label: "4+" }]} />
+              </div>
             </Expand>
           </div>
         ))}
@@ -1162,7 +1177,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           );
           if (key === "lavanderia") return (
             <>
-              {boilerRows(eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount, (v) => setLav("boiler", v), (v) => setLav("boilerCapacity", v), (v) => setLav("boilerCount", v))}
+              {!s2.hasCuartoMaquinas && boilerRows(eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount, eq.lavanderia.boilerServices, (v) => setLav("boiler", v), (v) => setLav("boilerCapacity", v), (v) => setLav("boilerCount", v), (v) => setLav("boilerServices", v))}
               {eqRow("Centro de lavado vertical", <Radio value={eq.lavanderia.centroCarga} onChange={(v) => setLav("centroCarga", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
               <Expand show={eq.lavanderia.centroCarga !== "YES"} id="washer-dryer">
                 <>
@@ -1173,7 +1188,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             </>
           );
           if (key === "cuartoMaquinas") return (
-            <>{boilerRows(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, (v) => setCuartoMaq("boiler", v), (v) => setCuartoMaq("boilerCapacity", v), (v) => setCuartoMaq("boilerCount", v))}</>
+            <>{boilerRows(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, eq.cuartoMaquinas.boilerServices, (v) => setCuartoMaq("boiler", v), (v) => setCuartoMaq("boilerCapacity", v), (v) => setCuartoMaq("boilerCount", v), (v) => setCuartoMaq("boilerServices", v))}</>
           );
           if (key === "aireCentral") return (
             <>
@@ -1184,9 +1199,15 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                   ))}
                 </div>
               ))}
-              {eqRow("Tonelaje del sistema", (
-                <Radio value={eq.aireCentral.capacity} onChange={(v) => setAireCentralEq("capacity", v)}
-                  options={[{ value: "1T", label: "1 ton" }, { value: "1_5T", label: "1.5 ton" }, { value: "2T", label: "2 ton" }, { value: "3T", label: "3 ton" }, { value: "5T", label: "5 ton" }]} />
+              {eqRow("Tonelaje del sistema (ton)", (
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input type="number" min={1} max={50} step={0.5}
+                    value={eq.aireCentral.capacity}
+                    onChange={(e) => setAireCentralEq("capacity", e.target.value)}
+                    placeholder="Ej. 7.5"
+                    style={{ ...STEP_INPUT, width: 100 }} />
+                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>ton</span>
+                </div>
               ))}
             </>
           );
@@ -1284,7 +1305,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     </span>
                   )}
                 </div>
-                {boilerRows(eq.equiposFuncionales.boiler, eq.equiposFuncionales.boilerCapacity, eq.equiposFuncionales.boilerCount, (v) => setFuncionales("boiler", v), (v) => setFuncionales("boilerCapacity", v), (v) => setFuncionales("boilerCount", v))}
+                {boilerRows(eq.equiposFuncionales.boiler, eq.equiposFuncionales.boilerCapacity, eq.equiposFuncionales.boilerCount, eq.equiposFuncionales.boilerServices, (v) => setFuncionales("boiler", v), (v) => setFuncionales("boilerCapacity", v), (v) => setFuncionales("boilerCount", v), (v) => setFuncionales("boilerServices", v))}
                 {eqRow("Centro de lavado vertical", <Radio value={eq.equiposFuncionales.centroCarga} onChange={(v) => setFuncionales("centroCarga", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
                 {eq.equiposFuncionales.centroCarga !== "YES" && <>
                   {eqRow("Lavadora", <Radio value={eq.equiposFuncionales.washer} onChange={(v) => setFuncionales("washer", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
