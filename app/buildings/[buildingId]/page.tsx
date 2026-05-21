@@ -2949,86 +2949,90 @@ export default function BuildingDetailPage() {
         title={building.name}
         titleIcon={<Building2 size={20} />}
         subtitle={`Vista general ${buildingOf(labels)} — ocupación, ${labels.collections.toLowerCase()} y tendencia.`}
-        actions={
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {/* Volver */}
-            <a
-              href="/buildings"
-              style={{
-                display: "flex", alignItems: "center",
-                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
-                border: "1px solid var(--border-default)", background: "var(--bg-card)",
-                color: "var(--text-primary)", cursor: "pointer", textDecoration: "none",
-                fontSize: 12, fontWeight: 600,
-              }}
-            >
-              <ArrowLeft size={16} />
-              <span>Volver</span>
-            </a>
-            {/* Editar */}
-            <button
-              type="button"
-              onClick={openEditModal}
-              style={{
-                display: "flex", alignItems: "center",
-                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
-                border: "1px solid var(--border-default)", background: "var(--bg-card)",
-                color: "var(--text-primary)", cursor: "pointer",
-                fontSize: 12, fontWeight: 600,
-              }}
-            >
-              <Pencil size={16} />
-              <span>Editar</span>
-            </button>
-            {/* Configuración */}
-            <button
-              type="button"
-              onClick={() => void openFeaturesModal()}
-              style={{
-                display: "flex", alignItems: "center",
-                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
-                border: "1px solid var(--border-default)", background: "var(--bg-card)",
-                color: "var(--text-primary)", cursor: "pointer",
-                fontSize: 12, fontWeight: 600,
-              }}
-            >
-              <Sliders size={16} />
-              <span>Configuración</span>
-            </button>
-            {/* Unidades — oculto para terrenos y parques industriales */}
-            {!hideUnitsUI && (
-              <a
-                href={`/buildings/${building.id}/units`}
-                style={{
-                  display: "flex", alignItems: "center",
-                  gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
-                  border: "1px solid var(--accent)", background: "var(--accent)",
-                  color: "#ffffff", cursor: "pointer", textDecoration: "none",
-                  fontSize: 12, fontWeight: 600,
-                }}
-              >
-                <Layers3 size={16} />
-                <span>{labels.units}</span>
-              </a>
-            )}
-            {/* Eliminar */}
-            <button
-              type="button"
-              onClick={() => setIsDeleteModalOpen(true)}
-              style={{
-                display: "flex", alignItems: "center",
-                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
-                border: "1px solid #dc2626", background: "transparent",
-                color: "#dc2626", cursor: "pointer",
-                fontSize: 12, fontWeight: 600,
-              }}
-            >
-              <Trash2 size={16} />
-              <span>Eliminar</span>
-            </button>
-          </div>
-        }
       />
+
+      {/* ── Barra de acciones: Volver izquierda / acciones derecha ── */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 24 }}>
+        {/* ← Volver */}
+        <a
+          href="/buildings"
+          style={{
+            display: "flex", alignItems: "center",
+            gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+            border: "1px solid var(--border-default)", background: "var(--bg-card)",
+            color: "var(--text-primary)", cursor: "pointer", textDecoration: "none",
+            fontSize: 12, fontWeight: 600,
+          }}
+        >
+          <ArrowLeft size={16} />
+          <span>Volver</span>
+        </a>
+
+        {/* Grupo derecho */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {/* Editar */}
+          <button
+            type="button"
+            onClick={openEditModal}
+            style={{
+              display: "flex", alignItems: "center",
+              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+              border: "1px solid var(--border-default)", background: "var(--bg-card)",
+              color: "var(--text-primary)", cursor: "pointer",
+              fontSize: 12, fontWeight: 600,
+            }}
+          >
+            <Pencil size={16} />
+            <span>Editar</span>
+          </button>
+          {/* Configuración */}
+          <button
+            type="button"
+            onClick={() => void openFeaturesModal()}
+            style={{
+              display: "flex", alignItems: "center",
+              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+              border: "1px solid var(--border-default)", background: "var(--bg-card)",
+              color: "var(--text-primary)", cursor: "pointer",
+              fontSize: 12, fontWeight: 600,
+            }}
+          >
+            <Sliders size={16} />
+            <span>Configuración</span>
+          </button>
+          {/* Unidades — oculto para terrenos y parques industriales */}
+          {!hideUnitsUI && (
+            <a
+              href={`/buildings/${building.id}/units`}
+              style={{
+                display: "flex", alignItems: "center",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+                border: "1px solid var(--accent)", background: "var(--accent)",
+                color: "#ffffff", cursor: "pointer", textDecoration: "none",
+                fontSize: 12, fontWeight: 600,
+              }}
+            >
+              <Layers3 size={16} />
+              <span>{labels.units}</span>
+            </a>
+          )}
+          {/* Eliminar */}
+          <button
+            type="button"
+            onClick={() => setIsDeleteModalOpen(true)}
+            style={{
+              display: "flex", alignItems: "center",
+              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+              border: "1px solid #dc2626", background: "transparent",
+              color: "#dc2626", cursor: "pointer",
+              fontSize: 12, fontWeight: 600,
+            }}
+          >
+            <Trash2 size={16} />
+            <span>Eliminar</span>
+          </button>
+        </div>
+      </div>
 
       {msg ? (
         <p style={{ color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
@@ -3110,7 +3114,7 @@ export default function BuildingDetailPage() {
               )}
             </div>
           ) : (
-            <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "stretch" }}>
               <OccupancyDonutCard occupied={occupiedUnits} total={totalUnits} />
               {isResidentialSingle ? (
                 building.construction_sqm != null ? (
@@ -3602,7 +3606,7 @@ export default function BuildingDetailPage() {
           </SectionCard>
 
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, alignItems: "stretch" }}>
 
             {/* Col izquierda: Distribución — oculta para terrenos, parques y residencial unifamiliar */}
             {!isLand && !isIndustrialPark && !isResidentialSingle && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />}>
@@ -3725,7 +3729,7 @@ export default function BuildingDetailPage() {
           </SectionCard>}
 
           {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos (oculta para parques) ── */}
-          {!isIndustrialPark && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24 }}>
+          {!isIndustrialPark && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24, alignItems: "stretch" }}>
 
             {/* Servicios activos */}
             <SectionCard title="Servicios activos" subtitle="Gestionado desde el tab Servicios." icon={<Wrench size={18} />}>
@@ -5269,7 +5273,7 @@ export default function BuildingDetailPage() {
         <div style={{ display: "grid", gap: 20 }}>
           {/* Métricas + Dona de ocupación */}
           {plazaLocales.length > 0 && (
-            <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <div className="building-detail-metrics" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "stretch" }}>
               <OccupancyDonutCard
                 occupied={plazaLocales.filter(l => l.status === "OCCUPIED").length}
                 total={plazaLocales.length}
