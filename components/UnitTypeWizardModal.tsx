@@ -857,13 +857,24 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         <Radio value={bEq.hasOwnBath ? "YES" : "NO"} onChange={(v) => onHasOwnBath(v === "YES")}
           options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
         {bEq.hasOwnBath && (
-          <>
-            {eqRow("Regadera", <Radio value={bEq.shower} onChange={onShower} options={SHOWER_OPTIONS} />)}
-            {eqRow("Tina", <Radio value={bEq.hasTub ? "YES" : "NO"} onChange={(v) => onHasTub(v === "YES")}
-              options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
-            {eqRow("Jacuzzi", <Radio value={bEq.hasJacuzzi ? "YES" : "NO"} onChange={(v) => onHasJacuzzi(v === "YES")}
-              options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
-          </>
+          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Regadera</div>
+              <Radio value={bEq.shower !== "NONE" ? "YES" : "NO"}
+                onChange={(v) => onShower(v === "YES" ? "NORMAL" : "NONE")}
+                options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Tina</div>
+              <Radio value={bEq.hasTub ? "YES" : "NO"} onChange={(v) => onHasTub(v === "YES")}
+                options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Jacuzzi</div>
+              <Radio value={bEq.hasJacuzzi ? "YES" : "NO"} onChange={(v) => onHasJacuzzi(v === "YES")}
+                options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
+            </div>
+          </div>
         )}
       </div>
     ));
