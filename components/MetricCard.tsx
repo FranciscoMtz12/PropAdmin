@@ -52,8 +52,8 @@ export default function MetricCard({
   const valueColor = variant ? VARIANT_VALUE_COLOR[variant] : "var(--text-primary)";
 
   return (
-    <motion.div variants={scaleIn} initial="hidden" animate="show">
-    <AppCard style={cardStyle}>
+    <motion.div variants={scaleIn} initial="hidden" animate="show" style={{ height: "100%" }}>
+    <AppCard style={{ height: "100%", ...cardStyle }}>
       <div
         style={{
           display: "flex",

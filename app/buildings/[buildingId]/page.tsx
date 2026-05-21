@@ -670,7 +670,7 @@ function OccupancyDonutCard({ occupied, total }: { occupied: number; total: numb
   const off  = total === 0 ? circ : circ - (pct / 100) * circ;
 
   return (
-    <AppCard>
+    <AppCard style={{ height: "100%" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
         {/* SVG donut */}
         <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
@@ -3609,7 +3609,7 @@ export default function BuildingDetailPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, alignItems: "stretch" }}>
 
             {/* Col izquierda: Distribución — oculta para terrenos, parques y residencial unifamiliar */}
-            {!isLand && !isIndustrialPark && !isResidentialSingle && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />}>
+            {!isLand && !isIndustrialPark && !isResidentialSingle && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />} style={{ height: "100%" }}>
               {totalUnits === 0 ? (
                 <AppEmptyState
                   title={`Sin ${labels.units.toLowerCase()} registrados`}
@@ -3657,6 +3657,7 @@ export default function BuildingDetailPage() {
               title={labels.collections}
               subtitle={`Últimos ${collectionMonths} meses`}
               icon={<CreditCard size={18} />}
+              style={{ height: "100%" }}
               action={
                 <button
                   type="button"
