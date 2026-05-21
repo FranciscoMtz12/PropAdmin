@@ -1019,7 +1019,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
       {/* ── PASO 3: Equipamiento ── */}
       {step === 3 && (() => {
-        const panelSpaces: { key: string; label: string; Icon: React.ElementType; count: number }[] = [
+        const panelSpaces: { key: string; label: string; headerLabel?: string; Icon: React.ElementType; count: number }[] = [
           ...Array.from({ length: s2.bedrooms }, (_, i) => ({
             key: `bed-${i}`,
             label: s2.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara",
@@ -1032,6 +1032,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           ...(s2.hasComedor       ? [{ key: "comedor",         label: "Comedor",           Icon: UtensilsCrossed,  count: comedorCount(eq.comedor)                }] : []),
           ...(s2.hasLavanderia    ? [{ key: "lavanderia",      label: "Lavandería",        Icon: Shirt,            count: lavanderiaCount(eq.lavanderia)          }] : []),
           ...(s2.hasCuartoMaquinas ? [{ key: "cuartoMaquinas", label: "Cuarto de máquinas", Icon: Wrench,          count: cuartoMaquinasCount(eq.cuartoMaquinas) }] : []),
+          ...(centralSpaces.length > 0 ? [{ key: "aireCentral", label: "Aire central", headerLabel: "Sistema de aire central", Icon: Wind, count: centralSpaces.length }] : []),
         ];
         const activeKey = panelSpaces.some(p => p.key === selectedSpace) ? selectedSpace : (panelSpaces[0]?.key ?? "");
         const activeSpace = panelSpaces.find(p => p.key === activeKey);
@@ -1125,6 +1126,21 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           if (key === "cuartoMaquinas") return (
             <>{boilerRows(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, (v) => setCuartoMaq("boiler", v), (v) => setCuartoMaq("boilerCapacity", v), (v) => setCuartoMaq("boilerCount", v))}</>
           );
+          if (key === "aireCentral") return (
+            <>
+              {eqRow("Espacios cubiertos", (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {centralSpaces.map((sp) => (
+                    <span key={sp} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f9eaf3", color: ACCENT, border: `1px solid ${ACCENT}` }}>{sp}</span>
+                  ))}
+                </div>
+              ))}
+              {eqRow("Tonelaje del sistema", (
+                <Radio value={eq.aireCentral.capacity} onChange={(v) => setAireCentralEq("capacity", v)}
+                  options={[{ value: "1T", label: "1 ton" }, { value: "1_5T", label: "1.5 ton" }, { value: "2T", label: "2 ton" }, { value: "3T", label: "3 ton" }, { value: "5T", label: "5 ton" }]} />
+              ))}
+            </>
+          );
           return null;
         }
 
@@ -1180,10 +1196,12 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px 12px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
                         <activeSpace.Icon size={18} color={ACCENT} />
-                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.label}</span>
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.headerLabel ?? activeSpace.label}</span>
                         {activeSpace.count > 0 && (
                           <span style={{ padding: "2px 9px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
-                            {activeSpace.count} equipo{activeSpace.count !== 1 ? "s" : ""}
+                            {activeKey === "aireCentral"
+                              ? `${activeSpace.count} espacio${activeSpace.count !== 1 ? "s" : ""}`
+                              : `${activeSpace.count} equipo${activeSpace.count !== 1 ? "s" : ""}`}
                           </span>
                         )}
                       </div>
@@ -1226,25 +1244,6 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               </div>
             )}
 
-            {/* Sistema de aire central (debajo de los paneles) */}
-            {centralSpaces.length > 0 && (
-              <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
-                  <Wind size={15} color={ACCENT} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Sistema de aire central</span>
-                </div>
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>Espacios con aire central</div>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                    {centralSpaces.map((sp) => (
-                      <span key={sp} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f9eaf3", color: ACCENT, border: `1px solid ${ACCENT}` }}>{sp}</span>
-                    ))}
-                  </div>
-                </div>
-                {eqRow("Tonelaje del sistema", <Radio value={eq.aireCentral.capacity} onChange={(v) => setAireCentralEq("capacity", v)}
-                  options={[{ value: "1T", label: "1 ton" }, { value: "1_5T", label: "1.5 ton" }, { value: "2T", label: "2 ton" }, { value: "3T", label: "3 ton" }, { value: "5T", label: "5 ton" }]} />)}
-              </div>
-            )}
           </div>
         );
       })()}
