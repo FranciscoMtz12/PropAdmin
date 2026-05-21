@@ -2958,7 +2958,7 @@ export default function BuildingDetailPage() {
           href="/buildings"
           style={{
             display: "flex", alignItems: "center",
-            gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+            gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
             border: "1px solid var(--border-default)", background: "var(--bg-card)",
             color: "var(--text-primary)", cursor: "pointer", textDecoration: "none",
             fontSize: 12, fontWeight: 600,
@@ -2976,7 +2976,7 @@ export default function BuildingDetailPage() {
             onClick={openEditModal}
             style={{
               display: "flex", alignItems: "center",
-              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
               border: "1px solid var(--border-default)", background: "var(--bg-card)",
               color: "var(--text-primary)", cursor: "pointer",
               fontSize: 12, fontWeight: 600,
@@ -2991,7 +2991,7 @@ export default function BuildingDetailPage() {
             onClick={() => void openFeaturesModal()}
             style={{
               display: "flex", alignItems: "center",
-              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
               border: "1px solid var(--border-default)", background: "var(--bg-card)",
               color: "var(--text-primary)", cursor: "pointer",
               fontSize: 12, fontWeight: 600,
@@ -3006,7 +3006,7 @@ export default function BuildingDetailPage() {
               href={`/buildings/${building.id}/units`}
               style={{
                 display: "flex", alignItems: "center",
-                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                 border: "1px solid var(--accent)", background: "var(--accent)",
                 color: "#ffffff", cursor: "pointer", textDecoration: "none",
                 fontSize: 12, fontWeight: 600,
@@ -3022,7 +3022,7 @@ export default function BuildingDetailPage() {
             onClick={() => setIsDeleteModalOpen(true)}
             style={{
               display: "flex", alignItems: "center",
-              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-xl, 999px)",
+              gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
               border: "1px solid #dc2626", background: "transparent",
               color: "#dc2626", cursor: "pointer",
               fontSize: 12, fontWeight: 600,
