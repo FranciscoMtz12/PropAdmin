@@ -1068,6 +1068,9 @@ export default function BuildingDetailPage() {
   /* Servicios activos (para card en Resumen) */
   const [utilityMeters, setUtilityMeters] = useState<UtilityMeterForOverview[]>([]);
 
+  /* Contratos activos — para checklist de onboarding */
+  const [activeLeasesCount, setActiveLeasesCount] = useState(0);
+
   /* Counts de tabs (cargados al inicio para evitar mostrar 0) */
   const [tabCounts, setTabCounts] = useState({ assets: 0, docs: 0, gallery: 0, services: 0, parking: 0 });
 
@@ -1554,6 +1557,16 @@ export default function BuildingDetailPage() {
       services: sCount ?? 0,
       parking:  pCount ?? 0,
     });
+
+    /* Contratos activos — para checklist onboarding */
+    {
+      const unitIdsForLease = ((allUnits || []) as UnitRow[]).map(u => u.id);
+      const { count: lc } = unitIdsForLease.length > 0
+        ? await supabase.from("leases").select("*", { count: "exact", head: true })
+            .in("unit_id", unitIdsForLease).eq("status", "ACTIVE").is("deleted_at", null)
+        : { count: 0 };
+      setActiveLeasesCount(lc ?? 0);
+    }
 
     /* Setup tasks — todas las no descartadas (pendientes + completadas) */
     const [{ data: tasksData }, { data: featConfigData }] = await Promise.all([
@@ -3302,6 +3315,66 @@ export default function BuildingDetailPage() {
                 })}
               </div>
             )
+          })()}
+
+          {/* ── Onboarding: 5 pasos de configuración básica ── */}
+          {(() => {
+            const steps: Array<{ label: string; done: boolean; ctaLabel: string | null; ctaTab: string | null; ctaHref: string | null }> = [
+              { label: "Propiedad registrada", done: true, ctaLabel: null, ctaTab: null, ctaHref: null },
+              { label: "Al menos 1 tipología", done: unitTypeCount > 0, ctaLabel: "Crear tipología", ctaTab: hasTypologiesTab ? "typologies" : null, ctaHref: null },
+              { label: "Al menos 1 unidad", done: buildingUnits.length > 0, ctaLabel: "Agregar unidades", ctaTab: hasTypologiesTab ? "typologies" : null, ctaHref: null },
+              { label: "Al menos 1 servicio", done: utilityMeters.length > 0, ctaLabel: "Configurar servicios", ctaTab: hasServicesTab ? "services" : null, ctaHref: null },
+              { label: "Inquilino / contrato activo", done: activeLeasesCount > 0, ctaLabel: "Agregar inquilino", ctaTab: null, ctaHref: "/tenants" },
+            ];
+            const allDone = steps.every(s => s.done);
+            const completedCount = steps.filter(s => s.done).length;
+            return (
+              <AnimatePresence>
+                {!allDone && (
+                  <motion.div
+                    key="onboarding-5steps"
+                    initial={{ opacity: 0, y: -8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -8, height: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    <SectionCard
+                      title="Configuración de la propiedad"
+                      subtitle={`${completedCount} de 5 pasos completados`}
+                      icon={<CheckSquare size={18} />}
+                    >
+                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                        {steps.map((step, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            {step.done
+                              ? <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0 }} />
+                              : <div style={{ width: 18, height: 18, borderRadius: 999, border: "2px solid var(--border-default)", flexShrink: 0 }} />
+                            }
+                            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
+                              <span style={{ fontSize: 13, fontWeight: 500, color: step.done ? "var(--text-muted)" : "var(--text-primary)", textDecoration: step.done ? "line-through" : "none" }}>
+                                {step.label}
+                              </span>
+                              {!step.done && (step.ctaTab ?? step.ctaHref) && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (step.ctaTab) { handleTabChange(step.ctaTab); window.scrollTo({ top: 0, behavior: "smooth" }); }
+                                    else if (step.ctaHref) { router.push(step.ctaHref); }
+                                  }}
+                                  style={{ background: "none", border: "1px solid var(--accent)", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", fontSize: 12, fontWeight: 600, color: "var(--accent)", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+                                >
+                                  {step.ctaLabel} →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </SectionCard>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            );
           })()}
 
           {/* ── Setup checklist ── */}

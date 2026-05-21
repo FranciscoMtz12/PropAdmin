@@ -916,12 +916,43 @@ export default function BuildingsPage() {
         {loadingBuildings ? (
           <p style={{ margin: 0 }}>Cargando edificios...</p>
         ) : filteredBuildings.length === 0 ? (
-          <AppEmptyState
-            title="Todavía no hay edificios"
-            description="Empieza creando tu primer edificio para construir el portafolio dentro de PropAdmin."
-            actionLabel="Nueva propiedad"
-            onAction={() => setIsCreateModalOpen(true)}
-          />
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "56px 24px", textAlign: "center" }}>
+            <motion.div
+              animate={{ y: [0, -10, 0] }}
+              transition={{ repeat: Infinity, duration: 2.6, ease: "easeInOut" }}
+              style={{ marginBottom: 24 }}
+            >
+              <Building2 size={68} style={{ color: "var(--accent)" }} />
+            </motion.div>
+            <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
+              Bienvenido a SAPROA
+            </h2>
+            <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 28px", maxWidth: 460, lineHeight: 1.6 }}>
+              Configura tu primera propiedad en 5 pasos simples y empieza a gestionar todo desde un solo lugar.
+            </p>
+            <button
+              type="button"
+              onClick={() => setIsCreateModalOpen(true)}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                padding: "12px 28px", fontSize: 15, fontWeight: 700,
+                background: "var(--accent)", color: "#fff",
+                border: "none", borderRadius: "var(--border-radius-md)",
+                cursor: "pointer", marginBottom: 28,
+              }}
+            >
+              <Plus size={18} />
+              Crear primera propiedad
+            </button>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+              {["1. Propiedad", "2. Tipología", "3. Unidades", "4. Servicios", "5. Inquilinos"].flatMap((step, i, arr) => [
+                <span key={step} style={{ padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", background: "var(--bg-card)" }}>
+                  {step}
+                </span>,
+                ...(i < arr.length - 1 ? [<span key={`a${i}`} style={{ color: "var(--text-subtle)", fontSize: 13, lineHeight: 1 }}>→</span>] : []),
+              ])}
+            </div>
+          </div>
         ) : (
           <div
             className="buildings-grid"
