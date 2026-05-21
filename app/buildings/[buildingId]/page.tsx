@@ -5948,17 +5948,29 @@ export default function BuildingDetailPage() {
                 onAction={() => { setSelectedAreaNames(new Set()); setPendingCustomAreas([]); setCustomAreaInput(""); setAddingCommonArea(true); }}
               />
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="show"
+                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}
+              >
                 {commonAreas.map((area) => {
                   const IconComponent = COMMON_AREA_ICON_MAP[area.name] ?? Trees;
                   return (
-                    <div key={area.id} style={{
-                      display: "flex", alignItems: "center", gap: 10,
-                      padding: "10px 14px", borderRadius: "var(--border-radius-md)",
-                      border: "1px solid var(--border-default)", background: "var(--bg-page)",
-                    }}>
-                      <IconComponent size={15} />
-                      <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500, flex: 1 }}>{area.name}</span>
+                    <motion.div
+                      key={area.id}
+                      variants={staggerItem}
+                      style={{
+                        position: "relative",
+                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                        padding: 16, gap: 0,
+                        border: "1px solid var(--border-default)",
+                        borderRadius: "var(--border-radius-lg)",
+                        background: "var(--bg-card)",
+                        boxShadow: "var(--shadow-sm)",
+                        textAlign: "center",
+                      }}
+                    >
                       <button
                         type="button"
                         title="Eliminar"
@@ -5966,14 +5978,23 @@ export default function BuildingDetailPage() {
                           await supabase.from("common_areas").update({ deleted_at: new Date().toISOString() }).eq("id", area.id);
                           setCommonAreas(prev => prev.filter(a => a.id !== area.id));
                         }}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", padding: 4, borderRadius: "var(--border-radius-sm)" }}
+                        style={{
+                          position: "absolute", top: 8, right: 8,
+                          background: "none", border: "none", cursor: "pointer",
+                          color: "var(--text-muted)", display: "flex", alignItems: "center",
+                          padding: 2, borderRadius: "var(--border-radius-sm)",
+                        }}
                       >
-                        <X size={14} />
+                        <X size={13} />
                       </button>
-                    </div>
+                      <IconComponent size={28} color="var(--accent)" />
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginTop: 8, lineHeight: 1.3 }}>
+                        {area.name}
+                      </span>
+                    </motion.div>
                   );
                 })}
-              </div>
+              </motion.div>
             )}
           </SectionCard>
         </div>
