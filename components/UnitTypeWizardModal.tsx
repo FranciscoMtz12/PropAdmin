@@ -930,6 +930,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   const step3ActiveIdx = panelSpaces.findIndex(p => p.key === step3ActiveKey);
   const step3IsLast    = panelSpaces.length === 0 || step3ActiveIdx === panelSpaces.length - 1;
   const step3NextSpace = panelSpaces[step3ActiveIdx + 1] ?? null;
+  const step3PrevSpace = panelSpaces[step3ActiveIdx - 1] ?? null;
 
   /* ── Space toggle button ── */
   function spaceToggle(key: string, label: string, Icon: React.ElementType) {
@@ -1358,7 +1359,13 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       {/* ── Nav buttons ── */}
       <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24, gap: 10 }}>
         <div>
-          {step > 1 && <UiButton type="button" variant="secondary" onClick={goBack} disabled={saving}>Atrás</UiButton>}
+          {step > 1 && (
+            step === 3 && step3PrevSpace ? (
+              <UiButton type="button" variant="secondary" onClick={() => setSelectedSpace(step3PrevSpace.key)}>← {step3PrevSpace.label}</UiButton>
+            ) : (
+              <UiButton type="button" variant="secondary" onClick={goBack} disabled={saving}>← Atrás</UiButton>
+            )
+          )}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
           {step !== 3 && (
