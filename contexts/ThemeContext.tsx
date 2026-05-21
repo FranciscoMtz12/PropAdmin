@@ -142,7 +142,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const saved = localStorage.getItem("ui_theme");
     const theme = (saved === "super_soft" || saved === "clasico") ? saved : "clasico";
     document.documentElement.setAttribute("data-theme", theme);
-    if (theme !== "clasico") setUiThemeState(theme);
+    setUiThemeState(theme);
   }, []);
 
   /* ── Aplicar data-theme en <html> cuando cambie uiTheme ────────── */
@@ -200,8 +200,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setShowDescriptions(data.show_descriptions);
     }
     if (data.ui_theme === "super_soft" || data.ui_theme === "clasico") {
-      localStorage.setItem("ui_theme", data.ui_theme);
-      setUiThemeState(data.ui_theme);
+      const localTheme = localStorage.getItem("ui_theme") as "clasico" | "super_soft" | null;
+      if (localTheme === "super_soft" || localTheme === "clasico") {
+        setUiThemeState(localTheme);           // localStorage gana — sincronizar estado
+      } else {
+        localStorage.setItem("ui_theme", data.ui_theme);
+        setUiThemeState(data.ui_theme);        // sin local → usar BD
+      }
     }
     // dark_mode se sincroniza desde SettingsModal al cambiar; aquí solo cargamos show_descriptions
     // para no sobreescribir la preferencia de localStorage en el primer render

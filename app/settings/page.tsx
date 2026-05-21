@@ -966,17 +966,62 @@ export default function SettingsPage() {
               </div>
             </SectionCard>
 
-            <SectionCard title="Modo">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>
-                    {isDark ? "Modo oscuro" : "Modo claro"}
-                  </div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                    {isDark ? "Interfaz con fondo oscuro" : "Interfaz con fondo claro"}
-                  </div>
-                </div>
-                <Toggle on={isDark} onToggle={toggleDark} />
+            <SectionCard title="Modo" subtitle="El cambio se aplica de inmediato.">
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                {([
+                  {
+                    key: "light" as const,
+                    label: "Modo claro",
+                    desc: "Fondo blanco, ideal para espacios iluminados",
+                    active: !isDark,
+                    bgPage: "#f1f5f9",
+                    bgCard: "#ffffff",
+                    textBar: "#334155",
+                    subtextBar: "#cbd5e1",
+                    border: "#e2e8f0",
+                  },
+                  {
+                    key: "dark" as const,
+                    label: "Modo oscuro",
+                    desc: "Fondo oscuro, cómodo con poca luz",
+                    active: isDark,
+                    bgPage: "#0f1623",
+                    bgCard: "#1e2a3a",
+                    textBar: "#e2e8f0",
+                    subtextBar: "#334155",
+                    border: "rgba(255,255,255,0.10)",
+                  },
+                ] as const).map(({ key, label, desc, active, bgPage, bgCard, textBar, subtextBar, border }) => (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => { if ((key === "dark") !== isDark) toggleDark(); }}
+                    style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: 12, border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", maxWidth: 280, transition: "border-color 0.15s", outline: "none" }}
+                  >
+                    {/* Preview */}
+                    <div style={{ background: bgPage, borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ background: bgCard, borderRadius: 8, padding: "10px 14px", border: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: 8, background: "var(--accent)", flexShrink: 0 }} />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ height: 7, borderRadius: 4, background: textBar, opacity: 0.35, marginBottom: 4 }} />
+                          <div style={{ height: 5, borderRadius: 4, background: subtextBar, opacity: 0.5, width: "55%" }} />
+                        </div>
+                      </div>
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <div style={{ flex: 1, height: 26, borderRadius: 6, background: "var(--accent)", opacity: 0.85 }} />
+                        <div style={{ flex: 1, height: 26, borderRadius: 6, background: border }} />
+                      </div>
+                    </div>
+                    {/* Label */}
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                        <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
+                        {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: 20, padding: "1px 7px" }}>Activo</span>}
+                      </div>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                    </div>
+                  </button>
+                ))}
               </div>
             </SectionCard>
           </div>
