@@ -7,7 +7,7 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
 import {
-  BedDouble, Box, Car, Check, ChevronDown,
+  BedDouble, Box, Car, Check,
   Shirt, Sofa, Sun, TreePine, UtensilsCrossed, Wind, Wrench, Plus, X,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -699,7 +699,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   const [s1, setS1]               = useState<Step1>({ ...S1 });
   const [s2, setS2]               = useState<Step2>({ ...S2 });
   const [eq, setEq]               = useState<Equipment>(JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment);
-  const [expandedBlocks, setExpandedBlocks] = useState<Set<string>>(new Set());
+  const [selectedSpace, setSelectedSpace] = useState("");
   const [saving, setSaving]       = useState(false);
   const [s1Error, setS1Error]     = useState("");
   const [customSpaceInput, setCustomSpaceInput] = useState("");
@@ -716,7 +716,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function reset() {
     setStep(1); setS1({ ...S1 }); setS2({ ...S2 });
     setEq(JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment);
-    setExpandedBlocks(new Set()); setSaving(false); setS1Error("");
+    setSelectedSpace(""); setSaving(false); setS1Error("");
     setCustomSpaceInput(""); setShowCustomInput(false);
   }
 
@@ -739,10 +739,6 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     }
   }
   function goBack() { setStepDir("left"); setStep((p) => Math.max(1, p - 1)); }
-
-  function toggleBlock(key: string) {
-    setExpandedBlocks((prev) => prev.has(key) ? new Set() : new Set([key]));
-  }
 
   function toggleSpace(key: keyof Step2 & string) { setS2((p) => ({ ...p, [key]: !p[key] })); }
   function setCount(key: keyof Step2, val: number) { setS2((p) => ({ ...p, [key]: val })); }
@@ -816,52 +812,6 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     reset(); onSuccess(); onClose();
   }
 
-  /* ── Block helpers ── */
-  function blockHeader(key: string, label: string, Icon: React.ElementType, count: number) {
-    const isOpen = expandedBlocks.has(key);
-    return (
-      <button type="button" onClick={() => toggleBlock(key)}
-        style={{ display: "flex", alignItems: "center", justifyContent: "space-between", width: "100%", padding: "12px 14px", border: "none", background: "var(--bg-input)", borderRadius: isOpen ? "10px 10px 0 0" : 10, cursor: "pointer" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Icon size={16} color={ACCENT} />
-          <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{label}</span>
-          {count > 0 && (
-            <span style={{ padding: "1px 8px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
-              {count} equipo{count !== 1 ? "s" : ""}
-            </span>
-          )}
-        </div>
-        <motion.span
-          animate={{ rotate: isOpen ? 180 : 0 }}
-          transition={{ duration: 0.2 }}
-          style={{ display: "inline-flex" }}
-        >
-          <ChevronDown size={16} />
-        </motion.span>
-      </button>
-    );
-  }
-  function blockBody(children: React.ReactNode, key: string) {
-    const isOpen = expandedBlocks.has(key);
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            key="body"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            style={{ overflow: "hidden" }}
-          >
-            <div style={{ padding: 14, border: "1px solid var(--border-default)", borderTop: "none", borderRadius: "0 0 10px 10px" }}>
-              {children}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  }
   function eqRow(label: string, children: React.ReactNode) {
     return (
       <div style={{ marginBottom: 14 }}>
@@ -1068,386 +1018,219 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       )}
 
       {/* ── PASO 3: Equipamiento ── */}
-      {step === 3 && (
-        <div style={{ display: "grid", gap: 4 }}>
-          <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--text-muted)" }}>
-            Haz clic en cada espacio para configurar su equipamiento.
-          </p>
+      {step === 3 && (() => {
+        const panelSpaces: { key: string; label: string; Icon: React.ElementType; count: number }[] = [
+          ...Array.from({ length: s2.bedrooms }, (_, i) => ({
+            key: `bed-${i}`,
+            label: s2.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara",
+            Icon: BedDouble,
+            count: bedroomCount(eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ),
+          })),
+          ...(s2.hasCuartoServicio ? [{ key: "cuartoServicio", label: "Cuarto de servicio", Icon: BedDouble,       count: bedroomCount(eq.cuartoServicio)          }] : []),
+          ...(s2.hasSala          ? [{ key: "sala",            label: "Sala",              Icon: Sofa,             count: salaCount(eq.sala)                      }] : []),
+          ...(s2.hasCocina        ? [{ key: "cocina",          label: "Cocina",            Icon: UtensilsCrossed,  count: cocinaCount(eq.cocina)                  }] : []),
+          ...(s2.hasComedor       ? [{ key: "comedor",         label: "Comedor",           Icon: UtensilsCrossed,  count: comedorCount(eq.comedor)                }] : []),
+          ...(s2.hasLavanderia    ? [{ key: "lavanderia",      label: "Lavandería",        Icon: Shirt,            count: lavanderiaCount(eq.lavanderia)          }] : []),
+          ...(s2.hasCuartoMaquinas ? [{ key: "cuartoMaquinas", label: "Cuarto de máquinas", Icon: Wrench,          count: cuartoMaquinasCount(eq.cuartoMaquinas) }] : []),
+        ];
+        const activeKey = panelSpaces.some(p => p.key === selectedSpace) ? selectedSpace : (panelSpaces[0]?.key ?? "");
+        const activeSpace = panelSpaces.find(p => p.key === activeKey);
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-
-            {/* Recámaras */}
-            {Array.from({ length: s2.bedrooms }, (_, i) => {
-              const bKey = `bed-${i}`;
-              const bEq = eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ;
-              const isOpen = expandedBlocks.has(bKey);
-              return (
-                <div key={bKey} style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(bKey, s2.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara", BedDouble, bedroomCount(bEq))}
-                  {blockBody(
-                    <div>
-                      {bedBathRows(bEq,
-                        (v) => setBedEq(i, "hasOwnBath", v),
-                        (v) => setBedEq(i, "shower", v),
-                        (v) => setBedEq(i, "hasTub", v),
-                        (v) => setBedEq(i, "hasJacuzzi", v),
-                      )}
-                      {eqRow("Aire acondicionado", (
-                        <AcSection value={bEq.ac} onChange={(v) => setBedEq(i, "ac", v)} />
-                      ))}
-                      {eqRow("Ventilador de techo", (
-                        <Radio value={bEq.fan} onChange={(v) => setBedEq(i, "fan", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eqRow("Calefactor", (
-                        <IncludeToggle
-                          included={bEq.heater !== "NONE"}
-                          onExclude={() => setBedEq(i, "heater", "NONE")}
-                          onInclude={() => setBedEq(i, "heater", "GAS")}
-                        >
-                          <Radio value={bEq.heater} onChange={(v) => setBedEq(i, "heater", v)}
-                            options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
-                        </IncludeToggle>
-                      ))}
-                      {eqRow("Cama", (
-                        <Radio value={bEq.bed} onChange={(v) => setBedEq(i, "bed", v)}
-                          options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }]} />
-                      ))}
-                      {eqRow("Closet", (
-                        <Radio value={bEq.closet} onChange={(v) => setBedEq(i, "closet", v)}
-                          options={[{ value: "NONE", label: "No incluye" }, { value: "ARMARIO", label: "Armario" }, { value: "CLOSET", label: "Closet" }, { value: "WALK_IN", label: "Walk-in closet" }]} />
-                      ))}
-                      {eqRow("Televisión", (
-                        <Radio value={bEq.tv} onChange={(v) => setBedEq(i, "tv", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eqRow("Otro mobiliario", (
-                        <PillsInput value={bEq.furnitureOther} onChange={(v) => setBedEq(i, "furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />
-                      ))}
-                    </div>,
-                    bKey
-                  )}
+        function spaceContent(key: string): React.ReactNode {
+          const bedMatch = key.match(/^bed-(\d+)$/);
+          if (bedMatch) {
+            const i = parseInt(bedMatch[1]);
+            const bEq = eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ;
+            return (
+              <>
+                {bedBathRows(bEq, (v) => setBedEq(i, "hasOwnBath", v), (v) => setBedEq(i, "shower", v), (v) => setBedEq(i, "hasTub", v), (v) => setBedEq(i, "hasJacuzzi", v))}
+                {eqRow("Aire acondicionado", <AcSection value={bEq.ac} onChange={(v) => setBedEq(i, "ac", v)} />)}
+                {eqRow("Ventilador de techo", <Radio value={bEq.fan} onChange={(v) => setBedEq(i, "fan", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                {eqRow("Calefactor", <IncludeToggle included={bEq.heater !== "NONE"} onExclude={() => setBedEq(i, "heater", "NONE")} onInclude={() => setBedEq(i, "heater", "GAS")}>
+                  <Radio value={bEq.heater} onChange={(v) => setBedEq(i, "heater", v)} options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
+                </IncludeToggle>)}
+                {eqRow("Cama", <Radio value={bEq.bed} onChange={(v) => setBedEq(i, "bed", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }]} />)}
+                {eqRow("Closet", <Radio value={bEq.closet} onChange={(v) => setBedEq(i, "closet", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "ARMARIO", label: "Armario" }, { value: "CLOSET", label: "Closet" }, { value: "WALK_IN", label: "Walk-in closet" }]} />)}
+                {eqRow("Televisión", <Radio value={bEq.tv} onChange={(v) => setBedEq(i, "tv", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                {eqRow("Otro mobiliario", <PillsInput value={bEq.furnitureOther} onChange={(v) => setBedEq(i, "furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />)}
+              </>
+            );
+          }
+          if (key === "cuartoServicio") {
+            const b = eq.cuartoServicio;
+            return (
+              <>
+                {bedBathRows(b, (v) => setCuartoServ("hasOwnBath", v), (v) => setCuartoServ("shower", v), (v) => setCuartoServ("hasTub", v), (v) => setCuartoServ("hasJacuzzi", v))}
+                {eqRow("Aire acondicionado", <AcSection value={b.ac} onChange={(v) => setCuartoServ("ac", v)} />)}
+                {eqRow("Ventilador de techo", <Radio value={b.fan} onChange={(v) => setCuartoServ("fan", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                {eqRow("Calefactor", <IncludeToggle included={b.heater !== "NONE"} onExclude={() => setCuartoServ("heater", "NONE")} onInclude={() => setCuartoServ("heater", "GAS")}>
+                  <Radio value={b.heater} onChange={(v) => setCuartoServ("heater", v)} options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
+                </IncludeToggle>)}
+                {eqRow("Cama", <Radio value={b.bed} onChange={(v) => setCuartoServ("bed", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }]} />)}
+                {eqRow("Closet", <Radio value={b.closet} onChange={(v) => setCuartoServ("closet", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "ARMARIO", label: "Armario" }, { value: "CLOSET", label: "Closet" }, { value: "WALK_IN", label: "Walk-in closet" }]} />)}
+                {eqRow("Televisión", <Radio value={b.tv} onChange={(v) => setCuartoServ("tv", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                {eqRow("Otro mobiliario", <PillsInput value={b.furnitureOther} onChange={(v) => setCuartoServ("furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />)}
+              </>
+            );
+          }
+          if (key === "sala") return (
+            <>
+              {eqRow("Aire acondicionado", <AcSection value={eq.sala.ac} onChange={(v) => setSala("ac", v)} />)}
+              {eqRow("Ventilador de techo", <Radio value={eq.sala.fan} onChange={(v) => setSala("fan", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+              {eqRow("Mobiliario", <div style={{ display: "grid", gap: 8 }}>
+                <Pills value={eq.sala.furniture} onChange={(v) => setSala("furniture", v)} options={[{ value: "SALA", label: "Juego de sala" }, { value: "TV", label: "Televisión" }, { value: "MESA_CENTRO", label: "Mesa de centro" }]} />
+                <PillsInput value={eq.sala.furnitureOther} onChange={(v) => setSala("furnitureOther", v)} placeholder="Otro mobiliario..." />
+              </div>)}
+              {eqRow("Baño de visitas", <div style={{ display: "grid", gap: 8 }}>
+                <Radio value={eq.sala.guestBath} onChange={(v) => { setSala("guestBath", v); if (v !== "FULL") setSala("guestBathShower", "NONE"); }} options={[{ value: "NONE", label: "No incluye" }, { value: "HALF", label: "Medio baño" }, { value: "FULL", label: "Baño completo" }]} />
+                {eq.sala.guestBath === "FULL" && eqRow("Regadera", <Radio value={eq.sala.guestBathShower} onChange={(v) => setSala("guestBathShower", v)} options={SHOWER_OPTIONS} />)}
+              </div>)}
+            </>
+          );
+          if (key === "cocina") return (
+            <>
+              {eqRow("Aire acondicionado", <AcSection value={eq.cocina.ac} onChange={(v) => setCocina("ac", v)} />)}
+              {eqRow("Estufa / parrilla", <IncludeToggle included={eq.cocina.stoveType !== "NONE"} onExclude={() => setCocina("stoveType", "NONE")} onInclude={() => setCocina("stoveType", "GAS")}>
+                <div style={{ display: "grid", gap: 8 }}>
+                  <Radio value={eq.cocina.stoveType} onChange={(v) => { setCocina("stoveType", v); if (v === "INDUCTION") setCocina("stoveBurners", "2"); else setCocina("stoveBurners", "4Q"); }} options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }, { value: "INDUCTION", label: "Inducción" }]} />
+                  {(eq.cocina.stoveType === "GAS" || eq.cocina.stoveType === "ELECTRIC") && <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)} options={[{ value: "2Q", label: "2 quemadores" }, { value: "4Q", label: "4 quemadores" }, { value: "6Q", label: "6 quemadores" }]} />}
+                  {eq.cocina.stoveType === "INDUCTION" && <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)} options={[{ value: "2", label: "2 quemadores" }, { value: "4", label: "4 quemadores" }, { value: "ZONAS", label: "Zonas completas" }]} />}
                 </div>
-              );
-            })}
+              </IncludeToggle>)}
+              {eqRow("Horno", <Radio value={eq.cocina.oven} onChange={(v) => setCocina("oven", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />)}
+              {eqRow("Refrigeración", <div style={{ display: "grid", gap: 8 }}>
+                <Radio value={eq.cocina.fridge} onChange={(v) => setCocina("fridge", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "FRIDGE", label: "Refrigerador" }, { value: "FRIGOBAR", label: "Frigobar" }]} />
+                {eq.cocina.fridge !== "NONE" && <input value={eq.cocina.fridgeModel} onChange={(e) => setCocina("fridgeModel", e.target.value)} placeholder="Modelo (opcional)" style={{ ...STEP_INPUT, fontSize: 12 }} />}
+              </div>)}
+              {eqRow("Electrodomésticos", <Pills value={eq.cocina.others} onChange={(v) => setCocina("others", v)} options={[{ value: "MICROWAVE", label: "Microondas" }, { value: "DISHWASHER", label: "Lavavajillas" }, { value: "EXTRACTOR", label: "Campana extractora" }]} />)}
+              {eqRow("Medio baño", <Radio value={eq.cocina.hasHalfBath ? "YES" : "NO"} onChange={(v) => setCocina("hasHalfBath", v === "YES")} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+            </>
+          );
+          if (key === "comedor") return (
+            <>
+              {eqRow("Aire acondicionado", <AcSection value={eq.comedor.ac} onChange={(v) => setComedor("ac", v)} />)}
+              {eqRow("Mobiliario", <Radio value={eq.comedor.furniture} onChange={(v) => setComedor("furniture", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "COMEDOR_COMPLETO", label: "Comedor completo" }, { value: "SOLO_MESA", label: "Solo mesa" }, { value: "MESA_SILLAS", label: "Mesa y sillas" }]} />)}
+            </>
+          );
+          if (key === "lavanderia") return (
+            <>
+              {boilerRows(eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount, (v) => setLav("boiler", v), (v) => setLav("boilerCapacity", v), (v) => setLav("boilerCount", v))}
+              {eqRow("Centro de lavado vertical", <Radio value={eq.lavanderia.centroCarga} onChange={(v) => setLav("centroCarga", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+              {eq.lavanderia.centroCarga !== "YES" && <>
+                {eqRow("Lavadora", <Radio value={eq.lavanderia.washer} onChange={(v) => setLav("washer", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                {eqRow("Secadora", <Radio value={eq.lavanderia.dryer} onChange={(v) => setLav("dryer", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }]} />)}
+              </>}
+            </>
+          );
+          if (key === "cuartoMaquinas") return (
+            <>{boilerRows(eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount, (v) => setCuartoMaq("boiler", v), (v) => setCuartoMaq("boilerCapacity", v), (v) => setCuartoMaq("boilerCount", v))}</>
+          );
+          return null;
+        }
 
-            {/* Cuarto de servicio */}
-            {s2.hasCuartoServicio && (() => {
-              const key = "cuartoServicio";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Cuarto de servicio", BedDouble, bedroomCount(eq.cuartoServicio))}
-                  {blockBody(
-                    <div>
-                      {bedBathRows(eq.cuartoServicio,
-                        (v) => setCuartoServ("hasOwnBath", v),
-                        (v) => setCuartoServ("shower", v),
-                        (v) => setCuartoServ("hasTub", v),
-                        (v) => setCuartoServ("hasJacuzzi", v),
-                      )}
-                      {eqRow("Aire acondicionado", (
-                        <AcSection value={eq.cuartoServicio.ac} onChange={(v) => setCuartoServ("ac", v)} />
-                      ))}
-                      {eqRow("Ventilador de techo", (
-                        <Radio value={eq.cuartoServicio.fan} onChange={(v) => setCuartoServ("fan", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eqRow("Calefactor", (
-                        <IncludeToggle
-                          included={eq.cuartoServicio.heater !== "NONE"}
-                          onExclude={() => setCuartoServ("heater", "NONE")}
-                          onInclude={() => setCuartoServ("heater", "GAS")}
-                        >
-                          <Radio value={eq.cuartoServicio.heater} onChange={(v) => setCuartoServ("heater", v)}
-                            options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
-                        </IncludeToggle>
-                      ))}
-                      {eqRow("Cama", (
-                        <Radio value={eq.cuartoServicio.bed} onChange={(v) => setCuartoServ("bed", v)}
-                          options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }]} />
-                      ))}
-                      {eqRow("Closet", (
-                        <Radio value={eq.cuartoServicio.closet} onChange={(v) => setCuartoServ("closet", v)}
-                          options={[{ value: "NONE", label: "No incluye" }, { value: "ARMARIO", label: "Armario" }, { value: "CLOSET", label: "Closet" }, { value: "WALK_IN", label: "Walk-in closet" }]} />
-                      ))}
-                      {eqRow("Televisión", (
-                        <Radio value={eq.cuartoServicio.tv} onChange={(v) => setCuartoServ("tv", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eqRow("Otro mobiliario", (
-                        <PillsInput value={eq.cuartoServicio.furnitureOther} onChange={(v) => setCuartoServ("furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />
-                      ))}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {/* Paneles izquierdo / derecho */}
+            <div style={{ display: "flex", height: 460, border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
 
-            {/* Sala */}
-            {s2.hasSala && (() => {
-              const key = "sala";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Sala", Sofa, salaCount(eq.sala))}
-                  {blockBody(
-                    <div>
-                      {eqRow("Aire acondicionado", (
-                        <AcSection value={eq.sala.ac} onChange={(v) => setSala("ac", v)} />
-                      ))}
-                      {eqRow("Ventilador de techo", (
-                        <Radio value={eq.sala.fan} onChange={(v) => setSala("fan", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eqRow("Mobiliario", (
-                        <div style={{ display: "grid", gap: 8 }}>
-                          <Pills value={eq.sala.furniture} onChange={(v) => setSala("furniture", v)}
-                            options={[{ value: "SALA", label: "Juego de sala" }, { value: "TV", label: "Televisión" }, { value: "MESA_CENTRO", label: "Mesa de centro" }]} />
-                          <PillsInput value={eq.sala.furnitureOther} onChange={(v) => setSala("furnitureOther", v)} placeholder="Otro mobiliario..." />
-                        </div>
-                      ))}
-                      {eqRow("Baño de visitas", (
-                        <div style={{ display: "grid", gap: 8 }}>
-                          <Radio value={eq.sala.guestBath} onChange={(v) => { setSala("guestBath", v); if (v !== "FULL") setSala("guestBathShower", "NONE"); }}
-                            options={[{ value: "NONE", label: "No incluye" }, { value: "HALF", label: "Medio baño" }, { value: "FULL", label: "Baño completo" }]} />
-                          {eq.sala.guestBath === "FULL" && (
-                            eqRow("Regadera", <Radio value={eq.sala.guestBathShower} onChange={(v) => setSala("guestBathShower", v)} options={SHOWER_OPTIONS} />)
-                          )}
-                        </div>
-                      ))}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Cocina */}
-            {s2.hasCocina && (() => {
-              const key = "cocina";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Cocina", UtensilsCrossed, cocinaCount(eq.cocina))}
-                  {blockBody(
-                    <div>
-                      {eqRow("Aire acondicionado", (
-                        <AcSection value={eq.cocina.ac} onChange={(v) => setCocina("ac", v)} />
-                      ))}
-                      {eqRow("Estufa / parrilla", (
-                        <IncludeToggle
-                          included={eq.cocina.stoveType !== "NONE"}
-                          onExclude={() => setCocina("stoveType", "NONE")}
-                          onInclude={() => setCocina("stoveType", "GAS")}
-                        >
-                          <div style={{ display: "grid", gap: 8 }}>
-                            <Radio value={eq.cocina.stoveType} onChange={(v) => { setCocina("stoveType", v); if (v === "INDUCTION") setCocina("stoveBurners", "2"); else setCocina("stoveBurners", "4Q"); }}
-                              options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }, { value: "INDUCTION", label: "Inducción" }]} />
-                            {(eq.cocina.stoveType === "GAS" || eq.cocina.stoveType === "ELECTRIC") && (
-                              <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)}
-                                options={[{ value: "2Q", label: "2 quemadores" }, { value: "4Q", label: "4 quemadores" }, { value: "6Q", label: "6 quemadores" }]} />
-                            )}
-                            {eq.cocina.stoveType === "INDUCTION" && (
-                              <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)}
-                                options={[{ value: "2", label: "2 quemadores" }, { value: "4", label: "4 quemadores" }, { value: "ZONAS", label: "Zonas completas" }]} />
-                            )}
-                          </div>
-                        </IncludeToggle>
-                      ))}
-                      {eqRow("Horno", (
-                        <Radio value={eq.cocina.oven} onChange={(v) => setCocina("oven", v)}
-                          options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
-                      ))}
-                      {eqRow("Refrigeración", (
-                        <div style={{ display: "grid", gap: 8 }}>
-                          <Radio value={eq.cocina.fridge} onChange={(v) => setCocina("fridge", v)}
-                            options={[{ value: "NONE", label: "No incluye" }, { value: "FRIDGE", label: "Refrigerador" }, { value: "FRIGOBAR", label: "Frigobar" }]} />
-                          {eq.cocina.fridge !== "NONE" && (
-                            <input value={eq.cocina.fridgeModel} onChange={(e) => setCocina("fridgeModel", e.target.value)}
-                              placeholder="Modelo (opcional)" style={{ ...STEP_INPUT, fontSize: 12 }} />
-                          )}
-                        </div>
-                      ))}
-                      {eqRow("Electrodomésticos", (
-                        <Pills value={eq.cocina.others} onChange={(v) => setCocina("others", v)}
-                          options={[{ value: "MICROWAVE", label: "Microondas" }, { value: "DISHWASHER", label: "Lavavajillas" }, { value: "EXTRACTOR", label: "Campana extractora" }]} />
-                      ))}
-                      {eqRow("Medio baño", (
-                        <Radio value={eq.cocina.hasHalfBath ? "YES" : "NO"} onChange={(v) => setCocina("hasHalfBath", v === "YES")}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Lavandería */}
-            {s2.hasLavanderia && (() => {
-              const key = "lavanderia";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Lavandería", Shirt, lavanderiaCount(eq.lavanderia))}
-                  {blockBody(
-                    <div>
-                      {boilerRows(
-                        eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount,
-                        (v) => setLav("boiler", v),
-                        (v) => setLav("boilerCapacity", v),
-                        (v) => setLav("boilerCount", v),
-                      )}
-                      {eqRow("Centro de lavado vertical", (
-                        <Radio value={eq.lavanderia.centroCarga} onChange={(v) => setLav("centroCarga", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eq.lavanderia.centroCarga !== "YES" && (
-                        <>
-                          {eqRow("Lavadora", (
-                            <Radio value={eq.lavanderia.washer} onChange={(v) => setLav("washer", v)}
-                              options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                          ))}
-                          {eqRow("Secadora", (
-                            <Radio value={eq.lavanderia.dryer} onChange={(v) => setLav("dryer", v)}
-                              options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }]} />
-                          ))}
-                        </>
-                      )}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Cuarto de máquinas */}
-            {s2.hasCuartoMaquinas && (() => {
-              const key = "cuartoMaquinas";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Cuarto de máquinas", Wrench, cuartoMaquinasCount(eq.cuartoMaquinas))}
-                  {blockBody(
-                    <div>
-                      {boilerRows(
-                        eq.cuartoMaquinas.boiler, eq.cuartoMaquinas.boilerCapacity, eq.cuartoMaquinas.boilerCount,
-                        (v) => setCuartoMaq("boiler", v),
-                        (v) => setCuartoMaq("boilerCapacity", v),
-                        (v) => setCuartoMaq("boilerCount", v),
-                      )}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Comedor */}
-            {s2.hasComedor && (() => {
-              const key = "comedor";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Comedor", UtensilsCrossed, comedorCount(eq.comedor))}
-                  {blockBody(
-                    <div>
-                      {eqRow("Aire acondicionado", (
-                        <AcSection value={eq.comedor.ac} onChange={(v) => setComedor("ac", v)} />
-                      ))}
-                      {eqRow("Mobiliario", (
-                        <Radio value={eq.comedor.furniture} onChange={(v) => setComedor("furniture", v)}
-                          options={[{ value: "NONE", label: "No incluye" }, { value: "COMEDOR_COMPLETO", label: "Comedor completo" }, { value: "SOLO_MESA", label: "Solo mesa" }, { value: "MESA_SILLAS", label: "Mesa y sillas" }]} />
-                      ))}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Equipos funcionales */}
-            {showFuncionales && (() => {
-              const key = "funcionales";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Equipos funcionales (boiler, lavadora/secadora)", Wrench, funcionalesCount(eq.equiposFuncionales))}
-                  {blockBody(
-                    <div>
-                      {boilerRows(
-                        eq.equiposFuncionales.boiler, eq.equiposFuncionales.boilerCapacity, eq.equiposFuncionales.boilerCount,
-                        (v) => setFuncionales("boiler", v),
-                        (v) => setFuncionales("boilerCapacity", v),
-                        (v) => setFuncionales("boilerCount", v),
-                      )}
-                      {eqRow("Centro de lavado vertical", (
-                        <Radio value={eq.equiposFuncionales.centroCarga} onChange={(v) => setFuncionales("centroCarga", v)}
-                          options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                      ))}
-                      {eq.equiposFuncionales.centroCarga !== "YES" && (
-                        <>
-                          {eqRow("Lavadora", (
-                            <Radio value={eq.equiposFuncionales.washer} onChange={(v) => setFuncionales("washer", v)}
-                              options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-                          ))}
-                          {eqRow("Secadora", (
-                            <Radio value={eq.equiposFuncionales.dryer} onChange={(v) => setFuncionales("dryer", v)}
-                              options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }]} />
-                          ))}
-                        </>
-                      )}
-                    </div>,
-                    key
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Sistema de Aire Central */}
-            {centralSpaces.length > 0 && (() => {
-              const key = "aireCentral";
-              const isOpen = expandedBlocks.has(key);
-              return (
-                <div style={{ gridColumn: isOpen ? "1 / -1" : undefined }}>
-                  {blockHeader(key, "Sistema de aire central", Wind, 1)}
-                  {blockBody(
-                    <div>
-                      <div style={{ marginBottom: 14 }}>
-                        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>Espacios con aire central</div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                          {centralSpaces.map((sp) => (
-                            <span key={sp} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f9eaf3", color: ACCENT, border: `1px solid ${ACCENT}` }}>
-                              {sp}
-                            </span>
-                          ))}
-                        </div>
+              {/* Panel izquierdo */}
+              <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--border-default)", overflowY: "auto", background: "var(--bg-page)" }}>
+                {panelSpaces.map((sp) => {
+                  const active = sp.key === activeKey;
+                  const SpIcon = sp.Icon;
+                  return (
+                    <button key={sp.key} type="button" onClick={() => setSelectedSpace(sp.key)}
+                      style={{
+                        display: "flex", alignItems: "center", justifyContent: "space-between",
+                        gap: 8, width: "100%", padding: "12px 14px",
+                        border: "none", borderLeft: active ? `3px solid ${ACCENT}` : "3px solid transparent",
+                        background: active ? "#FDF2F6" : "transparent",
+                        cursor: "pointer", transition: "background 0.12s",
+                        borderBottom: "1px solid var(--border-default)",
+                      }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, flex: 1 }}>
+                        <SpIcon size={15} color={active ? ACCENT : "var(--text-muted)"} />
+                        <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? ACCENT : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {sp.label}
+                        </span>
                       </div>
-                      {eqRow("Tonelaje del sistema", (
-                        <Radio
-                          value={eq.aireCentral.capacity}
-                          onChange={(v) => setAireCentralEq("capacity", v)}
-                          options={[
-                            { value: "1T", label: "1 ton" },
-                            { value: "1_5T", label: "1.5 ton" },
-                            { value: "2T", label: "2 ton" },
-                            { value: "3T", label: "3 ton" },
-                            { value: "5T", label: "5 ton" },
-                          ]}
-                        />
-                      ))}
-                    </div>,
-                    key
+                      {sp.count > 0 && (
+                        <span style={{ flexShrink: 0, padding: "1px 7px", borderRadius: 999, background: active ? `${ACCENT}18` : "var(--bg-input)", color: active ? ACCENT : "var(--text-muted)", fontSize: 11, fontWeight: 700 }}>
+                          {sp.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+                {panelSpaces.length === 0 && (
+                  <div style={{ padding: 16, fontSize: 12, color: "var(--text-muted)" }}>Sin espacios configurados.</div>
+                )}
+              </div>
+
+              {/* Panel derecho */}
+              <div style={{ flex: 1, overflowY: "auto" }}>
+                {activeSpace ? (
+                  <>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px 12px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+                      <activeSpace.Icon size={18} color={ACCENT} />
+                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.label}</span>
+                      {activeSpace.count > 0 && (
+                        <span style={{ padding: "2px 9px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
+                          {activeSpace.count} equipo{activeSpace.count !== 1 ? "s" : ""}
+                        </span>
+                      )}
+                    </div>
+                    <div style={{ padding: "16px 20px" }}>{spaceContent(activeKey)}</div>
+                  </>
+                ) : (
+                  <div style={{ padding: 24, fontSize: 13, color: "var(--text-muted)" }}>Selecciona un espacio para configurar.</div>
+                )}
+              </div>
+            </div>
+
+            {/* Equipos funcionales (debajo de los paneles) */}
+            {showFuncionales && (
+              <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                  <Wrench size={15} color={ACCENT} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Equipos funcionales</span>
+                  {funcionalesCount(eq.equiposFuncionales) > 0 && (
+                    <span style={{ padding: "1px 8px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
+                      {funcionalesCount(eq.equiposFuncionales)} equipo{funcionalesCount(eq.equiposFuncionales) !== 1 ? "s" : ""}
+                    </span>
                   )}
                 </div>
-              );
-            })()}
+                {boilerRows(eq.equiposFuncionales.boiler, eq.equiposFuncionales.boilerCapacity, eq.equiposFuncionales.boilerCount, (v) => setFuncionales("boiler", v), (v) => setFuncionales("boilerCapacity", v), (v) => setFuncionales("boilerCount", v))}
+                {eqRow("Centro de lavado vertical", <Radio value={eq.equiposFuncionales.centroCarga} onChange={(v) => setFuncionales("centroCarga", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                {eq.equiposFuncionales.centroCarga !== "YES" && <>
+                  {eqRow("Lavadora", <Radio value={eq.equiposFuncionales.washer} onChange={(v) => setFuncionales("washer", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                  {eqRow("Secadora", <Radio value={eq.equiposFuncionales.dryer} onChange={(v) => setFuncionales("dryer", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }]} />)}
+                </>}
+              </div>
+            )}
 
+            {/* Sistema de aire central (debajo de los paneles) */}
+            {centralSpaces.length > 0 && (
+              <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
+                  <Wind size={15} color={ACCENT} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Sistema de aire central</span>
+                </div>
+                <div style={{ marginBottom: 14 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>Espacios con aire central</div>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    {centralSpaces.map((sp) => (
+                      <span key={sp} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f9eaf3", color: ACCENT, border: `1px solid ${ACCENT}` }}>{sp}</span>
+                    ))}
+                  </div>
+                </div>
+                {eqRow("Tonelaje del sistema", <Radio value={eq.aireCentral.capacity} onChange={(v) => setAireCentralEq("capacity", v)}
+                  options={[{ value: "1T", label: "1 ton" }, { value: "1_5T", label: "1.5 ton" }, { value: "2T", label: "2 ton" }, { value: "3T", label: "3 ton" }, { value: "5T", label: "5 ton" }]} />)}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ── PASO 4: Resumen ── */}
       {step === 4 && (() => {
