@@ -12,6 +12,8 @@ import toast from "react-hot-toast"
 
 import { supabase } from "@/lib/supabaseClient"
 import { useCurrentUser } from "@/contexts/UserContext"
+import { useNotifications } from "@/app/hooks/useNotifications"
+import { SEVERITY_COLORS } from "@/lib/notifications"
 import PageContainer from "@/components/PageContainer"
 import PageHeader from "@/components/PageHeader"
 import MetricCard from "@/components/MetricCard"
@@ -219,6 +221,7 @@ const CHEVRON_WRAP: React.CSSProperties = {
 
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser()
+  const { byModule } = useNotifications(user?.company_id ?? "")
   const now = new Date()
   const todayStr = now.toISOString().split("T")[0]
 
@@ -677,6 +680,40 @@ export default function PaymentsPage() {
         titleIcon={<CreditCard size={20} />}
         subtitle="Control de pagos de servicios y compras"
       />
+
+      {/* ── Notification banners ─────────────────────────────────── */}
+      {(byModule['pagos'] ?? []).length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+          {(byModule['pagos'] ?? []).map(notif => {
+            const col = SEVERITY_COLORS[notif.severity]
+            return (
+              <div
+                key={notif.id}
+                style={{
+                  display: "flex", alignItems: "center", gap: 12,
+                  padding: "12px 16px",
+                  borderRadius: "var(--border-radius-md)",
+                  background: col.bg,
+                  border: `1px solid ${col.border}`,
+                }}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: 999, background: col.dot, flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: col.text }}>{notif.title}</span>
+                  {notif.description && (
+                    <span style={{ fontSize: 12, color: col.text, opacity: 0.8, marginLeft: 8 }}>{notif.description}</span>
+                  )}
+                </div>
+                {notif.count != null && notif.count > 1 && (
+                  <span style={{ fontSize: 12, fontWeight: 700, color: col.text, background: `rgba(0,0,0,0.08)`, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>
+                    {notif.count}
+                  </span>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* Period selector */}
       <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 24 }}>

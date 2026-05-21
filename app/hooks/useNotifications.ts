@@ -243,7 +243,7 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
 
   const [{ data: rawInvoicedOCs }, { data: rawPRIds }, { data: rawCompany }] = await Promise.all([
     supabase.from('purchase_orders').select('id, sent_at').eq('company_id', companyId).eq('status', 'invoiced').is('deleted_at', null),
-    supabase.from('payment_reports').select('id').eq('company_id', companyId).is('deleted_at', null),
+    supabase.from('payment_reports').select('id, status, created_at').eq('company_id', companyId).is('deleted_at', null),
     supabase.from('companies').select('logo_url, tax_id, legal_name, admin_contact_email, purchases_contact_email, brand_color').eq('id', companyId).single(),
   ])
 
@@ -266,6 +266,22 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
   }
   if (pendingUnreportedCount > 0) {
     notifs.push({ id: 'pagos-pending', module: 'pagos', severity: 'warning', title: `${pendingUnreportedCount} OC${pendingUnreportedCount !== 1 ? 's' : ''} facturada${pendingUnreportedCount !== 1 ? 's' : ''} pendiente${pendingUnreportedCount !== 1 ? 's' : ''}`, description: 'Listas para incluir en reporte a pagos', action_route: '/purchases/reporte-pagos', is_resolved: false, count: pendingUnreportedCount })
+  }
+
+  // ── Payment reports vencidos (sin due_date → proxy: creado hace > 7 días) ──
+  type PRRow = { id: string; status: string; created_at: string }
+  const sevenDaysAgoStr = sevenDaysAgo.toISOString()
+  const overdueReportRows = (rawPRIds ?? [] as PRRow[]).filter(
+    (r: PRRow) => (r.status === 'pending' || r.status === 'partial') && r.created_at < sevenDaysAgoStr
+  )
+  const pendingReportRows = (rawPRIds ?? [] as PRRow[]).filter(
+    (r: PRRow) => (r.status === 'pending' || r.status === 'partial') && r.created_at >= sevenDaysAgoStr
+  )
+  if (overdueReportRows.length > 0) {
+    notifs.push({ id: 'pagos-reports-overdue', module: 'pagos', severity: 'critical', title: `${overdueReportRows.length} reporte${overdueReportRows.length !== 1 ? 's' : ''} de pago vencido${overdueReportRows.length !== 1 ? 's' : ''}`, description: 'Pendiente más de 7 días sin procesar', action_route: '/payments', is_resolved: false, count: overdueReportRows.length })
+  }
+  if (pendingReportRows.length > 0) {
+    notifs.push({ id: 'pagos-reports-pending', module: 'pagos', severity: 'warning', title: `${pendingReportRows.length} reporte${pendingReportRows.length !== 1 ? 's' : ''} de pago pendiente${pendingReportRows.length !== 1 ? 's' : ''}`, description: 'Creado recientemente · requiere atención', action_route: '/payments', is_resolved: false, count: pendingReportRows.length })
   }
 
   // ── Configuración — onboarding pendiente ──
