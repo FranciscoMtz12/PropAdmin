@@ -5963,7 +5963,7 @@ export default function BuildingDetailPage() {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}
+                style={{ display: "grid", gridTemplateColumns: `repeat(${commonAreas.length <= 2 ? commonAreas.length : commonAreas.length === 4 ? 2 : commonAreas.length <= 6 ? 3 : commonAreas.length <= 8 ? 4 : 3}, 1fr)`, gap: 12 }}
               >
                 {commonAreas.map((area) => {
                   const IconComponent = COMMON_AREA_ICON_MAP[area.name] ?? Trees;
@@ -6156,7 +6156,7 @@ export default function BuildingDetailPage() {
             >
               <div style={{ position: "relative" }}>
                 {/* Tabla placeholder — opaca */}
-                <div style={{ opacity: 0.35, pointerEvents: "none", userSelect: "none" }}>
+                <div style={{ opacity: 0.5, pointerEvents: "none", userSelect: "none" }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 8px 8px", borderBottom: "1px solid var(--border-default)", marginBottom: 4 }}>
                     <span>Área</span><span>Unidad / Inquilino</span><span>Fecha</span><span>Horario</span><span>Estado</span>
                   </div>
@@ -6178,17 +6178,17 @@ export default function BuildingDetailPage() {
                 {/* Overlay blur */}
                 <div style={{
                   position: "absolute", inset: 0,
-                  backdropFilter: "blur(3px)",
+                  backdropFilter: "blur(2px)",
                   background: "color-mix(in srgb, var(--bg-card) 60%, transparent)",
                   borderRadius: "var(--border-radius-md)",
                   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
                   gap: 8, padding: 24, textAlign: "center",
                 }}>
                   <Calendar size={28} style={{ color: "var(--text-muted)" }} />
-                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                  <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
                     Las reservaciones estarán disponibles próximamente
                   </p>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, maxWidth: 380 }}>
+                  <p style={{ fontSize: 13, color: "var(--text-subtle)", margin: 0, maxWidth: 380 }}>
                     Configura qué áreas son reservables y tu equipo podrá gestionar las solicitudes desde aquí. Los inquilinos podrán reservar desde su portal.
                   </p>
                   <button disabled style={{
