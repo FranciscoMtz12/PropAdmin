@@ -66,7 +66,7 @@ export default function BuildingMiniMap({
                 {name}
               </div>
               {address ? (
-                <div style={{ fontSize: 12, color: "#6B7280" }}>{address}</div>
+                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{address}</div>
               ) : null}
             </div>
           </Popup>

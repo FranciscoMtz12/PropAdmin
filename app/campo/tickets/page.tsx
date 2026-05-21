@@ -363,7 +363,6 @@ export default function CampoTicketsPage() {
       const { data, error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
-      console.log("Upload result:", { data, error: uploadErr, path, fileSize: file.size });
       if (uploadErr) {
         console.error("Upload error detail:", JSON.stringify(uploadErr));
         toast.error("Error al subir: " + uploadErr.message);
@@ -401,7 +400,6 @@ export default function CampoTicketsPage() {
       const { data, error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
-      console.log("Upload result:", { data, error: uploadErr, path, fileSize: file.size });
       if (uploadErr) {
         console.error("Upload error detail:", JSON.stringify(uploadErr));
         toast.error("Error al subir: " + uploadErr.message);

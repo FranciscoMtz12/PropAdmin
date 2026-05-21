@@ -1235,9 +1235,9 @@ export default function PaymentsPage() {
             <input ref={reportPdfRef} type="file" accept=".pdf,image/*" onChange={e => setReportPdfFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
             <div
               onClick={() => reportPdfRef.current?.click()}
-              style={{ padding: "14px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: `2px dashed ${reportPdfFile ? "#15803d" : "var(--border-default)"}`, background: reportPdfFile ? "#dcfce7" : "var(--bg-card)" }}
+              style={{ padding: "14px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: `2px dashed ${reportPdfFile ? "rgba(16,185,129,0.5)" : "var(--border-default)"}`, background: reportPdfFile ? "rgba(16,185,129,0.08)" : "var(--bg-card)" }}
             >
-              <span style={{ fontSize: 13, color: reportPdfFile ? "#15803d" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 13, color: reportPdfFile ? "#10B981" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{reportPdfFile ? reportPdfFile.name : "Toca para adjuntar PDF"}
               </span>
             </div>

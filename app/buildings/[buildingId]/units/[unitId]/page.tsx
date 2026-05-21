@@ -1303,12 +1303,12 @@ export default function UnitDetailPage() {
           gap: 12,
           padding: "12px 16px",
           borderRadius: 12,
-          background: "#FEF3C7",
-          border: "1px solid #F59E0B",
+          background: "rgba(245,158,11,0.1)",
+          border: "1px solid rgba(245,158,11,0.3)",
           marginBottom: 16,
         }}>
-          <AlertCircle size={18} style={{ color: "#D97706", flexShrink: 0 }} />
-          <span style={{ flex: 1, fontSize: 13, color: "#92400E", fontWeight: 500 }}>
+          <AlertCircle size={18} style={{ color: "#F59E0B", flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
             Esta unidad fue creada por duplicación — revisa que todos los datos sean correctos
           </span>
           <UiButton
@@ -1674,13 +1674,13 @@ export default function UnitDetailPage() {
                   const expiryBadge = days != null && days >= 0 ? (
                     <span style={{
                       padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700,
-                      background: days < 30 ? "#FEE2E2" : days < 90 ? "#FEF3C7" : "#F3F4F6",
-                      color:      days < 30 ? "#DC2626" : days < 90 ? "#B45309" : "var(--text-muted)",
+                      background: days < 30 ? "rgba(220,38,38,0.1)" : days < 90 ? "rgba(245,158,11,0.1)" : "var(--bg-page)",
+                      color:      days < 30 ? "#DC2626" : days < 90 ? "#F59E0B" : "var(--text-muted)",
                     }}>
                       {days === 0 ? "Vence hoy" : `${days}d para vencer`}
                     </span>
                   ) : days != null && days < 0 ? (
-                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: "#FEE2E2", color: "#DC2626" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
                       Vencido hace {Math.abs(days)}d
                     </span>
                   ) : null;

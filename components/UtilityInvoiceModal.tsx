@@ -480,7 +480,7 @@ export default function UtilityInvoiceModal({
       </div>
 
       {bucketMissing && (
-        <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 14, fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: 10, marginBottom: 14, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           Crea el bucket <strong>utility-invoices</strong> en Supabase Storage para habilitar PDFs.
         </div>

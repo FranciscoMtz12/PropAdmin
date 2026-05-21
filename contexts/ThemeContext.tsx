@@ -141,7 +141,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const saved = localStorage.getItem("ui_theme");
     const theme = (saved === "super_soft" || saved === "clasico" || saved === "rigido") ? saved : "clasico";
-    console.log("Theme init from localStorage:", saved, "→ applying:", theme);
     document.documentElement.setAttribute("data-theme", theme);
     setUiThemeState(theme);
   }, []);
@@ -205,7 +204,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const dbTheme = VALID_THEMES.includes(data.ui_theme as ValidTheme) ? data.ui_theme as ValidTheme : null;
     const localRaw = localStorage.getItem("ui_theme");
     const localTheme = VALID_THEMES.includes(localRaw as ValidTheme) ? localRaw as ValidTheme : null;
-    console.log("Theme from DB:", dbTheme, "| localStorage:", localRaw);
     if (localTheme) {
       setUiThemeState(localTheme);             // localStorage gana — sincronizar estado
     } else if (dbTheme) {

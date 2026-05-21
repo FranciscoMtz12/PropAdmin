@@ -462,11 +462,11 @@ export default function BuildingUtilityInvoiceModal({
       {bucketMissing && (
         <div style={{
           padding: "10px 14px",
-          background: "#fef3c7",
+          background: "rgba(245,158,11,0.1)",
           borderRadius: 10,
           marginBottom: 14,
           fontSize: 13,
-          color: "#92400e",
+          color: "var(--text-primary)",
           display: "flex",
           alignItems: "flex-start",
           gap: 8,
@@ -481,11 +481,11 @@ export default function BuildingUtilityInvoiceModal({
         {msg && bucketMissing ? (
           <p style={{
             padding: "10px 14px",
-            background: "#fef3c7",
+            background: "rgba(245,158,11,0.1)",
             borderRadius: 10,
             marginBottom: 14,
             fontSize: 13,
-            color: "#92400e",
+            color: "var(--text-primary)",
           }}>{msg}</p>
         ) : null}
 
@@ -544,8 +544,8 @@ export default function BuildingUtilityInvoiceModal({
               borderRadius: 12,
               cursor: "pointer",
               textAlign: "center",
-              border: `2px dashed ${pdfFile ? "#15803d" : existingInvoice?.pdf_path ? "#1d4ed8" : "var(--border-default)"}`,
-              background: pdfFile ? "#dcfce7" : existingInvoice?.pdf_path ? "#eff6ff" : "var(--bg-card)",
+              border: `2px dashed ${pdfFile ? "rgba(16,185,129,0.5)" : existingInvoice?.pdf_path ? "rgba(37,99,235,0.4)" : "var(--border-default)"}`,
+              background: pdfFile ? "rgba(16,185,129,0.08)" : existingInvoice?.pdf_path ? "rgba(37,99,235,0.06)" : "var(--bg-card)",
             }}
           >
             {pdfFile ? (
@@ -608,10 +608,10 @@ export default function BuildingUtilityInvoiceModal({
             {tenantedUnitIds.length === 0 ? (
               <div style={{
                 padding: "10px 14px",
-                background: "#fef3c7",
+                background: "rgba(245,158,11,0.1)",
                 borderRadius: 10,
                 fontSize: 13,
-                color: "#92400e",
+                color: "var(--text-primary)",
                 display: "flex",
                 alignItems: "flex-start",
                 gap: 8,

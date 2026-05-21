@@ -126,7 +126,7 @@ export default function CaptureUtilityReadingModal({
           <User size={14} />{activeLease.tenant_name}
         </p>
       ) : (
-        <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
           <AlertTriangle size={14} />Este depa no tiene inquilino activo
         </div>
       )}
@@ -144,7 +144,7 @@ export default function CaptureUtilityReadingModal({
       </div>
 
       {bucketMissing && (
-        <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: 10, marginBottom: 12, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           Crea el bucket <strong>utility-readings</strong> en Supabase Storage para habilitar fotos.
         </div>
@@ -183,8 +183,8 @@ export default function CaptureUtilityReadingModal({
             onClick={() => fileRef.current?.click()}
             style={{
               padding: "20px 16px", borderRadius: 12,
-              border: `2px dashed ${photoFile ? "#15803d" : "var(--border-default)"}`,
-              background: photoFile ? "#dcfce7" : "var(--bg-card)", cursor: "pointer", textAlign: "center",
+              border: `2px dashed ${photoFile ? "rgba(16,185,129,0.5)" : "var(--border-default)"}`,
+              background: photoFile ? "rgba(16,185,129,0.08)" : "var(--bg-card)", cursor: "pointer", textAlign: "center",
             }}
           >
             {photoFile ? (

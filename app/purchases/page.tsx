@@ -1862,8 +1862,8 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: 20, background: "#dcfce7",
-                            color: "#15803d", border: "1px solid #86efac",
+                            borderRadius: 20, background: "rgba(16,185,129,0.1)",
+                            color: "#10B981", border: "1px solid rgba(16,185,129,0.3)",
                           }}>
                             Cerrada vía V{maxV}
                           </span>
@@ -2011,7 +2011,7 @@ export default function PurchasesPage() {
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 4,
                                     padding: "2px 8px", borderRadius: 14,
-                                    background: "#F0FDF4", color: "#15803D",
+                                    background: "rgba(16,185,129,0.1)", color: "#10B981",
                                     fontSize: 12, fontWeight: 700, fontFamily: "monospace",
                                     border: "none", cursor: "pointer",
                                   }}
@@ -2063,7 +2063,7 @@ export default function PurchasesPage() {
                             <span style={{ color: "#15803D" }}>
                               <strong>{prog.itemReceived.toFixed(0)}</strong> surtidos
                             </span>
-                            <span style={{ color: pendientes > 0 ? "#B45309" : "var(--text-muted)" }}>
+                            <span style={{ color: pendientes > 0 ? "#F59E0B" : "var(--text-muted)" }}>
                               <strong>{pendientes.toFixed(0)}</strong> pendientes
                             </span>
                           </div>
@@ -2145,7 +2145,7 @@ export default function PurchasesPage() {
                                       <span style={{
                                         display: "inline-block", marginLeft: 8,
                                         padding: "1px 7px", borderRadius: 999,
-                                        background: "#dcfce7", color: "#15803d",
+                                        background: "rgba(16,185,129,0.1)", color: "#10B981",
                                         fontSize: 11, fontWeight: 600,
                                       }}>
                                         Ya surtido en {o.folio}
@@ -2343,7 +2343,7 @@ export default function PurchasesPage() {
                                 border:  isExchange ? "1px solid rgba(37, 99, 235, 0.3)"  : "1px solid rgba(194, 65, 12, 0.3)",
                                 borderRadius: 10,
                                 padding: "12px 14px",
-                                background: isExchange ? "#f8faff" : "var(--bg-card)",
+                                background: isExchange ? "rgba(37,99,235,0.05)" : "var(--bg-card)",
                                 display: "flex", flexDirection: "column", gap: 6,
                               }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -2355,7 +2355,7 @@ export default function PurchasesPage() {
                                   }}>
                                     {isExchange ? "Cambio" : "Devolución"} #{ri + 1}
                                   </span>
-                                  <span style={{ fontSize: 13, fontWeight: 600, color: isExchange ? "#1d4ed8" : "#c2410c" }}>
+                                  <span style={{ fontSize: 13, fontWeight: 600, color: isExchange ? "var(--accent)" : "#DC2626" }}>
                                     {isExchange ? "🔄" : "↩"} {RETURN_REASON_LABEL[ret.reason]}
                                   </span>
                                   <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
@@ -2399,9 +2399,9 @@ export default function PurchasesPage() {
                                       <span style={{
                                         fontSize: 11, fontWeight: 600, padding: "2px 7px",
                                         borderRadius: 20,
-                                        background: replOrder.status === "received" ? "#dcfce7" : "#eff6ff",
-                                        color:      replOrder.status === "received" ? "#15803d" : "#1d4ed8",
-                                        border:     replOrder.status === "received" ? "1px solid #86efac" : "1px solid #93c5fd",
+                                        background: replOrder.status === "received" ? "rgba(16,185,129,0.1)" : "rgba(37,99,235,0.1)",
+                                        color:      replOrder.status === "received" ? "#10B981" : "var(--accent)",
+                                        border:     replOrder.status === "received" ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(37,99,235,0.3)",
                                       }}>
                                         {STATUS_LABEL[replOrder.status]}
                                       </span>
@@ -3143,8 +3143,8 @@ export default function PurchasesPage() {
             {/* ── Sección XML del SAT ── */}
             <div style={{
               padding: "12px 14px", borderRadius: 10,
-              background: xmlUploaded ? "#f0fdf4" : "var(--bg-input)",
-              border: `1px solid ${xmlUploaded ? "#86efac" : "var(--border-default)"}`,
+              background: xmlUploaded ? "rgba(16,185,129,0.08)" : "var(--bg-input)",
+              border: `1px solid ${xmlUploaded ? "rgba(16,185,129,0.3)" : "var(--border-default)"}`,
             }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div>
@@ -3163,9 +3163,9 @@ export default function PurchasesPage() {
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
                     padding: "8px 14px", borderRadius: 8, flexShrink: 0,
-                    border: `1px solid ${xmlUploaded ? "#22c55e" : "var(--border-strong)"}`,
-                    background: xmlUploaded ? "#dcfce7" : "var(--bg-card)",
-                    color: xmlUploaded ? "#166534" : "var(--text-secondary)",
+                    border: `1px solid ${xmlUploaded ? "rgba(16,185,129,0.4)" : "var(--border-strong)"}`,
+                    background: xmlUploaded ? "rgba(16,185,129,0.08)" : "var(--bg-card)",
+                    color: xmlUploaded ? "#10B981" : "var(--text-secondary)",
                     fontSize: 12, fontWeight: 700, cursor: "pointer",
                   }}
                 >
@@ -3184,10 +3184,10 @@ export default function PurchasesPage() {
                 return (
                   <div style={{
                     marginTop: 10, padding: "8px 10px", borderRadius: 8,
-                    background: rfcMatch ? "#dcfce7" : "#fefce8",
-                    border: `1px solid ${rfcMatch ? "#86efac" : "#fde047"}`,
+                    background: rfcMatch ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
+                    border: `1px solid ${rfcMatch ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`,
                     fontSize: 12,
-                    color: rfcMatch ? "#166534" : "#92400e",
+                    color: rfcMatch ? "#10B981" : "var(--text-primary)",
                   }}>
                     RFC Emisor: <strong>{xmlRfcEmisor}</strong>
                     {xmlNombreEmisor ? ` — ${xmlNombreEmisor}` : ""}
@@ -3204,14 +3204,14 @@ export default function PurchasesPage() {
                   <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Conceptos del XML ({xmlConceptos.length})
                   </p>
-                  <div style={{ border: "1px solid #bbf7d0", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ border: "1px solid rgba(16,185,129,0.25)", borderRadius: 8, overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
-                        <tr style={{ background: "#dcfce7" }}>
-                          <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 700, color: "#166534" }}>Descripción</th>
-                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>Cant.</th>
-                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>P. Unit.</th>
-                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "#166534", whiteSpace: "nowrap" }}>Importe</th>
+                        <tr style={{ background: "rgba(16,185,129,0.08)" }}>
+                          <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 700, color: "var(--text-primary)" }}>Descripción</th>
+                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap" }}>Cant.</th>
+                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap" }}>P. Unit.</th>
+                          <th style={{ padding: "7px 10px", textAlign: "right", fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap" }}>Importe</th>
                         </tr>
                       </thead>
                       <tbody>

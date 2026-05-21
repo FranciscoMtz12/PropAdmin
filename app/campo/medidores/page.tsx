@@ -297,8 +297,8 @@ export default function CampoMedidoresPage() {
                           </div>
                           <span style={{
                             padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 700,
-                            background: isCaptured ? "#dcfce7" : "#fff7ed",
-                            color: isCaptured ? "#15803d" : "#c2410c",
+                            background: isCaptured ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.08)",
+                            color: isCaptured ? "#10B981" : "#DC2626",
                           }}>
                             {isCaptured ? "Capturado" : "Pendiente"}
                           </span>

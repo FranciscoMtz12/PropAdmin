@@ -35,12 +35,12 @@ function getAssetColors(assetType: string): { bg: string; color: string } {
     case "MINISPLIT":
     case "CENTRAL_AC":
     case "COMMON_AREA_AC":
-      return { bg: "#EFF6FF", color: "#2563EB" };
+      return { bg: "rgba(37,99,235,0.1)", color: "#2563EB" };
 
     /* ── Calor / gas ──────────────────────────────────────────── */
     case "BOILER":
     case "STOVE":
-      return { bg: "#FEF3C7", color: "#D97706" };
+      return { bg: "rgba(217,119,6,0.1)", color: "#D97706" };
 
     /* ── Agua ─────────────────────────────────────────────────── */
     case "WASHER":
@@ -48,34 +48,34 @@ function getAssetColors(assetType: string): { bg: string; color: string } {
     case "CISTERN":
     case "PUMP":
     case "HYDROPNEUMATIC":
-      return { bg: "#EFF6FF", color: "#0284C7" };
+      return { bg: "rgba(2,132,199,0.1)", color: "#0284C7" };
 
     /* ── Eléctrico / energía ──────────────────────────────────── */
     case "GENERATOR":
-      return { bg: "#FEF9C3", color: "#CA8A04" };
+      return { bg: "rgba(202,138,4,0.1)", color: "#CA8A04" };
 
     /* ── Verde / ventilación ──────────────────────────────────── */
     case "FAN":
-      return { bg: "#F0FDF4", color: "#16A34A" };
+      return { bg: "rgba(22,163,74,0.1)", color: "#16A34A" };
 
     /* ── Acceso / seguridad ───────────────────────────────────── */
     case "ELEVATOR":
-      return { bg: "#F5F3FF", color: "#7C3AED" };
+      return { bg: "rgba(124,58,237,0.1)", color: "#7C3AED" };
     case "GATE":
-      return { bg: "#F5F3FF", color: "#6D28D9" };
+      return { bg: "rgba(109,40,217,0.1)", color: "#6D28D9" };
     case "SECURITY_CAMERA":
-      return { bg: "#FFF1F2", color: "#BE123C" };
+      return { bg: "rgba(190,18,60,0.1)", color: "#BE123C" };
     case "INTERCOM":
-      return { bg: "#F0FDF4", color: "#15803D" };
+      return { bg: "rgba(21,128,61,0.1)", color: "#15803D" };
 
     /* ── Refrigeración ────────────────────────────────────────── */
     case "FRIDGE":
-      return { bg: "#EFF6FF", color: "#2563EB" };
+      return { bg: "rgba(37,99,235,0.1)", color: "#2563EB" };
 
     /* ── Genérico ─────────────────────────────────────────────── */
     case "OTHER":
     default:
-      return { bg: "#F3F4F6", color: "#374151" };
+      return { bg: "var(--bg-page)", color: "var(--text-secondary)" };
   }
 }
 

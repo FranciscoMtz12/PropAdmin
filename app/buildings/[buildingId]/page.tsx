@@ -790,7 +790,7 @@ function OccupancyTooltip({ active, payload, label }: { active?: boolean; payloa
   return (
     <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
       <p style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>{label}</p>
-      <p style={{ margin: "2px 0", color: "#3B82F6" }}>Total: <strong>{totalVal}</strong></p>
+      <p style={{ margin: "2px 0", color: "var(--text-primary)" }}>Total: <strong>{totalVal}</strong></p>
       <p style={{ margin: "2px 0", color: "#10B981" }}>Ocupadas: <strong>{occupiedVal}</strong></p>
       <p style={{ margin: "2px 0", color: "var(--text-muted)" }}>Ocupación: <strong>{pct}%</strong></p>
     </div>
@@ -3167,7 +3167,7 @@ export default function BuildingDetailPage() {
                     <button
                       type="button"
                       onClick={openEditModal}
-                      style={{ background: "none", border: "none", color: "#0369a1", cursor: "pointer", fontSize: 13, textDecoration: "underline", padding: 0 }}
+                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, textDecoration: "underline", padding: 0 }}
                     >
                       Editar propiedad
                     </button>
@@ -3193,12 +3193,12 @@ export default function BuildingDetailPage() {
                     {(activeAmenities.length > 0 || otherNotes) && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {activeAmenities.map((a) => (
-                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
+                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {a.label}
                           </span>
                         ))}
                         {otherNotes && String(otherNotes).split("\n").map((l) => l.trim()).filter((l) => l.length > 0).map((line, idx) => (
-                          <span key={idx} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "#E1F5EE", color: "#0F6E56", fontWeight: 500 }}>
+                          <span key={idx} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {line.length > 40 ? line.slice(0, 38) + "…" : line}
                           </span>
                         ))}
@@ -3398,16 +3398,16 @@ export default function BuildingDetailPage() {
                     {completedTasks.length > 0 && (
                       <>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                          <div style={{ flex: 1, height: 1, background: "#bbf7d0" }} />
+                          <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
                           <span style={{ fontSize: 11, fontWeight: 500, color: "#1D9E75", whiteSpace: "nowrap" }}>Completadas</span>
-                          <div style={{ flex: 1, height: 1, background: "#bbf7d0" }} />
+                          <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
                         </div>
                         {completedTasks.map((task) => {
                           const feat    = getFeatureByKey(task.feature_key);
                           const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
                           if (!taskDef) return null;
                           return (
-                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: 8, background: "#f0fdf4" }}>
+                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: 8, background: "rgba(16,185,129,0.06)" }}>
                               <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <span style={{ fontSize: 13, fontWeight: 500, color: "#1D9E75" }}>
@@ -4805,7 +4805,7 @@ export default function BuildingDetailPage() {
                   const borderColor = s.cleaning_type === 'common_area' ? '#378ADD' : '#10B981';
                   const isLast = si === buildingSchedules.length - 1 && recentCleaningLogs.length === 0;
                   return (
-                    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px 10px 15px", borderLeft: `3px solid ${borderColor}`, background: "#FAFCFF", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
+                    <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px 10px 15px", borderLeft: `3px solid ${borderColor}`, background: "var(--bg-card-hover)", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
                       <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>
                         {DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}
                         <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
@@ -5091,8 +5091,8 @@ export default function BuildingDetailPage() {
                           </div>
                           <span style={{
                             padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600,
-                            background: lease.status === "ACTIVE" ? "#dcfce7" : "#f3f4f6",
-                            color: lease.status === "ACTIVE" ? "#16a34a" : "#6b7280",
+                            background: lease.status === "ACTIVE" ? "rgba(16,185,129,0.1)" : "var(--bg-page)",
+                            color: lease.status === "ACTIVE" ? "#10B981" : "var(--text-muted)",
                           }}>
                             {lease.status === "ACTIVE" ? "Activo" : lease.status}
                           </span>
@@ -6001,7 +6001,7 @@ export default function BuildingDetailPage() {
                       onClick={() => void handleToggleFeature(feat.key)}
                       style={{
                         width: 44, height: 24, borderRadius: 12,
-                        background: isActive ? feat.color : "#e5e7eb",
+                        background: isActive ? feat.color : "var(--border-default)",
                         border: "none", cursor: isSaving ? "wait" : "pointer",
                         position: "relative", transition: "background 0.2s", padding: 0,
                       }}
@@ -6088,8 +6088,8 @@ export default function BuildingDetailPage() {
               {featureToast && (
                 <div style={{
                   marginTop: 16, padding: "10px 14px", borderRadius: 10,
-                  background: "#f0fdf4", border: "1px solid #bbf7d0",
-                  color: "#15803d", fontSize: 13, fontWeight: 500,
+                  background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
+                  color: "#10B981", fontSize: 13, fontWeight: 500,
                 }}>
                   {featureToast}
                 </div>

@@ -1090,13 +1090,13 @@ export default function TenantsPage() {
                                     {lease.end_date ? ` → ${formatDate(lease.end_date)}` : ""}
                                   </span>
                                   {isActive ? (
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#15803D", background: "#D1FAE5", padding: "1px 6px", borderRadius: 10 }}>ACTIVO</span>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: 10 }}>ACTIVO</span>
                                   ) : null}
                                   {diff != null && diff !== 0 ? (
                                     <span style={{
                                       fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 10,
-                                      color: diff > 0 ? "#15803D" : "#DC2626",
-                                      background: diff > 0 ? "#D1FAE5" : "#FEE2E2",
+                                      color: diff > 0 ? "#10B981" : "#DC2626",
+                                      background: diff > 0 ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
                                     }}>
                                       {diff > 0 ? "+" : ""}{formatCurrency(diff)}
                                     </span>

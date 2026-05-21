@@ -2601,10 +2601,10 @@ function TicketCard({
                         <div style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
                           padding: "8px 12px", borderRadius: 8,
-                          background: "#F0FDF4", border: "1px solid #BBF7D0",
+                          background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
                         }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "#166534" }}>Total gastado (recibidas)</span>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: "#166534", fontFamily: "monospace" }}>
+                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>Total gastado (recibidas)</span>
+                          <span style={{ fontSize: 15, fontWeight: 800, color: "#10B981", fontFamily: "monospace" }}>
                             ${totalGastado.toFixed(2)}
                           </span>
                         </div>
@@ -2620,13 +2620,13 @@ function TicketCard({
                               <div key={it.id} style={{
                                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
                                 padding: "6px 10px", borderRadius: 6,
-                                background: "#FFFBEB", border: "1px solid #FDE68A",
+                                background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
                                 fontSize: 13,
                               }}>
                                 <span style={{ flex: 1, minWidth: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {it.description}
                                 </span>
-                                <span style={{ color: "#B45309", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                <span style={{ color: "#F59E0B", fontWeight: 700, whiteSpace: "nowrap" }}>
                                   {pend} {it.unit} pendiente{pend !== 1 ? "s" : ""}
                                 </span>
                                 <span style={{ color: "var(--text-muted)", fontSize: 11, fontFamily: "monospace", whiteSpace: "nowrap" }}>

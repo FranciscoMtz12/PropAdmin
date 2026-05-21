@@ -1393,7 +1393,7 @@ export default function CleaningPage() {
                           <div style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {building?.name ?? (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
-                          <div style={{ fontSize: 11, color: done ? "#9ca3af" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: 11, color: done ? "var(--text-muted)" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {task.source === "unit" && task.startTime
                               ? `${unit ? (unit.display_code || unit.unit_number) : ""} · ${formatTimeAmPm(task.startTime)}`
                               : task.timeBlock
@@ -1469,7 +1469,7 @@ export default function CleaningPage() {
                         <span style={{ fontWeight: 600, fontSize: 14 }}>{b.name}</span>
                         <span style={{ fontWeight: 700, fontSize: 14, color }}>{pct}%</span>
                       </div>
-                      <div style={{ background: "#e5e7eb", borderRadius: 99, height: 8 }}>
+                      <div style={{ background: "var(--border-default)", borderRadius: 99, height: 8 }}>
                         <div style={{ width: `${pct}%`, background: color, borderRadius: 99, height: 8, transition: "width 0.4s" }} />
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>

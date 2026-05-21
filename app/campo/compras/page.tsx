@@ -511,21 +511,21 @@ export default function CampoComprasPage() {
                   const ctx = exchangeCtx[order.id]!;
                   return (
                     <div style={{
-                      background: "#fef3c7", border: "2px solid #f59e0b",
+                      background: "rgba(245,158,11,0.08)", border: "2px solid rgba(245,158,11,0.3)",
                       borderTop: "none",
                       padding: "14px 16px",
                     }}>
                       <div style={{
-                        fontSize: 14, fontWeight: 700, color: "#92400e",
+                        fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
                         marginBottom: 10, display: "flex", alignItems: "center", gap: 8,
                       }}>
                         🔄 ESTA ES UNA ORDEN DE CAMBIO
                       </div>
-                      <div style={{ fontSize: 13, color: "#78350f", marginBottom: 10 }}>
+                      <div style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: 10 }}>
                         Al recoger el material nuevo, también debes{" "}
                         <strong>ENTREGAR</strong> al proveedor:
                       </div>
-                      <ul style={{ margin: 0, paddingLeft: 20, color: "#78350f" }}>
+                      <ul style={{ margin: 0, paddingLeft: 20, color: "var(--text-primary)" }}>
                         {ctx.items.map((it, idx) => (
                           <li key={idx} style={{ marginBottom: 4, fontSize: 13 }}>
                             <strong>{it.description}</strong> — {it.quantity_returned} {it.unit}
@@ -534,8 +534,8 @@ export default function CampoComprasPage() {
                       </ul>
                       <div style={{
                         marginTop: 10, paddingTop: 10,
-                        borderTop: "1px solid #f59e0b",
-                        fontSize: 13, color: "#78350f",
+                        borderTop: "1px solid rgba(245,158,11,0.3)",
+                        fontSize: 13, color: "var(--text-primary)",
                       }}>
                         <strong>Motivo:</strong> {RETURN_REASON_LABEL[ctx.reason]}
                         {ctx.reason_notes ? (
@@ -657,8 +657,8 @@ export default function CampoComprasPage() {
                   style={{
                     padding: "12px 14px",
                     borderRadius: 10,
-                    border: `1px solid ${item.faltaAlgo ? "#F59E0B" : "var(--border-default)"}`,
-                    background: item.faltaAlgo ? "#fffbeb" : "var(--bg-input)",
+                    border: `1px solid ${item.faltaAlgo ? "rgba(245,158,11,0.4)" : "var(--border-default)"}`,
+                    background: item.faltaAlgo ? "rgba(245,158,11,0.08)" : "var(--bg-input)",
                     transition: "border-color 0.15s, background 0.15s",
                   }}
                 >
@@ -742,10 +742,10 @@ export default function CampoComprasPage() {
               <div style={{
                 display: "flex", alignItems: "flex-start", gap: 8,
                 padding: "10px 12px", borderRadius: 8,
-                background: "#fffbeb", border: "1px solid #F59E0B",
+                background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
               }}>
-                <AlertCircle size={16} style={{ color: "#D97706", flexShrink: 0, marginTop: 1 }} />
-                <p style={{ margin: 0, fontSize: 12, color: "#92400e", lineHeight: 1.5 }}>
+                <AlertCircle size={16} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
+                <p style={{ margin: 0, fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5 }}>
                   Se creará un borrador de OC en Compras con los materiales faltantes para que el equipo de compras la complete.
                 </p>
               </div>

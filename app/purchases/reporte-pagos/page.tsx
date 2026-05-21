@@ -800,33 +800,33 @@ export default function ReportePagosPage() {
         return (
           <>
             {overdueOCs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FCEBEB", border: "1.5px solid #E24B4A", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0, marginTop: 5 }} />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#A32D2D", marginBottom: 4 }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", marginBottom: 4 }}>
                     {overdueOCs.length} OC{overdueOCs.length !== 1 ? "s" : ""} facturada{overdueOCs.length !== 1 ? "s" : ""} sin reportar — más de 7 días
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {overdueOCs.slice(0, MAX_FOLIOS).map(o => (
-                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: "#E24B4A22", color: "#A32D2D" }}>
+                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: "rgba(220,38,38,0.08)", color: "var(--text-primary)" }}>
                         {o.folio}
                       </span>
                     ))}
                     {overdueOCs.length > MAX_FOLIOS && (
-                      <span style={{ fontSize: 11, color: "#A32D2D", alignSelf: "center" }}>+{overdueOCs.length - MAX_FOLIOS} más</span>
+                      <span style={{ fontSize: 11, color: "var(--text-primary)", alignSelf: "center" }}>+{overdueOCs.length - MAX_FOLIOS} más</span>
                     )}
                   </div>
                 </div>
               </div>
             )}
             {recentOCs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FAEEDA", border: "1.5px solid #EF9F27", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF9F27", flexShrink: 0, marginTop: 5 }} />
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "#854F0B" }}>
+                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
                     {recentOCs.length} OC{recentOCs.length !== 1 ? "s" : ""} facturada{recentOCs.length !== 1 ? "s" : ""} pendiente{recentOCs.length !== 1 ? "s" : ""} de reportar
                   </div>
-                  <div style={{ fontSize: 12, color: "#854F0B", marginTop: 2 }}>Listas para incluir en el próximo reporte a pagos</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Listas para incluir en el próximo reporte a pagos</div>
                 </div>
               </div>
             )}
@@ -1219,10 +1219,10 @@ export default function ReportePagosPage() {
             <div style={{
               display: "flex", alignItems: "flex-start", gap: 8,
               padding: "10px 12px", borderRadius: 8, marginBottom: 4,
-              background: "#fffbeb", border: "1px solid #f59e0b",
+              background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
             }}>
-              <AlertTriangle size={15} style={{ color: "#d97706", flexShrink: 0, marginTop: 1 }} />
-              <p style={{ margin: 0, fontSize: 12, color: "#92400e", lineHeight: 1.5 }}>
+              <AlertTriangle size={15} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ margin: 0, fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5 }}>
                 Ya existe el reporte <strong>{duplicateWarning.folio}</strong> para la semana {duplicateWarning.week} de {duplicateWarning.year}. Si continúas, se creará un reporte duplicado.
               </p>
             </div>

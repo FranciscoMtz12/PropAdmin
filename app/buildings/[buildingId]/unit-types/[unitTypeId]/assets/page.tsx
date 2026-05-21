@@ -236,7 +236,6 @@ export default function UnitTypeAssetsPage() {
       return;
     }
 
-    console.log("templateAssets loaded", templateAssetData?.length, templateAssetData);
     setTemplateAssets((templateAssetData as UnitTypeAssetRow[]) || []);
     setLoadingData(false);
   }

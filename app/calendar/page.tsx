@@ -234,9 +234,9 @@ const PAYMENTS_COLORS = {
 };
 
 const COLLECTIONS_COLORS = {
-  background: "#FEFCE8",
-  border: "#FDE68A",
-  text: "#A16207",
+  background: "rgba(245,158,11,0.1)",
+  border: "rgba(245,158,11,0.3)",
+  text: "var(--text-primary)",
 };
 
 function getStartOfWeek(date: Date) {
@@ -459,16 +459,16 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
   if (module === "payments") {
     if (label === "Estado") {
       if (value === "Pagado") {
-        return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
+        return { background: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "#10B981" };
       }
       if (value === "Vencido") {
-        return { background: "var(--badge-bg-red)", border: "#FECACA", text: "#B91C1C" };
+        return { background: "var(--badge-bg-red)", border: "rgba(220,38,38,0.3)", text: "#DC2626" };
       }
-      return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
+      return { background: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", text: "var(--text-primary)" };
     }
 
     if (label === "Tipo" && value === "Proyección") {
-      return { background: "#EFF6FF", border: "#DBEAFE", text: "#2563EB" };
+      return { background: "rgba(59,130,246,0.1)", border: "rgba(59,130,246,0.3)", text: "var(--accent)" };
     }
   }
 

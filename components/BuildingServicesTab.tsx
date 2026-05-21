@@ -125,7 +125,7 @@ function MeterRow({
             </span>
           )}
           {hasSubs && subs.length === 0 && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "#92400e", background: "#fef3c7", borderRadius: 999, padding: "1px 7px" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-primary)", background: "rgba(245,158,11,0.12)", borderRadius: 999, padding: "1px 7px" }}>
               <AlertTriangle size={10} />Sin submedidores
             </span>
           )}
@@ -326,11 +326,11 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
 
       {/* Placeholders (medidores pendientes) */}
       {placeholders.map((ph) => (
-        <div key={ph.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))", background: "#fffbeb", flexWrap: "wrap" }}>
+        <div key={ph.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))", background: "rgba(245,158,11,0.08)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ color: "#D97706" }}><ServiceIcon type={ph.service_type as UtilityServiceType} size={14} /></span>
+            <span style={{ color: "#F59E0B" }}><ServiceIcon type={ph.service_type as UtilityServiceType} size={14} /></span>
             <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#92400e", background: "#fef3c7", padding: "1px 7px", borderRadius: 999, display: "inline-block", marginBottom: 2 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", background: "rgba(245,158,11,0.15)", padding: "1px 7px", borderRadius: 999, display: "inline-block", marginBottom: 2 }}>
                 Pendiente de configurar
               </span>
               <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
