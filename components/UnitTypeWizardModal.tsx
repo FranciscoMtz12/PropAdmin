@@ -1450,7 +1450,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>
                   EQUIPAMIENTO POR ESPACIO ({totalItems} elemento{totalItems !== 1 ? "s" : ""})
                 </p>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: `repeat(${groupsWithEq.length >= 7 ? 4 : 3}, 1fr)`, gap: 10 }}>
                   {groupsWithEq.map((g) => (
                     <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-input)" }}>
