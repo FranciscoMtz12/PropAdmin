@@ -78,7 +78,7 @@ const dayOptions: DayOption[] = [
 const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
-  borderRadius: "12px",
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",

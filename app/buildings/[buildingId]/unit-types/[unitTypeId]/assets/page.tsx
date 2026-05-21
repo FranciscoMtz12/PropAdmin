@@ -376,7 +376,7 @@ export default function UnitTypeAssetsPage() {
                 key={asset.id}
                 style={{
                   border: "1px solid var(--border-default)",
-                  borderRadius: "16px",
+                  borderRadius: "var(--border-radius-xl)",
                   padding: "16px",
                   background: "var(--bg-card)",
                 }}

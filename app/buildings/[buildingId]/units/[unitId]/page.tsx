@@ -161,7 +161,7 @@ type LeaseFormState = {
 const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
-  borderRadius: "12px",
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",
@@ -2041,7 +2041,7 @@ export default function UnitDetailPage() {
                   alignItems: "flex-start",
                   gap: "12px",
                   padding: "14px 16px",
-                  borderRadius: "12px",
+                  borderRadius: "var(--border-radius-lg)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                   cursor: "pointer",
@@ -2069,7 +2069,7 @@ export default function UnitDetailPage() {
               <div
                 style={{
                   padding: "12px 14px",
-                  borderRadius: "12px",
+                  borderRadius: "var(--border-radius-lg)",
                   background: "var(--bg-card-hover)",
                   border: "1px solid var(--border-default)",
                   color: "var(--text-secondary)",
@@ -2232,7 +2232,7 @@ export default function UnitDetailPage() {
                 style={{
                   gridColumn: "1 / -1",
                   border: "1px solid var(--border-default)",
-                  borderRadius: "16px",
+                  borderRadius: "var(--border-radius-xl)",
                   padding: "16px",
                   background: "var(--bg-card-hover)",
                   display: "grid",
@@ -2495,7 +2495,7 @@ export default function UnitDetailPage() {
               <div
                 style={{
                   padding: "12px 14px",
-                  borderRadius: "12px",
+                  borderRadius: "var(--border-radius-lg)",
                   background: "var(--badge-bg-red)",
                   color: "var(--badge-text-red)",
                   fontSize: "14px",

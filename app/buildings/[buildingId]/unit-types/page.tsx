@@ -532,7 +532,7 @@ export default function BuildingUnitTypesPage() {
         ) : (
           <div style={{ display: "grid", gap: "12px" }}>
             {unitTypes.map((unitType) => (
-              <div key={unitType.id} style={{ border: "1px solid var(--border-default)", borderRadius: "16px", padding: "18px", background: "var(--bg-card)" }}>
+              <div key={unitType.id} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
                   <div style={{ width: "42px", height: "42px", borderRadius: "14px", background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <LayoutPanelTop size={18} />
@@ -544,9 +544,9 @@ export default function BuildingUnitTypesPage() {
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "14px" }}>
-                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
-                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
-                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "12px", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Equipamiento base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
+                  <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Equipamiento base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>

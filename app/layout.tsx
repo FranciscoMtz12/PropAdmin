@@ -128,7 +128,7 @@ export default function RootLayout({
               background: "var(--bg-card)",
               color: "var(--text-primary)",
               border: "0.5px solid var(--border-default)",
-              borderRadius: "8px",
+              borderRadius: "var(--border-radius-md)",
               fontSize: "13px",
               padding: "12px 16px",
             },
