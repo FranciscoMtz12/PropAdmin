@@ -704,6 +704,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   const [s1Error, setS1Error]     = useState("");
   const [customSpaceInput, setCustomSpaceInput] = useState("");
   const [showCustomInput, setShowCustomInput]   = useState(false);
+  const [visitedSpaces, setVisitedSpaces]       = useState<Set<string>>(new Set());
 
   const STEP_TITLES = ["Nueva tipología — Información", "Nueva tipología — Espacios", "Nueva tipología — Equipamiento", "Nueva tipología — Resumen"];
 
@@ -717,7 +718,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     setStep(1); setS1({ ...S1 }); setS2({ ...S2 });
     setEq(JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment);
     setSelectedSpace(""); setSaving(false); setS1Error("");
-    setCustomSpaceInput(""); setShowCustomInput(false);
+    setCustomSpaceInput(""); setShowCustomInput(false); setVisitedSpaces(new Set());
   }
 
   function handleClose() { reset(); onClose(); }
@@ -899,6 +900,26 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   const showFuncionales = !s2.hasLavanderia && !s2.hasCuartoMaquinas;
   const centralSpaces = getCentralSpaces(s2, eq);
 
+  const panelSpaces: { key: string; label: string; headerLabel?: string; Icon: React.ElementType; count: number }[] = [
+    ...Array.from({ length: s2.bedrooms }, (_, i) => ({
+      key: `bed-${i}`,
+      label: s2.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara",
+      Icon: BedDouble,
+      count: bedroomCount(eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ),
+    })),
+    ...(s2.hasCuartoServicio ? [{ key: "cuartoServicio", label: "Cuarto de servicio", Icon: BedDouble,       count: bedroomCount(eq.cuartoServicio)          }] : []),
+    ...(s2.hasSala          ? [{ key: "sala",            label: "Sala",              Icon: Sofa,             count: salaCount(eq.sala)                      }] : []),
+    ...(s2.hasCocina        ? [{ key: "cocina",          label: "Cocina",            Icon: UtensilsCrossed,  count: cocinaCount(eq.cocina)                  }] : []),
+    ...(s2.hasComedor       ? [{ key: "comedor",         label: "Comedor",           Icon: UtensilsCrossed,  count: comedorCount(eq.comedor)                }] : []),
+    ...(s2.hasLavanderia    ? [{ key: "lavanderia",      label: "Lavandería",        Icon: Shirt,            count: lavanderiaCount(eq.lavanderia)          }] : []),
+    ...(s2.hasCuartoMaquinas ? [{ key: "cuartoMaquinas", label: "Cuarto de máquinas", Icon: Wrench,          count: cuartoMaquinasCount(eq.cuartoMaquinas) }] : []),
+    ...(centralSpaces.length > 0 ? [{ key: "aireCentral", label: "Aire central", headerLabel: "Sistema de aire central", Icon: Wind, count: centralSpaces.length }] : []),
+  ];
+  const step3ActiveKey = panelSpaces.some(p => p.key === selectedSpace) ? selectedSpace : (panelSpaces[0]?.key ?? "");
+  const step3ActiveIdx = panelSpaces.findIndex(p => p.key === step3ActiveKey);
+  const step3IsLast    = panelSpaces.length === 0 || step3ActiveIdx === panelSpaces.length - 1;
+  const step3NextSpace = panelSpaces[step3ActiveIdx + 1] ?? null;
+
   /* ── Space toggle button ── */
   function spaceToggle(key: string, label: string, Icon: React.ElementType) {
     const on = s2[key as keyof Step2] as boolean;
@@ -1019,22 +1040,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
       {/* ── PASO 3: Equipamiento ── */}
       {step === 3 && (() => {
-        const panelSpaces: { key: string; label: string; headerLabel?: string; Icon: React.ElementType; count: number }[] = [
-          ...Array.from({ length: s2.bedrooms }, (_, i) => ({
-            key: `bed-${i}`,
-            label: s2.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara",
-            Icon: BedDouble,
-            count: bedroomCount(eq.bedrooms[i] ?? DEFAULT_BEDROOM_EQ),
-          })),
-          ...(s2.hasCuartoServicio ? [{ key: "cuartoServicio", label: "Cuarto de servicio", Icon: BedDouble,       count: bedroomCount(eq.cuartoServicio)          }] : []),
-          ...(s2.hasSala          ? [{ key: "sala",            label: "Sala",              Icon: Sofa,             count: salaCount(eq.sala)                      }] : []),
-          ...(s2.hasCocina        ? [{ key: "cocina",          label: "Cocina",            Icon: UtensilsCrossed,  count: cocinaCount(eq.cocina)                  }] : []),
-          ...(s2.hasComedor       ? [{ key: "comedor",         label: "Comedor",           Icon: UtensilsCrossed,  count: comedorCount(eq.comedor)                }] : []),
-          ...(s2.hasLavanderia    ? [{ key: "lavanderia",      label: "Lavandería",        Icon: Shirt,            count: lavanderiaCount(eq.lavanderia)          }] : []),
-          ...(s2.hasCuartoMaquinas ? [{ key: "cuartoMaquinas", label: "Cuarto de máquinas", Icon: Wrench,          count: cuartoMaquinasCount(eq.cuartoMaquinas) }] : []),
-          ...(centralSpaces.length > 0 ? [{ key: "aireCentral", label: "Aire central", headerLabel: "Sistema de aire central", Icon: Wind, count: centralSpaces.length }] : []),
-        ];
-        const activeKey = panelSpaces.some(p => p.key === selectedSpace) ? selectedSpace : (panelSpaces[0]?.key ?? "");
+        const activeKey = step3ActiveKey;
         const activeSpace = panelSpaces.find(p => p.key === activeKey);
 
         function spaceContent(key: string): React.ReactNode {
@@ -1155,7 +1161,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                   const active = sp.key === activeKey;
                   const SpIcon = sp.Icon;
                   return (
-                    <button key={sp.key} type="button" onClick={() => setSelectedSpace(sp.key)}
+                    <button key={sp.key} type="button" onClick={() => { setSelectedSpace(sp.key); setVisitedSpaces(prev => { const s = new Set(prev); s.add(sp.key); return s; }); }}
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         gap: 8, width: "100%", padding: "7px 14px",
@@ -1344,9 +1350,25 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           {step > 1 && <UiButton type="button" variant="secondary" onClick={goBack} disabled={saving}>Atrás</UiButton>}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
-          <UiButton type="button" variant="secondary" onClick={handleClose} disabled={saving}>Cancelar</UiButton>
+          {step !== 3 && (
+            <UiButton type="button" variant="secondary" onClick={handleClose} disabled={saving}>Cancelar</UiButton>
+          )}
           {step < 4 ? (
-            <UiButton type="button" variant="primary" onClick={goNext}>Siguiente</UiButton>
+            step === 3 ? (
+              step3IsLast ? (
+                <UiButton type="button" variant="primary" onClick={goNext}>Ver resumen →</UiButton>
+              ) : (
+                <UiButton type="button" variant="primary" onClick={() => {
+                  const nextKey = step3NextSpace?.key ?? "";
+                  if (nextKey) {
+                    setSelectedSpace(nextKey);
+                    setVisitedSpaces(prev => { const s = new Set(prev); s.add(nextKey); return s; });
+                  }
+                }}>→ {step3NextSpace?.label ?? ""}</UiButton>
+              )
+            ) : (
+              <UiButton type="button" variant="primary" onClick={goNext}>Siguiente</UiButton>
+            )
           ) : (
             <UiButton type="button" variant="primary" onClick={() => void handleCreate()} disabled={saving}>
               {saving ? "Creando..." : "Crear tipología"}
