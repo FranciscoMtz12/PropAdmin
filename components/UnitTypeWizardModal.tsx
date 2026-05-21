@@ -30,7 +30,7 @@ type Step2 = {
 };
 type BedroomEq = {
   ac: string; fan: string; heater: string;
-  bed: string; closet: string; tv: string; furnitureOther: string[];
+  bed: string; bedCount: number; closet: string; tv: string; furnitureOther: string[];
   hasOwnBath: boolean; shower: string; hasTub: boolean; hasJacuzzi: boolean;
 };
 type SalaEq = { ac: string; fan: string; furniture: string[]; furnitureOther: string[]; guestBath: string; guestBathShower: string };
@@ -75,7 +75,7 @@ const S2: Step2 = {
 };
 const DEFAULT_BEDROOM_EQ: BedroomEq = {
   ac: "NONE", fan: "NO", heater: "NONE",
-  bed: "NONE", closet: "NONE", tv: "NO", furnitureOther: [],
+  bed: "NONE", bedCount: 1, closet: "NONE", tv: "NO", furnitureOther: [],
   hasOwnBath: false, shower: "NONE", hasTub: false, hasJacuzzi: false,
 };
 const DEFAULT_EQ: Equipment = {
@@ -419,8 +419,8 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
     addAC(b.ac, sfx);
     if (b.fan === "YES") add("FAN", `Ventilador de techo${sfx}`);
     if (b.heater !== "NONE") add("OTHER", `Calefactor ${b.heater === "GAS" ? "gas" : "eléctrico"}${sfx}`);
-    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king" };
-    if (b.bed !== "NONE" && bedMap[b.bed]) add("OTHER", `${bedMap[b.bed]}${sfx}`);
+    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king", LITERA: "Litera" };
+    if (b.bed !== "NONE" && bedMap[b.bed]) add("OTHER", `${bedMap[b.bed]}${b.bedCount > 1 ? ` × ${b.bedCount}` : ""}${sfx}`);
     const closetMap: Record<string, string> = { ARMARIO: "Armario", CLOSET: "Closet", WALK_IN: "Walk-in closet" };
     if (b.closet !== "NONE" && closetMap[b.closet]) add("OTHER", `${closetMap[b.closet]}${sfx}`);
     if (b.tv === "YES") add("OTHER", `Televisión${sfx}`);
@@ -435,8 +435,8 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
     addAC(b.ac, sfx);
     if (b.fan === "YES") add("FAN", `Ventilador de techo${sfx}`);
     if (b.heater !== "NONE") add("OTHER", `Calefactor ${b.heater === "GAS" ? "gas" : "eléctrico"}${sfx}`);
-    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king" };
-    if (b.bed !== "NONE" && bedMap[b.bed]) add("OTHER", `${bedMap[b.bed]}${sfx}`);
+    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king", LITERA: "Litera" };
+    if (b.bed !== "NONE" && bedMap[b.bed]) add("OTHER", `${bedMap[b.bed]}${b.bedCount > 1 ? ` × ${b.bedCount}` : ""}${sfx}`);
     const closetMap: Record<string, string> = { ARMARIO: "Armario", CLOSET: "Closet", WALK_IN: "Walk-in closet" };
     if (b.closet !== "NONE" && closetMap[b.closet]) add("OTHER", `${closetMap[b.closet]}${sfx}`);
     if (b.tv === "YES") add("OTHER", `Televisión${sfx}`);
@@ -542,8 +542,8 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
     }
     if (b.fan === "YES") items.push("Ventilador de techo");
     if (b.heater !== "NONE") items.push(`Calefactor ${b.heater === "GAS" ? "gas" : "eléctrico"}`);
-    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king" };
-    if (b.bed !== "NONE" && bedMap[b.bed]) items.push(bedMap[b.bed]);
+    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king", LITERA: "Litera" };
+    if (b.bed !== "NONE" && bedMap[b.bed]) items.push(`${bedMap[b.bed]}${b.bedCount > 1 ? ` × ${b.bedCount}` : ""}`);
     const closetMap: Record<string, string> = { ARMARIO: "Armario", CLOSET: "Closet", WALK_IN: "Walk-in closet" };
     if (b.closet !== "NONE" && closetMap[b.closet]) items.push(closetMap[b.closet]);
     if (b.tv === "YES") items.push("Televisión");
@@ -566,8 +566,8 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
     else if (t === "CENTRAL") items.push("Aire central (sistema)");
     if (b.fan === "YES") items.push("Ventilador de techo");
     if (b.heater !== "NONE") items.push(`Calefactor ${b.heater === "GAS" ? "gas" : "eléctrico"}`);
-    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king" };
-    if (b.bed !== "NONE" && bedMap[b.bed]) items.push(bedMap[b.bed]);
+    const bedMap: Record<string, string> = { INDIVIDUAL: "Cama individual", MATRIMONIAL: "Cama matrimonial", QUEEN: "Cama queen", KING: "Cama king", LITERA: "Litera" };
+    if (b.bed !== "NONE" && bedMap[b.bed]) items.push(`${bedMap[b.bed]}${b.bedCount > 1 ? ` × ${b.bedCount}` : ""}`);
     const closetMap: Record<string, string> = { ARMARIO: "Armario", CLOSET: "Closet", WALK_IN: "Walk-in closet" };
     if (b.closet !== "NONE" && closetMap[b.closet]) items.push(closetMap[b.closet]);
     if (b.tv === "YES") items.push("Televisión");
@@ -1109,7 +1109,21 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 {eqRow("Calefactor", <IncludeToggle included={bEq.heater !== "NONE"} onExclude={() => setBedEq(i, "heater", "NONE")} onInclude={() => setBedEq(i, "heater", "GAS")}>
                   <Radio value={bEq.heater} onChange={(v) => setBedEq(i, "heater", v)} options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
                 </IncludeToggle>)}
-                {eqRow("Cama", <Radio value={bEq.bed} onChange={(v) => setBedEq(i, "bed", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }]} />)}
+                {eqRow("Cama", (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <Radio value={bEq.bed} onChange={(v) => { setBedEq(i, "bed", v); if (v === "NONE") setBedEq(i, "bedCount", 1); }} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }, { value: "LITERA", label: "Litera" }]} />
+                    <Expand show={bEq.bed !== "NONE"} id={`bed-count-${i}`}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button type="button" onClick={() => setBedEq(i, "bedCount", Math.max(1, bEq.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+                          <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{bEq.bedCount}</span>
+                          <button type="button" onClick={() => setBedEq(i, "bedCount", bEq.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+                        </div>
+                      </div>
+                    </Expand>
+                  </div>
+                ))}
                 {eqRow("Closet", <Radio value={bEq.closet} onChange={(v) => setBedEq(i, "closet", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "ARMARIO", label: "Armario" }, { value: "CLOSET", label: "Closet" }, { value: "WALK_IN", label: "Walk-in closet" }]} />)}
                 {eqRow("Televisión", <Radio value={bEq.tv} onChange={(v) => setBedEq(i, "tv", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
                 {eqRow("Otro mobiliario", <PillsInput value={bEq.furnitureOther} onChange={(v) => setBedEq(i, "furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />)}
@@ -1126,7 +1140,21 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 {eqRow("Calefactor", <IncludeToggle included={b.heater !== "NONE"} onExclude={() => setCuartoServ("heater", "NONE")} onInclude={() => setCuartoServ("heater", "GAS")}>
                   <Radio value={b.heater} onChange={(v) => setCuartoServ("heater", v)} options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />
                 </IncludeToggle>)}
-                {eqRow("Cama", <Radio value={b.bed} onChange={(v) => setCuartoServ("bed", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }]} />)}
+                {eqRow("Cama", (
+                  <div style={{ display: "grid", gap: 8 }}>
+                    <Radio value={b.bed} onChange={(v) => { setCuartoServ("bed", v); if (v === "NONE") setCuartoServ("bedCount", 1); }} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }, { value: "LITERA", label: "Litera" }]} />
+                    <Expand show={b.bed !== "NONE"} id="bed-count-cs">
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <button type="button" onClick={() => setCuartoServ("bedCount", Math.max(1, b.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+                          <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{b.bedCount}</span>
+                          <button type="button" onClick={() => setCuartoServ("bedCount", b.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+                        </div>
+                      </div>
+                    </Expand>
+                  </div>
+                ))}
                 {eqRow("Closet", <Radio value={b.closet} onChange={(v) => setCuartoServ("closet", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "ARMARIO", label: "Armario" }, { value: "CLOSET", label: "Closet" }, { value: "WALK_IN", label: "Walk-in closet" }]} />)}
                 {eqRow("Televisión", <Radio value={b.tv} onChange={(v) => setCuartoServ("tv", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
                 {eqRow("Otro mobiliario", <PillsInput value={b.furnitureOther} onChange={(v) => setCuartoServ("furnitureOther", v)} placeholder="Ej. Escritorio, Buró..." />)}
