@@ -3096,7 +3096,7 @@ export default function BuildingDetailPage() {
           { key: "gallery",   label: "Galería",    icon: <FileImage size={16} />,  count: tabCounts.gallery, pendingDot: tabsWithPendingTasks.has('gallery')   },
           ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services, pendingDot: tabsWithPendingTasks.has('services')     }] : []),
           ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking,  pendingDot: tabsWithPendingTasks.has('parking')      }] : []),
-          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas / Amenidades", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
+          ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes / Amenidades", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
         ]}
       />
 
@@ -5927,7 +5927,7 @@ export default function BuildingDetailPage() {
       {activeTab === "common_areas" && hasCommonAreasTab && (
         <div style={{ display: "grid", gap: 20 }}>
           <SectionCard
-            title="Áreas / Amenidades"
+            title="Áreas comunes / Amenidades"
             icon={<Trees size={18} />}
             action={
               <UiButton variant="primary" icon={<Plus size={14} />} onClick={() => {
@@ -6062,16 +6062,6 @@ export default function BuildingDetailPage() {
               style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 20 }}
             >
               {AMENITIES.map(renderAreaCard)}
-            </motion.div>
-
-            <div style={{ borderTop: "1px solid var(--border-default)", marginBottom: 20 }} />
-
-            {/* Sección 2: Espacios del edificio */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Espacios del edificio</p>
-            <motion.div variants={staggerContainer} initial="hidden" animate="show"
-              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 20 }}
-            >
-              {BUILDING_SPACES.map(renderAreaCard)}
             </motion.div>
 
             <div style={{ borderTop: "1px solid var(--border-default)", marginBottom: 20 }} />
