@@ -28,6 +28,7 @@ import {
   AlertTriangle,
   Archive,
   ArrowLeft,
+  Calendar,
   ArrowUpDown,
   Baby,
   Ban,
@@ -101,7 +102,7 @@ import {
   Zap,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -553,6 +554,15 @@ const MAINT_PRIORITY_ICON: Record<string, string> = {
 };
 
 /* ─── Áreas / Amenidades ─────────────────────────────────────────────── */
+
+type CommonAreaRow = {
+  id: string;
+  name: string;
+  is_reservable: boolean;
+  capacity: number | null;
+  reservation_unit: string | null;
+  requires_approval: boolean;
+};
 
 type AreaEntry = { name: string; icon: React.ComponentType<{ size?: number }> };
 
@@ -1069,12 +1079,13 @@ export default function BuildingDetailPage() {
   /* Locales como units (plaza_comercial) */
   const [plazaLocales, setPlazaLocales]       = useState<PlazaLocal[]>([]);
   const [unitsNeedingReview, setUnitsNeedingReview] = useState(0);
-  const [commonAreas, setCommonAreas]         = useState<{ id: string; name: string }[]>([]);
+  const [commonAreas, setCommonAreas]         = useState<CommonAreaRow[]>([]);
   const [addingCommonArea, setAddingCommonArea]       = useState(false);
   const [savingCommonArea, setSavingCommonArea]       = useState(false);
   const [selectedAreaNames, setSelectedAreaNames]     = useState<Set<string>>(new Set());
   const [customAreaInput, setCustomAreaInput]         = useState("");
   const [pendingCustomAreas, setPendingCustomAreas]   = useState<string[]>([]);
+  const areaDebounceRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const [isCreateBodegaOpen, setIsCreateBodegaOpen] = useState(false);
   const [savingBodega, setSavingBodega] = useState(false);
   const [bodegaName, setBodegaName] = useState("");
@@ -1451,7 +1462,7 @@ export default function BuildingDetailPage() {
             .order("name")
         : Promise.resolve({ data: [] }),
       supabase.from("common_areas")
-        .select("id, name")
+        .select("id, name, is_reservable, capacity, reservation_unit, requires_approval")
         .eq("building_id", buildingId)
         .is("deleted_at", null)
         .order("created_at"),
@@ -1471,7 +1482,7 @@ export default function BuildingDetailPage() {
         .order("created_at", { ascending: true }),
     ]);
     setChildBuildings((cbResult.data || []) as ChildBuilding[]);
-    setCommonAreas((caResult.data || []) as { id: string; name: string }[]);
+    setCommonAreas((caResult.data || []) as CommonAreaRow[]);
     setPlazaLocales((localesResult.data || []) as PlazaLocal[]);
     setBuildingAreas((areasResult.data || []) as BuildingArea[]);
 
@@ -5952,18 +5963,32 @@ export default function BuildingDetailPage() {
                 variants={staggerContainer}
                 initial="hidden"
                 animate="show"
-                style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}
+                style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}
               >
                 {commonAreas.map((area) => {
                   const IconComponent = COMMON_AREA_ICON_MAP[area.name] ?? Trees;
+                  const UNITS = [
+                    { key: "hora",  label: "Hora"  },
+                    { key: "dia",   label: "Día"   },
+                    { key: "turno", label: "Turno" },
+                  ];
+
+                  const patchArea = (patch: Partial<CommonAreaRow>) => {
+                    setCommonAreas(prev => prev.map(a => a.id === area.id ? { ...a, ...patch } : a));
+                    clearTimeout(areaDebounceRef.current[area.id]);
+                    areaDebounceRef.current[area.id] = setTimeout(async () => {
+                      await supabase.from("common_areas").update(patch).eq("id", area.id);
+                    }, 500);
+                  };
+
                   return (
                     <motion.div
                       key={area.id}
                       variants={staggerItem}
                       style={{
                         position: "relative",
-                        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-                        padding: 16, gap: 0,
+                        display: "flex", flexDirection: "column", alignItems: "center",
+                        padding: "16px 12px 12px",
                         border: "1px solid var(--border-default)",
                         borderRadius: "var(--border-radius-lg)",
                         background: "var(--bg-card)",
@@ -5971,6 +5996,7 @@ export default function BuildingDetailPage() {
                         textAlign: "center",
                       }}
                     >
+                      {/* X eliminar */}
                       <button
                         type="button"
                         title="Eliminar"
@@ -5987,16 +6013,196 @@ export default function BuildingDetailPage() {
                       >
                         <X size={13} />
                       </button>
+
+                      {/* Ícono + nombre */}
                       <div style={{ color: "var(--accent)", lineHeight: 0 }}><IconComponent size={28} /></div>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginTop: 8, lineHeight: 1.3 }}>
+                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginTop: 8, lineHeight: 1.3, marginBottom: 10 }}>
                         {area.name}
                       </span>
+
+                      {/* Divisor */}
+                      <div style={{ width: "100%", borderTop: "1px solid var(--border-default)", marginBottom: 10 }} />
+
+                      {/* Toggle reservable */}
+                      <button
+                        type="button"
+                        onClick={() => patchArea({
+                          is_reservable: !area.is_reservable,
+                          reservation_unit: !area.is_reservable ? (area.reservation_unit ?? "hora") : null,
+                        })}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 6,
+                          background: "none", border: "none", cursor: "pointer", padding: 0,
+                          fontSize: 11, fontWeight: 600,
+                          color: area.is_reservable ? "var(--accent)" : "var(--text-muted)",
+                        }}
+                      >
+                        <div style={{
+                          width: 28, height: 16, borderRadius: 999, position: "relative",
+                          background: area.is_reservable ? "var(--accent)" : "var(--border-default)",
+                          transition: "background 0.2s", flexShrink: 0,
+                        }}>
+                          <div style={{
+                            position: "absolute", top: 2,
+                            left: area.is_reservable ? 14 : 2,
+                            width: 12, height: 12, borderRadius: "50%",
+                            background: "#fff", transition: "left 0.2s",
+                          }} />
+                        </div>
+                        Reservable
+                      </button>
+
+                      {/* Expand: opciones de reserva */}
+                      <AnimatePresence>
+                        {area.is_reservable && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: "auto", opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            style={{ overflow: "hidden", width: "100%" }}
+                          >
+                            <div style={{ paddingTop: 10, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
+                              {/* Unidad de reserva */}
+                              <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Unidad</p>
+                              <div style={{ display: "flex", gap: 4 }}>
+                                {UNITS.map(u => (
+                                  <button
+                                    key={u.key}
+                                    type="button"
+                                    onClick={() => patchArea({ reservation_unit: u.key })}
+                                    style={{
+                                      fontSize: 11, fontWeight: 600, padding: "3px 8px",
+                                      borderRadius: "var(--border-radius-sm)",
+                                      border: (area.reservation_unit ?? "hora") === u.key ? "1.5px solid var(--accent)" : "1px solid var(--border-default)",
+                                      background: (area.reservation_unit ?? "hora") === u.key ? "color-mix(in srgb, var(--accent) 12%, var(--bg-card))" : "var(--bg-page)",
+                                      color: (area.reservation_unit ?? "hora") === u.key ? "var(--accent)" : "var(--text-secondary)",
+                                      cursor: "pointer",
+                                    }}
+                                  >{u.label}</button>
+                                ))}
+                              </div>
+
+                              {/* Capacidad */}
+                              <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Capacidad</p>
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={area.capacity ?? ""}
+                                  onChange={e => {
+                                    const n = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                                    patchArea({ capacity: Number.isFinite(n) ? n : null });
+                                  }}
+                                  placeholder="—"
+                                  style={{
+                                    width: 56, fontSize: 12, padding: "3px 6px", textAlign: "center",
+                                    border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)",
+                                    background: "var(--bg-input)", color: "var(--text-primary)",
+                                    outline: "none",
+                                  }}
+                                />
+                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>personas</span>
+                              </div>
+
+                              {/* Requiere aprobación */}
+                              <button
+                                type="button"
+                                onClick={() => patchArea({ requires_approval: !area.requires_approval })}
+                                style={{
+                                  display: "flex", alignItems: "center", gap: 6,
+                                  background: "none", border: "none", cursor: "pointer", padding: 0,
+                                  fontSize: 11, fontWeight: 600,
+                                  color: area.requires_approval ? "var(--accent)" : "var(--text-muted)",
+                                }}
+                              >
+                                <div style={{
+                                  width: 24, height: 14, borderRadius: 999, position: "relative",
+                                  background: area.requires_approval ? "var(--accent)" : "var(--border-default)",
+                                  transition: "background 0.2s", flexShrink: 0,
+                                }}>
+                                  <div style={{
+                                    position: "absolute", top: 2,
+                                    left: area.requires_approval ? 12 : 2,
+                                    width: 10, height: 10, borderRadius: "50%",
+                                    background: "#fff", transition: "left 0.2s",
+                                  }} />
+                                </div>
+                                Aprobación
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </motion.div>
                   );
                 })}
               </motion.div>
             )}
           </SectionCard>
+
+          {/* ── Sección Reservaciones — proxy visual "Próximamente" ── */}
+          {commonAreas.some(a => a.is_reservable) && (
+            <SectionCard
+              title="Reservaciones"
+              icon={<Calendar size={18} />}
+              action={
+                <span style={{
+                  fontSize: 11, fontWeight: 700, padding: "3px 10px",
+                  borderRadius: 999, background: "var(--metric-bg-amber)",
+                  color: "var(--metric-value-amber)", border: "1px solid var(--metric-border-amber)",
+                }}>Próximamente</span>
+              }
+            >
+              <div style={{ position: "relative" }}>
+                {/* Tabla placeholder — opaca */}
+                <div style={{ opacity: 0.35, pointerEvents: "none", userSelect: "none" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 8px 8px", borderBottom: "1px solid var(--border-default)", marginBottom: 4 }}>
+                    <span>Área</span><span>Unidad / Inquilino</span><span>Fecha</span><span>Horario</span><span>Estado</span>
+                  </div>
+                  {[
+                    { area: "Alberca",          tenant: "Depto 101 — Juan García",   date: "28 May 2026", time: "10:00 - 12:00",  status: "Aprobada",  statusColor: "#15803d", statusBg: "#f0fdf4" },
+                    { area: "Salón de eventos", tenant: "Depto 305 — María López",   date: "1 Jun 2026",  time: "Todo el día",    status: "Pendiente", statusColor: "#b45309", statusBg: "#fffbeb" },
+                    { area: "Roof garden",      tenant: "Depto 202 — Carlos Ruiz",   date: "5 Jun 2026",  time: "18:00 - 20:00", status: "Cancelada", statusColor: "#991b1b", statusBg: "#fef2f2" },
+                  ].map((row, i) => (
+                    <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", padding: "10px 8px", borderBottom: "1px solid var(--border-default)", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{row.area}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.tenant}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.date}</span>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.time}</span>
+                      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: row.statusBg, color: row.statusColor }}>{row.status}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Overlay blur */}
+                <div style={{
+                  position: "absolute", inset: 0,
+                  backdropFilter: "blur(3px)",
+                  background: "color-mix(in srgb, var(--bg-card) 60%, transparent)",
+                  borderRadius: "var(--border-radius-md)",
+                  display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+                  gap: 8, padding: 24, textAlign: "center",
+                }}>
+                  <Calendar size={28} style={{ color: "var(--text-muted)" }} />
+                  <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                    Las reservaciones estarán disponibles próximamente
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, maxWidth: 380 }}>
+                    Configura qué áreas son reservables y tu equipo podrá gestionar las solicitudes desde aquí. Los inquilinos podrán reservar desde su portal.
+                  </p>
+                  <button disabled style={{
+                    marginTop: 4, fontSize: 12, fontWeight: 600, padding: "7px 16px",
+                    borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "transparent",
+                    color: "var(--text-muted)", cursor: "not-allowed",
+                  }}>
+                    Ver reservaciones
+                  </button>
+                </div>
+              </div>
+            </SectionCard>
+          )}
         </div>
       )}
 
@@ -6029,8 +6235,8 @@ export default function BuildingDetailPage() {
           if (allToSave.length === 0) return;
           setSavingCommonArea(true);
           await Promise.all(allToSave.map(name => supabase.from("common_areas").insert({ building_id: building.id, name })));
-          const { data } = await supabase.from("common_areas").select("id, name").eq("building_id", building.id).is("deleted_at", null).order("created_at");
-          setCommonAreas((data || []) as { id: string; name: string }[]);
+          const { data } = await supabase.from("common_areas").select("id, name, is_reservable, capacity, reservation_unit, requires_approval").eq("building_id", building.id).is("deleted_at", null).order("created_at");
+          setCommonAreas((data || []) as CommonAreaRow[]);
           setSavingCommonArea(false);
           setAddingCommonArea(false);
           setSelectedAreaNames(new Set());
