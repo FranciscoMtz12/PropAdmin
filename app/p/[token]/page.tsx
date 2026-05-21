@@ -158,12 +158,12 @@ export default async function PublicUnitPage({
   /* ── render ─────────────────────────────────────────────────────────── */
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f1f5f9", paddingBottom: 100 }}>
+    <div style={{ minHeight: "100vh", background: "var(--bg-page)", paddingBottom: 100 }}>
 
       {/* ── Company header ─────────────────────────────────────────── */}
       <header style={{
-        background: "#fff",
-        borderBottom: "1px solid #e2e8f0",
+        background: "var(--bg-card)",
+        borderBottom: "1px solid var(--border-default)",
         padding: "12px 20px",
         display: "flex",
         alignItems: "center",
@@ -180,7 +180,7 @@ export default async function PublicUnitPage({
       </header>
 
       {/* ── Hero ────────────────────────────────────────────────────── */}
-      <div style={{ position: "relative", width: "100%", background: "#cbd5e1", overflow: "hidden", maxHeight: 420 }}>
+      <div style={{ position: "relative", width: "100%", background: "var(--bg-page)", overflow: "hidden", maxHeight: 420 }}>
         {coverPhoto?.public_url ? (
           <img
             src={coverPhoto.public_url}
@@ -253,14 +253,14 @@ export default async function PublicUnitPage({
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 16px" }}>
 
         {/* Unit header card */}
-        <div style={{ background: "#fff", borderRadius: 16, padding: "20px", marginTop: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: 16, padding: "20px", marginTop: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
             <div>
-              <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "#0f172a", lineHeight: 1.2 }}>
+              <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2 }}>
                 {unitDisplay}
               </h1>
               {building && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "#64748b", fontSize: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", fontSize: 14 }}>
                   <MapPin size={14} style={{ flexShrink: 0 }} />
                   <span>{building.name}{building.address ? ` · ${building.address}` : ""}</span>
                 </div>
@@ -295,13 +295,13 @@ export default async function PublicUnitPage({
                   display: "flex",
                   alignItems: "center",
                   gap: 10,
-                  background: "#f8fafc",
-                  border: "1px solid #e2e8f0",
+                  background: "var(--bg-card-hover)",
+                  border: "1px solid var(--border-default)",
                   borderRadius: 10,
                   padding: "10px 12px",
                 }}>
                   <span style={{ color: accent, flexShrink: 0 }}>{assetIcon(item.asset_type)}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "#334155", lineHeight: 1.3 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", lineHeight: 1.3 }}>
                     {item.name || ASSET_LABELS[(item.asset_type || "").toUpperCase()] || item.asset_type}
                   </span>
                 </div>
@@ -324,10 +324,10 @@ export default async function PublicUnitPage({
                     alignItems: "center",
                     gap: 12,
                     padding: "11px 0",
-                    borderBottom: "1px solid #f1f5f9",
+                    borderBottom: "1px solid var(--border-subtle, var(--border-default))",
                   }}>
                     <span style={{ color: accent, flexShrink: 0 }}><Icon size={18} /></span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "#334155" }}>{info.label}</span>
+                    <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>{info.label}</span>
                   </div>
                 );
               })}
@@ -341,16 +341,16 @@ export default async function PublicUnitPage({
             <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
               <div style={{
                 width: 44, height: 44, borderRadius: 12,
-                background: "#e2e8f0",
+                background: "var(--bg-page)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
               }}>
-                <Building2 size={22} style={{ color: "#64748b" }} />
+                <Building2 size={22} style={{ color: "var(--text-muted)" }} />
               </div>
               <div>
-                <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 15, color: "#0f172a" }}>{building.name}</p>
+                <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{building.name}</p>
                 {building.address && (
-                  <p style={{ margin: 0, fontSize: 13, color: "#64748b" }}>{building.address}</p>
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{building.address}</p>
                 )}
               </div>
             </div>
@@ -363,8 +363,8 @@ export default async function PublicUnitPage({
       <div style={{
         position: "fixed",
         bottom: 0, left: 0, right: 0,
-        background: "#fff",
-        borderTop: "1px solid #e2e8f0",
+        background: "var(--bg-card)",
+        borderTop: "1px solid var(--border-default)",
         padding: "12px 20px 18px",
         display: "flex",
         flexDirection: "column",
@@ -397,13 +397,13 @@ export default async function PublicUnitPage({
         ) : (
           <div style={{
             width: "100%", maxWidth: 480,
-            background: "#e2e8f0", borderRadius: 12, padding: "14px 20px",
-            textAlign: "center", fontSize: 14, color: "#94a3b8",
+            background: "var(--bg-page)", borderRadius: 12, padding: "14px 20px",
+            textAlign: "center", fontSize: 14, color: "var(--text-muted)",
           }}>
             Sin contacto disponible
           </div>
         )}
-        <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 500 }}>
+        <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
           Impulsado por SAPROA
         </span>
       </div>
@@ -419,13 +419,13 @@ function Tag({ icon, label }: { icon: React.ReactNode; label: string }) {
       display: "inline-flex",
       alignItems: "center",
       gap: 5,
-      background: "#f1f5f9",
-      border: "1px solid #e2e8f0",
+      background: "var(--bg-page)",
+      border: "1px solid var(--border-default)",
       borderRadius: 8,
       padding: "5px 10px",
       fontSize: 13,
       fontWeight: 600,
-      color: "#475569",
+      color: "var(--text-secondary)",
     }}>
       {icon}
       {label}
@@ -436,13 +436,13 @@ function Tag({ icon, label }: { icon: React.ReactNode; label: string }) {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{
-      background: "#fff",
+      background: "var(--bg-card)",
       borderRadius: 16,
       padding: "20px",
       marginTop: 12,
       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
     }}>
-      <h2 style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 700, color: "#0f172a" }}>{title}</h2>
+      <h2 style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>
       {children}
     </div>
   );

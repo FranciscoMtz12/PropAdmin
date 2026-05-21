@@ -1113,10 +1113,10 @@ export default function CollectionsPage() {
 
       {/* ── Banners de pendientes ──────────────────────────────────── */}
       {overdueRecordsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#DC2626" }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               {overdueRecordsBanner.length} cobro{overdueRecordsBanner.length !== 1 ? "s" : ""} vencido{overdueRecordsBanner.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -1124,13 +1124,13 @@ export default function CollectionsPage() {
             {overdueRecordsBanner.slice(0, 12).map(r => (
               <button key={r.id} type="button"
                 onClick={() => setFilterStatus("overdue")}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {_unitLabelMap.get(r.unit_id) ?? r.unit_id.slice(0, 6)}
               </button>
             ))}
             {overdueRecordsBanner.length > 12 && (
               <button type="button" onClick={() => setFilterStatus("overdue")}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, cursor: "pointer" }}>
                 +{overdueRecordsBanner.length - 12} más
               </button>
             )}
@@ -1139,14 +1139,14 @@ export default function CollectionsPage() {
       )}
 
       {dueSoonRecordsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               {dueSoonRecordsBanner.length} cobro{dueSoonRecordsBanner.length !== 1 ? "s" : ""} vence{dueSoonRecordsBanner.length !== 1 ? "n" : ""} en los próximos 5 días
             </span>
             <button type="button" onClick={() => setFilterStatus("pending")}
-              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
               Ver pendientes
             </button>
           </div>
@@ -1154,13 +1154,13 @@ export default function CollectionsPage() {
       )}
 
       {missingReadingsCount > 0 && (
-        <div style={{ marginBottom: 20, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 20, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               Hay lecturas de medidores pendientes de capturar ({missingReadingsCount} sin registrar)
             </span>
-            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
               Ir a Servicios
             </a>
           </div>

@@ -1578,10 +1578,10 @@ export default function PurchasesPage() {
 
       {/* ── Banners de pendientes ──────────────────────────────────── */}
       {overdueOCsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "#FEF2F2", border: "1px solid #FECACA", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#DC2626" }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               {overdueOCsBanner.length} orden{overdueOCsBanner.length !== 1 ? "es" : ""} llevan más de 1 día pendiente{overdueOCsBanner.length !== 1 ? "s" : ""} de aprobación
             </span>
           </div>
@@ -1589,7 +1589,7 @@ export default function PurchasesPage() {
             {overdueOCsBanner.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #FECACA", color: "#DC2626", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1598,10 +1598,10 @@ export default function PurchasesPage() {
       )}
 
       {partialOCsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "#fffbeb", border: "1px solid #f59e0b", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "#92400e" }}>
+            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               {partialOCsBanner.length} orden{partialOCsBanner.length !== 1 ? "es" : ""} surtidas parcialmente requieren seguimiento
             </span>
           </div>
@@ -1609,7 +1609,7 @@ export default function PurchasesPage() {
             {partialOCsBanner.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "white", border: "1px solid #fde68a", color: "#92400e", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -2479,8 +2479,8 @@ export default function PurchasesPage() {
                             <span style={{
                               display: "inline-flex", alignItems: "center", gap: 5,
                               padding: "6px 12px", borderRadius: 8,
-                              background: "#fffbeb", border: "1px solid #F59E0B",
-                              color: "#b45309", fontSize: 12, fontWeight: 600,
+                              background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
+                              color: "var(--text-primary)", fontSize: 12, fontWeight: 600,
                             }}>
                               <AlertCircle size={13} />
                               Surtido parcial — Cerrada

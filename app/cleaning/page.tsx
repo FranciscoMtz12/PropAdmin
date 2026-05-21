@@ -927,17 +927,17 @@ export default function CleaningPage() {
         return (
           <>
             {overdueLogs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FCEBEB", border: "1.5px solid #E24B4A", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#E24B4A", flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#A32D2D" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
                   {overdueLogs.length} limpieza{overdueLogs.length !== 1 ? "s" : ""} de días anteriores sin completar
                 </div>
               </div>
             )}
             {todayLogs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "#FAEEDA", border: "1.5px solid #EF9F27", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#EF9F27", flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "#854F0B" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
                   {todayLogs.length} limpieza{todayLogs.length !== 1 ? "s" : ""} de hoy pendiente{todayLogs.length !== 1 ? "s" : ""}
                 </div>
               </div>

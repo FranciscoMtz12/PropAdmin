@@ -404,7 +404,7 @@ function SharedMeterDropdown({
 
       {/* No-readings banner */}
       {!detail.hasReadings && (
-        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: "#fef3c7", borderRadius: 8, fontSize: 13, color: "#92400e", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0 }} />
           Campo aún no ha capturado lecturas para este período
         </div>
@@ -1134,14 +1134,14 @@ export default function ServiciosPage() {
           style={{
             marginBottom: 20,
             borderRadius: 12,
-            background: "#fffbeb",
-            border: "1px solid #f59e0b",
+            background: "rgba(245,158,11,0.1)",
+            border: "1px solid rgba(245,158,11,0.3)",
             padding: "14px 16px",
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <AlertTriangle size={16} style={{ color: "#d97706", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 14, color: "#92400e" }}>
+            <AlertTriangle size={16} style={{ color: "#f59e0b", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
               Servicios pendientes de atención
             </span>
           </div>
@@ -1154,12 +1154,12 @@ export default function ServiciosPage() {
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "7px 10px", borderRadius: 8, gap: 8,
-                  background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
+                  background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
                   cursor: "pointer", textAlign: "left", width: "100%",
                 }}
               >
-                <span style={{ fontSize: 13, fontWeight: 600, color: "#92400e" }}>{b.name}</span>
-                <span style={{ fontSize: 12, color: "#b45309", flexShrink: 0 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
+                <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
                   {b.count} servicio{b.count !== 1 ? "s" : ""} sin configurar
                 </span>
               </button>
