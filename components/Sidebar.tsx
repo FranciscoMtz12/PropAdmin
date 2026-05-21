@@ -34,7 +34,6 @@ import {
   Sparkles,
   Truck,
   User2,
-  UserCog,
   Users,
   Wrench,
   Zap,
@@ -103,7 +102,6 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
     label: "SISTEMA",
     items: [
       { label: "Ajustes del sistema", href: "/settings",  icon: Settings, notifModules: ["configuracion"] },
-      { label: "Usuarios",      href: "/users",      icon: UserCog },
       { label: "Feedback",      href: "/feedback",   icon: MessageSquare },
     ],
   },

@@ -1,20 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Building2, CreditCard, Mail, Monitor, Palette, Send, Shield, Trash2, Upload, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  AlertTriangle, Building2, CreditCard, Download, Info,
+  Lock, Monitor, Send, Settings2, Shield,
+  Trash2, Upload, User, UserPlus, Users, X,
+} from "lucide-react";
 import toast from "react-hot-toast";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 
+import AppBadge from "@/components/AppBadge";
+import AppGrid from "@/components/AppGrid";
+import AppSelect from "@/components/AppSelect";
+import AppTable from "@/components/AppTable";
+import AppTabs, { AppTabPanel } from "@/components/AppTabs";
+import MetricCard from "@/components/MetricCard";
+import Modal from "@/components/Modal";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
-import AppTabs, { AppTabPanel } from "@/components/AppTabs";
+import UiButton from "@/components/UiButton";
 
-// ─── Types ─────────────────────────────────────────────────────────
+// ─── Types ───────────────────────────────────────────────────────────
+
+type TabKey = "empresa" | "usuarios" | "apariencia" | "cuenta" | "sistema";
 
 type Company = {
   id: string;
@@ -35,6 +51,7 @@ type Company = {
   admin_contact_phone: string | null;
   purchases_contact_email: string | null;
   purchases_contact_phone: string | null;
+  created_at: string | null;
 };
 
 type Invitation = {
@@ -46,38 +63,85 @@ type Invitation = {
   created_at: string;
 };
 
-// ─── Helpers ────────────────────────────────────────────────────────
+type UserRole =
+  | "superadmin" | "titular" | "administracion" | "directivo"
+  | "compras" | "mantenimiento" | "field" | "tenant";
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: ".6rem .85rem",
+type UserRow = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: UserRole;
+  is_superadmin: boolean;
+  company_id: string;
+  company_name: string;
+  created_at: string;
+};
+
+type CompanyRow = { id: string; name: string };
+
+// ─── Constants ───────────────────────────────────────────────────────
+
+const ROLE_ORDER: UserRole[] = [
+  "superadmin", "titular", "administracion", "directivo",
+  "compras", "mantenimiento", "field",
+];
+
+const ROLE_LABEL: Record<UserRole, string> = {
+  superadmin: "Superadmin", titular: "Titular",
+  administracion: "Administración", directivo: "Directivo",
+  compras: "Compras", mantenimiento: "Mantenimiento",
+  field: "Campo", tenant: "Inquilino",
+};
+
+const ROLE_STYLE: Record<UserRole, { bg: string; fg: string }> = {
+  superadmin:     { bg: "#F3E8FF", fg: "#7C3AED" },
+  titular:        { bg: "#FEF3C7", fg: "#92400E" },
+  administracion: { bg: "var(--badge-bg-blue)",  fg: "var(--badge-text-blue)" },
+  directivo:      { bg: "var(--badge-bg-gray)",  fg: "var(--badge-text-gray)" },
+  compras:        { bg: "#FFEDD5", fg: "#EA580C" },
+  mantenimiento:  { bg: "var(--badge-bg-green)", fg: "var(--badge-text-green)" },
+  field:          { bg: "#DBEAFE", fg: "#1E40AF" },
+  tenant:         { bg: "#CCFBF1", fg: "#0F766E" },
+};
+
+const createSchema = z.object({
+  full_name: z.string().min(1, "Nombre obligatorio"),
+  email: z.string().min(1, "Email obligatorio").email("Email inválido"),
+  password: z.string().min(8, "Mínimo 8 caracteres"),
+  role: z.enum(["superadmin", "titular", "administracion", "directivo", "compras", "mantenimiento", "field"]),
+  company_id: z.string().min(1, "Selecciona una empresa"),
+});
+type CreateValues = z.infer<typeof createSchema>;
+
+// ─── Styles ──────────────────────────────────────────────────────────
+
+const IS: React.CSSProperties = {
+  width: "100%", padding: ".6rem .85rem",
   background: "var(--bg-input, var(--bg-card))",
   border: "1px solid var(--border-default)",
-  borderRadius: 8,
-  color: "var(--text-primary)",
-  fontSize: 14,
-  outline: "none",
-  boxSizing: "border-box",
+  borderRadius: 8, color: "var(--text-primary)",
+  fontSize: 14, outline: "none", boxSizing: "border-box",
 };
 
-const labelStyle: React.CSSProperties = {
-  fontSize: 12,
-  color: "var(--text-secondary)",
-  display: "block",
-  marginBottom: 5,
-  fontWeight: 500,
+const LS: React.CSSProperties = {
+  fontSize: 12, color: "var(--text-secondary)",
+  display: "block", marginBottom: 5, fontWeight: 500,
 };
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+// ─── Helpers ─────────────────────────────────────────────────────────
+
+function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div>
-      <label style={labelStyle}>{label}</label>
+      <label style={LS}>{label}</label>
       {children}
+      {error && <span style={{ fontSize: 11, color: "#ef4444", marginTop: 3, display: "block" }}>{error}</span>}
     </div>
   );
 }
 
-function SaveBtn({ saving, onClick }: { saving: boolean; onClick: () => void }) {
+function SaveBtn({ saving, onClick, label = "Guardar" }: { saving: boolean; onClick: () => void; label?: string }) {
   return (
     <button
       type="button"
@@ -86,99 +150,182 @@ function SaveBtn({ saving, onClick }: { saving: boolean; onClick: () => void }) 
       style={{
         padding: ".55rem 1.25rem",
         background: saving ? "var(--accent-muted, #6B1A3F)" : "var(--accent, #8B2252)",
-        border: "none",
-        borderRadius: 8,
-        color: "#fff",
-        fontSize: 13,
-        fontWeight: 600,
+        border: "none", borderRadius: 8, color: "#fff",
+        fontSize: 13, fontWeight: 600,
         cursor: saving ? "not-allowed" : "pointer",
-        opacity: saving ? 0.7 : 1,
-        transition: "opacity .15s",
+        opacity: saving ? 0.7 : 1, transition: "opacity .15s",
       }}
     >
-      {saving ? "Guardando..." : "Guardar"}
+      {saving ? "Guardando..." : label}
     </button>
   );
 }
 
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString("es-MX", {
-    year: "numeric", month: "short", day: "numeric",
-  });
+function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      style={{
+        position: "relative", width: 48, height: 26, borderRadius: 13,
+        border: "none", background: on ? "var(--accent, #8B2252)" : "var(--border-default)",
+        cursor: "pointer", transition: "background 0.2s", padding: 0, flexShrink: 0,
+      }}
+    >
+      <div style={{
+        position: "absolute", top: 3, left: on ? 25 : 3,
+        width: 20, height: 20, borderRadius: "50%",
+        background: "#fff", transition: "left 0.2s",
+        boxShadow: "0 1px 4px rgba(0,0,0,.2)",
+      }} />
+    </button>
+  );
 }
 
-// ─── Main ────────────────────────────────────────────────────────────
+function SubSectionTitle({ title }: { title: string }) {
+  return (
+    <p style={{
+      fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
+      textTransform: "uppercase", letterSpacing: "0.06em",
+      marginBottom: 12, marginTop: 0,
+    }}>
+      {title}
+    </p>
+  );
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "numeric" });
+}
+
+// ─── Main ─────────────────────────────────────────────────────────────
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
-  const { uiTheme, setUiTheme } = useTheme();
+  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions } = useTheme();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
 
-  const [activeTab, setActiveTab] = useState("general");
+  const isSuperadmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
+  const isTitular = user?.role === "titular";
+  const canFullAccess = isSuperadmin || isTitular;
+
+  const [activeTab, setActiveTab] = useState<TabKey>("empresa");
+  const [tabReady, setTabReady] = useState(false);
   const [company, setCompany] = useState<Company | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // ── tab: general
-  const [gName, setGName]         = useState("");
-  const [gShort, setGShort]       = useState("");
-  const [gPhone, setGPhone]       = useState("");
-  const [gEmail, setGEmail]       = useState("");
-  const [gAddress, setGAddress]   = useState("");
+  // ── Tab: Empresa — Datos generales
+  const [gName, setGName] = useState("");
+  const [gShort, setGShort] = useState("");
+  const [gPhone, setGPhone] = useState("");
+  const [gEmail, setGEmail] = useState("");
+  const [gAddress, setGAddress] = useState("");
   const [gInitials, setGInitials] = useState("");
-  const [savingG, setSavingG]     = useState(false);
+  const [savingG, setSavingG] = useState(false);
 
-  // ── tab: fiscal
-  const [fLegal, setFLegal]     = useState("");
-  const [fTaxId, setFTaxId]     = useState("");
-  const [fRegime, setFRegime]   = useState("");
-  const [fZip, setFZip]         = useState("");
-  const [savingF, setSavingF]   = useState(false);
+  // ── Tab: Empresa — Datos fiscales
+  const [fLegal, setFLegal] = useState("");
+  const [fTaxId, setFTaxId] = useState("");
+  const [fRegime, setFRegime] = useState("");
+  const [fZip, setFZip] = useState("");
+  const [savingF, setSavingF] = useState(false);
 
-  // ── tab: contacto
-  const [cAdminEmail, setCAdminEmail]       = useState("");
-  const [cAdminPhone, setCAdminPhone]       = useState("");
-  const [cPurchEmail, setCPurchEmail]       = useState("");
-  const [cPurchPhone, setCPurchPhone]       = useState("");
-  const [savingC, setSavingC]               = useState(false);
+  // ── Tab: Empresa — Contactos
+  const [cAdminEmail, setCAdminEmail] = useState("");
+  const [cAdminPhone, setCAdminPhone] = useState("");
+  const [cPurchEmail, setCPurchEmail] = useState("");
+  const [cPurchPhone, setCPurchPhone] = useState("");
+  const [savingC, setSavingC] = useState(false);
 
-  // ── tab: marca
-  const [mColor, setMColor]         = useState("#8B2252");
-  const [mLogoUrl, setMLogoUrl]     = useState("");
+  // ── Tab: Empresa — Marca
+  const [mColor, setMColor] = useState("#8B2252");
+  const [mLogoUrl, setMLogoUrl] = useState("");
   const [mLogoDarkUrl, setMLogoDarkUrl] = useState("");
-  const [logoFile, setLogoFile]     = useState<File | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkFile, setLogoDarkFile] = useState<File | null>(null);
-  const [logoPreview, setLogoPreview]   = useState("");
+  const [logoPreview, setLogoPreview] = useState("");
   const [logoDarkPreview, setLogoDarkPreview] = useState("");
-  const [savingM, setSavingM]       = useState(false);
+  const [savingM, setSavingM] = useState(false);
 
-  // ── tab: invitaciones
-  const [invitations, setInvitations]   = useState<Invitation[]>([]);
-  const [invEmail, setInvEmail]         = useState("");
-  const [invExpDays, setInvExpDays]     = useState("7");
-  const [sendingInv, setSendingInv]     = useState(false);
-  const [revokingId, setRevokingId]     = useState<string | null>(null);
-  const [invLink, setInvLink]           = useState("");
+  // ── Tab: Usuarios
+  const [userRows, setUserRows] = useState<UserRow[]>([]);
+  const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [usersLoaded, setUsersLoaded] = useState(false);
+  const [showCreateUser, setShowCreateUser] = useState(false);
+  const [roleUpdatingId, setRoleUpdatingId] = useState<string | null>(null);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [invEmail, setInvEmail] = useState("");
+  const [invExpDays, setInvExpDays] = useState("7");
+  const [sendingInv, setSendingInv] = useState(false);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [invLink, setInvLink] = useState("");
 
-  // ─── load ──────────────────────────────────────────────────────────
+  // ── Tab: Mi cuenta
+  const [acName, setAcName] = useState("");
+  const [savingAc, setSavingAc] = useState(false);
+  const [pwNew, setPwNew] = useState("");
+  const [pwConfirm, setPwConfirm] = useState("");
+  const [savingPw, setSavingPw] = useState(false);
+
+  const createForm = useForm<CreateValues>({
+    resolver: zodResolver(createSchema),
+    defaultValues: { full_name: "", email: "", password: "", role: "administracion", company_id: "" },
+  });
+
+  // ─── Init tab from URL + role ────────────────────────────────────
+  useEffect(() => {
+    if (!user || tabReady) return;
+    const valid: TabKey[] = ["empresa", "usuarios", "apariencia", "cuenta", "sistema"];
+    const p = searchParams?.get("tab") as TabKey | null;
+    let target: TabKey = canFullAccess ? "empresa" : "cuenta";
+    if (p && valid.includes(p)) {
+      if (!canFullAccess && !["apariencia", "cuenta"].includes(p)) {
+        target = "cuenta";
+      } else if (p === "sistema" && !isSuperadmin) {
+        target = "apariencia";
+      } else {
+        target = p;
+      }
+    }
+    setActiveTab(target);
+    setTabReady(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
+  // ─── Load company data ───────────────────────────────────────────
   useEffect(() => {
     if (!user?.company_id) return;
     void loadCompany();
     void loadInvitations();
+    if (isTitular) createForm.setValue("company_id", user.company_id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.company_id]);
 
+  // ─── Load account name ───────────────────────────────────────────
+  useEffect(() => {
+    if (user) setAcName(user.full_name ?? "");
+  }, [user?.id, user?.full_name]);
+
+  // ─── Load users on tab switch ────────────────────────────────────
+  useEffect(() => {
+    if (activeTab === "usuarios" && !usersLoaded) void loadUsers();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
+
+  // ─── Data loaders ────────────────────────────────────────────────
   async function loadCompany() {
     setLoading(true);
     const { data } = await supabase
       .from("companies")
-      .select("id,name,short_name,legal_name,email,phone,address,tax_id,regime,zip_code,brand_color,logo_url,logo_dark_url,initials,admin_contact_email,admin_contact_phone,purchases_contact_email,purchases_contact_phone")
+      .select("id,name,short_name,legal_name,email,phone,address,tax_id,regime,zip_code,brand_color,logo_url,logo_dark_url,initials,admin_contact_email,admin_contact_phone,purchases_contact_email,purchases_contact_phone,created_at")
       .eq("id", user!.company_id)
       .single();
     if (data) {
       setCompany(data);
-      // populate fields
       setGName(data.name ?? "");
       setGShort(data.short_name ?? "");
       setGPhone(data.phone ?? "");
@@ -210,15 +357,36 @@ export default function SettingsPage() {
     setInvitations(data ?? []);
   }
 
-  // ─── saves ─────────────────────────────────────────────────────────
+  async function loadUsers() {
+    setLoadingUsers(true);
+    const usersQ = supabase
+      .from("app_users")
+      .select("id,full_name,email,role,is_superadmin,company_id,created_at")
+      .order("created_at", { ascending: false });
+    if (isTitular && user?.company_id) usersQ.eq("company_id", user.company_id);
+
+    const companiesQ = isTitular
+      ? supabase.from("companies").select("id,name").eq("id", user!.company_id)
+      : supabase.from("companies").select("id,name").is("deleted_at", null).order("name");
+
+    const [uRes, cRes] = await Promise.all([usersQ, companiesQ]);
+    if (uRes.error) { toast.error("No se pudieron cargar los usuarios."); setLoadingUsers(false); return; }
+
+    const cList = (cRes.data ?? []) as CompanyRow[];
+    setCompanies(cList);
+    const cMap = new Map(cList.map((c) => [c.id, c.name]));
+    setUserRows((uRes.data ?? []).map((u: any) => ({ ...u, company_name: cMap.get(u.company_id) || "—" })));
+    setUsersLoaded(true);
+    setLoadingUsers(false);
+  }
+
+  // ─── Saves: Empresa ──────────────────────────────────────────────
   async function saveGeneral() {
     if (!company) return;
     setSavingG(true);
     const { error } = await supabase.from("companies").update({
-      name: gName.trim(),
-      short_name: gShort.trim() || null,
-      phone: gPhone.trim() || null,
-      email: gEmail.trim() || null,
+      name: gName.trim(), short_name: gShort.trim() || null,
+      phone: gPhone.trim() || null, email: gEmail.trim() || null,
       address: gAddress.trim() || null,
       initials: gInitials.trim().toUpperCase().slice(0, 4) || null,
     }).eq("id", company.id);
@@ -257,8 +425,7 @@ export default function SettingsPage() {
 
   async function uploadLogo(file: File, dark: boolean): Promise<string> {
     const ext = file.name.split(".").pop();
-    const suffix = dark ? "_dark" : "";
-    const path = `logos/${company!.id}/logo${suffix}.${ext}`;
+    const path = `logos/${company!.id}/logo${dark ? "_dark" : ""}.${ext}`;
     await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
     const { data: pub } = supabase.storage.from("company-assets").getPublicUrl(path);
     return pub.publicUrl;
@@ -272,20 +439,40 @@ export default function SettingsPage() {
     if (logoFile) logoUrl = await uploadLogo(logoFile, false);
     if (logoDarkFile) logoDarkUrl = await uploadLogo(logoDarkFile, true);
     const { error } = await supabase.from("companies").update({
-      brand_color: mColor,
-      logo_url: logoUrl || null,
-      logo_dark_url: logoDarkUrl || null,
+      brand_color: mColor, logo_url: logoUrl || null, logo_dark_url: logoDarkUrl || null,
     }).eq("id", company.id);
     setSavingM(false);
     if (error) { toast.error("Error al guardar"); return; }
-    setMLogoUrl(logoUrl);
-    setMLogoDarkUrl(logoDarkUrl);
+    setMLogoUrl(logoUrl); setMLogoDarkUrl(logoDarkUrl);
     setLogoFile(null); setLogoDarkFile(null);
     setLogoPreview(""); setLogoDarkPreview("");
     toast.success("Marca guardada");
   }
 
-  // ─── invitations ────────────────────────────────────────────────────
+  function handleLogoInput(e: React.ChangeEvent<HTMLInputElement>, dark: boolean) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      dark ? setLogoDarkPreview(ev.target?.result as string) : setLogoPreview(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+    dark ? setLogoDarkFile(file) : setLogoFile(file);
+  }
+
+  // ─── Actions: Usuarios ───────────────────────────────────────────
+  async function changeRole(row: UserRow, newRole: UserRole) {
+    if (newRole === row.role) return;
+    setRoleUpdatingId(row.id);
+    const { error } = await supabase.from("app_users")
+      .update({ role: newRole, is_superadmin: newRole === "superadmin" })
+      .eq("id", row.id);
+    if (error) { toast.error("No se pudo actualizar el rol."); setRoleUpdatingId(null); return; }
+    setUserRows((prev) => prev.map((r) => r.id === row.id ? { ...r, role: newRole, is_superadmin: newRole === "superadmin" } : r));
+    toast.success(`Rol actualizado a ${ROLE_LABEL[newRole]}.`);
+    setRoleUpdatingId(null);
+  }
+
   function generateToken(): string {
     const arr = new Uint8Array(12);
     crypto.getRandomValues(arr);
@@ -299,65 +486,109 @@ export default function SettingsPage() {
     const days = Math.max(1, Math.min(90, parseInt(invExpDays) || 7));
     const expiresAt = new Date(Date.now() + days * 86_400_000).toISOString();
     const { data, error } = await supabase.from("invitations").insert({
-      token,
-      email: invEmail.trim() || null,
-      created_by: user.id,
-      company_id: company.id,
-      expires_at: expiresAt,
+      token, email: invEmail.trim() || null,
+      created_by: user.id, company_id: company.id, expires_at: expiresAt,
     }).select("id,token,email,expires_at,used_at,created_at").single();
     setSendingInv(false);
     if (error || !data) { toast.error("Error al crear invitación"); return; }
     setInvitations((prev) => [data, ...prev]);
-    const link = `${window.location.origin}/register?invite=${token}`;
-    setInvLink(link);
+    setInvLink(`${window.location.origin}/register?invite=${token}`);
     setInvEmail("");
     toast.success("Invitación creada");
   }
 
   async function revokeInvitation(id: string) {
     setRevokingId(id);
-    await supabase.from("invitations").update({ used_at: new Date().toISOString() }).eq("id", id);
-    setInvitations((prev) => prev.map((i) => i.id === id ? { ...i, used_at: new Date().toISOString() } : i));
+    const now = new Date().toISOString();
+    await supabase.from("invitations").update({ used_at: now }).eq("id", id);
+    setInvitations((prev) => prev.map((i) => i.id === id ? { ...i, used_at: now } : i));
     setRevokingId(null);
     toast.success("Invitación revocada");
   }
 
   function copyLink(token: string) {
-    const link = `${window.location.origin}/register?invite=${token}`;
-    navigator.clipboard.writeText(link).then(() => toast.success("Enlace copiado"));
+    navigator.clipboard.writeText(`${window.location.origin}/register?invite=${token}`)
+      .then(() => toast.success("Enlace copiado"));
   }
 
-  function handleLogoInput(e: React.ChangeEvent<HTMLInputElement>, dark: boolean) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      if (dark) setLogoDarkPreview(ev.target?.result as string);
-      else setLogoPreview(ev.target?.result as string);
-    };
-    reader.readAsDataURL(file);
-    if (dark) setLogoDarkFile(file);
-    else setLogoFile(file);
+  const onCreateSubmit = createForm.handleSubmit(async (data) => {
+    const { data: sessionData } = await supabase.auth.getSession();
+    const token = sessionData.session?.access_token;
+    if (!token) { toast.error("Tu sesión expiró. Inicia de nuevo."); return; }
+    try {
+      const response = await fetch("/api/users/create", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          full_name: data.full_name.trim(),
+          email: data.email.trim().toLowerCase(),
+          password: data.password,
+          role: data.role,
+          company_id: data.company_id,
+        }),
+      });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok) { toast.error(payload?.error || "No se pudo crear el usuario."); return; }
+      toast.success("Usuario creado correctamente.");
+      createForm.reset();
+      setShowCreateUser(false);
+      await loadUsers();
+    } catch { toast.error("Error de red al crear el usuario."); }
+  });
+
+  // ─── Actions: Mi cuenta ──────────────────────────────────────────
+  async function saveAccount() {
+    if (!user) return;
+    setSavingAc(true);
+    const { error } = await supabase.from("app_users")
+      .update({ full_name: acName.trim() })
+      .eq("id", user.id);
+    setSavingAc(false);
+    if (error) { toast.error("Error al guardar"); return; }
+    toast.success("Información guardada");
   }
 
-  // ─── tabs ────────────────────────────────────────────────────────────
-  const pendingFiscal    = !fLegal.trim() || !fTaxId.trim()
-  const pendingContacto  = !cAdminEmail.trim() || !cPurchEmail.trim()
-  const pendingMarca     = !mLogoUrl || mColor === "#8B2252" || mColor === ""
-  const totalPendingConfig = (pendingFiscal ? 1 : 0) + (pendingContacto ? 1 : 0) + (pendingMarca ? 1 : 0)
+  async function changePassword() {
+    if (!pwNew.trim()) { toast.error("Ingresa la nueva contraseña"); return; }
+    if (pwNew.length < 8) { toast.error("La contraseña debe tener al menos 8 caracteres"); return; }
+    if (pwNew !== pwConfirm) { toast.error("Las contraseñas no coinciden"); return; }
+    setSavingPw(true);
+    const { error } = await supabase.auth.updateUser({ password: pwNew });
+    setSavingPw(false);
+    if (error) { toast.error(error.message); return; }
+    setPwNew(""); setPwConfirm("");
+    toast.success("Contraseña actualizada");
+  }
 
-  const canChangeTheme = user?.role === "superadmin" || Boolean(user?.is_superadmin) || user?.role === "titular";
+  // ─── Tab navigation ──────────────────────────────────────────────
+  function handleTabChange(key: string) {
+    setActiveTab(key as TabKey);
+    router.replace(`/settings?tab=${key}`, { scroll: false });
+  }
 
-  const tabs = [
-    { key: "general",      label: "General",      icon: <Building2 size={14} /> },
-    { key: "fiscal",       label: "Fiscal",       icon: <CreditCard size={14} />, count: pendingFiscal ? 1 : 0 },
-    { key: "contacto",     label: "Contacto",     icon: <Mail size={14} />, count: pendingContacto ? 1 : 0 },
-    { key: "marca",        label: "Marca",        icon: <Palette size={14} />, count: pendingMarca ? 1 : 0 },
-    { key: "invitaciones", label: "Invitaciones", icon: <Send size={14} />, count: invitations.filter(i => !i.used_at && new Date(i.expires_at) > new Date()).length },
-    ...(canChangeTheme ? [{ key: "apariencia", label: "Apariencia", icon: <Monitor size={14} /> }] : []),
+  // ─── Pending dots ────────────────────────────────────────────────
+  const pendingFiscal   = !fLegal.trim() || !fTaxId.trim();
+  const pendingContacto = !cAdminEmail.trim() || !cPurchEmail.trim();
+  const pendingMarca    = !mLogoUrl;
+  const pendingEmpresa  = pendingFiscal || pendingContacto || pendingMarca;
+
+  // ─── Tabs config ─────────────────────────────────────────────────
+  const allTabs = [
+    { key: "empresa",    label: "Empresa",    icon: <Building2 size={14} />, pendingDot: pendingEmpresa },
+    { key: "usuarios",   label: "Usuarios",   icon: <Users size={14} /> },
+    { key: "apariencia", label: "Apariencia", icon: <Monitor size={14} /> },
+    { key: "cuenta",     label: "Mi cuenta",  icon: <User size={14} /> },
+    ...(isSuperadmin ? [{ key: "sistema", label: "Sistema", icon: <Shield size={14} /> }] : []),
   ];
+  const visibleTabs = canFullAccess ? allTabs : allTabs.filter(t => ["apariencia", "cuenta"].includes(t.key));
 
-  if (loading) {
+  // ─── Derived metrics ─────────────────────────────────────────────
+  const totalUsers   = userRows.length;
+  const totalAdmins  = userRows.filter((r) => ["superadmin", "administracion", "directivo", "compras", "mantenimiento"].includes(r.role)).length;
+  const totalField   = userRows.filter((r) => r.role === "field").length;
+  const totalTenants = userRows.filter((r) => r.role === "tenant").length;
+
+  if (loading && canFullAccess && !tabReady) {
     return (
       <PageContainer>
         <div style={{ padding: "2rem", color: "var(--text-secondary)", fontSize: 14 }}>Cargando configuración...</div>
@@ -368,181 +599,273 @@ export default function SettingsPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Configuración"
+        title="Ajustes del sistema"
         subtitle={company?.short_name ?? company?.name ?? ""}
-        titleIcon={<Shield size={20} />}
+        titleIcon={<Settings2 size={20} />}
+        actions={activeTab === "usuarios" ? (
+          <UiButton icon={<UserPlus size={15} />} onClick={() => setShowCreateUser(true)}>
+            Nuevo usuario
+          </UiButton>
+        ) : undefined}
       />
 
-      {totalPendingConfig > 0 && (
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "var(--bg-card)", border: "1.5px solid var(--accent)", marginBottom: 16 }}>
-          <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-          <div style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-            {totalPendingConfig} sección{totalPendingConfig !== 1 ? "es" : ""} con información pendiente de completar — revisa las pestañas marcadas
-          </div>
-        </div>
-      )}
-
       <div style={{ marginBottom: "1.5rem" }}>
-        <AppTabs items={tabs} activeKey={activeTab} onChange={setActiveTab} />
+        <AppTabs items={visibleTabs} activeKey={activeTab} onChange={handleTabChange} />
       </div>
 
       <AppTabPanel activeKey={activeTab}>
 
-      {/* ── General ──────────────────────────────────────────────── */}
-      {activeTab === "general" && (
-        <SectionCard title="Datos generales">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
-            <Field label="Nombre de la empresa">
-              <input style={inputStyle} value={gName} onChange={(e) => setGName(e.target.value)} placeholder="Inmobiliaria XYZ S.A. de C.V." />
-            </Field>
-            <Field label="Nombre corto / pantalla">
-              <input style={inputStyle} value={gShort} onChange={(e) => setGShort(e.target.value)} placeholder="XYZ" />
-            </Field>
-            <Field label="Iniciales (máx. 4)">
-              <input style={inputStyle} value={gInitials} onChange={(e) => setGInitials(e.target.value.slice(0, 4).toUpperCase())} placeholder="XYZ" maxLength={4} />
-            </Field>
-            <Field label="Teléfono">
-              <input style={inputStyle} value={gPhone} onChange={(e) => setGPhone(e.target.value)} placeholder="+52 55 1234 5678" />
-            </Field>
-            <Field label="Email principal">
-              <input style={inputStyle} type="email" value={gEmail} onChange={(e) => setGEmail(e.target.value)} placeholder="contacto@empresa.com" />
-            </Field>
-            <Field label="Dirección / Ciudad">
-              <input style={inputStyle} value={gAddress} onChange={(e) => setGAddress(e.target.value)} placeholder="Ciudad de México, CDMX" />
-            </Field>
-          </div>
-          <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
-            <SaveBtn saving={savingG} onClick={saveGeneral} />
-          </div>
-        </SectionCard>
-      )}
+        {/* ══ TAB: EMPRESA ══════════════════════════════════════════ */}
+        {activeTab === "empresa" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* ── Fiscal ───────────────────────────────────────────────── */}
-      {activeTab === "fiscal" && (
-        <SectionCard title="Datos fiscales">
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
-            <Field label="Razón social">
-              <input style={inputStyle} value={fLegal} onChange={(e) => setFLegal(e.target.value)} placeholder="INMOBILIARIA XYZ S.A. DE C.V." />
-            </Field>
-            <Field label="RFC">
-              <input style={inputStyle} value={fTaxId} onChange={(e) => setFTaxId(e.target.value.toUpperCase())} placeholder="XYZ010101ABC" maxLength={13} />
-            </Field>
-            <Field label="Régimen fiscal">
-              <input style={inputStyle} value={fRegime} onChange={(e) => setFRegime(e.target.value)} placeholder="601 - General de Ley Personas Morales" />
-            </Field>
-            <Field label="Código postal">
-              <input style={inputStyle} value={fZip} onChange={(e) => setFZip(e.target.value)} placeholder="06600" maxLength={5} />
-            </Field>
-          </div>
-          <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
-            <SaveBtn saving={savingF} onClick={saveFiscal} />
-          </div>
-        </SectionCard>
-      )}
-
-      {/* ── Contacto ─────────────────────────────────────────────── */}
-      {activeTab === "contacto" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <SectionCard title="Contacto administración">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
-              <Field label="Email">
-                <input style={inputStyle} type="email" value={cAdminEmail} onChange={(e) => setCAdminEmail(e.target.value)} placeholder="admin@empresa.com" />
-              </Field>
-              <Field label="Teléfono">
-                <input style={inputStyle} value={cAdminPhone} onChange={(e) => setCAdminPhone(e.target.value)} placeholder="+52 55 1234 5678" />
-              </Field>
-            </div>
-          </SectionCard>
-          <SectionCard title="Contacto compras">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
-              <Field label="Email">
-                <input style={inputStyle} type="email" value={cPurchEmail} onChange={(e) => setCPurchEmail(e.target.value)} placeholder="compras@empresa.com" />
-              </Field>
-              <Field label="Teléfono">
-                <input style={inputStyle} value={cPurchPhone} onChange={(e) => setCPurchPhone(e.target.value)} placeholder="+52 55 9876 5432" />
-              </Field>
-            </div>
-          </SectionCard>
-          <div style={{ display: "flex", justifyContent: "flex-end" }}>
-            <SaveBtn saving={savingC} onClick={saveContacto} />
-          </div>
-        </div>
-      )}
-
-      {/* ── Marca ────────────────────────────────────────────────── */}
-      {activeTab === "marca" && (
-        <SectionCard title="Identidad de marca">
-          <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-            {/* Color */}
-            <div>
-              <label style={labelStyle}>Color de marca</label>
-              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                <input type="color" value={mColor} onChange={(e) => setMColor(e.target.value)} style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none" }} />
-                <input style={{ ...inputStyle, width: "auto", flex: 1, maxWidth: 160 }} value={mColor} onChange={(e) => setMColor(e.target.value)} maxLength={7} placeholder="#8B2252" />
-                <div style={{ width: 44, height: 44, borderRadius: 8, background: mColor, border: "1px solid var(--border-default)" }} />
+            {/* Datos generales */}
+            <SectionCard title="Datos generales">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+                <Field label="Nombre de la empresa">
+                  <input style={IS} value={gName} onChange={(e) => setGName(e.target.value)} placeholder="Inmobiliaria XYZ S.A. de C.V." />
+                </Field>
+                <Field label="Nombre corto / pantalla">
+                  <input style={IS} value={gShort} onChange={(e) => setGShort(e.target.value)} placeholder="XYZ" />
+                </Field>
+                <Field label="Iniciales (máx. 4)">
+                  <input style={IS} value={gInitials} onChange={(e) => setGInitials(e.target.value.slice(0, 4).toUpperCase())} placeholder="XYZ" maxLength={4} />
+                </Field>
+                <Field label="Teléfono">
+                  <input style={IS} value={gPhone} onChange={(e) => setGPhone(e.target.value)} placeholder="+52 55 1234 5678" />
+                </Field>
+                <Field label="Email principal">
+                  <input style={IS} type="email" value={gEmail} onChange={(e) => setGEmail(e.target.value)} placeholder="contacto@empresa.com" />
+                </Field>
+                <Field label="Dirección / Ciudad">
+                  <input style={IS} value={gAddress} onChange={(e) => setGAddress(e.target.value)} placeholder="Ciudad de México, CDMX" />
+                </Field>
               </div>
-            </div>
+              <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
+                <SaveBtn saving={savingG} onClick={saveGeneral} />
+              </div>
+            </SectionCard>
 
-            {/* Logos */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1.25rem" }}>
-              {[
-                { label: "Logo principal (fondo claro)", preview: logoPreview || mLogoUrl, dark: false, inputRef: logoInputRef },
-                { label: "Logo modo oscuro", preview: logoDarkPreview || mLogoDarkUrl, dark: true, inputRef: logoDarkInputRef },
-              ].map(({ label, preview, dark, inputRef }) => (
-                <div key={String(dark)}>
-                  <label style={labelStyle}>{label}</label>
-                  <input ref={inputRef} type="file" accept="image/*" onChange={(e) => handleLogoInput(e, dark)} style={{ display: "none" }} />
-                  {preview ? (
-                    <div style={{ position: "relative", display: "inline-block" }}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={preview} alt="" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border-default)", background: dark ? "#1a1a2e" : "#f5f5f5" }} />
-                      <button type="button" onClick={() => { if (dark) { setLogoDarkFile(null); setLogoDarkPreview(""); setMLogoDarkUrl(""); } else { setLogoFile(null); setLogoPreview(""); setMLogoUrl(""); } }} style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "#E24B4A", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-                        <X size={12} />
-                      </button>
-                    </div>
-                  ) : (
-                    <button type="button" onClick={() => inputRef.current?.click()} style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: 8, color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}>
-                      <Upload size={14} /> Subir logo
-                    </button>
-                  )}
+            {/* Datos fiscales */}
+            <SectionCard title="Datos fiscales">
+              {pendingFiscal && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "var(--accent, #8B2252)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
                 </div>
-              ))}
-            </div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+                <Field label="Razón social">
+                  <input style={IS} value={fLegal} onChange={(e) => setFLegal(e.target.value)} placeholder="INMOBILIARIA XYZ S.A. DE C.V." />
+                </Field>
+                <Field label="RFC">
+                  <input style={IS} value={fTaxId} onChange={(e) => setFTaxId(e.target.value.toUpperCase())} placeholder="XYZ010101ABC" maxLength={13} />
+                </Field>
+                <Field label="Régimen fiscal">
+                  <input style={IS} value={fRegime} onChange={(e) => setFRegime(e.target.value)} placeholder="601 - General de Ley Personas Morales" />
+                </Field>
+                <Field label="Código postal">
+                  <input style={IS} value={fZip} onChange={(e) => setFZip(e.target.value)} placeholder="06600" maxLength={5} />
+                </Field>
+              </div>
+              <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
+                <SaveBtn saving={savingF} onClick={saveFiscal} />
+              </div>
+            </SectionCard>
 
-            <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <SaveBtn saving={savingM} onClick={saveMarca} />
-            </div>
+            {/* Contactos */}
+            <SectionCard title="Contactos">
+              <SubSectionTitle title="Administración" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem", marginBottom: 20 }}>
+                <Field label="Email">
+                  <input style={IS} type="email" value={cAdminEmail} onChange={(e) => setCAdminEmail(e.target.value)} placeholder="admin@empresa.com" />
+                </Field>
+                <Field label="Teléfono">
+                  <input style={IS} value={cAdminPhone} onChange={(e) => setCAdminPhone(e.target.value)} placeholder="+52 55 1234 5678" />
+                </Field>
+              </div>
+              <SubSectionTitle title="Compras" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+                <Field label="Email">
+                  <input style={IS} type="email" value={cPurchEmail} onChange={(e) => setCPurchEmail(e.target.value)} placeholder="compras@empresa.com" />
+                </Field>
+                <Field label="Teléfono">
+                  <input style={IS} value={cPurchPhone} onChange={(e) => setCPurchPhone(e.target.value)} placeholder="+52 55 9876 5432" />
+                </Field>
+              </div>
+              <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
+                <SaveBtn saving={savingC} onClick={saveContacto} />
+              </div>
+            </SectionCard>
+
+            {/* Identidad de marca */}
+            <SectionCard title="Identidad de marca">
+              {pendingMarca && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "var(--accent, #8B2252)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
+                </div>
+              )}
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                {/* Color */}
+                <div>
+                  <label style={LS}>Color de marca</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <input type="color" value={mColor} onChange={(e) => setMColor(e.target.value)} style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none" }} />
+                    <input style={{ ...IS, width: "auto", flex: 1, maxWidth: 160 }} value={mColor} onChange={(e) => setMColor(e.target.value)} maxLength={7} placeholder="#8B2252" />
+                    <div style={{ width: 44, height: 44, borderRadius: 8, background: mColor, border: "1px solid var(--border-default)" }} />
+                  </div>
+                </div>
+                {/* Logos */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1.25rem" }}>
+                  {([
+                    { label: "Logo principal (fondo claro)", preview: logoPreview || mLogoUrl, dark: false, ref: logoInputRef },
+                    { label: "Logo modo oscuro",             preview: logoDarkPreview || mLogoDarkUrl, dark: true,  ref: logoDarkInputRef },
+                  ] as const).map(({ label, preview, dark, ref }) => (
+                    <div key={String(dark)}>
+                      <label style={LS}>{label}</label>
+                      <input
+                        ref={ref as React.RefObject<HTMLInputElement>}
+                        type="file" accept="image/*"
+                        onChange={(e) => handleLogoInput(e, dark)}
+                        style={{ display: "none" }}
+                      />
+                      {preview ? (
+                        <div style={{ position: "relative", display: "inline-block" }}>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={preview} alt="" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border-default)", background: dark ? "#1a1a2e" : "#f5f5f5" }} />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (dark) { setLogoDarkFile(null); setLogoDarkPreview(""); setMLogoDarkUrl(""); }
+                              else      { setLogoFile(null);     setLogoPreview("");     setMLogoUrl(""); }
+                            }}
+                            style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "#E24B4A", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => (ref as React.RefObject<HTMLInputElement>).current?.click()}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: 8, color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}
+                        >
+                          <Upload size={14} /> Subir logo
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <SaveBtn saving={savingM} onClick={saveMarca} />
+                </div>
+              </div>
+            </SectionCard>
           </div>
-        </SectionCard>
-      )}
+        )}
 
-      {/* ── Invitaciones ─────────────────────────────────────────── */}
-      {activeTab === "invitaciones" && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
-          <SectionCard title="Nueva invitación">
-            <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "end" }}>
+        {/* ══ TAB: USUARIOS ═════════════════════════════════════════ */}
+        {activeTab === "usuarios" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Métricas */}
+            <AppGrid minWidth={200}>
+              <MetricCard label="Total" value={String(totalUsers)} helper="Todos los activos"
+                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="#2563EB" /></div>}
+              />
+              <MetricCard label="Admins" value={String(totalAdmins)} helper="Roles administrativos"
+                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-purple)", display: "grid", placeItems: "center" }}><Shield size={18} color="#7C3AED" /></div>}
+              />
+              <MetricCard label="Campo" value={String(totalField)} helper="Equipo operativo"
+                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="#16A34A" /></div>}
+              />
+              <MetricCard label="Inquilinos" value={String(totalTenants)} helper="Portal activo"
+                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="#D97706" /></div>}
+              />
+            </AppGrid>
+
+            {/* Lista de usuarios */}
+            <SectionCard title="Usuarios de la empresa" icon={<Users size={18} />}>
+              {loadingUsers ? (
+                <div style={{ fontSize: 13, color: "var(--text-secondary)", padding: "20px 0" }}>Cargando usuarios...</div>
+              ) : (
+                <div className="mod-table-wrap">
+                  <AppTable<UserRow>
+                    minWidth={860}
+                    rows={userRows}
+                    emptyState="No hay usuarios activos."
+                    columns={[
+                      {
+                        key: "name", header: "Nombre",
+                        render: (row) => <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{row.full_name || "—"}</span>,
+                      },
+                      {
+                        key: "email", header: "Email",
+                        render: (row) => <span style={{ fontSize: 13 }}>{row.email}</span>,
+                      },
+                      ...(!isTitular ? [{
+                        key: "company", header: "Empresa",
+                        render: (row: UserRow) => <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{row.company_name}</span>,
+                      }] : []),
+                      {
+                        key: "role", header: "Rol",
+                        render: (row) => {
+                          const s = ROLE_STYLE[row.role];
+                          return <AppBadge backgroundColor={s.bg} textColor={s.fg}>{ROLE_LABEL[row.role]}</AppBadge>;
+                        },
+                      },
+                      {
+                        key: "actions", header: "Acciones",
+                        render: (row) => (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <AppSelect
+                              value={row.role}
+                              disabled={roleUpdatingId === row.id || row.id === user!.id}
+                              onChange={(e) => void changeRole(row, e.target.value as UserRole)}
+                              style={{ padding: "6px 8px", fontSize: 12, minWidth: 140 }}
+                            >
+                              {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+                              {row.role === "tenant" && <option value="tenant">Inquilino</option>}
+                            </AppSelect>
+                            <button
+                              type="button"
+                              onClick={() => toast("Función no disponible aún")}
+                              disabled={row.id === user!.id}
+                              title={row.id === user!.id ? "No puedes desactivarte" : "Desactivar usuario"}
+                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "#DC2626", display: "inline-flex", alignItems: "center" }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        ),
+                      },
+                    ]}
+                  />
+                </div>
+              )}
+            </SectionCard>
+
+            {/* Invitaciones */}
+            <SectionCard title="Invitaciones">
+              <SubSectionTitle title="Nueva invitación" />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "1rem", alignItems: "end", marginBottom: 12 }}>
                 <Field label="Email del invitado (opcional)">
-                  <input style={inputStyle} type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="nuevo@empresa.com" />
+                  <input style={IS} type="email" value={invEmail} onChange={(e) => setInvEmail(e.target.value)} placeholder="nuevo@empresa.com" />
                 </Field>
-                <Field label="Vence en (días)">
-                  <input style={{ ...inputStyle, width: 80 }} type="number" min={1} max={90} value={invExpDays} onChange={(e) => setInvExpDays(e.target.value)} />
+                <Field label="Vigencia (días)">
+                  <input style={{ ...IS, width: 80 }} type="number" min={1} max={90} value={invExpDays} onChange={(e) => setInvExpDays(e.target.value)} />
                 </Field>
               </div>
-
-              <div style={{ display: "flex", gap: "1rem", alignItems: "center", flexWrap: "wrap" }}>
-                <button
-                  type="button"
-                  onClick={createInvitation}
-                  disabled={sendingInv}
-                  style={{ display: "flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
-                >
-                  <Send size={14} /> {sendingInv ? "Generando..." : "Generar invitación"}
-                </button>
-              </div>
-
+              <button
+                type="button"
+                onClick={createInvitation}
+                disabled={sendingInv}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
+              >
+                <Send size={14} /> {sendingInv ? "Generando..." : "Generar invitación"}
+              </button>
               {invLink && (
-                <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ marginTop: 12, background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, wordBreak: "break-all" }}>{invLink}</span>
                   <button
                     type="button"
@@ -556,122 +879,265 @@ export default function SettingsPage() {
                   </button>
                 </div>
               )}
-            </div>
-          </SectionCard>
 
-          <SectionCard title="Invitaciones enviadas">
-            {invitations.length === 0 ? (
-              <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>No hay invitaciones.</p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                {invitations.map((inv) => {
-                  const expired = new Date(inv.expires_at) < new Date();
-                  const used = Boolean(inv.used_at);
-                  const active = !used && !expired;
-                  return (
-                    <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.75rem 1rem", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, flexWrap: "wrap" }}>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>
-                          {inv.email ?? <span style={{ color: "var(--text-secondary)" }}>Sin email</span>}
+              <div style={{ marginTop: 24 }}>
+                <SubSectionTitle title="Invitaciones enviadas" />
+                {invitations.length === 0 ? (
+                  <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>No hay invitaciones.</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {invitations.map((inv) => {
+                      const expired = new Date(inv.expires_at) < new Date();
+                      const used    = Boolean(inv.used_at);
+                      const active  = !used && !expired;
+                      return (
+                        <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.75rem 1rem", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 10, flexWrap: "wrap" }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>
+                              {inv.email ?? <span style={{ color: "var(--text-secondary)" }}>Sin email</span>}
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                              Vence: {formatDate(inv.expires_at)} · Creada: {formatDate(inv.created_at)}
+                            </div>
+                          </div>
+                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: active ? "rgba(29,158,117,.15)" : "rgba(0,0,0,.1)", color: active ? "#1D9E75" : used ? "#888" : "#E24B4A" }}>
+                            {active ? "Activa" : used ? "Usada" : "Expirada"}
+                          </span>
+                          {active && (
+                            <>
+                              <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: 6, color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
+                                Copiar
+                              </button>
+                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: 6, color: "#E24B4A", fontSize: 12, cursor: "pointer" }}>
+                                <Trash2 size={12} /> Revocar
+                              </button>
+                            </>
+                          )}
                         </div>
-                        <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-                          Vence: {formatDate(inv.expires_at)} · Creada: {formatDate(inv.created_at)}
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </SectionCard>
+          </div>
+        )}
+
+        {/* ══ TAB: APARIENCIA ═══════════════════════════════════════ */}
+        {activeTab === "apariencia" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <SectionCard title="Tema de interfaz" subtitle="El cambio se aplica de inmediato." icon={<Monitor size={18} />}>
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                {([
+                  { key: "clasico",    label: "Clásico",    previewR: 8,  btnR: 6,  desc: "Bordes estándar, limpio y profesional" },
+                  { key: "super_soft", label: "Super Soft", previewR: 28, btnR: 14, desc: "Bordes muy redondeados, look moderno y suave" },
+                ] as const).map(({ key, label, previewR, btnR, desc }) => {
+                  const active = uiTheme === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setUiTheme(key)}
+                      style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: 12, border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 200px", maxWidth: 280, transition: "border-color 0.15s", outline: "none" }}
+                    >
+                      <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ background: "var(--bg-card)", borderRadius: previewR, padding: "10px 14px", border: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 10 }}>
+                          <div style={{ width: 22, height: 22, borderRadius: previewR, background: "var(--accent)", flexShrink: 0 }} />
+                          <div style={{ flex: 1 }}>
+                            <div style={{ height: 7, borderRadius: 4, background: "var(--border-default)", marginBottom: 4 }} />
+                            <div style={{ height: 5, borderRadius: 4, background: "var(--border-subtle)", width: "55%" }} />
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <div style={{ flex: 1, height: 26, borderRadius: btnR, background: "var(--accent)", opacity: 0.85 }} />
+                          <div style={{ flex: 1, height: 26, borderRadius: btnR, background: "var(--border-default)" }} />
                         </div>
                       </div>
-                      <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: active ? "rgba(29,158,117,.15)" : "rgba(0,0,0,.1)", color: active ? "#1D9E75" : used ? "#888" : "#E24B4A" }}>
-                        {active ? "Activa" : used ? "Usada" : "Expirada"}
-                      </span>
-                      {active && (
-                        <>
-                          <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: 6, color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
-                            Copiar
-                          </button>
-                          <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: 6, color: "#E24B4A", fontSize: 12, cursor: "pointer" }}>
-                            <Trash2 size={12} /> Revocar
-                          </button>
-                        </>
-                      )}
-                    </div>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
+                          {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: 20, padding: "1px 7px" }}>Activo</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                      </div>
+                    </button>
                   );
                 })}
               </div>
-            )}
-          </SectionCard>
-        </div>
-      )}
+            </SectionCard>
 
-      {/* ── Apariencia ───────────────────────────────────────────── */}
-      {canChangeTheme && activeTab === "apariencia" && (
-        <SectionCard
-          title="Apariencia"
-          subtitle="Elige el estilo visual de la interfaz. El cambio es inmediato."
-          icon={<Monitor size={18} />}
-        >
-          <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-            {(
-              [
-                { key: "clasico",    label: "Clásico",    previewRadius: 8,  btnRadius: 6,  desc: "Bordes estándar, limpio y profesional" },
-                { key: "super_soft", label: "Super Soft", previewRadius: 28, btnRadius: 14, desc: "Bordes muy redondeados, look moderno y suave" },
-              ] as const
-            ).map(({ key, label, previewRadius, btnRadius, desc }) => {
-              const isActive = uiTheme === key;
-              return (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => setUiTheme(key)}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 14,
-                    padding: 16,
-                    borderRadius: 12,
-                    border: isActive ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
-                    background: isActive ? "var(--bg-card)" : "var(--bg-card)",
-                    cursor: "pointer",
-                    textAlign: "left",
-                    flex: "1 1 200px",
-                    maxWidth: 280,
-                    transition: "border-color 0.15s",
-                    outline: "none",
-                  }}
-                >
-                  {/* Preview miniatura */}
-                  <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-                    <div style={{ background: "var(--bg-card)", borderRadius: previewRadius, padding: "10px 14px", border: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 10 }}>
-                      <div style={{ width: 22, height: 22, borderRadius: previewRadius, background: "var(--accent)", flexShrink: 0 }} />
-                      <div style={{ flex: 1 }}>
-                        <div style={{ height: 7, borderRadius: 4, background: "var(--border-default)", marginBottom: 4 }} />
-                        <div style={{ height: 5, borderRadius: 4, background: "var(--border-subtle)", width: "55%" }} />
-                      </div>
-                    </div>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <div style={{ flex: 1, height: 26, borderRadius: btnRadius, background: "var(--accent)", opacity: 0.85 }} />
-                      <div style={{ flex: 1, height: 26, borderRadius: btnRadius, background: "var(--border-default)" }} />
-                    </div>
+            <SectionCard title="Modo">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>
+                    {isDark ? "Modo oscuro" : "Modo claro"}
                   </div>
-                  {/* Label */}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: isActive ? "var(--accent)" : "var(--text-primary)" }}>
-                        {label}
-                      </span>
-                      {isActive && (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: 20, padding: "1px 7px" }}>
-                          Activo
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                    {isDark ? "Interfaz con fondo oscuro" : "Interfaz con fondo claro"}
                   </div>
-                </button>
-              );
-            })}
+                </div>
+                <Toggle on={isDark} onToggle={toggleDark} />
+              </div>
+            </SectionCard>
           </div>
-        </SectionCard>
-      )}
+        )}
+
+        {/* ══ TAB: MI CUENTA ════════════════════════════════════════ */}
+        {activeTab === "cuenta" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <SectionCard title="Información personal" icon={<User size={18} />}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+                <Field label="Nombre completo">
+                  <input style={IS} value={acName} onChange={(e) => setAcName(e.target.value)} placeholder="Tu nombre" />
+                </Field>
+                <Field label="Email">
+                  <input style={{ ...IS, opacity: 0.6, cursor: "not-allowed" }} value={user?.email ?? ""} readOnly />
+                </Field>
+              </div>
+              <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
+                <SaveBtn saving={savingAc} onClick={saveAccount} />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Seguridad" icon={<Lock size={18} />}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1rem", maxWidth: 420 }}>
+                <Field label="Nueva contraseña">
+                  <input style={IS} type="password" value={pwNew} onChange={(e) => setPwNew(e.target.value)} placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+                </Field>
+                <Field label="Confirmar nueva contraseña">
+                  <input style={IS} type="password" value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} placeholder="Repite la contraseña" autoComplete="new-password" />
+                </Field>
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <SaveBtn saving={savingPw} onClick={changePassword} label="Cambiar contraseña" />
+                </div>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Preferencias">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Mostrar descripciones</div>
+                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Subtítulos descriptivos en la barra lateral y encabezados</div>
+                </div>
+                <Toggle
+                  on={showDescriptions}
+                  onToggle={() => {
+                    const next = !showDescriptions;
+                    setShowDescriptions(next);
+                    if (user?.id) {
+                      void supabase.from("user_preferences")
+                        .upsert({ user_id: user.id, show_descriptions: next }, { onConflict: "user_id" });
+                    }
+                  }}
+                />
+              </div>
+            </SectionCard>
+          </div>
+        )}
+
+        {/* ══ TAB: SISTEMA (superadmin) ═════════════════════════════ */}
+        {activeTab === "sistema" && isSuperadmin && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <SectionCard title="Plan actual" icon={<CreditCard size={18} />}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+                <span style={{ padding: "4px 14px", borderRadius: 999, background: "rgba(139,34,82,.12)", color: "var(--accent, #8B2252)", fontSize: 13, fontWeight: 700, border: "1px solid rgba(139,34,82,.2)" }}>
+                  Plan Básico
+                </span>
+                <span style={{ fontSize: 13, color: "#1D9E75", fontWeight: 600 }}>● Activo</span>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+                {[
+                  { label: "Propiedades", value: "Ilimitadas" },
+                  { label: "Usuarios",    value: "Ilimitados" },
+                  { label: "Unidades",    value: "Ilimitadas" },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ padding: "14px 16px", borderRadius: 10, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Información técnica" icon={<Info size={18} />}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {[
+                  { label: "ID de empresa",      value: company?.id ?? "—" },
+                  { label: "Versión de la app",   value: "1.0.0" },
+                  { label: "Fecha de creación",   value: company?.created_at ? formatDate(company.created_at) : "—" },
+                ].map(({ label, value }) => (
+                  <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 8, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 160, fontWeight: 500 }}>{label}</span>
+                    <span style={{ fontSize: 13, color: "var(--text-primary)", fontFamily: "monospace", wordBreak: "break-all" }}>{value}</span>
+                  </div>
+                ))}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Zona de peligro" style={{ border: "1.5px solid rgba(226,75,74,.4)", background: "rgba(226,75,74,.02)" }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 8, background: "rgba(226,75,74,.07)", border: "1px solid rgba(226,75,74,.18)", marginBottom: 18 }}>
+                <AlertTriangle size={16} color="#E24B4A" style={{ flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: 13, color: "var(--text-primary)", margin: 0, lineHeight: 1.55 }}>
+                  Las acciones en esta sección pueden tener consecuencias irreversibles. Procede con precaución.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => toast("Función de exportación próximamente disponible")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid #E24B4A", borderRadius: 8, color: "#E24B4A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              >
+                <Download size={15} /> Exportar todos los datos
+              </button>
+            </SectionCard>
+          </div>
+        )}
 
       </AppTabPanel>
+
+      {/* ── Modal: Nuevo usuario ─────────────────────────────────── */}
+      <Modal
+        open={showCreateUser}
+        title="Nuevo usuario"
+        subtitle="Se creará la cuenta en auth y su perfil en app_users."
+        onClose={() => { if (!createForm.formState.isSubmitting) setShowCreateUser(false); }}
+        maxWidth="520px"
+      >
+        <form onSubmit={onCreateSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <Field label="Nombre completo" error={createForm.formState.errors.full_name?.message}>
+            <input {...createForm.register("full_name")} placeholder="Juan Pérez" style={IS} />
+          </Field>
+          <Field label="Email" error={createForm.formState.errors.email?.message}>
+            <input {...createForm.register("email")} type="email" placeholder="juan@empresa.com" style={IS} />
+          </Field>
+          <Field label="Contraseña temporal" error={createForm.formState.errors.password?.message}>
+            <input {...createForm.register("password")} type="text" placeholder="Mínimo 8 caracteres" style={IS} autoComplete="new-password" />
+          </Field>
+          <Field label="Rol" error={createForm.formState.errors.role?.message}>
+            <AppSelect {...createForm.register("role")}>
+              {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
+            </AppSelect>
+          </Field>
+          {!isTitular && (
+            <Field label="Empresa" error={createForm.formState.errors.company_id?.message}>
+              <AppSelect {...createForm.register("company_id")}>
+                <option value="">Selecciona una empresa</option>
+                {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </AppSelect>
+            </Field>
+          )}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 4 }}>
+            <UiButton
+              variant="secondary"
+              onClick={() => { if (!createForm.formState.isSubmitting) { createForm.reset(); setShowCreateUser(false); } }}
+            >
+              Cancelar
+            </UiButton>
+            <UiButton type="submit" disabled={createForm.formState.isSubmitting}>
+              {createForm.formState.isSubmitting ? "Creando..." : "Crear usuario"}
+            </UiButton>
+          </div>
+        </form>
+      </Modal>
     </PageContainer>
   );
 }
