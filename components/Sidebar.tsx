@@ -28,12 +28,10 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
-  Moon,
   Package,
   Settings,
   ShoppingCart,
   Sparkles,
-  Sun,
   Truck,
   User2,
   UserCog,
@@ -41,8 +39,6 @@ import {
   Wrench,
   Zap,
 } from "lucide-react";
-import SettingsModal from "@/components/SettingsModal";
-
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
@@ -106,7 +102,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "SISTEMA",
     items: [
-      { label: "Configuración", href: "/settings",  icon: Settings, notifModules: ["configuracion"] },
+      { label: "Ajustes del sistema", href: "/settings",  icon: Settings, notifModules: ["configuracion"] },
       { label: "Usuarios",      href: "/users",      icon: UserCog },
       { label: "Feedback",      href: "/feedback",   icon: MessageSquare },
     ],
@@ -329,9 +325,8 @@ export default function Sidebar() {
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
-  const { accentColor, logoUrl, logoDarkUrl, shortName, isDark, toggleDark } = useTheme();
+  const { accentColor, logoUrl, logoDarkUrl, shortName, isDark } = useTheme();
   const { moduleStats } = useNotifications(user?.company_id ?? "");
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
   const isHiddenRoute =
@@ -606,39 +601,6 @@ export default function Sidebar() {
             )}
           </div>
 
-          {/* Ajustes */}
-          <button
-            type="button"
-            onClick={() => setIsSettingsOpen(true)}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 10, width: "100%",
-              padding: "10px 12px", borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.78)", fontWeight: 600, fontSize: 13, cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-          >
-            <Settings size={15} />
-            <span className="sidebar-footer-text">Ajustes</span>
-          </button>
-
-          {/* Toggle dark/light mode */}
-          <button
-            type="button"
-            onClick={toggleDark}
-            title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 10, width: "100%",
-              padding: "10px 12px", borderRadius: 12,
-              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
-              color: "rgba(255,255,255,0.78)", fontWeight: 600, fontSize: 13, cursor: "pointer",
-              transition: "background 0.15s",
-            }}
-          >
-            {isDark ? <Sun size={15} /> : <Moon size={15} />}
-            <span className="sidebar-footer-text">{isDark ? "Modo claro" : "Modo oscuro"}</span>
-          </button>
-
           {/* Cerrar sesión */}
           <button
             type="button"
@@ -656,7 +618,6 @@ export default function Sidebar() {
         </div>
       </div>
 
-      <SettingsModal open={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
     </aside>
     </>
   );
