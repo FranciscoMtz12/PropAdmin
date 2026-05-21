@@ -200,8 +200,29 @@ function IncludeToggle({ included, onInclude, onExclude, children }: {
         <button type="button" onClick={onExclude} style={ps(!included)}>No incluye</button>
         <button type="button" onClick={() => { if (!included) onInclude(); }} style={ps(included)}>Sí incluye</button>
       </div>
-      {included && children}
+      <Expand show={included} id="include-content">{children}</Expand>
     </div>
+  );
+}
+
+/* ─── Animated expand/collapse wrapper ──────────────────────────────── */
+
+function Expand({ show, id, children }: { show: boolean; id: string; children: React.ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {show && (
+        <motion.div
+          key={id}
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          style={{ overflow: "hidden" }}
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
@@ -242,7 +263,7 @@ function AcSection({ value, onChange }: { value: string; onChange: (v: string) =
           { value: "FAN_COIL", label: "Fan & coil" },
         ]}
       />
-      {(t === "MINI" || t === "FAN_COIL") && (
+      <Expand show={t === "MINI" || t === "FAN_COIL"} id="ac-cap">
         <Radio
           value={c}
           onChange={(newC) => onChange(`${t}_${newC}`)}
@@ -253,7 +274,7 @@ function AcSection({ value, onChange }: { value: string; onChange: (v: string) =
             { value: "3T", label: "3 ton" },
           ]}
         />
-      )}
+      </Expand>
     </div>
   );
 }
@@ -832,12 +853,12 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         {eqRow("Boiler", (
           <div style={{ display: "grid", gap: 8 }}>
             <Radio value={boiler} onChange={onBoiler} options={BOILER_OPTIONS} />
-            {IS_DEP(boiler) && (
+            <Expand show={IS_DEP(boiler)} id="boiler-cap">
               <Pills value={[boilerCapacity]} onChange={(v) => onCapacity(v[v.length - 1] ?? "60L")} options={BOILER_CAP_OPTIONS} />
-            )}
-            {boiler !== "NONE" && (
+            </Expand>
+            <Expand show={boiler !== "NONE"} id="boiler-count">
               <Counter label="Cantidad" value={boilerCount} onChange={onCount} min={1} max={10} />
-            )}
+            </Expand>
           </div>
         ))}
       </>
@@ -856,7 +877,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       <div style={{ display: "grid", gap: 8 }}>
         <Radio value={bEq.hasOwnBath ? "YES" : "NO"} onChange={(v) => onHasOwnBath(v === "YES")}
           options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
-        {bEq.hasOwnBath && (
+        <Expand show={bEq.hasOwnBath} id="bath-details">
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
             <div>
               <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Regadera</div>
@@ -875,7 +896,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
             </div>
           </div>
-        )}
+        </Expand>
       </div>
     ));
   }
@@ -1102,7 +1123,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               </div>)}
               {eqRow("Baño de visitas", <div style={{ display: "grid", gap: 8 }}>
                 <Radio value={eq.sala.guestBath} onChange={(v) => { setSala("guestBath", v); if (v !== "FULL") setSala("guestBathShower", "NONE"); }} options={[{ value: "NONE", label: "No incluye" }, { value: "HALF", label: "Medio baño" }, { value: "FULL", label: "Baño completo" }]} />
-                {eq.sala.guestBath === "FULL" && eqRow("Regadera", <Radio value={eq.sala.guestBathShower} onChange={(v) => setSala("guestBathShower", v)} options={SHOWER_OPTIONS} />)}
+                <Expand show={eq.sala.guestBath === "FULL"} id="guest-shower">
+                  {eqRow("Regadera", <Radio value={eq.sala.guestBathShower} onChange={(v) => setSala("guestBathShower", v)} options={SHOWER_OPTIONS} />)}
+                </Expand>
               </div>)}
             </>
           );
@@ -1112,14 +1135,20 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               {eqRow("Estufa / parrilla", <IncludeToggle included={eq.cocina.stoveType !== "NONE"} onExclude={() => setCocina("stoveType", "NONE")} onInclude={() => setCocina("stoveType", "GAS")}>
                 <div style={{ display: "grid", gap: 8 }}>
                   <Radio value={eq.cocina.stoveType} onChange={(v) => { setCocina("stoveType", v); if (v === "INDUCTION") setCocina("stoveBurners", "2"); else setCocina("stoveBurners", "4Q"); }} options={[{ value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }, { value: "INDUCTION", label: "Inducción" }]} />
-                  {(eq.cocina.stoveType === "GAS" || eq.cocina.stoveType === "ELECTRIC") && <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)} options={[{ value: "2Q", label: "2 quemadores" }, { value: "4Q", label: "4 quemadores" }, { value: "6Q", label: "6 quemadores" }]} />}
-                  {eq.cocina.stoveType === "INDUCTION" && <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)} options={[{ value: "2", label: "2 quemadores" }, { value: "4", label: "4 quemadores" }, { value: "ZONAS", label: "Zonas completas" }]} />}
+                  <Expand show={eq.cocina.stoveType === "GAS" || eq.cocina.stoveType === "ELECTRIC"} id="burners-std">
+                    <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)} options={[{ value: "2Q", label: "2 quemadores" }, { value: "4Q", label: "4 quemadores" }, { value: "6Q", label: "6 quemadores" }]} />
+                  </Expand>
+                  <Expand show={eq.cocina.stoveType === "INDUCTION"} id="burners-ind">
+                    <Radio value={eq.cocina.stoveBurners} onChange={(v) => setCocina("stoveBurners", v)} options={[{ value: "2", label: "2 quemadores" }, { value: "4", label: "4 quemadores" }, { value: "ZONAS", label: "Zonas completas" }]} />
+                  </Expand>
                 </div>
               </IncludeToggle>)}
               {eqRow("Horno", <Radio value={eq.cocina.oven} onChange={(v) => setCocina("oven", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrico" }]} />)}
               {eqRow("Refrigeración", <div style={{ display: "grid", gap: 8 }}>
                 <Radio value={eq.cocina.fridge} onChange={(v) => setCocina("fridge", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "FRIDGE", label: "Refrigerador" }, { value: "FRIGOBAR", label: "Frigobar" }]} />
-                {eq.cocina.fridge !== "NONE" && <input value={eq.cocina.fridgeModel} onChange={(e) => setCocina("fridgeModel", e.target.value)} placeholder="Modelo (opcional)" style={{ ...STEP_INPUT, fontSize: 12 }} />}
+                <Expand show={eq.cocina.fridge !== "NONE"} id="fridge-model">
+                  <input value={eq.cocina.fridgeModel} onChange={(e) => setCocina("fridgeModel", e.target.value)} placeholder="Modelo (opcional)" style={{ ...STEP_INPUT, fontSize: 12 }} />
+                </Expand>
               </div>)}
               {eqRow("Electrodomésticos", <Pills value={eq.cocina.others} onChange={(v) => setCocina("others", v)} options={[{ value: "MICROWAVE", label: "Microondas" }, { value: "DISHWASHER", label: "Lavavajillas" }, { value: "EXTRACTOR", label: "Campana extractora" }]} />)}
               {eqRow("Medio baño", <Radio value={eq.cocina.hasHalfBath ? "YES" : "NO"} onChange={(v) => setCocina("hasHalfBath", v === "YES")} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
@@ -1135,10 +1164,12 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             <>
               {boilerRows(eq.lavanderia.boiler, eq.lavanderia.boilerCapacity, eq.lavanderia.boilerCount, (v) => setLav("boiler", v), (v) => setLav("boilerCapacity", v), (v) => setLav("boilerCount", v))}
               {eqRow("Centro de lavado vertical", <Radio value={eq.lavanderia.centroCarga} onChange={(v) => setLav("centroCarga", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
-              {eq.lavanderia.centroCarga !== "YES" && <>
-                {eqRow("Lavadora", <Radio value={eq.lavanderia.washer} onChange={(v) => setLav("washer", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
-                {eqRow("Secadora", <Radio value={eq.lavanderia.dryer} onChange={(v) => setLav("dryer", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }]} />)}
-              </>}
+              <Expand show={eq.lavanderia.centroCarga !== "YES"} id="washer-dryer">
+                <>
+                  {eqRow("Lavadora", <Radio value={eq.lavanderia.washer} onChange={(v) => setLav("washer", v)} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />)}
+                  {eqRow("Secadora", <Radio value={eq.lavanderia.dryer} onChange={(v) => setLav("dryer", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "GAS", label: "Gas" }, { value: "ELECTRIC", label: "Eléctrica" }]} />)}
+                </>
+              </Expand>
             </>
           );
           if (key === "cuartoMaquinas") return (
