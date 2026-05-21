@@ -1131,10 +1131,10 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Paneles izquierdo / derecho */}
-            <div style={{ display: "flex", height: 460, border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", height: 560, border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
 
               {/* Panel izquierdo */}
-              <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--border-default)", overflowY: "auto", background: "var(--bg-page)" }}>
+              <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--border-default)", overflowY: "hidden", background: "var(--bg-page)" }}>
                 {panelSpaces.map((sp) => {
                   const active = sp.key === activeKey;
                   const SpIcon = sp.Icon;
@@ -1142,7 +1142,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     <button key={sp.key} type="button" onClick={() => setSelectedSpace(sp.key)}
                       style={{
                         display: "flex", alignItems: "center", justifyContent: "space-between",
-                        gap: 8, width: "100%", padding: "12px 14px",
+                        gap: 8, width: "100%", padding: "7px 14px",
                         border: "none", borderLeft: active ? `3px solid ${ACCENT}` : "3px solid transparent",
                         background: active ? "#FDF2F6" : "transparent",
                         cursor: "pointer", transition: "background 0.12s",
@@ -1168,23 +1168,40 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               </div>
 
               {/* Panel derecho */}
-              <div style={{ flex: 1, overflowY: "auto" }}>
-                {activeSpace ? (
-                  <>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px 12px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
-                      <activeSpace.Icon size={18} color={ACCENT} />
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.label}</span>
-                      {activeSpace.count > 0 && (
-                        <span style={{ padding: "2px 9px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
-                          {activeSpace.count} equipo{activeSpace.count !== 1 ? "s" : ""}
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ padding: "16px 20px" }}>{spaceContent(activeKey)}</div>
-                  </>
-                ) : (
-                  <div style={{ padding: 24, fontSize: 13, color: "var(--text-muted)" }}>Selecciona un espacio para configurar.</div>
-                )}
+              <div className="no-scrollbar" style={{ flex: 1, overflowY: "auto" }}>
+                <AnimatePresence mode="wait">
+                  {activeSpace ? (
+                    <motion.div
+                      key={activeKey}
+                      initial={{ opacity: 0, x: 8 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -8 }}
+                      transition={{ duration: 0.15, ease: "easeOut" }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px 12px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
+                        <activeSpace.Icon size={18} color={ACCENT} />
+                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.label}</span>
+                        {activeSpace.count > 0 && (
+                          <span style={{ padding: "2px 9px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
+                            {activeSpace.count} equipo{activeSpace.count !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ padding: "16px 20px" }}>{spaceContent(activeKey)}</div>
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="empty"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.15 }}
+                      style={{ padding: 24, fontSize: 13, color: "var(--text-muted)" }}
+                    >
+                      Selecciona un espacio para configurar.
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
             </div>
 

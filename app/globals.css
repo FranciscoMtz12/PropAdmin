@@ -847,3 +847,7 @@ a {
     /* No sobrescribir con atributo selector — usar clases dedicadas */
   }
 }
+
+/* ── Scrollbar oculto ─────────────────────────────────────────── */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
