@@ -278,7 +278,7 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
       style={{
         height: 340,
         width: "100%",
-        borderRadius: 8,
+        borderRadius: "var(--border-radius-md)",
         background: "var(--bg-card-hover)",
         display: "flex",
         alignItems: "center",
@@ -963,7 +963,7 @@ export default function BuildingsPage() {
                     cursor: "pointer",
                     transform: isHovered ? "translateY(-2px)" : "translateY(0)",
                     transition: "transform 0.15s ease",
-                    borderRadius: 16,
+                    borderRadius: "var(--border-radius-xl)",
                     overflow: "visible",
                     position: "relative",
                     zIndex: openActionsBuildingId === building.id ? 100 : 1,
@@ -976,7 +976,7 @@ export default function BuildingsPage() {
                   <div
                     style={{
                       border: "1px solid var(--border-default)",
-                      borderRadius: 16,
+                      borderRadius: "var(--border-radius-xl)",
                       padding: 16,
                       background: "var(--bg-card)",
                       boxShadow: isHovered
@@ -1298,7 +1298,7 @@ export default function BuildingsPage() {
                   contentStyle={{
                     background: "var(--bg-card)",
                     border: "1px solid var(--border-default)",
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     fontSize: 12,
                   }}
                   formatter={(value, name) => {
@@ -1383,7 +1383,7 @@ export default function BuildingsPage() {
                     style={{
                       position: "relative",
                       display: "flex", flexDirection: "column", alignItems: "center",
-                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: "var(--border-radius-md)",
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                       background: selected ? pt.color + "15" : "var(--bg-card)",
                       color: selected ? pt.color : "var(--text-secondary)",
@@ -1435,7 +1435,7 @@ export default function BuildingsPage() {
                       <button key={st.value} type="button" onClick={() => setEditSubtype(st.value)}
                         style={{
                           display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
-                          padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                          padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                           border: sel ? `2px solid ${color}` : "2px solid var(--border-default)",
                           background: sel ? color + "12" : "var(--bg-card)",
                           cursor: "pointer", transition: "all 0.15s ease",
@@ -1540,7 +1540,7 @@ export default function BuildingsPage() {
                         onChange={(e) => setHF("other_notes", e.target.value || undefined)}
                         placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
                         rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
                       />
                     </div>
                   )}
@@ -1696,7 +1696,7 @@ export default function BuildingsPage() {
                         style={{
                           position: "relative",
                           display: "flex", flexDirection: "column", alignItems: "center",
-                          justifyContent: "center", gap: 6, padding: "16px 8px", borderRadius: 12,
+                          justifyContent: "center", gap: 6, padding: "16px 8px", borderRadius: "var(--border-radius-lg)",
                           border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                           background: selected ? pt.color + "15" : "var(--bg-card)",
                           color: selected ? pt.color : "var(--text-secondary)",
@@ -1748,7 +1748,7 @@ export default function BuildingsPage() {
                           <button key={st.value} type="button" onClick={() => setCreateSubtype(st.value)}
                             style={{
                               display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
-                              padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                              padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                               border: sel ? `2px solid ${color}` : "2px solid var(--border-default)",
                               background: sel ? color + "12" : "var(--bg-card)",
                               cursor: "pointer", transition: "all 0.15s ease",
@@ -1857,7 +1857,7 @@ export default function BuildingsPage() {
                   onClick={() => toggleFeatureSelection(feat.key)}
                   style={{
                     display: "flex", alignItems: "flex-start", gap: 10,
-                    padding: "10px 12px", borderRadius: 10, width: "100%", textAlign: "left",
+                    padding: "10px 12px", borderRadius: "var(--border-radius-md)", width: "100%", textAlign: "left",
                     border: selected ? `2px solid ${feat.color}` : "2px solid var(--border-default)",
                     background: selected ? feat.color + "12" : "var(--bg-card)",
                     cursor: "pointer", transition: "all 0.15s ease",
@@ -1884,7 +1884,7 @@ export default function BuildingsPage() {
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   {spaceFeatures.length > 0 && (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
+                    <div style={{ background: "var(--bg-page)", borderRadius: "var(--border-radius-lg)", padding: 16, border: "1px solid var(--border-default)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <Building2 size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                         <div>
@@ -1899,7 +1899,7 @@ export default function BuildingsPage() {
                   )}
 
                   {serviceFeatures.length > 0 && (
-                    <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
+                    <div style={{ background: "var(--bg-page)", borderRadius: "var(--border-radius-lg)", padding: 16, border: "1px solid var(--border-default)" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <Zap size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                         <div>
@@ -1957,7 +1957,7 @@ export default function BuildingsPage() {
                   Revisa los datos antes de crear la propiedad.
                 </p>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24, padding: 16, borderRadius: 12, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24, padding: 16, borderRadius: "var(--border-radius-lg)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                   {row("Tipo", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       {primaryType && (
@@ -1985,7 +1985,7 @@ export default function BuildingsPage() {
                   {visibleFeatures.length > 0 ? row("Características", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {visibleFeatures.map((f) => (
-                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: 8, fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
                           {f.label}
                         </span>
                       ))}

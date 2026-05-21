@@ -30,7 +30,7 @@ export default function CopyLinkButton({ url, label = "Compartir" }: { url: stri
         gap: 6,
         background: "#fff",
         border: "1px solid #e2e8f0",
-        borderRadius: 10,
+        borderRadius: "var(--border-radius-md)",
         padding: "8px 14px",
         fontSize: 13,
         fontWeight: 600,

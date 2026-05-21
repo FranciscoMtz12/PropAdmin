@@ -190,7 +190,7 @@ export default function BuildingUtilityMeterModal({
                 flexDirection: "column",
                 gap: 6,
                 padding: "14px 16px",
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 cursor: "pointer",
                 border: `2px solid ${meterType === "dedicated" ? "#8B2252" : "var(--border-default)"}`,
                 background: meterType === "dedicated" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
@@ -217,7 +217,7 @@ export default function BuildingUtilityMeterModal({
                 flexDirection: "column",
                 gap: 6,
                 padding: "14px 16px",
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 cursor: "pointer",
                 border: `2px solid ${meterType === "shared" ? "#8B2252" : "var(--border-default)"}`,
                 background: meterType === "shared" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
@@ -247,7 +247,7 @@ export default function BuildingUtilityMeterModal({
                 <label
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
-                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${contractHolder === "company" ? "#8B2252" : "var(--border-default)"}`,
                     background: contractHolder === "company" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
@@ -271,7 +271,7 @@ export default function BuildingUtilityMeterModal({
                 <label
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
-                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${contractHolder === "tenant" ? "#8B2252" : "var(--border-default)"}`,
                     background: contractHolder === "tenant" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
@@ -315,7 +315,7 @@ export default function BuildingUtilityMeterModal({
                     flexDirection: "column",
                     gap: 6,
                     padding: "14px 16px",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     cursor: "pointer",
                     border: `2px solid ${billingMode === "charged" ? "#8B2252" : "var(--border-default)"}`,
                     background: billingMode === "charged" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
@@ -342,7 +342,7 @@ export default function BuildingUtilityMeterModal({
                     flexDirection: "column",
                     gap: 6,
                     padding: "14px 16px",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     cursor: "pointer",
                     border: `2px solid ${billingMode === "included" ? "#8B2252" : "var(--border-default)"}`,
                     background: billingMode === "included" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
@@ -370,7 +370,7 @@ export default function BuildingUtilityMeterModal({
                 style={{
                   padding: "12px 16px",
                   background: "#eff6ff",
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   marginBottom: 16,
                   fontSize: 13,
                   color: "#1d4ed8",
@@ -387,7 +387,7 @@ export default function BuildingUtilityMeterModal({
                 style={{
                   padding: "12px 16px",
                   background: "var(--bg-page)",
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   marginBottom: 16,
                   fontSize: 13,
                   color: "var(--text-secondary)",
@@ -413,7 +413,7 @@ export default function BuildingUtilityMeterModal({
                 <label
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
-                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingFrequency === "monthly" ? "#8B2252" : "var(--border-default)"}`,
                     background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
@@ -437,7 +437,7 @@ export default function BuildingUtilityMeterModal({
                 <label
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
-                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingFrequency === "bimonthly" ? "#8B2252" : "var(--border-default)"}`,
                     background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
@@ -488,7 +488,7 @@ export default function BuildingUtilityMeterModal({
                   style={{
                     padding: "12px 16px",
                     background: "#eff6ff",
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     marginBottom: 16,
                     fontSize: 13,
                     color: "#1d4ed8",

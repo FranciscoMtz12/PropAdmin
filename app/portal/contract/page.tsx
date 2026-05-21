@@ -60,7 +60,7 @@ type PortalLeaseRecord = {
 const iconBoxStyle: React.CSSProperties = {
   width: 44,
   height: 44,
-  borderRadius: 14,
+  borderRadius: "var(--border-radius-lg)",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
   display: "inline-flex",
@@ -89,7 +89,7 @@ const valueStyle: React.CSSProperties = {
 
 const actionButtonStyle: React.CSSProperties = {
   border: "none",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   padding: "12px 16px",
   fontSize: 14,
   fontWeight: 700,
@@ -456,7 +456,7 @@ export default function PortalContractPage() {
                   style={{
                     width: "100%",
                     minHeight: 48,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "1px solid var(--border-default)",
                     padding: "0 14px",
                     background: "var(--bg-card)",

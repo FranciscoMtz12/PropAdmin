@@ -190,7 +190,7 @@ export default function UtilityMeterModal({
                 key={type}
                 style={{
                   display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${meterType === type ? "#8B2252" : "var(--border-default)"}`,
                   background: meterType === type ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                 }}
@@ -221,7 +221,7 @@ export default function UtilityMeterModal({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
                 <label style={{
                   display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${contractHolder === "company" ? "#8B2252" : "var(--border-default)"}`,
                   background: contractHolder === "company" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                 }}>
@@ -236,7 +236,7 @@ export default function UtilityMeterModal({
                 </label>
                 <label style={{
                   display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${contractHolder === "tenant" ? "#8B2252" : "var(--border-default)"}`,
                   background: contractHolder === "tenant" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                 }}>
@@ -270,7 +270,7 @@ export default function UtilityMeterModal({
                 {(["charged", "included"] as const).map(mode => (
                   <label key={mode} style={{
                     display: "flex", flexDirection: "column", gap: 6,
-                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingMode === mode ? "#8B2252" : "var(--border-default)"}`,
                     background: billingMode === mode ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}>
@@ -287,12 +287,12 @@ export default function UtilityMeterModal({
             </AppFormField>
 
             {billingMode === "charged" ? (
-              <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 Configura los submedidores después de guardar.
               </div>
             ) : (
-              <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
+              <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
                 <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 Gasto del edificio — las facturas se registran sin generar cobros.
               </div>
@@ -307,7 +307,7 @@ export default function UtilityMeterModal({
                 {(["variable", "fixed"] as const).map(bt => (
                   <label key={bt} style={{
                     display: "flex", flexDirection: "column", gap: 6,
-                    padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                    padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingType === bt ? "#8B2252" : "var(--border-default)"}`,
                     background: billingType === bt ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}>
@@ -345,7 +345,7 @@ export default function UtilityMeterModal({
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 4 }}>
                 <label style={{
                   display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${billingFrequency === "monthly" ? "#8B2252" : "var(--border-default)"}`,
                   background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                 }}>
@@ -358,7 +358,7 @@ export default function UtilityMeterModal({
                 </label>
                 <label style={{
                   display: "flex", flexDirection: "column", gap: 6,
-                  padding: "14px 16px", borderRadius: 12, cursor: "pointer",
+                  padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${billingFrequency === "bimonthly" ? "#8B2252" : "var(--border-default)"}`,
                   background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                 }}>
@@ -396,7 +396,7 @@ export default function UtilityMeterModal({
                     </AppSelect>
                   </div>
                 </AppFormField>
-                <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
                   <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   El mes de inicio determina en qué meses del año se genera la factura.
                 </div>

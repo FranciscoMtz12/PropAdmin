@@ -329,7 +329,7 @@ export default function CleaningUnitsPage() {
             style={{
               marginBottom: 16,
               padding: "12px 14px",
-              borderRadius: 12,
+              borderRadius: "var(--border-radius-lg)",
               background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
               color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
               fontSize: 14,
@@ -455,7 +455,7 @@ export default function CleaningUnitsPage() {
                             <button
                               type="button"
                               onClick={() => setOpenActionsRowId(openActionsRowId === row.id ? null : row.id)}
-                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", padding: "8px 10px", cursor: "pointer" }}
+                              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", padding: "8px 10px", cursor: "pointer" }}
                               aria-label="Más acciones"
                             >
                               <MoreHorizontal size={16} />
@@ -464,7 +464,7 @@ export default function CleaningUnitsPage() {
                               <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12))", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
                                 <a
                                   href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
-                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600 }}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600 }}
                                 >
                                   <Settings2 size={14} />
                                   Configurar
@@ -477,7 +477,7 @@ export default function CleaningUnitsPage() {
                                       void toggleScheduleStatus(row.scheduleId as string, row.cleaningState !== "active");
                                     }}
                                     disabled={isToggling}
-                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                                   >
                                     {row.cleaningState === "active" ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
                                     {isToggling ? "Guardando..." : row.cleaningState === "active" ? "Desactivar" : "Activar"}

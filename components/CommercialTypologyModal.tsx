@@ -153,7 +153,7 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                     onClick={() => setEntrega(sel ? "" : opt.value)}
                     style={{
                       display: "flex", alignItems: "flex-start", gap: 10,
-                      padding: "10px 14px", borderRadius: 10, textAlign: "left",
+                      padding: "10px 14px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                       border: sel ? "2px solid #0369a1" : "1.5px solid var(--border-default)",
                       background: sel ? "#0369a112" : "var(--bg-card)",
                       cursor: "pointer", transition: "all 0.15s ease",
@@ -195,13 +195,13 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                   onClick={() => setFlags(prev => ({ ...prev, [key]: !prev[key] }))}
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                    padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                     border: sel ? "2px solid #0369a1" : "1.5px solid var(--border-default)",
                     background: sel ? "#0369a112" : "var(--bg-card)",
                     cursor: "pointer", transition: "all 0.15s ease",
                   }}
                 >
-                  <div style={{ width: 16, height: 16, borderRadius: 4, border: `2px solid ${sel ? "#0369a1" : "var(--border-default)"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: sel ? "#0369a1" : "transparent" }}>
+                  <div style={{ width: 16, height: 16, borderRadius: "var(--border-radius-sm)", border: `2px solid ${sel ? "#0369a1" : "var(--border-default)"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: sel ? "#0369a1" : "transparent" }}>
                     {sel && <span style={{ color: "#fff", fontSize: 10, lineHeight: 1 }}>✓</span>}
                   </div>
                   <span style={{ fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{label}</span>
@@ -233,12 +233,12 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
           </div>
 
           {/* Resumen */}
-          <div style={{ padding: 14, borderRadius: 10, background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: 12, color: "var(--text-secondary)" }}>
+          <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: 12, color: "var(--text-secondary)" }}>
             <strong style={{ color: "var(--text-primary)", fontSize: 14 }}>{name}</strong>
-            {entrega && <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: 6, background: "#0369a115", color: "#0369a1", fontSize: 11, fontWeight: 600 }}>{ENTREGA_OPTIONS.find(o => o.value === entrega)?.label}</span>}
+            {entrega && <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a115", color: "#0369a1", fontSize: 11, fontWeight: 600 }}>{ENTREGA_OPTIONS.find(o => o.value === entrega)?.label}</span>}
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
               {INSTALACIONES.filter(i => flags[i.key]).map(i => (
-                <span key={i.key} style={{ padding: "2px 8px", borderRadius: 6, background: "#0369a112", color: "#0369a1", fontSize: 11 }}>{i.label}</span>
+                <span key={i.key} style={{ padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a112", color: "#0369a1", fontSize: 11 }}>{i.label}</span>
               ))}
             </div>
           </div>

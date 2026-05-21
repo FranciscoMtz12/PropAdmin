@@ -1113,7 +1113,7 @@ export default function CollectionsPage() {
 
       {/* ── Banners de pendientes ──────────────────────────────────── */}
       {overdueRecordsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
@@ -1124,13 +1124,13 @@ export default function CollectionsPage() {
             {overdueRecordsBanner.slice(0, 12).map(r => (
               <button key={r.id} type="button"
                 onClick={() => setFilterStatus("overdue")}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {_unitLabelMap.get(r.unit_id) ?? r.unit_id.slice(0, 6)}
               </button>
             ))}
             {overdueRecordsBanner.length > 12 && (
               <button type="button" onClick={() => setFilterStatus("overdue")}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, cursor: "pointer" }}>
                 +{overdueRecordsBanner.length - 12} más
               </button>
             )}
@@ -1139,14 +1139,14 @@ export default function CollectionsPage() {
       )}
 
       {dueSoonRecordsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               {dueSoonRecordsBanner.length} cobro{dueSoonRecordsBanner.length !== 1 ? "s" : ""} vence{dueSoonRecordsBanner.length !== 1 ? "n" : ""} en los próximos 5 días
             </span>
             <button type="button" onClick={() => setFilterStatus("pending")}
-              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
               Ver pendientes
             </button>
           </div>
@@ -1154,13 +1154,13 @@ export default function CollectionsPage() {
       )}
 
       {missingReadingsCount > 0 && (
-        <div style={{ marginBottom: 20, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               Hay lecturas de medidores pendientes de capturar ({missingReadingsCount} sin registrar)
             </span>
-            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
               Ir a Servicios
             </a>
           </div>
@@ -1243,7 +1243,7 @@ export default function CollectionsPage() {
               <Tooltip
                 formatter={(value: unknown) => [formatCurrency(Number(value ?? 0)), ""]}
                 contentStyle={{
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                   color: "var(--text-primary)",
@@ -1271,7 +1271,7 @@ export default function CollectionsPage() {
             ) : (
               <>
                 {/* Barra apilada horizontal */}
-                <div style={{ display: "flex", height: 20, borderRadius: 10, overflow: "hidden", gap: 2 }}>
+                <div style={{ display: "flex", height: 20, borderRadius: "var(--border-radius-md)", overflow: "hidden", gap: 2 }}>
                   {countData.overdue > 0 && (
                     <div style={{ flex: countData.overdue, background: "#EF4444", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
                   )}
@@ -1538,7 +1538,7 @@ export default function CollectionsPage() {
                                         zIndex: 10,
                                         background: "var(--bg-card)",
                                         border: "1px solid var(--border-default)",
-                                        borderRadius: 12,
+                                        borderRadius: "var(--border-radius-lg)",
                                         padding: "10px 14px",
                                         boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                                         display: "flex",
@@ -1549,8 +1549,8 @@ export default function CollectionsPage() {
                                       }}>
                                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>¿Revertir pago?</span>
                                         <div style={{ display: "flex", gap: 6 }}>
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); void handleRevertRecord(record); }} style={{ flex: 1, padding: "5px 0", borderRadius: 8, border: "1px solid #FECACA", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Sí</button>
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); setRevertConfirmId(null); }} style={{ flex: 1, padding: "5px 0", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>No</button>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); void handleRevertRecord(record); }} style={{ flex: 1, padding: "5px 0", borderRadius: "var(--border-radius-md)", border: "1px solid #FECACA", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Sí</button>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); setRevertConfirmId(null); }} style={{ flex: 1, padding: "5px 0", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>No</button>
                                         </div>
                                       </div>
                                     ) : null}
@@ -1588,7 +1588,7 @@ export default function CollectionsPage() {
                             setEventoModal({ groupKey: row.groupKey, leaseId: row.leaseId, buildingId: row.buildingId, unitId: row.records[0]?.unit_id || "" });
                             eventoForm.reset({ concepto: "", chargeType: "amenities", monto: "" });
                           }}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
                         >
                           <Plus size={13} />
                           Cargo eventual
@@ -1849,7 +1849,7 @@ const monthNavStyle: CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "6px 12px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
 };
@@ -1860,7 +1860,7 @@ const monthNavBtnStyle: CSSProperties = {
   justifyContent: "center",
   width: 28,
   height: 28,
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-page)",
   color: "var(--text-secondary)",
@@ -1885,7 +1885,7 @@ const chartRowStyle: CSSProperties = {
 
 const donutCardStyle: CSSProperties = {
   padding: "18px 16px",
-  borderRadius: 20,
+  borderRadius: "var(--border-radius-xl)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   display: "grid",
@@ -1926,7 +1926,7 @@ const filterFieldStyle: CSSProperties = {
   alignItems: "center",
   gap: 8,
   padding: "8px 12px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   flex: "1 1 200px",
@@ -1934,7 +1934,7 @@ const filterFieldStyle: CSSProperties = {
 };
 
 const tenantCardStyle: CSSProperties = {
-  borderRadius: 16,
+  borderRadius: "var(--border-radius-xl)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   overflow: "hidden",
@@ -1975,7 +1975,7 @@ const badgeStyle: CSSProperties = {
 const chevronWrapStyle: CSSProperties = {
   width: 28,
   height: 28,
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-page)",
   color: "var(--text-muted)",
@@ -2021,14 +2021,14 @@ const conceptRowStyle: CSSProperties = {
   gap: 12,
   alignItems: "center",
   padding: "10px 8px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   minWidth: 480,
 };
 
 const chargeIconWrapStyle: CSSProperties = {
   width: 30,
   height: 30,
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   background: "var(--icon-bg-neutral)",
   display: "flex",
   alignItems: "center",
@@ -2058,7 +2058,7 @@ const paidBtnStyle: CSSProperties = {
   alignItems: "center",
   gap: 5,
   padding: "5px 10px",
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--metric-border-green)",
   background: "var(--badge-bg-green)",
   color: "var(--badge-text-green)",
@@ -2073,7 +2073,7 @@ const editBtnStyle: CSSProperties = {
   justifyContent: "center",
   width: 28,
   height: 28,
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-page)",
   color: "var(--text-muted)",
@@ -2097,7 +2097,7 @@ const expandFooterStyle: CSSProperties = {
 
 const emptyBoxStyle: CSSProperties = {
   padding: "20px 16px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px dashed var(--border-default)",
   color: "var(--text-muted)",
   fontSize: 14,
@@ -2108,7 +2108,7 @@ const emptyBoxStyle: CSSProperties = {
 
 const warningBoxStyle: CSSProperties = {
   padding: "14px 16px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   background: "var(--metric-bg-amber)",
   border: "1px solid var(--metric-border-amber)",
   color: "var(--badge-text-amber)",
@@ -2138,7 +2138,7 @@ const fieldLabelStyle: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: "100%",
   padding: "10px 12px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",

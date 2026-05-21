@@ -116,7 +116,7 @@ export default function FeedbackButton() {
               maxWidth: "calc(100vw - 2rem)",
               background: "var(--bg-card)",
               border: "1px solid var(--border-default)",
-              borderRadius: 14,
+              borderRadius: "var(--border-radius-lg)",
               padding: "1.25rem",
               boxShadow: "0 12px 40px rgba(0,0,0,.3)",
             }}
@@ -149,7 +149,7 @@ export default function FeedbackButton() {
                         justifyContent: "center",
                         gap: 4,
                         padding: "8px 6px",
-                        borderRadius: 8,
+                        borderRadius: "var(--border-radius-md)",
                         fontSize: 11,
                         fontWeight: 600,
                         cursor: "pointer",
@@ -172,7 +172,7 @@ export default function FeedbackButton() {
                   style={{
                     width: "100%",
                     padding: "8px 10px",
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     fontSize: 13,
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
@@ -195,7 +195,7 @@ export default function FeedbackButton() {
                 style={{
                   width: "100%",
                   padding: "8px 10px",
-                  borderRadius: 8,
+                  borderRadius: "var(--border-radius-md)",
                   fontSize: 13,
                   background: "var(--bg-input)",
                   border: "1px solid var(--border-default)",
@@ -212,7 +212,7 @@ export default function FeedbackButton() {
                 disabled={formState.isSubmitting}
                 style={{
                   padding: "9px",
-                  borderRadius: 8,
+                  borderRadius: "var(--border-radius-md)",
                   fontSize: 13,
                   fontWeight: 600,
                   background: formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",

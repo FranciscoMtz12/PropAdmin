@@ -548,7 +548,7 @@ export default function BuildingCleaningPage() {
                 <div
                   style={{
                     padding: "14px 16px",
-                    borderRadius: 14,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "rgba(255,255,255,0.7)",
                     border: `1px solid ${area.border}`,
                     display: "flex",

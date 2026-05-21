@@ -1209,7 +1209,7 @@ export default function CalendarPage() {
           style={{
             marginBottom: 16,
             padding: "12px 14px",
-            borderRadius: 12,
+            borderRadius: "var(--border-radius-lg)",
             background: "var(--badge-bg-red)",
             color: "var(--badge-text-red)",
             fontSize: 14,
@@ -1265,7 +1265,7 @@ export default function CalendarPage() {
                   onClick={() => setReferenceDate(new Date())}
                   style={{
                     padding: ".35rem .85rem",
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                     background: "var(--bg-card)",
                     color: "var(--text-primary)",
@@ -1318,7 +1318,7 @@ export default function CalendarPage() {
                 style={{
                   minWidth: 240,
                   padding: "10px 12px",
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                   color: "var(--text-primary)",
@@ -1358,7 +1358,7 @@ export default function CalendarPage() {
                       <div
                         key={day.key}
                         style={{
-                          borderRadius: 12,
+                          borderRadius: "var(--border-radius-lg)",
                           border: `1px solid ${isToday ? "var(--accent)" : "var(--border-default)"}`,
                           overflow: "hidden",
                           background: "var(--bg-card)",
@@ -1421,7 +1421,7 @@ export default function CalendarPage() {
                                   setSelectedEvent(event);
                                 }}
                                 style={{
-                                  borderRadius: 8,
+                                  borderRadius: "var(--border-radius-md)",
                                   padding: "7px 10px",
                                   background: event.colorBackground,
                                   border: `1px solid ${event.colorBorder}`,
@@ -1482,7 +1482,7 @@ export default function CalendarPage() {
                         key={day.key}
                         style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 16,
+                          borderRadius: "var(--border-radius-xl)",
                           padding: 14,
                           background: "var(--bg-card)",
                           display: "flex",
@@ -1503,7 +1503,7 @@ export default function CalendarPage() {
                         {dayEvents.length === 0 ? (
                           <div
                             style={{
-                              borderRadius: 12,
+                              borderRadius: "var(--border-radius-lg)",
                               padding: "10px 10px",
                               background: "var(--bg-card-hover)",
                               border: "1px dashed #D1D5DB",
@@ -1527,7 +1527,7 @@ export default function CalendarPage() {
                                   setSelectedEvent(event);
                                 }}
                                 style={{
-                                  borderRadius: 10,
+                                  borderRadius: "var(--border-radius-md)",
                                   padding: "7px 8px",
                                   background: event.colorBackground,
                                   border: `1px solid ${event.colorBorder}`,
@@ -1589,7 +1589,7 @@ export default function CalendarPage() {
                   gridTemplateColumns: "repeat(7, minmax(0, 1fr))",
                   gap: 2,
                   border: "1px solid var(--border-default)",
-                  borderRadius: 8,
+                  borderRadius: "var(--border-radius-md)",
                   overflow: "hidden",
                 }}
               >
@@ -1682,7 +1682,7 @@ export default function CalendarPage() {
                                 setSelectedEvent(event);
                               }}
                               style={{
-                                borderRadius: 4,
+                                borderRadius: "var(--border-radius-sm)",
                                 padding: "2px 6px",
                                 fontSize: 10,
                                 fontWeight: 500,
@@ -1774,7 +1774,7 @@ export default function CalendarPage() {
                     key={month.monthLabel}
                     style={{
                       border: "1px solid var(--border-default)",
-                      borderRadius: 16,
+                      borderRadius: "var(--border-radius-xl)",
                       padding: 14,
                       background: "var(--bg-card)",
                       display: "flex",
@@ -1795,7 +1795,7 @@ export default function CalendarPage() {
 
                     <div
                       style={{
-                        borderRadius: 10,
+                        borderRadius: "var(--border-radius-md)",
                         padding: "10px 10px",
                         background: "var(--bg-card-hover)",
                         border: "1px solid var(--border-default)",
@@ -1871,7 +1871,7 @@ export default function CalendarPage() {
             width: 300,
             zIndex: 2000,
             pointerEvents: "none",
-            borderRadius: 14,
+            borderRadius: "var(--border-radius-lg)",
             border: "1px solid var(--border-default)",
             background: "var(--bg-card)",
             boxShadow: "0 20px 40px rgba(15, 23, 42, 0.14)",
@@ -1948,7 +1948,7 @@ export default function CalendarPage() {
           <div style={{ display: "grid", gap: 16 }}>
             <div
               style={{
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 border: "1px solid var(--border-default)",
                 background: "var(--bg-card-hover)",
                 padding: 14,
@@ -1996,7 +1996,7 @@ export default function CalendarPage() {
                     setSelectedEvent(event);
                   }}
                   style={{
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: `1px solid ${event.colorBorder}`,
                     background: event.colorBackground,
                     padding: 12,
@@ -2012,7 +2012,7 @@ export default function CalendarPage() {
                     style={{
                       width: 30,
                       height: 30,
-                      borderRadius: 9,
+                      borderRadius: "var(--border-radius-md)",
                       display: "grid",
                       placeItems: "center",
                       background: "var(--bg-card)",
@@ -2079,7 +2079,7 @@ export default function CalendarPage() {
           <div style={{ display: "grid", gap: 16 }}>
             <div
               style={{
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 border: `1px solid ${selectedEvent.colorBorder}`,
                 background: selectedEvent.colorBackground,
                 padding: 14,
@@ -2092,7 +2092,7 @@ export default function CalendarPage() {
                 style={{
                   width: 34,
                   height: 34,
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   display: "grid",
                   placeItems: "center",
                   background: "var(--bg-card)",
@@ -2129,7 +2129,7 @@ export default function CalendarPage() {
 
             <div
               style={{
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 border: "1px solid var(--border-default)",
                 background: "var(--bg-card)",
                 overflow: "hidden",

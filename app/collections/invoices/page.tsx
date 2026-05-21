@@ -285,7 +285,7 @@ export default function AdminInvoicesPage() {
                   alignItems: "center",
                   gap: 10,
                   border: "1px solid var(--border-default)",
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   padding: "0 12px",
                   background: "var(--bg-input)",
                 }}

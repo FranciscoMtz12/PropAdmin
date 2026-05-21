@@ -189,7 +189,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
                     onClick={() => setAccesoTipo(sel ? "" : opt.value)}
                     style={{
                       display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3,
-                      padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                      padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                       border: sel ? `2px solid ${amber}` : "1.5px solid var(--border-default)",
                       background: sel ? `${amber}12` : "var(--bg-card)",
                       cursor: "pointer", transition: "all 0.15s ease",
@@ -204,7 +204,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
           </AppFormField>
 
           {/* Resumen */}
-          <div style={{ padding: 14, borderRadius: 10, background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: 12, color: "var(--text-secondary)" }}>
+          <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: 12, color: "var(--text-secondary)" }}>
             <strong style={{ color: "var(--text-primary)", fontSize: 14 }}>{name}</strong>
             {total > 0 && <span style={{ marginLeft: 8, color: "var(--text-muted)" }}>{total.toLocaleString("es-MX")} m² totales</span>}
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>

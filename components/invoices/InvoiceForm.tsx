@@ -81,7 +81,7 @@ const INPUT_STYLE: CSSProperties = {
   width: "100%",
   padding: 12,
   border: "1px solid var(--border-default)",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   background: "var(--bg-input)",
   color: "var(--text-primary)",
   outline: "none",
@@ -607,7 +607,7 @@ export default function InvoiceForm({
               <div
                 style={{
                   padding: 14,
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   background: sourceRecordId ? "var(--metric-bg-green)" : "var(--metric-bg-amber)",
                   border: sourceRecordId ? "1px solid var(--metric-border-green)" : "1px solid var(--metric-border-amber)",
                   color: sourceRecordId ? "var(--metric-value-green)" : "var(--badge-text-amber)",

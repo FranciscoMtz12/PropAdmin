@@ -221,7 +221,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
               type="button"
               onClick={() => setType("return")}
               style={{
-                padding: 12, borderRadius: 8, cursor: "pointer", textAlign: "left",
+                padding: 12, borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "left",
                 border: type === "return" ? "2px solid #c2410c" : "1px solid var(--border-default)",
                 background: type === "return" ? "#fff7ed" : "var(--bg-input)",
               }}
@@ -237,7 +237,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
               type="button"
               onClick={() => setType("exchange")}
               style={{
-                padding: 12, borderRadius: 8, cursor: "pointer", textAlign: "left",
+                padding: 12, borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "left",
                 border: type === "exchange" ? "2px solid #2563eb" : "1px solid var(--border-default)",
                 background: type === "exchange" ? "#eff6ff" : "var(--bg-input)",
               }}
@@ -288,7 +288,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
                           onChange={(e) => setReturnedQuantities((prev) => ({ ...prev, [it.id]: e.target.value }))}
                           title={noRecibido ? "Sin material recibido" : undefined}
                           style={{
-                            width: 80, padding: "4px 8px", borderRadius: 6,
+                            width: 80, padding: "4px 8px", borderRadius: "var(--border-radius-sm)",
                             border: "1px solid var(--border-default)",
                             background: noRecibido ? "var(--bg-page)" : "var(--bg-input)",
                             color: noRecibido ? "var(--text-muted)" : "var(--text-primary)",
@@ -313,7 +313,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as PurchaseReturnReason)}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14 }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14 }}
           >
             <option value="">Seleccionar motivo...</option>
             {(Object.entries(RETURN_REASON_LABEL) as [PurchaseReturnReason, string][]).map(([val, label]) => (
@@ -333,7 +333,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             maxLength={500}
             rows={3}
             placeholder="Descripción adicional..."
-            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box" }}
           />
           <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-muted)", textAlign: "right" }}>{notes.length}/500</p>
         </div>
@@ -341,7 +341,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
         {/* Aviso de cambio */}
         {type === "exchange" ? (
           <div style={{
-            padding: "10px 14px", borderRadius: 8,
+            padding: "10px 14px", borderRadius: "var(--border-radius-md)",
             background: "#eff6ff", border: "1px solid #93c5fd",
             fontSize: 13, color: "#1d4ed8",
           }}>
@@ -360,7 +360,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             onClick={() => void handleSubmit()}
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-              padding: "11px 16px", borderRadius: 12,
+              padding: "11px 16px", borderRadius: "var(--border-radius-lg)",
               border:      type === "exchange" ? "1px solid #2563eb" : "1px solid #c2410c",
               background:  type === "exchange" ? "#2563eb"           : "#c2410c",
               color: "#fff",

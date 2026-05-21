@@ -202,13 +202,13 @@ export default function CampoMedidoresPage() {
           <h1 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "#8B2252" }}>Lecturas de medidores</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
-          <button type="button" onClick={() => navMonth(-1)} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
+          <button type="button" onClick={() => navMonth(-1)} style={{ padding: "6px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
             <ChevronLeft size={16} />
           </button>
           <span style={{ flex: 1, textAlign: "center", fontSize: 15, fontWeight: 700 }}>
             {MONTH_NAMES[month - 1]} {year}
           </span>
-          <button type="button" onClick={() => navMonth(1)} style={{ padding: "6px 10px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
+          <button type="button" onClick={() => navMonth(1)} style={{ padding: "6px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
             <ChevronRight size={16} />
           </button>
         </div>
@@ -279,7 +279,7 @@ export default function CampoMedidoresPage() {
                           setCaptureModal({ subMeter: sm, previousReading: prevReading });
                         }}
                         style={{
-                          padding: "14px 16px", borderRadius: 14, cursor: "pointer",
+                          padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                           background: "var(--bg-card)",
                           border: `1px solid ${isCaptured ? "#15803d" : "var(--border-default)"}`,
                           borderLeft: `4px solid ${isCaptured ? "#15803d" : "#c2410c"}`,

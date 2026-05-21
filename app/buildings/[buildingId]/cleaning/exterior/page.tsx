@@ -230,7 +230,7 @@ export default function CleaningExteriorPage() {
           style={{
             marginBottom: 16,
             padding: "12px 14px",
-            borderRadius: 12,
+            borderRadius: "var(--border-radius-lg)",
             background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
             color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
             fontSize: 14,
@@ -333,7 +333,7 @@ export default function CleaningExteriorPage() {
           <div
             style={{
               padding: "14px 16px",
-              borderRadius: 14,
+              borderRadius: "var(--border-radius-lg)",
               background: "var(--metric-bg-amber)",
               border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",

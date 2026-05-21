@@ -156,7 +156,7 @@ export default function LandingPage() {
           onClick={goLogin}
           style={{
             padding: ".45rem 1.1rem",
-            borderRadius: 20,
+            borderRadius: "var(--border-radius-xl)",
             fontSize: 12,
             fontWeight: 500,
             cursor: "pointer",
@@ -241,7 +241,7 @@ export default function LandingPage() {
                 onClick={() => pick(r.id)}
                 style={{
                   padding: ".65rem 1.75rem",
-                  borderRadius: 25,
+                  borderRadius: "var(--border-radius-xl)",
                   fontSize: 13,
                   fontWeight: 500,
                   cursor: "pointer",

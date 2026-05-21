@@ -32,7 +32,7 @@ const inputStyle: React.CSSProperties = {
   padding: ".65rem .9rem",
   background: "rgba(255,255,255,.08)",
   border: "1px solid rgba(255,255,255,.15)",
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   color: "#fff",
   fontSize: 14,
   outline: "none",
@@ -145,7 +145,7 @@ export default function PortalLoginPage() {
       <button onClick={() => router.push("/")} style={{
         position:"absolute", top:"1.5rem", left:"1.5rem",
         background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.2)",
-        color:"rgba(255,255,255,.7)", borderRadius:20, padding:".4rem 1rem",
+        color:"rgba(255,255,255,.7)", borderRadius: "var(--border-radius-xl)", padding:".4rem 1rem",
         fontSize:12, cursor:"pointer", zIndex:2,
       }}>
         ← Volver
@@ -157,7 +157,7 @@ export default function PortalLoginPage() {
         background:"rgba(255,255,255,.06)",
         backdropFilter:"blur(20px)",
         border:"1px solid rgba(255,255,255,.12)",
-        borderRadius:16, padding:"2.5rem 2rem",
+        borderRadius: "var(--border-radius-xl)", padding:"2.5rem 2rem",
         width:"100%", maxWidth:400,
         boxShadow:"0 8px 40px rgba(0,0,0,.4)",
       }}>
@@ -180,7 +180,7 @@ export default function PortalLoginPage() {
         <div style={{ display:"flex", gap:".5rem", marginBottom:"1.5rem" }}>
           {(["login","activate"] as PortalTab[]).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              flex:1, padding:".55rem", borderRadius:8, fontSize:12, fontWeight:500,
+              flex:1, padding:".55rem", borderRadius: "var(--border-radius-md)", fontSize:12, fontWeight:500,
               cursor:"pointer", transition:"all .2s",
               background: activeTab === tab ? "rgba(255,255,255,.15)" : "transparent",
               border: activeTab === tab ? "1px solid rgba(255,255,255,.25)" : "1px solid rgba(255,255,255,.08)",
@@ -205,14 +205,14 @@ export default function PortalLoginPage() {
               {loginForm.formState.errors.password && <p style={errorStyle}>{loginForm.formState.errors.password.message}</p>}
             </div>
             {loginMessage && (
-              <div style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius:8, padding:".6rem .9rem", fontSize:13, color:"#fca5a5" }}>
+              <div style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding:".6rem .9rem", fontSize:13, color:"#fca5a5" }}>
                 {loginMessage}
               </div>
             )}
             <button type="submit" disabled={loginForm.formState.isSubmitting} style={{
               marginTop:".25rem", padding:".75rem",
               background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
-              border:"none", borderRadius:8, color:"#fff",
+              border:"none", borderRadius: "var(--border-radius-md)", color:"#fff",
               fontSize:14, fontWeight:500, cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
             }}>
               {loginForm.formState.isSubmitting ? "Iniciando sesión..." : "Entrar al portal"}
@@ -242,7 +242,7 @@ export default function PortalLoginPage() {
               <div style={{
                 background: activateSuccess ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)",
                 border: `1px solid ${activateSuccess ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"}`,
-                borderRadius:8, padding:".6rem .9rem", fontSize:13,
+                borderRadius: "var(--border-radius-md)", padding:".6rem .9rem", fontSize:13,
                 color: activateSuccess ? "#6ee7b7" : "#fca5a5",
               }}>
                 {activateMessage}
@@ -251,7 +251,7 @@ export default function PortalLoginPage() {
             <button type="submit" disabled={activateForm.formState.isSubmitting} style={{
               marginTop:".25rem", padding:".75rem",
               background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
-              border:"none", borderRadius:8, color:"#fff",
+              border:"none", borderRadius: "var(--border-radius-md)", color:"#fff",
               fontSize:14, fontWeight:500, cursor: activateForm.formState.isSubmitting ? "not-allowed" : "pointer",
             }}>
               {activateForm.formState.isSubmitting ? "Activando..." : "Activar cuenta"}

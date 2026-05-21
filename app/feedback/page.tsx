@@ -165,7 +165,7 @@ export default function FeedbackPage() {
           value={String(total)}
           helper="Todos los registros"
           icon={
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}>
+            <div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}>
               <MessageSquare size={18} color="#2563EB" />
             </div>
           }
@@ -175,7 +175,7 @@ export default function FeedbackPage() {
           value={String(pending)}
           helper="Sin revisar"
           icon={
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-red)", display: "grid", placeItems: "center" }}>
+            <div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-red)", display: "grid", placeItems: "center" }}>
               <Clock3 size={18} color="#DC2626" />
             </div>
           }
@@ -185,7 +185,7 @@ export default function FeedbackPage() {
           value={String(resolved)}
           helper="Ya cerrados"
           icon={
-            <div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}>
+            <div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}>
               <CheckCircle2 size={18} color="#16A34A" />
             </div>
           }

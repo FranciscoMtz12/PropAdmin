@@ -65,7 +65,7 @@ type TenantOption = {
 const iconBoxStyle: React.CSSProperties = {
   width: 44,
   height: 44,
-  borderRadius: 14,
+  borderRadius: "var(--border-radius-lg)",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
   display: "inline-flex",
@@ -94,7 +94,7 @@ const valueStyle: React.CSSProperties = {
 
 const actionButtonStyle: React.CSSProperties = {
   border: "none",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   padding: "12px 16px",
   fontSize: 14,
   fontWeight: 700,
@@ -557,7 +557,7 @@ export default function PortalDashboardPage() {
                   style={{
                     width: "100%",
                     minHeight: 48,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "1px solid var(--border-default)",
                     padding: "0 14px",
                     background: "var(--bg-card)",
@@ -648,7 +648,7 @@ export default function PortalDashboardPage() {
                   style={{
                     marginTop: 14,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--bg-card-hover)",
                     border: "1px solid var(--border-default)",
                   }}
@@ -744,7 +744,7 @@ export default function PortalDashboardPage() {
                   style={{
                     marginTop: 14,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--metric-bg-neutral)",
                     border: "1px solid var(--border-default)",
                     color: "var(--badge-text-blue)",
@@ -762,7 +762,7 @@ export default function PortalDashboardPage() {
                     alignItems: "center",
                     gap: 10,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--bg-card)",
                     border: "1px solid var(--border-default)",
                   }}
@@ -823,7 +823,7 @@ export default function PortalDashboardPage() {
                   style={{
                     marginTop: 14,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--icon-bg-green)",
                     border: "1px solid var(--metric-border-green)",
                     color: "var(--badge-text-green)",
@@ -840,7 +840,7 @@ export default function PortalDashboardPage() {
                   style={{
                     marginTop: 14,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--badge-bg-red)",
                     border: "1px solid var(--metric-border-red)",
                     color: "var(--badge-text-red)",

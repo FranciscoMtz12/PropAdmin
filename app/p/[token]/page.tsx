@@ -253,7 +253,7 @@ export default async function PublicUnitPage({
       <div style={{ maxWidth: 720, margin: "0 auto", padding: "0 16px" }}>
 
         {/* Unit header card */}
-        <div style={{ background: "var(--bg-card)", borderRadius: 16, padding: "20px", marginTop: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
+        <div style={{ background: "var(--bg-card)", borderRadius: "var(--border-radius-xl)", padding: "20px", marginTop: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
             <div>
               <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2 }}>
@@ -297,7 +297,7 @@ export default async function PublicUnitPage({
                   gap: 10,
                   background: "var(--bg-card-hover)",
                   border: "1px solid var(--border-default)",
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   padding: "10px 12px",
                 }}>
                   <span style={{ color: accent, flexShrink: 0 }}>{assetIcon(item.asset_type)}</span>
@@ -340,7 +340,7 @@ export default async function PublicUnitPage({
           <Section title="Sobre el edificio">
             <div style={{ display: "flex", alignItems: "flex-start", gap: 14 }}>
               <div style={{
-                width: 44, height: 44, borderRadius: 12,
+                width: 44, height: 44, borderRadius: "var(--border-radius-lg)",
                 background: "var(--bg-page)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 flexShrink: 0,
@@ -387,7 +387,7 @@ export default async function PublicUnitPage({
               fontWeight: 700,
               fontSize: 15,
               textDecoration: "none",
-              borderRadius: 12,
+              borderRadius: "var(--border-radius-lg)",
               padding: "14px 20px",
               boxShadow: "0 4px 14px rgba(37,211,102,0.3)",
             }}
@@ -397,7 +397,7 @@ export default async function PublicUnitPage({
         ) : (
           <div style={{
             width: "100%", maxWidth: 480,
-            background: "var(--bg-page)", borderRadius: 12, padding: "14px 20px",
+            background: "var(--bg-page)", borderRadius: "var(--border-radius-lg)", padding: "14px 20px",
             textAlign: "center", fontSize: 14, color: "var(--text-muted)",
           }}>
             Sin contacto disponible
@@ -421,7 +421,7 @@ function Tag({ icon, label }: { icon: React.ReactNode; label: string }) {
       gap: 5,
       background: "var(--bg-page)",
       border: "1px solid var(--border-default)",
-      borderRadius: 8,
+      borderRadius: "var(--border-radius-md)",
       padding: "5px 10px",
       fontSize: 13,
       fontWeight: 600,
@@ -437,7 +437,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div style={{
       background: "var(--bg-card)",
-      borderRadius: 16,
+      borderRadius: "var(--border-radius-xl)",
       padding: "20px",
       marginTop: 12,
       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",

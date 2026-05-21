@@ -76,7 +76,7 @@ type UnitTypeAssetCountRow = {
 
 const dropdownTriggerStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
-  borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)",
+  borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)",
   color: "var(--text-primary)", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
 };
 
@@ -89,13 +89,13 @@ const dropdownMenuStyle: React.CSSProperties = {
 const dropdownItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
   border: "none", background: "transparent", color: "var(--text-primary)",
-  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
 const dropdownDeleteItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
   border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
-  borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
 };
 
 const errorTextStyle: React.CSSProperties = {
@@ -534,7 +534,7 @@ export default function BuildingUnitTypesPage() {
             {unitTypes.map((unitType) => (
               <div key={unitType.id} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}>
                 <div style={{ display: "flex", alignItems: "flex-start", gap: "12px", marginBottom: "14px" }}>
-                  <div style={{ width: "42px", height: "42px", borderRadius: "14px", background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: "42px", height: "42px", borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <LayoutPanelTop size={18} />
                   </div>
                   <div>
@@ -605,11 +605,11 @@ export default function BuildingUnitTypesPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
             ¿Eliminar la tipología <strong>{unitTypeToDelete?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
@@ -630,19 +630,19 @@ export default function BuildingUnitTypesPage() {
         <form onSubmit={onSubmitUnitType}>
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Nombre de la tipología</label>
-            <input {...register("name")} placeholder="Ej. Tipo A" style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+            <input {...register("name")} placeholder="Ej. Tipo A" style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }} />
             {errors.name ? <p style={errorTextStyle}>{errors.name.message}</p> : null}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
             <div>
               <label style={{ display: "block", marginBottom: "8px" }}>Recámaras</label>
-              <input type="number" min={0} {...register("bedrooms", { valueAsNumber: true })} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+              <input type="number" min={0} {...register("bedrooms", { valueAsNumber: true })} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }} />
               {errors.bedrooms ? <p style={errorTextStyle}>{errors.bedrooms.message}</p> : null}
             </div>
             <div>
               <label style={{ display: "block", marginBottom: "8px" }}>Baños</label>
-              <input type="number" min={0} {...register("bathrooms", { valueAsNumber: true })} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+              <input type="number" min={0} {...register("bathrooms", { valueAsNumber: true })} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }} />
               {errors.bathrooms ? <p style={errorTextStyle}>{errors.bathrooms.message}</p> : null}
             </div>
           </div>
@@ -658,7 +658,7 @@ export default function BuildingUnitTypesPage() {
 
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Tipo de estufa</label>
-            <select {...register("stoveType")} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px", background: "var(--bg-card)" }}>
+            <select {...register("stoveType")} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)" }}>
               <option value="NONE">No tiene</option>
               <option value="GAS">Gas</option>
               <option value="ELECTRIC">Eléctrica</option>

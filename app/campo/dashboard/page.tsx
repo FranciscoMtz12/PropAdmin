@@ -107,7 +107,7 @@ export default function CampoDashboardPage() {
 
   const metricCardStyle = (color: string, bg: string, border: string): CSSProperties => ({
     padding: "20px 18px",
-    borderRadius: 16,
+    borderRadius: "var(--border-radius-xl)",
     background: bg,
     border: `1px solid ${border}`,
     display: "flex",
@@ -120,7 +120,7 @@ export default function CampoDashboardPage() {
   const metricIconStyle = (iconBg: string, iconColor: string): CSSProperties => ({
     width: 48,
     height: 48,
-    borderRadius: 14,
+    borderRadius: "var(--border-radius-lg)",
     background: iconBg,
     color: iconColor,
     display: "flex",
@@ -137,7 +137,7 @@ export default function CampoDashboardPage() {
     justifyContent: "center",
     gap: 10,
     padding: "18px 12px",
-    borderRadius: 16,
+    borderRadius: "var(--border-radius-xl)",
     background: "var(--bg-card)",
     border: "1px solid var(--border-default)",
     cursor: "pointer",
@@ -229,7 +229,7 @@ export default function CampoDashboardPage() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
 
           <a href="/campo/tickets" style={quickCardStyle}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-amber)", color: "var(--icon-color-amber)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-amber)", color: "var(--icon-color-amber)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Wrench size={20} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
@@ -238,7 +238,7 @@ export default function CampoDashboardPage() {
           </a>
 
           <a href="/campo/limpieza" style={quickCardStyle}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Sparkles size={20} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
@@ -247,7 +247,7 @@ export default function CampoDashboardPage() {
           </a>
 
           <a href="/campo/medidores" style={quickCardStyle}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Zap size={20} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
@@ -256,7 +256,7 @@ export default function CampoDashboardPage() {
           </a>
 
           <a href="/campo/assets" style={quickCardStyle}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "var(--icon-bg-green)", color: "var(--icon-color-green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Ticket size={20} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
@@ -265,7 +265,7 @@ export default function CampoDashboardPage() {
           </a>
 
           <a href="/campo/compras" style={quickCardStyle}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ShoppingCart size={20} />
             </div>
             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>

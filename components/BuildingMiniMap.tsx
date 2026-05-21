@@ -40,14 +40,14 @@ export default function BuildingMiniMap({
         height: "100%",
         minHeight: 0,
         width: "100%",
-        borderRadius: 8,
+        borderRadius: "var(--border-radius-md)",
         overflow: "hidden",
       }}
     >
       <MapContainer
         center={[latitude, longitude]}
         zoom={16}
-        style={{ height: "100%", width: "100%", borderRadius: 8, minHeight: 200 }}
+        style={{ height: "100%", width: "100%", borderRadius: "var(--border-radius-md)", minHeight: 200 }}
         zoomControl={false}
         scrollWheelZoom={false}
         dragging={false}

@@ -456,7 +456,7 @@ export default function SuppliersPage() {
     width: "100%",
     padding: "11px 12px",
     border: "1px solid var(--border-default)",
-    borderRadius: 10,
+    borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
     fontSize: 14,
@@ -547,7 +547,7 @@ export default function SuppliersPage() {
                       <span style={{
                         fontSize: 10, fontWeight: 700,
                         fontFamily: "monospace",
-                        padding: "2px 6px", borderRadius: 4,
+                        padding: "2px 6px", borderRadius: "var(--border-radius-sm)",
                         background: "var(--bg-input)",
                         color: "var(--text-secondary)",
                         border: "1px solid var(--border-default)",
@@ -585,7 +585,7 @@ export default function SuppliersPage() {
                       onClick={() => setOpenMenuId(openMenuId === s.id ? null : s.id)}
                       style={{
                         display: "inline-flex", alignItems: "center", justifyContent: "center",
-                        width: 32, height: 32, borderRadius: 10,
+                        width: 32, height: 32, borderRadius: "var(--border-radius-md)",
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card)", color: "var(--text-secondary)",
                         cursor: "pointer",
@@ -600,7 +600,7 @@ export default function SuppliersPage() {
                           position: "absolute", top: 36, right: 0, minWidth: 150,
                           background: "var(--bg-card)",
                           border: "1px solid var(--border-default)",
-                          borderRadius: 10,
+                          borderRadius: "var(--border-radius-md)",
                           boxShadow: "0 8px 24px rgba(0,0,0,0.14)",
                           zIndex: 10, overflow: "hidden",
                         }}
@@ -643,7 +643,7 @@ export default function SuppliersPage() {
                     }}
                     aria-label="Agregar sucursal"
                     style={{
-                      width: 24, height: 24, borderRadius: 6,
+                      width: 24, height: 24, borderRadius: "var(--border-radius-sm)",
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)", color: "var(--text-secondary)",
                       display: "inline-flex", alignItems: "center", justifyContent: "center",
@@ -678,7 +678,7 @@ export default function SuppliersPage() {
                     style={{
                     overflow: "hidden",
                     marginTop: 10, padding: 10,
-                    background: "var(--bg-input)", borderRadius: 8,
+                    background: "var(--bg-input)", borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                     display: "flex", flexDirection: "column", gap: 6,
                   }}>
@@ -786,7 +786,7 @@ export default function SuppliersPage() {
           {/* Toggle activo */}
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 14px", borderRadius: 10,
+            padding: "12px 14px", borderRadius: "var(--border-radius-md)",
             border: "1px solid var(--border-default)",
             background: "var(--bg-input)",
             marginBottom: 16,
@@ -809,7 +809,7 @@ export default function SuppliersPage() {
                 position: "absolute", cursor: "pointer",
                 top: 0, left: 0, right: 0, bottom: 0,
                 background: formActive ? "var(--accent)" : "var(--border-default)",
-                borderRadius: 12, transition: "0.2s",
+                borderRadius: "var(--border-radius-lg)", transition: "0.2s",
               }} />
               <span style={{
                 position: "absolute",
@@ -871,7 +871,7 @@ export default function SuppliersPage() {
 
           <div style={{
             display: "flex", alignItems: "center", justifyContent: "space-between",
-            padding: "12px 14px", borderRadius: 10,
+            padding: "12px 14px", borderRadius: "var(--border-radius-md)",
             border: "1px solid var(--border-default)",
             background: "var(--bg-input)",
             marginBottom: formTieneCredito ? 12 : 16,
@@ -894,7 +894,7 @@ export default function SuppliersPage() {
                 position: "absolute", cursor: "pointer",
                 top: 0, left: 0, right: 0, bottom: 0,
                 background: formTieneCredito ? "#16a34a" : "var(--border-default)",
-                borderRadius: 12, transition: "0.2s",
+                borderRadius: "var(--border-radius-lg)", transition: "0.2s",
               }} />
               <span style={{
                 position: "absolute",
@@ -925,7 +925,7 @@ export default function SuppliersPage() {
                     type="button"
                     onClick={() => setValue("dias_credito", d)}
                     style={{
-                      padding: "5px 12px", borderRadius: 8, cursor: "pointer",
+                      padding: "5px 12px", borderRadius: "var(--border-radius-md)", cursor: "pointer",
                       fontSize: 12, fontWeight: 600,
                       border: "1px solid var(--border-default)",
                       background: formDiasCredito === d ? "var(--accent)" : "var(--bg-card)",
@@ -955,7 +955,7 @@ export default function SuppliersPage() {
                     editingBranchId === b.id ? (
                       /* Form de edición inline */
                       <div key={b.id} style={{
-                        padding: 12, borderRadius: 10,
+                        padding: 12, borderRadius: "var(--border-radius-md)",
                         background: "var(--bg-input)",
                         border: "1px solid var(--accent)",
                         display: "flex", flexDirection: "column", gap: 10,
@@ -1018,7 +1018,7 @@ export default function SuppliersPage() {
                         display: "flex", alignItems: "center", justifyContent: "space-between",
                         gap: 8, padding: "8px 12px",
                         border: "1px solid var(--border-default)",
-                        borderRadius: 8, background: "var(--bg-input)",
+                        borderRadius: "var(--border-radius-md)", background: "var(--bg-input)",
                       }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
                           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
@@ -1034,7 +1034,7 @@ export default function SuppliersPage() {
                             onClick={() => startEditBranch(b)}
                             aria-label="Editar sucursal"
                             style={{
-                              width: 28, height: 28, borderRadius: 6,
+                              width: 28, height: 28, borderRadius: "var(--border-radius-sm)",
                               border: "1px solid var(--border-default)",
                               background: "var(--bg-card)", color: "var(--text-secondary)",
                               cursor: "pointer", display: "inline-flex",
@@ -1048,7 +1048,7 @@ export default function SuppliersPage() {
                             onClick={() => handleArchiveBranch(b.id)}
                             aria-label="Eliminar sucursal"
                             style={{
-                              width: 28, height: 28, borderRadius: 6,
+                              width: 28, height: 28, borderRadius: "var(--border-radius-sm)",
                               border: "1px solid var(--border-default)",
                               background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
                               cursor: "pointer", display: "inline-flex",
@@ -1066,7 +1066,7 @@ export default function SuppliersPage() {
 
               {showBranchForm ? (
                 <div style={{
-                  padding: 12, borderRadius: 10,
+                  padding: 12, borderRadius: "var(--border-radius-md)",
                   background: "var(--bg-input)",
                   border: "1px solid var(--border-default)",
                   display: "flex", flexDirection: "column", gap: 10,
@@ -1135,7 +1135,7 @@ export default function SuppliersPage() {
                   onClick={() => { setShowBranchForm(true); setBranchDraft(EMPTY_BRANCH_DRAFT); }}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "9px 14px", borderRadius: 8,
+                    padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                     border: "1px dashed var(--border-strong)",
                     background: "transparent", color: "var(--text-secondary)",
                     fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -1185,7 +1185,7 @@ function menuBtnStyle(danger = false): CSSProperties {
 
 function miniBtnStyle(primary = false): CSSProperties {
   return {
-    padding: "7px 12px", borderRadius: 8,
+    padding: "7px 12px", borderRadius: "var(--border-radius-md)",
     border: primary ? "1px solid var(--accent)" : "1px solid var(--border-default)",
     background: primary ? "var(--accent)" : "var(--bg-card)",
     color: primary ? "#fff" : "var(--text-primary)",

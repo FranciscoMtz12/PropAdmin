@@ -404,7 +404,7 @@ export default function ReportedPaymentsPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-amber)",
                 display: "grid",
                 placeItems: "center",
@@ -424,7 +424,7 @@ export default function ReportedPaymentsPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-green)",
                 display: "grid",
                 placeItems: "center",
@@ -444,7 +444,7 @@ export default function ReportedPaymentsPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-red)",
                 display: "grid",
                 placeItems: "center",
@@ -464,7 +464,7 @@ export default function ReportedPaymentsPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-blue)",
                 display: "grid",
                 placeItems: "center",
@@ -490,7 +490,7 @@ export default function ReportedPaymentsPage() {
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 background: "var(--icon-bg-red)",
                 color: "var(--icon-color-red)",
                 display: "inline-flex",
@@ -535,7 +535,7 @@ export default function ReportedPaymentsPage() {
                       : "1px solid var(--border-default)",
                     background: isActive ? "var(--icon-bg-blue)" : "var(--bg-card)",
                     color: isActive ? "var(--icon-color-blue)" : "var(--text-secondary)",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     padding: "10px 14px",
                     fontSize: 14,
                     fontWeight: 800,
@@ -563,7 +563,7 @@ export default function ReportedPaymentsPage() {
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 background: "var(--icon-bg-amber)",
                 color: "var(--icon-color-amber)",
                 display: "inline-flex",
@@ -666,7 +666,7 @@ export default function ReportedPaymentsPage() {
                       style={{
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card-hover)",
-                        borderRadius: 12,
+                        borderRadius: "var(--border-radius-lg)",
                         padding: 12,
                       }}
                     >
@@ -690,7 +690,7 @@ export default function ReportedPaymentsPage() {
                       style={{
                         border: "1px solid var(--metric-border-red)",
                         background: "var(--metric-bg-red)",
-                        borderRadius: 12,
+                        borderRadius: "var(--border-radius-lg)",
                         padding: 12,
                       }}
                     >
@@ -745,7 +745,7 @@ export default function ReportedPaymentsPage() {
                       style={{
                         border: "1px dashed var(--border-strong)",
                         background: "var(--bg-card-hover)",
-                        borderRadius: 12,
+                        borderRadius: "var(--border-radius-lg)",
                         padding: 12,
                         color: "var(--text-secondary)",
                         fontSize: 14,
@@ -820,7 +820,7 @@ export default function ReportedPaymentsPage() {
           <div style={{ display: "grid", gap: 16 }}>
             <div
               style={{
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 border: "1px solid var(--border-default)",
                 background: "var(--bg-card-hover)",
                 padding: 12,
@@ -888,7 +888,7 @@ export default function ReportedPaymentsPage() {
                   gap: 8,
                   minWidth: 110,
                   padding: "10px 14px",
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                   color: "var(--text-primary)",

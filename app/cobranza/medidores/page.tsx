@@ -257,13 +257,13 @@ export default function CobranzaMedidoresPage() {
       />
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, flexWrap: "wrap" }}>
-        <button type="button" onClick={() => navMonth(-1)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
+        <button type="button" onClick={() => navMonth(-1)} style={{ padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
           <ChevronLeft size={16} />
         </button>
         <span style={{ fontSize: 16, fontWeight: 700, minWidth: 160, textAlign: "center" }}>
           {MONTH_NAMES[month - 1]} {year}
         </span>
-        <button type="button" onClick={() => navMonth(1)} style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
+        <button type="button" onClick={() => navMonth(1)} style={{ padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
           <ChevronRight size={16} />
         </button>
       </div>
@@ -297,14 +297,14 @@ export default function CobranzaMedidoresPage() {
                     : SERVICE_TYPE_LABEL[meter.service_type];
 
                   return (
-                    <div key={meter.id} style={{ padding: "14px 16px", borderRadius: 14, border: "1px solid var(--border-default)", background: "var(--bg-card)" }}>
+                    <div key={meter.id} style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-card)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                           <strong style={{ fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <ServiceIcon type={meter.service_type} size={14} />{meterLabel}
                           </strong>
                           {meter.meter_number && (
-                            <span style={{ fontFamily: "monospace", fontSize: 12, padding: "1px 6px", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 4 }}>
+                            <span style={{ fontFamily: "monospace", fontSize: 12, padding: "1px 6px", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)" }}>
                               {meter.meter_number}
                             </span>
                           )}
@@ -371,7 +371,7 @@ export default function CobranzaMedidoresPage() {
                                     key={sm.id}
                                     onClick={() => setCaptureModal({ subMeter: sm, meter, previousReading: prevReading })}
                                     style={{
-                                      padding: "10px 12px", borderRadius: 12, cursor: "pointer",
+                                      padding: "10px 12px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                                       background: "var(--bg-page)",
                                       border: `1px solid ${isCaptured ? "#15803d" : "var(--border-default)"}`,
                                       borderLeft: `4px solid ${isCaptured ? "#15803d" : "#c2410c"}`,

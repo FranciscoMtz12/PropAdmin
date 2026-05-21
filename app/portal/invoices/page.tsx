@@ -130,7 +130,7 @@ const MONTH_LABELS_SHORT = [
 const iconBoxStyle: React.CSSProperties = {
   width: 44,
   height: 44,
-  borderRadius: 14,
+  borderRadius: "var(--border-radius-lg)",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
   display: "inline-flex",
@@ -746,7 +746,7 @@ export default function PortalInvoicesPage() {
                   style={{
                     width: "100%",
                     minHeight: 48,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "1px solid var(--border-default)",
                     padding: "0 14px",
                     background: "var(--bg-card)",
@@ -785,7 +785,7 @@ export default function PortalInvoicesPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "12px 16px",
-                      borderRadius: 12,
+                      borderRadius: "var(--border-radius-lg)",
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)",
                       color: "var(--text-primary)",
@@ -807,7 +807,7 @@ export default function PortalInvoicesPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "12px 16px",
-                      borderRadius: 12,
+                      borderRadius: "var(--border-radius-lg)",
                       border: "none",
                       background: "var(--text-primary)",
                       color: "var(--bg-card)",
@@ -830,7 +830,7 @@ export default function PortalInvoicesPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "12px 16px",
-                      borderRadius: 12,
+                      borderRadius: "var(--border-radius-lg)",
                       border: "none",
                       background: "var(--accent)",
                       color: "var(--bg-card)",
@@ -851,7 +851,7 @@ export default function PortalInvoicesPage() {
                   style={{
                     marginTop: 14,
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--bg-card-hover)",
                     border: "1px solid var(--border-default)",
                   }}
@@ -1043,7 +1043,7 @@ export default function PortalInvoicesPage() {
                       <div
                         style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 14,
+                          borderRadius: "var(--border-radius-lg)",
                           padding: 14,
                           background: "var(--bg-card-hover)",
                         }}
@@ -1055,7 +1055,7 @@ export default function PortalInvoicesPage() {
                       <div
                         style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 14,
+                          borderRadius: "var(--border-radius-lg)",
                           padding: 14,
                           background: "var(--bg-card-hover)",
                         }}
@@ -1067,7 +1067,7 @@ export default function PortalInvoicesPage() {
                       <div
                         style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 14,
+                          borderRadius: "var(--border-radius-lg)",
                           padding: 14,
                           background: "var(--bg-card-hover)",
                         }}
@@ -1079,7 +1079,7 @@ export default function PortalInvoicesPage() {
                       <div
                         style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 14,
+                          borderRadius: "var(--border-radius-lg)",
                           padding: 14,
                           background: "var(--bg-card-hover)",
                         }}
@@ -1093,7 +1093,7 @@ export default function PortalInvoicesPage() {
                       <div
                         style={{
                           padding: 12,
-                          borderRadius: 12,
+                          borderRadius: "var(--border-radius-lg)",
                           background: "var(--metric-bg-neutral)",
                           border: "1px solid var(--border-default)",
                           color: "var(--badge-text-blue)",
@@ -1208,7 +1208,7 @@ export default function PortalInvoicesPage() {
                     alignItems: "center",
                     gap: 8,
                     padding: "12px 16px",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "none",
                     background: "var(--text-primary)",
                     color: "var(--bg-card)",
@@ -1231,7 +1231,7 @@ export default function PortalInvoicesPage() {
                     alignItems: "center",
                     gap: 8,
                     padding: "12px 16px",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "none",
                     background: "var(--accent)",
                     color: "var(--bg-card)",
@@ -1254,7 +1254,7 @@ export default function PortalInvoicesPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "12px 16px",
-                      borderRadius: 12,
+                      borderRadius: "var(--border-radius-lg)",
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)",
                       color: "var(--text-primary)",

@@ -927,7 +927,7 @@ export default function CleaningPage() {
         return (
           <>
             {overdueLogs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
                 <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
                   {overdueLogs.length} limpieza{overdueLogs.length !== 1 ? "s" : ""} de días anteriores sin completar
@@ -935,7 +935,7 @@ export default function CleaningPage() {
               </div>
             )}
             {todayLogs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
                 <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
                   {todayLogs.length} limpieza{todayLogs.length !== 1 ? "s" : ""} de hoy pendiente{todayLogs.length !== 1 ? "s" : ""}
@@ -962,7 +962,7 @@ export default function CleaningPage() {
               onClick={() => setTab(t.k)}
               style={{
                 padding: "8px 18px",
-                borderRadius: 20,
+                borderRadius: "var(--border-radius-xl)",
                 border: "none",
                 cursor: "pointer",
                 fontSize: 14,
@@ -982,7 +982,7 @@ export default function CleaningPage() {
               {formatWeekRange(weekMonday)}
             </span>
             <button onClick={() => setWeekOffset((o) => o + 1)} style={navBtnStyle}><ChevronRight size={16} /></button>
-            <button onClick={() => setWeekOffset(0)} style={{ padding: ".4rem .9rem", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            <button onClick={() => setWeekOffset(0)} style={{ padding: ".4rem .9rem", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
               Hoy
             </button>
           </div>
@@ -1022,7 +1022,7 @@ export default function CleaningPage() {
       >
         {selectedTask && selectedTaskLog?.status === "completed" ? (
           <>
-            <div style={{ padding: 16, background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", borderRadius: 12, display: "flex", gap: 10, alignItems: "center" }}>
+            <div style={{ padding: 16, background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", borderRadius: "var(--border-radius-lg)", display: "flex", gap: 10, alignItems: "center" }}>
               <CheckCircle2 size={24} color="#16A34A" />
               <div>
                 <div style={{ fontWeight: 700, color: "var(--metric-value-green)" }}>Completada</div>
@@ -1072,7 +1072,7 @@ export default function CleaningPage() {
                           gap: 8,
                           padding: "6px 10px",
                           border: "1px solid var(--border-default)",
-                          borderRadius: 8,
+                          borderRadius: "var(--border-radius-md)",
                           fontSize: 13,
                           cursor: canEdit ? "pointer" : "default",
                           background: isChecked ? "var(--metric-bg-green)" : "transparent",
@@ -1095,7 +1095,7 @@ export default function CleaningPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, padding: 12, border: "1px dashed var(--border-default)", borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, padding: 12, border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
                 Sin checklist configurado para este tipo.
               </div>
             )}
@@ -1113,7 +1113,7 @@ export default function CleaningPage() {
                   style={{
                     width: "100%",
                     padding: 10,
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     fontSize: 13,
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
@@ -1128,7 +1128,7 @@ export default function CleaningPage() {
             )}
 
             {!canEdit && (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 14, padding: "10px 12px", background: "var(--bg-page)", borderRadius: 8 }}>
+              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 14, padding: "10px 12px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)" }}>
                 Solo lectura — contacta al equipo de mantenimiento.
               </div>
             )}
@@ -1206,7 +1206,7 @@ export default function CleaningPage() {
                   style={{
                     width: "100%",
                     padding: 10,
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     fontSize: 13,
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
@@ -1226,7 +1226,7 @@ export default function CleaningPage() {
                   style={{
                     width: "100%",
                     padding: 10,
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     fontSize: 13,
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
@@ -1268,7 +1268,7 @@ export default function CleaningPage() {
     return (
       <>
         {/* Stat bar */}
-        <div className="mod-stat-bar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 24, overflow: "hidden" }}>
+        <div className="mod-stat-bar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 24, overflow: "hidden" }}>
           {[
             {
               label: "Cumplimiento semanal",
@@ -1324,7 +1324,7 @@ export default function CleaningPage() {
                   cursor: "pointer",
                 }}
               >
-                <div style={{ width: 10, height: 10, borderRadius: 3, background: active ? l.color : "#d1d5db", flexShrink: 0 }} />
+                <div style={{ width: 10, height: 10, borderRadius: "var(--border-radius-sm)", background: active ? l.color : "#d1d5db", flexShrink: 0 }} />
                 {l.label}
               </button>
             );
@@ -1350,7 +1350,7 @@ export default function CleaningPage() {
                 transition={{ duration: 0.3, delay: index * 0.06 }}
                 style={{
                   border: isCurrentDay ? "2px solid var(--accent)" : "1px solid var(--border-default)",
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   background: "var(--bg-card)",
                   padding: 8,
                   minHeight: 180,
@@ -1378,7 +1378,7 @@ export default function CleaningPage() {
                         color: done ? "#6b7280" : visuals.text,
                         border: "none",
                         borderLeft: `3px solid ${done ? "#6b7280" : visuals.border}`,
-                        borderRadius: 6,
+                        borderRadius: "var(--border-radius-sm)",
                         padding: "6px 8px",
                         textAlign: "left",
                         cursor: "pointer",
@@ -1505,7 +1505,7 @@ export default function CleaningPage() {
                     </div>
                     <div style={{ fontSize: 20, fontWeight: 800, color }}>{b.rate.toFixed(0)}%</div>
                   </div>
-                  <div style={{ height: 8, background: "var(--divider)", borderRadius: 4, overflow: "hidden" }}>
+                  <div style={{ height: 8, background: "var(--divider)", borderRadius: "var(--border-radius-sm)", overflow: "hidden" }}>
                     <div style={{ width: `${b.rate}%`, height: "100%", background: color, transition: "width .4s" }} />
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
@@ -1570,7 +1570,7 @@ export default function CleaningPage() {
                       <tr key={r.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                         <td style={tdStyle}>{r.scheduled_date}</td>
                         <td style={tdStyle}>
-                          <span style={{ background: visuals.bg, color: visuals.text, borderRadius: 4, padding: "2px 6px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${visuals.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ background: visuals.bg, color: visuals.text, borderRadius: "var(--border-radius-sm)", padding: "2px 6px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${visuals.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
                             {CLEANING_TYPE_ICONS[r.cleaning_type] ?? <Sparkles size={10} />} {visuals.label}
                           </span>
                         </td>
@@ -1618,7 +1618,7 @@ export default function CleaningPage() {
                     const v = CLEANING_TYPE_COLORS[s.cleaning_type] ?? DEFAULT_CLEANING_VISUALS;
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
-                        <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ background: v.bg, color: v.text, borderRadius: "var(--border-radius-sm)", padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
                           {CLEANING_TYPE_ICONS[s.cleaning_type] ?? <Sparkles size={10} />} {v.label}
                         </span>
                         <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
@@ -1641,7 +1641,7 @@ export default function CleaningPage() {
                     const u = unitById.get(s.unit_id);
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
-                        <span style={{ background: v.bg, color: v.text, borderRadius: 4, padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ background: v.bg, color: v.text, borderRadius: "var(--border-radius-sm)", padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
                           {CLEANING_TYPE_ICONS.unit_interior} {u?.display_code || u?.unit_number || "Unidad"}
                         </span>
                         <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
@@ -1669,7 +1669,7 @@ export default function CleaningPage() {
           <SectionCard title="Sin horario configurado" icon={<Clock3 size={18} />}>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {buildingsWithoutSchedules.map((b) => (
-                <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", border: "1px dashed var(--border-default)", borderRadius: 8 }}>
+                <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{b.name}</span>
                   <UiButton variant="secondary" icon={<Plus size={12} />} onClick={() => openNewScheduleForBuilding(b.id)}>
                     Agregar horario
@@ -1689,7 +1689,7 @@ export default function CleaningPage() {
 const navBtnStyle: React.CSSProperties = {
   background: "none",
   border: "none",
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   width: 32,
   height: 32,
   display: "flex",
@@ -1730,13 +1730,13 @@ const scheduleRowStyle: React.CSSProperties = {
   gap: 10,
   padding: "8px 10px",
   border: "1px solid var(--border-default)",
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
 };
 
 const iconBtnStyle: React.CSSProperties = {
   background: "none",
   border: "1px solid var(--border-default)",
-  borderRadius: 6,
+  borderRadius: "var(--border-radius-sm)",
   width: 28,
   height: 28,
   display: "flex",

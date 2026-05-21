@@ -1518,7 +1518,7 @@ export default function PurchasesPage() {
     width: "100%",
     padding: "11px 12px",
     border: "1px solid var(--border-default)",
-    borderRadius: 10,
+    borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
     fontSize: 14,
@@ -1578,7 +1578,7 @@ export default function PurchasesPage() {
 
       {/* ── Banners de pendientes ──────────────────────────────────── */}
       {overdueOCsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
@@ -1589,7 +1589,7 @@ export default function PurchasesPage() {
             {overdueOCsBanner.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1598,7 +1598,7 @@ export default function PurchasesPage() {
       )}
 
       {partialOCsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
@@ -1609,7 +1609,7 @@ export default function PurchasesPage() {
             {partialOCsBanner.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1618,7 +1618,7 @@ export default function PurchasesPage() {
       )}
 
       {campoOCsBanner.length > 0 && (
-        <div style={{ marginBottom: 20, borderRadius: 12, background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>
@@ -1633,7 +1633,7 @@ export default function PurchasesPage() {
                   setSearch(o.folio);
                   setFilterStatus("ALL");
                 }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1666,7 +1666,7 @@ export default function PurchasesPage() {
       ) : null}
 
       {/* Métricas — stat bar compacta */}
-      <div className="purchases-statbar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 12, marginBottom: 20, overflow: "hidden" }}>
+      <div className="purchases-statbar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 20, overflow: "hidden" }}>
         {[
           { label: "Total OC",        value: metrics.total,     sub: "todas" },
           { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
@@ -1728,7 +1728,7 @@ export default function PurchasesPage() {
                 onClick={() => setFilterStatus(f.value)}
                 style={{
                   padding: "6px 12px",
-                  borderRadius: 20,
+                  borderRadius: "var(--border-radius-xl)",
                   fontSize: 12,
                   fontWeight: active ? 600 : 400,
                   cursor: "pointer",
@@ -1818,7 +1818,7 @@ export default function PurchasesPage() {
                         >
                           <span style={{
                             display: "inline-flex", alignItems: "center", gap: 4,
-                            padding: "3px 8px", borderRadius: 20,
+                            padding: "3px 8px", borderRadius: "var(--border-radius-xl)",
                             background: "#EFF6FF", color: "#1D4ED8",
                             fontSize: 11, fontWeight: 700,
                           }}>
@@ -1842,7 +1842,7 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: 20, background: "#eff6ff",
+                            borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
                             color: "#2563eb", border: "1px solid #93c5fd",
                           }}>
                             V{vNum} activa
@@ -1862,7 +1862,7 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: 20, background: "rgba(16,185,129,0.1)",
+                            borderRadius: "var(--border-radius-xl)", background: "rgba(16,185,129,0.1)",
                             color: "#10B981", border: "1px solid rgba(16,185,129,0.3)",
                           }}>
                             Cerrada vía V{maxV}
@@ -1874,7 +1874,7 @@ export default function PurchasesPage() {
                       {o.version_type === "exchange" ? (
                         <span style={{
                           fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                          borderRadius: 20, background: "#eff6ff",
+                          borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
                           color: "#1d4ed8", border: "1px solid #93c5fd",
                         }}>
                           🔄 Cambio
@@ -1887,7 +1887,7 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: 20, background: "#fff7ed",
+                            borderRadius: "var(--border-radius-xl)", background: "#fff7ed",
                             color: "#c2410c", border: "1px solid #fdba74",
                             display: "inline-flex", alignItems: "center", gap: 4,
                           }}>
@@ -1908,7 +1908,7 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: 20, background: "#eff6ff",
+                            borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
                             color: "#1d4ed8", border: "1px solid #93c5fd",
                           }}>
                             🔄 Cambio pendiente
@@ -1981,7 +1981,7 @@ export default function PurchasesPage() {
                       return (
                         <div style={{
                           display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center",
-                          padding: "10px 14px", borderRadius: 10,
+                          padding: "10px 14px", borderRadius: "var(--border-radius-md)",
                           background: "var(--bg-card)", border: "1px solid var(--border-default)",
                         }}>
                           {parentOrder && (
@@ -1991,7 +1991,7 @@ export default function PurchasesPage() {
                                 onClick={(e) => { e.stopPropagation(); setSearch(parentOrder.folio); setExpandedOrderId(parentOrder.id); }}
                                 style={{
                                   display: "inline-flex", alignItems: "center", gap: 4,
-                                  padding: "2px 8px", borderRadius: 14,
+                                  padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
                                   background: "#EFF6FF", color: "#1D4ED8",
                                   fontSize: 12, fontWeight: 700, fontFamily: "monospace",
                                   border: "none", cursor: "pointer",
@@ -2010,7 +2010,7 @@ export default function PurchasesPage() {
                                   onClick={(e) => { e.stopPropagation(); setSearch(child.folio); setExpandedOrderId(child.id); }}
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 4,
-                                    padding: "2px 8px", borderRadius: 14,
+                                    padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
                                     background: "rgba(16,185,129,0.1)", color: "#10B981",
                                     fontSize: 12, fontWeight: 700, fontFamily: "monospace",
                                     border: "none", cursor: "pointer",
@@ -2039,7 +2039,7 @@ export default function PurchasesPage() {
                       const pendientes = Math.max(0, prog.itemTotal - prog.itemReceived);
                       return (
                         <div style={{
-                          padding: "12px 16px", borderRadius: 10,
+                          padding: "12px 16px", borderRadius: "var(--border-radius-md)",
                           border: "1px solid var(--border-default)",
                           background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10,
                         }}>
@@ -2049,7 +2049,7 @@ export default function PurchasesPage() {
                             </span>
                             <span style={{
                               display: "inline-flex", alignItems: "center", gap: 4,
-                              padding: "2px 8px", borderRadius: 14,
+                              padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
                               background: "#EFF6FF", color: "#1D4ED8",
                               fontSize: 12, fontWeight: 700,
                             }}>
@@ -2067,9 +2067,9 @@ export default function PurchasesPage() {
                               <strong>{pendientes.toFixed(0)}</strong> pendientes
                             </span>
                           </div>
-                          <div style={{ height: 8, background: "var(--border-default)", borderRadius: 4, overflow: "hidden" }}>
+                          <div style={{ height: 8, background: "var(--border-default)", borderRadius: "var(--border-radius-sm)", overflow: "hidden" }}>
                             <div style={{
-                              height: "100%", borderRadius: 4,
+                              height: "100%", borderRadius: "var(--border-radius-sm)",
                               background: pct === 100 ? "#16a34a" : "#3B82F6",
                               width: `${pct}%`,
                               transition: "width 0.4s ease",
@@ -2117,7 +2117,7 @@ export default function PurchasesPage() {
                       ) : (
                         <div className="purchases-table-wrap" style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 10, overflow: "hidden",
+                          borderRadius: "var(--border-radius-md)", overflow: "hidden",
                           background: "var(--bg-card)",
                         }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2198,7 +2198,7 @@ export default function PurchasesPage() {
                           </div>
                           <div style={{
                             border: "1px solid rgba(168, 85, 247, 0.4)",
-                            borderRadius: 10, overflow: "hidden",
+                            borderRadius: "var(--border-radius-md)", overflow: "hidden",
                             background: "var(--bg-card)",
                           }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2256,7 +2256,7 @@ export default function PurchasesPage() {
                           <SectionLabel>Faltantes</SectionLabel>
                           <div style={{
                             border: "1px solid rgba(245, 158, 11, 0.3)",
-                            borderRadius: 10, overflow: "hidden",
+                            borderRadius: "var(--border-radius-md)", overflow: "hidden",
                             background: "var(--bg-card)",
                           }}>
                             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -2301,7 +2301,7 @@ export default function PurchasesPage() {
                             gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
                             gap: 12,
                             padding: "14px 16px",
-                            borderRadius: 10,
+                            borderRadius: "var(--border-radius-md)",
                             border: "1px solid rgba(168, 85, 247, 0.4)",
                             background: "var(--bg-card)",
                           }}>
@@ -2341,14 +2341,14 @@ export default function PurchasesPage() {
                             return (
                               <div key={ret.id} style={{
                                 border:  isExchange ? "1px solid rgba(37, 99, 235, 0.3)"  : "1px solid rgba(194, 65, 12, 0.3)",
-                                borderRadius: 10,
+                                borderRadius: "var(--border-radius-md)",
                                 padding: "12px 14px",
                                 background: isExchange ? "rgba(37,99,235,0.05)" : "var(--bg-card)",
                                 display: "flex", flexDirection: "column", gap: 6,
                               }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                                   <span style={{
-                                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 20,
+                                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--border-radius-xl)",
                                     background: isExchange ? "#eff6ff" : "#fff7ed",
                                     color:      isExchange ? "#1d4ed8" : "#c2410c",
                                     border:     isExchange ? "1px solid #93c5fd" : "1px solid #fdba74",
@@ -2384,7 +2384,7 @@ export default function PurchasesPage() {
                                         onClick={(e) => { e.stopPropagation(); setSearch(replOrder.folio); setExpandedOrderId(replOrder.id); }}
                                         style={{
                                           display: "inline-flex", alignItems: "center", gap: 4,
-                                          padding: "2px 8px", borderRadius: 14,
+                                          padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
                                           background: "#eff6ff", color: "#1d4ed8",
                                           fontSize: 12, fontWeight: 700, fontFamily: "monospace",
                                           border: "none", cursor: "pointer",
@@ -2398,7 +2398,7 @@ export default function PurchasesPage() {
                                     {replOrder ? (
                                       <span style={{
                                         fontSize: 11, fontWeight: 600, padding: "2px 7px",
-                                        borderRadius: 20,
+                                        borderRadius: "var(--border-radius-xl)",
                                         background: replOrder.status === "received" ? "rgba(16,185,129,0.1)" : "rgba(37,99,235,0.1)",
                                         color:      replOrder.status === "received" ? "#10B981" : "var(--accent)",
                                         border:     replOrder.status === "received" ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(37,99,235,0.3)",
@@ -2427,7 +2427,7 @@ export default function PurchasesPage() {
                             onClick={() => handleStartEditOrder(o)}
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "9px 14px", borderRadius: 8,
+                              padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid var(--accent)",
                               background: "var(--accent)", color: "#fff",
                               fontSize: 13, fontWeight: 700, cursor: "pointer",
@@ -2447,7 +2447,7 @@ export default function PurchasesPage() {
                               disabled={updatingStatusId === o.id}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "9px 14px", borderRadius: 8,
+                                padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                 border: "1px solid #10B981", background: "#10B981", color: "#fff",
                                 fontSize: 13, fontWeight: 700, cursor: "pointer",
                               }}
@@ -2461,7 +2461,7 @@ export default function PurchasesPage() {
                               disabled={updatingStatusId === o.id}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "9px 14px", borderRadius: 8,
+                                padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                 border: "1px solid #F59E0B", background: "transparent", color: "#b45309",
                                 fontSize: 13, fontWeight: 600, cursor: "pointer",
                               }}
@@ -2478,7 +2478,7 @@ export default function PurchasesPage() {
                             {/* Badge indicando que está cerrada */}
                             <span style={{
                               display: "inline-flex", alignItems: "center", gap: 5,
-                              padding: "6px 12px", borderRadius: 8,
+                              padding: "6px 12px", borderRadius: "var(--border-radius-md)",
                               background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
                               color: "var(--text-primary)", fontSize: 12, fontWeight: 600,
                             }}>
@@ -2494,7 +2494,7 @@ export default function PurchasesPage() {
                                     onClick={() => void createOCForFaltantes(o)}
                                     style={{
                                       display: "inline-flex", alignItems: "center", gap: 6,
-                                      padding: "9px 14px", borderRadius: 8,
+                                      padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                       border: "1px solid #ea580c", background: "#ea580c", color: "#fff",
                                       fontSize: 13, fontWeight: 700, cursor: "pointer",
                                     }}
@@ -2512,7 +2512,7 @@ export default function PurchasesPage() {
                                   onClick={(e) => { e.stopPropagation(); setSearch(childDraft.folio); setExpandedOrderId(childDraft.id); }}
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 6,
-                                    padding: "9px 14px", borderRadius: 8,
+                                    padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                     border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
                                     fontSize: 13, fontWeight: 600, cursor: "pointer",
                                   }}
@@ -2540,7 +2540,7 @@ export default function PurchasesPage() {
                             }}
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "9px 14px", borderRadius: 8,
+                              padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid #7c3aed", background: "#7c3aed", color: "#fff",
                               fontSize: 13, fontWeight: 700, cursor: "pointer",
                             }}
@@ -2581,7 +2581,7 @@ export default function PurchasesPage() {
                                 }}
                                 style={{
                                   display: "inline-flex", alignItems: "center", gap: 6,
-                                  padding: "9px 14px", borderRadius: 8,
+                                  padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                   border: "1px solid #a855f7", background: "transparent",
                                   color: "#7c3aed",
                                   fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -2601,7 +2601,7 @@ export default function PurchasesPage() {
                             onClick={() => setReturnTarget(o)}
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "9px 14px", borderRadius: 8,
+                              padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid #c2410c", background: "transparent",
                               color: "#c2410c",
                               fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -2618,7 +2618,7 @@ export default function PurchasesPage() {
                           disabled={generatingPdfId === o.id}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "9px 14px", borderRadius: 8,
+                            padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
                             fontSize: 13, fontWeight: 600,
@@ -2635,7 +2635,7 @@ export default function PurchasesPage() {
                           onClick={() => handleStartEditOrder(o)}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "9px 14px", borderRadius: 8,
+                            padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
                             fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -2654,7 +2654,7 @@ export default function PurchasesPage() {
                               rel="noopener noreferrer"
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "9px 14px", borderRadius: 8,
+                                padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                 border: "1px solid var(--metric-border-green)",
                                 background: "var(--metric-bg-green)",
                                 color: "var(--metric-value-green)",
@@ -2672,7 +2672,7 @@ export default function PurchasesPage() {
                               disabled={uploadingId === o.id}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
-                                padding: "9px 14px", borderRadius: 8,
+                                padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                 border: "1px solid var(--border-default)",
                                 background: "var(--bg-card)", color: "var(--text-primary)",
                                 fontSize: 13, fontWeight: 600,
@@ -2691,7 +2691,7 @@ export default function PurchasesPage() {
                             disabled={uploadingId === o.id}
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "9px 14px", borderRadius: 8,
+                              padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid var(--accent)",
                               background: "var(--accent)", color: "#fff",
                               fontSize: 13, fontWeight: 700,
@@ -2711,7 +2711,7 @@ export default function PurchasesPage() {
                             onClick={() => setCancelTarget(o)}
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
-                              padding: "9px 14px", borderRadius: 8,
+                              padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid var(--badge-text-red)",
                               background: "transparent",
                               color: "var(--badge-text-red)",
@@ -2772,7 +2772,7 @@ export default function PurchasesPage() {
                   maxHeight: 220, overflowY: "auto",
                   background: "var(--bg-card)",
                   border: "1px solid var(--border-default)",
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
                   zIndex: 20,
                 }}>
@@ -2811,7 +2811,7 @@ export default function PurchasesPage() {
                   padding: "10px 12px",
                   background: "var(--bg-card)",
                   border: "1px solid var(--border-default)",
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   fontSize: 13, color: "var(--text-muted)",
                   zIndex: 20,
                 }}>
@@ -2833,7 +2833,7 @@ export default function PurchasesPage() {
                   <div style={{
                     padding: "10px 12px",
                     border: "1px dashed var(--border-default)",
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     background: "var(--bg-input)",
                     fontSize: 13, color: "var(--text-muted)",
                   }}>
@@ -2996,7 +2996,7 @@ export default function PurchasesPage() {
                     onClick={() => removeItem(idx)}
                     disabled={itemFields.length <= 1}
                     style={{
-                      width: 32, height: 32, borderRadius: 8,
+                      width: 32, height: 32, borderRadius: "var(--border-radius-md)",
                       border: "1px solid var(--border-default)",
                       background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
                       cursor: itemFields.length <= 1 ? "not-allowed" : "pointer",
@@ -3021,7 +3021,7 @@ export default function PurchasesPage() {
               style={{
                 marginTop: 10,
                 display: "inline-flex", alignItems: "center", gap: 6,
-                padding: "8px 14px", borderRadius: 8,
+                padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                 border: "1px dashed var(--border-strong)",
                 background: "transparent", color: "var(--text-secondary)",
                 fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -3098,7 +3098,7 @@ export default function PurchasesPage() {
                 disabled={cancelling}
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  padding: "11px 16px", borderRadius: 12,
+                  padding: "11px 16px", borderRadius: "var(--border-radius-lg)",
                   border: "1px solid var(--badge-text-red)",
                   background: "var(--badge-text-red)",
                   color: "#fff",
@@ -3142,7 +3142,7 @@ export default function PurchasesPage() {
 
             {/* ── Sección XML del SAT ── */}
             <div style={{
-              padding: "12px 14px", borderRadius: 10,
+              padding: "12px 14px", borderRadius: "var(--border-radius-md)",
               background: xmlUploaded ? "rgba(16,185,129,0.08)" : "var(--bg-input)",
               border: `1px solid ${xmlUploaded ? "rgba(16,185,129,0.3)" : "var(--border-default)"}`,
             }}>
@@ -3162,7 +3162,7 @@ export default function PurchasesPage() {
                   onClick={() => xmlFileInputRef.current?.click()}
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
-                    padding: "8px 14px", borderRadius: 8, flexShrink: 0,
+                    padding: "8px 14px", borderRadius: "var(--border-radius-md)", flexShrink: 0,
                     border: `1px solid ${xmlUploaded ? "rgba(16,185,129,0.4)" : "var(--border-strong)"}`,
                     background: xmlUploaded ? "rgba(16,185,129,0.08)" : "var(--bg-card)",
                     color: xmlUploaded ? "#10B981" : "var(--text-secondary)",
@@ -3183,7 +3183,7 @@ export default function PurchasesPage() {
                 );
                 return (
                   <div style={{
-                    marginTop: 10, padding: "8px 10px", borderRadius: 8,
+                    marginTop: 10, padding: "8px 10px", borderRadius: "var(--border-radius-md)",
                     background: rfcMatch ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
                     border: `1px solid ${rfcMatch ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`,
                     fontSize: 12,
@@ -3204,7 +3204,7 @@ export default function PurchasesPage() {
                   <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Conceptos del XML ({xmlConceptos.length})
                   </p>
-                  <div style={{ border: "1px solid rgba(16,185,129,0.25)", borderRadius: 8, overflow: "hidden" }}>
+                  <div style={{ border: "1px solid rgba(16,185,129,0.25)", borderRadius: "var(--border-radius-md)", overflow: "hidden" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ background: "rgba(16,185,129,0.08)" }}>
@@ -3249,7 +3249,7 @@ export default function PurchasesPage() {
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, number: e.target.value }))}
                 placeholder="A-1234"
                 style={{
-                  padding: 10, borderRadius: 8, fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                 }}
@@ -3266,7 +3266,7 @@ export default function PurchasesPage() {
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, amount: e.target.value }))}
                 placeholder="0.00"
                 style={{
-                  padding: 10, borderRadius: 8, fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                 }}
@@ -3280,7 +3280,7 @@ export default function PurchasesPage() {
                 value={invoiceForm.date}
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, date: e.target.value }))}
                 style={{
-                  padding: 10, borderRadius: 8, fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                 }}
@@ -3295,7 +3295,7 @@ export default function PurchasesPage() {
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, notes: e.target.value }))}
                 placeholder="Observaciones, diferencias con la OC, etc."
                 style={{
-                  padding: 10, borderRadius: 8, fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                   resize: "vertical", fontFamily: "inherit",
@@ -3322,7 +3322,7 @@ export default function PurchasesPage() {
                 disabled={savingInvoice}
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
-                  padding: "11px 16px", borderRadius: 12,
+                  padding: "11px 16px", borderRadius: "var(--border-radius-lg)",
                   border: "1px solid #7c3aed",
                   background: "#7c3aed",
                   color: "#fff",
@@ -3428,7 +3428,7 @@ const monthNavStyle: CSSProperties = {
   alignItems: "center",
   gap: 6,
   padding: "6px 12px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
 };
@@ -3439,7 +3439,7 @@ const monthNavBtnStyle: CSSProperties = {
   justifyContent: "center",
   width: 28,
   height: 28,
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-page)",
   color: "var(--text-secondary)",

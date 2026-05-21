@@ -407,7 +407,7 @@ export default function CampoComprasPage() {
   const cardStyle: CSSProperties = {
     background: "var(--bg-card)",
     border: "1px solid var(--border-default)",
-    borderRadius: 16,
+    borderRadius: "var(--border-radius-xl)",
     overflow: "hidden",
   };
 
@@ -429,7 +429,7 @@ export default function CampoComprasPage() {
         const newOrders = orders.filter(o => o.sent_at && new Date(o.sent_at).getTime() >= oneDayAgo)
         if (newOrders.length === 0) return null
         return (
-          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: 12, background: "var(--bg-card)", border: "1.5px solid var(--accent)", marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1.5px solid var(--accent)", marginBottom: 16 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
             <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
               {newOrders.length} orden{newOrders.length !== 1 ? "es" : ""} nueva{newOrders.length !== 1 ? "s" : ""} en las últimas 24 h —{" "}
@@ -576,7 +576,7 @@ export default function CampoComprasPage() {
                             color: "var(--text-secondary)",
                             background: "var(--bg-card)",
                             border: "1px solid var(--border-default)",
-                            borderRadius: 6, padding: "2px 7px", whiteSpace: "nowrap",
+                            borderRadius: "var(--border-radius-sm)", padding: "2px 7px", whiteSpace: "nowrap",
                           }}>
                             {it.quantity} {it.unit}
                           </span>
@@ -600,7 +600,7 @@ export default function CampoComprasPage() {
                       style={{
                         display: "inline-flex", alignItems: "center",
                         justifyContent: "center", gap: 6,
-                        padding: "12px 16px", borderRadius: 10, minHeight: 44,
+                        padding: "12px 16px", borderRadius: "var(--border-radius-md)", minHeight: 44,
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card)", color: "var(--text-secondary)",
                         fontSize: 13, fontWeight: 600, textDecoration: "none",
@@ -618,7 +618,7 @@ export default function CampoComprasPage() {
                     style={{
                       display: "inline-flex", alignItems: "center",
                       justifyContent: "center", gap: 6,
-                      padding: "12px 16px", borderRadius: 10, minHeight: 44,
+                      padding: "12px 16px", borderRadius: "var(--border-radius-md)", minHeight: 44,
                       border: "1px solid #10B981", background: "#10B981", color: "#fff",
                       fontSize: 13, fontWeight: 700, cursor: "pointer",
                       flex: "2 1 auto",
@@ -656,7 +656,7 @@ export default function CampoComprasPage() {
                   key={item.itemId}
                   style={{
                     padding: "12px 14px",
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     border: `1px solid ${item.faltaAlgo ? "rgba(245,158,11,0.4)" : "var(--border-default)"}`,
                     background: item.faltaAlgo ? "rgba(245,158,11,0.08)" : "var(--bg-input)",
                     transition: "border-color 0.15s, background 0.15s",
@@ -673,7 +673,7 @@ export default function CampoComprasPage() {
                     <span style={{
                       fontSize: 12, fontWeight: 700, color: "var(--text-secondary)",
                       background: "var(--bg-card)", border: "1px solid var(--border-default)",
-                      borderRadius: 6, padding: "3px 8px", whiteSpace: "nowrap", flexShrink: 0,
+                      borderRadius: "var(--border-radius-sm)", padding: "3px 8px", whiteSpace: "nowrap", flexShrink: 0,
                     }}>
                       {item.quantity} {item.unit}
                     </span>
@@ -724,7 +724,7 @@ export default function CampoComprasPage() {
                         }}
                         placeholder={`Máx. ${item.quantity}`}
                         style={{
-                          width: "100%", padding: "10px 12px", borderRadius: 8,
+                          width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)",
                           border: "1px solid #F59E0B",
                           background: "#fff7ed", color: "#92400e",
                           fontSize: 14, fontWeight: 600,
@@ -741,7 +741,7 @@ export default function CampoComprasPage() {
             {receptionItems.some((i) => i.faltaAlgo) ? (
               <div style={{
                 display: "flex", alignItems: "flex-start", gap: 8,
-                padding: "10px 12px", borderRadius: 8,
+                padding: "10px 12px", borderRadius: "var(--border-radius-md)",
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
               }}>
                 <AlertCircle size={16} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
@@ -768,7 +768,7 @@ export default function CampoComprasPage() {
                 style={{
                   display: "inline-flex", alignItems: "center",
                   justifyContent: "center", gap: 8,
-                  padding: "11px 20px", borderRadius: 12, minHeight: 44,
+                  padding: "11px 20px", borderRadius: "var(--border-radius-lg)", minHeight: 44,
                   border: "1px solid #10B981", background: "#10B981", color: "#fff",
                   fontSize: 14, fontWeight: 700,
                   cursor: savingReception ? "wait" : "pointer",

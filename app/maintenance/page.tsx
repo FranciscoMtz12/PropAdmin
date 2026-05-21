@@ -389,7 +389,7 @@ function renderViewTab(label: string, active: boolean, onClick: () => void) {
       onClick={onClick}
       style={{
         padding: "8px 16px",
-        borderRadius: 10,
+        borderRadius: "var(--border-radius-md)",
         border: "1px solid",
         borderColor: active ? "var(--accent)" : "var(--border-default)",
         background: active ? "var(--accent)" : "var(--bg-card)",
@@ -413,7 +413,7 @@ function Badge({ label, style }: { label: string; style?: CSSProperties }) {
         display: "inline-flex",
         alignItems: "center",
         padding: "3px 10px",
-        borderRadius: 20,
+        borderRadius: "var(--border-radius-xl)",
         fontSize: 11,
         fontWeight: 700,
         whiteSpace: "nowrap",
@@ -1455,7 +1455,7 @@ export default function MaintenancePage() {
 
       {/* ── Banners de pendientes ──────────────────────────────────── */}
       {urgentTicketsBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
@@ -1466,7 +1466,7 @@ export default function MaintenancePage() {
             {urgentTicketsBanner.map(t => (
               <button key={t.id} type="button"
                 onClick={() => { setFilterPriority("urgent"); setActiveMainTab("tickets"); }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {getTicketNumber(t)}
               </button>
             ))}
@@ -1475,14 +1475,14 @@ export default function MaintenancePage() {
       )}
 
       {preventiveBanner.length > 0 && (
-        <div style={{ marginBottom: 12, borderRadius: 12, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
               {preventiveBanner.length} mantenimiento{preventiveBanner.length !== 1 ? "s" : ""} preventivo{preventiveBanner.length !== 1 ? "s" : ""} programado{preventiveBanner.length !== 1 ? "s" : ""} en los próximos 15 días
             </span>
             <button type="button" onClick={() => setActiveMainTab("calendar")}
-              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: 6, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
               Ver calendario
             </button>
           </div>
@@ -1490,7 +1490,7 @@ export default function MaintenancePage() {
       )}
 
       {newTicketsBanner.length > 0 && (
-        <div style={{ marginBottom: 20, borderRadius: 12, background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
+        <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>
@@ -1505,7 +1505,7 @@ export default function MaintenancePage() {
                   setSearchQuery(getTicketNumber(t));
                   setActiveMainTab("tickets");
                 }}
-                style={{ padding: "4px 10px", borderRadius: 6, background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
                 {getTicketNumber(t)}
               </button>
             ))}
@@ -1575,7 +1575,7 @@ export default function MaintenancePage() {
                 </div>
 
                 {/* Buscador de texto libre */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
                   <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                   <input
                     value={searchQuery}
@@ -1644,7 +1644,7 @@ export default function MaintenancePage() {
                       setFilterCategory("ALL");
                     }}
                     style={{
-                      padding: "9px 12px", borderRadius: 10,
+                      padding: "9px 12px", borderRadius: "var(--border-radius-md)",
                       border: "1px solid var(--border-default)",
                       background: "transparent", color: "var(--text-muted)",
                       fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -1781,7 +1781,7 @@ export default function MaintenancePage() {
                     <select
                       value={selectedBuildingId}
                       onChange={(e) => setSelectedBuildingId(e.target.value)}
-                      style={{ minWidth: 240, padding: "10px 12px", borderRadius: 12, border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14 }}
+                      style={{ minWidth: 240, padding: "10px 12px", borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14 }}
                     >
                       <option value="ALL">Todos los edificios</option>
                       {calendarBuildings.map((b) => (
@@ -1798,17 +1798,17 @@ export default function MaintenancePage() {
                       {weekDays.map((day) => {
                         const dayEvents = weekEventsByDay.get(day.key) || [];
                         return (
-                          <div key={day.key} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 14, minHeight: 280 }}>
+                          <div key={day.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 14, minHeight: 280 }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                               <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{day.label}</div>
                               <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{day.shortDate}</div>
                             </div>
                             {dayEvents.length === 0 ? (
-                              <div style={{ borderRadius: 12, padding: "10px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
+                              <div style={{ borderRadius: "var(--border-radius-lg)", padding: "10px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
                             ) : (
                               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                 {dayEvents.map((event) => (
-                                  <div key={event.id} style={{ borderRadius: 12, padding: "10px", background: event.colorBackground, border: `1px solid ${event.colorBorder}`, display: "flex", flexDirection: "column", gap: 4 }}>
+                                  <div key={event.id} style={{ borderRadius: "var(--border-radius-lg)", padding: "10px", background: event.colorBackground, border: `1px solid ${event.colorBorder}`, display: "flex", flexDirection: "column", gap: 4 }}>
                                     <span style={{ fontSize: 11, fontWeight: 800, color: event.colorText, lineHeight: 1.35 }}>{event.title}</span>
                                     <span style={{ fontSize: 10.5, fontWeight: 700, color: event.colorText, opacity: 0.9, lineHeight: 1.35 }}>{event.subtitle}</span>
                                   </div>
@@ -1828,14 +1828,14 @@ export default function MaintenancePage() {
                         const dayEvents    = monthEventsByDate.get(day.isoDate) || [];
                         const visibleEvents = dayEvents.slice(0, 3);
                         return (
-                          <div key={day.isoDate} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 12, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 170 }}>
+                          <div key={day.isoDate} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 12, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 170 }}>
                             <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>{day.dayNumber} · {day.label}</div>
                             {dayEvents.length === 0 ? (
-                              <div style={{ borderRadius: 10, padding: "8px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
+                              <div style={{ borderRadius: "var(--border-radius-md)", padding: "8px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
                             ) : (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 {visibleEvents.map((event) => (
-                                  <div key={event.id} style={{ borderRadius: 10, padding: "8px", background: event.colorBackground, border: `1px solid ${event.colorBorder}`, display: "flex", flexDirection: "column", gap: 3 }}>
+                                  <div key={event.id} style={{ borderRadius: "var(--border-radius-md)", padding: "8px", background: event.colorBackground, border: `1px solid ${event.colorBorder}`, display: "flex", flexDirection: "column", gap: 3 }}>
                                     <span style={{ fontSize: 10.5, fontWeight: 800, color: event.colorText, lineHeight: 1.3 }}>{event.title}</span>
                                     <span style={{ fontSize: 10, fontWeight: 700, color: event.colorText, opacity: 0.9, lineHeight: 1.3 }}>{event.subtitle}</span>
                                   </div>
@@ -1855,11 +1855,11 @@ export default function MaintenancePage() {
                   {viewMode === "year" ? (
                     <div className="maint-cal-year" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
                       {yearSummary.map((month) => (
-                        <div key={month.monthLabel} style={{ border: "1px solid var(--border-default)", borderRadius: 16, padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 150 }}>
+                        <div key={month.monthLabel} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 150 }}>
                           <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{month.monthLabel}</div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <div style={{ borderRadius: 10, padding: "10px", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: 12, fontWeight: 700, color: "var(--metric-value-amber)" }}>Realizados: {month.done}</div>
-                            <div style={{ borderRadius: 10, padding: "10px", background: "var(--badge-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: 12, fontWeight: 700, color: "var(--badge-text-amber)" }}>Próximos: {month.upcoming}</div>
+                            <div style={{ borderRadius: "var(--border-radius-md)", padding: "10px", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: 12, fontWeight: 700, color: "var(--metric-value-amber)" }}>Realizados: {month.done}</div>
+                            <div style={{ borderRadius: "var(--border-radius-md)", padding: "10px", background: "var(--badge-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: 12, fontWeight: 700, color: "var(--badge-text-amber)" }}>Próximos: {month.upcoming}</div>
                             <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>Total: {month.total}</div>
                           </div>
                         </div>
@@ -2206,7 +2206,7 @@ function TicketCard({
               type="button"
               onClick={(e) => { e.stopPropagation(); onMenuOpen(); }}
               style={{
-                padding: "6px 8px", borderRadius: 8,
+                padding: "6px 8px", borderRadius: "var(--border-radius-md)",
                 border: "1px solid var(--border-default)",
                 background: "var(--bg-card)", color: "var(--text-muted)",
                 cursor: "pointer", display: "flex", alignItems: "center",
@@ -2309,7 +2309,7 @@ function TicketCard({
                 disabled={uploadingPhoto}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "7px 12px", borderRadius: 8,
+                  padding: "7px 12px", borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)",
                   fontSize: 12, fontWeight: 600,
@@ -2333,7 +2333,7 @@ function TicketCard({
             </div>
 
             {photos.length === 0 ? (
-              <div style={{ padding: 18, borderRadius: 12, border: "1px dashed var(--border-strong)", textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
+              <div style={{ padding: 18, borderRadius: "var(--border-radius-lg)", border: "1px dashed var(--border-strong)", textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
                 Sin fotos adjuntas
               </div>
             ) : (
@@ -2341,7 +2341,7 @@ function TicketCard({
                 {photos.slice(0, 6).map((url, idx) => (
                   <div
                     key={url}
-                    style={{ position: "relative", borderRadius: 10, overflow: "hidden", border: "1px solid var(--border-default)", aspectRatio: "1" }}
+                    style={{ position: "relative", borderRadius: "var(--border-radius-md)", overflow: "hidden", border: "1px solid var(--border-default)", aspectRatio: "1" }}
                   >
                     <a href={url} target="_blank" rel="noopener noreferrer">
                       <img
@@ -2365,7 +2365,7 @@ function TicketCard({
                   </div>
                 ))}
                 {photos.length > 6 ? (
-                  <div style={{ borderRadius: 10, border: "1px dashed var(--border-default)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--text-muted)", fontWeight: 600, aspectRatio: "1" }}>
+                  <div style={{ borderRadius: "var(--border-radius-md)", border: "1px dashed var(--border-default)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--text-muted)", fontWeight: 600, aspectRatio: "1" }}>
                     +{photos.length - 6} más
                   </div>
                 ) : null}
@@ -2459,7 +2459,7 @@ function TicketCard({
                       type="button"
                       onClick={() => onMaterialsChange(editingMaterials.filter((_, i) => i !== idx))}
                       style={{
-                        width: 32, height: 32, borderRadius: 8,
+                        width: 32, height: 32, borderRadius: "var(--border-radius-md)",
                         border: "1px solid var(--border-default)",
                         background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
                         cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", padding: 0,
@@ -2482,7 +2482,7 @@ function TicketCard({
                 }
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px", borderRadius: 8,
+                  padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                   border: "1px dashed var(--border-strong)",
                   background: "transparent", color: "var(--text-secondary)",
                   fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -2497,7 +2497,7 @@ function TicketCard({
                 disabled={savingMaterials}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px", borderRadius: 8,
+                  padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)",
                   fontSize: 13, fontWeight: 600,
@@ -2514,7 +2514,7 @@ function TicketCard({
                 disabled={generatingPdf}
                 style={{
                   display: "inline-flex", alignItems: "center", gap: 6,
-                  padding: "8px 14px", borderRadius: 8,
+                  padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)",
                   fontSize: 13, fontWeight: 600,
@@ -2552,7 +2552,7 @@ function TicketCard({
                           display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
                           padding: "8px 12px",
                           border: "1px solid var(--border-default)",
-                          borderRadius: 8,
+                          borderRadius: "var(--border-radius-md)",
                           background: "var(--bg-input)",
                         }}
                       >
@@ -2563,7 +2563,7 @@ function TicketCard({
                           · {oc.supplier_name || "Sin proveedor"}
                         </span>
                         <span style={{
-                          padding: "3px 8px", borderRadius: 20,
+                          padding: "3px 8px", borderRadius: "var(--border-radius-xl)",
                           fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
                           ...statusStyle,
                         }}>
@@ -2573,7 +2573,7 @@ function TicketCard({
                           type="button"
                           onClick={() => onOpenPurchaseOrder(oc)}
                           style={{
-                            padding: "6px 10px", borderRadius: 6,
+                            padding: "6px 10px", borderRadius: "var(--border-radius-sm)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
                             fontSize: 12, fontWeight: 600, cursor: "pointer",
@@ -2600,7 +2600,7 @@ function TicketCard({
                       {totalGastado > 0 ? (
                         <div style={{
                           display: "flex", alignItems: "center", justifyContent: "space-between",
-                          padding: "8px 12px", borderRadius: 8,
+                          padding: "8px 12px", borderRadius: "var(--border-radius-md)",
                           background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
                         }}>
                           <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>Total gastado (recibidas)</span>
@@ -2619,7 +2619,7 @@ function TicketCard({
                             return (
                               <div key={it.id} style={{
                                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
-                                padding: "6px 10px", borderRadius: 6,
+                                padding: "6px 10px", borderRadius: "var(--border-radius-sm)",
                                 background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
                                 fontSize: 13,
                               }}>
@@ -2666,7 +2666,7 @@ function InfoTile({
     <div
       style={{
         padding: "10px 14px",
-        borderRadius: 10,
+        borderRadius: "var(--border-radius-md)",
         background: "var(--bg-card)",
         border: "1px solid var(--border-default)",
       }}

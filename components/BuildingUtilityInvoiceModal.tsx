@@ -463,7 +463,7 @@ export default function BuildingUtilityInvoiceModal({
         <div style={{
           padding: "10px 14px",
           background: "rgba(245,158,11,0.1)",
-          borderRadius: 10,
+          borderRadius: "var(--border-radius-md)",
           marginBottom: 14,
           fontSize: 13,
           color: "var(--text-primary)",
@@ -482,7 +482,7 @@ export default function BuildingUtilityInvoiceModal({
           <p style={{
             padding: "10px 14px",
             background: "rgba(245,158,11,0.1)",
-            borderRadius: 10,
+            borderRadius: "var(--border-radius-md)",
             marginBottom: 14,
             fontSize: 13,
             color: "var(--text-primary)",
@@ -541,7 +541,7 @@ export default function BuildingUtilityInvoiceModal({
             onClick={() => fileRef.current?.click()}
             style={{
               padding: "16px",
-              borderRadius: 12,
+              borderRadius: "var(--border-radius-lg)",
               cursor: "pointer",
               textAlign: "center",
               border: `2px dashed ${pdfFile ? "rgba(16,185,129,0.5)" : existingInvoice?.pdf_path ? "rgba(37,99,235,0.4)" : "var(--border-default)"}`,
@@ -569,7 +569,7 @@ export default function BuildingUtilityInvoiceModal({
           <div style={{
             padding: "12px 14px",
             background: "var(--bg-page)",
-            borderRadius: 10,
+            borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
             fontSize: 13,
             color: "var(--text-secondary)",
@@ -588,7 +588,7 @@ export default function BuildingUtilityInvoiceModal({
           <div style={{
             padding: "12px 14px",
             background: "#eff6ff",
-            borderRadius: 10,
+            borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
             fontSize: 13,
             color: "#1d4ed8",
@@ -609,7 +609,7 @@ export default function BuildingUtilityInvoiceModal({
               <div style={{
                 padding: "10px 14px",
                 background: "rgba(245,158,11,0.1)",
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 fontSize: 13,
                 color: "var(--text-primary)",
                 display: "flex",
@@ -672,7 +672,7 @@ export default function BuildingUtilityInvoiceModal({
           <div style={{
             padding: "12px 14px",
             background: "var(--bg-page)",
-            borderRadius: 10,
+            borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
             fontSize: 13,
             color: "var(--text-secondary)",

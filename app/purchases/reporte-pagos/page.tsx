@@ -734,7 +734,7 @@ export default function ReportePagosPage() {
     width: "100%",
     padding: "11px 12px",
     border: "1px solid var(--border-default)",
-    borderRadius: 10,
+    borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
     fontSize: 14,
@@ -744,12 +744,12 @@ export default function ReportePagosPage() {
 
   const monthNavStyle: CSSProperties = {
     display: "flex", alignItems: "center", gap: 6,
-    padding: "6px 12px", borderRadius: 12,
+    padding: "6px 12px", borderRadius: "var(--border-radius-lg)",
     border: "1px solid var(--border-default)", background: "var(--bg-card)",
   };
   const monthNavBtnStyle: CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "center",
-    width: 28, height: 28, borderRadius: 8,
+    width: 28, height: 28, borderRadius: "var(--border-radius-md)",
     border: "1px solid var(--border-default)",
     background: "var(--bg-page)", color: "var(--text-secondary)",
     cursor: "pointer", flexShrink: 0,
@@ -800,7 +800,7 @@ export default function ReportePagosPage() {
         return (
           <>
             {overdueOCs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", marginBottom: 4 }}>
@@ -808,7 +808,7 @@ export default function ReportePagosPage() {
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {overdueOCs.slice(0, MAX_FOLIOS).map(o => (
-                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: 6, background: "rgba(220,38,38,0.08)", color: "var(--text-primary)" }}>
+                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", color: "var(--text-primary)" }}>
                         {o.folio}
                       </span>
                     ))}
@@ -820,7 +820,7 @@ export default function ReportePagosPage() {
               </div>
             )}
             {recentOCs.length > 0 && (
-              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 10, background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
+              <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
@@ -887,7 +887,7 @@ export default function ReportePagosPage() {
         ) : (
           <div style={{
             border: "1px solid var(--border-default)",
-            borderRadius: 10,
+            borderRadius: "var(--border-radius-md)",
             overflow: "hidden",
             maxHeight: 300,
             overflowY: "auto",
@@ -1028,7 +1028,7 @@ export default function ReportePagosPage() {
                       ) : (
                         <div style={{
                           border: "1px solid var(--border-default)",
-                          borderRadius: 10, overflow: "hidden",
+                          borderRadius: "var(--border-radius-md)", overflow: "hidden",
                           background: "var(--bg-card)",
                         }}>
                           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -1086,7 +1086,7 @@ export default function ReportePagosPage() {
                           disabled={generatingPdfId === r.id}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "9px 14px", borderRadius: 8,
+                            padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
                             fontSize: 13, fontWeight: 600,
@@ -1103,7 +1103,7 @@ export default function ReportePagosPage() {
                           onClick={() => openEditModal(r)}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "9px 14px", borderRadius: 8,
+                            padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
                             fontSize: 13, fontWeight: 600, cursor: "pointer",
@@ -1119,7 +1119,7 @@ export default function ReportePagosPage() {
                           disabled={archivingId === r.id}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 6,
-                            padding: "9px 14px", borderRadius: 8,
+                            padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--badge-text-red)",
                             background: "transparent",
                             color: "var(--badge-text-red)",
@@ -1218,7 +1218,7 @@ export default function ReportePagosPage() {
           {duplicateWarning ? (
             <div style={{
               display: "flex", alignItems: "flex-start", gap: 8,
-              padding: "10px 12px", borderRadius: 8, marginBottom: 4,
+              padding: "10px 12px", borderRadius: "var(--border-radius-md)", marginBottom: 4,
               background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
             }}>
               <AlertTriangle size={15} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
@@ -1249,7 +1249,7 @@ export default function ReportePagosPage() {
             ) : (
               <div style={{
                 border: "1px solid var(--border-default)",
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 overflow: "hidden",
                 maxHeight: 280,
                 overflowY: "auto",
@@ -1318,7 +1318,7 @@ export default function ReportePagosPage() {
               </div>
               <div style={{
                 border: "1px solid var(--border-default)",
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 overflow: "hidden",
               }}>
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
@@ -1351,7 +1351,7 @@ export default function ReportePagosPage() {
                               onClick={() => toggleOCInForm(ocId)}
                               aria-label="Quitar del reporte"
                               style={{
-                                width: 30, height: 30, borderRadius: 8,
+                                width: 30, height: 30, borderRadius: "var(--border-radius-md)",
                                 border: "1px solid var(--border-default)",
                                 background: "var(--badge-bg-red)",
                                 color: "var(--badge-text-red)",

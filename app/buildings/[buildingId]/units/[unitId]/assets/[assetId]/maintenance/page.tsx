@@ -289,7 +289,7 @@ export default function AssetMaintenancePage() {
           <div
             style={{
               border: "1px dashed #D0D5DD",
-              borderRadius: 16,
+              borderRadius: "var(--border-radius-xl)",
               padding: 24,
               textAlign: "center",
             }}
@@ -417,7 +417,7 @@ export default function AssetMaintenancePage() {
                 style={{
                   width: "100%",
                   padding: 12,
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                 }}
@@ -442,7 +442,7 @@ export default function AssetMaintenancePage() {
                 style={{
                   width: "100%",
                   padding: 12,
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                 }}
@@ -464,7 +464,7 @@ export default function AssetMaintenancePage() {
                 style={{
                   width: "100%",
                   padding: 12,
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   minHeight: 110,
                   resize: "vertical",
@@ -490,7 +490,7 @@ export default function AssetMaintenancePage() {
                   style={{
                     width: "100%",
                     padding: 12,
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                   }}
                 />
@@ -505,7 +505,7 @@ export default function AssetMaintenancePage() {
                   style={{
                     width: "100%",
                     padding: 12,
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                   }}
                 />
@@ -530,7 +530,7 @@ export default function AssetMaintenancePage() {
                   style={{
                     width: "100%",
                     padding: 12,
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                   }}
                 />
@@ -547,7 +547,7 @@ export default function AssetMaintenancePage() {
                   style={{
                     width: "100%",
                     padding: 12,
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                   }}
                 />
@@ -563,7 +563,7 @@ export default function AssetMaintenancePage() {
                 style={{
                   width: "100%",
                   padding: 12,
-                  borderRadius: 10,
+                  borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   minHeight: 90,
                   resize: "vertical",

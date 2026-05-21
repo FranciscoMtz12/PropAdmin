@@ -103,7 +103,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
               onClick={() => setStyleId(style.id)}
               style={{
                 padding: "6px 12px",
-                borderRadius: 8,
+                borderRadius: "var(--border-radius-md)",
                 border: isActive
                   ? "1px solid #8B2252"
                   : "1px solid var(--border-default)",
@@ -131,7 +131,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
               alignItems: "center",
               gap: 6,
               padding: "6px 12px",
-              borderRadius: 8,
+              borderRadius: "var(--border-radius-md)",
               border: editMode
                 ? "1px solid #10B981"
                 : "1px solid var(--border-default)",
@@ -155,7 +155,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
           style={{
             marginBottom: 10,
             padding: "10px 14px",
-            borderRadius: 10,
+            borderRadius: "var(--border-radius-md)",
             background: "var(--metric-bg-amber, #FEF3C7)",
             border: "1px solid #FDE68A",
             color: "var(--badge-text-amber, #92400E)",
@@ -173,7 +173,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
         zoom={DEFAULT_ZOOM}
         minZoom={12}
         maxZoom={18}
-        style={{ height: 600, width: "100%", borderRadius: 12 }}
+        style={{ height: 600, width: "100%", borderRadius: "var(--border-radius-lg)" }}
         scrollWheelZoom
       >
         <TileLayer

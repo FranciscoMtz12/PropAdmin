@@ -163,7 +163,7 @@ export default function CampoAssetsPage() {
   const cardStyle: CSSProperties = {
     background: "var(--bg-card)",
     border: "1px solid var(--border-default)",
-    borderRadius: 14,
+    borderRadius: "var(--border-radius-lg)",
     padding: "14px 16px",
     display: "flex",
     alignItems: "center",
@@ -184,7 +184,7 @@ export default function CampoAssetsPage() {
     maxHeight: "85dvh",
     overflowY: "auto",
     background: "var(--bg-card)",
-    borderRadius: "20px 20px 0 0",
+    borderRadius: "var(--border-radius-xl) var(--border-radius-xl) 0 0",
     padding: "24px 20px 36px",
     display: "flex",
     flexDirection: "column",
@@ -194,7 +194,7 @@ export default function CampoAssetsPage() {
   const inputStyle: CSSProperties = {
     width: "100%",
     padding: "11px 12px",
-    borderRadius: 10,
+    borderRadius: "var(--border-radius-md)",
     border: "1px solid var(--border-default)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
@@ -205,7 +205,7 @@ export default function CampoAssetsPage() {
   const selectStyle: CSSProperties = {
     width: "100%",
     padding: "11px 12px",
-    borderRadius: 10,
+    borderRadius: "var(--border-radius-md)",
     border: "1px solid var(--border-default)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
@@ -261,7 +261,7 @@ export default function CampoAssetsPage() {
                 <div style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   background: "var(--icon-bg-neutral)",
                   color: "var(--icon-color-neutral)",
                   display: "flex",
@@ -287,7 +287,7 @@ export default function CampoAssetsPage() {
                         {asset.asset_type}
                       </span>
                     )}
-                    <span style={{ padding: "2px 7px", borderRadius: 10, fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.text }}>
+                    <span style={{ padding: "2px 7px", borderRadius: "var(--border-radius-md)", fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.text }}>
                       {badge.label}
                     </span>
                   </div>
@@ -300,7 +300,7 @@ export default function CampoAssetsPage() {
                   style={{
                     flexShrink: 0,
                     padding: "8px 12px",
-                    borderRadius: 10,
+                    borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)",
                     background: "var(--bg-page)",
                     color: "var(--badge-text-amber)",
@@ -390,7 +390,7 @@ export default function CampoAssetsPage() {
                   style={{
                     width: "100%",
                     padding: "14px",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "none",
                     background: "var(--accent)",
                     color: "#fff",

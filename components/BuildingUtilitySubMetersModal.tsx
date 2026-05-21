@@ -129,7 +129,7 @@ export default function BuildingUtilitySubMetersModal({
           alignItems: "flex-start",
           gap: 10,
           padding: "12px 14px",
-          borderRadius: 12,
+          borderRadius: "var(--border-radius-lg)",
           background: "rgba(245,158,11,0.1)",
           color: "var(--text-primary)",
           fontSize: 13,
@@ -160,7 +160,7 @@ export default function BuildingUtilitySubMetersModal({
             <div
               key={unit.id}
               style={{
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 border: checked ? "1px solid #8B2252" : "1px solid var(--border-default)",
                 background: checked ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
                 padding: "12px 14px",

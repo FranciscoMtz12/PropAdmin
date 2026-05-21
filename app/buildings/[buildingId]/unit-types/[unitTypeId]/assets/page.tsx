@@ -448,7 +448,7 @@ export default function UnitTypeAssetsPage() {
                         display: "inline-flex",
                         alignItems: "center",
                         justifyContent: "center",
-                        borderRadius: 10,
+                        borderRadius: "var(--border-radius-md)",
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card)",
                         color: "var(--text-primary)",
@@ -486,7 +486,7 @@ export default function UnitTypeAssetsPage() {
                             width: "100%",
                             textDecoration: "none",
                             color: "var(--text-primary)",
-                            borderRadius: 8,
+                            borderRadius: "var(--border-radius-md)",
                             padding: "9px 10px",
                             fontSize: 13,
                             fontWeight: 600,
@@ -508,7 +508,7 @@ export default function UnitTypeAssetsPage() {
                             border: "none",
                             background: "var(--badge-bg-red)",
                             color: "var(--badge-text-red)",
-                            borderRadius: 8,
+                            borderRadius: "var(--border-radius-md)",
                             padding: "9px 10px",
                             fontSize: 13,
                             fontWeight: 600,
@@ -538,7 +538,7 @@ export default function UnitTypeAssetsPage() {
           <div
             style={{
               padding: "14px 16px",
-              borderRadius: 14,
+              borderRadius: "var(--border-radius-lg)",
               background: "var(--metric-bg-amber)",
               border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
@@ -555,7 +555,7 @@ export default function UnitTypeAssetsPage() {
             <div
               style={{
                 padding: "12px 14px",
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 background: "var(--badge-bg-red)",
                 border: "1px solid var(--metric-border-red)",
                 color: "var(--badge-text-red)",
@@ -595,7 +595,7 @@ export default function UnitTypeAssetsPage() {
                 width: "100%",
                 padding: "12px",
                 border: "1px solid var(--border-default)",
-                borderRadius: "10px",
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--bg-card)",
               }}
             >
@@ -620,7 +620,7 @@ export default function UnitTypeAssetsPage() {
                 width: "100%",
                 padding: "12px",
                 border: "1px solid var(--border-default)",
-                borderRadius: "10px",
+                borderRadius: "var(--border-radius-md)",
               }}
             />
             {errors.assetName ? (
@@ -636,7 +636,7 @@ export default function UnitTypeAssetsPage() {
                 width: "100%",
                 padding: "12px",
                 border: "1px solid var(--border-default)",
-                borderRadius: "10px",
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--bg-card)",
               }}
             >
@@ -654,7 +654,7 @@ export default function UnitTypeAssetsPage() {
                 width: "100%",
                 padding: "12px",
                 border: "1px solid var(--border-default)",
-                borderRadius: "10px",
+                borderRadius: "var(--border-radius-md)",
                 minHeight: "100px",
                 resize: "vertical",
               }}
@@ -670,7 +670,7 @@ export default function UnitTypeAssetsPage() {
                 width: "100%",
                 padding: "12px",
                 border: "1px solid var(--border-default)",
-                borderRadius: "10px",
+                borderRadius: "var(--border-radius-md)",
               }}
             />
           </div>

@@ -176,7 +176,7 @@ function ServiceRow({
         style={{
           width: 34,
           height: 34,
-          borderRadius: 8,
+          borderRadius: "var(--border-radius-md)",
           background: "var(--bg-page)",
           border: "1px solid var(--border-default)",
           display: "flex",
@@ -219,7 +219,7 @@ function ServiceRow({
                 onClick={e => { e.stopPropagation(); onGenerateFixedCobro(); }}
                 disabled={generatingFixedCobro}
                 style={{
-                  padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: 12, fontWeight: 600,
                   cursor: generatingFixedCobro ? "default" : "pointer",
                   border: "none", background: "#8B2252", color: "#fff", whiteSpace: "nowrap",
                   opacity: generatingFixedCobro ? 0.6 : 1,
@@ -233,7 +233,7 @@ function ServiceRow({
                 type="button"
                 onClick={e => { e.stopPropagation(); onUploadInvoice(); }}
                 style={{
-                  padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                  padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: 12, fontWeight: 600,
                   cursor: "pointer", border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)", whiteSpace: "nowrap",
                 }}
@@ -265,7 +265,7 @@ function ServiceRow({
                   onClick={e => { e.stopPropagation(); onAction(); }}
                   style={{
                     padding: "5px 12px",
-                    borderRadius: 8,
+                    borderRadius: "var(--border-radius-md)",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -283,7 +283,7 @@ function ServiceRow({
                     onClick={e => { e.stopPropagation(); onGeneratePdfs(); }}
                     disabled={generatingPdfs}
                     style={{
-                      padding: "5px 12px", borderRadius: 8, fontSize: 12, fontWeight: 600,
+                      padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: 12, fontWeight: 600,
                       cursor: generatingPdfs ? "default" : "pointer",
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)", color: "var(--text-primary)", whiteSpace: "nowrap",
@@ -303,7 +303,7 @@ function ServiceRow({
                     onClick={e => { e.stopPropagation(); onAction(); }}
                     style={{
                       padding: "5px 12px",
-                      borderRadius: 8,
+                      borderRadius: "var(--border-radius-md)",
                       fontSize: 12,
                       fontWeight: 600,
                       cursor: "pointer",
@@ -350,7 +350,7 @@ function SharedMeterDropdown({
   const panelStyle = {
     background: "var(--bg-page)",
     border: "1px solid var(--border-default)",
-    borderRadius: 10,
+    borderRadius: "var(--border-radius-md)",
     marginBottom: 8,
     overflow: "hidden" as const,
   };
@@ -404,7 +404,7 @@ function SharedMeterDropdown({
 
       {/* No-readings banner */}
       {!detail.hasReadings && (
-        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0 }} />
           Campo aún no ha capturado lecturas para este período
         </div>
@@ -497,7 +497,7 @@ function PeriodSelector({
         type="button"
         onClick={onPrev}
         style={{
-          width: 36, height: 36, borderRadius: "8px 0 0 8px",
+          width: 36, height: 36, borderRadius: "var(--border-radius-md) 0 0 var(--border-radius-md)",
           border: "1px solid var(--border-default)", background: "var(--bg-card)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           color: "var(--text-primary)",
@@ -520,7 +520,7 @@ function PeriodSelector({
         type="button"
         onClick={onNext}
         style={{
-          width: 36, height: 36, borderRadius: "0 8px 8px 0",
+          width: 36, height: 36, borderRadius: "0 var(--border-radius-md) var(--border-radius-md) 0",
           border: "1px solid var(--border-default)", background: "var(--bg-card)",
           cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center",
           color: "var(--text-primary)",
@@ -1133,7 +1133,7 @@ export default function ServiciosPage() {
         <div
           style={{
             marginBottom: 20,
-            borderRadius: 12,
+            borderRadius: "var(--border-radius-lg)",
             background: "rgba(245,158,11,0.1)",
             border: "1px solid rgba(245,158,11,0.3)",
             padding: "14px 16px",
@@ -1153,7 +1153,7 @@ export default function ServiciosPage() {
                 onClick={() => router.push(`/buildings/${b.id}`)}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "7px 10px", borderRadius: 8, gap: 8,
+                  padding: "7px 10px", borderRadius: "var(--border-radius-md)", gap: 8,
                   background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
                   cursor: "pointer", textAlign: "left", width: "100%",
                 }}
@@ -1182,13 +1182,13 @@ export default function ServiciosPage() {
           <div
             key={type}
             style={{
-              padding: "14px 16px", borderRadius: 12,
+              padding: "14px 16px", borderRadius: "var(--border-radius-lg)",
               background: "var(--bg-card)", border: "1px solid var(--border-default)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
               <div style={{
-                width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+                width: 30, height: 30, borderRadius: "var(--border-radius-md)", flexShrink: 0,
                 background: allDone ? "var(--icon-bg-green)" : "var(--icon-bg-amber)",
                 color: allDone ? "var(--icon-color-green)" : "var(--icon-color-amber)",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -1217,12 +1217,12 @@ export default function ServiciosPage() {
 
         {/* Total facturado */}
         <div style={{
-          padding: "14px 16px", borderRadius: 12,
+          padding: "14px 16px", borderRadius: "var(--border-radius-lg)",
           background: "var(--bg-card)", border: "1px solid var(--border-default)",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <div style={{
-              width: 30, height: 30, borderRadius: 8, flexShrink: 0,
+              width: 30, height: 30, borderRadius: "var(--border-radius-md)", flexShrink: 0,
               background: "var(--bg-page)", border: "1px solid var(--border-default)",
               display: "flex", alignItems: "center", justifyContent: "center",
               color: "var(--text-muted)",

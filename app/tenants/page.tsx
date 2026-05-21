@@ -168,7 +168,7 @@ function getStatusColors(status: "ACTIVE" | "INACTIVE") {
 const inputStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",
@@ -177,7 +177,7 @@ const inputStyle: CSSProperties = {
 const textareaStyle: CSSProperties = {
   width: "100%",
   padding: "12px 14px",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",
@@ -672,7 +672,7 @@ export default function TenantsPage() {
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 background: "var(--icon-bg-purple)",
                 color: "var(--icon-color-purple)",
                 display: "inline-flex",
@@ -1078,7 +1078,7 @@ export default function TenantsPage() {
                               return (
                                 <div key={lease.id} style={{
                                   display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-                                  padding: "5px 8px", borderRadius: 8,
+                                  padding: "5px 8px", borderRadius: "var(--border-radius-md)",
                                   background: isActive ? "var(--icon-bg-green)" : "var(--bg-input)",
                                   fontSize: 12,
                                 }}>
@@ -1090,11 +1090,11 @@ export default function TenantsPage() {
                                     {lease.end_date ? ` → ${formatDate(lease.end_date)}` : ""}
                                   </span>
                                   {isActive ? (
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: 10 }}>ACTIVO</span>
+                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
                                   ) : null}
                                   {diff != null && diff !== 0 ? (
                                     <span style={{
-                                      fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: 10,
+                                      fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: "var(--border-radius-md)",
                                       color: diff > 0 ? "#10B981" : "#DC2626",
                                       background: diff > 0 ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
                                     }}>
@@ -1217,7 +1217,7 @@ export default function TenantsPage() {
               <div
                 style={{
                   padding: "12px 14px",
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   background: "var(--badge-bg-red)",
                   color: "var(--badge-text-red)",
                   fontSize: 14,
@@ -1262,7 +1262,7 @@ export default function TenantsPage() {
           <div
             style={{
               padding: "14px 16px",
-              borderRadius: 14,
+              borderRadius: "var(--border-radius-lg)",
               background: "var(--metric-bg-amber)",
               border: "1px solid #FED7AA",
               color: "var(--badge-text-amber)",
@@ -1347,7 +1347,7 @@ const dropdownTriggerStyle: CSSProperties = {
   alignItems: "center",
   gap: 8,
   padding: "8px 10px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   color: "var(--text-secondary)",
@@ -1363,7 +1363,7 @@ const dropdownMenuStyle: CSSProperties = {
   minWidth: 220,
   background: "var(--bg-card)",
   border: "1px solid var(--border-default)",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   boxShadow: "0 12px 30px rgba(15, 23, 42, 0.12)",
   padding: 8,
   display: "grid",
@@ -1378,7 +1378,7 @@ const dropdownItemStyle: CSSProperties = {
   justifyContent: "flex-start",
   gap: 8,
   padding: "10px 12px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   border: "none",
   background: "var(--bg-card)",
   color: "var(--text-secondary)",
@@ -1394,7 +1394,7 @@ const dropdownPortalItemStyle: CSSProperties = {
   justifyContent: "flex-start",
   gap: 8,
   padding: "10px 12px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   border: "none",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
@@ -1410,7 +1410,7 @@ const dropdownPortalSecondaryItemStyle: CSSProperties = {
   justifyContent: "flex-start",
   gap: 8,
   padding: "10px 12px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   border: "none",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
@@ -1426,7 +1426,7 @@ const dropdownDeleteItemStyle: CSSProperties = {
   justifyContent: "flex-start",
   gap: 8,
   padding: "10px 12px",
-  borderRadius: 10,
+  borderRadius: "var(--border-radius-md)",
   border: "none",
   background: "var(--badge-bg-red)",
   color: "var(--badge-text-red)",

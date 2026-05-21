@@ -721,7 +721,7 @@ export default function AssetDetailPage() {
               gap: 12,
               alignItems: "flex-start",
               padding: 14,
-              borderRadius: 12,
+              borderRadius: "var(--border-radius-lg)",
               background: "var(--badge-bg-red)",
               border: "1px solid var(--metric-border-red)",
             }}
@@ -730,7 +730,7 @@ export default function AssetDetailPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-red)",
                 color: "var(--icon-color-red)",
                 display: "grid",

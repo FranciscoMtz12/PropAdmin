@@ -177,14 +177,14 @@ function Counter({ value, onChange, min = 0, max = 10, label }: {
   value: number; onChange: (v: number) => void; min?: number; max?: number; label: string;
 }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: 12, background: "var(--bg-card)" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)" }}>
       <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
-          style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+          style={{ width: 30, height: 30, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
         <span style={{ fontSize: 18, fontWeight: 700, minWidth: 20, textAlign: "center" }}>{value}</span>
         <button type="button" onClick={() => onChange(Math.min(max, value + 1))}
-          style={{ width: 30, height: 30, borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+          style={{ width: 30, height: 30, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
       </div>
     </div>
   );
@@ -302,10 +302,10 @@ function PillsInput({ value, onChange, placeholder = "Agregar..." }: {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder={placeholder}
-          style={{ flex: 1, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: 8, background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }}
+          style={{ flex: 1, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }}
         />
         <button type="button" onClick={add}
-          style={{ padding: "0 12px", borderRadius: 8, border: "none", background: ACCENT, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+          style={{ padding: "0 12px", borderRadius: "var(--border-radius-md)", border: "none", background: ACCENT, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
           Agregar
         </button>
       </div>
@@ -769,7 +769,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
   const STEP_INPUT: React.CSSProperties = {
     width: "100%", padding: 10, border: "1px solid var(--border-default)",
-    borderRadius: 10, background: "var(--bg-input)", color: "var(--text-primary)",
+    borderRadius: "var(--border-radius-md)", background: "var(--bg-input)", color: "var(--text-primary)",
     outline: "none", boxSizing: "border-box",
   };
 
@@ -884,7 +884,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   /* ── Boilers section helper ── */
   function boilersSection(boilers: BoilerUnit[], onBoilers: (v: BoilerUnit[]) => void) {
     const btnStyle: React.CSSProperties = {
-      width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)",
+      width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)",
       background: "var(--bg-input)", cursor: "pointer", fontSize: 15,
       display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)",
     };
@@ -911,7 +911,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
               style={{ overflow: "hidden" }}
             >
-              <div style={{ border: "1px solid var(--border-default)", borderRadius: 10, padding: "12px 14px", marginBottom: 8 }}>
+              <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "12px 14px", marginBottom: 8 }}>
                 {boilers.length > 1 && (
                   <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Boiler {idx + 1}
@@ -1041,7 +1041,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     return (
       <button key={key} type="button"
         onClick={() => toggleSpace(key as keyof Step2 & string)}
-        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: 10, cursor: "pointer", border: on ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)", background: on ? "#f9eaf3" : "var(--bg-card)", color: on ? ACCENT : "var(--text-secondary)" }}>
+        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: "var(--border-radius-md)", cursor: "pointer", border: on ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)", background: on ? "#f9eaf3" : "var(--bg-card)", color: on ? ACCENT : "var(--text-secondary)" }}>
         <Icon size={18} />
         <span style={{ fontSize: 11, fontWeight: 600 }}>{label}</span>
       </button>
@@ -1114,7 +1114,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               {/* Otro */}
               <button type="button"
                 onClick={() => setShowCustomInput((v) => !v)}
-                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: 10, cursor: "pointer", border: (showCustomInput || s2.customSpaces.length > 0) ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)", background: (showCustomInput || s2.customSpaces.length > 0) ? "#f9eaf3" : "var(--bg-card)", color: (showCustomInput || s2.customSpaces.length > 0) ? ACCENT : "var(--text-secondary)" }}>
+                style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: "var(--border-radius-md)", cursor: "pointer", border: (showCustomInput || s2.customSpaces.length > 0) ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)", background: (showCustomInput || s2.customSpaces.length > 0) ? "#f9eaf3" : "var(--bg-card)", color: (showCustomInput || s2.customSpaces.length > 0) ? ACCENT : "var(--text-secondary)" }}>
                 <Plus size={18} />
                 <span style={{ fontSize: 11, fontWeight: 600 }}>Otro</span>
               </button>
@@ -1130,7 +1130,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                   style={{ ...STEP_INPUT, flex: 1, fontSize: 13 }}
                 />
                 <button type="button" onClick={addCustomSpace}
-                  style={{ padding: "0 14px", borderRadius: 10, border: "none", background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  style={{ padding: "0 14px", borderRadius: "var(--border-radius-md)", border: "none", background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                   Agregar
                 </button>
               </div>
@@ -1178,9 +1178,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <button type="button" onClick={() => setBedEq(i, "bedCount", Math.max(1, bEq.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+                          <button type="button" onClick={() => setBedEq(i, "bedCount", Math.max(1, bEq.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
                           <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{bEq.bedCount}</span>
-                          <button type="button" onClick={() => setBedEq(i, "bedCount", bEq.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+                          <button type="button" onClick={() => setBedEq(i, "bedCount", bEq.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
                         </div>
                       </div>
                     </Expand>
@@ -1209,9 +1209,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
                         <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <button type="button" onClick={() => setCuartoServ("bedCount", Math.max(1, b.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+                          <button type="button" onClick={() => setCuartoServ("bedCount", Math.max(1, b.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
                           <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{b.bedCount}</span>
-                          <button type="button" onClick={() => setCuartoServ("bedCount", b.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: 6, border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+                          <button type="button" onClick={() => setCuartoServ("bedCount", b.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
                         </div>
                       </div>
                     </Expand>
@@ -1312,7 +1312,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         return (
           <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             {/* Paneles izquierdo / derecho */}
-            <div style={{ display: "flex", height: 560, border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
+            <div style={{ display: "flex", height: 560, border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow: "hidden" }}>
 
               {/* Panel izquierdo */}
               <div style={{ width: 220, flexShrink: 0, borderRight: "1px solid var(--border-default)", overflowY: "hidden", background: "var(--bg-page)" }}>
@@ -1390,7 +1390,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
             {/* Equipos funcionales (debajo de los paneles) */}
             {showFuncionales && (
-              <div style={{ border: "1px solid var(--border-default)", borderRadius: 12, padding: 16 }}>
+              <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                   <Wrench size={15} color={ACCENT} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Equipos funcionales</span>
@@ -1432,7 +1432,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         return (
           <div style={{ display: "grid", gap: 16 }}>
             {/* Info general */}
-            <div style={{ padding: 16, border: "1px solid var(--border-default)", borderRadius: 12, background: "var(--bg-card)", display: "grid", gap: 8 }}>
+            <div style={{ padding: 16, border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", display: "grid", gap: 8 }}>
               <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>{s1.name}</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
@@ -1452,7 +1452,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: `repeat(${groupsWithEq.length <= 4 ? 2 : groupsWithEq.length <= 6 ? 3 : groupsWithEq.length <= 10 ? Math.ceil(groupsWithEq.length / 2) : 5}, 1fr)`, gap: 10 }}>
                   {groupsWithEq.map((g) => (
-                    <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: 12, overflow: "hidden" }}>
+                    <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow: "hidden" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-input)" }}>
                         <g.Icon size={14} color={ACCENT} />
                         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>

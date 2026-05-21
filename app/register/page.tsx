@@ -24,7 +24,7 @@ const inputStyle: React.CSSProperties = {
   padding: ".65rem .9rem",
   background: "rgba(255,255,255,.08)",
   border: "1px solid rgba(255,255,255,.15)",
-  borderRadius: 8,
+  borderRadius: "var(--border-radius-md)",
   color: "#fff",
   fontSize: 14,
   outline: "none",
@@ -398,7 +398,7 @@ export default function RegisterPage() {
   function renderStep1() {
     const cardBase: React.CSSProperties = {
       border: "1px solid rgba(255,255,255,.15)",
-      borderRadius: 12,
+      borderRadius: "var(--border-radius-lg)",
       padding: "1.25rem 1rem",
       cursor: "pointer",
       transition: "all .15s",
@@ -508,7 +508,7 @@ export default function RegisterPage() {
               type="color"
               value={brandColor}
               onChange={(e) => setBrandColor(e.target.value)}
-              style={{ width: 44, height: 44, borderRadius: 8, border: "none", background: "none", cursor: "pointer", padding: 0 }}
+              style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", border: "none", background: "none", cursor: "pointer", padding: 0 }}
             />
             <input
               value={brandColor}
@@ -532,7 +532,7 @@ export default function RegisterPage() {
           {logoPreview ? (
             <div style={{ position: "relative", display: "inline-block" }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoPreview} alt="Logo preview" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 8, border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.05)" }} />
+              <img src={logoPreview} alt="Logo preview" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: "var(--border-radius-md)", border: "1px solid rgba(255,255,255,.2)", background: "rgba(255,255,255,.05)" }} />
               <button
                 type="button"
                 onClick={() => { setLogoFile(null); setLogoPreview(""); }}
@@ -545,7 +545,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "rgba(255,255,255,.06)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: 8, color: "rgba(255,255,255,.5)", fontSize: 13, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "rgba(255,255,255,.06)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: "var(--border-radius-md)", color: "rgba(255,255,255,.5)", fontSize: 13, cursor: "pointer" }}
             >
               <Upload size={14} />
               Subir logo
@@ -575,7 +575,7 @@ export default function RegisterPage() {
         >
           {logoPreview
             // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={logoPreview} alt="" style={{ width: 52, height: 52, objectFit: "contain", borderRadius: 4 }} />
+            ? <img src={logoPreview} alt="" style={{ width: 52, height: 52, objectFit: "contain", borderRadius: "var(--border-radius-sm)" }} />
             : orgType === "empresa" ? <Building2 size={32} color="#fff" /> : <User size={32} color="#fff" />}
         </div>
 
@@ -584,7 +584,7 @@ export default function RegisterPage() {
           <div style={{ fontSize: 13, color: "rgba(255,255,255,.4)", marginTop: 4 }}>{email}</div>
         </div>
 
-        <div style={{ width: "100%", background: "rgba(255,255,255,.05)", borderRadius: 10, padding: "1rem", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
+        <div style={{ width: "100%", background: "rgba(255,255,255,.05)", borderRadius: "var(--border-radius-md)", padding: "1rem", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
           {[
             { label: "Tipo", value: orgType === "empresa" ? "Empresa" : "Personal" },
             { label: "Nombre", value: compName },
@@ -633,7 +633,7 @@ export default function RegisterPage() {
       <button
         type="button"
         onClick={() => router.push("/login")}
-        style={{ position: "fixed", top: "1.5rem", left: "1.5rem", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", color: "rgba(255,255,255,.7)", borderRadius: 20, padding: ".4rem 1rem", fontSize: 12, cursor: "pointer", zIndex: 10 }}
+        style={{ position: "fixed", top: "1.5rem", left: "1.5rem", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", color: "rgba(255,255,255,.7)", borderRadius: "var(--border-radius-xl)", padding: ".4rem 1rem", fontSize: 12, cursor: "pointer", zIndex: 10 }}
       >
         ← Iniciar sesión
       </button>
@@ -646,7 +646,7 @@ export default function RegisterPage() {
           background: "rgba(255,255,255,.06)",
           backdropFilter: "blur(20px)",
           border: "1px solid rgba(255,255,255,.12)",
-          borderRadius: 16,
+          borderRadius: "var(--border-radius-xl)",
           padding: "2rem 1.75rem",
           width: "100%",
           maxWidth: cardMaxWidth,
@@ -695,7 +695,7 @@ export default function RegisterPage() {
 
         {/* Global error */}
         {globalError && (
-          <div style={{ marginTop: "1rem", background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.3)", borderRadius: 8, padding: ".6rem .9rem", fontSize: 13, color: "#fca5a5" }}>
+          <div style={{ marginTop: "1rem", background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding: ".6rem .9rem", fontSize: 13, color: "#fca5a5" }}>
             {globalError}
           </div>
         )}
@@ -706,7 +706,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={prevStep}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: ".65rem 1.1rem", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: 8, color: "rgba(255,255,255,.7)", fontSize: 14, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: ".65rem 1.1rem", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: "var(--border-radius-md)", color: "rgba(255,255,255,.7)", fontSize: 14, cursor: "pointer" }}
             >
               <ArrowLeft size={15} /> Atrás
             </button>
@@ -717,7 +717,7 @@ export default function RegisterPage() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: submitting ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: submitting ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
             >
               {submitting ? "Creando cuenta..." : (
                 <><CheckCircle size={15} /> Crear cuenta</>
@@ -728,7 +728,7 @@ export default function RegisterPage() {
               type="button"
               onClick={nextStep}
               disabled={validatingToken}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: 8, color: "#fff", fontSize: 14, fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
             >
               {validatingToken ? "Verificando..." : <>{" "}Continuar <ArrowRight size={15} /></>}
             </button>

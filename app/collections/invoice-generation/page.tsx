@@ -558,7 +558,7 @@ export default function InvoiceGenerationPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-amber)",
                 display: "grid",
                 placeItems: "center",
@@ -578,7 +578,7 @@ export default function InvoiceGenerationPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-purple)",
                 display: "grid",
                 placeItems: "center",
@@ -598,7 +598,7 @@ export default function InvoiceGenerationPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-green)",
                 display: "grid",
                 placeItems: "center",
@@ -618,7 +618,7 @@ export default function InvoiceGenerationPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--bg-card-hover)",
                 display: "grid",
                 placeItems: "center",
@@ -672,7 +672,7 @@ export default function InvoiceGenerationPage() {
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 background: "var(--badge-bg-red)",
                 color: "var(--badge-text-red)",
                 display: "inline-flex",
@@ -830,7 +830,7 @@ export default function InvoiceGenerationPage() {
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card)",
                         color: "var(--text-secondary)",
-                        borderRadius: 12,
+                        borderRadius: "var(--border-radius-lg)",
                         padding: "10px 14px",
                         fontSize: 14,
                         fontWeight: 700,
@@ -870,7 +870,7 @@ export default function InvoiceGenerationPage() {
                             key={`${group.lease_id}-${concept.concept_code}`}
                             style={{
                               border: "1px solid var(--border-default)",
-                              borderRadius: 14,
+                              borderRadius: "var(--border-radius-lg)",
                               background: "var(--bg-card-hover)",
                               padding: 14,
                               display: "grid",

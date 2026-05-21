@@ -110,7 +110,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
             aria-label="Abrir menú"
             style={{
               display: "flex", alignItems: "center", justifyContent: "center",
-              width: 36, height: 36, borderRadius: 10,
+              width: 36, height: 36, borderRadius: "var(--border-radius-md)",
               border: "1px solid var(--border-default)",
               background: "var(--bg-page)", color: "var(--text-muted)",
               cursor: "pointer", flexShrink: 0,
@@ -203,7 +203,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setSidebarOpen(false)}
-            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: 8, border: "none", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: "var(--border-radius-md)", border: "none", background: "rgba(255,255,255,0.08)", color: "rgba(255,255,255,0.7)", cursor: "pointer" }}
           >
             <X size={16} />
           </button>
@@ -213,7 +213,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
         <div style={{ padding: "16px 20px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
           <div
             style={{
-              width: 40, height: 40, borderRadius: 12,
+              width: 40, height: 40, borderRadius: "var(--border-radius-lg)",
               background: accent, display: "flex", alignItems: "center",
               justifyContent: "center", marginBottom: 10,
             }}
@@ -243,7 +243,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
                   alignItems: "center",
                   gap: 12,
                   padding: "12px 14px",
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   marginBottom: 4,
                   textDecoration: "none",
                   background: isActive ? accentBg : "transparent",
@@ -268,7 +268,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
             onClick={() => { setSidebarOpen(false); setSettingsOpen(true); }}
             style={{
               display: "flex", alignItems: "center", gap: 12,
-              padding: "12px 14px", borderRadius: 12,
+              padding: "12px 14px", borderRadius: "var(--border-radius-lg)",
               border: "none", background: "transparent",
               color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 500,
               cursor: "pointer", textAlign: "left", width: "100%",
@@ -282,7 +282,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
             onClick={handleLogout}
             style={{
               display: "flex", alignItems: "center", gap: 12,
-              padding: "12px 14px", borderRadius: 12,
+              padding: "12px 14px", borderRadius: "var(--border-radius-lg)",
               border: "none", background: "transparent",
               color: "rgba(248,113,113,0.9)", fontSize: 14, fontWeight: 500,
               cursor: "pointer", textAlign: "left", width: "100%",

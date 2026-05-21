@@ -33,7 +33,7 @@ const BuildingsMap = dynamic(() => import("@/components/BuildingsMap"), {
       style={{
         height: 600,
         width: "100%",
-        borderRadius: 12,
+        borderRadius: "var(--border-radius-lg)",
         background: "var(--bg-card-hover)",
         display: "flex",
         alignItems: "center",

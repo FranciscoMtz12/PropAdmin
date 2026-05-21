@@ -435,7 +435,7 @@ export default function UnitAssetsPage() {
                         style={{
                           width: "44px",
                           height: "44px",
-                          borderRadius: "14px",
+                          borderRadius: "var(--border-radius-lg)",
                           background: "var(--icon-bg-neutral)",
                           display: "flex",
                           alignItems: "center",
@@ -490,7 +490,7 @@ export default function UnitAssetsPage() {
                         color: "var(--text-secondary)",
                         background: "var(--bg-page)",
                         border: "1px solid var(--border-default)",
-                        borderRadius: "14px",
+                        borderRadius: "var(--border-radius-lg)",
                         padding: "12px 14px",
                       }}
                     >

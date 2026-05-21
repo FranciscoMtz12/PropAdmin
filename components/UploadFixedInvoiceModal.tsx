@@ -103,7 +103,7 @@ export default function UploadFixedInvoiceModal({
 
       {meter.fixed_amount > 0 && (
         <div style={{
-          padding: "10px 14px", background: "#eff6ff", borderRadius: 10, marginBottom: 14,
+          padding: "10px 14px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 14,
           fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8,
         }}>
           <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
@@ -138,7 +138,7 @@ export default function UploadFixedInvoiceModal({
           <div
             onClick={() => fileRef.current?.click()}
             style={{
-              padding: "14px", borderRadius: 10, cursor: "pointer", textAlign: "center",
+              padding: "14px", borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "center",
               border: `2px dashed ${pdfFile ? "#15803d" : "var(--border-default)"}`,
               background: pdfFile ? "#dcfce7" : "var(--bg-card)",
             }}

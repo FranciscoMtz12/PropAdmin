@@ -518,7 +518,7 @@ export default function AnalyticsPage() {
       <PageHeader title="Analytics" titleIcon={<BarChart2 size={18} />} />
 
       {/* ════ SECCIÓN 1: Stat bar compacta ════════════════════════════ */}
-      <div className="analytics-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:12, overflow:"hidden", marginBottom:"1rem" }}>
+      <div className="analytics-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow:"hidden", marginBottom:"1rem" }}>
         {[
           { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"#10B981" },
           { label:"Personas", value:estimatedPeople, sub:"estimadas", color:"#3B82F6" },
@@ -549,7 +549,7 @@ export default function AnalyticsPage() {
                     <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                       {b.name}
                     </div>
-                    <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius:5, overflow:"hidden" }}>
+                    <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
                       <div style={{ width:`${b.rate}%`, height:"100%", background:color, transition:"width .4s" }} />
                     </div>
                     <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:70, textAlign:"right" }}>
@@ -573,7 +573,7 @@ export default function AnalyticsPage() {
                 const u = unitById.get(l.unit_id);
                 const t = tenantById.get(l.tenant_id);
                 return (
-                  <div key={l.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius:8 }}>
+                  <div key={l.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
                     <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
                       <span style={{ fontSize:13, fontWeight:600, color:"var(--text-primary)" }}>{t?.full_name || "—"}</span>
                       <span style={{ fontSize:11, color:"var(--text-muted)" }}>{u?.display_code || u?.unit_number || "—"}</span>
@@ -649,7 +649,7 @@ export default function AnalyticsPage() {
                 <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                   {r.label} · {r.building}
                 </div>
-                <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius:5, overflow:"hidden" }}>
+                <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
                   <div style={{ width:`${(r.count / maxRotation) * 100}%`, height:"100%", background:"#EC4899" }} />
                 </div>
                 <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
@@ -716,7 +716,7 @@ export default function AnalyticsPage() {
               <XAxis dataKey="mes" tick={{ fontSize:11, fill:"var(--text-muted)" }} />
               <YAxis yAxisId="left" tick={{ fontSize:11, fill:"var(--text-muted)" }} tickFormatter={(v) => `${v}%`} />
               <YAxis yAxisId="right" orientation="right" tick={{ fontSize:11, fill:"var(--text-muted)" }} />
-              <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius:8, fontSize:12 }} />
+              <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", fontSize:12 }} />
               <Legend wrapperStyle={{ fontSize:11, paddingTop:6 }} />
               <Line yAxisId="left" type="monotone" dataKey="ocupacion" name="% Ocupación" stroke="#10B981" strokeWidth={2.5} dot={{ r:3 }} />
               <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
@@ -740,7 +740,7 @@ export default function AnalyticsPage() {
                   <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                     {b.name}
                   </div>
-                  <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius:5, overflow:"hidden" }}>
+                  <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
                     <div style={{ width:`${Math.min(100, b.rate)}%`, height:"100%", background:color, transition:"width .4s" }} />
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", minWidth:140, lineHeight:1.3 }}>
@@ -852,7 +852,7 @@ export default function AnalyticsPage() {
         )}
 
         {avgRentByTypology.length > 0 && (
-          <div style={{ marginTop: 16, padding: 14, background: "var(--bg-page)", borderRadius: 10, border: "1px solid var(--border-default)" }}>
+          <div style={{ marginTop: 16, padding: 14, background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)" }}>
             <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px", marginBottom: 10 }}>
               RENTA PROMEDIO POR TIPOLOGÍA
             </div>
@@ -864,7 +864,7 @@ export default function AnalyticsPage() {
                   background: "var(--bg-card)",
                   border: "1px solid var(--border-default)",
                   borderLeft: `4px solid ${BUILDING_COLORS[i % BUILDING_COLORS.length]}`,
-                  borderRadius: 8,
+                  borderRadius: "var(--border-radius-md)",
                 }}>
                   <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{t.name}</div>
                   <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>

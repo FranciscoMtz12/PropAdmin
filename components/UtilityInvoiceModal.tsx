@@ -480,7 +480,7 @@ export default function UtilityInvoiceModal({
       </div>
 
       {bucketMissing && (
-        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: 10, marginBottom: 14, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 14, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           Crea el bucket <strong>utility-invoices</strong> en Supabase Storage para habilitar PDFs.
         </div>
@@ -535,7 +535,7 @@ export default function UtilityInvoiceModal({
           <div
             onClick={() => fileRef.current?.click()}
             style={{
-              padding: "16px", borderRadius: 12, cursor: "pointer", textAlign: "center",
+              padding: "16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer", textAlign: "center",
               border: `2px dashed ${pdfFile ? "#15803d" : existingInvoice?.pdf_path ? "#1d4ed8" : "var(--border-default)"}`,
               background: pdfFile ? "#dcfce7" : existingInvoice?.pdf_path ? "#eff6ff" : "var(--bg-card)",
             }}
@@ -558,7 +558,7 @@ export default function UtilityInvoiceModal({
 
         {/* Dedicated + tenant contract */}
         {isTenantContract && amountValid && (
-          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
+          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             Contrato directo del inquilino — se registra solo como referencia, sin generar cobro.
           </div>
@@ -566,7 +566,7 @@ export default function UtilityInvoiceModal({
 
         {/* Dedicated + company contract */}
         {!isShared && !isTenantContract && amountValid && (
-          <div style={{ padding: "12px 14px", background: "#eff6ff", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ padding: "12px 14px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             El cobro de <strong>${formattedAmount}</strong> se asignará directamente a Depa{" "}
             <strong>{dedicatedUnit?.unit_number ?? "—"}</strong>.
@@ -575,7 +575,7 @@ export default function UtilityInvoiceModal({
 
         {/* Shared + included */}
         {isShared && isIncluded && amountValid && (
-          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: 10, marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
+          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             Gasto del edificio — se registra sin generar cobros a inquilinos.
           </div>
@@ -585,7 +585,7 @@ export default function UtilityInvoiceModal({
         {isShared && !isIncluded && amountValid && !loadingData && (
           <div style={{ marginBottom: 16 }}>
             {distRows.length === 0 ? (
-              <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: 10, fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 No hay unidades con inquilino activo para distribuir.
               </div>

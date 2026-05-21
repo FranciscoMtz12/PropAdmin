@@ -167,7 +167,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       type="button"
       onClick={onToggle}
       style={{
-        position: "relative", width: 48, height: 26, borderRadius: 13,
+        position: "relative", width: 48, height: 26, borderRadius: "var(--border-radius-lg)",
         border: "none", background: on ? "var(--accent, #8B2252)" : "var(--border-default)",
         cursor: "pointer", transition: "background 0.2s", padding: 0, flexShrink: 0,
       }}
@@ -649,7 +649,7 @@ export default function SettingsPage() {
             {/* Datos fiscales */}
             <SectionCard title="Datos fiscales">
               {pendingFiscal && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: "var(--accent, #8B2252)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
                 </div>
@@ -701,7 +701,7 @@ export default function SettingsPage() {
             {/* Identidad de marca */}
             <SectionCard title="Identidad de marca">
               {pendingMarca && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8, background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                   <span style={{ fontSize: 12, color: "var(--accent, #8B2252)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
                 </div>
@@ -711,9 +711,9 @@ export default function SettingsPage() {
                 <div>
                   <label style={LS}>Color de marca</label>
                   <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <input type="color" value={mColor} onChange={(e) => setMColor(e.target.value)} style={{ width: 44, height: 44, borderRadius: 8, border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none" }} />
+                    <input type="color" value={mColor} onChange={(e) => setMColor(e.target.value)} style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none" }} />
                     <input style={{ ...IS, width: "auto", flex: 1, maxWidth: 160 }} value={mColor} onChange={(e) => setMColor(e.target.value)} maxLength={7} placeholder="#8B2252" />
-                    <div style={{ width: 44, height: 44, borderRadius: 8, background: mColor, border: "1px solid var(--border-default)" }} />
+                    <div style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", background: mColor, border: "1px solid var(--border-default)" }} />
                   </div>
                 </div>
                 {/* Logos */}
@@ -733,7 +733,7 @@ export default function SettingsPage() {
                       {preview ? (
                         <div style={{ position: "relative", display: "inline-block" }}>
                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={preview} alt="" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: 8, border: "1px solid var(--border-default)", background: dark ? "#1a1a2e" : "#f5f5f5" }} />
+                          <img src={preview} alt="" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: dark ? "#1a1a2e" : "#f5f5f5" }} />
                           <button
                             type="button"
                             onClick={() => {
@@ -749,7 +749,7 @@ export default function SettingsPage() {
                         <button
                           type="button"
                           onClick={() => (ref as React.RefObject<HTMLInputElement>).current?.click()}
-                          style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: 8, color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}
                         >
                           <Upload size={14} /> Subir logo
                         </button>
@@ -771,16 +771,16 @@ export default function SettingsPage() {
             {/* Métricas */}
             <AppGrid minWidth={200}>
               <MetricCard label="Total" value={String(totalUsers)} helper="Todos los activos"
-                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="#2563EB" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="#2563EB" /></div>}
               />
               <MetricCard label="Admins" value={String(totalAdmins)} helper="Roles administrativos"
-                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-purple)", display: "grid", placeItems: "center" }}><Shield size={18} color="#7C3AED" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-purple)", display: "grid", placeItems: "center" }}><Shield size={18} color="#7C3AED" /></div>}
               />
               <MetricCard label="Campo" value={String(totalField)} helper="Equipo operativo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="#16A34A" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="#16A34A" /></div>}
               />
               <MetricCard label="Inquilinos" value={String(totalTenants)} helper="Portal activo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: 10, background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="#D97706" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="#D97706" /></div>}
               />
             </AppGrid>
 
@@ -832,7 +832,7 @@ export default function SettingsPage() {
                               onClick={() => toast("Función no disponible aún")}
                               disabled={row.id === user!.id}
                               title={row.id === user!.id ? "No puedes desactivarte" : "Desactivar usuario"}
-                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: 8, padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "#DC2626", display: "inline-flex", alignItems: "center" }}
+                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "#DC2626", display: "inline-flex", alignItems: "center" }}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -860,17 +860,17 @@ export default function SettingsPage() {
                 type="button"
                 onClick={createInvitation}
                 disabled={sendingInv}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: 8, color: "#fff", fontSize: 13, fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
               >
                 <Send size={14} /> {sendingInv ? "Generando..." : "Generar invitación"}
               </button>
               {invLink && (
-                <div style={{ marginTop: 12, background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 8, padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                <div style={{ marginTop: 12, background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
                   <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, wordBreak: "break-all" }}>{invLink}</span>
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(invLink).then(() => toast.success("Copiado"))}
-                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, rgba(139,34,82,.15))", border: "1px solid var(--accent, #8B2252)", borderRadius: 6, color: "var(--accent, #8B2252)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, rgba(139,34,82,.15))", border: "1px solid var(--accent, #8B2252)", borderRadius: "var(--border-radius-sm)", color: "var(--accent, #8B2252)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     Copiar enlace
                   </button>
@@ -891,7 +891,7 @@ export default function SettingsPage() {
                       const used    = Boolean(inv.used_at);
                       const active  = !used && !expired;
                       return (
-                        <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.75rem 1rem", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: 10, flexWrap: "wrap" }}>
+                        <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.75rem 1rem", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", flexWrap: "wrap" }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>
                               {inv.email ?? <span style={{ color: "var(--text-secondary)" }}>Sin email</span>}
@@ -905,10 +905,10 @@ export default function SettingsPage() {
                           </span>
                           {active && (
                             <>
-                              <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: 6, color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
+                              <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
                                 Copiar
                               </button>
-                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: 6, color: "#E24B4A", fontSize: 12, cursor: "pointer" }}>
+                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: "var(--border-radius-sm)", color: "#E24B4A", fontSize: 12, cursor: "pointer" }}>
                                 <Trash2 size={12} /> Revocar
                               </button>
                             </>
@@ -957,7 +957,7 @@ export default function SettingsPage() {
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                           <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                          {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: 20, padding: "1px 7px" }}>Activo</span>}
+                          {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                         </div>
                         <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                       </div>
@@ -1002,7 +1002,7 @@ export default function SettingsPage() {
                     {/* Preview */}
                     <div style={{ background: bgPage, borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
                       <div style={{ background: bgCard, borderRadius: 8, padding: "10px 14px", border: `1px solid ${border}`, display: "flex", alignItems: "center", gap: 10 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: 8, background: "var(--accent)", flexShrink: 0 }} />
+                        <div style={{ width: 22, height: 22, borderRadius: "var(--border-radius-md)", background: "var(--accent)", flexShrink: 0 }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ height: 7, borderRadius: 4, background: textBar, opacity: 0.35, marginBottom: 4 }} />
                           <div style={{ height: 5, borderRadius: 4, background: subtextBar, opacity: 0.5, width: "55%" }} />
@@ -1017,7 +1017,7 @@ export default function SettingsPage() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                         <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                        {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: 20, padding: "1px 7px" }}>Activo</span>}
+                        {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                       </div>
                       <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                     </div>
@@ -1130,7 +1130,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => toast("Función de exportación próximamente disponible")}
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid #E24B4A", borderRadius: 8, color: "#E24B4A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid #E24B4A", borderRadius: "var(--border-radius-md)", color: "#E24B4A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
               >
                 <Download size={15} /> Exportar todos los datos
               </button>

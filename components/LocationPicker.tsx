@@ -173,7 +173,7 @@ export default function LocationPicker({
               width: "100%",
               padding: "11px 12px 11px 38px",
               border: "1px solid var(--border-default)",
-              borderRadius: 10,
+              borderRadius: "var(--border-radius-md)",
               background: "var(--bg-input)",
               color: "var(--text-primary)",
               fontSize: 14,
@@ -194,7 +194,7 @@ export default function LocationPicker({
               overflowY: "auto",
               background: "var(--bg-card)",
               border: "1px solid var(--border-default)",
-              borderRadius: 10,
+              borderRadius: "var(--border-radius-md)",
               boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
               zIndex: 1001,
             }}
@@ -236,7 +236,7 @@ export default function LocationPicker({
         style={{
           height: 280,
           width: "100%",
-          borderRadius: 8,
+          borderRadius: "var(--border-radius-md)",
           overflow: "hidden",
           border: "1px solid var(--border-default)",
         }}

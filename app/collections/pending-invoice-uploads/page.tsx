@@ -255,7 +255,7 @@ export default function PendingInvoiceUploadsPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: filteredRows.length > 0
                   ? "var(--icon-bg-amber)"
                   : "var(--icon-bg-neutral)",
@@ -282,7 +282,7 @@ export default function PendingInvoiceUploadsPage() {
               style={{
                 width: 36,
                 height: 36,
-                borderRadius: 10,
+                borderRadius: "var(--border-radius-md)",
                 background: "var(--icon-bg-blue)",
                 display: "grid",
                 placeItems: "center",
@@ -322,7 +322,7 @@ export default function PendingInvoiceUploadsPage() {
               style={{
                 width: 44,
                 height: 44,
-                borderRadius: 14,
+                borderRadius: "var(--border-radius-lg)",
                 background: "var(--icon-bg-red)",
                 color: "var(--icon-color-red)",
                 display: "inline-flex",

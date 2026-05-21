@@ -166,20 +166,20 @@ function StatusPill({ due_date, payment_status, todayStr }: {
 
 const ACT_PRIMARY: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
-  padding: "6px 14px", borderRadius: 8, border: "none",
+  padding: "6px 14px", borderRadius: "var(--border-radius-md)", border: "none",
   background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
 }
 
 const ACT_GHOST: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
-  padding: "6px 14px", borderRadius: 8,
+  padding: "6px 14px", borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)", background: "transparent",
   cursor: "pointer", fontSize: 13, color: "var(--text-secondary)",
 }
 
 const ACT_DANGER: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
-  padding: "6px 14px", borderRadius: 8,
+  padding: "6px 14px", borderRadius: "var(--border-radius-md)",
   border: "1px solid #dc2626", background: "transparent",
   cursor: "pointer", fontSize: 13, color: "#dc2626",
 }
@@ -189,14 +189,14 @@ const ACT_DANGER: React.CSSProperties = {
 const CARD: React.CSSProperties = {
   background: "var(--bg-card)",
   border: "1px solid var(--border-default)",
-  borderRadius: 16,
+  borderRadius: "var(--border-radius-xl)",
   overflow: "hidden",
   boxShadow: "var(--shadow-card)",
 }
 
 /* Individual payment item card — matches collections' tenantCardStyle */
 const ITEM_CARD: React.CSSProperties = {
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   overflow: "hidden",
@@ -210,7 +210,7 @@ const ITEMS_GRID: React.CSSProperties = {
 }
 
 const CHEVRON_WRAP: React.CSSProperties = {
-  width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+  width: 28, height: 28, borderRadius: "var(--border-radius-md)", flexShrink: 0,
   border: "1px solid var(--border-default)", background: "var(--bg-page)",
   color: "var(--text-muted)", display: "flex", alignItems: "center", justifyContent: "center",
 }
@@ -914,7 +914,7 @@ export default function PaymentsPage() {
                             <button
                               type="button"
                               onClick={() => void markAllReportPaid(report)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
                             >
                               <CheckCircle2 size={13} /> Marcar todo pagado
                             </button>
@@ -1215,7 +1215,7 @@ export default function PaymentsPage() {
                     type="button"
                     onClick={() => setNewReportItems(prev => prev.filter((_, i) => i !== idx))}
                     disabled={newReportItems.length === 1}
-                    style={{ width: 32, height: 32, borderRadius: 6, border: "1px solid #dc2626", background: "transparent", color: "#dc2626", cursor: newReportItems.length === 1 ? "default" : "pointer", opacity: newReportItems.length === 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                    style={{ width: 32, height: 32, borderRadius: "var(--border-radius-sm)", border: "1px solid #dc2626", background: "transparent", color: "#dc2626", cursor: newReportItems.length === 1 ? "default" : "pointer", opacity: newReportItems.length === 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -1225,7 +1225,7 @@ export default function PaymentsPage() {
             <button
               type="button"
               onClick={() => setNewReportItems(prev => [...prev, { description: "", vendor_name: "", amount: "", due_date: todayStr }])}
-              style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer" }}
+              style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer" }}
             >
               <Plus size={13} /> Agregar item
             </button>
@@ -1235,7 +1235,7 @@ export default function PaymentsPage() {
             <input ref={reportPdfRef} type="file" accept=".pdf,image/*" onChange={e => setReportPdfFile(e.target.files?.[0] || null)} style={{ display: "none" }} />
             <div
               onClick={() => reportPdfRef.current?.click()}
-              style={{ padding: "14px", borderRadius: 10, cursor: "pointer", textAlign: "center", border: `2px dashed ${reportPdfFile ? "rgba(16,185,129,0.5)" : "var(--border-default)"}`, background: reportPdfFile ? "rgba(16,185,129,0.08)" : "var(--bg-card)" }}
+              style={{ padding: "14px", borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "center", border: `2px dashed ${reportPdfFile ? "rgba(16,185,129,0.5)" : "var(--border-default)"}`, background: reportPdfFile ? "rgba(16,185,129,0.08)" : "var(--bg-card)" }}
             >
               <span style={{ fontSize: 13, color: reportPdfFile ? "#10B981" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{reportPdfFile ? reportPdfFile.name : "Toca para adjuntar PDF"}

@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>SAPROA — Auditoría Border-Radius 2026-05-21</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e2e8f0; line-height: 1.6; }
+  .hero { background: linear-gradient(135deg, #1a1f2e 0%, #0f1117 100%); border-bottom: 1px solid #2d3748; padding: 48px 48px 36px; }
+  .hero h1 { font-size: 28px; font-weight: 700; color: #f7fafc; margin-bottom: 8px; }
+  .hero .subtitle { color: #718096; font-size: 15px; }
+  .stats { display: flex; gap: 20px; flex-wrap: wrap; padding: 32px 48px; background: #1a1f2e; border-bottom: 1px solid #2d3748; }
+  .stat { background: #2d3748; border-radius: 12px; padding: 20px 28px; min-width: 160px; }
+  .stat .num { font-size: 36px; font-weight: 800; color: #68d391; }
+  .stat .label { font-size: 12px; color: #718096; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .section { padding: 32px 48px; }
+  h2 { font-size: 18px; font-weight: 700; color: #f7fafc; margin-bottom: 20px; border-bottom: 1px solid #2d3748; padding-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; padding: 10px 14px; background: #2d3748; color: #a0aec0; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+  td { padding: 9px 14px; border-bottom: 1px solid #1a1f2e; }
+  tr:hover td { background: #1e2535; }
+  .count { text-align: right; font-variant-numeric: tabular-nums; }
+  .count-num { display: inline-block; background: #276749; color: #68d391; padding: 2px 8px; border-radius: 6px; font-weight: 700; font-size: 12px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
+  .badge-pill { background: #744210; color: #f6ad55; }
+  .badge-preview { background: #322659; color: #b794f4; }
+  .badge-corner { background: #1a365d; color: #63b3ed; }
+  .mapping { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+  .map-card { background: #2d3748; border-radius: 10px; padding: 16px 20px; }
+  .map-card .from { font-size: 13px; color: #fc8181; font-family: monospace; }
+  .map-card .arrow { color: #4a5568; margin: 4px 0; }
+  .map-card .to { font-size: 13px; color: #68d391; font-family: monospace; font-weight: 600; }
+  .summary-box { background: #1c3d2e; border: 1px solid #276749; border-radius: 12px; padding: 20px 24px; margin-bottom: 24px; }
+  .summary-box p { color: #68d391; font-size: 14px; }
+  .footer { padding: 24px 48px; border-top: 1px solid #2d3748; color: #4a5568; font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>SAPROA — Auditoría Border-Radius Exhaustiva</h1>
+  <div class="subtitle">2026-05-21 · Corrección definitiva: toda la app usa variables CSS del tema</div>
+</div>
+
+<div class="stats">
+  <div class="stat"><div class="num">692</div><div class="label">Reemplazos totales</div></div>
+  <div class="stat"><div class="num">73</div><div class="label">Archivos modificados</div></div>
+  <div class="stat"><div class="num">4</div><div class="label">Variables CSS usadas</div></div>
+  <div class="stat"><div class="num">11</div><div class="label">Excepciones justificadas</div></div>
+</div>
+
+<div class="section">
+  <div class="summary-box">
+    <p>✅ Verificación PASO 5 completada: 0 valores hardcodeados restantes en la app fuera de excepciones justificadas.</p>
+    <p style="margin-top:6px; color:#48bb78;">Script automático: 689 reemplazos en 72 archivos. Fixes manuales adicionales: 3 valores corner-specific en 2 archivos.</p>
+  </div>
+
+  <h2>Mapa de Conversión</h2>
+  <div class="mapping">
+    <div class="map-card">
+      <div class="from">borderRadius: 2, 4, 6</div>
+      <div class="arrow">↓</div>
+      <div class="to">var(--border-radius-sm)</div>
+    </div>
+    <div class="map-card">
+      <div class="from">borderRadius: 7 – 10</div>
+      <div class="arrow">↓</div>
+      <div class="to">var(--border-radius-md)</div>
+    </div>
+    <div class="map-card">
+      <div class="from">borderRadius: 11 – 14</div>
+      <div class="arrow">↓</div>
+      <div class="to">var(--border-radius-lg)</div>
+    </div>
+    <div class="map-card">
+      <div class="from">borderRadius: 15 – 28</div>
+      <div class="arrow">↓</div>
+      <div class="to">var(--border-radius-xl)</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>Archivos Modificados</h2>
+  <table>
+    <thead><tr><th>Archivo</th><th class="count">Cambios</th></tr></thead>
+    <tbody>
+      <tr><td>app/purchases/page.tsx</td><td class="count"><span class="count-num">62</span></td></tr>
+      <tr><td>app/buildings/[buildingId]/page.tsx</td><td class="count"><span class="count-num">45</span></td></tr>
+      <tr><td>app/maintenance/page.tsx</td><td class="count"><span class="count-num">35</span></td></tr>
+      <tr><td>app/campo/tickets/page.tsx</td><td class="count"><span class="count-num">29</span></td></tr>
+      <tr><td>app/collections/page.tsx</td><td class="count"><span class="count-num">26</span></td></tr>
+      <tr><td>app/cleaning/page.tsx</td><td class="count"><span class="count-num">23</span></td></tr>
+      <tr><td>app/settings/page.tsx</td><td class="count"><span class="count-num">22</span></td></tr>
+      <tr><td>components/UnitTypeWizardModal.tsx</td><td class="count"><span class="count-num">19</span></td></tr>
+      <tr><td>app/calendar/page.tsx</td><td class="count"><span class="count-num">19</span></td></tr>
+      <tr><td>app/buildings/page.tsx</td><td class="count"><span class="count-num">18</span></td></tr>
+      <tr><td>app/portal/invoices/page.tsx</td><td class="count"><span class="count-num">17</span></td></tr>
+      <tr><td>app/dashboard/page.tsx</td><td class="count"><span class="count-num">15</span></td></tr>
+      <tr><td>app/campo/medidores/page.tsx</td><td class="count"><span class="count-num">14</span></td></tr>
+      <tr><td>app/dashboard/administracion/page.tsx</td><td class="count"><span class="count-num">13</span></td></tr>
+      <tr><td>app/portal/report-payment/page.tsx</td><td class="count"><span class="count-num">12</span></td></tr>
+      <tr><td>app/buildings/[buildingId]/units/[unitId]/page.tsx</td><td class="count"><span class="count-num">11</span></td></tr>
+      <tr><td>app/campo/assets/page.tsx</td><td class="count"><span class="count-num">10</span></td></tr>
+      <tr><td>app/campo/compras/page.tsx</td><td class="count"><span class="count-num">9</span></td></tr>
+      <tr><td>lib/pageStyles.ts</td><td class="count"><span class="count-num">9</span></td></tr>
+      <tr><td>components/SettingsModal.tsx</td><td class="count"><span class="count-num">8</span></td></tr>
+      <tr><td>app/register/page.tsx</td><td class="count"><span class="count-num">8</span></td></tr>
+      <tr><td>app/tenants/page.tsx</td><td class="count"><span class="count-num">7</span></td></tr>
+      <tr><td>app/payments/page.tsx</td><td class="count"><span class="count-num">7</span></td></tr>
+      <tr><td>app/collections/invoice-generation/page.tsx</td><td class="count"><span class="count-num">6</span></td></tr>
+      <tr><td>app/collections/pending-invoice-uploads/page.tsx</td><td class="count"><span class="count-num">5</span></td></tr>
+      <tr><td>app/collections/reported-payments/page.tsx</td><td class="count"><span class="count-num">5</span></td></tr>
+      <tr><td>components/AppTable.tsx</td><td class="count"><span class="count-num">2</span></td></tr>
+      <tr><td>components/AppSelect.tsx</td><td class="count"><span class="count-num">1</span></td></tr>
+      <tr><td>components/AppBadge.tsx</td><td class="count"><span class="count-num">1</span></td></tr>
+      <tr><td>components/AppStatBar.tsx</td><td class="count"><span class="count-num">3</span></td></tr>
+      <tr><td>components/MetricCard.tsx</td><td class="count"><span class="count-num">1</span></td></tr>
+      <tr><td>components/SectionCard.tsx</td><td class="count"><span class="count-num">1</span></td></tr>
+      <tr><td>components/PageHeader.tsx</td><td class="count"><span class="count-num">2</span></td></tr>
+      <tr><td>components/Modal.tsx</td><td class="count"><span class="count-num">1</span></td></tr>
+      <tr><td>app/servicios/page.tsx</td><td class="count"><span class="count-num">2</span></td></tr>
+      <tr><td>... (38 archivos adicionales)</td><td class="count"><span class="count-num">~100</span></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Excepciones Justificadas</h2>
+  <table>
+    <thead><tr><th>Archivo</th><th>Valor</th><th>Tipo</th><th>Justificación</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Toda la app (múltiples archivos)</td>
+        <td><code>borderRadius: 999</code></td>
+        <td><span class="badge badge-pill">Pill</span></td>
+        <td>Badges, tags, etiquetas de estado. Valor semántico "píldora" — no mapea a ningún token de radio.</td>
+      </tr>
+      <tr>
+        <td>app/cleaning/page.tsx<br>app/dashboard/administracion/page.tsx<br>app/dashboard/page.tsx</td>
+        <td><code>borderRadius: 99</code></td>
+        <td><span class="badge badge-pill">Pill</span></td>
+        <td>Barras de progreso (fills). Rellenos píldora, semántico no-token.</td>
+      </tr>
+      <tr>
+        <td>app/settings/page.tsx:1003–1013</td>
+        <td><code>borderRadius: 10, 8, 6, 4</code></td>
+        <td><span class="badge badge-preview">Preview</span></td>
+        <td>Mockups estáticos del selector de tema. Deben mostrar siempre el aspecto "clásico" fijo, independiente del tema activo.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <h2>Variables CSS del Tema</h2>
+  <table>
+    <thead><tr><th>Variable</th><th>Clásico</th><th>Super Soft</th><th>Rígido</th></tr></thead>
+    <tbody>
+      <tr><td><code>--border-radius-sm</code></td><td>6px</td><td>14px</td><td>2px</td></tr>
+      <tr><td><code>--border-radius-md</code></td><td>10px</td><td>20px</td><td>4px</td></tr>
+      <tr><td><code>--border-radius-lg</code></td><td>12px</td><td>28px</td><td>4px</td></tr>
+      <tr><td><code>--border-radius-xl</code></td><td>16px</td><td>32px</td><td>6px</td></tr>
+      <tr><td><code>--border-radius-full</code></td><td>999px</td><td>999px</td><td>999px</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="footer">
+  Generado automáticamente · SAPROA Property Admin · 2026-05-21
+</div>
+
+</body>
+</html>

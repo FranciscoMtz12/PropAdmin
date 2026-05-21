@@ -1209,7 +1209,7 @@ export default function BuildingUnitsPage() {
                   }}
                   style={{
                     display: "flex", alignItems: "center", gap: 14,
-                    padding: "12px 16px", borderRadius: 12,
+                    padding: "12px 16px", borderRadius: "var(--border-radius-lg)",
                     border: "1.5px solid var(--border-default)",
                     background: "var(--bg-card)",
                     cursor: "pointer", textAlign: "left",
@@ -1391,7 +1391,7 @@ export default function BuildingUnitsPage() {
           {createCount > 1 && createUnitNumber.trim() ? (
             <div style={{
               padding: "10px 14px",
-              borderRadius: 10,
+              borderRadius: "var(--border-radius-md)",
               background: "var(--icon-bg-blue)",
               border: "1px solid var(--metric-border-neutral)",
               marginBottom: 12,
@@ -1476,7 +1476,7 @@ function TypePreview({ type }: { type: UnitType }) {
         display: "flex",
         gap: 12,
         padding: "10px 14px",
-        borderRadius: 10,
+        borderRadius: "var(--border-radius-md)",
         background: "var(--bg-page)",
         border: "1px solid var(--border-default)",
         marginBottom: 16,

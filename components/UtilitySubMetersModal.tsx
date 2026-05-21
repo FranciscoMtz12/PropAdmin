@@ -109,7 +109,7 @@ export default function UtilitySubMetersModal({
 
   return (
     <Modal open title={modalTitle} onClose={onClose} maxWidth="640px">
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: 12, background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
         <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} />
         <span>Marca las unidades conectadas a este medidor. La lectura base puede ser 0 si no la conoces.</span>
       </div>
@@ -126,7 +126,7 @@ export default function UtilitySubMetersModal({
             <div
               key={unit.id}
               style={{
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 border: checked ? "1px solid #8B2252" : "1px solid var(--border-default)",
                 background: checked ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
                 padding: "12px 14px",

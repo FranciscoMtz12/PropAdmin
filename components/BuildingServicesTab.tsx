@@ -87,7 +87,7 @@ function MeterRow({
             {meter.provider_name ?? "Sin proveedor"}
           </span>
           {meter.meter_number && (
-            <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)", padding: "1px 6px", background: "var(--bg-page, #f8fafc)", border: "1px solid var(--border-default)", borderRadius: 4 }}>
+            <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)", padding: "1px 6px", background: "var(--bg-page, #f8fafc)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)" }}>
               {meter.meter_number}
             </span>
           )}
@@ -172,7 +172,7 @@ function MeterRow({
 function ghostBtn(extra?: React.CSSProperties): React.CSSProperties {
   return {
     display: "inline-flex", alignItems: "center", gap: 4,
-    fontSize: 11, padding: "3px 8px", borderRadius: 6, cursor: "pointer",
+    fontSize: 11, padding: "3px 8px", borderRadius: "var(--border-radius-sm)", cursor: "pointer",
     border: "1px solid var(--border-default)", background: "transparent",
     color: "var(--text-secondary)",
     ...extra,
@@ -304,7 +304,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
         <button
           type="button"
           onClick={() => { setEditingMeter(null); setMeterModalOpen(true) }}
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 12px", borderRadius: 7, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
         >
           <Plus size={12} />Agregar servicio
         </button>
@@ -317,7 +317,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
           <button
             type="button"
             onClick={() => { setEditingMeter(null); setMeterModalOpen(true) }}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 14px", borderRadius: 7, border: "1px solid var(--accent, #8B2252)", background: "transparent", color: "var(--accent, #8B2252)", cursor: "pointer", fontWeight: 600 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 14px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--accent, #8B2252)", background: "transparent", color: "var(--accent, #8B2252)", cursor: "pointer", fontWeight: 600 }}
           >
             <Plus size={12} />Agregar servicio
           </button>
@@ -341,7 +341,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
           <button
             type="button"
             onClick={() => { setEditingMeter(ph); setMeterModalOpen(true) }}
-            style={{ fontSize: 12, padding: "4px 12px", borderRadius: 6, border: "1px dashed #D97706", background: "transparent", color: "#D97706", cursor: "pointer", fontWeight: 600 }}
+            style={{ fontSize: 12, padding: "4px 12px", borderRadius: "var(--border-radius-sm)", border: "1px dashed #D97706", background: "transparent", color: "#D97706", cursor: "pointer", fontWeight: 600 }}
           >
             Configurar ahora →
           </button>

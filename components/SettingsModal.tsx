@@ -354,7 +354,7 @@ function ToggleRow({
           position: "relative",
           width: 44,
           height: 24,
-          borderRadius: 12,
+          borderRadius: "var(--border-radius-lg)",
           border: "none",
           cursor: saving ? "wait" : "pointer",
           background: checked ? "var(--accent)" : "var(--border-strong)",

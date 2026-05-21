@@ -153,7 +153,7 @@ export default function CampoLimpiezaPage() {
       alignItems: "center",
       gap: 2,
       padding: "8px 12px",
-      borderRadius: 12,
+      borderRadius: "var(--border-radius-lg)",
       border: isToday ? "2px solid var(--accent)" : "1px solid var(--border-default)",
       background: isActive ? "var(--accent)" : "var(--bg-card)",
       color: isActive ? "#fff" : isToday ? "var(--accent)" : "var(--text-secondary)",
@@ -171,13 +171,13 @@ export default function CampoLimpiezaPage() {
     padding: "14px 16px",
     background: "var(--bg-card)",
     border: "1px solid var(--border-default)",
-    borderRadius: 14,
+    borderRadius: "var(--border-radius-lg)",
   };
 
   const iconBoxStyle = (bg: string, color: string): CSSProperties => ({
     width: 40,
     height: 40,
-    borderRadius: 12,
+    borderRadius: "var(--border-radius-lg)",
     background: bg,
     color,
     display: "flex",

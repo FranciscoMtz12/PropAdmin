@@ -361,7 +361,7 @@ export default function UnitTypeDetailPage() {
                 onClick={() => setIsActionsMenuOpen((prev) => !prev)}
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                  borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)",
                   color: "var(--text-primary)", padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer",
                 }}
                 aria-label="Más acciones"
@@ -377,7 +377,7 @@ export default function UnitTypeDetailPage() {
                   <button
                     type="button"
                     onClick={() => { openEditForm(); setIsActionsMenuOpen(false); }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   >
                     <Edit3 size={14} />
                     Editar
@@ -385,7 +385,7 @@ export default function UnitTypeDetailPage() {
                   <button
                     type="button"
                     onClick={openDeleteModal}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: 8, padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
                   >
                     <Trash2 size={14} />
                     Eliminar
@@ -410,13 +410,13 @@ export default function UnitTypeDetailPage() {
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <SectionCard title="Información actual" subtitle="Configuración física y funcional de la tipología." icon={<Home size={18} />}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Nombre</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.name}</p></div>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Sala</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_living_room ? "Sí" : "No"}</p></div>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Comedor</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_dining_room ? "Sí" : "No"}</p></div>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Patio</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_patio ? "Sí" : "No"}</p></div>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Refri</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_fridge ? "Sí" : "No"}</p></div>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Lavadora / Secadora</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_washer ? "Sí" : "No"} / {unitType.has_dryer ? "Sí" : "No"}</p></div>
-            <div style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}><strong>Tipo de estufa</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.stove_type}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Nombre</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.name}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Sala</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_living_room ? "Sí" : "No"}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Comedor</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_dining_room ? "Sí" : "No"}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Patio</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_patio ? "Sí" : "No"}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Refri</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_fridge ? "Sí" : "No"}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Lavadora / Secadora</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_washer ? "Sí" : "No"} / {unitType.has_dryer ? "Sí" : "No"}</p></div>
+            <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Tipo de estufa</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.stove_type}</p></div>
           </div>
         </SectionCard>
 
@@ -426,7 +426,7 @@ export default function UnitTypeDetailPage() {
           ) : (
             <div style={{ display: "grid", gap: "12px" }}>
               {templateAssets.slice(0, 4).map((asset) => (
-                <div key={asset.id} style={{ border: "1px solid var(--border-default)", borderRadius: "14px", padding: "14px" }}>
+                <div key={asset.id} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
                     <AssetTypeIcon assetType={asset.asset_type} size={18} />
                     <div>
@@ -443,11 +443,11 @@ export default function UnitTypeDetailPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: 14, background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
             ¿Eliminar la tipología <strong>{unitType?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: 12, background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>
@@ -468,11 +468,11 @@ export default function UnitTypeDetailPage() {
         <form onSubmit={handleUpdateUnitType}>
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Nombre de la tipología</label>
-            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} />
+            <input value={name} onChange={(e) => setName(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }} />
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
-            <div><label style={{ display: "block", marginBottom: "8px" }}>Recámaras</label><input type="number" min={0} value={bedrooms} onChange={(e) => setBedrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} /></div>
-            <div><label style={{ display: "block", marginBottom: "8px" }}>Baños</label><input type="number" min={0} value={bathrooms} onChange={(e) => setBathrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px" }} /></div>
+            <div><label style={{ display: "block", marginBottom: "8px" }}>Recámaras</label><input type="number" min={0} value={bedrooms} onChange={(e) => setBedrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }} /></div>
+            <div><label style={{ display: "block", marginBottom: "8px" }}>Baños</label><input type="number" min={0} value={bathrooms} onChange={(e) => setBathrooms(Number(e.target.value))} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }} /></div>
           </div>
           <div style={{ display: "grid", gap: "10px", marginBottom: "16px" }}>
             <label><input type="checkbox" checked={hasLivingRoom} onChange={(e) => setHasLivingRoom(e.target.checked)} /> Tiene sala</label>
@@ -484,7 +484,7 @@ export default function UnitTypeDetailPage() {
           </div>
           <div style={{ marginBottom: "16px" }}>
             <label style={{ display: "block", marginBottom: "8px" }}>Tipo de estufa</label>
-            <select value={stoveType} onChange={(e) => setStoveType(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "10px", background: "var(--bg-card)" }}>
+            <select value={stoveType} onChange={(e) => setStoveType(e.target.value)} style={{ width: "100%", padding: "12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)" }}>
               <option value="NONE">No tiene</option>
               <option value="GAS">Gas</option>
               <option value="ELECTRIC">Eléctrica</option>

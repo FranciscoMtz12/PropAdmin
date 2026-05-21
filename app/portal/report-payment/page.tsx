@@ -127,7 +127,7 @@ const MONTH_LABELS_SHORT = [
 const iconBoxStyle: CSSProperties = {
   width: 44,
   height: 44,
-  borderRadius: 14,
+  borderRadius: "var(--border-radius-lg)",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
   display: "inline-flex",
@@ -157,7 +157,7 @@ const valueStyle: CSSProperties = {
 const inputStyle: CSSProperties = {
   width: "100%",
   minHeight: 48,
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   padding: "0 14px",
   background: "var(--bg-card)",
@@ -170,7 +170,7 @@ const inputStyle: CSSProperties = {
 const textareaStyle: CSSProperties = {
   width: "100%",
   minHeight: 110,
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   border: "1px solid var(--border-default)",
   padding: "12px 14px",
   background: "var(--bg-card)",
@@ -183,7 +183,7 @@ const textareaStyle: CSSProperties = {
 
 const actionButtonStyle: CSSProperties = {
   border: "none",
-  borderRadius: 12,
+  borderRadius: "var(--border-radius-lg)",
   padding: "12px 16px",
   fontSize: 14,
   fontWeight: 700,
@@ -1143,7 +1143,7 @@ export default function PortalReportPaymentPage() {
                 <div
                   style={{
                     padding: 14,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--bg-card-hover)",
                     border: "1px solid var(--border-default)",
                     display: "grid",
@@ -1200,7 +1200,7 @@ export default function PortalReportPaymentPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "10px 12px",
-                      borderRadius: 12,
+                      borderRadius: "var(--border-radius-lg)",
                       border: amountMode === "full" ? "1px solid #86EFAC" : "1px solid #D1D5DB",
                       background: amountMode === "full" ? "var(--metric-bg-green)" : "var(--bg-card)",
                       color: "var(--text-primary)",
@@ -1222,7 +1222,7 @@ export default function PortalReportPaymentPage() {
                       alignItems: "center",
                       gap: 8,
                       padding: "10px 12px",
-                      borderRadius: 12,
+                      borderRadius: "var(--border-radius-lg)",
                       border: amountMode === "other" ? "1px solid #93C5FD" : "1px solid #D1D5DB",
                       background: amountMode === "other" ? "var(--metric-bg-neutral)" : "var(--bg-card)",
                       color: "var(--text-primary)",
@@ -1317,7 +1317,7 @@ export default function PortalReportPaymentPage() {
                     alignItems: "center",
                     gap: 10,
                     minHeight: 54,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "1px dashed #C7D2FE",
                     background: "var(--bg-card-hover)",
                     padding: "0 14px",
@@ -1357,7 +1357,7 @@ export default function PortalReportPaymentPage() {
                     alignItems: "center",
                     gap: 10,
                     padding: "12px 14px",
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     border: "1px solid var(--border-default)",
                     background: allowSuperadminSubmission ? "var(--icon-bg-purple)" : "var(--bg-card-hover)",
                     color: "var(--text-primary)",
@@ -1377,7 +1377,7 @@ export default function PortalReportPaymentPage() {
                 <div
                   style={{
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--badge-bg-red)",
                     border: "1px solid var(--metric-border-red)",
                     color: "var(--badge-text-red)",
@@ -1393,7 +1393,7 @@ export default function PortalReportPaymentPage() {
                 <div
                   style={{
                     padding: 12,
-                    borderRadius: 12,
+                    borderRadius: "var(--border-radius-lg)",
                     background: "var(--icon-bg-green)",
                     border: "1px solid var(--metric-border-green)",
                     color: "var(--badge-text-green)",
@@ -1440,7 +1440,7 @@ export default function PortalReportPaymentPage() {
               <div
                 style={{
                   padding: 14,
-                  borderRadius: 12,
+                  borderRadius: "var(--border-radius-lg)",
                   border: "1px dashed #D1D5DB",
                   background: "var(--bg-card-hover)",
                   color: "var(--text-muted)",
@@ -1468,7 +1468,7 @@ export default function PortalReportPaymentPage() {
                       style={{
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card)",
-                        borderRadius: 14,
+                        borderRadius: "var(--border-radius-lg)",
                         padding: 14,
                         display: "grid",
                         gap: 12,
@@ -1548,7 +1548,7 @@ export default function PortalReportPaymentPage() {
                         <div
                           style={{
                             padding: 12,
-                            borderRadius: 12,
+                            borderRadius: "var(--border-radius-lg)",
                             background: "var(--bg-card-hover)",
                             border: "1px solid var(--border-default)",
                           }}
@@ -1571,7 +1571,7 @@ export default function PortalReportPaymentPage() {
                         <div
                           style={{
                             padding: 12,
-                            borderRadius: 12,
+                            borderRadius: "var(--border-radius-lg)",
                             background: "var(--badge-bg-red)",
                             border: "1px solid var(--metric-border-red)",
                           }}
@@ -1617,7 +1617,7 @@ export default function PortalReportPaymentPage() {
                               alignItems: "center",
                               gap: 8,
                               padding: "10px 12px",
-                              borderRadius: 12,
+                              borderRadius: "var(--border-radius-lg)",
                               border: "1px dashed #D1D5DB",
                               color: "var(--text-muted)",
                               fontSize: 13,

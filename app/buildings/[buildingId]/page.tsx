@@ -145,7 +145,7 @@ import IndustrialTypologyModal from "@/components/IndustrialTypologyModal";
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
   loading: () => (
-    <div style={{ height: 340, width: "100%", borderRadius: 8, background: "var(--bg-card-hover)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
+    <div style={{ height: 340, width: "100%", borderRadius: "var(--border-radius-md)", background: "var(--bg-card-hover)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
       Cargando selector de ubicación...
     </div>
   ),
@@ -159,7 +159,7 @@ const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
       style={{
         height: 220,
         width: "100%",
-        borderRadius: 8,
+        borderRadius: "var(--border-radius-md)",
         background: "var(--bg-card-hover)",
         display: "flex",
         alignItems: "center",
@@ -771,7 +771,7 @@ function CollectionTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: 13 }}>
       <p style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ margin: "2px 0", color: p.color }}>
@@ -788,7 +788,7 @@ function OccupancyTooltip({ active, payload, label }: { active?: boolean; payloa
   const occupiedVal = (payload.find((p: any) => p.dataKey === "occupied")?.value as number) || 0;
   const pct         = totalVal > 0 ? Math.round((occupiedVal / totalVal) * 100) : 0;
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "10px 14px", fontSize: 13 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: 13 }}>
       <p style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>{label}</p>
       <p style={{ margin: "2px 0", color: "var(--text-primary)" }}>Total: <strong>{totalVal}</strong></p>
       <p style={{ margin: "2px 0", color: "#10B981" }}>Ocupadas: <strong>{occupiedVal}</strong></p>
@@ -801,7 +801,7 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: any[] }) 
   if (!active || !payload?.length) return null;
   const item = payload[0];
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: 10, padding: "8px 12px", fontSize: 13 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "8px 12px", fontSize: 13 }}>
       <p style={{ color: item.payload.color as string, fontWeight: 700 }}>
         {item.name as string}: <strong>{item.value as number}</strong>
       </p>
@@ -3180,7 +3180,7 @@ export default function BuildingDetailPage() {
                         {pills.map((pill, i) => (
                           <div key={i} style={{
                             display: "flex", alignItems: "center", gap: 6,
-                            padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-default)",
+                            padding: "8px 14px", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)",
                             background: "var(--bg-page)", fontSize: 13,
                           }}>
                             <span style={{ color: "var(--text-muted)", lineHeight: 0 }}>{pill.icon}</span>
@@ -3193,12 +3193,12 @@ export default function BuildingDetailPage() {
                     {(activeAmenities.length > 0 || otherNotes) && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {activeAmenities.map((a) => (
-                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
+                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {a.label}
                           </span>
                         ))}
                         {otherNotes && String(otherNotes).split("\n").map((l) => l.trim()).filter((l) => l.length > 0).map((line, idx) => (
-                          <span key={idx} style={{ padding: "4px 10px", borderRadius: 12, fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
+                          <span key={idx} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {line.length > 40 ? line.slice(0, 38) + "…" : line}
                           </span>
                         ))}
@@ -3233,7 +3233,7 @@ export default function BuildingDetailPage() {
                 {sorted.map(notif => {
                   const col = notif.severity === 'brand' ? { bg: '#FDF4FF', border: '#8B2252', text: '#6B1240', dot: '#8B2252' } : SEVERITY_COLORS[notif.severity]
                   return (
-                    <div key={notif.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: 10, background: col.bg, borderLeft: `4px solid ${col.border}` }}>
+                    <div key={notif.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: col.bg, borderLeft: `4px solid ${col.border}` }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: col.dot, flexShrink: 0, marginTop: 4 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: col.text }}>{notif.title}</p>
@@ -3269,7 +3269,7 @@ export default function BuildingDetailPage() {
 
             return (
               <div style={{
-                borderRadius: 12,
+                borderRadius: "var(--border-radius-lg)",
                 background: "rgba(139,34,82,0.04)",
                 border: "1px solid rgba(139,34,82,0.2)",
                 borderLeft: "4px solid #8B2252",
@@ -3320,7 +3320,7 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={() => void handleDismissAllTasks()}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "4px 8px", borderRadius: 6 }}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "4px 8px", borderRadius: "var(--border-radius-sm)" }}
                     title="Descartar todo"
                   >
                     ✕
@@ -3407,7 +3407,7 @@ export default function BuildingDetailPage() {
                           const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
                           if (!taskDef) return null;
                           return (
-                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: 8, background: "rgba(16,185,129,0.06)" }}>
+                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: "var(--border-radius-md)", background: "rgba(16,185,129,0.06)" }}>
                               <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <span style={{ fontSize: 13, fontWeight: 500, color: "#1D9E75" }}>
@@ -3433,7 +3433,7 @@ export default function BuildingDetailPage() {
                     type="button"
                     onClick={() => void handleDismissAllTasks()}
                     style={{
-                      padding: "8px 16px", borderRadius: 8,
+                      padding: "8px 16px", borderRadius: "var(--border-radius-md)",
                       border: "1px solid var(--border-default)", background: "transparent",
                       fontSize: 13, color: "var(--text-secondary)", cursor: "pointer",
                       display: "flex", alignItems: "center", gap: 6,
@@ -3503,7 +3503,7 @@ export default function BuildingDetailPage() {
                       minHeight: 200,
                       background: "var(--bg-card)",
                       border: "0.5px dashed var(--border-default)",
-                      borderRadius: 8,
+                      borderRadius: "var(--border-radius-md)",
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
@@ -3661,7 +3661,7 @@ export default function BuildingDetailPage() {
                     fontSize: 12, fontWeight: 600, cursor: "pointer",
                     background: "var(--bg-page)", color: "var(--accent)",
                     border: "1px solid var(--border-default)",
-                    borderRadius: 8, padding: "5px 10px",
+                    borderRadius: "var(--border-radius-md)", padding: "5px 10px",
                   }}
                 >
                   {collectionMonths === 3 ? "Ver 6 meses" : "Ver 3 meses"}
@@ -3888,7 +3888,7 @@ export default function BuildingDetailPage() {
                             {groups.map((g) => {
                               const SpaceIcon = g.label.startsWith("Recámara") ? BedDouble : (UT_SPACE_ICONS[g.label] ?? PackageOpen);
                               return (
-                                <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: 10, overflow: "hidden" }}>
+                                <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", overflow: "hidden" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 10px", background: "var(--bg-input)" }}>
                                     <SpaceIcon size={13} color="var(--accent)" />
                                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
@@ -4113,7 +4113,7 @@ export default function BuildingDetailPage() {
                   style={{ ...INPUT_STYLE, paddingLeft: 32, width: "100%", boxSizing: "border-box" as const }}
                 />
               </div>
-              <div style={{ display: "flex", border: "1px solid var(--border-default)", borderRadius: 8, overflow: "hidden" }}>
+              <div style={{ display: "flex", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", overflow: "hidden" }}>
                 <button
                   type="button"
                   onClick={() => setDocsViewMode("grid")}
@@ -4165,7 +4165,7 @@ export default function BuildingDetailPage() {
                       onClick={() => setDocsActiveCat(catKey)}
                       style={{
                         display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 8,
-                        padding: 14, borderRadius: 12,
+                        padding: 14, borderRadius: "var(--border-radius-lg)",
                         border: `1.5px solid ${meta.border}`,
                         background: meta.bg,
                         cursor: "pointer", textAlign: "left",
@@ -4222,7 +4222,7 @@ export default function BuildingDetailPage() {
                                 onClick={() => handleDocClick(file)}
                                 style={{ display: "flex", alignItems: "center", gap: 10, background: "none", border: "none", padding: 0, cursor: "pointer", minWidth: 0, width: "100%", textAlign: "left" }}
                               >
-                                <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: 8, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <span style={{ flexShrink: 0, width: 32, height: 32, borderRadius: "var(--border-radius-md)", background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                                   <FileText size={16} color={color} />
                                 </span>
                                 <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: "var(--text-primary)", fontWeight: 500, maxWidth: 260 }}>
@@ -4251,7 +4251,7 @@ export default function BuildingDetailPage() {
                                   type="button"
                                   title="Eliminar"
                                   onClick={() => setDocsDeleteTarget(file)}
-                                  style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", borderRadius: 6 }}
+                                  style={{ background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-muted)", display: "flex", alignItems: "center", borderRadius: "var(--border-radius-sm)" }}
                                 >
                                   <Trash2 size={14} />
                                 </button>
@@ -4272,9 +4272,9 @@ export default function BuildingDetailPage() {
                     return (
                       <div
                         key={file.id}
-                        style={{ position: "relative", border: "1px solid var(--border-default)", borderRadius: 12, padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 8 }}
+                        style={{ position: "relative", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 8 }}
                       >
-                        <div style={{ width: 40, height: 40, borderRadius: 10, background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-md)", background: bg, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <FileText size={20} color={color} />
                         </div>
                         <button
@@ -4296,7 +4296,7 @@ export default function BuildingDetailPage() {
                             type="button"
                             title="Eliminar"
                             onClick={() => setDocsDeleteTarget(file)}
-                            style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-muted)", borderRadius: 6, display: "flex", alignItems: "center" }}
+                            style={{ position: "absolute", top: 8, right: 8, background: "none", border: "none", padding: 4, cursor: "pointer", color: "var(--text-muted)", borderRadius: "var(--border-radius-sm)", display: "flex", alignItems: "center" }}
                           >
                             <Trash2 size={13} />
                           </button>
@@ -4439,7 +4439,7 @@ export default function BuildingDetailPage() {
 
           {/* Progreso de subida */}
           {galleryUploadProgress !== null && (
-            <div style={{ padding: "10px 14px", background: "var(--badge-bg-blue)", borderRadius: 10, marginBottom: 16, fontSize: 14, color: "var(--badge-text-blue)", fontWeight: 600 }}>
+            <div style={{ padding: "10px 14px", background: "var(--badge-bg-blue)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 14, color: "var(--badge-text-blue)", fontWeight: 600 }}>
               Subiendo... {galleryUploadProgress}%
             </div>
           )}
@@ -4523,7 +4523,7 @@ export default function BuildingDetailPage() {
                             <div
                               key={`ph-${i}`}
                               style={{
-                                aspectRatio: "1/1", borderRadius: 10,
+                                aspectRatio: "1/1", borderRadius: "var(--border-radius-md)",
                                 background: "var(--bg-page)",
                                 border: "1.5px dashed var(--border-default)",
                                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -4550,7 +4550,7 @@ export default function BuildingDetailPage() {
                               onDragOver={(e) => { e.preventDefault(); setDragOverKey(cellKey); }}
                               onDrop={() => void handleDrop(sectionName, idx)}
                               style={{
-                                position: "relative", aspectRatio: "1", borderRadius: 10, overflow: "hidden",
+                                position: "relative", aspectRatio: "1", borderRadius: "var(--border-radius-md)", overflow: "hidden",
                                 cursor: "grab", background: "var(--bg-page)",
                                 opacity: isDragging ? 0.4 : 1,
                                 outline: isDropTarget ? "2px solid #8B2252" : "none",
@@ -4584,7 +4584,7 @@ export default function BuildingDetailPage() {
                             onDrop={() => void handleDrop(sectionName, sectionFiles.length)}
                             onClick={() => { setUploadTargetSection(sectionName); galleryFileInputRef.current?.click(); }}
                             style={{
-                              aspectRatio: "1", borderRadius: 10,
+                              aspectRatio: "1", borderRadius: "var(--border-radius-md)",
                               background: "var(--bg-page)",
                               border: isAddTarget ? "2px solid #8B2252" : "1.5px dashed var(--border-default)",
                               display: "flex", alignItems: "center", justifyContent: "center",
@@ -4614,7 +4614,7 @@ export default function BuildingDetailPage() {
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); setLightboxIndex(null); }}
-                  style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: 8, padding: "8px 12px", display: "flex", alignItems: "center" }}
+                  style={{ position: "absolute", top: 20, right: 20, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "8px 12px", display: "flex", alignItems: "center" }}
                 >
                   <X size={22} />
                 </button>
@@ -4622,7 +4622,7 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => (prev ?? 1) - 1); }}
-                    style={{ position: "absolute", left: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: 8, padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
+                    style={{ position: "absolute", left: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
                   >
                     ‹
                   </button>
@@ -4632,7 +4632,7 @@ export default function BuildingDetailPage() {
                   src={file?.public_url ?? ""}
                   alt={file?.file_name ?? ""}
                   onClick={(e) => e.stopPropagation()}
-                  style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: 8 }}
+                  style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: "var(--border-radius-md)" }}
                 />
                 <p style={{ position: "absolute", bottom: 20, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0, pointerEvents: "none" }}>
                   {file?.file_name} · {lightboxIndex + 1}/{galleryFiles.length}
@@ -4641,7 +4641,7 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => (prev ?? 0) + 1); }}
-                    style={{ position: "absolute", right: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: 8, padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
+                    style={{ position: "absolute", right: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
                   >
                     ›
                   </button>
@@ -4786,7 +4786,7 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={() => setAddScheduleOpen(true)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
                   >
                     <Plus size={12} />Agregar horario
                   </button>
@@ -4875,7 +4875,7 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={() => setAddTicketOpen(true)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: 7, border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
                   >
                     <Plus size={12} />Nuevo ticket
                   </button>
@@ -5064,7 +5064,7 @@ export default function BuildingDetailPage() {
               ) : (
                 <div style={{ display: "grid", gap: 10 }}>
                   {landLeases.map((lease) => (
-                    <AppCard key={lease.id} style={{ padding: 16, borderRadius: 14 }}>
+                    <AppCard key={lease.id} style={{ padding: 16, borderRadius: "var(--border-radius-lg)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                         <div>
                           <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>
@@ -5519,7 +5519,7 @@ export default function BuildingDetailPage() {
                               <button
                                 type="button"
                                 onClick={() => void handleDeleteArea(area.id)}
-                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: 6, display: "flex", alignItems: "center" }}
+                                style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: 4, borderRadius: "var(--border-radius-sm)", display: "flex", alignItems: "center" }}
                                 title="Eliminar área"
                               >
                                 <Trash2 size={14} />
@@ -5582,7 +5582,7 @@ export default function BuildingDetailPage() {
                     style={{
                       position: "relative",
                       display: "flex", flexDirection: "column", alignItems: "center",
-                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: 10,
+                      justifyContent: "center", gap: 4, padding: "10px 8px", borderRadius: "var(--border-radius-md)",
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                       background: selected ? pt.color + "15" : "var(--bg-card)",
                       color: selected ? pt.color : "var(--text-secondary)",
@@ -5631,7 +5631,7 @@ export default function BuildingDetailPage() {
                       <button key={st.value} type="button" onClick={() => setEditSubtype(st.value)}
                         style={{
                           display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 4,
-                          padding: "10px 12px", borderRadius: 10, textAlign: "left",
+                          padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                           border: sel ? `2px solid ${color}` : "2px solid var(--border-default)",
                           background: sel ? color + "12" : "var(--bg-card)",
                           cursor: "pointer", transition: "all 0.15s ease",
@@ -5723,7 +5723,7 @@ export default function BuildingDetailPage() {
                         onChange={(e) => setHF("other_notes", e.target.value || undefined)}
                         placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
                         rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
                       />
                     </div>
                   )}
@@ -5902,7 +5902,7 @@ export default function BuildingDetailPage() {
                 {commonAreas.map((area) => (
                   <div key={area.id} style={{
                     display: "flex", alignItems: "center", gap: 10,
-                    padding: "10px 14px", borderRadius: 10, border: "1px solid var(--border-default)", background: "var(--bg-page)",
+                    padding: "10px 14px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)",
                   }}>
                     <Trees size={14} color="#15803d" />
                     <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>{area.name}</span>
@@ -6000,7 +6000,7 @@ export default function BuildingDetailPage() {
                       disabled={isSaving}
                       onClick={() => void handleToggleFeature(feat.key)}
                       style={{
-                        width: 44, height: 24, borderRadius: 12,
+                        width: 44, height: 24, borderRadius: "var(--border-radius-lg)",
                         background: isActive ? feat.color : "var(--border-default)",
                         border: "none", cursor: isSaving ? "wait" : "pointer",
                         position: "relative", transition: "background 0.2s", padding: 0,
@@ -6044,7 +6044,7 @@ export default function BuildingDetailPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                 {/* Sección: Espacios físicos */}
                 {spaceFeatures.length > 0 && (
-                  <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: "var(--border-radius-lg)", padding: 16, border: "1px solid var(--border-default)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                       <Building2 size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                       <div>
@@ -6060,7 +6060,7 @@ export default function BuildingDetailPage() {
 
                 {/* Sección: Servicios */}
                 {serviceFeatures.length > 0 && (
-                  <div style={{ background: "var(--bg-page)", borderRadius: 12, padding: 16, border: "1px solid var(--border-default)" }}>
+                  <div style={{ background: "var(--bg-page)", borderRadius: "var(--border-radius-lg)", padding: 16, border: "1px solid var(--border-default)" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                       <Zap size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                       <div>
@@ -6077,7 +6077,7 @@ export default function BuildingDetailPage() {
 
               {featureWarnToast && (
                 <div style={{
-                  marginTop: 16, padding: "10px 14px", borderRadius: 10,
+                  marginTop: 16, padding: "10px 14px", borderRadius: "var(--border-radius-md)",
                   background: "#fff7ed", border: "1px solid #fed7aa",
                   color: "#c2410c", fontSize: 13, fontWeight: 500,
                 }}>
@@ -6087,7 +6087,7 @@ export default function BuildingDetailPage() {
 
               {featureToast && (
                 <div style={{
-                  marginTop: 16, padding: "10px 14px", borderRadius: 10,
+                  marginTop: 16, padding: "10px 14px", borderRadius: "var(--border-radius-md)",
                   background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
                   color: "#10B981", fontSize: 13, fontWeight: 500,
                 }}>
@@ -6198,7 +6198,7 @@ export default function BuildingDetailPage() {
                   onClick={() => setNewAreaType(t)}
                   style={{
                     padding: "8px 14px",
-                    borderRadius: 20,
+                    borderRadius: "var(--border-radius-xl)",
                     fontSize: 13,
                     fontWeight: 600,
                     border: newAreaType === t ? "2px solid var(--accent)" : "1px solid var(--border-default)",

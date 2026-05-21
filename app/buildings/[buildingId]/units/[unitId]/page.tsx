@@ -1302,7 +1302,7 @@ export default function UnitDetailPage() {
           alignItems: "center",
           gap: 12,
           padding: "12px 16px",
-          borderRadius: 12,
+          borderRadius: "var(--border-radius-lg)",
           background: "rgba(245,158,11,0.1)",
           border: "1px solid rgba(245,158,11,0.3)",
           marginBottom: 16,
@@ -1507,7 +1507,7 @@ export default function UnitDetailPage() {
                             key={f.key}
                             style={{
                               padding: "6px 14px",
-                              borderRadius: 20,
+                              borderRadius: "var(--border-radius-xl)",
                               fontSize: 13,
                               fontWeight: 600,
                               background: "var(--icon-bg-green)",
@@ -1673,14 +1673,14 @@ export default function UnitDetailPage() {
                   const days = daysUntilEnd(lease.end_date);
                   const expiryBadge = days != null && days >= 0 ? (
                     <span style={{
-                      padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700,
+                      padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: 12, fontWeight: 700,
                       background: days < 30 ? "rgba(220,38,38,0.1)" : days < 90 ? "rgba(245,158,11,0.1)" : "var(--bg-page)",
                       color:      days < 30 ? "#DC2626" : days < 90 ? "#F59E0B" : "var(--text-muted)",
                     }}>
                       {days === 0 ? "Vence hoy" : `${days}d para vencer`}
                     </span>
                   ) : days != null && days < 0 ? (
-                    <span style={{ padding: "3px 10px", borderRadius: 20, fontSize: 12, fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: 12, fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
                       Vencido hace {Math.abs(days)}d
                     </span>
                   ) : null;
@@ -2115,7 +2115,7 @@ export default function UnitDetailPage() {
             {!editingLeaseId && (unit.unit_types?.bedrooms ?? 0) >= 2 && unit.rental_type === "whole" ? (
               <div
                 style={{
-                  borderRadius: 14,
+                  borderRadius: "var(--border-radius-lg)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card-hover)",
                   padding: "16px",
@@ -2134,7 +2134,7 @@ export default function UnitDetailPage() {
                       flex: 1,
                       minWidth: 140,
                       padding: "10px 14px",
-                      borderRadius: 10,
+                      borderRadius: "var(--border-radius-md)",
                       border: leaseRentalChoice === "whole"
                         ? "2px solid var(--accent)"
                         : "1px solid var(--border-default)",
@@ -2159,7 +2159,7 @@ export default function UnitDetailPage() {
                       flex: 1,
                       minWidth: 140,
                       padding: "10px 14px",
-                      borderRadius: 10,
+                      borderRadius: "var(--border-radius-md)",
                       border: leaseRentalChoice === "by_room"
                         ? "2px solid var(--accent)"
                         : "1px solid var(--border-default)",
@@ -2540,7 +2540,7 @@ export default function UnitDetailPage() {
           <div
             style={{
               padding: "14px 16px",
-              borderRadius: "14px",
+              borderRadius: "var(--border-radius-lg)",
               background: "var(--metric-bg-amber)",
               border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
