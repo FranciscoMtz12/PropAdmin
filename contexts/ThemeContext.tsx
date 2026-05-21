@@ -46,8 +46,8 @@ type ThemeContextType = {
   toggleDark: () => void;
   showDescriptions: boolean;
   setShowDescriptions: (v: boolean) => void;
-  uiTheme: 'clasico' | 'super_soft';
-  setUiTheme: (theme: 'clasico' | 'super_soft') => void;
+  uiTheme: 'clasico' | 'super_soft' | 'rigido';
+  setUiTheme: (theme: 'clasico' | 'super_soft' | 'rigido') => void;
 };
 
 /* ─── Valor por defecto (antes de cargar empresa) ────────────────── */
@@ -75,7 +75,7 @@ const ThemeContext = createContext<ThemeContextType>({
   toggleDark: () => {},
   showDescriptions: true,
   setShowDescriptions: () => {},
-  uiTheme: 'clasico',
+  uiTheme: 'clasico' as const,
   setUiTheme: () => {},
 });
 
@@ -113,7 +113,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [adminContactEmail, setAdminContactEmail] = useState("");
   const [isDark, setIsDark] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true);
-  const [uiTheme, setUiThemeState] = useState<'clasico' | 'super_soft'>('clasico');
+  const [uiTheme, setUiThemeState] = useState<'clasico' | 'super_soft' | 'rigido'>('clasico');
 
   /* ── Leer preferencia de modo guardada o del sistema (solo en cliente) ── */
   useEffect(() => {
@@ -140,7 +140,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   /* ── Aplicar data-theme desde localStorage inmediatamente (antes de Supabase) ── */
   useEffect(() => {
     const saved = localStorage.getItem("ui_theme");
-    const theme = (saved === "super_soft" || saved === "clasico") ? saved : "clasico";
+    const theme = (saved === "super_soft" || saved === "clasico" || saved === "rigido") ? saved : "clasico";
+    console.log("Theme init from localStorage:", saved, "→ applying:", theme);
     document.documentElement.setAttribute("data-theme", theme);
     setUiThemeState(theme);
   }, []);
@@ -199,14 +200,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (typeof data.show_descriptions === "boolean") {
       setShowDescriptions(data.show_descriptions);
     }
-    if (data.ui_theme === "super_soft" || data.ui_theme === "clasico") {
-      const localTheme = localStorage.getItem("ui_theme") as "clasico" | "super_soft" | null;
-      if (localTheme === "super_soft" || localTheme === "clasico") {
-        setUiThemeState(localTheme);           // localStorage gana — sincronizar estado
-      } else {
-        localStorage.setItem("ui_theme", data.ui_theme);
-        setUiThemeState(data.ui_theme);        // sin local → usar BD
-      }
+    const VALID_THEMES = ["clasico", "super_soft", "rigido"] as const;
+    type ValidTheme = typeof VALID_THEMES[number];
+    const dbTheme = VALID_THEMES.includes(data.ui_theme as ValidTheme) ? data.ui_theme as ValidTheme : null;
+    const localRaw = localStorage.getItem("ui_theme");
+    const localTheme = VALID_THEMES.includes(localRaw as ValidTheme) ? localRaw as ValidTheme : null;
+    console.log("Theme from DB:", dbTheme, "| localStorage:", localRaw);
+    if (localTheme) {
+      setUiThemeState(localTheme);             // localStorage gana — sincronizar estado
+    } else if (dbTheme) {
+      localStorage.setItem("ui_theme", dbTheme);
+      setUiThemeState(dbTheme);               // sin local → usar BD y persistir
     }
     // dark_mode se sincroniza desde SettingsModal al cambiar; aquí solo cargamos show_descriptions
     // para no sobreescribir la preferencia de localStorage en el primer render
@@ -218,8 +222,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem("prop-theme", next ? "dark" : "light");
   }
 
-  function setUiTheme(theme: 'clasico' | 'super_soft') {
-    localStorage.setItem("ui_theme", theme);
+  function setUiTheme(theme: 'clasico' | 'super_soft' | 'rigido') {
+    localStorage.setItem("ui_theme", theme);   // localStorage primero — fuente de verdad
     setUiThemeState(theme);
     if (user?.id) {
       void supabase.from("user_preferences").upsert(

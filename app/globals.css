@@ -851,3 +851,17 @@ a {
 /* ── Scrollbar oculto ─────────────────────────────────────────── */
 .no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ════════════════════════════════════════════════════════════════════
+   Tema Rígido — activado con data-theme="rigido" en <html>
+   Bordes rectos, estilo corporativo
+   ════════════════════════════════════════════════════════════════════ */
+
+[data-theme="rigido"] {
+  --border-radius-sm: 2px;
+  --border-radius-md: 4px;
+  --border-radius-lg: 4px;
+  --border-radius-xl: 6px;
+  --card-shadow:    none;
+  --sidebar-radius: 0;
+}

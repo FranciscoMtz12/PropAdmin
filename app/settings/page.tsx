@@ -931,6 +931,7 @@ export default function SettingsPage() {
                 {([
                   { key: "clasico",    label: "Clásico",    previewR: 8,  btnR: 6,  desc: "Bordes estándar, limpio y profesional" },
                   { key: "super_soft", label: "Super Soft", previewR: 28, btnR: 14, desc: "Bordes muy redondeados, look moderno y suave" },
+                  { key: "rigido",     label: "Rígido",     previewR: 0,  btnR: 0,  desc: "Bordes rectos, estilo corporativo" },
                 ] as const).map(({ key, label, previewR, btnR, desc }) => {
                   const active = uiTheme === key;
                   return (
