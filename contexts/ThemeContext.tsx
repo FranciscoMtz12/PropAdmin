@@ -198,7 +198,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const companyColor = data.brand_color || DEFAULT_ACCENT;
 
-    /* Cargar color del grupo corporativo — el dorado del grupo es el acento BASE */
+    /* Cargar color del grupo corporativo */
+    const isGroupAdmin = (user?.role as string) === 'group_admin';
+    const isSuperAdmin = Boolean(user?.is_superadmin);
     let baseAccent = companyColor;
     if (data.group_id) {
       const { data: groupData } = await supabase
@@ -209,13 +211,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const gc = groupData?.brand_color || companyColor;
       setGroupColor(gc);
       document.documentElement.style.setProperty("--group-accent", gc);
-      baseAccent = gc;
+      /* Solo el group_admin ve el color del grupo como acento base.
+         El superadmin SAPROA y cualquier otro rol ven el color de su empresa. */
+      if (isGroupAdmin && !isSuperAdmin) baseAccent = gc;
     } else {
       setGroupColor(companyColor);
       document.documentElement.style.setProperty("--group-accent", companyColor);
     }
 
-    /* El acento por defecto es el color del grupo (dorado), no el de la empresa */
     setAccentColor(baseAccent);
     companyBaseColorRef.current = baseAccent;
 
