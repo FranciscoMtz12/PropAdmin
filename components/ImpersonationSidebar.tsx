@@ -197,7 +197,6 @@ export default function ImpersonationSidebar() {
       .select("id, full_name, email, role")
       .eq("company_id", companyId)
       .neq("role", "superadmin")
-      .is("deleted_at", null)
       .order("full_name");
     setUsers((data as AppUser[]) ?? []);
     setLoadingUsers(false);
