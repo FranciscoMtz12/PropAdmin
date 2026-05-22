@@ -105,6 +105,11 @@ export function initials(name: string): string {
     .join("");
 }
 
+/* ─── Claves de localStorage por usuario ─────────────────────────── */
+
+function darkModeKey(uid: string) { return `darkMode_${uid}`; }
+function uiThemeKey(uid: string)  { return `uiTheme_${uid}`; }
+
 /* ─── Provider ────────────────────────────────────────────────────── */
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
@@ -143,14 +148,18 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Leer preferencia de modo guardada o del sistema (solo en cliente) ── */
   useEffect(() => {
-    const stored = localStorage.getItem("prop-theme");
-    if (stored === "dark" || stored === "light") {
-      setIsDark(stored === "dark");
-    } else {
-      /* Sin preferencia guardada → usar preferencia del sistema operativo */
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      setIsDark(prefersDark);
+    /* Intentar leer la preferencia del último usuario logueado para evitar flash */
+    const lastUid = localStorage.getItem("last_user_id");
+    if (lastUid) {
+      const stored = localStorage.getItem(darkModeKey(lastUid));
+      if (stored === "true" || stored === "false") {
+        setIsDark(stored === "true");
+        return;
+      }
     }
+    /* Sin preferencia guardada → usar preferencia del sistema operativo */
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    setIsDark(prefersDark);
   }, []);
 
   /* ── Aplicar clase .dark en <html> cuando cambie isDark ────────── */
@@ -174,7 +183,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Aplicar data-theme desde localStorage inmediatamente (antes de Supabase) ── */
   useEffect(() => {
-    const saved = localStorage.getItem("ui_theme");
+    /* Intentar leer la preferencia del último usuario logueado para evitar flash */
+    const lastUid = localStorage.getItem("last_user_id");
+    const saved = lastUid ? localStorage.getItem(uiThemeKey(lastUid)) : null;
     const theme = (saved === "super_soft" || saved === "clasico" || saved === "rigido") ? saved : "clasico";
     document.documentElement.setAttribute("data-theme", theme);
     setUiThemeState(theme);
@@ -308,30 +319,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function loadUserPreferences(userId: string) {
+    /* Marcar último usuario para acelerar el siguiente inicio de sesión */
+    localStorage.setItem("last_user_id", userId);
+
     const { data } = await supabase
       .from("user_preferences")
       .select("dark_mode, show_descriptions, ui_theme")
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (!data) return; // tabla no existe o no hay registro — usar defaults
-
-    if (typeof data.show_descriptions === "boolean") {
+    if (data && typeof data.show_descriptions === "boolean") {
       setShowDescriptions(data.show_descriptions);
     }
+
     const VALID_THEMES = ["clasico", "super_soft", "rigido"] as const;
     type ValidTheme = typeof VALID_THEMES[number];
-    const dbTheme = VALID_THEMES.includes(data.ui_theme as ValidTheme) ? data.ui_theme as ValidTheme : null;
-    const localRaw = localStorage.getItem("ui_theme");
-    const localTheme = VALID_THEMES.includes(localRaw as ValidTheme) ? localRaw as ValidTheme : null;
-    if (localTheme) {
-      setUiThemeState(localTheme);             // localStorage gana — sincronizar estado
-    } else if (dbTheme) {
-      localStorage.setItem("ui_theme", dbTheme);
-      setUiThemeState(dbTheme);               // sin local → usar BD y persistir
+
+    /* ui_theme: clave por usuario > BD > clásico */
+    const localThemeRaw = localStorage.getItem(uiThemeKey(userId));
+    const localTheme = VALID_THEMES.includes(localThemeRaw as ValidTheme) ? localThemeRaw as ValidTheme : null;
+    const dbTheme = data && VALID_THEMES.includes(data.ui_theme as ValidTheme) ? data.ui_theme as ValidTheme : null;
+    const finalTheme = localTheme ?? dbTheme ?? 'clasico';
+    localStorage.setItem(uiThemeKey(userId), finalTheme);
+    setUiThemeState(finalTheme);
+
+    /* dark_mode: clave por usuario > BD > preferencia del sistema (ya aplicada en el mount) */
+    const localDarkRaw = localStorage.getItem(darkModeKey(userId));
+    if (localDarkRaw === "true" || localDarkRaw === "false") {
+      setIsDark(localDarkRaw === "true");
+    } else if (data && typeof data.dark_mode === "boolean") {
+      setIsDark(data.dark_mode);
+      localStorage.setItem(darkModeKey(userId), String(data.dark_mode));
     }
-    // dark_mode se sincroniza desde SettingsModal al cambiar; aquí solo cargamos show_descriptions
-    // para no sobreescribir la preferencia de localStorage en el primer render
   }
 
   async function setAccentStyle(style: 'solid' | 'metallic') {
@@ -352,13 +371,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   function toggleDark() {
     const next = !isDark;
     setIsDark(next);
-    localStorage.setItem("prop-theme", next ? "dark" : "light");
+    if (user?.id) {
+      localStorage.setItem(darkModeKey(user.id), String(next));
+      void supabase.from("user_preferences").upsert(
+        { user_id: user.id, dark_mode: next },
+        { onConflict: "user_id" },
+      );
+    }
   }
 
   function setUiTheme(theme: 'clasico' | 'super_soft' | 'rigido') {
-    localStorage.setItem("ui_theme", theme);   // localStorage primero — fuente de verdad
     setUiThemeState(theme);
     if (user?.id) {
+      localStorage.setItem(uiThemeKey(user.id), theme);
       void supabase.from("user_preferences").upsert(
         { user_id: user.id, ui_theme: theme },
         { onConflict: "user_id" },
