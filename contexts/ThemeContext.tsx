@@ -219,7 +219,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty("--color-primary", color);
     document.documentElement.style.setProperty("--group-accent", color);
     setAccentStyleState('solid');
-    setShortName((data as any)?.short_name || groupName);
+    const rawName = (data as any)?.short_name || groupName;
+    const displayGroupName = rawName.startsWith("Grupo") ? rawName : `Grupo ${rawName}`;
+    setShortName(displayGroupName);
+    setPlatformName(displayGroupName);
     setLogoUrl((data as any)?.logo_url ?? null);
     setLogoDarkUrl(null);
     setLogoGroupUrl(null);

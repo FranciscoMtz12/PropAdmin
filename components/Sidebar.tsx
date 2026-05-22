@@ -41,6 +41,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import type { NotificationModule } from "@/lib/notifications";
@@ -324,6 +325,7 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
+  const { impersonationMode } = useImpersonation();
   const { moduleStats } = useNotifications(user?.company_id ?? "");
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
@@ -370,11 +372,13 @@ export default function Sidebar() {
     router.push("/");
   }
 
-  const sidebarTitle = isSuperAdmin
-    ? "Control total del sistema"
-    : isPortalPath
-      ? "Portal del inquilino"
-      : "Gestión de Propiedades";
+  const sidebarTitle = impersonationMode === 'group'
+    ? "Vista consolidada"
+    : isSuperAdmin
+      ? "Control total del sistema"
+      : isPortalPath
+        ? "Portal del inquilino"
+        : "Gestión de Propiedades";
 
   const sessionName = user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
   const sessionEmail = user?.email || "No autenticado";

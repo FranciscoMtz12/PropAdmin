@@ -1,6 +1,5 @@
 "use client";
 
-import { X } from "lucide-react";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { initials } from "@/contexts/ThemeContext";
 
@@ -14,7 +13,6 @@ export default function GroupBanner() {
     groupCompanies,
     groupCompanyIds,
     toggleGroupCompany,
-    stopImpersonation,
   } = useImpersonation();
 
   if (!isImpersonating || impersonationMode !== 'group') return null;
@@ -38,7 +36,9 @@ export default function GroupBanner() {
       <span style={{
         fontSize: 13, fontWeight: 700, color: GROUP_COLOR, whiteSpace: "nowrap",
       }}>
-        {impersonatedGroupName ?? "Grupo"}
+        {impersonatedGroupName
+          ? (impersonatedGroupName.startsWith("Grupo") ? impersonatedGroupName : `Grupo ${impersonatedGroupName}`)
+          : "Grupo"}
       </span>
 
       {/* Divisor vertical */}
@@ -92,25 +92,6 @@ export default function GroupBanner() {
         })}
       </div>
 
-      {/* Botón Salir */}
-      <button
-        onClick={stopImpersonation}
-        style={{
-          padding: "4px 10px",
-          borderRadius: "var(--border-radius-sm)",
-          border: "1px solid rgba(201,168,76,0.4)",
-          background: "transparent",
-          color: GROUP_COLOR,
-          fontSize: 12, fontWeight: 700,
-          cursor: "pointer",
-          display: "flex", alignItems: "center", gap: 5,
-          whiteSpace: "nowrap",
-          flexShrink: 0,
-        }}
-      >
-        <X size={11} />
-        Salir
-      </button>
     </div>
   );
 }
