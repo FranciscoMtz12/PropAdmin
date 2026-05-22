@@ -18,10 +18,28 @@ type AdminRole = AdminUser["role"];
 
 export function ImpersonationBridge({ children }: { children: React.ReactNode }) {
   const realCtx = useCurrentUser();
-  const { isImpersonating, impersonatedCompanyId, impersonatedRole } = useImpersonation();
+  const { isImpersonating, impersonationMode, impersonatedCompanyId, impersonatedRole } = useImpersonation();
 
   const effectiveCtx = useMemo((): UserContextType => {
     if (!isImpersonating || !realCtx.user) return realCtx;
+
+    /* Modo grupo: ve todos los módulos pero sin empresa específica */
+    if (impersonationMode === 'group') {
+      const effectiveUser: AdminUser = {
+        id:            realCtx.user.id,
+        email:         realCtx.user.email,
+        full_name:     realCtx.user.full_name,
+        company_id:    null,
+        is_superadmin: false,
+        role:          'superadmin' as AdminRole,
+      };
+      return {
+        user:            effectiveUser,
+        loading:         realCtx.loading,
+        isSupabaseAdmin: false,
+        refreshUser:     realCtx.refreshUser,
+      };
+    }
 
     const effectiveUser: AdminUser = {
       id:           realCtx.user.id,
@@ -38,7 +56,7 @@ export function ImpersonationBridge({ children }: { children: React.ReactNode })
       isSupabaseAdmin: false,
       refreshUser:     realCtx.refreshUser,
     };
-  }, [isImpersonating, impersonatedCompanyId, impersonatedRole, realCtx]);
+  }, [isImpersonating, impersonationMode, impersonatedCompanyId, impersonatedRole, realCtx]);
 
   return (
     <UserContext.Provider value={effectiveCtx}>

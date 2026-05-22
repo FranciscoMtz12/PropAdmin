@@ -15,7 +15,7 @@ export function ImpersonationBanner() {
     stopImpersonation,
   } = useImpersonation();
 
-  if (!isImpersonating) return null;
+  if (!isImpersonating || impersonationMode === 'group') return null;
 
   const ROLE_LABEL: Record<string, string> = {
     titular: "Titular", administracion: "Administración", directivo: "Directivo",

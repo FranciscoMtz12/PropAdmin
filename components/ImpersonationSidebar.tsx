@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Eye, RotateCcw, Shield, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { useImpersonation, type ImpersonationParams } from "@/contexts/ImpersonationContext";
+import { useImpersonation, type ImpersonationParams, type GroupCompany } from "@/contexts/ImpersonationContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
 
 const SAPROA_COLOR = "#8B2252";
@@ -21,7 +21,7 @@ const ROLE_LABEL: Record<string, string> = {
 };
 
 type Group   = { id: string; name: string; short_name: string | null; brand_color: string | null };
-type Company = { id: string; name: string; short_name: string | null; brand_color: string | null; group_id: string | null };
+type Company = { id: string; name: string; short_name: string | null; brand_color: string | null; logo_url: string | null; group_id: string | null };
 type AppUser = { id: string; full_name: string; email: string; role: string };
 
 /* ─── UserRow ─────────────────────────────────────────────────────── */
@@ -248,6 +248,7 @@ export default function ImpersonationSidebar() {
     impersonatedCompanyName,
     impersonatedUserEmail,
     startImpersonation,
+    startGroupImpersonation,
     stopImpersonation,
   } = useImpersonation();
   const { isDark } = useTheme();
@@ -280,7 +281,7 @@ export default function ImpersonationSidebar() {
         .order("name"),
       supabase
         .from("companies")
-        .select("id, name, short_name, brand_color, group_id")
+        .select("id, name, short_name, brand_color, logo_url, group_id")
         .is("deleted_at", null)
         .order("name"),
     ]);
@@ -338,10 +339,30 @@ export default function ImpersonationSidebar() {
       else next.add(group.id);
       return next;
     });
-    const firstCompany = group.id === UNGROUPED_ID
-      ? companies.find(c => !c.group_id) ?? null
-      : companies.find(c => c.group_id === group.id) ?? null;
-    if (firstCompany) impersonateCompany(firstCompany);
+
+    if (group.id === UNGROUPED_ID) {
+      /* Grupo virtual "Sin grupo" → impersonar la primera empresa sin grupo */
+      const firstCompany = companies.find(c => !c.group_id) ?? null;
+      if (firstCompany) impersonateCompany(firstCompany);
+    } else {
+      /* Grupo real → activar modo grupo con todas sus empresas */
+      const groupComps = companies.filter(c => c.group_id === group.id);
+      if (groupComps.length > 0) {
+        const gc: GroupCompany[] = groupComps.map(c => ({
+          id:          c.id,
+          name:        c.name,
+          short_name:  c.short_name,
+          brand_color: c.brand_color,
+          logo_url:    c.logo_url,
+        }));
+        startGroupImpersonation({
+          groupId:   group.id,
+          groupName: group.short_name || group.name,
+          companies: gc,
+        });
+        router.push('/dashboard');
+      }
+    }
   }
 
   function toggleCompany(company: Company) {

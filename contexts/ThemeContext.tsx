@@ -109,7 +109,13 @@ export function initials(name: string): string {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
-  const { isImpersonating, impersonatedCompanyId } = useImpersonation();
+  const {
+    isImpersonating,
+    impersonationMode,
+    impersonatedCompanyId,
+    impersonatedGroupId,
+    impersonatedGroupName,
+  } = useImpersonation();
 
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [groupColor, setGroupColor] = useState(DEFAULT_ACCENT);
@@ -181,7 +187,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
-    if (isImpersonating && impersonatedCompanyId) {
+    if (impersonationMode === 'group' && impersonatedGroupId) {
+      void loadGroupBranding(impersonatedGroupId, impersonatedGroupName ?? '');
+    } else if (isImpersonating && impersonatedCompanyId) {
       void loadCompanyBranding(impersonatedCompanyId, false, false, true);
     } else if (user?.company_id) {
       const isSA = Boolean(user.is_superadmin) || user.role === 'superadmin';
@@ -195,7 +203,27 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       void loadUserPreferences(user.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isImpersonating, impersonatedCompanyId, user?.company_id, user?.id, user?.is_superadmin, user?.role]);
+  }, [isImpersonating, impersonationMode, impersonatedCompanyId, impersonatedGroupId, user?.company_id, user?.id, user?.is_superadmin, user?.role]);
+
+  async function loadGroupBranding(groupId: string, groupName: string) {
+    const { data } = await supabase
+      .from("company_groups")
+      .select("id, name, short_name, brand_color, logo_url")
+      .eq("id", groupId)
+      .maybeSingle();
+
+    const color = (data as any)?.brand_color || "#C9A84C";
+    setAccentColor(color);
+    setGroupColor(color);
+    companyBaseColorRef.current = color;
+    document.documentElement.style.setProperty("--color-primary", color);
+    document.documentElement.style.setProperty("--group-accent", color);
+    setAccentStyleState('solid');
+    setShortName((data as any)?.short_name || groupName);
+    setLogoUrl((data as any)?.logo_url ?? null);
+    setLogoDarkUrl(null);
+    setLogoGroupUrl(null);
+  }
 
   async function loadSaproaConfig() {
     const { data } = await supabase

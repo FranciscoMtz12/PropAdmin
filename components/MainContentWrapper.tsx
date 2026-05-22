@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { ImpersonationBanner } from "@/components/ImpersonationBanner";
+import GroupBanner from "@/components/GroupBanner";
 
 /*
   MainContentWrapper — envuelve el contenido principal del sistema.
@@ -31,6 +32,7 @@ export default function MainContentWrapper({ children }: { children: ReactNode }
       }}
     >
       <ImpersonationBanner />
+      <GroupBanner />
       {children}
     </div>
   );
