@@ -204,6 +204,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const color = data.accent_color || DEFAULT_ACCENT;
     setAccentColor(color);
+    setGroupColor(color);
     companyBaseColorRef.current = color;
     document.documentElement.style.setProperty("--color-primary", color);
     setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
