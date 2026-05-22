@@ -33,6 +33,7 @@ type ThemeContextType = {
   setAccentStyle: (style: 'solid' | 'metallic') => Promise<void>;
   setPropertyAccent: (color: string) => void;
   resetPropertyAccent: () => void;
+  platformName: string;
   logoUrl: string | null;
   logoPrintUrl: string | null;
   logoDarkUrl: string | null;
@@ -68,6 +69,7 @@ const ThemeContext = createContext<ThemeContextType>({
   setAccentStyle: async () => {},
   setPropertyAccent: () => {},
   resetPropertyAccent: () => {},
+  platformName: "SAPROA",
   logoUrl: null,
   logoPrintUrl: null,
   logoDarkUrl: null,
@@ -110,6 +112,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [groupColor, setGroupColor] = useState(DEFAULT_ACCENT);
   const [accentStyle, setAccentStyleState] = useState<'solid' | 'metallic'>('solid');
+  const [platformName, setPlatformName] = useState("SAPROA");
   const companyBaseColorRef = useRef(DEFAULT_ACCENT);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPrintUrl, setLogoPrintUrl] = useState<string | null>(null);
@@ -187,6 +190,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.company_id, user?.id, user?.is_superadmin, user?.role]);
 
+  async function loadSaproaConfig() {
+    const { data } = await supabase
+      .from("saproa_config")
+      .select("id, platform_name, accent_color, accent_style")
+      .limit(1)
+      .maybeSingle();
+
+    if (!data) return;
+
+    const color = data.accent_color || DEFAULT_ACCENT;
+    setAccentColor(color);
+    companyBaseColorRef.current = color;
+    document.documentElement.style.setProperty("--color-primary", color);
+    setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
+    if (data.platform_name) setPlatformName(data.platform_name);
+  }
+
   async function loadCompanyBranding(companyId: string, isSuperAdmin: boolean, isGroupAdmin: boolean) {
     const { data } = await supabase
       .from("companies")
@@ -196,33 +216,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     if (!data) return;
 
-    /* Estilo de acento */
-    setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
-
-    const companyColor = data.brand_color || DEFAULT_ACCENT;
-
-    /* Cargar color del grupo corporativo */
-    let baseAccent = companyColor;
-    if (data.group_id) {
-      const { data: groupData } = await supabase
-        .from("company_groups")
-        .select("brand_color")
-        .eq("id", data.group_id)
-        .maybeSingle();
-      const gc = groupData?.brand_color || companyColor;
-      setGroupColor(gc);
-      document.documentElement.style.setProperty("--group-accent", gc);
-      /* Solo group_admin ve el color del grupo como acento base.
-         Superadmin y cualquier otro rol ven el color de su empresa. */
-      if (isGroupAdmin && !isSuperAdmin) baseAccent = gc;
-    } else {
-      setGroupColor(companyColor);
-      document.documentElement.style.setProperty("--group-accent", companyColor);
-    }
-
-    setAccentColor(baseAccent);
-    companyBaseColorRef.current = baseAccent;
-
+    /* Logos, nombre y datos de contacto siempre desde companies */
     setLogoUrl(data.logo_url ?? null);
     setLogoPrintUrl(data.logo_print_url ?? null);
     setLogoDarkUrl(data.logo_dark_url ?? null);
@@ -238,6 +232,38 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setPurchasesContactEmail(data.purchases_contact_email || "");
     setAdminContactPhone(data.admin_contact_phone || "");
     setAdminContactEmail(data.admin_contact_email || "");
+
+    if (isSuperAdmin) {
+      /* Superadmin: colores vienen de saproa_config, no de companies */
+      await loadSaproaConfig();
+      return;
+    }
+
+    /* Estilo de acento desde companies (roles no-superadmin) */
+    setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
+
+    const companyColor = data.brand_color || DEFAULT_ACCENT;
+
+    /* Cargar color del grupo corporativo */
+    let baseAccent = companyColor;
+    if (data.group_id) {
+      const { data: groupData } = await supabase
+        .from("company_groups")
+        .select("brand_color")
+        .eq("id", data.group_id)
+        .maybeSingle();
+      const gc = groupData?.brand_color || companyColor;
+      setGroupColor(gc);
+      document.documentElement.style.setProperty("--group-accent", gc);
+      /* Solo group_admin ve el color del grupo como acento base */
+      if (isGroupAdmin) baseAccent = gc;
+    } else {
+      setGroupColor(companyColor);
+      document.documentElement.style.setProperty("--group-accent", companyColor);
+    }
+
+    setAccentColor(baseAccent);
+    companyBaseColorRef.current = baseAccent;
   }
 
   async function loadUserPreferences(userId: string) {
@@ -308,6 +334,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setAccentStyle,
         setPropertyAccent,
         resetPropertyAccent,
+        platformName,
         logoUrl,
         logoPrintUrl,
         logoDarkUrl,

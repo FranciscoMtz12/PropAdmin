@@ -15,6 +15,7 @@ import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { generateMetallicGradient } from "@/lib/color-utils";
 
 import AppBadge from "@/components/AppBadge";
 import AppGrid from "@/components/AppGrid";
@@ -203,7 +204,7 @@ function formatDate(iso: string) {
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
-  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle } = useTheme();
+  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle, setPropertyAccent } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -272,6 +273,13 @@ export default function SettingsPage() {
   const [pwConfirm, setPwConfirm] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
+  // ── Tab: Sistema — Configuración SAPROA
+  const [sapConfigId, setSapConfigId] = useState<string | null>(null);
+  const [sapPlatformName, setSapPlatformName] = useState("SAPROA");
+  const [sapAccentColor, setSapAccentColor] = useState("#6366F1");
+  const [sapAccentStyle, setSapAccentStyle] = useState<'solid' | 'metallic'>('solid');
+  const [savingSap, setSavingSap] = useState(false);
+
   const createForm = useForm<CreateValues>({
     resolver: zodResolver(createSchema),
     defaultValues: { full_name: "", email: "", password: "", role: "administracion", company_id: "" },
@@ -310,6 +318,12 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) setAcName(user.full_name ?? "");
   }, [user?.id, user?.full_name]);
+
+  // ─── Load SAPROA config (superadmin only) ───────────────────────
+  useEffect(() => {
+    if (isSuperadmin) void loadSapConfig();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSuperadmin]);
 
   // ─── Load users on tab switch ────────────────────────────────────
   useEffect(() => {
@@ -379,6 +393,37 @@ export default function SettingsPage() {
     setUserRows((uRes.data ?? []).map((u: any) => ({ ...u, company_name: cMap.get(u.company_id) || "—" })));
     setUsersLoaded(true);
     setLoadingUsers(false);
+  }
+
+  // ─── SAPROA config ───────────────────────────────────────────────
+  async function loadSapConfig() {
+    const { data } = await supabase
+      .from("saproa_config")
+      .select("id, platform_name, accent_color, accent_style")
+      .limit(1)
+      .maybeSingle();
+    if (!data) return;
+    setSapConfigId(data.id ?? null);
+    setSapPlatformName(data.platform_name ?? "SAPROA");
+    setSapAccentColor(data.accent_color ?? "#6366F1");
+    setSapAccentStyle(data.accent_style === 'metallic' ? 'metallic' : 'solid');
+  }
+
+  async function handleSaveSaproa() {
+    setSavingSap(true);
+    const payload = {
+      platform_name: sapPlatformName.trim() || "SAPROA",
+      accent_color: sapAccentColor,
+      accent_style: sapAccentStyle,
+    };
+    if (sapConfigId) {
+      await supabase.from("saproa_config").update(payload).eq("id", sapConfigId);
+    } else {
+      const { data } = await supabase.from("saproa_config").insert(payload).select("id").single();
+      if (data) setSapConfigId(data.id);
+    }
+    setSavingSap(false);
+    toast.success("Configuración de plataforma guardada");
   }
 
   // ─── Saves: Empresa ──────────────────────────────────────────────
@@ -1128,6 +1173,71 @@ export default function SettingsPage() {
         {/* ══ TAB: SISTEMA (superadmin) ═════════════════════════════ */}
         {activeTab === "sistema" && isSuperadmin && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+
+            {/* Configuración de plataforma SAPROA */}
+            <SectionCard title="Configuración de la plataforma SAPROA" icon={<Settings2 size={18} />}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
+                <Field label="Nombre de la plataforma">
+                  <input
+                    style={IS}
+                    value={sapPlatformName}
+                    onChange={(e) => setSapPlatformName(e.target.value)}
+                    placeholder="SAPROA"
+                  />
+                </Field>
+
+                <div>
+                  <label style={LS}>Color de acento</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <input
+                      type="color"
+                      value={sapAccentColor}
+                      onChange={(e) => { setSapAccentColor(e.target.value); setPropertyAccent(e.target.value); }}
+                      style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none" }}
+                    />
+                    <input
+                      style={{ ...IS, width: "auto", flex: 1, maxWidth: 160 }}
+                      value={sapAccentColor}
+                      onChange={(e) => {
+                        setSapAccentColor(e.target.value);
+                        if (/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) setPropertyAccent(e.target.value);
+                      }}
+                      maxLength={7}
+                      placeholder="#6366F1"
+                    />
+                    <div style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", background: sapAccentColor, border: "1px solid var(--border-default)" }} />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={LS}>Estilo de acento</label>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {(['solid', 'metallic'] as const).map((style) => {
+                      const active = sapAccentStyle === style;
+                      const bg = style === 'metallic' ? generateMetallicGradient(sapAccentColor) : sapAccentColor;
+                      return (
+                        <button
+                          key={style}
+                          type="button"
+                          onClick={() => setSapAccentStyle(style)}
+                          style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--border-radius-lg)", border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 140px", maxWidth: 200, outline: "none" }}
+                        >
+                          <div style={{ height: 28, borderRadius: "var(--border-radius-sm)", background: bg }} />
+                          <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text-primary)" }}>
+                            {style === 'solid' ? 'Sólido' : 'Metálico'}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                  <SaveBtn saving={savingSap} onClick={handleSaveSaproa} />
+                </div>
+              </div>
+            </SectionCard>
+
             <SectionCard title="Plan actual" icon={<CreditCard size={18} />}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
                 <span style={{ padding: "4px 14px", borderRadius: 999, background: "rgba(139,34,82,.12)", color: "var(--accent, #8B2252)", fontSize: 13, fontWeight: 700, border: "1px solid rgba(139,34,82,.2)" }}>
