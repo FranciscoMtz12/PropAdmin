@@ -5,9 +5,12 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
 import { UserProvider } from "@/contexts/UserContext";
+import { ImpersonationProvider } from "@/contexts/ImpersonationContext";
+import { ImpersonationBridge } from "@/components/ImpersonationBridge";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import SidebarGate from "@/components/SidebarGate";
+import ImpersonationGate from "@/components/ImpersonationGate";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
 import SplashScreen from "@/components/SplashScreen";
@@ -46,10 +49,11 @@ export const metadata: Metadata = {
   RootLayout global de la aplicación.
 
   Jerarquía de providers (de exterior a interior):
-  UserProvider → ThemeProvider → AppShell
+  UserProvider → ImpersonationProvider → ImpersonationBridge → ThemeProvider → AppShell
 
-  ThemeProvider debe estar DENTRO de UserProvider porque lee
-  company_id del usuario autenticado para cargar el branding.
+  ImpersonationBridge re-provee UserContext con los valores efectivos cuando
+  el superadmin está impersonando una empresa/usuario. ThemeProvider y todos
+  los componentes hijos ven el usuario efectivo automáticamente.
 
   AppShell es un client component que aplica el fondo según isDark.
 
@@ -66,57 +70,66 @@ export default function RootLayout({
     <html lang="es" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable}`} suppressHydrationWarning>
         <UserProvider>
-          {/* ThemeProvider lee company branding y gestiona dark/light mode */}
-          <ThemeProvider>
-            {/* Guard de navegación cliente */}
-            <RouteGuard />
+          {/* ImpersonationProvider lee el usuario real y gestiona el estado de impersonación */}
+          <ImpersonationProvider>
+            {/* ImpersonationBridge re-provee UserContext con los valores efectivos */}
+            <ImpersonationBridge>
+              {/* ThemeProvider lee company branding y gestiona dark/light mode */}
+              <ThemeProvider>
+                {/* Guard de navegación cliente */}
+                <RouteGuard />
 
-            {/* Splash de bienvenida post-login (lee flag de sessionStorage) */}
-            <SplashScreen />
+                {/* Splash de bienvenida post-login (lee flag de sessionStorage) */}
+                <SplashScreen />
 
-            {/* Botón flotante de feedback (se auto-oculta en rutas públicas) */}
-            <FeedbackButton />
+                {/* Botón flotante de feedback (se auto-oculta en rutas públicas) */}
+                <FeedbackButton />
 
-            {/* AppShell aplica el fondo dinámico según el modo activo */}
-            <AppShell>
-              {/* SidebarGate decide si mostrar Sidebar + BgTexture según la ruta
-                  (ambos ocultos en /, /login y /portal/login). Envuelto en
-                  Suspense porque Sidebar usa useSearchParams(). */}
-              <Suspense fallback={null}>
-                <SidebarGate />
-              </Suspense>
+                {/* AppShell aplica el fondo dinámico según el modo activo */}
+                <AppShell>
+                  {/* SidebarGate decide si mostrar Sidebar + BgTexture según la ruta
+                      (ambos ocultos en /, /login y /portal/login). Envuelto en
+                      Suspense porque Sidebar usa useSearchParams(). */}
+                  <Suspense fallback={null}>
+                    <SidebarGate />
+                  </Suspense>
 
-              {/* Área principal del sistema — position: relative + z-index: 1
-                  para quedar por encima de BgTexture. */}
-              <div
-                style={{
-                  flex: 1,
-                  minWidth: 0,
-                  display: "flex",
-                  flexDirection: "column",
-                  position: "relative",
-                  zIndex: 1,
-                }}
-              >
-                {/* Breadcrumb global superior */}
-                <GlobalBreadcrumbs />
+                  {/* Área principal del sistema — position: relative + z-index: 1
+                      para quedar por encima de BgTexture. */}
+                  <div
+                    style={{
+                      flex: 1,
+                      minWidth: 0,
+                      display: "flex",
+                      flexDirection: "column",
+                      position: "relative",
+                      zIndex: 1,
+                    }}
+                  >
+                    {/* Breadcrumb global superior */}
+                    <GlobalBreadcrumbs />
 
-                {/* Contenido principal con contenedor centrado global */}
-                <main
-                  style={{
-                    flex: 1,
-                    minWidth: 0,
-                    display: "flex",
-                    justifyContent: "center",
-                  }}
-                >
-                  <MainContentWrapper>
-                    {children}
-                  </MainContentWrapper>
-                </main>
-              </div>
-            </AppShell>
-          </ThemeProvider>
+                    {/* Contenido principal con contenedor centrado global */}
+                    <main
+                      style={{
+                        flex: 1,
+                        minWidth: 0,
+                        display: "flex",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <MainContentWrapper>
+                        {children}
+                      </MainContentWrapper>
+                    </main>
+                  </div>
+
+                  {/* Panel de impersonación — sidebar derecha fija, solo superadmin */}
+                  <ImpersonationGate />
+                </AppShell>
+              </ThemeProvider>
+            </ImpersonationBridge>
+          </ImpersonationProvider>
         </UserProvider>
 
         {/* Toaster global de react-hot-toast */}

@@ -31,7 +31,8 @@ type UserContextType = {
   refreshUser: () => Promise<void>;
 };
 
-const UserContext = createContext<UserContextType>({
+export type { AdminUser, TenantUser, CurrentUser, UserContextType };
+export const UserContext = createContext<UserContextType>({
   user: null,
   loading: true,
   isSupabaseAdmin: false,

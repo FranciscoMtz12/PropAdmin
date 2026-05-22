@@ -2,6 +2,7 @@
 
 import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { ImpersonationBanner } from "@/components/ImpersonationBanner";
 
 /*
   MainContentWrapper — envuelve el contenido principal del sistema.
@@ -29,6 +30,7 @@ export default function MainContentWrapper({ children }: { children: ReactNode }
         boxSizing: "border-box",
       }}
     >
+      <ImpersonationBanner />
       {children}
     </div>
   );

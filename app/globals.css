@@ -358,6 +358,22 @@ a {
   }
 }
 
+/* Panel de impersonación — sidebar derecha fija, solo superadmin */
+.impersonation-sidebar-spacer {
+  width: 280px;
+  min-width: 280px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 1024px) {
+  .impersonation-sidebar-panel {
+    display: none !important;
+  }
+  .impersonation-sidebar-spacer {
+    display: none !important;
+  }
+}
+
 /* ════════════════════════════════════════════════════════════════════
    PageHeader responsive — en mobile los acciones bajan al título
    ════════════════════════════════════════════════════════════════════ */
