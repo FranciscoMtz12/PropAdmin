@@ -267,7 +267,10 @@ export default function ImpersonationSidebar() {
 
   async function loadGroupsAndCompanies() {
     setLoading(true);
-    const [{ data: groupsData }, { data: companiesData }] = await Promise.all([
+    const [
+      { data: groupsData, error: groupsError },
+      { data: companiesData, error: companiesError },
+    ] = await Promise.all([
       supabase
         .from("company_groups")
         .select("id, name, short_name, brand_color")
@@ -279,8 +282,12 @@ export default function ImpersonationSidebar() {
         .is("deleted_at", null)
         .order("name"),
     ]);
+    if (groupsError) console.error("[ImpersonationSidebar] grupos error:", groupsError);
+    if (companiesError) console.error("[ImpersonationSidebar] empresas error:", companiesError);
+    const comps = (companiesData as Company[]) ?? [];
+    console.log("[ImpersonationSidebar] empresas cargadas:", comps.length, comps.map(c => c.name));
     setGroups((groupsData as Group[]) ?? []);
-    setCompanies((companiesData as Company[]) ?? []);
+    setCompanies(comps);
     setLoading(false);
   }
 

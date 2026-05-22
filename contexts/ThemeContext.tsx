@@ -22,6 +22,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
 
 /* ─── Tipos ───────────────────────────────────────────────────────── */
@@ -108,6 +109,7 @@ export function initials(name: string): string {
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
+  const { isImpersonating, impersonatedCompanyId } = useImpersonation();
 
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [groupColor, setGroupColor] = useState(DEFAULT_ACCENT);
@@ -179,7 +181,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
-    if (user?.company_id) {
+    if (isImpersonating && impersonatedCompanyId) {
+      void loadCompanyBranding(impersonatedCompanyId, false, false);
+    } else if (user?.company_id) {
       const isSA = Boolean(user.is_superadmin) || user.role === 'superadmin';
       const isGA = (user.role as string) === 'group_admin';
       void loadCompanyBranding(user.company_id, isSA, isGA);
@@ -191,7 +195,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       void loadUserPreferences(user.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.id, user?.is_superadmin, user?.role]);
+  }, [isImpersonating, impersonatedCompanyId, user?.company_id, user?.id, user?.is_superadmin, user?.role]);
 
   async function loadSaproaConfig() {
     const { data } = await supabase
