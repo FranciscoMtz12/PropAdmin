@@ -37,6 +37,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -143,6 +144,8 @@ const errorTextStyle: CSSProperties = {
 
 export default function SuppliersPage() {
   const { user, loading: userLoading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -188,9 +191,9 @@ export default function SuppliersPage() {
   /* ── Load ────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin)) void loadSuppliers(user?.company_id ?? null);
+    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadSuppliers(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user]);
+  }, [userLoading, user, isGroupMode]);
 
   async function loadSuppliers(companyId: string | null) {
     setLoading(true);
@@ -223,11 +226,23 @@ export default function SuppliersPage() {
   /* ── Metrics ─────────────────────────────────────────────────────── */
 
   const { total, activeCount, inactiveCount } = useMemo(() => {
-    const total         = suppliers.length;
-    const activeCount   = suppliers.filter((s) => s.active).length;
+    const base          = isGroupMode ? suppliers.filter((s) => groupCompanyIds.includes(s.company_id)) : suppliers;
+    const total         = base.length;
+    const activeCount   = base.filter((s) => s.active).length;
     const inactiveCount = total - activeCount;
     return { total, activeCount, inactiveCount };
-  }, [suppliers]);
+  }, [suppliers, isGroupMode, groupCompanyIds]);
+
+  const suppliersByCompany = useMemo(() => {
+    if (!isGroupMode) return [];
+    return groupCompanies
+      .filter((c) => groupCompanyIds.includes(c.id))
+      .map((company) => ({
+        company,
+        items: suppliers.filter((s) => s.company_id === company.id),
+      }))
+      .filter(({ items }) => items.length > 0);
+  }, [isGroupMode, groupCompanies, groupCompanyIds, suppliers]);
 
   /* ── Form handlers ───────────────────────────────────────────────── */
 
@@ -526,6 +541,45 @@ export default function SuppliersPage() {
             No hay proveedores. Crea el primero con el botón de arriba.
           </p>
         </AppCard>
+      ) : isGroupMode ? (
+        <div style={{ display: "grid", gap: 24 }}>
+          {suppliersByCompany.map(({ company, items }) => {
+            const compColor = company.brand_color || "#6b7280";
+            return (
+              <div key={company.id}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{company.short_name || company.name}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {items.length} proveedor{items.length !== 1 ? "es" : ""}</span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 4 }} />
+                </div>
+                <AppGrid minWidth={320}>
+                  {items.map((s, index) => (
+                    <motion.div key={s.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
+                      <AppCard style={{ ...cardStyle, borderLeft: `4px solid ${compColor}` }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.name}</div>
+                            {s.tax_id ? <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>RFC: {s.tax_id}</div> : null}
+                          </div>
+                          <AppBadge variant={s.active ? "green" : "amber"}>{s.active ? "Activo" : "Inactivo"}</AppBadge>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "var(--text-secondary)" }}>
+                          {s.contact_name  ? <div>{s.contact_name}</div> : null}
+                          {s.contact_phone ? <div>{s.contact_phone}</div> : null}
+                          {s.contact_email ? <div style={{ wordBreak: "break-all" }}>{s.contact_email}</div> : null}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-muted)", borderTop: "1px solid var(--border-default)", paddingTop: 8 }}>
+                          {(s.branches || []).length} sucursal{(s.branches || []).length !== 1 ? "es" : ""}
+                        </div>
+                      </AppCard>
+                    </motion.div>
+                  ))}
+                </AppGrid>
+              </div>
+            );
+          })}
+        </div>
       ) : (
         <AppGrid minWidth={320}>
           {suppliers.map((s, index) => (

@@ -23,6 +23,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -49,7 +50,7 @@ type DayOfWeek =
   | "sunday";
 type TabKey = "week" | "by_building" | "history" | "config";
 
-type Building = { id: string; name: string };
+type Building = { id: string; name: string; company_id: string | null };
 type Unit = { id: string; building_id: string; unit_number: string | null; display_code: string | null };
 
 type BuildingSchedule = {
@@ -254,6 +255,8 @@ type ScheduleValues = z.infer<typeof scheduleSchema>;
 
 export default function CleaningPage() {
   const { user, loading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -303,12 +306,12 @@ export default function CleaningPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     void loadData();
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.company_id, user?.is_superadmin, isGroupMode]);
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setLoadingData(true);
 
     const cid = user?.company_id ?? null;
@@ -323,7 +326,7 @@ export default function CleaningPage() {
     const [bRes, uRes, bsRes, usRes, logsRes, chkRes] = await Promise.all([
       co(supabase
         .from("buildings")
-        .select("id, name"))
+        .select("id, name, company_id"))
         .is("deleted_at", null)
         .order("name"),
       co(supabase
@@ -387,6 +390,12 @@ export default function CleaningPage() {
 
   /* ── Derivados ────────────────────────────────────────────────── */
 
+  const allowedBuildingIds = useMemo(() => {
+    if (!isGroupMode) return null;
+    const ids = new Set(buildings.filter((b) => b.company_id && groupCompanyIds.includes(b.company_id)).map((b) => b.id));
+    return ids;
+  }, [isGroupMode, buildings, groupCompanyIds]);
+
   const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
   const unitById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
   const unitsByBuilding = useMemo(() => {
@@ -419,7 +428,7 @@ export default function CleaningPage() {
     const tasks: WeekTask[] = [];
     weekDays.forEach(({ dayOfWeek, iso }) => {
       buildingSchedules
-        .filter((s) => s.day_of_week === dayOfWeek)
+        .filter((s) => s.day_of_week === dayOfWeek && (!allowedBuildingIds || allowedBuildingIds.has(s.building_id)))
         .forEach((s) => {
           tasks.push({
             key: `b-${s.id}-${iso}`,
@@ -435,7 +444,7 @@ export default function CleaningPage() {
           });
         });
       unitSchedules
-        .filter((s) => s.active && s.day_of_week === dayOfWeek)
+        .filter((s) => s.active && s.day_of_week === dayOfWeek && (!allowedBuildingIds || allowedBuildingIds.has(s.building_id)))
         .forEach((s) => {
           // Derivar time_block desde start_time si existe
           let tb: TimeBlock | null = null;
@@ -574,10 +583,11 @@ export default function CleaningPage() {
     const thirtyAgoIso = isoDate(addDays(new Date(), -30));
     return logs
       .filter((l) => l.scheduled_date >= thirtyAgoIso)
+      .filter((l) => !allowedBuildingIds || allowedBuildingIds.has(l.building_id))
       .filter((l) => historyBuildingId === "all" || l.building_id === historyBuildingId)
       .filter((l) => historyType === "all" || l.cleaning_type === historyType)
       .sort((a, b) => b.scheduled_date.localeCompare(a.scheduled_date));
-  }, [logs, historyBuildingId, historyType]);
+  }, [logs, historyBuildingId, historyType, allowedBuildingIds]);
 
   /* ── Acciones ─────────────────────────────────────────────────── */
 
@@ -1556,6 +1566,7 @@ export default function CleaningPage() {
                     <th style={thStyle}>Tipo</th>
                     <th style={thStyle}>Área / Unidad</th>
                     <th style={thStyle}>Edificio</th>
+                    {isGroupMode && <th style={thStyle}>Empresa</th>}
                     <th style={thStyle}>Estado</th>
                     <th style={thStyle}>Completado por</th>
                   </tr>
@@ -1575,6 +1586,19 @@ export default function CleaningPage() {
                         </td>
                         <td style={tdStyle}>{u ? (u.display_code || u.unit_number) : "Áreas comunes"}</td>
                         <td style={tdStyle}>{b?.name ?? "—"}</td>
+                        {isGroupMode && (() => {
+                          const co = b?.company_id ? groupCompanies.find(c => c.id === b.company_id) : null;
+                          return (
+                            <td style={tdStyle}>
+                              {co ? (
+                                <div style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: co.brand_color || "#6b7280", flexShrink: 0 }} />
+                                  <span style={{ fontSize: 11 }}>{co.short_name || co.name}</span>
+                                </div>
+                              ) : "—"}
+                            </td>
+                          );
+                        })()}
                         <td style={tdStyle}><AppBadge variant={STATUS_VARIANT[r.status]}>{STATUS_LABEL[r.status]}</AppBadge></td>
                         <td style={tdStyle}>{r.completed_at ? new Date(r.completed_at).toLocaleString("es-MX") : "—"}</td>
                       </tr>

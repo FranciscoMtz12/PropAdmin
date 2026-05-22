@@ -61,6 +61,7 @@ import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
 import { type PurchaseReturn, type PurchaseOrderVersionType, type PurchaseOrderInvoice, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
 
 import PageContainer from "@/components/PageContainer";
@@ -128,6 +129,7 @@ type POItem = {
 
 type PurchaseOrder = {
   id:                   string;
+  company_id:           string;
   folio:                string;
   supplier_id:          string;
   supplier_branch_id:   string | null;
@@ -257,6 +259,8 @@ const purchasesErrorTextStyle: CSSProperties = {
 
 export default function PurchasesPage() {
   const { user, loading: userLoading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const router = useRouter();
   const { legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, logoGroupUrl, purchasesContactPhone, purchasesContactEmail } = useTheme();
 
@@ -360,9 +364,9 @@ export default function PurchasesPage() {
   /* ── Load ──────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin)) void loadAll(user?.company_id ?? null);
+    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadAll(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user]);
+  }, [userLoading, user, isGroupMode]);
 
   async function loadAll(companyId: string | null) {
     setLoading(true);
@@ -445,7 +449,7 @@ export default function PurchasesPage() {
     }
 
     type OCRow = {
-      id: string; folio: string; supplier_id: string;
+      id: string; company_id: string; folio: string; supplier_id: string;
       supplier_branch_id: string | null;
       supplier_prefix: string | null;
       maintenance_log_id: string | null; building_id: string | null;
@@ -493,6 +497,7 @@ export default function PurchasesPage() {
       const agg = itemsByOc.get(r.id);
       return {
         id:                   r.id,
+        company_id:           r.company_id,
         folio:                r.folio,
         supplier_id:          r.supplier_id,
         supplier_branch_id:   r.supplier_branch_id,
@@ -638,6 +643,8 @@ export default function PurchasesPage() {
       /* Filtro por mes (created_at) */
       const d = new Date(o.created_at);
       if (d.getFullYear() !== selectedYear || d.getMonth() + 1 !== selectedMonth) return false;
+
+      if (isGroupMode && !groupCompanyIds.includes(o.company_id)) return false;
 
       if (filterSupplier !== "ALL" && o.supplier_id !== filterSupplier) return false;
       if (filterStatus   !== "ALL" && o.status !== filterStatus) return false;
@@ -1758,6 +1765,10 @@ export default function PurchasesPage() {
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((o, index) => {
+            const prevO = isGroupMode ? filtered[index - 1] : null;
+            const showCompanyHeader = isGroupMode && (index === 0 || o.company_id !== prevO?.company_id);
+            const headerCompany = showCompanyHeader ? groupCompanies.find((c) => c.id === o.company_id) : null;
+            const companyCount = showCompanyHeader ? filtered.filter((x) => x.company_id === o.company_id).length : 0;
             const isExpanded = expandedOrderId === o.id;
             const items      = itemsByOrderId[o.id] || [];
             const hasPrices  = items.some((it) => it.unit_price != null && Number(it.unit_price) > 0);
@@ -1769,8 +1780,16 @@ export default function PurchasesPage() {
             const fechaLarga = formatDateLong(o.created_at);
 
             return (
+              <div key={o.id}>
+              {showCompanyHeader && headerCompany && (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, marginTop: index > 0 ? 20 : 4 }}>
+                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: headerCompany.brand_color || "#6b7280", flexShrink: 0 }} />
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{headerCompany.short_name || headerCompany.name}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {companyCount} OC{companyCount !== 1 ? "s" : ""}</span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 4 }} />
+                </div>
+              )}
               <motion.div
-                key={o.id}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
@@ -2727,6 +2746,7 @@ export default function PurchasesPage() {
                 </AnimatePresence>
               </AppCard>
               </motion.div>
+              </div>
             );
           })}
         </div>

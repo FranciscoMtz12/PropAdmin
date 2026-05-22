@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import {
   type BuildingUtilityMeter, type BuildingUtilityInvoice, type BuildingUtilityInvoiceItem,
   meterGeneratesCharge, SERVICE_TYPE_LABEL, SERVICE_TYPE_UNIT,
@@ -53,6 +54,7 @@ function proxyUrl(url: string): string {
 type BuildingGroup = {
   building_id: string;
   building_name: string;
+  company_id: string | null;
   utility_meters: BuildingUtilityMeter[];
   invoices: Map<string, BuildingUtilityInvoice>;
   units: { id: string; unit_number: string }[];
@@ -536,6 +538,8 @@ function PeriodSelector({
 
 export default function ServiciosPage() {
   const { user, loading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const { legalName, companyAddress, companyTaxId, accentColor, logoPrintUrl, logoGroupUrl } = useTheme();
   const router = useRouter();
 
@@ -572,15 +576,15 @@ export default function ServiciosPage() {
   }, [period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadData();
-  }, [user?.company_id, user?.is_superadmin, period.year, period.month]);
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadData();
+  }, [user?.company_id, user?.is_superadmin, isGroupMode, period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadPendingMeters();
-  }, [user?.company_id, user?.is_superadmin]);
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadPendingMeters();
+  }, [user?.company_id, user?.is_superadmin, isGroupMode]);
 
   async function loadPendingMeters() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
@@ -605,7 +609,7 @@ export default function ServiciosPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setPageLoading(true);
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -615,7 +619,7 @@ export default function ServiciosPage() {
     try {
       const { data: buildingsData, error: bErr } = await co(supabase
         .from("buildings")
-        .select("id, name"))
+        .select("id, name, company_id"))
         .is("deleted_at", null)
         .order("name");
       if (bErr) throw bErr;
@@ -626,7 +630,7 @@ export default function ServiciosPage() {
         return;
       }
 
-      const bIds = (buildingsData as { id: string; name: string }[]).map(b => b.id);
+      const bIds = (buildingsData as { id: string; name: string; company_id: string | null }[]).map(b => b.id);
 
       const [umRes, unitsRes, uiRes] = await Promise.all([
         supabase.from("building_utility_meters")
@@ -673,19 +677,23 @@ export default function ServiciosPage() {
       const totalConfigured = [...utilMetersByBuilding.values()].reduce((n, arr) => n + arr.length, 0);
       setHasAnyMeters(totalConfigured > 0);
 
-      const result: BuildingGroup[] = (buildingsData as { id: string; name: string }[])
+      const result: BuildingGroup[] = (buildingsData as { id: string; name: string; company_id: string | null }[])
         .map(b => {
           const utilMeters = (utilMetersByBuilding.get(b.id) ?? [])
             .filter(m => shouldBillThisPeriod(m, year, month));
           return {
             building_id:    b.id,
             building_name:  b.name,
+            company_id:     b.company_id ?? null,
             utility_meters: utilMeters,
             invoices:       invoicesByMeter,
             units:          unitsByBuilding.get(b.id) ?? [],
           };
         })
-        .filter(g => g.utility_meters.length > 0);
+        .filter(g =>
+          g.utility_meters.length > 0 &&
+          (!isGroupMode || (g.company_id != null && groupCompanyIds.includes(g.company_id)))
+        );
 
       setGroups(result);
     } catch (err) {
@@ -1277,6 +1285,16 @@ export default function ServiciosPage() {
               title={group.building_name}
               subtitle={bPend === 0 ? "Todo facturado" : `${bPend} servicio${bPend > 1 ? "s" : ""} pendiente${bPend > 1 ? "s" : ""}`}
             >
+              {isGroupMode && (() => {
+                const co = group.company_id ? groupCompanies.find(c => c.id === group.company_id) : null;
+                if (!co) return null;
+                return (
+                  <div style={{ display: "inline-flex", alignItems: "center", gap: 5, marginBottom: 8, fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: co.brand_color || "#6b7280", flexShrink: 0 }} />
+                    <span>{co.short_name || co.name}</span>
+                  </div>
+                );
+              })()}
               {group.utility_meters.map(meter => {
                 const invoice      = group.invoices.get(meter.id) ?? null;
                 const parts        = [meter.provider_name, meter.meter_number].filter(Boolean);
