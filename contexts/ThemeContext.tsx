@@ -196,7 +196,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadSaproaConfig() {
     const { data } = await supabase
       .from("saproa_config")
-      .select("id, platform_name, accent_color, accent_style")
+      .select("id, platform_name, accent_color, accent_style, logo_url, logo_dark_url")
       .limit(1)
       .maybeSingle();
 
@@ -208,6 +208,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty("--color-primary", color);
     setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
     if (data.platform_name) setPlatformName(data.platform_name);
+    setLogoUrl(data.logo_url ?? null);
+    setLogoDarkUrl(data.logo_dark_url ?? null);
   }
 
   async function loadCompanyBranding(companyId: string, isSuperAdmin: boolean, isGroupAdmin: boolean) {
