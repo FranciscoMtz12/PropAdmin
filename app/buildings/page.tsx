@@ -68,6 +68,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
@@ -298,6 +299,8 @@ export default function BuildingsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { notifications } = useNotifications(user?.company_id ?? "");
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   /* Estado de datos */
   const [buildings, setBuildings] = useState<Building[]>([]);
@@ -422,7 +425,7 @@ export default function BuildingsPage() {
   /* ── Carga de datos ─────────────────────────────────────────────── */
 
   const loadBuildings = useCallback(async () => {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setLoadingBuildings(true);
 
     const cid = user?.company_id ?? null;
@@ -519,11 +522,11 @@ export default function BuildingsPage() {
 
     setActiveLeasesCountByBuilding(leaseCounts);
     setLoadingBuildings(false);
-  }, [user]);
+  }, [user, isGroupMode]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadBuildings();
-  }, [loadBuildings, user?.company_id, user?.is_superadmin]);
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadBuildings();
+  }, [loadBuildings, user?.company_id, user?.is_superadmin, isGroupMode]);
 
   /* ── Métricas del portafolio ─────────────────────────────────────── */
 
@@ -593,14 +596,43 @@ export default function BuildingsPage() {
 
   /* Edificios filtrados por categoría y ordenados alfabéticamente (orden natural) */
   const filteredBuildings = useMemo(
-    () =>
-      buildings
+    () => {
+      const base = isGroupMode
+        ? buildings.filter((b) => groupCompanyIds.includes(b.company_id))
+        : buildings;
+      return base
         .filter((b) => selectedCategory === "ALL" || b.building_category === selectedCategory)
         .sort((a, b) =>
           a.name.localeCompare(b.name, "es", { numeric: true, sensitivity: "base" })
-        ),
-    [buildings, selectedCategory]
+        );
+    },
+    [buildings, selectedCategory, isGroupMode, groupCompanyIds]
   );
+
+  /* Métricas consolidadas para vista de grupo */
+  const groupStats = useMemo(() => {
+    if (!isGroupMode) return null;
+    let totalUnits = 0;
+    let totalOccupied = 0;
+    filteredBuildings.forEach((b) => {
+      totalUnits += unitCountByBuilding.get(b.id) || 0;
+      totalOccupied += occupiedByBuilding.get(b.id) || 0;
+    });
+    const occupancyPct = totalUnits > 0 ? Math.round((totalOccupied / totalUnits) * 100) : 0;
+    return { total: filteredBuildings.length, totalUnits, occupancyPct };
+  }, [isGroupMode, filteredBuildings, unitCountByBuilding, occupiedByBuilding]);
+
+  /* Edificios agrupados por empresa para vista de grupo */
+  const buildingsByCompany = useMemo(() => {
+    if (!isGroupMode) return [];
+    return groupCompanies
+      .filter((company) => groupCompanyIds.includes(company.id))
+      .map((company) => ({
+        company,
+        compBuildings: filteredBuildings.filter((b) => b.company_id === company.id),
+      }))
+      .filter(({ compBuildings }) => compBuildings.length > 0);
+  }, [isGroupMode, groupCompanies, groupCompanyIds, filteredBuildings]);
 
   /* ── Handlers de formulario ─────────────────────────────────────── */
 
@@ -836,10 +868,12 @@ export default function BuildingsPage() {
               <MapIcon size={16} />
               Ver mapa
             </UiButton>
-            <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
-              <Plus size={16} />
-              Nueva propiedad
-            </UiButton>
+            {!isGroupMode && (
+              <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
+                <Plus size={16} />
+                Nueva propiedad
+              </UiButton>
+            )}
           </>
         }
       />
@@ -861,63 +895,158 @@ export default function BuildingsPage() {
       ) : null}
 
       {/* ── Métricas del portafolio ── */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <MetricCard
-          label="Total de propiedades"
-          value={portfolioStats.total}
-          icon={<Warehouse size={18} />}
-          helper="Portafolio actual"
-        />
-        <MetricCard
-          label="Al 75 %+ de ocupación"
-          value={portfolioStats.highOccupancy}
-          icon={<Building2 size={18} />}
-          helper="Propiedades en alta ocupación"
-          variant="green"
-        />
-        <MetricCard
-          label="Ocupación promedio"
-          value={`${portfolioStats.avgOccupancy}%`}
-          icon={<TrendingUp size={18} />}
-          helper="Promedio del portafolio"
-        />
-        <MetricCard
-          label="Unidades en portafolio"
-          value={portfolioStats.totalPortfolioUnits}
-          icon={<Home size={18} />}
-          helper="Total de departamentos"
-        />
-      </div>
+      {isGroupMode && groupStats ? (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+          <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
+          <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
+          <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
+        </div>
+      ) : (
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gap: 16,
+            marginBottom: 24,
+          }}
+        >
+          <MetricCard
+            label="Total de propiedades"
+            value={portfolioStats.total}
+            icon={<Warehouse size={18} />}
+            helper="Portafolio actual"
+          />
+          <MetricCard
+            label="Al 75 %+ de ocupación"
+            value={portfolioStats.highOccupancy}
+            icon={<Building2 size={18} />}
+            helper="Propiedades en alta ocupación"
+            variant="green"
+          />
+          <MetricCard
+            label="Ocupación promedio"
+            value={`${portfolioStats.avgOccupancy}%`}
+            icon={<TrendingUp size={18} />}
+            helper="Promedio del portafolio"
+          />
+          <MetricCard
+            label="Unidades en portafolio"
+            value={portfolioStats.totalPortfolioUnits}
+            icon={<Home size={18} />}
+            helper="Total de departamentos"
+          />
+        </div>
+      )}
 
       {/* ── Lista de edificios ── */}
       <SectionCard
-        title="Portafolio"
+        title={isGroupMode ? "Vista consolidada" : "Portafolio"}
         icon={<Filter size={18} />}
         action={
-          <div style={{ minWidth: 220 }}>
-            <AppSelect
-              value={selectedCategory}
-              onChange={(e) => setSelectedCategory(e.target.value)}
-            >
-              <option value="ALL">Todas las categorías</option>
-              {PROPERTY_TYPES.map((pt, index) => (
-                <option key={`${pt.value}-${index}`} value={pt.value}>
-                  {pt.label}
-                </option>
-              ))}
-            </AppSelect>
-          </div>
+          !isGroupMode ? (
+            <div style={{ minWidth: 220 }}>
+              <AppSelect
+                value={selectedCategory}
+                onChange={(e) => setSelectedCategory(e.target.value)}
+              >
+                <option value="ALL">Todas las categorías</option>
+                {PROPERTY_TYPES.map((pt, index) => (
+                  <option key={`${pt.value}-${index}`} value={pt.value}>
+                    {pt.label}
+                  </option>
+                ))}
+              </AppSelect>
+            </div>
+          ) : undefined
         }
       >
         {loadingBuildings ? (
           <p style={{ margin: 0 }}>Cargando edificios...</p>
+        ) : isGroupMode ? (
+          buildingsByCompany.length === 0 ? (
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Sin propiedades en las empresas activas.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              {buildingsByCompany.map(({ company, compBuildings }) => {
+                const compColor = company.brand_color || "var(--accent)";
+                return (
+                  <div key={company.id}>
+                    {/* Company section header */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                        {company.short_name || company.name}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                        {compBuildings.length} {compBuildings.length === 1 ? "propiedad" : "propiedades"}
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
+                    </div>
+                    {/* Buildings grid */}
+                    <div
+                      className="buildings-grid"
+                      style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, width: "100%", maxWidth: "100%" }}
+                    >
+                      {compBuildings.map((building, index) => {
+                        const totalUnits = unitCountByBuilding.get(building.id) || 0;
+                        const activeLeases = occupiedByBuilding.get(building.id) || 0;
+                        const freeUnits = vacantByBuilding.get(building.id) || 0;
+                        const isHovered = hoveredBuildingId === building.id;
+                        return (
+                          <motion.div
+                            key={building.id}
+                            initial={{ opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.3, delay: index * 0.06 }}
+                            style={{ overflow: "visible", position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, display: "flex", flexDirection: "column" }}
+                          >
+                            <div
+                              onClick={() => router.push(`/buildings/${building.id}`)}
+                              onMouseEnter={() => setHoveredBuildingId(building.id)}
+                              onMouseLeave={() => setHoveredBuildingId(null)}
+                              style={{ cursor: "pointer", transform: isHovered ? "translateY(-2px)" : "translateY(0)", transition: "transform 0.15s ease", borderRadius: "var(--border-radius-xl)", overflow: "visible", position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, flex: 1, display: "flex", flexDirection: "column" }}
+                            >
+                              <div
+                                style={{ border: "1px solid var(--border-default)", borderLeft: `4px solid ${compColor}`, borderRadius: "var(--border-radius-xl)", padding: 16, background: "var(--bg-card)", boxShadow: isHovered ? "0 8px 24px rgba(0,0,0,0.13)" : "var(--shadow-card)", transition: "box-shadow 0.15s ease, background 0.2s, border-color 0.2s", width: "100%", maxWidth: "100%", minWidth: 0, boxSizing: "border-box", position: "relative", flex: 1, display: "flex", flexDirection: "column" }}
+                              >
+                                <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, width: "100%", marginBottom: 10, flex: 1 }}>
+                                  <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
+                                    <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.name}</p>
+                                    <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.address || "Sin dirección registrada"}</p>
+                                    {(() => {
+                                      const pt = getPropertyType(building.building_category);
+                                      const PtIcon = ICON_MAP[pt.icon];
+                                      return (
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pt.color + "1a", color: pt.color }}>
+                                          {PtIcon && <PtIcon size={11} />}{pt.label}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                  <div style={{ flexShrink: 0, width: 72, height: 72, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                    <OccupancyDonut totalUnits={totalUnits} activeLeases={activeLeases} size={72} />
+                                  </div>
+                                </div>
+                                <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
+                                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                                  <div style={{ display: "flex", gap: 20 }}>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{totalUnits}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Total</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "#10B981", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>{freeUnits}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p></div>
+                                  </div>
+                                  {isHovered && <span style={{ fontSize: 12, color: compColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Ver detalle →</span>}
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )
         ) : filteredBuildings.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "56px 24px", textAlign: "center" }}>
             <motion.div
