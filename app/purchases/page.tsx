@@ -360,13 +360,16 @@ export default function PurchasesPage() {
   /* ── Load ──────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && user?.company_id) void loadAll(user.company_id);
+    if (!userLoading && (user?.company_id || user?.is_superadmin)) void loadAll(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLoading, user]);
 
-  async function loadAll(companyId: string) {
+  async function loadAll(companyId: string | null) {
     setLoading(true);
     setMsg("");
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
 
     const [
       { data: ocData,      error: ocError },
@@ -377,7 +380,7 @@ export default function PurchasesPage() {
       { data: signerData                   },
       { data: fieldUserData, error: fieldUserError },
     ] = await Promise.all([
-      supabase
+      co(supabase
         .from("purchase_orders")
         .select(`
           id, folio, status, created_at, company_id,
@@ -388,8 +391,7 @@ export default function PurchasesPage() {
           pdf_url, sent_at, parent_order_id, version_type,
           suppliers(id, name, contact_email, contact_phone, tax_id),
           buildings(id, name)
-        `)
-        .eq("company_id", companyId)
+        `))
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
@@ -398,44 +400,38 @@ export default function PurchasesPage() {
         .select("id, purchase_order_id, description, quantity, unit, unit_price, quantity_received")
         .is("deleted_at", null),
 
-      supabase
+      co(supabase
         .from("suppliers")
         .select(`
           id, name, prefix, tax_id, contact_name, contact_email, contact_phone,
           client_number, cfdi_use,
           supplier_branches(id, name, address, email, phone, active)
-        `)
-        .eq("company_id", companyId)
+        `))
         .eq("active", true)
         .is("deleted_at", null)
         .order("name", { ascending: true }),
 
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name, address")
-        .eq("company_id", companyId)
+        .select("id, name, address"))
         .is("deleted_at", null)
         .order("name", { ascending: true }),
 
-      supabase
-        .from("companies")
-        .select("name, logo_url, logo_print_url, initials")
-        .eq("id", companyId)
-        .single(),
+      companyId
+        ? supabase.from("companies").select("name, logo_url, logo_print_url, initials").eq("id", companyId).single()
+        : Promise.resolve({ data: null, error: null }),
 
-      supabase
+      co(supabase
         .from("purchase_order_signers")
-        .select("id, name, is_default")
-        .eq("company_id", companyId)
+        .select("id, name, is_default"))
         .eq("role", "signer")
         .is("deleted_at", null)
         .order("is_default", { ascending: false })
         .order("name", { ascending: true }),
 
-      supabase
+      co(supabase
         .from("app_users")
-        .select("id, full_name, email")
-        .eq("company_id", companyId)
+        .select("id, full_name, email"))
         .in("role", ["field", "mantenimiento"])
         .order("full_name", { ascending: true }),
     ]);
@@ -883,7 +879,7 @@ export default function PurchasesPage() {
         : "Orden de compra creada correctamente."
     );
     /* Recargar lista completa para refrescar conteos, total, signer_name, etc. */
-    await loadAll(user.company_id);
+    await loadAll(user?.company_id ?? null);
   });
 
   /* ── Expand / load items ──────────────────────────────────────── */
@@ -1065,7 +1061,7 @@ export default function PurchasesPage() {
         created_at: nowIso,
       }))
     );
-    void loadAll(user.company_id);
+    void loadAll(user?.company_id ?? null);
     toast.success(`Borrador creado: ${newFolio}`);
   }
 

@@ -344,20 +344,26 @@ export default function DashboardPage() {
 
   /* Carga inicial cuando el usuario está listo */
   useEffect(() => {
-    if (user?.company_id) void loadDashboard();
-  }, [user?.company_id]);
+    if (user?.company_id || user?.is_superadmin) void loadDashboard();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
     if (user?.company_id) void loadSetupProgress();
   }, [user?.company_id]);
 
   useEffect(() => {
-    if (user?.company_id) void loadChecklist(user.company_id);
-  }, [user?.company_id]);
+    if (user?.company_id || user?.is_superadmin) void loadChecklist(user?.company_id ?? null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id, user?.is_superadmin]);
 
   async function loadDashboard() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setLoadingData(true);
+
+    const cid = user.company_id;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
     const today = todayDateKey();
 
@@ -382,10 +388,9 @@ export default function DashboardPage() {
       maintenanceRes,
     ] = await Promise.all([
       /* Unidades — incluye unit_type_id para card de disponibles */
-      supabase
+      co(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)"))
         .is("deleted_at", null),
 
       /* Tipos de unidad — para mostrar tipo en card de disponibles */
@@ -394,56 +399,49 @@ export default function DashboardPage() {
         .select("id, name"),
 
       /* Leases — activos + contratos próximos a vencer */
-      supabase
+      co(supabase
         .from("leases")
-        .select("id, unit_id, tenant_id, status, end_date")
-        .eq("company_id", user.company_id)
+        .select("id, unit_id, tenant_id, status, end_date"))
         .is("deleted_at", null),
 
       /* Inquilinos — solo nombre */
-      supabase
+      co(supabase
         .from("tenants")
-        .select("id, full_name")
-        .eq("company_id", user.company_id)
+        .select("id, full_name"))
         .is("deleted_at", null),
 
       /* Edificios — solo nombre */
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name")
-        .eq("company_id", user.company_id)
+        .select("id, name"))
         .is("deleted_at", null),
 
       /* Cobros — últimos 6 meses para chart + métricas del mes */
-      supabase
+      co(supabase
         .from("collection_records")
         .select(
           "id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status"
-        )
-        .eq("company_id", user.company_id)
+        ))
         .is("deleted_at", null)
         .gte("due_date", sixMonthsAgoKey)
         .order("due_date", { ascending: true }),
 
       /* Limpiezas de edificios activas — filtramos por día en memo */
-      supabase
+      co(supabase
         .from("cleaning_building_schedules")
-        .select("id, building_id, day_of_week")
-        .eq("company_id", user.company_id),
+        .select("id, building_id, day_of_week")),
 
       /* Limpiezas de unidades activas — filtramos por día en memo */
-      supabase
+      co(supabase
         .from("cleaning_unit_schedules")
-        .select("id, unit_id, day_of_week, active")
-        .eq("company_id", user.company_id)
+        .select("id, unit_id, day_of_week, active"))
         .is("deleted_at", null)
         .eq("active", true),
 
       /* Mantenimientos con fecha programada = hoy */
-      supabase
+      co(supabase
         .from("maintenance_logs")
-        .select("id, unit_id, title, status")
-        .eq("company_id", user.company_id),
+        .select("id, unit_id, title, status")),
     ]);
 
     setUnits((unitsRes.data as Unit[]) || []);
@@ -459,8 +457,10 @@ export default function DashboardPage() {
     setLoadingData(false);
   }
 
-  async function loadChecklist(companyId: string) {
+  async function loadChecklist(companyId: string | null) {
     setChecklistLoading(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -474,25 +474,21 @@ export default function DashboardPage() {
       { count: lecturasCount },
       { count: contratosCount },
     ] = await Promise.all([
-      supabase.from('collection_records')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
+      co(supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true }))
         .eq('period_year', year)
         .eq('period_month', month),
-      supabase.from('collection_records')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
+      co(supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true }))
         .eq('status', 'overdue')
         .is('deleted_at', null),
-      supabase.from('building_utility_readings')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
+      co(supabase.from('building_utility_readings')
+        .select('id', { count: 'exact', head: true }))
         .eq('period_year', year)
         .eq('period_month', month)
         .is('deleted_at', null),
-      supabase.from('leases')
-        .select('id', { count: 'exact', head: true })
-        .eq('company_id', companyId)
+      co(supabase.from('leases')
+        .select('id', { count: 'exact', head: true }))
         .eq('status', 'ACTIVE')
         .not('end_date', 'is', null)
         .lte('end_date', thirtyStr)

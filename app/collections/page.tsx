@@ -378,10 +378,10 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     void loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.company_id]);
+  }, [loading, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
     if (user?.company_id) void loadReadingsStatus(user.company_id);
@@ -410,17 +410,21 @@ export default function CollectionsPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setLoadingPage(true);
+
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
     const [buildingsRes, unitsRes, tenantsRes, leasesRes, schedulesRes, recordsRes] =
       await Promise.all([
-        supabase.from("buildings").select("id, name").eq("company_id", user.company_id).is("deleted_at", null).order("name"),
-        supabase.from("units").select("id, building_id, unit_number, display_code").eq("company_id", user.company_id).is("deleted_at", null),
-        supabase.from("tenants").select("id, full_name, email, billing_name, billing_email, tax_id").eq("company_id", user.company_id).is("deleted_at", null),
-        supabase.from("leases").select("id, unit_id, tenant_id, billing_name, billing_email, billing_tax_id, rent_amount, room_number, status, start_date, end_date").eq("company_id", user.company_id).eq("status", "ACTIVE").is("deleted_at", null),
-        supabase.from("collection_schedules").select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes").eq("company_id", user.company_id).is("deleted_at", null),
-        supabase.from("collection_records").select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, needs_capture, created_at").eq("company_id", user.company_id).is("deleted_at", null).order("due_date"),
+        co(supabase.from("buildings").select("id, name")).is("deleted_at", null).order("name"),
+        co(supabase.from("units").select("id, building_id, unit_number, display_code")).is("deleted_at", null),
+        co(supabase.from("tenants").select("id, full_name, email, billing_name, billing_email, tax_id")).is("deleted_at", null),
+        co(supabase.from("leases").select("id, unit_id, tenant_id, billing_name, billing_email, billing_tax_id, rent_amount, room_number, status, start_date, end_date")).eq("status", "ACTIVE").is("deleted_at", null),
+        co(supabase.from("collection_schedules").select("id, building_id, unit_id, lease_id, charge_type, title, amount_expected, due_day, active, notes")).is("deleted_at", null),
+        co(supabase.from("collection_records").select("id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, notes, needs_capture, created_at")).is("deleted_at", null).order("due_date"),
       ]);
 
     for (const res of [buildingsRes, unitsRes, tenantsRes, leasesRes, schedulesRes, recordsRes]) {
@@ -446,11 +450,13 @@ export default function CollectionsPage() {
   // ── PASO 3: auto-mark overdue ─────────────────────────────────────────────────
 
   async function autoMarkOverdue() {
-    if (!user?.company_id) return;
-    await supabase
+    if (!user?.company_id && !user?.is_superadmin) return;
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+    await co(supabase
       .from("collection_records")
-      .update({ status: "overdue" })
-      .eq("company_id", user.company_id)
+      .update({ status: "overdue" }))
       .eq("status", "pending")
       .lt("due_date", getTodayDateKey())
       .is("deleted_at", null);

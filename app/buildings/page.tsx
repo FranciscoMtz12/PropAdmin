@@ -422,14 +422,17 @@ export default function BuildingsPage() {
   /* ── Carga de datos ─────────────────────────────────────────────── */
 
   const loadBuildings = useCallback(async () => {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setLoadingBuildings(true);
 
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+
     /* 1. Edificios */
-    const { data, error } = await supabase
+    const { data, error } = await co(supabase
       .from("buildings")
-      .select("id, company_id, name, address, code, building_category, building_subcategory, building_subtype, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id, land_sqm, construction_sqm, default_unit_sqm")
-      .eq("company_id", user.company_id)
+      .select("id, company_id, name, address, code, building_category, building_subcategory, building_subtype, latitude, longitude, total_sqm, building_tags, building_features, parent_building_id, land_sqm, construction_sqm, default_unit_sqm"))
       .is("deleted_at", null)
       .is("parent_building_id", null)
       .order("created_at", { ascending: false });
@@ -519,8 +522,8 @@ export default function BuildingsPage() {
   }, [user]);
 
   useEffect(() => {
-    if (user?.company_id) void loadBuildings();
-  }, [loadBuildings, user?.company_id]);
+    if (user?.company_id || user?.is_superadmin) void loadBuildings();
+  }, [loadBuildings, user?.company_id, user?.is_superadmin]);
 
   /* ── Métricas del portafolio ─────────────────────────────────────── */
 
