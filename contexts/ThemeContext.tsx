@@ -182,7 +182,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
     if (isImpersonating && impersonatedCompanyId) {
-      void loadCompanyBranding(impersonatedCompanyId, false, false);
+      void loadCompanyBranding(impersonatedCompanyId, false, false, true);
     } else if (user?.company_id) {
       const isSA = Boolean(user.is_superadmin) || user.role === 'superadmin';
       const isGA = (user.role as string) === 'group_admin';
@@ -217,7 +217,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setLogoDarkUrl(data.logo_dark_url ?? null);
   }
 
-  async function loadCompanyBranding(companyId: string, isSuperAdmin: boolean, isGroupAdmin: boolean) {
+  async function loadCompanyBranding(companyId: string, isSuperAdmin: boolean, isGroupAdmin: boolean, forceCompanyColor = false) {
     const { data } = await supabase
       .from("companies")
       .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email, group_id, accent_style")
@@ -256,7 +256,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     /* Cargar color del grupo corporativo */
     let baseAccent = companyColor;
-    if (data.group_id) {
+    if (data.group_id && !forceCompanyColor) {
       const { data: groupData } = await supabase
         .from("company_groups")
         .select("brand_color")
