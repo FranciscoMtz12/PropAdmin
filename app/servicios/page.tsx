@@ -572,19 +572,21 @@ export default function ServiciosPage() {
   }, [period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id) void loadData();
-  }, [user?.company_id, period.year, period.month]);
+    if (user?.company_id || user?.is_superadmin) void loadData();
+  }, [user?.company_id, user?.is_superadmin, period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id) void loadPendingMeters();
-  }, [user?.company_id]);
+    if (user?.company_id || user?.is_superadmin) void loadPendingMeters();
+  }, [user?.company_id, user?.is_superadmin]);
 
   async function loadPendingMeters() {
-    if (!user?.company_id) return;
-    const { data } = await supabase
+    if (!user?.company_id && !user?.is_superadmin) return;
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+    const { data } = await co(supabase
       .from("building_utility_meters")
-      .select("id, building_id, buildings(name)")
-      .eq("company_id", user.company_id)
+      .select("id, building_id, buildings(name)"))
       .eq("active", false)
       .is("deleted_at", null);
     if (!data) return;
@@ -603,16 +605,17 @@ export default function ServiciosPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setPageLoading(true);
-    const cid = user.company_id;
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
     const { year, month } = period;
 
     try {
-      const { data: buildingsData, error: bErr } = await supabase
+      const { data: buildingsData, error: bErr } = await co(supabase
         .from("buildings")
-        .select("id, name")
-        .eq("company_id", cid)
+        .select("id, name"))
         .is("deleted_at", null)
         .order("name");
       if (bErr) throw bErr;

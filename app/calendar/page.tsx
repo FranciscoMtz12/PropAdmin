@@ -594,15 +594,19 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     void loadCalendarData();
-  }, [loading, user?.company_id]);
+  }, [loading, user?.company_id, user?.is_superadmin]);
 
   async function loadCalendarData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
 
     setLoadingPage(true);
     setMsg("");
+
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
     const [
       buildingsRes,
@@ -614,62 +618,54 @@ export default function CalendarPage() {
       collectionSchedulesRes,
       collectionRecordsRes,
     ] = await Promise.all([
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name")
-        .eq("company_id", user.company_id)
+        .select("id, name"))
         .is("deleted_at", null)
         .order("name", { ascending: true }),
 
-      supabase
+      co(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_number, display_code"))
         .is("deleted_at", null),
 
-      supabase
+      co(supabase
         .from("leases")
-        .select("*")
-        .eq("company_id", user.company_id)
+        .select("*"))
         .is("deleted_at", null),
 
-      supabase
+      co(supabase
         .from("cleaning_building_schedules")
-        .select("id, building_id, cleaning_type, day_of_week, time_block")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, cleaning_type, day_of_week, time_block"))
         .is("deleted_at", null),
 
-      supabase
+      co(supabase
         .from("cleaning_unit_schedules")
-        .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active"))
         .is("deleted_at", null)
         .eq("active", true),
 
-      supabase
+      co(supabase
         .from("maintenance_logs")
         .select(
           "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
-        )
-        .eq("company_id", user.company_id)
+        ))
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
-      supabase
+      co(supabase
         .from("collection_schedules")
         .select(
           "id, building_id, unit_id, lease_id, charge_type, title, responsibility_type, amount_expected, due_day, active, notes"
-        )
-        .eq("company_id", user.company_id)
+        ))
         .eq("active", true)
         .is("deleted_at", null),
 
-      supabase
+      co(supabase
         .from("collection_records")
         .select(
           "id, collection_schedule_id, company_id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status, collected_at, payment_method, notes, created_at"
-        )
-        .eq("company_id", user.company_id)
+        ))
         .is("deleted_at", null)
         .order("due_date", { ascending: true }),
     ]);

@@ -243,10 +243,10 @@ export default function TenantsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
 
     void loadTenantsPage();
-  }, [loading, user?.company_id]);
+  }, [loading, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -265,40 +265,40 @@ export default function TenantsPage() {
   }, []);
 
   async function loadTenantsPage() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
 
     setLoadingPage(true);
     setMessage("");
 
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+
     const [tenantsRes, leasesRes, unitsRes, buildingsRes] = await Promise.all([
-      supabase
+      co(supabase
         .from("tenants")
         .select(
           "id, company_id, full_name, email, phone, tax_id, billing_name, billing_email, status, notes, created_at, updated_at"
-        )
-        .eq("company_id", user.company_id)
+        ))
         .is("deleted_at", null)
         .order("full_name", { ascending: true }),
 
-      supabase
+      co(supabase
         .from("leases")
         .select(
           "id, company_id, unit_id, tenant_id, responsible_payer_id, billing_name, billing_email, due_day, rent_amount, room_number, status, start_date, end_date, created_at"
-        )
-        .eq("company_id", user.company_id)
+        ))
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
 
-      supabase
+      co(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_number, display_code"))
         .is("deleted_at", null),
 
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name")
-        .eq("company_id", user.company_id)
+        .select("id, name"))
         .is("deleted_at", null)
         .order("name", { ascending: true }),
     ]);

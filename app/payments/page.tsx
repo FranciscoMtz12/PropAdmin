@@ -267,7 +267,7 @@ export default function PaymentsPage() {
   const [mpMsg, setMpMsg]               = useState("")
 
   useEffect(() => {
-    if (user?.company_id) void loadData()
+    if (user?.company_id || user?.is_superadmin) void loadData()
   }, [user, year, month])
 
   function navMonth(delta: number) {
@@ -286,9 +286,11 @@ export default function PaymentsPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id) return
+    if (!user?.company_id && !user?.is_superadmin) return
     setPageLoading(true)
-    const cid = user.company_id
+    const cid = user?.company_id ?? null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q
 
     const padM          = String(month).padStart(2, "0")
     const startDate     = `${year}-${padM}-01`
@@ -296,32 +298,28 @@ export default function PaymentsPage() {
     const lastDayOfMonth = `${year}-${padM}-${String(lastDay).padStart(2, "0")}`
 
     const [invRes, mpRes, rptRes, bldRes] = await Promise.all([
-      supabase.from("building_utility_invoices")
-        .select("*")
-        .eq("company_id", cid)
+      co(supabase.from("building_utility_invoices")
+        .select("*"))
         .eq("period_year", year)
         .eq("period_month", month)
         .in("status", ["distributed", "charged"])
         .is("deleted_at", null)
         .or("is_test.eq.false,is_test.is.null"),
-      supabase.from("manual_payments")
-        .select("*")
-        .eq("company_id", cid)
+      co(supabase.from("manual_payments")
+        .select("*"))
         .eq("period_year", year)
         .eq("period_month", month)
         .is("deleted_at", null)
         .or("is_test.eq.false,is_test.is.null"),
-      supabase.from("payment_reports")
-        .select("*")
-        .eq("company_id", cid)
+      co(supabase.from("payment_reports")
+        .select("*"))
         .gte("report_date", startDate)
         .lte("report_date", lastDayOfMonth)
         .is("deleted_at", null)
         .or("is_test.eq.false,is_test.is.null")
         .order("report_date", { ascending: false }),
-      supabase.from("buildings")
-        .select("id, name")
-        .eq("company_id", cid)
+      co(supabase.from("buildings")
+        .select("id, name"))
         .is("deleted_at", null)
         .order("name"),
     ])

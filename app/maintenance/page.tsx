@@ -667,7 +667,7 @@ export default function MaintenancePage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id) void loadPageData();
+    if (user?.company_id || user?.is_superadmin) void loadPageData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
@@ -686,9 +686,13 @@ export default function MaintenancePage() {
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   async function loadPageData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setLoadingData(true);
     setMsg("");
+
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
     const [
       { data: catData },
@@ -697,20 +701,18 @@ export default function MaintenancePage() {
       { data: companyData },
       { data: supplierData },
     ] = await Promise.all([
-      supabase
+      co(supabase
         .from("maintenance_categories")
-        .select("id, name")
-        .eq("company_id", user.company_id)
+        .select("id, name"))
         .order("name", { ascending: true }),
 
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name, code, address")
-        .eq("company_id", user.company_id)
+        .select("id, name, code, address"))
         .is("deleted_at", null)
         .order("name", { ascending: true }),
 
-      supabase
+      co(supabase
         .from("maintenance_logs")
         .select(`
           id, ticket_number, title, description, log_type, status, priority,
@@ -719,22 +721,18 @@ export default function MaintenancePage() {
           category_name_snapshot,
           buildings(id, name, address),
           units(id, unit_number, display_code)
-        `)
-        .eq("company_id", user.company_id)
+        `))
         .is("deleted_at", null)
         .order("created_at", { ascending: false })
         .limit(200),
 
-      supabase
-        .from("companies")
-        .select("name, logo_url, logo_print_url, logo_dark_url")
-        .eq("id", user.company_id)
-        .single(),
+      cid
+        ? supabase.from("companies").select("name, logo_url, logo_print_url, logo_dark_url").eq("id", cid).single()
+        : Promise.resolve({ data: null, error: null }),
 
-      supabase
+      co(supabase
         .from("suppliers")
-        .select("id, name")
-        .eq("company_id", user.company_id)
+        .select("id, name"))
         .eq("active", true)
         .is("deleted_at", null)
         .order("name", { ascending: true }),
@@ -756,25 +754,25 @@ export default function MaintenancePage() {
       setCompanyLogoUrl(cd.logo_url || "");
     }
 
-    await loadCalendarData(user.company_id);
+    await loadCalendarData(user?.company_id ?? null);
     setLoadingData(false);
   }
 
-  async function loadCalendarData(companyId: string) {
+  async function loadCalendarData(companyId: string | null) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
     const [{ data: buildData }, { data: logsData }] = await Promise.all([
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name, code, address")
-        .eq("company_id", companyId)
+        .select("id, name, code, address"))
         .is("deleted_at", null)
         .order("name"),
 
-      supabase
+      co(supabase
         .from("maintenance_logs")
         .select(
           "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
-        )
-        .eq("company_id", companyId)
+        ))
         .is("deleted_at", null)
         .order("performed_at", { ascending: false })
         .order("created_at", { ascending: false })

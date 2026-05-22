@@ -188,17 +188,18 @@ export default function SuppliersPage() {
   /* ── Load ────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && user?.company_id) void loadSuppliers(user.company_id);
+    if (!userLoading && (user?.company_id || user?.is_superadmin)) void loadSuppliers(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userLoading, user]);
 
-  async function loadSuppliers(companyId: string) {
+  async function loadSuppliers(companyId: string | null) {
     setLoading(true);
     setMsg("");
-    const { data, error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
+    const { data, error } = await co(supabase
       .from("suppliers")
-      .select("*, supplier_branches(*)")
-      .eq("company_id", companyId)
+      .select("*, supplier_branches(*)"))
       .is("deleted_at", null)
       .order("name", { ascending: true });
 

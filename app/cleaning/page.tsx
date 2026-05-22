@@ -303,13 +303,17 @@ export default function CleaningPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     void loadData();
-  }, [loading, user?.company_id]);
+  }, [loading, user?.company_id, user?.is_superadmin]);
 
   async function loadData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setLoadingData(true);
+
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
     const today = new Date();
     const thirtyDaysAgo = new Date();
@@ -317,31 +321,26 @@ export default function CleaningPage() {
     const historyStart = thirtyDaysAgo.toISOString().split("T")[0];
 
     const [bRes, uRes, bsRes, usRes, logsRes, chkRes] = await Promise.all([
-      supabase
+      co(supabase
         .from("buildings")
-        .select("id, name")
-        .eq("company_id", user.company_id)
+        .select("id, name"))
         .is("deleted_at", null)
         .order("name"),
-      supabase
+      co(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_number, display_code"))
         .is("deleted_at", null),
-      supabase
+      co(supabase
         .from("cleaning_building_schedules")
-        .select("id, building_id, cleaning_type, day_of_week, time_block")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, cleaning_type, day_of_week, time_block"))
         .is("deleted_at", null),
-      supabase
+      co(supabase
         .from("cleaning_unit_schedules")
-        .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_id, day_of_week, start_time, duration_hours, active"))
         .is("deleted_at", null),
-      supabase
+      co(supabase
         .from("cleaning_logs")
-        .select("id, building_id, unit_id, cleaning_type, scheduled_date, status, completed_at, completed_by, photo_url, notes")
-        .eq("company_id", user.company_id)
+        .select("id, building_id, unit_id, cleaning_type, scheduled_date, status, completed_at, completed_by, photo_url, notes"))
         .gte("scheduled_date", historyStart),
       supabase
         .from("cleaning_checklist_items")

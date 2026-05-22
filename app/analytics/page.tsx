@@ -144,8 +144,12 @@ export default function AnalyticsPage() {
   }, [loading, user, hasAccess, router]);
 
   async function loadData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin) return;
     setLoadingData(true);
+
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
     const today = new Date();
     const twelveMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 11, 1)
@@ -154,35 +158,29 @@ export default function AnalyticsPage() {
 
     const [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, collectionsRes] =
       await Promise.all([
-        supabase
+        co(supabase
           .from("units")
-          .select("id, building_id, unit_type_id, status, display_code, unit_number")
-          .eq("company_id", user.company_id)
+          .select("id, building_id, unit_type_id, status, display_code, unit_number"))
           .is("deleted_at", null),
-        supabase
+        co(supabase
           .from("unit_types")
-          .select("id, name, bedrooms, building_id")
-          .eq("company_id", user.company_id)
+          .select("id, name, bedrooms, building_id"))
           .is("deleted_at", null),
-        supabase
+        co(supabase
           .from("leases")
-          .select("id, unit_id, tenant_id, status, start_date, end_date, rent_amount")
-          .eq("company_id", user.company_id)
+          .select("id, unit_id, tenant_id, status, start_date, end_date, rent_amount"))
           .is("deleted_at", null),
-        supabase
+        co(supabase
           .from("tenants")
-          .select("id, full_name")
-          .eq("company_id", user.company_id)
+          .select("id, full_name"))
           .is("deleted_at", null),
-        supabase
+        co(supabase
           .from("buildings")
-          .select("id, name")
-          .eq("company_id", user.company_id)
+          .select("id, name"))
           .is("deleted_at", null),
-        supabase
+        co(supabase
           .from("collection_records")
-          .select("id, unit_id, lease_id, building_id, period_year, period_month, due_date, amount_due, amount_collected, status, paid_at")
-          .eq("company_id", user.company_id)
+          .select("id, unit_id, lease_id, building_id, period_year, period_month, due_date, amount_due, amount_collected, status, paid_at"))
           .is("deleted_at", null)
           .gte("due_date", twelveMonthsAgo),
       ]);
