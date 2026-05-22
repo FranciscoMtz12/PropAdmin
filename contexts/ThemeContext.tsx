@@ -177,14 +177,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
     if (user?.company_id) {
-      void loadCompanyBranding(user.company_id);
+      const isSA = Boolean(user.is_superadmin) || user.role === 'superadmin';
+      const isGA = (user.role as string) === 'group_admin';
+      void loadCompanyBranding(user.company_id, isSA, isGA);
     }
     if (user?.id) {
       void loadUserPreferences(user.id);
     }
-  }, [user?.company_id, user?.id]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id, user?.id, user?.is_superadmin, user?.role]);
 
-  async function loadCompanyBranding(companyId: string) {
+  async function loadCompanyBranding(companyId: string, isSuperAdmin: boolean, isGroupAdmin: boolean) {
     const { data } = await supabase
       .from("companies")
       .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email, group_id, accent_style")
@@ -199,8 +202,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const companyColor = data.brand_color || DEFAULT_ACCENT;
 
     /* Cargar color del grupo corporativo */
-    const isGroupAdmin = (user?.role as string) === 'group_admin';
-    const isSuperAdmin = Boolean(user?.is_superadmin);
     let baseAccent = companyColor;
     if (data.group_id) {
       const { data: groupData } = await supabase
@@ -211,8 +212,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const gc = groupData?.brand_color || companyColor;
       setGroupColor(gc);
       document.documentElement.style.setProperty("--group-accent", gc);
-      /* Solo el group_admin ve el color del grupo como acento base.
-         El superadmin SAPROA y cualquier otro rol ven el color de su empresa. */
+      /* Solo group_admin ve el color del grupo como acento base.
+         Superadmin y cualquier otro rol ven el color de su empresa. */
       if (isGroupAdmin && !isSuperAdmin) baseAccent = gc;
     } else {
       setGroupColor(companyColor);
