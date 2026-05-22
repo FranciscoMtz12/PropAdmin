@@ -983,7 +983,7 @@ export default function BuildingsPage() {
                   initial={{ opacity: 0, y: 16 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: index * 0.06 }}
-                  style={{ overflow: "visible", position: "relative", width: "100%", maxWidth: "100%", minWidth: 0 }}
+                  style={{ overflow: "visible", position: "relative", width: "100%", maxWidth: "100%", minWidth: 0, display: "flex", flexDirection: "column" }}
                 >
                 {/* Wrapper clickeable — toda la card navega al detalle */}
                 <div
@@ -1001,6 +1001,9 @@ export default function BuildingsPage() {
                     width: "100%",
                     maxWidth: "100%",
                     minWidth: 0,
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
                   }}
                 >
                   {/* Card — divs inline, sin CSS classes que pisen estilos */}
@@ -1020,6 +1023,9 @@ export default function BuildingsPage() {
                       minWidth: 0,
                       boxSizing: "border-box",
                       position: "relative",
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
                     }}
                   >
                     {worstSeverity && (
@@ -1057,6 +1063,7 @@ export default function BuildingsPage() {
                         width: "100%",
                         overflow: "visible",
                         marginBottom: 10,
+                        flex: 1,
                       }}
                     >
                       {/* Info — flex:1 con truncado */}

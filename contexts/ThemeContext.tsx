@@ -29,6 +29,8 @@ import { generateMetallicGradient } from "@/lib/color-utils";
 type ThemeContextType = {
   accentColor: string;
   groupColor: string;
+  accentStyle: 'solid' | 'metallic';
+  setAccentStyle: (style: 'solid' | 'metallic') => Promise<void>;
   setPropertyAccent: (color: string) => void;
   resetPropertyAccent: () => void;
   logoUrl: string | null;
@@ -62,6 +64,8 @@ const DEFAULT_ACCENT = "#8B2252";
 const ThemeContext = createContext<ThemeContextType>({
   accentColor: DEFAULT_ACCENT,
   groupColor: DEFAULT_ACCENT,
+  accentStyle: 'solid',
+  setAccentStyle: async () => {},
   setPropertyAccent: () => {},
   resetPropertyAccent: () => {},
   logoUrl: null,
@@ -105,6 +109,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
   const [groupColor, setGroupColor] = useState(DEFAULT_ACCENT);
+  const [accentStyle, setAccentStyleState] = useState<'solid' | 'metallic'>('solid');
   const companyBaseColorRef = useRef(DEFAULT_ACCENT);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPrintUrl, setLogoPrintUrl] = useState<string | null>(null);
@@ -148,6 +153,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(accentColor));
   }, [accentColor]);
 
+  /* ── Aplicar --btn-primary-bg según accentStyle ─────────────────── */
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      "--btn-primary-bg",
+      accentStyle === 'metallic' ? "var(--accent-gradient)" : "var(--accent)",
+    );
+  }, [accentStyle]);
+
   /* ── Aplicar data-theme desde localStorage inmediatamente (antes de Supabase) ── */
   useEffect(() => {
     const saved = localStorage.getItem("ui_theme");
@@ -174,17 +187,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadCompanyBranding(companyId: string) {
     const { data } = await supabase
       .from("companies")
-      .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email, group_id")
+      .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email, group_id, accent_style")
       .eq("id", companyId)
       .maybeSingle();
 
     if (!data) return;
 
-    const companyColor = data.brand_color || DEFAULT_ACCENT;
-    setAccentColor(companyColor);
-    companyBaseColorRef.current = companyColor;
+    /* Estilo de acento */
+    setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
 
-    /* Cargar color del grupo corporativo */
+    const companyColor = data.brand_color || DEFAULT_ACCENT;
+
+    /* Cargar color del grupo corporativo — el dorado del grupo es el acento BASE */
+    let baseAccent = companyColor;
     if (data.group_id) {
       const { data: groupData } = await supabase
         .from("company_groups")
@@ -194,10 +209,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const gc = groupData?.brand_color || companyColor;
       setGroupColor(gc);
       document.documentElement.style.setProperty("--group-accent", gc);
+      baseAccent = gc;
     } else {
       setGroupColor(companyColor);
       document.documentElement.style.setProperty("--group-accent", companyColor);
     }
+
+    /* El acento por defecto es el color del grupo (dorado), no el de la empresa */
+    setAccentColor(baseAccent);
+    companyBaseColorRef.current = baseAccent;
 
     setLogoUrl(data.logo_url ?? null);
     setLogoPrintUrl(data.logo_print_url ?? null);
@@ -243,6 +263,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // para no sobreescribir la preferencia de localStorage en el primer render
   }
 
+  async function setAccentStyle(style: 'solid' | 'metallic') {
+    setAccentStyleState(style);
+    if (user?.company_id) {
+      await supabase.from("companies").update({ accent_style: style }).eq("id", user.company_id);
+    }
+  }
+
   function setPropertyAccent(color: string) {
     setAccentColor(color);
   }
@@ -273,6 +300,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       value={{
         accentColor,
         groupColor,
+        accentStyle,
+        setAccentStyle,
         setPropertyAccent,
         resetPropertyAccent,
         logoUrl,

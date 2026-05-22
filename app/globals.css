@@ -20,6 +20,7 @@
   --accent: #8B2252; /* sobreescrito por ThemeContext desde companies.brand_color */
   --accent-gradient: linear-gradient(135deg, #a82d62 0%, #8B2252 45%, #6b1a3f 100%); /* generado por JS vía generateMetallicGradient */
   --group-accent: #8B2252; /* color del grupo corporativo — nunca cambia dentro de una sesión */
+  --btn-primary-bg: var(--accent); /* 'solid': var(--accent) | 'metallic': var(--accent-gradient) — controlado por ThemeContext */
 
   /* ── Fondos ────────────────────────────────────────────────────── */
   --bg-page:        #F1F5F9;

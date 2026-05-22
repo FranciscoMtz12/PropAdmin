@@ -44,7 +44,7 @@ export default function UiButton({
         : "1px solid var(--border-default)",
     borderRadius: "var(--border-radius-sm)",
     padding: "11px 16px",
-    background: variant === "primary" ? "var(--accent-gradient)" : "var(--bg-card)",
+    background: variant === "primary" ? "var(--btn-primary-bg)" : "var(--bg-card)",
     color: variant === "primary" ? "#ffffff" : "var(--text-primary)",
     fontWeight: 600,
     textDecoration: "none",

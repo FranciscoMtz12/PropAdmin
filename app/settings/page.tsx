@@ -44,6 +44,7 @@ type Company = {
   regime: string | null;
   zip_code: string | null;
   brand_color: string | null;
+  accent_style: string | null;
   logo_url: string | null;
   logo_dark_url: string | null;
   initials: string | null;
@@ -202,7 +203,7 @@ function formatDate(iso: string) {
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
-  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions } = useTheme();
+  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -321,7 +322,7 @@ export default function SettingsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("companies")
-      .select("id,name,short_name,legal_name,email,phone,address,tax_id,regime,zip_code,brand_color,logo_url,logo_dark_url,initials,admin_contact_email,admin_contact_phone,purchases_contact_email,purchases_contact_phone,created_at")
+      .select("id,name,short_name,legal_name,email,phone,address,tax_id,regime,zip_code,brand_color,accent_style,logo_url,logo_dark_url,initials,admin_contact_email,admin_contact_phone,purchases_contact_email,purchases_contact_phone,created_at")
       .eq("id", user!.company_id)
       .single();
     if (data) {
@@ -952,6 +953,49 @@ export default function SettingsPage() {
                         <div style={{ display: "flex", gap: 6 }}>
                           <div style={{ flex: 1, height: 26, borderRadius: btnR, background: "var(--accent)", opacity: 0.85 }} />
                           <div style={{ flex: 1, height: 26, borderRadius: btnR, background: "var(--border-default)" }} />
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                          <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
+                          {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                        </div>
+                        <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Estilo del color de acento" subtitle="Afecta botones primarios y elementos de marca. Se aplica de inmediato.">
+              <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                {([
+                  {
+                    key: "solid" as const,
+                    label: "Sólido",
+                    desc: "Color uniforme y limpio",
+                    bg: "var(--accent)",
+                  },
+                  {
+                    key: "metallic" as const,
+                    label: "Metálico",
+                    desc: "Efecto brillante estilo premium",
+                    bg: "var(--accent-gradient)",
+                  },
+                ]).map(({ key, label, desc, bg }) => {
+                  const active = accentStyle === key;
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => void setAccentStyle(key)}
+                      style={{ display: "flex", flexDirection: "column", gap: 14, padding: 16, borderRadius: "var(--border-radius-lg)", border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 160px", maxWidth: 240, transition: "border-color 0.15s", outline: "none" }}
+                    >
+                      <div style={{ background: "var(--bg-page)", borderRadius: 10, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <div style={{ flex: 2, height: 30, borderRadius: "var(--border-radius-sm)", background: bg }} />
+                          <div style={{ flex: 1, height: 30, borderRadius: "var(--border-radius-sm)", background: "var(--border-default)" }} />
                         </div>
                       </div>
                       <div>
