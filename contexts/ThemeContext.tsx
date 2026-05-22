@@ -183,6 +183,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const isSA = Boolean(user.is_superadmin) || user.role === 'superadmin';
       const isGA = (user.role as string) === 'group_admin';
       void loadCompanyBranding(user.company_id, isSA, isGA);
+    } else if (user?.is_superadmin) {
+      /* Superadmin con company_id = null: cargar config de plataforma directo */
+      void loadSaproaConfig();
     }
     if (user?.id) {
       void loadUserPreferences(user.id);

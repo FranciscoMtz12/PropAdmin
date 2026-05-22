@@ -57,7 +57,7 @@ export default function FeedbackButton() {
       title: data.title.trim(),
       description: data.description?.trim() || null,
       user_id: user.id,
-      company_id: user.company_id,
+      company_id: user.company_id ?? null,
       page_url: typeof window !== "undefined" ? window.location.href : null,
       status: "nuevo",
     });

@@ -7,7 +7,7 @@ type AdminUser = {
   id: string;
   email: string;
   full_name: string;
-  company_id: string;
+  company_id: string | null;
   is_superadmin: boolean;
   role: "superadmin" | "titular" | "administracion" | "directivo" | "compras" | "mantenimiento" | "field";
 };
@@ -16,7 +16,7 @@ type TenantUser = {
   id: string;
   email: string;
   full_name: string;
-  company_id: string;
+  company_id: string | null;
   is_superadmin: false;
   role: "tenant";
   tenant_id: string;
@@ -27,12 +27,14 @@ type CurrentUser = AdminUser | TenantUser | null;
 type UserContextType = {
   user: CurrentUser;
   loading: boolean;
+  isSupabaseAdmin: boolean;
   refreshUser: () => Promise<void>;
 };
 
 const UserContext = createContext<UserContextType>({
   user: null,
   loading: true,
+  isSupabaseAdmin: false,
   refreshUser: async () => {},
 });
 
@@ -68,7 +70,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         id: adminData.id,
         email: adminData.email || authEmail,
         full_name: adminData.full_name || "",
-        company_id: adminData.company_id || "",
+        company_id: adminData.company_id ?? null,
         is_superadmin: Boolean(adminData.is_superadmin),
         role: adminData.role as AdminUser["role"],
       });
@@ -89,7 +91,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         tenant_id: tenantData.id,
         email: tenantData.email || authEmail,
         full_name: tenantData.full_name || "",
-        company_id: tenantData.company_id || "",
+        company_id: tenantData.company_id ?? null,
         is_superadmin: false,
         role: "tenant",
       });
@@ -116,8 +118,10 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const isSupabaseAdmin = Boolean(user?.is_superadmin);
+
   return (
-    <UserContext.Provider value={{ user, loading, refreshUser }}>
+    <UserContext.Provider value={{ user, loading, isSupabaseAdmin, refreshUser }}>
       {children}
     </UserContext.Provider>
   );

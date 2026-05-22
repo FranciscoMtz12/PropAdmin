@@ -323,7 +323,7 @@ export default function Sidebar() {
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
-  const { groupColor, logoUrl, logoDarkUrl, shortName, isDark } = useTheme();
+  const { groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
   const { moduleStats } = useNotifications(user?.company_id ?? "");
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
@@ -381,7 +381,9 @@ export default function Sidebar() {
 
   const sidebarBg = isDark ? "#0f1623" : "#1e2a3a";
   const activeLogo = logoDarkUrl ?? logoUrl;
-  const logoInitials = initials(shortName);
+  /* Superadmin sin company_id usa el nombre de la plataforma SAPROA */
+  const displayName = (isSuperAdmin && !user?.company_id) ? platformName : shortName;
+  const logoInitials = initials(displayName);
 
   return (
     <>
@@ -497,7 +499,7 @@ export default function Sidebar() {
             )}
             <div className="sidebar-logo-text" style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {shortName}
+                {displayName}
               </div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.52)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {sidebarTitle}

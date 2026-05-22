@@ -3346,7 +3346,7 @@ export default function PurchasesPage() {
             folio:               returnTarget.folio,
             supplier_name:       returnTarget.supplier_name,
             ticket_number:       returnTarget.ticket_number,
-            company_id:          user?.company_id,
+            company_id:          user?.company_id ?? undefined,
             parent_order_id:     returnTarget.parent_order_id,
             maintenance_log_id:  returnTarget.maintenance_log_id,
             supplier_id:         returnTarget.supplier_id,

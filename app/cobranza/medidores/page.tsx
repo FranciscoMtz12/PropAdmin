@@ -433,7 +433,7 @@ export default function CobranzaMedidoresPage() {
           meter={invoiceModal.meter}
           building={invoiceModal.building}
           period={{ year, month }}
-          companyId={user.company_id}
+          companyId={user.company_id!}
           existingInvoice={invoiceModal.existingInvoice}
           units={invoiceModal.units}
           onClose={() => setInvoiceModal(null)}

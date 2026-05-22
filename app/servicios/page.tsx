@@ -1342,7 +1342,7 @@ export default function ServiciosPage() {
           meter={activeModal.meter}
           building={activeModal.building}
           period={period}
-          companyId={user.company_id}
+          companyId={user.company_id!}
           existingInvoice={activeModal.existingInvoice}
           units={activeModal.units}
           onClose={() => setActiveModal(null)}
@@ -1356,7 +1356,7 @@ export default function ServiciosPage() {
           meter={uploadInvoiceMeter.meter}
           building={uploadInvoiceMeter.building}
           period={period}
-          companyId={user.company_id}
+          companyId={user.company_id!}
           onClose={() => setUploadInvoiceMeter(null)}
           onSuccess={() => { setUploadInvoiceMeter(null); void loadData(); }}
         />

@@ -456,7 +456,7 @@ export default function InvoiceForm({
         }
 
         const uploadedFiles = await uploadInvoiceFiles({
-          companyId: payloadBase.company_id || currentUser.company_id,
+          companyId: payloadBase.company_id || currentUser.company_id || "",
           buildingId: payloadBase.building_id,
           leaseId: payloadBase.lease_id,
           invoiceUuid: payloadBase.invoice_uuid,
@@ -503,7 +503,7 @@ export default function InvoiceForm({
         }
 
         const uploadedPdf = await uploadInvoiceFiles({
-          companyId: payloadBase.company_id || currentUser.company_id,
+          companyId: payloadBase.company_id || currentUser.company_id || "",
           buildingId: payloadBase.building_id,
           leaseId: payloadBase.lease_id,
           invoiceUuid: payloadBase.invoice_uuid,
@@ -521,7 +521,7 @@ export default function InvoiceForm({
         }
 
         const uploadedXml = await uploadInvoiceFiles({
-          companyId: payloadBase.company_id || currentUser.company_id,
+          companyId: payloadBase.company_id || currentUser.company_id || "",
           buildingId: payloadBase.building_id,
           leaseId: payloadBase.lease_id,
           invoiceUuid: payloadBase.invoice_uuid,
