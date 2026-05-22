@@ -258,6 +258,7 @@ export default function ImpersonationSidebar() {
   const [loadingUsersByCompany, setLoadingUsersByCompany] = useState<Record<string, boolean>>({});
   const [selectedUser,          setSelectedUser]          = useState<AppUser | null>(null);
   const [selectedCompany,       setSelectedCompany]       = useState<Company | null>(null);
+  const [selectedGroup,         setSelectedGroup]         = useState<Group | null>(null);
 
   useEffect(() => {
     if (!isRealSuperAdmin) return;
@@ -291,7 +292,7 @@ export default function ImpersonationSidebar() {
     setLoading(false);
   }
 
-  async function loadUsersForCompany(companyId: string) {
+  async function loadUsersForCompany(companyId: string): Promise<AppUser[]> {
     setLoadingUsersByCompany(prev => ({ ...prev, [companyId]: true }));
     const { data } = await supabase
       .from("app_users")
@@ -299,17 +300,22 @@ export default function ImpersonationSidebar() {
       .eq("company_id", companyId)
       .neq("role", "superadmin")
       .order("full_name");
-    setUsersByCompany(prev => ({ ...prev, [companyId]: (data as AppUser[]) ?? [] }));
+    const users = (data as AppUser[]) ?? [];
+    setUsersByCompany(prev => ({ ...prev, [companyId]: users }));
     setLoadingUsersByCompany(prev => ({ ...prev, [companyId]: false }));
+    return users;
   }
 
-  function toggleGroup(groupId: string) {
+  function toggleGroup(group: Group) {
     setOpenGroupIds(prev => {
       const next = new Set(prev);
-      if (next.has(groupId)) next.delete(groupId);
-      else next.add(groupId);
+      if (next.has(group.id)) next.delete(group.id);
+      else next.add(group.id);
       return next;
     });
+    setSelectedGroup(group);
+    setSelectedCompany(null);
+    setSelectedUser(null);
   }
 
   function toggleCompany(company: Company) {
@@ -321,6 +327,9 @@ export default function ImpersonationSidebar() {
         void loadUsersForCompany(company.id);
       }
     }
+    setSelectedCompany(company);
+    setSelectedGroup(null);
+    setSelectedUser(null);
   }
 
   function handleSelectUser(user: AppUser, company: Company) {
@@ -329,6 +338,7 @@ export default function ImpersonationSidebar() {
     } else {
       setSelectedUser(user);
       setSelectedCompany(company);
+      setSelectedGroup(null);
     }
   }
 
@@ -345,16 +355,27 @@ export default function ImpersonationSidebar() {
     startImpersonation(params);
   }
 
-  function handleVerEmpresa() {
-    if (!selectedCompany) return;
-    const compUsers = usersByCompany[selectedCompany.id] ?? [];
+  async function handleVerEmpresa() {
+    let targetCompany: Company | null = selectedCompany;
+    if (!targetCompany && selectedGroup) {
+      targetCompany = companies.find(c => c.group_id === selectedGroup.id) ?? null;
+    }
+    if (!targetCompany) return;
+
+    let compUsers: AppUser[];
+    if (usersByCompany[targetCompany.id]) {
+      compUsers = usersByCompany[targetCompany.id];
+    } else {
+      compUsers = await loadUsersForCompany(targetCompany.id);
+    }
+
     const preferred =
       compUsers.find(u => u.role === "titular") ||
       compUsers.find(u => u.role === "administracion") ||
       compUsers[0];
     const params: ImpersonationParams = {
-      companyId:    selectedCompany.id,
-      companyName:  selectedCompany.short_name || selectedCompany.name,
+      companyId:    targetCompany.id,
+      companyName:  targetCompany.short_name || targetCompany.name,
       userId:       preferred?.id ?? null,
       userEmail:    preferred?.email ?? null,
       userFullName: preferred?.full_name ?? null,
@@ -423,7 +444,7 @@ export default function ImpersonationSidebar() {
                 key={group.id}
                 group={group}
                 isOpen={openGroupIds.has(group.id)}
-                onToggle={() => toggleGroup(group.id)}
+                onToggle={() => toggleGroup(group)}
                 companies={companies.filter(c => c.group_id === group.id)}
                 openCompanyId={openCompanyId}
                 onToggleCompany={toggleCompany}
@@ -439,7 +460,7 @@ export default function ImpersonationSidebar() {
                 key={UNGROUPED_ID}
                 group={virtualUngrouped}
                 isOpen={openGroupIds.has(UNGROUPED_ID)}
-                onToggle={() => toggleGroup(UNGROUPED_ID)}
+                onToggle={() => toggleGroup(virtualUngrouped)}
                 companies={ungrouped}
                 openCompanyId={openCompanyId}
                 onToggleCompany={toggleCompany}
@@ -485,15 +506,15 @@ export default function ImpersonationSidebar() {
         {/* Ver empresa */}
         <button
           onClick={handleVerEmpresa}
-          disabled={!selectedCompany}
+          disabled={!selectedCompany && !selectedGroup}
           style={{
             width: "100%", padding: "9px 14px",
             borderRadius: "var(--border-radius-md)",
             border: "1px solid rgba(255,255,255,0.15)",
             background: "transparent",
-            color: selectedCompany ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.28)",
+            color: (selectedCompany || selectedGroup) ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.28)",
             fontSize: 13, fontWeight: 600,
-            cursor: selectedCompany ? "pointer" : "default",
+            cursor: (selectedCompany || selectedGroup) ? "pointer" : "default",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
             transition: "color 0.15s",
           }}
