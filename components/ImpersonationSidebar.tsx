@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { Building2, ChevronRight, Eye, LogIn, RotateCcw, Shield, X } from "lucide-react";
+import { ChevronRight, Eye, RotateCcw, Shield, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useImpersonation, type ImpersonationParams } from "@/contexts/ImpersonationContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
@@ -242,12 +243,15 @@ export default function ImpersonationSidebar() {
   const {
     isRealSuperAdmin,
     isImpersonating,
+    impersonationMode,
+    impersonatedUserId,
     impersonatedCompanyName,
     impersonatedUserEmail,
     startImpersonation,
     stopImpersonation,
   } = useImpersonation();
   const { isDark } = useTheme();
+  const router = useRouter();
 
   const [groups,                setGroups]                = useState<Group[]>([]);
   const [companies,             setCompanies]             = useState<Company[]>([]);
@@ -256,9 +260,6 @@ export default function ImpersonationSidebar() {
   const [openCompanyId,         setOpenCompanyId]         = useState<string | null>(null);
   const [usersByCompany,        setUsersByCompany]        = useState<Record<string, AppUser[]>>({});
   const [loadingUsersByCompany, setLoadingUsersByCompany] = useState<Record<string, boolean>>({});
-  const [selectedUser,          setSelectedUser]          = useState<AppUser | null>(null);
-  const [selectedCompany,       setSelectedCompany]       = useState<Company | null>(null);
-  const [selectedGroup,         setSelectedGroup]         = useState<Group | null>(null);
 
   useEffect(() => {
     if (!isRealSuperAdmin) return;
@@ -306,6 +307,30 @@ export default function ImpersonationSidebar() {
     return users;
   }
 
+  function impersonateCompany(company: Company) {
+    startImpersonation({
+      companyId:    company.id,
+      companyName:  company.short_name || company.name,
+      userId:       null,
+      userEmail:    null,
+      userFullName: null,
+      role:         'superadmin',
+    });
+    router.push('/dashboard');
+  }
+
+  function impersonateUser(user: AppUser, company: Company) {
+    startImpersonation({
+      companyId:    company.id,
+      companyName:  company.short_name || company.name,
+      userId:       user.id,
+      userEmail:    user.email,
+      userFullName: user.full_name,
+      role:         user.role,
+    });
+    router.push('/dashboard');
+  }
+
   function toggleGroup(group: Group) {
     setOpenGroupIds(prev => {
       const next = new Set(prev);
@@ -313,9 +338,10 @@ export default function ImpersonationSidebar() {
       else next.add(group.id);
       return next;
     });
-    setSelectedGroup(group);
-    setSelectedCompany(null);
-    setSelectedUser(null);
+    const firstCompany = group.id === UNGROUPED_ID
+      ? companies.find(c => !c.group_id) ?? null
+      : companies.find(c => c.group_id === group.id) ?? null;
+    if (firstCompany) impersonateCompany(firstCompany);
   }
 
   function toggleCompany(company: Company) {
@@ -327,50 +353,11 @@ export default function ImpersonationSidebar() {
         void loadUsersForCompany(company.id);
       }
     }
-    setSelectedCompany(company);
-    setSelectedGroup(null);
-    setSelectedUser(null);
+    impersonateCompany(company);
   }
 
   function handleSelectUser(user: AppUser, company: Company) {
-    if (selectedUser?.id === user.id) {
-      setSelectedUser(null);
-    } else {
-      setSelectedUser(user);
-      setSelectedCompany(company);
-      setSelectedGroup(null);
-    }
-  }
-
-  function handleVerComEste() {
-    if (!selectedCompany || !selectedUser) return;
-    const params: ImpersonationParams = {
-      companyId:    selectedCompany.id,
-      companyName:  selectedCompany.short_name || selectedCompany.name,
-      userId:       selectedUser.id,
-      userEmail:    selectedUser.email,
-      userFullName: selectedUser.full_name,
-      role:         selectedUser.role,
-    };
-    startImpersonation(params);
-  }
-
-  function handleVerEmpresa() {
-    let targetCompany: Company | null = selectedCompany;
-    if (!targetCompany && selectedGroup) {
-      targetCompany = companies.find(c => c.group_id === selectedGroup.id) ?? null;
-    }
-    if (!targetCompany) return;
-
-    const params: ImpersonationParams = {
-      companyId:    targetCompany.id,
-      companyName:  targetCompany.short_name || targetCompany.name,
-      userId:       null,
-      userEmail:    null,
-      userFullName: null,
-      role:         'superadmin',
-    };
-    startImpersonation(params);
+    impersonateUser(user, company);
   }
 
   if (!isRealSuperAdmin) return null;
@@ -439,7 +426,7 @@ export default function ImpersonationSidebar() {
                 onToggleCompany={toggleCompany}
                 usersByCompany={usersByCompany}
                 loadingUsersByCompany={loadingUsersByCompany}
-                selectedUserId={selectedUser?.id ?? null}
+                selectedUserId={impersonatedUserId ?? null}
                 onSelectUser={handleSelectUser}
               />
             ))}
@@ -455,7 +442,7 @@ export default function ImpersonationSidebar() {
                 onToggleCompany={toggleCompany}
                 usersByCompany={usersByCompany}
                 loadingUsersByCompany={loadingUsersByCompany}
-                selectedUserId={selectedUser?.id ?? null}
+                selectedUserId={impersonatedUserId ?? null}
                 onSelectUser={handleSelectUser}
               />
             )}
@@ -463,56 +450,12 @@ export default function ImpersonationSidebar() {
         )}
       </div>
 
-      {/* Botones de acción */}
+      {/* Botón Vista SAPROA */}
       <div style={{
         flexShrink: 0,
         borderTop: "1px solid rgba(255,255,255,0.08)",
-        padding: "12px 16px",
-        display: "flex",
-        flexDirection: "column",
-        gap: 8,
+        padding: "10px 16px",
       }}>
-        {/* Ver como este */}
-        <button
-          onClick={handleVerComEste}
-          disabled={!selectedUser}
-          style={{
-            width: "100%", padding: "9px 14px",
-            borderRadius: "var(--border-radius-md)",
-            border: "none",
-            background: selectedUser ? SAPROA_COLOR : "rgba(255,255,255,0.07)",
-            color: selectedUser ? "#fff" : "rgba(255,255,255,0.30)",
-            fontSize: 13, fontWeight: 700,
-            cursor: selectedUser ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            transition: "background 0.15s, color 0.15s",
-          }}
-        >
-          <LogIn size={14} />
-          Ver como este
-        </button>
-
-        {/* Ver empresa */}
-        <button
-          onClick={handleVerEmpresa}
-          disabled={!selectedCompany && !selectedGroup}
-          style={{
-            width: "100%", padding: "9px 14px",
-            borderRadius: "var(--border-radius-md)",
-            border: "1px solid rgba(255,255,255,0.15)",
-            background: "transparent",
-            color: (selectedCompany || selectedGroup) ? "rgba(255,255,255,0.82)" : "rgba(255,255,255,0.28)",
-            fontSize: 13, fontWeight: 600,
-            cursor: (selectedCompany || selectedGroup) ? "pointer" : "default",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
-            transition: "color 0.15s",
-          }}
-        >
-          <Building2 size={14} />
-          Ver empresa
-        </button>
-
-        {/* Vista SAPROA */}
         <button
           onClick={stopImpersonation}
           style={{
@@ -562,7 +505,10 @@ export default function ImpersonationSidebar() {
                   textOverflow: "ellipsis",
                   whiteSpace: "nowrap",
                 }}>
-                  {impersonatedCompanyName} · {impersonatedUserEmail}
+                  {impersonatedCompanyName}
+                  {impersonatedUserEmail
+                    ? ` · ${impersonatedUserEmail}`
+                    : impersonationMode === 'company' ? ' · vista completa' : ''}
                 </div>
               </div>
             </div>
