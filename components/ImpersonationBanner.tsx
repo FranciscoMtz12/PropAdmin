@@ -8,6 +8,7 @@ const SAPROA_COLOR = "#8B2252";
 export function ImpersonationBanner() {
   const {
     isImpersonating,
+    impersonationMode,
     impersonatedCompanyName,
     impersonatedRole,
     impersonatedUserEmail,
@@ -41,8 +42,10 @@ export function ImpersonationBanner() {
       <span style={{ flex: 1, fontSize: 13, color: SAPROA_COLOR, fontWeight: 600, lineHeight: 1.4 }}>
         Vista simulada
         {impersonatedCompanyName ? ` · ${impersonatedCompanyName}` : ""}
-        {roleLabel ? ` · ${roleLabel}` : ""}
-        {impersonatedUserEmail ? ` (${impersonatedUserEmail})` : ""}
+        {impersonationMode === 'company'
+          ? " · vista completa"
+          : roleLabel ? ` · ${roleLabel}` : ""}
+        {impersonationMode === 'user' && impersonatedUserEmail ? ` (${impersonatedUserEmail})` : ""}
       </span>
       <button
         onClick={stopImpersonation}

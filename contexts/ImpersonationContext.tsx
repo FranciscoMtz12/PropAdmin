@@ -15,6 +15,7 @@ export type ImpersonationParams = {
 type ImpersonationContextType = {
   isRealSuperAdmin: boolean;
   isImpersonating: boolean;
+  impersonationMode: 'user' | 'company';
   impersonatedCompanyId: string | null;
   impersonatedCompanyName: string | null;
   impersonatedUserId: string | null;
@@ -28,6 +29,7 @@ type ImpersonationContextType = {
 const ImpersonationContext = createContext<ImpersonationContextType>({
   isRealSuperAdmin: false,
   isImpersonating: false,
+  impersonationMode: 'company',
   impersonatedCompanyId: null,
   impersonatedCompanyName: null,
   impersonatedUserId: null,
@@ -78,6 +80,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
       value={{
         isRealSuperAdmin,
         isImpersonating: impersonatedCompanyId !== null,
+        impersonationMode: impersonatedUserId !== null ? 'user' : 'company',
         impersonatedCompanyId,
         impersonatedCompanyName,
         impersonatedUserId,

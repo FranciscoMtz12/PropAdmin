@@ -355,31 +355,20 @@ export default function ImpersonationSidebar() {
     startImpersonation(params);
   }
 
-  async function handleVerEmpresa() {
+  function handleVerEmpresa() {
     let targetCompany: Company | null = selectedCompany;
     if (!targetCompany && selectedGroup) {
       targetCompany = companies.find(c => c.group_id === selectedGroup.id) ?? null;
     }
     if (!targetCompany) return;
 
-    let compUsers: AppUser[];
-    if (usersByCompany[targetCompany.id]) {
-      compUsers = usersByCompany[targetCompany.id];
-    } else {
-      compUsers = await loadUsersForCompany(targetCompany.id);
-    }
-
-    const preferred =
-      compUsers.find(u => u.role === "titular") ||
-      compUsers.find(u => u.role === "administracion") ||
-      compUsers[0];
     const params: ImpersonationParams = {
       companyId:    targetCompany.id,
       companyName:  targetCompany.short_name || targetCompany.name,
-      userId:       preferred?.id ?? null,
-      userEmail:    preferred?.email ?? null,
-      userFullName: preferred?.full_name ?? null,
-      role:         preferred?.role ?? "titular",
+      userId:       null,
+      userEmail:    null,
+      userFullName: null,
+      role:         'superadmin',
     };
     startImpersonation(params);
   }
