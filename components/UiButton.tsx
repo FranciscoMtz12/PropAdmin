@@ -44,8 +44,7 @@ export default function UiButton({
         : "1px solid var(--border-default)",
     borderRadius: "var(--border-radius-sm)",
     padding: "11px 16px",
-    /* Primary usa el color de acento de la empresa */
-    background: variant === "primary" ? "var(--accent)" : "var(--bg-card)",
+    background: variant === "primary" ? "var(--accent-gradient)" : "var(--bg-card)",
     color: variant === "primary" ? "#ffffff" : "var(--text-primary)",
     fontWeight: 600,
     textDecoration: "none",

@@ -106,6 +106,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useTheme } from "@/contexts/ThemeContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
@@ -1025,6 +1026,7 @@ export default function BuildingDetailPage() {
   const searchParams = useSearchParams();
   const buildingId   = params.buildingId as string;
   const { user, loading } = useCurrentUser();
+  const { setPropertyAccent, resetPropertyAccent } = useTheme();
   const { notifications: allNotifications } = useNotifications(user?.company_id ?? "");
 
   /* Estado de datos */
@@ -1248,6 +1250,25 @@ export default function BuildingDetailPage() {
   useEffect(() => {
     if (user?.company_id && buildingId) void loadBuilding();
   }, [user, buildingId]);
+
+  /* Aplicar color de empresa de esta propiedad como acento mientras estemos en el detalle */
+  useEffect(() => {
+    if (!building?.company_id) return;
+    let cancelled = false;
+    supabase
+      .from("companies")
+      .select("brand_color")
+      .eq("id", building.company_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.brand_color) setPropertyAccent(data.brand_color);
+      });
+    return () => {
+      cancelled = true;
+      resetPropertyAccent();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [building?.company_id]);
 
   useEffect(() => {
     if (activeTab === "parking" && building && !loadingBuilding) void loadParkingData();

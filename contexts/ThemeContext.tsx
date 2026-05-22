@@ -16,16 +16,21 @@ import {
   createContext,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { generateMetallicGradient } from "@/lib/color-utils";
 
 /* ─── Tipos ───────────────────────────────────────────────────────── */
 
 type ThemeContextType = {
   accentColor: string;
+  groupColor: string;
+  setPropertyAccent: (color: string) => void;
+  resetPropertyAccent: () => void;
   logoUrl: string | null;
   logoPrintUrl: string | null;
   logoDarkUrl: string | null;
@@ -56,6 +61,9 @@ const DEFAULT_ACCENT = "#8B2252";
 
 const ThemeContext = createContext<ThemeContextType>({
   accentColor: DEFAULT_ACCENT,
+  groupColor: DEFAULT_ACCENT,
+  setPropertyAccent: () => {},
+  resetPropertyAccent: () => {},
   logoUrl: null,
   logoPrintUrl: null,
   logoDarkUrl: null,
@@ -96,6 +104,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
 
   const [accentColor, setAccentColor] = useState(DEFAULT_ACCENT);
+  const [groupColor, setGroupColor] = useState(DEFAULT_ACCENT);
+  const companyBaseColorRef = useRef(DEFAULT_ACCENT);
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoPrintUrl, setLogoPrintUrl] = useState<string | null>(null);
   const [logoDarkUrl, setLogoDarkUrl] = useState<string | null>(null);
@@ -132,9 +142,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.toggle("dark", isDark);
   }, [isDark]);
 
-  /* ── Aplicar --accent en :root cuando cambie accentColor ───────── */
+  /* ── Aplicar --accent + --accent-gradient en :root cuando cambie accentColor ── */
   useEffect(() => {
     document.documentElement.style.setProperty("--accent", accentColor);
+    document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(accentColor));
   }, [accentColor]);
 
   /* ── Aplicar data-theme desde localStorage inmediatamente (antes de Supabase) ── */
@@ -163,13 +174,31 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   async function loadCompanyBranding(companyId: string) {
     const { data } = await supabase
       .from("companies")
-      .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email")
+      .select("brand_color, logo_url, logo_print_url, logo_dark_url, logo_group_url, short_name, legal_name, address, phone, email, tax_id, zip_code, regime, purchases_contact_phone, purchases_contact_email, admin_contact_phone, admin_contact_email, group_id")
       .eq("id", companyId)
       .maybeSingle();
 
     if (!data) return;
 
-    if (data.brand_color) setAccentColor(data.brand_color);
+    const companyColor = data.brand_color || DEFAULT_ACCENT;
+    setAccentColor(companyColor);
+    companyBaseColorRef.current = companyColor;
+
+    /* Cargar color del grupo corporativo */
+    if (data.group_id) {
+      const { data: groupData } = await supabase
+        .from("company_groups")
+        .select("brand_color")
+        .eq("id", data.group_id)
+        .maybeSingle();
+      const gc = groupData?.brand_color || companyColor;
+      setGroupColor(gc);
+      document.documentElement.style.setProperty("--group-accent", gc);
+    } else {
+      setGroupColor(companyColor);
+      document.documentElement.style.setProperty("--group-accent", companyColor);
+    }
+
     setLogoUrl(data.logo_url ?? null);
     setLogoPrintUrl(data.logo_print_url ?? null);
     setLogoDarkUrl(data.logo_dark_url ?? null);
@@ -214,6 +243,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     // para no sobreescribir la preferencia de localStorage en el primer render
   }
 
+  function setPropertyAccent(color: string) {
+    setAccentColor(color);
+  }
+
+  function resetPropertyAccent() {
+    setAccentColor(companyBaseColorRef.current);
+  }
+
   function toggleDark() {
     const next = !isDark;
     setIsDark(next);
@@ -235,6 +272,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     <ThemeContext.Provider
       value={{
         accentColor,
+        groupColor,
+        setPropertyAccent,
+        resetPropertyAccent,
         logoUrl,
         logoPrintUrl,
         logoDarkUrl,

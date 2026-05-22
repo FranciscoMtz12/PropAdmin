@@ -1007,6 +1007,7 @@ export default function BuildingsPage() {
                   <div
                     style={{
                       border: "1px solid var(--border-default)",
+                      borderLeft: "4px solid var(--accent)",
                       borderRadius: "var(--border-radius-xl)",
                       padding: 16,
                       background: "var(--bg-card)",

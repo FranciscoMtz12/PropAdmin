@@ -323,7 +323,7 @@ export default function Sidebar() {
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
-  const { accentColor, logoUrl, logoDarkUrl, shortName, isDark } = useTheme();
+  const { groupColor, logoUrl, logoDarkUrl, shortName, isDark } = useTheme();
   const { moduleStats } = useNotifications(user?.company_id ?? "");
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
@@ -413,7 +413,7 @@ export default function Sidebar() {
         width: 44,
         height: 44,
         borderRadius: "50%",
-        background: accentColor,
+        background: groupColor,
         border: "none",
         cursor: "pointer",
         alignItems: "center",
@@ -459,7 +459,7 @@ export default function Sidebar() {
       }}
     >
       {/* ── Barra de acento superior (3px) ──────────────────────── */}
-      <div style={{ height: 3, background: accentColor, flexShrink: 0, transition: "background 0.3s" }} />
+      <div style={{ height: 3, background: groupColor, flexShrink: 0, transition: "background 0.3s" }} />
 
       {/* ── Área scrollable ──────────────────────────────────────── */}
       <div
@@ -486,7 +486,7 @@ export default function Sidebar() {
               <div
                 style={{
                   width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
-                  background: accentColor,
+                  background: groupColor,
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontWeight: 800, fontSize: 14, color: "#ffffff",
                   letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
@@ -514,7 +514,7 @@ export default function Sidebar() {
               title=""
               items={FIELD_ITEMS}
               pathname={pathname}
-              accentColor={accentColor}
+              accentColor={groupColor}
             />
           ) : isPortalPath ? (
             <SidebarSection
@@ -522,7 +522,7 @@ export default function Sidebar() {
               items={TENANT_ITEMS}
               pathname={pathname}
               previewTenantId={previewTenantId}
-              accentColor={accentColor}
+              accentColor={groupColor}
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
@@ -549,7 +549,7 @@ export default function Sidebar() {
                         key={item.href ?? item.label}
                         item={item}
                         pathname={pathname}
-                        accentColor={accentColor}
+                        accentColor={groupColor}
                         notifBadge={getItemBadge(item)}
                       />
                     ))}
