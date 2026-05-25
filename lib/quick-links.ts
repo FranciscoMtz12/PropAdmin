@@ -49,7 +49,6 @@ const BY_ROLE: Record<string, QuickLink[]> = {
     { label: "Pagos",         icon: "ti-receipt",       path: "/payments"      },
     { label: "Cobranza",      icon: "ti-coin",          path: "/cobranza"      },
     { label: "Inquilinos",    icon: "ti-users",         path: "/tenants"       },
-    { label: "Analytics",     icon: "ti-chart-bar",     path: "/analytics"     },
   ],
   compras: [
     { label: "Compras",       icon: "ti-shopping-cart", path: "/compras"       },
@@ -85,9 +84,9 @@ export function getDefaultQuickLinks(role: string): QuickLink[] {
   return BY_ROLE[role] ?? FALLBACK;
 }
 
-/* Role-based module filtering — mirrors RouteGuard allowed paths */
+/* Role-based module filtering — mirrors ROLE_ALLOWED in Sidebar.tsx (single source of truth) */
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants", "/analytics"],
+  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants"],
   compras:        ["/dashboard", "/purchases", "/compras", "/suppliers"],
   mantenimiento:  ["/dashboard", "/maintenance", "/mantenimiento", "/cleaning"],
   directivo:      ["/dashboard", "/buildings", "/analytics", "/collections", "/cobranza", "/tenants"],

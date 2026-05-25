@@ -3,13 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { AlertCircle, Calendar, Coins, Wrench } from "lucide-react";
+import { AlertCircle, Calendar, Coins, LogOut, Wrench } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
-import { type QuickLink, ICON_MAP, getDefaultQuickLinks } from "@/lib/quick-links";
+import { type QuickLink, ICON_MAP, getAllowedModules, getDefaultQuickLinks } from "@/lib/quick-links";
 
 /* ─── Color utilities ─────────────────────────────────────────────────── */
 
@@ -146,6 +146,7 @@ export default function HomePage() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
   const [windowWidth, setWindowWidth] = useState(1280);
+  const [logoutHover, setLogoutHover] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -174,6 +175,11 @@ export default function HomePage() {
     if (!user?.id) return;
     void fetchQuickLinks(user.id, (user as { role?: string }).role ?? "");
   }, [user?.id]);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.push("/login");
+  }
 
   async function fetchMetrics(cid: string) {
     const today = new Date().toISOString().slice(0, 10);
@@ -222,11 +228,11 @@ export default function HomePage() {
       .eq("user_id", uid)
       .maybeSingle();
     const stored = data?.quick_links;
-    setQuickLinks(
-      stored && Array.isArray(stored) && stored.length > 0
-        ? (stored as QuickLink[])
-        : getDefaultQuickLinks(role),
-    );
+    const allowedPaths = new Set([...getAllowedModules(role).map(m => m.path), "/dashboard"]);
+    const raw: QuickLink[] = (stored && Array.isArray(stored) && stored.length > 0)
+      ? (stored as QuickLink[])
+      : getDefaultQuickLinks(role);
+    setQuickLinks(raw.filter(l => allowedPaths.has(l.path)));
   }
 
   /* Computed */
@@ -255,6 +261,7 @@ export default function HomePage() {
 
   const isSmall = windowWidth < 768;
   const isLarge = windowWidth >= 1280;
+  const cardStyle = isLarge ? { ...CARD, minHeight: "calc(25vh)" } : CARD;
 
   /* Loading state — dark bg before user loads */
   if (loading) {
@@ -310,6 +317,55 @@ export default function HomePage() {
         }}
       />
 
+      {/* Textura de fondo */}
+      <svg
+        style={{
+          position: "absolute", inset: 0,
+          width: "100%", height: "100%",
+          opacity: 0.03, pointerEvents: "none",
+        }}
+        viewBox="0 0 400 600"
+        preserveAspectRatio="xMidYMid slice"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <pattern id="hptx" x="0" y="0" width="110" height="110" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
+            <g fill="none" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="8" y="8" width="18" height="24" />
+              <rect x="11" y="12" width="4" height="5" />
+              <rect x="19" y="12" width="4" height="5" />
+              <rect x="11" y="20" width="4" height="5" />
+              <rect x="19" y="20" width="4" height="5" />
+              <rect x="14" y="27" width="6" height="5" />
+              <circle cx="55" cy="16" r="6" />
+              <line x1="61" y1="16" x2="75" y2="16" />
+              <line x1="72" y1="16" x2="72" y2="21" />
+              <line x1="67" y1="16" x2="67" y2="20" />
+              <rect x="8" y="55" width="22" height="28" />
+              <line x1="13" y1="62" x2="26" y2="62" />
+              <line x1="13" y1="68" x2="26" y2="68" />
+              <line x1="13" y1="74" x2="20" y2="74" />
+              <path d="M55 50 a8 8 0 0 1 16 0 c0 8-8 18-8 18 s-8-10-8-18z" />
+              <circle cx="63" cy="50" r="4" />
+              <rect x="8" y="100" width="14" height="12" rx="2" />
+              <path d="M11 100 v-4 a4 4 0 0 1 8 0 v4" />
+              <rect x="82" y="8" width="22" height="20" rx="2" />
+              <line x1="82" y1="16" x2="104" y2="16" />
+              <line x1="89" y1="8" x2="89" y2="14" />
+              <line x1="99" y1="8" x2="99" y2="14" />
+              <rect x="82" y="88" width="18" height="14" />
+              <line x1="91" y1="88" x2="91" y2="102" />
+              <line x1="82" y1="95" x2="100" y2="95" />
+              <rect x="55" y="95" width="5" height="14" />
+              <rect x="63" y="89" width="5" height="20" />
+              <rect x="71" y="92" width="5" height="17" />
+              <line x1="52" y1="109" x2="79" y2="109" />
+            </g>
+          </pattern>
+        </defs>
+        <rect width="400" height="600" fill="url(#hptx)" />
+      </svg>
+
       {/* ── Contenido ─────────────────────────────────────────────── */}
       <div
         style={{
@@ -317,11 +373,14 @@ export default function HomePage() {
           zIndex: 1,
           maxWidth: isSmall ? "100%" : isLarge ? 1100 : 900,
           margin: "0 auto",
-          padding: isSmall ? "24px 16px 48px" : isLarge ? "48px 64px 80px" : "40px 48px 64px",
-          minHeight: "100dvh",
+          padding: isSmall ? "24px 16px 48px" : isLarge ? "40px 64px 56px" : "40px 48px 64px",
+          height: isLarge ? "100dvh" : undefined,
+          minHeight: isLarge ? undefined : "100dvh",
           display: "flex",
           flexDirection: "column",
-          gap: isSmall ? 32 : isLarge ? 56 : 44,
+          justifyContent: isLarge ? "space-between" : undefined,
+          gap: isSmall ? 32 : isLarge ? 0 : 44,
+          boxSizing: "border-box",
         }}
       >
         {/* ── Topbar ──────────────────────────────────────────────── */}
@@ -432,7 +491,7 @@ export default function HomePage() {
           }}
         >
           {/* Cobros pendientes */}
-          <motion.div variants={itemVariant} style={CARD}>
+          <motion.div variants={itemVariant} style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
               <IconBox bg="rgba(226,75,74,0.18)"><Coins size={20} color="#f87171" /></IconBox>
               {(metrics?.cobrosVencidos ?? 0) > 0 && (
@@ -453,7 +512,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Tickets abiertos */}
-          <motion.div variants={itemVariant} style={CARD}>
+          <motion.div variants={itemVariant} style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
               <IconBox bg="rgba(239,159,39,0.18)"><Wrench size={20} color="#fbbf24" /></IconBox>
               {(metrics?.ticketsUrgentes ?? 0) > 0 && (
@@ -468,7 +527,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Contratos por vencer */}
-          <motion.div variants={itemVariant} style={CARD}>
+          <motion.div variants={itemVariant} style={cardStyle}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
               <IconBox bg="rgba(99,102,241,0.18)"><Calendar size={20} color="#a5b4fc" /></IconBox>
               <Badge bg="rgba(99,102,241,0.2)" color="#a5b4fc">próximos 60 días</Badge>
@@ -520,6 +579,33 @@ export default function HomePage() {
           </motion.div>
         )}
       </div>
+
+      {/* Botón cerrar sesión */}
+      <button
+        type="button"
+        onClick={handleLogout}
+        onMouseEnter={() => setLogoutHover(true)}
+        onMouseLeave={() => setLogoutHover(false)}
+        style={{
+          position: "absolute",
+          bottom: 24,
+          left: 32,
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          background: "none",
+          border: "none",
+          color: logoutHover ? "rgba(255,255,255,0.6)" : "rgba(255,255,255,0.3)",
+          fontSize: 12,
+          cursor: "pointer",
+          padding: 0,
+          transition: "color 0.15s",
+          zIndex: 2,
+        }}
+      >
+        <LogOut size={13} />
+        Cerrar sesión
+      </button>
     </div>
   );
 }
