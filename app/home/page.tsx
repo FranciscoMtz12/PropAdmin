@@ -492,8 +492,8 @@ export default function HomePage() {
         >
           {/* Cobros pendientes */}
           <motion.div variants={itemVariant} style={cardStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-              <IconBox bg="rgba(226,75,74,0.18)"><Coins size={20} color="#f87171" /></IconBox>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
+              <IconBox bg="rgba(226,75,74,0.18)"><Coins style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#f87171" /></IconBox>
               {(metrics?.cobrosVencidos ?? 0) > 0 && (
                 <Badge bg="rgba(239,68,68,0.2)" color="#f87171">{metrics!.cobrosVencidos} vencidos</Badge>
               )}
@@ -505,16 +505,16 @@ export default function HomePage() {
             )}
             {(metrics?.cobrosVencidos ?? 0) > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 10 }}>
-                <AlertCircle size={11} color="#f87171" />
-                <span style={{ fontSize: 11, color: "#f87171" }}>Requiere atención</span>
+                <AlertCircle style={{ width: "clamp(11px, 1vw, 14px)", height: "clamp(11px, 1vw, 14px)" }} color="#f87171" />
+                <span style={{ fontSize: "clamp(11px, 1vw, 14px)", color: "#f87171" }}>Requiere atención</span>
               </div>
             )}
           </motion.div>
 
           {/* Tickets abiertos */}
           <motion.div variants={itemVariant} style={cardStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-              <IconBox bg="rgba(239,159,39,0.18)"><Wrench size={20} color="#fbbf24" /></IconBox>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
+              <IconBox bg="rgba(239,159,39,0.18)"><Wrench style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#fbbf24" /></IconBox>
               {(metrics?.ticketsUrgentes ?? 0) > 0 && (
                 <Badge bg="rgba(245,158,11,0.2)" color="#fbbf24">{metrics!.ticketsUrgentes} urgentes</Badge>
               )}
@@ -528,8 +528,8 @@ export default function HomePage() {
 
           {/* Contratos por vencer */}
           <motion.div variants={itemVariant} style={cardStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 18 }}>
-              <IconBox bg="rgba(99,102,241,0.18)"><Calendar size={20} color="#a5b4fc" /></IconBox>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
+              <IconBox bg="rgba(99,102,241,0.18)"><Calendar style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#a5b4fc" /></IconBox>
               <Badge bg="rgba(99,102,241,0.2)" color="#a5b4fc">próximos 60 días</Badge>
             </div>
             <div style={BIG_VAL}>{metrics?.contratosVenciendo ?? "—"}</div>
@@ -635,7 +635,7 @@ function IconBox({ bg, children }: { bg: string; children: React.ReactNode }) {
   return (
     <div
       style={{
-        width: 40, height: 40,
+        width: "clamp(32px, 3vw, 48px)", height: "clamp(32px, 3vw, 48px)",
         borderRadius: "var(--border-radius-md, 8px)",
         background: bg,
         display: "grid", placeItems: "center",
@@ -653,7 +653,7 @@ function Badge({ bg, color, children }: { bg: string; color: string; children: R
       style={{
         display: "inline-block", padding: "3px 9px",
         borderRadius: 100, background: bg, color,
-        fontSize: 11, fontWeight: 600, whiteSpace: "nowrap",
+        fontSize: "clamp(9px, 0.9vw, 12px)", fontWeight: 600, whiteSpace: "nowrap",
       }}
     >
       {children}
@@ -667,19 +667,19 @@ const CARD: React.CSSProperties = {
   background: "rgba(255,255,255,0.06)",
   border: "1px solid rgba(255,255,255,0.09)",
   borderRadius: "var(--border-radius-xl, 16px)",
-  padding: "20px 22px",
+  padding: "clamp(16px, 2vw, 28px)",
   backdropFilter: "blur(10px)",
   minHeight: "calc(20vh)",
 };
 
 const BIG_VAL: React.CSSProperties = {
-  fontSize: 38, fontWeight: 700, color: "#fff", lineHeight: 1, marginBottom: 6,
+  fontSize: "clamp(32px, 5vw, 64px)", fontWeight: 700, color: "#fff", lineHeight: 1, marginBottom: 6,
 };
 
 const CARD_LABEL: React.CSSProperties = {
-  fontSize: 12, color: "rgba(255,255,255,0.45)", marginBottom: 4,
+  fontSize: "clamp(11px, 1.2vw, 16px)", color: "rgba(255,255,255,0.45)", marginBottom: 4,
 };
 
 const CARD_DETAIL: React.CSSProperties = {
-  fontSize: 12, color: "rgba(255,255,255,0.28)",
+  fontSize: "clamp(12px, 1vw, 15px)", color: "rgba(255,255,255,0.28)",
 };
