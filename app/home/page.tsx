@@ -447,7 +447,7 @@ export default function HomePage() {
             {...fadeUp(0.05)}
             style={{
               margin: "0 0 10px",
-              fontSize: 11, fontWeight: 600,
+              fontSize: "clamp(12px, 1.2vw, 16px)", fontWeight: 600,
               letterSpacing: "0.1em",
               color: "rgba(255,255,255,0.3)",
               textTransform: "uppercase",
