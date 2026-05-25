@@ -356,7 +356,7 @@ export default function Sidebar() {
   useEffect(() => { setMobileOpen(false); }, [pathname]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
-  const { groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
+  const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
   const { impersonationMode, isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   /* Modo SAPROA Control Center: superadmin real SIN impersonar ninguna empresa */
@@ -424,7 +424,7 @@ export default function Sidebar() {
   /* Superadmin sin company_id usa el nombre de la plataforma SAPROA */
   const displayName = (isSuperAdmin && !user?.company_id) ? platformName : shortName;
   const logoInitials = initials(displayName);
-  const activeAccent = isSaproaMode ? SAPROA_ACCENT : groupColor;
+  const activeAccent = isSaproaMode ? SAPROA_ACCENT : accentColor;
 
   return (
     <>
@@ -518,47 +518,44 @@ export default function Sidebar() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* ── Área de logo (altura fija 56px) ─────────────────── */}
-          <div style={{ height: 56, display: "flex", alignItems: "center", gap: 12, paddingTop: 4 }}>
-            {isSaproaMode ? (
-              /* Logo SAPROA Control Center — círculo índigo con "S" */
-              <div
-                style={{
-                  width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
-                  background: SAPROA_ACCENT,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 900, fontSize: 18, color: "#ffffff",
-                  letterSpacing: "-0.02em", flexShrink: 0,
-                }}
-              >
-                <Shield size={18} color="#fff" />
-              </div>
-            ) : activeLogo ? (
-              <img
-                src={activeLogo}
-                alt={shortName}
-                style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
-                  background: groupColor,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 800, fontSize: 14, color: "#ffffff",
-                  letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
-                }}
-              >
-                {logoInitials}
-              </div>
-            )}
-            <div className="sidebar-logo-text" style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {isSaproaMode ? "SAPROA" : displayName}
-              </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.52)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {sidebarTitle}
-              </div>
-            </div>
+          <div style={{ height: 56, display: "flex", alignItems: "center", paddingTop: 4 }}>
+            <Link
+              href="/home"
+              style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}
+            >
+              {isSaproaMode ? (
+                /* Logo SAPROA Control Center — círculo índigo con Shield */
+                <div
+                  style={{
+                    width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
+                    background: SAPROA_ACCENT,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 900, fontSize: 18, color: "#ffffff",
+                    letterSpacing: "-0.02em", flexShrink: 0,
+                  }}
+                >
+                  <Shield size={18} color="#fff" />
+                </div>
+              ) : activeLogo ? (
+                <img
+                  src={activeLogo}
+                  alt={shortName}
+                  style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
+                    background: accentColor,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, fontSize: 14, color: "#ffffff",
+                    letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
+                  }}
+                >
+                  {logoInitials}
+                </div>
+              )}
+            </Link>
           </div>
 
           {/* Separador debajo del logo */}

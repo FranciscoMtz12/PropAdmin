@@ -100,6 +100,9 @@ export default function RouteGuard() {
       return;
     }
 
+    // /home es accesible para cualquier usuario admin autenticado
+    if (pathname === "/home") return;
+
     // Superadmin saltea el enforcement granular pero sigue con las redirecciones generales
     const skipGranular = user.role === "superadmin" || user.is_superadmin;
 
