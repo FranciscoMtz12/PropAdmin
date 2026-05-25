@@ -29,13 +29,13 @@ export const ICON_MAP: Record<string, IconComp> = {
 };
 
 export const ALL_MODULES: QuickLink[] = [
-  { label: "Cobranza",      icon: "ti-coin",          path: "/cobranza"      },
+  { label: "Cobranza",      icon: "ti-coin",          path: "/collections"      },
   { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
   { label: "Inquilinos",    icon: "ti-users",         path: "/tenants"       },
   { label: "Servicios",     icon: "ti-bolt",          path: "/servicios"     },
-  { label: "Mantenimiento", icon: "ti-tool",          path: "/mantenimiento" },
+  { label: "Mantenimiento", icon: "ti-tool",          path: "/maintenance" },
   { label: "Limpieza",      icon: "ti-sparkles",      path: "/cleaning"      },
-  { label: "Compras",       icon: "ti-shopping-cart", path: "/compras"       },
+  { label: "Compras",       icon: "ti-shopping-cart", path: "/purchases"       },
   { label: "Proveedores",   icon: "ti-truck",         path: "/suppliers"     },
   { label: "Pagos",         icon: "ti-receipt",       path: "/payments"      },
   { label: "Analytics",     icon: "ti-chart-bar",     path: "/analytics"     },
@@ -47,37 +47,37 @@ const BY_ROLE: Record<string, QuickLink[]> = {
     { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
     { label: "Servicios",     icon: "ti-bolt",          path: "/servicios"     },
     { label: "Pagos",         icon: "ti-receipt",       path: "/payments"      },
-    { label: "Cobranza",      icon: "ti-coin",          path: "/cobranza"      },
+    { label: "Cobranza",      icon: "ti-coin",          path: "/collections"      },
     { label: "Inquilinos",    icon: "ti-users",         path: "/tenants"       },
   ],
   compras: [
-    { label: "Compras",       icon: "ti-shopping-cart", path: "/compras"       },
+    { label: "Compras",       icon: "ti-shopping-cart", path: "/purchases"       },
     { label: "Proveedores",   icon: "ti-truck",         path: "/suppliers"     },
-    { label: "Mantenimiento", icon: "ti-tool",          path: "/mantenimiento" },
+    { label: "Mantenimiento", icon: "ti-tool",          path: "/maintenance" },
     { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
   ],
   mantenimiento: [
-    { label: "Mantenimiento", icon: "ti-tool",          path: "/mantenimiento" },
+    { label: "Mantenimiento", icon: "ti-tool",          path: "/maintenance" },
     { label: "Limpieza",      icon: "ti-sparkles",      path: "/cleaning"      },
     { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
-    { label: "Compras",       icon: "ti-shopping-cart", path: "/compras"       },
+    { label: "Compras",       icon: "ti-shopping-cart", path: "/purchases"       },
   ],
   field: [
-    { label: "Mantenimiento", icon: "ti-tool",          path: "/mantenimiento" },
+    { label: "Mantenimiento", icon: "ti-tool",          path: "/maintenance" },
     { label: "Limpieza",      icon: "ti-sparkles",      path: "/cleaning"      },
     { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
-    { label: "Compras",       icon: "ti-shopping-cart", path: "/compras"       },
+    { label: "Compras",       icon: "ti-shopping-cart", path: "/purchases"       },
   ],
 };
 
 const FALLBACK: QuickLink[] = [
-  { label: "Cobranza",      icon: "ti-coin",          path: "/cobranza"      },
-  { label: "Mantenimiento", icon: "ti-tool",          path: "/mantenimiento" },
+  { label: "Cobranza",      icon: "ti-coin",          path: "/collections"      },
+  { label: "Mantenimiento", icon: "ti-tool",          path: "/maintenance" },
   { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
   { label: "Analytics",     icon: "ti-chart-bar",     path: "/analytics"     },
   { label: "Inquilinos",    icon: "ti-users",         path: "/tenants"       },
   { label: "Servicios",     icon: "ti-bolt",          path: "/servicios"     },
-  { label: "Compras",       icon: "ti-shopping-cart", path: "/compras"       },
+  { label: "Compras",       icon: "ti-shopping-cart", path: "/purchases"       },
 ];
 
 export function getDefaultQuickLinks(role: string): QuickLink[] {
@@ -86,10 +86,10 @@ export function getDefaultQuickLinks(role: string): QuickLink[] {
 
 /* Role-based module filtering — mirrors ROLE_ALLOWED in Sidebar.tsx (single source of truth) */
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants"],
-  compras:        ["/dashboard", "/purchases", "/compras", "/suppliers"],
-  mantenimiento:  ["/dashboard", "/maintenance", "/mantenimiento", "/cleaning"],
-  directivo:      ["/dashboard", "/buildings", "/analytics", "/collections", "/cobranza", "/tenants"],
+  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/tenants"],
+  compras:        ["/dashboard", "/purchases", "/suppliers"],
+  mantenimiento:  ["/dashboard", "/maintenance", "/cleaning"],
+  directivo:      ["/dashboard", "/buildings", "/analytics", "/collections", "/tenants"],
 };
 
 export function getAllowedModules(role: string): QuickLink[] {
