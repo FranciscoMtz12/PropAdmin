@@ -157,6 +157,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty('--font-scale', String(fontScale));
   }, [fontScale]);
 
+  /* ── Resetear font-scale al cerrar sesión (user → null) ─────────── */
+  useEffect(() => {
+    if (!user) {
+      document.documentElement.style.setProperty('--font-scale', '1');
+      setFontScaleState(1);
+    }
+  }, [user]);
+
   /* ── Leer preferencia de modo guardada o del sistema (solo en cliente) ── */
   useEffect(() => {
     /* Intentar leer la preferencia del último usuario logueado para evitar flash */

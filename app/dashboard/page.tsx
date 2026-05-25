@@ -1297,10 +1297,11 @@ export default function DashboardPage() {
           gridTemplateColumns: `repeat(${cols2}, 1fr)`,
           gap: cardGap,
           marginBottom: cardGap,
+          alignItems: "stretch",
         }}
       >
         {/* ── Card A: Agenda de hoy ─────────────────────────────── */}
-        <div style={{ overflow: "hidden", minWidth: 0 }}>
+        <div style={{ overflow: "hidden", minWidth: 0, height: "100%" }}>
         <SectionCard
           title="Agenda de hoy"
           subtitle={new Date().toLocaleDateString("es-MX", {
@@ -1409,7 +1410,7 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Card B: Unidades disponibles ──────────────────────── */}
-        <div style={{ overflow: "hidden", minWidth: 0 }}>
+        <div style={{ overflow: "hidden", minWidth: 0, height: "100%" }}>
         <SectionCard
           title="Unidades disponibles"
           subtitle="Sin lease activo · máximo 6"
@@ -1671,7 +1672,7 @@ export default function DashboardPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.32 }}>
       <div
         className="dashboard-grid-2"
-        style={{ display: "grid", gridTemplateColumns: `repeat(${cols2}, 1fr)`, gap: cardGap, marginTop: cardGap }}
+        style={{ display: "grid", gridTemplateColumns: `repeat(${cols2}, 1fr)`, gap: cardGap, marginTop: cardGap, alignItems: "stretch" }}
       >
         {/* ── Card: Notificaciones activas ──────────────────────── */}
         <SectionCard
@@ -1735,6 +1736,10 @@ export default function DashboardPage() {
                           color: col.text,
                           textDecoration: "underline",
                           whiteSpace: "nowrap",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 44,
+                          padding: "0 4px",
                         }}
                       >
                         Ver →
@@ -1818,6 +1823,10 @@ export default function DashboardPage() {
                               color: "var(--accent)",
                               textDecoration: "none",
                               flexShrink: 0,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              minHeight: 44,
+                              padding: "0 4px",
                             }}
                           >
                             Ir →

@@ -1,6 +1,6 @@
 import { Page } from "@playwright/test";
 
-export const BASE = "https://prop-admin-teal.vercel.app";
+export const BASE = "https://www.saproa.com";
 
 export const USERS = {
   superadmin:     { email: "fco.mtz.c@hotmail.com",        password: "Pruebas1" },
@@ -8,6 +8,7 @@ export const USERS = {
   compras:        { email: "compras@fra-mar.mx",            password: "Compras01" },
   mantenimiento:  { email: "mantenimiento@fra-mar.mx",      password: "Mantenimiento01" },
   campo:          { email: "campo@fra-mar.mx",              password: "Equipocampo01" },
+  titular:        { email: "titular@fra-mar.mx",            password: "SaproaP01" },
 } as const;
 
 export async function login(page: Page, role: keyof typeof USERS) {

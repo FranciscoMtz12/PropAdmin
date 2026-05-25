@@ -408,6 +408,7 @@ export default function Sidebar() {
   if (isHiddenRoute) return null;
 
   async function handleLogout() {
+    document.documentElement.style.setProperty('--font-scale', '1');
     await supabase.auth.signOut();
     router.push("/");
   }
@@ -522,10 +523,10 @@ export default function Sidebar() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* ── Área de logo (altura fija 56px) ─────────────────── */}
-          <div style={{ height: 56, display: "flex", alignItems: "center", paddingTop: 4 }}>
+          <div style={{ height: 56, display: "flex", justifyContent: "center", alignItems: "center", width: "100%", padding: "16px 0" }}>
             <Link
               href="/home"
-              style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0 }}
+              style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0, minHeight: 44, minWidth: 44, justifyContent: "center" }}
             >
               {isSaproaMode ? (
                 /* Logo SAPROA Control Center — círculo índigo con Shield */
@@ -662,7 +663,7 @@ export default function Sidebar() {
             onClick={() => router.push("/settings")}
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
-              padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
+              minHeight: 44, padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
               border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
               color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}
@@ -677,7 +678,7 @@ export default function Sidebar() {
             onClick={handleLogout}
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
-              padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
+              minHeight: 44, padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
               border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
               color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}

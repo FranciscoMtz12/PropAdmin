@@ -142,10 +142,13 @@ export default function LoginPage() {
           border: "1px solid rgba(255,255,255,.2)",
           color: "rgba(255,255,255,.7)",
           borderRadius: "var(--border-radius-xl)",
-          padding: ".4rem 1rem",
+          padding: ".5rem 1rem",
           fontSize: "0.75rem",
           cursor: "pointer",
           zIndex: 2,
+          minHeight: 44,
+          display: "inline-flex",
+          alignItems: "center",
         }}
       >
         ← Volver
@@ -291,7 +294,7 @@ export default function LoginPage() {
 
           <p style={{ textAlign: "center", marginTop: "12px", fontSize: "0.875rem", color: "rgba(255,255,255,.55)" }}>
             ¿No tienes cuenta?{" "}
-            <a href="/register" style={{ color: "#8B2252", fontWeight: 600 }}>
+            <a href="/register" style={{ color: "#8B2252", fontWeight: 600, display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 4px" }}>
               Regístrate →
             </a>
           </p>

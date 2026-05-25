@@ -7,7 +7,7 @@ export default defineConfig({
   workers: 1, // serial to avoid session conflicts on production
   reporter: [["html", { outputFolder: "playwright-report", open: "never" }], ["line"]],
   use: {
-    baseURL: "https://prop-admin-teal.vercel.app",
+    baseURL: "https://www.saproa.com",
     headless: true,
     screenshot: "only-on-failure",
     video: "retain-on-failure",

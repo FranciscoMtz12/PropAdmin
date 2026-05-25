@@ -289,32 +289,14 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
-   Scrollbars — thin, accent color, no horizontal
+   Scrollbars — thin, subtle gray, minimal
    ════════════════════════════════════════════════════════════════════ */
 
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--accent) transparent;
-}
-
-*::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-
-*::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-*::-webkit-scrollbar-thumb {
-  background: var(--accent);
-  border-radius: 4px;
-  opacity: 0.6;
-}
-
-*::-webkit-scrollbar-thumb:hover {
-  opacity: 1;
-}
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.45); }
+* { scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.25) transparent; }
 
 /* ════════════════════════════════════════════════════════════════════
    Sidebar responsive
