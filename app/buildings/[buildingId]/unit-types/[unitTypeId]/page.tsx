@@ -402,9 +402,9 @@ export default function UnitTypeDetailPage() {
       ) : null}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: "16px", marginBottom: "24px" }}>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Recámaras</p><strong style={{ fontSize: "28px" }}>{unitType.bedrooms}</strong></div><BedDouble size={18} /></div></div>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Baños</p><strong style={{ fontSize: "28px" }}>{unitType.bathrooms}</strong></div><Bath size={18} /></div></div>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Equipamiento base</p><strong style={{ fontSize: "28px" }}>{templateAssets.length}</strong></div><PackageSearch size={18} /></div></div>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>Recámaras</p><strong style={{ fontSize: "1.75rem" }}>{unitType.bedrooms}</strong></div><BedDouble size={18} /></div></div>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>Baños</p><strong style={{ fontSize: "1.75rem" }}>{unitType.bathrooms}</strong></div><Bath size={18} /></div></div>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>Equipamiento base</p><strong style={{ fontSize: "1.75rem" }}>{templateAssets.length}</strong></div><PackageSearch size={18} /></div></div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
@@ -431,7 +431,7 @@ export default function UnitTypeDetailPage() {
                     <AssetTypeIcon assetType={asset.asset_type} size={18} />
                     <div>
                       <strong style={{ display: "block" }}>{asset.name}</strong>
-                      <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>{asset.asset_type} · Orden {asset.sort_order ?? 0}</p>
+                      <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>{asset.asset_type} · Orden {asset.sort_order ?? 0}</p>
                     </div>
                   </div>
                 </div>

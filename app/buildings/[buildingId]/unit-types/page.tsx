@@ -539,7 +539,7 @@ export default function BuildingUnitTypesPage() {
                   </div>
                   <div>
                     <p style={{ fontWeight: "bold", marginBottom: "4px" }}>{unitType.name}</p>
-                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>Plantilla base del edificio</p>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Plantilla base del edificio</p>
                   </div>
                 </div>
 
@@ -550,10 +550,10 @@ export default function BuildingUnitTypesPage() {
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><Sofa size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Sala: {unitType.has_living_room ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Comedor: {unitType.has_dining_room ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Patio: {unitType.has_patio ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Estufa: {unitType.stove_type}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}><Sofa size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Sala: {unitType.has_living_room ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}><UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Comedor: {unitType.has_dining_room ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}>Patio: {unitType.has_patio ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}>Estufa: {unitType.stove_type}</span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>

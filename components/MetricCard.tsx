@@ -63,12 +63,12 @@ export default function MetricCard({
         }}
       >
         <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>
             {label}
           </p>
           <strong
             style={{
-              fontSize: "28px",
+              fontSize: "1.75rem",
               fontWeight: 700,
               display: "block",
               lineHeight: 1.1,
@@ -80,7 +80,7 @@ export default function MetricCard({
           {helper ? (
             <p
               style={{
-                fontSize: "12px",
+                fontSize: "0.75rem",
                 color: "var(--text-subtle)",
                 marginTop: "8px",
                 marginBottom: 0,

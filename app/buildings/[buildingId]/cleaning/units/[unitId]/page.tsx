@@ -82,7 +82,7 @@ const inputStyle: CSSProperties = {
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",
-  fontSize: "14px",
+  fontSize: "0.875rem",
   color: "var(--text-primary)",
 };
 
@@ -90,7 +90,7 @@ const checkboxRowStyle: CSSProperties = {
   display: "flex",
   alignItems: "center",
   gap: "10px",
-  fontSize: "14px",
+  fontSize: "0.875rem",
   color: "var(--text-secondary)",
 };
 

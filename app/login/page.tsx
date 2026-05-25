@@ -289,7 +289,7 @@ export default function LoginPage() {
             {isSubmitting ? "Iniciando sesión..." : "Entrar"}
           </button>
 
-          <p style={{ textAlign: "center", marginTop: "12px", fontSize: "14px", color: "rgba(255,255,255,.55)" }}>
+          <p style={{ textAlign: "center", marginTop: "12px", fontSize: "0.875rem", color: "rgba(255,255,255,.55)" }}>
             ¿No tienes cuenta?{" "}
             <a href="/register" style={{ color: "#8B2252", fontWeight: 600 }}>
               Regístrate →

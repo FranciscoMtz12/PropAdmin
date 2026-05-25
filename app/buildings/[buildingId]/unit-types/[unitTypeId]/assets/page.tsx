@@ -391,7 +391,7 @@ export default function UnitTypeAssetsPage() {
                   <AssetTypeIcon assetType={asset.asset_type} size={18} />
                   <div>
                     <p style={{ fontWeight: "bold", marginBottom: "4px" }}>{asset.name}</p>
-                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>
                       {asset.asset_type}
                     </p>
                   </div>
@@ -410,7 +410,7 @@ export default function UnitTypeAssetsPage() {
                       border: "1px solid var(--border-default)",
                       borderRadius: 999,
                       padding: "6px 10px",
-                      fontSize: "12px",
+                      fontSize: "0.75rem",
                     }}
                   >
                     Orden {asset.sort_order ?? 0}
@@ -421,7 +421,7 @@ export default function UnitTypeAssetsPage() {
                       border: "1px solid var(--border-default)",
                       borderRadius: 999,
                       padding: "6px 10px",
-                      fontSize: "12px",
+                      fontSize: "0.75rem",
                     }}
                   >
                     {asset.status}

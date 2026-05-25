@@ -139,7 +139,7 @@ export default function RootLayout({
               color: "var(--text-primary)",
               border: "0.5px solid var(--border-default)",
               borderRadius: "var(--border-radius-md)",
-              fontSize: "13px",
+              fontSize: "0.8125rem",
               padding: "12px 16px",
             },
             success: {

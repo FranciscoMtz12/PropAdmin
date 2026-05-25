@@ -84,7 +84,7 @@ export default function Modal({
           <div>
             <h2
               style={{
-                fontSize: "28px",
+                fontSize: "1.75rem",
                 fontWeight: 700,
                 marginBottom: subtitle ? "6px" : 0,
                 color: "var(--text-primary)",

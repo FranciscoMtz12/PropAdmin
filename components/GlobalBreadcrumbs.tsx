@@ -119,7 +119,7 @@ export default function GlobalBreadcrumbs() {
           flexWrap: "wrap",
           gap: "8px",
           alignItems: "center",
-          fontSize: "13px",
+          fontSize: "0.8125rem",
           color: "var(--text-secondary)",
         }}
       >

@@ -71,7 +71,7 @@ export default function PageHeader({
               <h1
                 className="ph-title"
                 style={{
-                  fontSize: "38px",
+                  fontSize: "2.375rem",
                   fontWeight: 700,
                   lineHeight: 1.08,
                   marginBottom: subtitle && showDescriptions ? "8px" : 0,
