@@ -176,7 +176,7 @@ export default function LocationPicker({
               borderRadius: "var(--border-radius-md)",
               background: "var(--bg-input)",
               color: "var(--text-primary)",
-              fontSize: 14,
+              fontSize: "0.875rem",
               outline: "none",
               boxSizing: "border-box",
             }}
@@ -200,7 +200,7 @@ export default function LocationPicker({
             }}
           >
             {searching ? (
-              <div style={{ padding: "10px 12px", fontSize: 13, color: "var(--text-muted)" }}>
+              <div style={{ padding: "10px 12px", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                 Buscando...
               </div>
             ) : (
@@ -219,7 +219,7 @@ export default function LocationPicker({
                     borderBottom: "1px solid var(--border-default)",
                     background: "transparent",
                     color: "var(--text-primary)",
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     cursor: "pointer",
                   }}
                 >
@@ -281,7 +281,7 @@ export default function LocationPicker({
       </div>
 
       {/* Línea de coordenadas actuales */}
-      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
         {hasCoords ? (
           <>
             Lat: <strong style={{ color: "var(--text-primary)" }}>

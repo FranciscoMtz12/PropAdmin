@@ -151,10 +151,10 @@ export default function CampoDashboardPage() {
 
       {/* ── Saludo ──────────────────────────────────────────────── */}
       <div>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", textTransform: "capitalize" }}>
+        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)", textTransform: "capitalize" }}>
           {formatTodayLong()}
         </p>
-        <h1 style={{ margin: "4px 0 0", fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>
+        <h1 style={{ margin: "4px 0 0", fontSize: "1.375rem", fontWeight: 800, color: "var(--text-primary)" }}>
           {greeting}{firstName ? `, ${firstName}` : ""}
         </h1>
       </div>
@@ -172,10 +172,10 @@ export default function CampoDashboardPage() {
             <Wrench size={22} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Tickets abiertos
             </p>
-            <p style={{ margin: "2px 0 0", fontSize: 28, fontWeight: 800, color: "var(--metric-value-amber)", lineHeight: 1 }}>
+            <p style={{ margin: "2px 0 0", fontSize: "1.75rem", fontWeight: 800, color: "var(--metric-value-amber)", lineHeight: 1 }}>
               {loadingData ? "—" : openTickets}
             </p>
           </div>
@@ -191,10 +191,10 @@ export default function CampoDashboardPage() {
             <Sparkles size={22} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               Limpiezas hoy
             </p>
-            <p style={{ margin: "2px 0 0", fontSize: 28, fontWeight: 800, color: "var(--metric-value-blue)", lineHeight: 1 }}>
+            <p style={{ margin: "2px 0 0", fontSize: "1.75rem", fontWeight: 800, color: "var(--metric-value-blue)", lineHeight: 1 }}>
               {loadingData ? "—" : todayCleanings}
             </p>
           </div>
@@ -210,10 +210,10 @@ export default function CampoDashboardPage() {
             <ShoppingCart size={22} />
           </div>
           <div>
-            <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em" }}>
               OC por surtir
             </p>
-            <p style={{ margin: "2px 0 0", fontSize: 28, fontWeight: 800, color: "var(--metric-value-green)", lineHeight: 1 }}>
+            <p style={{ margin: "2px 0 0", fontSize: "1.75rem", fontWeight: 800, color: "var(--metric-value-green)", lineHeight: 1 }}>
               {loadingData ? "—" : pendingOCs}
             </p>
           </div>
@@ -223,7 +223,7 @@ export default function CampoDashboardPage() {
 
       {/* ── Accesos rápidos ─────────────────────────────────────── */}
       <div>
-        <p style={{ margin: "0 0 12px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+        <p style={{ margin: "0 0 12px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
           Accesos rápidos
         </p>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
@@ -232,7 +232,7 @@ export default function CampoDashboardPage() {
             <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-amber)", color: "var(--icon-color-amber)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Wrench size={20} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               Tickets
             </span>
           </a>
@@ -241,7 +241,7 @@ export default function CampoDashboardPage() {
             <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Sparkles size={20} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               Limpieza
             </span>
           </a>
@@ -250,7 +250,7 @@ export default function CampoDashboardPage() {
             <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Zap size={20} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               Medidores
             </span>
           </a>
@@ -259,7 +259,7 @@ export default function CampoDashboardPage() {
             <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <Ticket size={20} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               Activos
             </span>
           </a>
@@ -268,7 +268,7 @@ export default function CampoDashboardPage() {
             <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ShoppingCart size={20} />
             </div>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>
               OC
             </span>
           </a>

@@ -41,7 +41,7 @@ export default function AppTable<T>({
           padding: 20,
           background: "var(--bg-table-empty)",
           color: "var(--text-muted)",
-          fontSize: 14,
+          fontSize: "0.875rem",
         }}
       >
         {emptyState}
@@ -75,7 +75,7 @@ export default function AppTable<T>({
                 style={{
                   textAlign: column.align || "left",
                   padding: "14px 16px",
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 700,
                   /* var(--text-secondary): #344054 light / #CBD5E1 dark */
                   color: "var(--text-secondary)",
@@ -103,7 +103,7 @@ export default function AppTable<T>({
                         ? "none"
                         : "1px solid var(--border-subtle)",
                     textAlign: column.align || "left",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     /* var(--text-primary): #101828 light / #F1F5F9 dark */
                     color: "var(--text-primary)",
                     verticalAlign: "top",

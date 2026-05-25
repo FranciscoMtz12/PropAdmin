@@ -86,13 +86,13 @@ export default function SaproaSistemaPage() {
     border: "1px solid var(--border-default)",
     background: "var(--bg-input, var(--bg-subtle))",
     color: "var(--text-primary)",
-    fontSize: 14,
+    fontSize: "0.875rem",
     outline: "none",
     boxSizing: "border-box",
   };
 
   const labelStyle: React.CSSProperties = {
-    fontSize: 13,
+    fontSize: "0.8125rem",
     fontWeight: 600,
     color: "var(--text-secondary)",
     marginBottom: 6,

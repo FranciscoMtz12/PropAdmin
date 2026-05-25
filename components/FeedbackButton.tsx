@@ -122,7 +122,7 @@ export default function FeedbackButton() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>Enviar feedback</div>
+              <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>Enviar feedback</div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
@@ -150,7 +150,7 @@ export default function FeedbackButton() {
                         gap: 4,
                         padding: "8px 6px",
                         borderRadius: "var(--border-radius-md)",
-                        fontSize: 11,
+                        fontSize: "0.6875rem",
                         fontWeight: 600,
                         cursor: "pointer",
                         background: active ? "var(--accent)" : "var(--bg-input)",
@@ -173,7 +173,7 @@ export default function FeedbackButton() {
                     width: "100%",
                     padding: "8px 10px",
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
                     color: "var(--text-primary)",
@@ -182,7 +182,7 @@ export default function FeedbackButton() {
                   }}
                 />
                 {formState.errors.title && (
-                  <div style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>
+                  <div style={{ fontSize: "0.6875rem", color: "#ef4444", marginTop: 4 }}>
                     {formState.errors.title.message}
                   </div>
                 )}
@@ -196,7 +196,7 @@ export default function FeedbackButton() {
                   width: "100%",
                   padding: "8px 10px",
                   borderRadius: "var(--border-radius-md)",
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   background: "var(--bg-input)",
                   border: "1px solid var(--border-default)",
                   color: "var(--text-primary)",
@@ -213,7 +213,7 @@ export default function FeedbackButton() {
                 style={{
                   padding: "9px",
                   borderRadius: "var(--border-radius-md)",
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 600,
                   background: formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
                   border: "none",

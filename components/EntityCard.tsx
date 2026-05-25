@@ -46,7 +46,7 @@ export default function EntityCard({
         <div className="building-card-info" style={{ flex: 1, minWidth: 0 }}>
           <p
             style={{
-              fontSize: 15,
+              fontSize: "0.9375rem",
               fontWeight: 700,
               color: "var(--text-primary)",
               marginBottom: subtitle !== undefined ? 4 : badge ? 8 : 0,
@@ -61,7 +61,7 @@ export default function EntityCard({
             <p
               className="building-card-addr"
               style={{
-                fontSize: 11,
+                fontSize: "0.6875rem",
                 color: "var(--text-secondary)",
                 marginBottom: badge ? 8 : 0,
                 overflow: "hidden",
@@ -92,10 +92,10 @@ export default function EntityCard({
           <div style={{ display: "flex", gap: 20 }}>
             {metrics?.map((m) => (
               <div key={m.label} style={{ textAlign: "center" }}>
-                <p style={{ fontSize: 18, fontWeight: 700, color: m.color ?? "var(--text-primary)", lineHeight: 1 }}>
+                <p style={{ fontSize: "1.125rem", fontWeight: 700, color: m.color ?? "var(--text-primary)", lineHeight: 1 }}>
                   {m.value}
                 </p>
-                <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>
+                <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>
                   {m.label}
                 </p>
               </div>

@@ -611,7 +611,7 @@ export default function InvoiceForm({
                   background: sourceRecordId ? "var(--metric-bg-green)" : "var(--metric-bg-amber)",
                   border: sourceRecordId ? "1px solid var(--metric-border-green)" : "1px solid var(--metric-border-amber)",
                   color: sourceRecordId ? "var(--metric-value-green)" : "var(--badge-text-amber)",
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
               >
@@ -791,12 +791,12 @@ export default function InvoiceForm({
                   Autollenado desde XML
                 </div>
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-muted)", lineHeight: 1.6 }}>
+              <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)", lineHeight: 1.6 }}>
                 Cuando selecciones un XML CFDI válido, intentaré leerlo para completar la
                 información principal automáticamente.
               </div>
               {xmlAutofillStatus ? (
-                <div style={{ marginTop: 10, fontSize: 13, color: "var(--text-secondary)" }}>
+                <div style={{ marginTop: 10, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                   {xmlAutofillStatus}
                 </div>
               ) : null}
@@ -862,8 +862,8 @@ export default function InvoiceForm({
             </AppGrid>
 
             <AppCard style={{ background: "var(--bg-card-hover)" }}>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>Total visible</div>
-              <div style={{ fontSize: 28, fontWeight: 800, color: "var(--text-primary)" }}>{totalPreview}</div>
+              <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 6 }}>Total visible</div>
+              <div style={{ fontSize: "1.75rem", fontWeight: 800, color: "var(--text-primary)" }}>{totalPreview}</div>
             </AppCard>
 
             <AppFormField label="Descripción">
@@ -931,8 +931,8 @@ export default function InvoiceForm({
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-      <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
-      <span style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 700 }}>{value || "—"}</span>
+      <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
+      <span style={{ fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 700 }}>{value || "—"}</span>
     </div>
   );
 }

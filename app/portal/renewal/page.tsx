@@ -57,19 +57,19 @@ const iconBoxStyle: React.CSSProperties = {
 };
 
 const mutedTextStyle: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   lineHeight: 1.6,
   color: "var(--text-muted)",
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
 
 const valueStyle: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: "1.125rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -78,7 +78,7 @@ const actionButtonStyle: React.CSSProperties = {
   border: "none",
   borderRadius: "var(--border-radius-lg)",
   padding: "12px 16px",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -470,7 +470,7 @@ export default function PortalRenewalPage() {
                     padding: "0 14px",
                     background: "var(--bg-card)",
                     color: "var(--text-primary)",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     outline: "none",
                   }}
@@ -684,7 +684,7 @@ export default function PortalRenewalPage() {
                       background: "var(--metric-bg-neutral)",
                       border: "1px solid var(--border-default)",
                       color: "var(--badge-text-blue)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                     }}
                   >
@@ -738,7 +738,7 @@ export default function PortalRenewalPage() {
                       background: "var(--icon-bg-green)",
                       border: "1px solid var(--metric-border-green)",
                       color: "var(--badge-text-green)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                     }}
                   >
@@ -755,7 +755,7 @@ export default function PortalRenewalPage() {
                       background: "var(--badge-bg-red)",
                       border: "1px solid var(--metric-border-red)",
                       color: "var(--badge-text-red)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 600,
                     }}
                   >

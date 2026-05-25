@@ -66,7 +66,7 @@ export default function AppBadge({
         gap: 6,
         padding: "6px 10px",
         borderRadius: "var(--border-radius-full, 999px)",
-        fontSize: 13,
+        fontSize: "0.8125rem",
         fontWeight: 600,
         lineHeight: 1,
         background: backgroundColor,

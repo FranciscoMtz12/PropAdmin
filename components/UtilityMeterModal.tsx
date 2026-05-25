@@ -203,9 +203,9 @@ export default function UtilityMeterModal({
                     onChange={() => setMeterType(type)}
                     style={{ accentColor: "#8B2252" }}
                   />
-                  <strong style={{ fontSize: 14 }}>{type === "dedicated" ? "Dedicado" : "Compartido"}</strong>
+                  <strong style={{ fontSize: "0.875rem" }}>{type === "dedicated" ? "Dedicado" : "Compartido"}</strong>
                 </div>
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                   {type === "dedicated"
                     ? "Asignado a una sola unidad"
                     : "Distribuido entre varias unidades"}
@@ -228,9 +228,9 @@ export default function UtilityMeterModal({
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="company" checked={contractHolder === "company"} onChange={() => setContractHolder("company")} style={{ accentColor: "#8B2252" }} />
                     <Building2 size={14} />
-                    <strong style={{ fontSize: 14 }}>La empresa paga y cobra</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>La empresa paga y cobra</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     La empresa recibe la factura y genera un cobro al inquilino.
                   </p>
                 </label>
@@ -243,9 +243,9 @@ export default function UtilityMeterModal({
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="tenant" checked={contractHolder === "tenant"} onChange={() => setContractHolder("tenant")} style={{ accentColor: "#8B2252" }} />
                     <User size={14} />
-                    <strong style={{ fontSize: 14 }}>El inquilino paga directo</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>El inquilino paga directo</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     El inquilino tiene su propio contrato. La empresa no interviene.
                   </p>
                 </label>
@@ -276,9 +276,9 @@ export default function UtilityMeterModal({
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input type="radio" value={mode} checked={billingMode === mode} onChange={() => setBillingMode(mode)} style={{ accentColor: "#8B2252" }} />
-                      <strong style={{ fontSize: 14 }}>{mode === "charged" ? "Se cobra al inquilino" : "Incluido en renta"}</strong>
+                      <strong style={{ fontSize: "0.875rem" }}>{mode === "charged" ? "Se cobra al inquilino" : "Incluido en renta"}</strong>
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                       {mode === "charged" ? "El costo se distribuye y genera cobros." : "Solo registro de gasto — sin cobro."}
                     </p>
                   </label>
@@ -287,12 +287,12 @@ export default function UtilityMeterModal({
             </AppFormField>
 
             {billingMode === "charged" ? (
-              <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 Configura los submedidores después de guardar.
               </div>
             ) : (
-              <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
+              <div style={{ padding: "12px 16px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
                 <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 Gasto del edificio — las facturas se registran sin generar cobros.
               </div>
@@ -313,9 +313,9 @@ export default function UtilityMeterModal({
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input type="radio" value={bt} checked={billingType === bt} onChange={() => setBillingType(bt)} style={{ accentColor: "#8B2252" }} />
-                      <strong style={{ fontSize: 14 }}>{bt === "variable" ? "Monto variable" : "Monto fijo"}</strong>
+                      <strong style={{ fontSize: "0.875rem" }}>{bt === "variable" ? "Monto variable" : "Monto fijo"}</strong>
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                       {bt === "variable" ? "El monto varía cada período (CFE, agua, gas)" : "Mismo monto cada mes (internet, cuota fija)"}
                     </p>
                   </label>
@@ -352,9 +352,9 @@ export default function UtilityMeterModal({
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="monthly" checked={billingFrequency === "monthly"} onChange={() => setBillingFrequency("monthly")} style={{ accentColor: "#8B2252" }} />
                     <CalendarDays size={14} />
-                    <strong style={{ fontSize: 14 }}>Mensual</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Mensual</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>Se cobra cada mes</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>Se cobra cada mes</p>
                 </label>
                 <label style={{
                   display: "flex", flexDirection: "column", gap: 6,
@@ -365,9 +365,9 @@ export default function UtilityMeterModal({
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="bimonthly" checked={billingFrequency === "bimonthly"} onChange={() => setBillingFrequency("bimonthly")} style={{ accentColor: "#8B2252" }} />
                     <Calendar size={14} />
-                    <strong style={{ fontSize: 14 }}>Bimestral</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Bimestral</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>Se cobra cada dos meses (ej. CFE)</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>Se cobra cada dos meses (ej. CFE)</p>
                 </label>
               </div>
             </AppFormField>
@@ -396,7 +396,7 @@ export default function UtilityMeterModal({
                     </AppSelect>
                   </div>
                 </AppFormField>
-                <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <div style={{ padding: "12px 16px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
                   <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   El mes de inicio determina en qué meses del año se genera la factura.
                 </div>

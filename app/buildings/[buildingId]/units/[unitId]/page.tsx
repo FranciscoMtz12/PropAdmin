@@ -1308,7 +1308,7 @@ export default function UnitDetailPage() {
           marginBottom: 16,
         }}>
           <AlertCircle size={18} style={{ color: "#F59E0B", flexShrink: 0 }} />
-          <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
+          <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>
             Esta unidad fue creada por duplicación — revisa que todos los datos sean correctos
           </span>
           <UiButton
@@ -1382,7 +1382,7 @@ export default function UnitDetailPage() {
                 <span style={{
                   display: "inline-flex", alignItems: "center",
                   borderRadius: 999, padding: "4px 10px",
-                  fontSize: 11, fontWeight: 700,
+                  fontSize: "0.6875rem", fontWeight: 700,
                   background: "var(--badge-bg-blue)",
                   color: "var(--badge-text-blue)",
                 }}>
@@ -1492,11 +1492,11 @@ export default function UnitDetailPage() {
               {isCommercialUnit ? (
                 <AppCard>
                   <div style={{ display: "grid", gap: "12px" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                       Información del local
                     </div>
                     {unit.sqm != null ? (
-                      <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
+                      <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", fontWeight: 600 }}>
                         Superficie: <strong>{unit.sqm} m²</strong>
                       </div>
                     ) : null}
@@ -1508,7 +1508,7 @@ export default function UnitDetailPage() {
                             style={{
                               padding: "6px 14px",
                               borderRadius: "var(--border-radius-xl)",
-                              fontSize: 13,
+                              fontSize: "0.8125rem",
                               fontWeight: 600,
                               background: "var(--icon-bg-green)",
                               color: "var(--badge-text-green)",
@@ -1520,7 +1520,7 @@ export default function UnitDetailPage() {
                         ))}
                       </div>
                     ) : (
-                      <div style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 500 }}>
+                      <div style={{ color: "var(--text-muted)", fontSize: "0.8125rem", fontWeight: 500 }}>
                         Sin características registradas.
                       </div>
                     )}
@@ -1530,7 +1530,7 @@ export default function UnitDetailPage() {
 
               {isIndustrialUnit && unitAreas.length > 0 ? (
                 <div style={{ display: "grid", gap: "12px" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     Áreas
                   </div>
                   {unitAreas.map((area) => (
@@ -1547,7 +1547,7 @@ export default function UnitDetailPage() {
                     <AppCard>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                         <div style={miniLabelStyle}>Total</div>
-                        <div style={{ ...miniValueStyle, fontSize: 15 }}>
+                        <div style={{ ...miniValueStyle, fontSize: "0.9375rem" }}>
                           {unitAreas.reduce((sum, a) => sum + (a.sqm ?? 0), 0)} m²
                         </div>
                       </div>
@@ -1673,14 +1673,14 @@ export default function UnitDetailPage() {
                   const days = daysUntilEnd(lease.end_date);
                   const expiryBadge = days != null && days >= 0 ? (
                     <span style={{
-                      padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: 12, fontWeight: 700,
+                      padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700,
                       background: days < 30 ? "rgba(220,38,38,0.1)" : days < 90 ? "rgba(245,158,11,0.1)" : "var(--bg-page)",
                       color:      days < 30 ? "#DC2626" : days < 90 ? "#F59E0B" : "var(--text-muted)",
                     }}>
                       {days === 0 ? "Vence hoy" : `${days}d para vencer`}
                     </span>
                   ) : days != null && days < 0 ? (
-                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: 12, fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
                       Vencido hace {Math.abs(days)}d
                     </span>
                   ) : null;
@@ -2123,7 +2123,7 @@ export default function UnitDetailPage() {
                   gap: 12,
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   Esta unidad tiene {unit.unit_types?.bedrooms} recámaras. ¿Cómo quieres rentar esta unidad?
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2145,7 +2145,7 @@ export default function UnitDetailPage() {
                         ? "var(--badge-text-blue)"
                         : "var(--text-primary)",
                       fontWeight: 700,
-                      fontSize: 13,
+                      fontSize: "0.8125rem",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
@@ -2170,7 +2170,7 @@ export default function UnitDetailPage() {
                         ? "var(--badge-text-blue)"
                         : "var(--text-primary)",
                       fontWeight: 700,
-                      fontSize: 13,
+                      fontSize: "0.8125rem",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
@@ -2179,7 +2179,7 @@ export default function UnitDetailPage() {
                   </button>
                 </div>
                 {leaseRentalChoice === "by_room" ? (
-                  <div style={{ fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--badge-text-amber)", fontWeight: 600 }}>
                     Al guardar, la unidad quedará marcada como "Por cuarto" y cada recámara tendrá su propio lease.
                   </div>
                 ) : null}
@@ -2189,7 +2189,7 @@ export default function UnitDetailPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
                 gap: "16px",
               }}
             >
@@ -2285,7 +2285,7 @@ export default function UnitDetailPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
                       gap: "16px",
                     }}
                   >

@@ -175,7 +175,7 @@ export default async function PublicUnitPage({
         {company?.logo_url ? (
           <img src={company.logo_url} alt={company.name ?? "Logo"} style={{ height: 30, objectFit: "contain" }} />
         ) : (
-          <span style={{ fontWeight: 800, fontSize: 16, color: accent }}>{company?.name ?? "SAPROA"}</span>
+          <span style={{ fontWeight: 800, fontSize: "1rem", color: accent }}>{company?.name ?? "SAPROA"}</span>
         )}
       </header>
 
@@ -207,7 +207,7 @@ export default async function PublicUnitPage({
           background: isAvailable ? "#10B981" : "#EF4444",
           color: "#fff",
           fontWeight: 700,
-          fontSize: 13,
+          fontSize: "0.8125rem",
           padding: "5px 13px",
           borderRadius: 999,
           boxShadow: "0 2px 10px rgba(0,0,0,0.2)",
@@ -238,7 +238,7 @@ export default async function PublicUnitPage({
                     position: "absolute", inset: 0,
                     display: "flex", alignItems: "center", justifyContent: "center",
                     background: "rgba(0,0,0,0.35)",
-                    color: "#fff", fontWeight: 700, fontSize: 13,
+                    color: "#fff", fontWeight: 700, fontSize: "0.8125rem",
                   }}>
                     +{extraCount} fotos
                   </div>
@@ -256,11 +256,11 @@ export default async function PublicUnitPage({
         <div style={{ background: "var(--bg-card)", borderRadius: "var(--border-radius-xl)", padding: "20px", marginTop: 16, boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 14 }}>
             <div>
-              <h1 style={{ margin: "0 0 6px", fontSize: 22, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2 }}>
+              <h1 style={{ margin: "0 0 6px", fontSize: "1.375rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.2 }}>
                 {unitDisplay}
               </h1>
               {building && (
-                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", fontSize: 14 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)", fontSize: "0.875rem" }}>
                   <MapPin size={14} style={{ flexShrink: 0 }} />
                   <span>{building.name}{building.address ? ` · ${building.address}` : ""}</span>
                 </div>
@@ -289,7 +289,7 @@ export default async function PublicUnitPage({
         {/* Equipment */}
         {equipment.length > 0 && (
           <Section title="Lo que incluye">
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(155px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(9.688rem, 1fr))", gap: 10 }}>
               {equipment.map(item => (
                 <div key={item.id} style={{
                   display: "flex",
@@ -301,7 +301,7 @@ export default async function PublicUnitPage({
                   padding: "10px 12px",
                 }}>
                   <span style={{ color: accent, flexShrink: 0 }}>{assetIcon(item.asset_type)}</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", lineHeight: 1.3 }}>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", lineHeight: 1.3 }}>
                     {item.name || ASSET_LABELS[(item.asset_type || "").toUpperCase()] || item.asset_type}
                   </span>
                 </div>
@@ -327,7 +327,7 @@ export default async function PublicUnitPage({
                     borderBottom: "1px solid var(--border-subtle, var(--border-default))",
                   }}>
                     <span style={{ color: accent, flexShrink: 0 }}><Icon size={18} /></span>
-                    <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-secondary)" }}>{info.label}</span>
+                    <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text-secondary)" }}>{info.label}</span>
                   </div>
                 );
               })}
@@ -348,9 +348,9 @@ export default async function PublicUnitPage({
                 <Building2 size={22} style={{ color: "var(--text-muted)" }} />
               </div>
               <div>
-                <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{building.name}</p>
+                <p style={{ margin: "0 0 4px", fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>{building.name}</p>
                 {building.address && (
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>{building.address}</p>
+                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>{building.address}</p>
                 )}
               </div>
             </div>
@@ -385,7 +385,7 @@ export default async function PublicUnitPage({
               background: "#25D366",
               color: "#fff",
               fontWeight: 700,
-              fontSize: 15,
+              fontSize: "0.9375rem",
               textDecoration: "none",
               borderRadius: "var(--border-radius-lg)",
               padding: "14px 20px",
@@ -398,12 +398,12 @@ export default async function PublicUnitPage({
           <div style={{
             width: "100%", maxWidth: 480,
             background: "var(--bg-page)", borderRadius: "var(--border-radius-lg)", padding: "14px 20px",
-            textAlign: "center", fontSize: 14, color: "var(--text-muted)",
+            textAlign: "center", fontSize: "0.875rem", color: "var(--text-muted)",
           }}>
             Sin contacto disponible
           </div>
         )}
-        <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 500 }}>
+        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 500 }}>
           Impulsado por SAPROA
         </span>
       </div>
@@ -423,7 +423,7 @@ function Tag({ icon, label }: { icon: React.ReactNode; label: string }) {
       border: "1px solid var(--border-default)",
       borderRadius: "var(--border-radius-md)",
       padding: "5px 10px",
-      fontSize: 13,
+      fontSize: "0.8125rem",
       fontWeight: 600,
       color: "var(--text-secondary)",
     }}>
@@ -442,7 +442,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       marginTop: 12,
       boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
     }}>
-      <h2 style={{ margin: "0 0 14px", fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>
+      <h2 style={{ margin: "0 0 14px", fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>{title}</h2>
       {children}
     </div>
   );

@@ -636,7 +636,7 @@ a {
   .dashboard-units-table table { min-width: 0 !important; width: 100% !important; }
   .dashboard-units-table td,
   .dashboard-units-table th {
-    font-size: 12px;
+    font-size: 0.75rem;
     padding: 6px 8px;
     white-space: nowrap;
     overflow: hidden;
@@ -685,7 +685,7 @@ a {
   .mod-grid-3, .mod-grid-2 { grid-template-columns: 1fr !important; }
   /* Tablas */
   .mod-table-wrap { overflow-x: auto; }
-  .mod-table-wrap table { font-size: 12px; }
+  .mod-table-wrap table { font-size: 0.75rem; }
   /* Modales */
   .mod-modal {
     width: 95vw !important;
@@ -732,7 +732,7 @@ a {
 
 @media (max-width: 767px) {
   .ph-title {
-    font-size: 22px !important;
+    font-size: 1.375rem !important;
   }
 }
 
@@ -828,7 +828,7 @@ a {
   .app-tab-item {
     text-align: center;
     justify-content: center !important;
-    font-size: 12px !important;
+    font-size: 0.75rem !important;
     padding: 8px 4px !important;
     white-space: nowrap;
     overflow: hidden;
@@ -854,7 +854,7 @@ a {
     overflow: visible;
   }
   .building-card-addr {
-    font-size: 12px !important;
+    font-size: 0.75rem !important;
   }
   /* Card top: fila con dona a la derecha */
   .building-card-top {

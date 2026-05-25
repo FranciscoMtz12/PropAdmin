@@ -155,10 +155,10 @@ export default function SaproaFeedbackPage() {
           columns={[
             { key: "type",   header: "Tipo",        render: row => <AppBadge variant={TYPE_VARIANT[row.type]}><span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{TYPE_ICON[row.type]}{TYPE_LABEL[row.type]}</span></AppBadge> },
             { key: "title",  header: "Título",      render: row => <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{row.title}</span> },
-            { key: "desc",   header: "Descripción", render: row => <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>{row.description || "—"}</span> },
-            { key: "user",   header: "Usuario",     render: row => <span style={{ fontSize: 13 }}>{row.userLabel}</span> },
-            { key: "page",   header: "Página",      render: row => row.page_url ? <span style={{ fontSize: 11, color: "var(--text-muted)", wordBreak: "break-all" }}>{row.page_url}</span> : <span style={{ color: "var(--text-muted)" }}>—</span> },
-            { key: "date",   header: "Fecha",       render: row => <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{new Date(row.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span> },
+            { key: "desc",   header: "Descripción", render: row => <span style={{ color: "var(--text-secondary)", fontSize: "0.8125rem" }}>{row.description || "—"}</span> },
+            { key: "user",   header: "Usuario",     render: row => <span style={{ fontSize: "0.8125rem" }}>{row.userLabel}</span> },
+            { key: "page",   header: "Página",      render: row => row.page_url ? <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", wordBreak: "break-all" }}>{row.page_url}</span> : <span style={{ color: "var(--text-muted)" }}>—</span> },
+            { key: "date",   header: "Fecha",       render: row => <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{new Date(row.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}</span> },
             { key: "status", header: "Estado",      render: row => <button type="button" onClick={() => void cycleStatus(row)} title="Clic para avanzar estado" style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}><AppBadge variant={STATUS_VARIANT[row.status]}>{STATUS_LABEL[row.status]}</AppBadge></button> },
           ]}
           rows={rows}

@@ -124,7 +124,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
             {displayLogo ? (
               <img src={displayLogo} alt="Logo" style={{ height: 30, maxWidth: 120, objectFit: "contain" }} />
             ) : (
-              <span style={{ fontSize: 15, fontWeight: 800, color: accent, letterSpacing: "-0.3px" }}>
+              <span style={{ fontSize: "0.9375rem", fontWeight: 800, color: accent, letterSpacing: "-0.3px" }}>
                 PropAdmin Campo
               </span>
             )}
@@ -132,7 +132,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
 
           {/* Nombre (primer nombre) */}
           <div style={{ flexShrink: 0, maxWidth: 90 }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
+            <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
               {(user.full_name || user.email || "").split(" ")[0]}
             </span>
           </div>
@@ -196,7 +196,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
           {displayLogo ? (
             <img src={displayLogo} alt="Logo" style={{ height: 32, maxWidth: 130, objectFit: "contain" }} />
           ) : (
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>
+            <span style={{ fontSize: "1rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.3px" }}>
               PropAdmin
             </span>
           )}
@@ -218,14 +218,14 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
               justifyContent: "center", marginBottom: 10,
             }}
           >
-            <span style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>
+            <span style={{ fontSize: "1rem", fontWeight: 800, color: "#fff" }}>
               {(user.full_name || user.email || "?").charAt(0).toUpperCase()}
             </span>
           </div>
-          <p style={{ margin: "0 0 2px", fontSize: 14, fontWeight: 700, color: "#fff" }}>
+          <p style={{ margin: "0 0 2px", fontSize: "0.875rem", fontWeight: 700, color: "#fff" }}>
             {user.full_name || "Usuario"}
           </p>
-          <p style={{ margin: 0, fontSize: 12, color: "rgba(255,255,255,0.45)", wordBreak: "break-all" }}>
+          <p style={{ margin: 0, fontSize: "0.75rem", color: "rgba(255,255,255,0.45)", wordBreak: "break-all" }}>
             {user.email}
           </p>
         </div>
@@ -249,7 +249,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
                   background: isActive ? accentBg : "transparent",
                   color: isActive ? "#fff" : "rgba(255,255,255,0.6)",
                   fontWeight: isActive ? 700 : 500,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   borderLeft: isActive ? `3px solid ${accent}` : "3px solid transparent",
                   transition: "background 0.15s",
                 }}
@@ -270,7 +270,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
               display: "flex", alignItems: "center", gap: 12,
               padding: "12px 14px", borderRadius: "var(--border-radius-lg)",
               border: "none", background: "transparent",
-              color: "rgba(255,255,255,0.6)", fontSize: 14, fontWeight: 500,
+              color: "rgba(255,255,255,0.6)", fontSize: "0.875rem", fontWeight: 500,
               cursor: "pointer", textAlign: "left", width: "100%",
             }}
           >
@@ -284,7 +284,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
               display: "flex", alignItems: "center", gap: 12,
               padding: "12px 14px", borderRadius: "var(--border-radius-lg)",
               border: "none", background: "transparent",
-              color: "rgba(248,113,113,0.9)", fontSize: 14, fontWeight: 500,
+              color: "rgba(248,113,113,0.9)", fontSize: "0.875rem", fontWeight: 500,
               cursor: "pointer", textAlign: "left", width: "100%",
             }}
           >

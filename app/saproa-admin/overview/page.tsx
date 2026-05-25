@@ -136,7 +136,7 @@ export default function SaproaOverviewPage() {
         animate="show"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fill, minmax(12.5rem, 1fr))",
           gap: 16,
           marginBottom: 24,
         }}
@@ -159,10 +159,10 @@ export default function SaproaOverviewPage() {
               {card.icon}
             </div>
             <div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
+              <div style={{ fontSize: "1.5rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
                 {loading ? "—" : card.value}
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 3 }}>{card.label}</div>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 3 }}>{card.label}</div>
             </div>
           </motion.div>
         ))}
@@ -182,10 +182,10 @@ export default function SaproaOverviewPage() {
                   style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border-subtle)" }}
                 >
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: dot, flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                  <span style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
                     {c.short_name || c.name}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     {c.userCount} usuario{c.userCount !== 1 ? "s" : ""}
                   </span>
                   {isNew && (
@@ -203,7 +203,7 @@ export default function SaproaOverviewPage() {
         <SectionCard title="Feedback reciente" icon={<MessageSquare size={16} />}>
           <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {feedback.length === 0 && !loading && (
-              <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin feedback registrado.</p>
+              <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Sin feedback registrado.</p>
             )}
             {feedback.map(f => (
               <motion.div
@@ -215,11 +215,11 @@ export default function SaproaOverviewPage() {
                   <AppBadge variant={f.type === "problema" ? "red" : f.type === "idea" ? "blue" : "amber"}>
                     {f.type}
                   </AppBadge>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "auto" }}>
                     {relativeTime(f.created_at)}
                   </span>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{f.title}</span>
+                <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{f.title}</span>
               </motion.div>
             ))}
           </motion.div>
@@ -236,8 +236,8 @@ export default function SaproaOverviewPage() {
                 style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--border-subtle)" }}
               >
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", minWidth: 28, flexShrink: 0 }}>{item.id}</span>
-                <span style={{ fontSize: 13, color: "var(--text-primary)", flex: 1 }}>{item.label}</span>
+                <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", minWidth: 28, flexShrink: 0 }}>{item.id}</span>
+                <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", flex: 1 }}>{item.label}</span>
               </div>
             ))}
           </div>

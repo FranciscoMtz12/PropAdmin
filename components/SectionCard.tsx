@@ -69,7 +69,7 @@ export default function SectionCard({
                     /* var(--text-muted) → #667085 light / #94A3B8 dark */
                     color: "var(--text-muted)",
                     margin: 0,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                   }}
                 >
                   {subtitle}

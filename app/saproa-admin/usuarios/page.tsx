@@ -110,7 +110,7 @@ export default function SaproaUsuariosPage() {
 
       <SectionCard title="Usuarios registrados" icon={<Users size={16} />}>
         {loading ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Cargando...</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>Cargando...</p>
         ) : (
           <motion.div
             variants={staggerContainer}
@@ -146,7 +146,7 @@ export default function SaproaUsuariosPage() {
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      fontSize: 12,
+                      fontSize: "0.75rem",
                       fontWeight: 700,
                       color: "#fff",
                       flexShrink: 0,
@@ -157,10 +157,10 @@ export default function SaproaUsuariosPage() {
 
                   {/* Name + email */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                       {u.full_name || "—"}
                     </div>
-                    <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{u.email}</div>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{u.email}</div>
                   </div>
 
                   {/* Role */}
@@ -172,14 +172,14 @@ export default function SaproaUsuariosPage() {
                   {u.companyName && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                         {u.companyShortName || u.companyName}
                       </span>
                     </div>
                   )}
 
                   {/* Date */}
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", flexShrink: 0 }}>
                     {new Date(u.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
                   </span>
 

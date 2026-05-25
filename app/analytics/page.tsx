@@ -531,9 +531,9 @@ export default function AnalyticsPage() {
           { label:"Edificios", value:buildings.length, sub:"activos" },
         ].map((s, i, arr) => (
           <div key={i} className="mod-stat-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
-            <div style={{ fontSize:10, color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
-            <div style={{ fontSize:16, fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
-            <div style={{ fontSize:10, color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
+            <div style={{ fontSize: "0.625rem", color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
+            <div style={{ fontSize: "1rem", fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+            <div style={{ fontSize: "0.625rem", color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -549,13 +549,13 @@ export default function AnalyticsPage() {
                 const color = b.rate >= 80 ? "#10B981" : b.rate >= 50 ? "#F59E0B" : "#EF4444";
                 return (
                   <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                       {b.name}
                     </div>
                     <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
                       <div style={{ width:`${b.rate}%`, height:"100%", background:color, transition:"width .4s" }} />
                     </div>
-                    <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:70, textAlign:"right" }}>
+                    <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:70, textAlign:"right" }}>
                       {b.rate.toFixed(0)}% · {b.occ}/{b.total}
                     </div>
                   </div>
@@ -578,8 +578,8 @@ export default function AnalyticsPage() {
                 return (
                   <div key={l.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
                     <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
-                      <span style={{ fontSize:13, fontWeight:600, color:"var(--text-primary)" }}>{t?.full_name || "—"}</span>
-                      <span style={{ fontSize:11, color:"var(--text-muted)" }}>{u?.display_code || u?.unit_number || "—"}</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight:600, color:"var(--text-primary)" }}>{t?.full_name || "—"}</span>
+                      <span style={{ fontSize: "0.6875rem", color:"var(--text-muted)" }}>{u?.display_code || u?.unit_number || "—"}</span>
                     </div>
                     <AppBadge variant={variant}>{days} {days === 1 ? "día" : "días"}</AppBadge>
                   </div>
@@ -599,7 +599,7 @@ export default function AnalyticsPage() {
             variants={staggerContainer}
             initial="hidden"
             animate="show"
-            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}
+            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: 16 }}
           >
             {typologyPerformance.map((t) => {
               const demandColor =
@@ -611,22 +611,22 @@ export default function AnalyticsPage() {
                   <AppCard style={{ padding: 14 }}>
                     <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
                       <div>
-                        <div style={{ fontSize:13, fontWeight:700, color:"var(--text-primary)" }}>{t.name}</div>
-                        <div style={{ fontSize:11, color:"var(--text-muted)" }}>{t.bedrooms} recámara{t.bedrooms === 1 ? "" : "s"}</div>
+                        <div style={{ fontSize: "0.8125rem", fontWeight:700, color:"var(--text-primary)" }}>{t.name}</div>
+                        <div style={{ fontSize: "0.6875rem", color:"var(--text-muted)" }}>{t.bedrooms} recámara{t.bedrooms === 1 ? "" : "s"}</div>
                       </div>
                       <AppBadge variant={demandColor}>{demandLabel}</AppBadge>
                     </div>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize:12 }}>
+                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize: "0.75rem" }}>
                       <div>
-                        <div style={{ color:"var(--text-muted)", fontSize:10 }}>Ocupación</div>
-                        <div style={{ fontWeight:600, fontSize:15, color:"var(--text-primary)" }}>
+                        <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>Ocupación</div>
+                        <div style={{ fontWeight:600, fontSize: "0.9375rem", color:"var(--text-primary)" }}>
                           {t.rate.toFixed(0)}%
                         </div>
-                        <div style={{ color:"var(--text-muted)", fontSize:10 }}>{t.occupied}/{t.total}</div>
+                        <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>{t.occupied}/{t.total}</div>
                       </div>
                       <div>
-                        <div style={{ color:"var(--text-muted)", fontSize:10 }}>Días vacío promedio</div>
-                        <div style={{ fontWeight:600, fontSize:15, color:"var(--text-primary)" }}>
+                        <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>Días vacío promedio</div>
+                        <div style={{ fontWeight:600, fontSize: "0.9375rem", color:"var(--text-primary)" }}>
                           {t.avgVacancy !== null ? `${t.avgVacancy}d` : "Sin datos"}
                         </div>
                       </div>
@@ -649,13 +649,13 @@ export default function AnalyticsPage() {
           <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
             {rotationRanking.map((r) => (
               <div key={r.unitId} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                   {r.label} · {r.building}
                 </div>
                 <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
                   <div style={{ width:`${(r.count / maxRotation) * 100}%`, height:"100%", background:"#EC4899" }} />
                 </div>
-                <div style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
+                <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
                   {r.count} {r.count === 1 ? "contrato" : "contratos"}
                 </div>
               </div>
@@ -670,7 +670,7 @@ export default function AnalyticsPage() {
           <AppEmptyState title="Sin contratos activos" description="No hay contratos para rankear." />
         ) : (
           <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
               <thead>
                 <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
                   <th style={thStyle}>Inquilino</th>
@@ -716,11 +716,11 @@ export default function AnalyticsPage() {
           <ResponsiveContainer width="100%" height={240}>
             <LineChart data={occupancyHistory} margin={{ top:4, right:12, left:0, bottom:4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-              <XAxis dataKey="mes" tick={{ fontSize:11, fill:"var(--text-muted)" }} />
-              <YAxis yAxisId="left" tick={{ fontSize:11, fill:"var(--text-muted)" }} tickFormatter={(v) => `${v}%`} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize:11, fill:"var(--text-muted)" }} />
-              <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", fontSize:12 }} />
-              <Legend wrapperStyle={{ fontSize:11, paddingTop:6 }} />
+              <XAxis dataKey="mes" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
+              <YAxis yAxisId="left" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} tickFormatter={(v) => `${v}%`} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
+              <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem" }} />
+              <Legend wrapperStyle={{ fontSize: "0.6875rem", paddingTop:6 }} />
               <Line yAxisId="left" type="monotone" dataKey="ocupacion" name="% Ocupación" stroke="#10B981" strokeWidth={2.5} dot={{ r:3 }} />
               <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
             </LineChart>
@@ -740,18 +740,18 @@ export default function AnalyticsPage() {
               const color = b.rate >= 90 ? "#10B981" : b.rate >= 70 ? "#F59E0B" : "#EF4444";
               return (
                 <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ fontSize:12, color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                  <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                     {b.name}
                   </div>
                   <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
                     <div style={{ width:`${Math.min(100, b.rate)}%`, height:"100%", background:color, transition:"width .4s" }} />
                   </div>
                   <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", minWidth:140, lineHeight:1.3 }}>
-                    <span style={{ fontSize:12, fontWeight:600, color:"var(--text-primary)" }}>
+                    <span style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)" }}>
                       {b.rate.toFixed(0)}%
                     </span>
                     {b.missing > 0 && (
-                      <span style={{ fontSize:10, color:"#EF4444" }}>
+                      <span style={{ fontSize: "0.625rem", color:"#EF4444" }}>
                         {formatCurrency(b.missing)} pendiente
                       </span>
                     )}
@@ -771,7 +771,7 @@ export default function AnalyticsPage() {
           <AppEmptyState title="Sin historial" description="No hay pagos registrados por inquilino." />
         ) : (
           <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
               <thead>
                 <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
                   <th style={thStyle}>Inquilino</th>
@@ -819,7 +819,7 @@ export default function AnalyticsPage() {
           <AppEmptyState title="Sin histórico de rentas" description="No hay unidades con datos de renta." />
         ) : (
           <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize:13 }}>
+            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
               <thead>
                 <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
                   <th style={thStyle}>Unidad</th>
@@ -842,7 +842,7 @@ export default function AnalyticsPage() {
                       <td style={tdStyle}>{r.typology}</td>
                       <td style={tdStyle}>{r.currentRent != null ? formatCurrency(r.currentRent) : "—"}</td>
                       <td style={tdStyle}>{r.avgRent > 0 ? formatCurrency(r.avgRent) : "—"}</td>
-                      <td style={{ ...tdStyle, color: trendColor, fontWeight: 700, fontSize: 16 }}>
+                      <td style={{ ...tdStyle, color: trendColor, fontWeight: 700, fontSize: "1rem" }}>
                         {trendIcon}
                       </td>
                       <td style={tdStyle}>{r.avgDuration != null ? `${r.avgDuration} meses` : "—"}</td>
@@ -856,7 +856,7 @@ export default function AnalyticsPage() {
 
         {avgRentByTypology.length > 0 && (
           <div style={{ marginTop: 16, padding: 14, background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px", marginBottom: 10 }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px", marginBottom: 10 }}>
               RENTA PROMEDIO POR TIPOLOGÍA
             </div>
             <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -869,11 +869,11 @@ export default function AnalyticsPage() {
                   borderLeft: `4px solid ${BUILDING_COLORS[i % BUILDING_COLORS.length]}`,
                   borderRadius: "var(--border-radius-md)",
                 }}>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{t.name}</div>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{t.name}</div>
+                  <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     {formatCurrency(t.avg)}
                   </div>
-                  <div style={{ fontSize: 10, color: "var(--text-muted)" }}>
+                  <div style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>
                     {t.count} contrato{t.count === 1 ? "" : "s"}
                   </div>
                 </div>
@@ -889,7 +889,7 @@ export default function AnalyticsPage() {
 const thStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "10px 12px",
-  fontSize: 11,
+  fontSize: "0.6875rem",
   fontWeight: 600,
   color: "var(--text-muted)",
   textTransform: "uppercase",
@@ -898,6 +898,6 @@ const thStyle: React.CSSProperties = {
 
 const tdStyle: React.CSSProperties = {
   padding: "10px 12px",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   color: "var(--text-primary)",
 };

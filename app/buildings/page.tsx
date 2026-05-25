@@ -232,7 +232,7 @@ function OccupancyDonut({
 
 const errorTextStyle: React.CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -285,7 +285,7 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
         alignItems: "center",
         justifyContent: "center",
         color: "var(--text-muted)",
-        fontSize: 13,
+        fontSize: "0.8125rem",
       }}
     >
       Cargando selector de ubicación...
@@ -888,7 +888,7 @@ export default function BuildingsPage() {
               ? "var(--badge-text-green)"
               : "var(--badge-text-red)",
             marginBottom: 16,
-            fontSize: 14,
+            fontSize: "0.875rem",
             fontWeight: 600,
           }}
         >
@@ -898,7 +898,7 @@ export default function BuildingsPage() {
 
       {/* ── Métricas del portafolio ── */}
       {isGroupMode && groupStats ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
           <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
           <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
           <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
@@ -907,7 +907,7 @@ export default function BuildingsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))",
             gap: 16,
             marginBottom: 24,
           }}
@@ -966,7 +966,7 @@ export default function BuildingsPage() {
           <p style={{ margin: 0 }}>Cargando edificios...</p>
         ) : isGroupMode ? (
           buildingsByCompany.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Sin propiedades en las empresas activas.</p>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin propiedades en las empresas activas.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
               {buildingsByCompany.map(({ company, compBuildings }) => {
@@ -976,10 +976,10 @@ export default function BuildingsPage() {
                     {/* Company section header */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                         {company.short_name || company.name}
                       </span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 4 }}>
                         {compBuildings.length} {compBuildings.length === 1 ? "propiedad" : "propiedades"}
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
@@ -1013,13 +1013,13 @@ export default function BuildingsPage() {
                               >
                                 <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, width: "100%", marginBottom: 10, flex: 1 }}>
                                   <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                                    <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.name}</p>
-                                    <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.address || "Sin dirección registrada"}</p>
+                                    <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.name}</p>
+                                    <p style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.address || "Sin dirección registrada"}</p>
                                     {(() => {
                                       const pt = getPropertyType(building.building_category);
                                       const PtIcon = ICON_MAP[pt.icon];
                                       return (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pt.color + "1a", color: pt.color }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pt.color + "1a", color: pt.color }}>
                                           {PtIcon && <PtIcon size={11} />}{pt.label}
                                         </span>
                                       );
@@ -1032,11 +1032,11 @@ export default function BuildingsPage() {
                                 <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ display: "flex", gap: 20 }}>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{totalUnits}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Total</p></div>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "#10B981", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>{freeUnits}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{totalUnits}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Total</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "#10B981", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>{freeUnits}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Libres</p></div>
                                   </div>
-                                  {isHovered && <span style={{ fontSize: 12, color: compColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Ver detalle →</span>}
+                                  {isHovered && <span style={{ fontSize: "0.75rem", color: compColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Ver detalle →</span>}
                                 </div>
                               </div>
                             </div>
@@ -1058,10 +1058,10 @@ export default function BuildingsPage() {
             >
               <Building2 size={68} style={{ color: "var(--accent)" }} />
             </motion.div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
               Bienvenido a SAPROA
             </h2>
-            <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 28px", maxWidth: 460, lineHeight: 1.6 }}>
+            <p style={{ fontSize: "0.9375rem", color: "var(--text-muted)", margin: "0 0 28px", maxWidth: 460, lineHeight: 1.6 }}>
               Configura tu primera propiedad en 5 pasos simples y empieza a gestionar todo desde un solo lugar.
             </p>
             <button
@@ -1069,7 +1069,7 @@ export default function BuildingsPage() {
               onClick={() => setIsCreateModalOpen(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 28px", fontSize: 15, fontWeight: 700,
+                padding: "12px 28px", fontSize: "0.9375rem", fontWeight: 700,
                 background: "var(--accent)", color: "#fff",
                 border: "none", borderRadius: "var(--border-radius-md)",
                 cursor: "pointer", marginBottom: 28,
@@ -1080,10 +1080,10 @@ export default function BuildingsPage() {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
               {["1. Propiedad", "2. Tipología", "3. Unidades", "4. Servicios", "5. Inquilinos"].flatMap((step, i, arr) => [
-                <span key={step} style={{ padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", background: "var(--bg-card)" }}>
+                <span key={step} style={{ padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", background: "var(--bg-card)" }}>
                   {step}
                 </span>,
-                ...(i < arr.length - 1 ? [<span key={`a${i}`} style={{ color: "var(--text-subtle)", fontSize: 13, lineHeight: 1 }}>→</span>] : []),
+                ...(i < arr.length - 1 ? [<span key={`a${i}`} style={{ color: "var(--text-subtle)", fontSize: "0.8125rem", lineHeight: 1 }}>→</span>] : []),
               ])}
             </div>
           </div>
@@ -1177,7 +1177,7 @@ export default function BuildingsPage() {
                           padding: totalCount > 1 ? "0 5px" : 0,
                           borderRadius: 999,
                           background: SEVERITY_COLORS[worstSeverity].dot,
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 700,
                           color: "#ffffff",
                           lineHeight: 1,
@@ -1204,7 +1204,7 @@ export default function BuildingsPage() {
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                         <p
                           style={{
-                            fontSize: 15,
+                            fontSize: "0.9375rem",
                             fontWeight: 700,
                             color: "var(--text-primary)",
                             marginBottom: 4,
@@ -1217,7 +1217,7 @@ export default function BuildingsPage() {
                         </p>
                         <p
                           style={{
-                            fontSize: 11,
+                            fontSize: "0.6875rem",
                             color: "var(--text-secondary)",
                             marginBottom: 8,
                             overflow: "hidden",
@@ -1240,7 +1240,7 @@ export default function BuildingsPage() {
                               <div>
                                 <span style={{
                                   display: "inline-flex", alignItems: "center", gap: 4,
-                                  fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                                  fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
                                   borderRadius: 999, background: "#37415115", color: "#374151",
                                 }}>
                                   Uso mixto
@@ -1253,7 +1253,7 @@ export default function BuildingsPage() {
                                     return (
                                       <span key={typeValue} style={{
                                         display: "inline-flex", alignItems: "center", gap: 3,
-                                        fontSize: 10, padding: "1px 6px", borderRadius: 999,
+                                        fontSize: "0.625rem", padding: "1px 6px", borderRadius: 999,
                                         background: typeDef.color + "1a", color: typeDef.color, fontWeight: 500,
                                       }}>
                                         {TypeIcon && <TypeIcon size={10} />}
@@ -1272,14 +1272,14 @@ export default function BuildingsPage() {
                             <div>
                               <span style={{
                                 display: "inline-flex", alignItems: "center", gap: 4,
-                                fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                                fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
                                 borderRadius: 999, background: pt.color + "1a", color: pt.color,
                               }}>
                                 {PtIcon && <PtIcon size={11} />}
                                 {pt.label}
                               </span>
                               {subtypeLabel && (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+                                <p style={{ margin: "3px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                                   {subtypeLabel}
                                 </p>
                               )}
@@ -1322,29 +1322,29 @@ export default function BuildingsPage() {
                       {/* Métricas */}
                       <div style={{ display: "flex", gap: 20 }}>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
                             {totalUnits}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Total</p>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Total</p>
                         </div>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: 18, fontWeight: 700, color: "#10B981", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "#10B981", lineHeight: 1 }}>
                             {activeLeases}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p>
                         </div>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>
                             {freeUnits}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
                         </div>
                         {building.total_sqm != null && building.building_category !== "residential_multi" && building.building_category !== "residential_single" && (
                           <div style={{ textAlign: "center" }}>
-                            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                            <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
                               {building.total_sqm.toLocaleString("es-MX")}
                             </p>
-                            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>m²</p>
+                            <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>m²</p>
                           </div>
                         )}
                       </div>
@@ -1357,7 +1357,7 @@ export default function BuildingsPage() {
                         {isHovered && (
                           <span
                             style={{
-                              fontSize: 12,
+                              fontSize: "0.75rem",
                               color: "var(--accent)",
                               fontWeight: 600,
                               whiteSpace: "nowrap",
@@ -1443,7 +1443,7 @@ export default function BuildingsPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -1451,7 +1451,7 @@ export default function BuildingsPage() {
                 <YAxis
                   yAxisId="count"
                   allowDecimals={false}
-                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
                   width={36}
@@ -1462,7 +1462,7 @@ export default function BuildingsPage() {
                   orientation="right"
                   domain={[0, 100]}
                   tickFormatter={(v) => `${v}%`}
-                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
                   width={44}
@@ -1472,7 +1472,7 @@ export default function BuildingsPage() {
                     background: "var(--bg-card)",
                     border: "1px solid var(--border-default)",
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 12,
+                    fontSize: "0.75rem",
                   }}
                   formatter={(value, name) => {
                     if (name === "% Ocupación") return [`${value ?? 0}%`, name];
@@ -1481,7 +1481,7 @@ export default function BuildingsPage() {
                 />
                 <Legend
                   iconType="line"
-                  wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+                  wrapperStyle={{ fontSize: "0.75rem", paddingTop: 12 }}
                 />
                 <Line
                   yAxisId="count"
@@ -1560,7 +1560,7 @@ export default function BuildingsPage() {
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                       background: selected ? pt.color + "15" : "var(--bg-card)",
                       color: selected ? pt.color : "var(--text-secondary)",
-                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: "0.75rem",
                       transition: "all 0.15s ease",
                     }}
                   >
@@ -1569,7 +1569,7 @@ export default function BuildingsPage() {
                         position: "absolute", top: 4, left: 4,
                         width: 16, height: 16, borderRadius: "50%",
                         background: pt.color, color: "#fff",
-                        fontSize: 10, fontWeight: 700,
+                        fontSize: "0.625rem", fontWeight: 700,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
                         {orderIdx + 1}
@@ -1582,7 +1582,7 @@ export default function BuildingsPage() {
               })}
             </div>
             {selectedTypes.length > 1 && (
-              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                 Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
                   {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
                 </strong>
@@ -1615,8 +1615,8 @@ export default function BuildingsPage() {
                         }}
                       >
                         {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
-                        <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                        <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                        <p style={{ margin: 0, fontSize: "0.625rem", color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
                       </button>
                     );
                   })}
@@ -1626,7 +1626,7 @@ export default function BuildingsPage() {
           })()}
 
           <div style={{ marginBottom: 4 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
               Superficie
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1665,7 +1665,7 @@ export default function BuildingsPage() {
               setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
             return (
               <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                   Características de la casa
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -1687,7 +1687,7 @@ export default function BuildingsPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   {HOUSE_AMENITIES.map((a) => (
-                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                       <input type="checkbox" checked={!!(hf[a.key])}
                         onChange={(e) => setHF(a.key, e.target.checked || undefined)}
                         style={{ width: 15, height: 15, accentColor: "#0369a1", cursor: "pointer" }} />
@@ -1696,7 +1696,7 @@ export default function BuildingsPage() {
                   ))}
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                     <input type="checkbox" checked={!!(hf.has_other)}
                       onChange={(e) => {
                         setHF("has_other", e.target.checked || undefined);
@@ -1707,13 +1707,13 @@ export default function BuildingsPage() {
                   </label>
                   {Boolean(hf.has_other) && (
                     <div style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
                       <textarea
                         value={(hf.other_notes as string) ?? ""}
                         onChange={(e) => setHF("other_notes", e.target.value || undefined)}
                         placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
                         rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
                       />
                     </div>
                   )}
@@ -1724,7 +1724,7 @@ export default function BuildingsPage() {
                       { value: "complete", label: "Casa completa" },
                       { value: "by_room", label: "Por cuarto" },
                     ].map((opt) => (
-                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                         <input type="radio" name="edit_rental_mode" value={opt.value}
                           checked={(hf.rental_mode as string | undefined) === opt.value}
                           onChange={() => setHF("rental_mode", opt.value)}
@@ -1837,11 +1837,11 @@ export default function BuildingsPage() {
                     background: createStep >= n ? "#8B2252" : "var(--border-default)",
                     color: createStep >= n ? "#fff" : "var(--text-muted)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 700,
+                    fontSize: "0.6875rem", fontWeight: 700,
                   }}>
                     {n}
                   </div>
-                  <span style={{ fontSize: 9, color: createStep >= n ? "#8B2252" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
+                  <span style={{ fontSize: "0.5625rem", color: createStep >= n ? "#8B2252" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
                     {label}
                   </span>
                 </div>
@@ -1873,7 +1873,7 @@ export default function BuildingsPage() {
                           border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                           background: selected ? pt.color + "15" : "var(--bg-card)",
                           color: selected ? pt.color : "var(--text-secondary)",
-                          cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                          cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: "0.75rem",
                           transition: "all 0.15s ease",
                         }}
                       >
@@ -1882,7 +1882,7 @@ export default function BuildingsPage() {
                             position: "absolute", top: 6, left: 6,
                             width: 18, height: 18, borderRadius: "50%",
                             background: pt.color, color: "#fff",
-                            fontSize: 10, fontWeight: 700,
+                            fontSize: "0.625rem", fontWeight: 700,
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}>
                             {orderIdx + 1}
@@ -1895,7 +1895,7 @@ export default function BuildingsPage() {
                   })}
                 </div>
                 {selectedTypes.length > 1 && (
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                     Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
                       {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
                     </strong>
@@ -1928,8 +1928,8 @@ export default function BuildingsPage() {
                             }}
                           >
                             {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
-                            <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
-                            <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                            <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                            <p style={{ margin: 0, fontSize: "0.625rem", color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
                           </button>
                         );
                       })}
@@ -1970,7 +1970,7 @@ export default function BuildingsPage() {
               </AppFormField>
 
               <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                   Superficie
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -2035,10 +2035,10 @@ export default function BuildingsPage() {
                 >
                   {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
                   <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
+                    <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
                       {feat.label}
                     </p>
-                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)", lineHeight: 1.3 }}>
                       {feat.description}
                     </p>
                   </div>
@@ -2048,7 +2048,7 @@ export default function BuildingsPage() {
 
             return (
               <>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
                   Selecciona los espacios y servicios disponibles. Puedes cambiar esto después.
                 </p>
 
@@ -2058,8 +2058,8 @@ export default function BuildingsPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <Building2 size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                         <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
-                          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
+                          <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
+                          <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -2075,7 +2075,7 @@ export default function BuildingsPage() {
                             cursor: "pointer",
                           }}
                         >
-                          <span style={{ fontSize: 13, fontWeight: 600, color: customSpaceOther && customSpaceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: customSpaceOther && customSpaceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
                         </button>
                       </div>
                       {customSpaceOther === "__open__" && (
@@ -2084,7 +2084,7 @@ export default function BuildingsPage() {
                             type="text"
                             placeholder="Ej: Azotea, Sótano..."
                             autoFocus
-                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, background: "var(--bg-card)", color: "var(--text-primary)" }}
+                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", background: "var(--bg-card)", color: "var(--text-primary)" }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -2098,7 +2098,7 @@ export default function BuildingsPage() {
                               if (val) setCustomSpaceOther(val); else setCustomSpaceOther("");
                             }}
                           />
-                          <button type="button" onClick={() => setCustomSpaceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13 }}>Quitar</button>
+                          <button type="button" onClick={() => setCustomSpaceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem" }}>Quitar</button>
                         </div>
                       )}
                     </div>
@@ -2109,8 +2109,8 @@ export default function BuildingsPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <Zap size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                         <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
-                          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
+                          <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
+                          <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -2126,7 +2126,7 @@ export default function BuildingsPage() {
                             cursor: "pointer",
                           }}
                         >
-                          <span style={{ fontSize: 13, fontWeight: 600, color: customServiceOther && customServiceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: customServiceOther && customServiceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
                         </button>
                       </div>
                       {customServiceOther === "__open__" && (
@@ -2135,7 +2135,7 @@ export default function BuildingsPage() {
                             type="text"
                             placeholder="Ej: Gas natural, Fibra óptica..."
                             autoFocus
-                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, background: "var(--bg-card)", color: "var(--text-primary)" }}
+                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", background: "var(--bg-card)", color: "var(--text-primary)" }}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -2149,7 +2149,7 @@ export default function BuildingsPage() {
                               if (val) setCustomServiceOther(val); else setCustomServiceOther("");
                             }}
                           />
-                          <button type="button" onClick={() => setCustomServiceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13 }}>Quitar</button>
+                          <button type="button" onClick={() => setCustomServiceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem" }}>Quitar</button>
                         </div>
                       )}
                     </div>
@@ -2192,14 +2192,14 @@ export default function BuildingsPage() {
 
             const row = (label: string, content: ReactNode) => (
               <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 8, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, paddingTop: 2 }}>{label}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, paddingTop: 2 }}>{label}</span>
                 <span>{content}</span>
               </div>
             );
 
             return (
               <>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
                   Revisa los datos antes de crear la propiedad.
                 </p>
 
@@ -2207,35 +2207,35 @@ export default function BuildingsPage() {
                   {row("Tipo", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       {primaryType && (
-                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: primaryType.color + "18", color: primaryType.color }}>
+                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: primaryType.color + "18", color: primaryType.color }}>
                           {primaryType.label}
                         </span>
                       )}
                       {subtypeLabel && (
-                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: "0.75rem", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
                           {subtypeLabel}
                         </span>
                       )}
                     </div>
                   ))}
-                  {row("Nombre", <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{nameVal || "—"}</span>)}
-                  {codeVal ? row("Código", <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{codeVal}</span>) : null}
+                  {row("Nombre", <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>{nameVal || "—"}</span>)}
+                  {codeVal ? row("Código", <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>{codeVal}</span>) : null}
                   {(landVal || constVal) ? row("Superficie", (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {landVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{landVal} m² terreno</span>}
-                      {constVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{constVal} m² const.</span>}
+                      {landVal && <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{landVal} m² terreno</span>}
+                      {constVal && <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{constVal} m² const.</span>}
                     </div>
                   )) : null}
-                  {addressVal ? row("Dirección", <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{addressVal}</span>) : null}
+                  {addressVal ? row("Dirección", <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{addressVal}</span>) : null}
                   {(selectedSpaceFeatures.length > 0 || (customSpaceOther && customSpaceOther !== "__open__")) ? row("Espacios", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {selectedSpaceFeatures.map((f) => (
-                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: f.color + "15", color: f.color, fontWeight: 600 }}>
                           {f.label}
                         </span>
                       ))}
                       {customSpaceOther && customSpaceOther !== "__open__" && (
-                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
                           {customSpaceOther}
                         </span>
                       )}
@@ -2244,12 +2244,12 @@ export default function BuildingsPage() {
                   {(selectedServiceFeatures.length > 0 || (customServiceOther && customServiceOther !== "__open__")) ? row("Servicios", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                       {selectedServiceFeatures.map((f) => (
-                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: f.color + "15", color: f.color, fontWeight: 600 }}>
                           {f.label}
                         </span>
                       ))}
                       {customServiceOther && customServiceOther !== "__open__" && (
-                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
                           {customServiceOther}
                         </span>
                       )}

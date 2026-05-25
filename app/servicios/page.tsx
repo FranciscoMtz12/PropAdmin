@@ -85,9 +85,9 @@ type SharedMeterDetail = {
   hasReadings: boolean;
 };
 
-const TH_L  = { padding: "8px 10px", textAlign: "left"  as const, fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" as const, letterSpacing: "0.04em", whiteSpace: "nowrap" as const };
+const TH_L  = { padding: "8px 10px", textAlign: "left"  as const, fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" as const, letterSpacing: "0.04em", whiteSpace: "nowrap" as const };
 const TH_R  = { ...TH_L, textAlign: "right" as const };
-const TD_L  = { padding: "9px 10px", fontSize: 13, textAlign: "left"  as const, borderTop: "1px solid var(--border-default)", verticalAlign: "middle" as const };
+const TD_L  = { padding: "9px 10px", fontSize: "0.8125rem", textAlign: "left"  as const, borderTop: "1px solid var(--border-default)", verticalAlign: "middle" as const };
 const TD_R  = { ...TD_L, textAlign: "right" as const };
 
 /* ─── Helpers ────────────────────────────────────────────────────── */
@@ -193,7 +193,7 @@ function ServiceRow({
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-          <span style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>
+          <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
             {name}
           </span>
           {isbimonthly && <AppBadge variant="gray">Bimestral</AppBadge>}
@@ -202,7 +202,7 @@ function ServiceRow({
             : <AppBadge variant="gray">Gasto del edificio</AppBadge>}
         </div>
         {providerLine && (
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{providerLine}</span>
+          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{providerLine}</span>
         )}
       </div>
 
@@ -211,7 +211,7 @@ function ServiceRow({
           <>
             <AppBadge variant="gray">Monto fijo</AppBadge>
             {fixedAmount != null && fixedAmount > 0 && (
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>
+              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)" }}>
                 {formatMXN(fixedAmount)}/mes
               </span>
             )}
@@ -221,7 +221,7 @@ function ServiceRow({
                 onClick={e => { e.stopPropagation(); onGenerateFixedCobro(); }}
                 disabled={generatingFixedCobro}
                 style={{
-                  padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: 12, fontWeight: 600,
+                  padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", fontWeight: 600,
                   cursor: generatingFixedCobro ? "default" : "pointer",
                   border: "none", background: "#8B2252", color: "#fff", whiteSpace: "nowrap",
                   opacity: generatingFixedCobro ? 0.6 : 1,
@@ -235,7 +235,7 @@ function ServiceRow({
                 type="button"
                 onClick={e => { e.stopPropagation(); onUploadInvoice(); }}
                 style={{
-                  padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: 12, fontWeight: 600,
+                  padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", fontWeight: 600,
                   cursor: "pointer", border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)", whiteSpace: "nowrap",
                 }}
@@ -249,7 +249,7 @@ function ServiceRow({
             {amount != null && (
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 700,
                   color: generatesCharge && status === "charged"
                     ? "var(--badge-text-green)"
@@ -268,7 +268,7 @@ function ServiceRow({
                   style={{
                     padding: "5px 12px",
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 12,
+                    fontSize: "0.75rem",
                     fontWeight: 600,
                     cursor: "pointer",
                     border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
@@ -285,7 +285,7 @@ function ServiceRow({
                     onClick={e => { e.stopPropagation(); onGeneratePdfs(); }}
                     disabled={generatingPdfs}
                     style={{
-                      padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: 12, fontWeight: 600,
+                      padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", fontWeight: 600,
                       cursor: generatingPdfs ? "default" : "pointer",
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)", color: "var(--text-primary)", whiteSpace: "nowrap",
@@ -306,7 +306,7 @@ function ServiceRow({
                     style={{
                       padding: "5px 12px",
                       borderRadius: "var(--border-radius-md)",
-                      fontSize: 12,
+                      fontSize: "0.75rem",
                       fontWeight: 600,
                       cursor: "pointer",
                       border: "none",
@@ -360,7 +360,7 @@ function SharedMeterDropdown({
   if (!invoice) {
     return (
       <div style={{ ...panelStyle, padding: "14px 16px" }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)", fontStyle: "italic" }}>
           Registra la factura del proveedor para ver la distribución
         </p>
       </div>
@@ -370,7 +370,7 @@ function SharedMeterDropdown({
   if (detail === "loading" || detail === undefined) {
     return (
       <div style={{ ...panelStyle, padding: "14px 16px" }}>
-        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando...</p>
+        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>Cargando...</p>
       </div>
     );
   }
@@ -396,17 +396,17 @@ function SharedMeterDropdown({
       {/* Header */}
       <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border-default)", display: "flex", gap: 20, flexWrap: "wrap", alignItems: "center" }}>
         {hasTotals && precioUnit != null ? (
-          <span style={{ fontSize: 13 }}>
+          <span style={{ fontSize: "0.8125rem" }}>
             Precio/{unit}: <strong>{formatMXN(precioUnit)}</strong>
           </span>
         ) : (
-          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin consumo total registrado en la factura</span>
+          <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Sin consumo total registrado en la factura</span>
         )}
       </div>
 
       {/* No-readings banner */}
       {!detail.hasReadings && (
-        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ margin: "10px 14px 0", padding: "10px 12px", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0 }} />
           Campo aún no ha capturado lecturas para este período
         </div>
@@ -432,9 +432,9 @@ function SharedMeterDropdown({
               return (
                 <tr key={sm.id}>
                   <td style={TD_L}>
-                    <strong style={{ fontSize: 14 }}>Depa {sm.unit_number}</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Depa {sm.unit_number}</strong>
                     {sm.sub_meter_number && sm.sub_meter_number !== sm.unit_number && (
-                      <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: 4 }}>— {sm.sub_meter_number}</span>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginLeft: 4 }}>— {sm.sub_meter_number}</span>
                     )}
                   </td>
                   <td style={TD_R}>{r != null ? r.previous_reading.toLocaleString("es-MX") : "—"}</td>
@@ -453,7 +453,7 @@ function SharedMeterDropdown({
             {/* Áreas comunes */}
             {hasTotals && (
               <tr style={{ opacity: 0.75 }}>
-                <td style={{ ...TD_L, fontStyle: "italic", color: "var(--text-muted)", fontSize: 12 }}>
+                <td style={{ ...TD_L, fontStyle: "italic", color: "var(--text-muted)", fontSize: "0.75rem" }}>
                   Áreas comunes (empresa)
                 </td>
                 <td style={TD_R}>—</td>
@@ -470,15 +470,15 @@ function SharedMeterDropdown({
 
       {/* Footer */}
       <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border-default)", display: "flex", gap: 20, flexWrap: "wrap", justifyContent: "flex-end" }}>
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
           Total cobrado a inquilinos: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(totalInquilinos)}</strong>
         </span>
         {montoAreas != null && (
-          <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
             Absorción empresa: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(montoAreas)}</strong>
           </span>
         )}
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
           Total factura: <strong style={{ color: "var(--text-primary)" }}>{formatMXN(totalAmount)}</strong>
         </span>
       </div>
@@ -512,7 +512,7 @@ function PeriodSelector({
           padding: "0 24px", height: 36, display: "flex", alignItems: "center",
           borderTop: "1px solid var(--border-default)", borderBottom: "1px solid var(--border-default)",
           background: "var(--bg-card)",
-          fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
+          fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)",
           minWidth: 160, justifyContent: "center",
         }}
       >
@@ -1154,7 +1154,7 @@ export default function ServiciosPage() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
             <AlertTriangle size={16} style={{ color: "#f59e0b", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+            <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>
               Servicios pendientes de atención
             </span>
           </div>
@@ -1171,8 +1171,8 @@ export default function ServiciosPage() {
                   cursor: "pointer", textAlign: "left", width: "100%",
                 }}
               >
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
-                <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
+                <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>
                   {b.count} servicio{b.count !== 1 ? "s" : ""} sin configurar
                 </span>
               </button>
@@ -1188,7 +1188,7 @@ export default function ServiciosPage() {
         onNext={nextPeriod}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12, marginBottom: 24 }}>
 
         {/* Per-service-type cards */}
         {!pageLoading && serviceStats.map(({ type, total, registered, allDone }) => (
@@ -1208,16 +1208,16 @@ export default function ServiciosPage() {
               }}>
                 <ServiceIcon type={type} size={15} />
               </div>
-              <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+              <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                 {SERVICE_TYPE_LABEL[type as keyof typeof SERVICE_TYPE_LABEL] ?? type}
               </span>
             </div>
-            <p style={{ margin: "0 0 6px", fontSize: 13, color: "var(--text-muted)" }}>
+            <p style={{ margin: "0 0 6px", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
               Facturas:{" "}
               <strong style={{ color: "var(--text-primary)" }}>{registered}/{total}</strong>
             </p>
             <p style={{
-              margin: 0, fontSize: 12, fontWeight: 600,
+              margin: 0, fontSize: "0.75rem", fontWeight: 600,
               display: "flex", alignItems: "center", gap: 4,
               color: allDone ? "#15803d" : "#b45309",
             }}>
@@ -1242,11 +1242,11 @@ export default function ServiciosPage() {
             }}>
               <TrendingUp size={15} />
             </div>
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-muted)" }}>
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
               Total facturado
             </span>
           </div>
-          <p style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
+          <p style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)", lineHeight: 1 }}>
             {pageLoading ? "…" : formatMXN(totalAmount)}
           </p>
         </div>
@@ -1275,7 +1275,7 @@ export default function ServiciosPage() {
       )}
 
       {pageLoading && (
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando servicios...</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando servicios...</p>
       )}
 
       {!pageLoading && filteredGroups.map(group => {
@@ -1291,7 +1291,7 @@ export default function ServiciosPage() {
               {company && (
                 <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
                 </div>
               )}
               {group.utility_meters.map(meter => {

@@ -278,7 +278,7 @@ export default function AdminInvoicesPage() {
         <AppGrid minWidth={260} style={{ marginBottom: 18 }}>
           <AppCard>
             <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>Buscar</label>
+              <label style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>Buscar</label>
               <div
                 style={{
                   display: "flex",
@@ -310,7 +310,7 @@ export default function AdminInvoicesPage() {
 
           <AppCard>
             <div style={{ display: "grid", gap: 10 }}>
-              <label style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>Edificio</label>
+              <label style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>Edificio</label>
               <AppSelect value={buildingFilter} onChange={(event) => setBuildingFilter(event.target.value)}>
                 <option value="all">Todos los edificios</option>
                 {buildingOptions.map((building) => (
@@ -339,8 +339,8 @@ export default function AdminInvoicesPage() {
                     {row.invoiceSeries !== "—" ? `${row.invoiceSeries}-` : ""}
                     {row.invoiceFolio}
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.invoiceUuid}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.invoiceTypeLabel}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.invoiceUuid}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.invoiceTypeLabel}</div>
                 </div>
               ),
             },
@@ -351,7 +351,7 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.customerName}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.customerTaxId}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.customerTaxId}</div>
                 </div>
               ),
             },
@@ -362,8 +362,8 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.buildingName}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.unitLabel}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.tenantName}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.unitLabel}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.tenantName}</div>
                 </div>
               ),
             },
@@ -374,8 +374,8 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.totalLabel}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.periodLabel}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.issuedAtLabel}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.periodLabel}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.issuedAtLabel}</div>
                 </div>
               ),
             },
@@ -386,8 +386,8 @@ export default function AdminInvoicesPage() {
               render: (row) => (
                 <div style={{ display: "grid", gap: 6 }}>
                   <div style={{ fontWeight: 700 }}>{row.collectionStatusLabel}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.collectionAmountDueLabel}</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.collectionDueDateLabel}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.collectionAmountDueLabel}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.collectionDueDateLabel}</div>
                 </div>
               ),
             },

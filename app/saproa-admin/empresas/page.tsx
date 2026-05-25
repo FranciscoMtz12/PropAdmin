@@ -80,7 +80,7 @@ export default function SaproaEmpresasPage() {
 
       <SectionCard title="Empresas registradas" icon={<Building2 size={16} />}>
         {loading ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 13 }}>Cargando...</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>Cargando...</p>
         ) : (
           <motion.div
             variants={staggerContainer}
@@ -110,30 +110,30 @@ export default function SaproaEmpresasPage() {
 
                   {/* Name */}
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                       {c.name}
                     </div>
                     {c.short_name && c.short_name !== c.name && (
-                      <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{c.short_name}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{c.short_name}</div>
                     )}
                   </div>
 
                   {/* Stats */}
                   <div style={{ display: "flex", gap: 20, flexShrink: 0 }}>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{c.userCount}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>usuarios</div>
+                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>{c.userCount}</div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>usuarios</div>
                     </div>
                     <div style={{ textAlign: "center" }}>
-                      <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{c.buildingCount}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>propiedades</div>
+                      <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>{c.buildingCount}</div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>propiedades</div>
                     </div>
                   </div>
 
                   {/* Date + badge */}
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4, flexShrink: 0 }}>
                     <AppBadge variant={isNew ? "blue" : "green"}>{isNew ? "nueva" : "activa"}</AppBadge>
-                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                    <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                       {new Date(c.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
                     </span>
                   </div>

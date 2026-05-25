@@ -135,7 +135,7 @@ const EMPTY_FORM: SupplierFormValues = {
 
 const errorTextStyle: CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -481,13 +481,13 @@ export default function SuppliersPage() {
     borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
-    fontSize: 14,
+    fontSize: "0.875rem",
     boxSizing: "border-box",
     outline: "none",
   };
 
   const sectionTitleStyle: CSSProperties = {
-    fontSize: 12, fontWeight: 700, color: "var(--text-muted)",
+    fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)",
     textTransform: "uppercase", letterSpacing: "0.06em",
     marginBottom: 12, marginTop: 8,
     paddingBottom: 6, borderBottom: "1px solid var(--border-default)",
@@ -559,10 +559,10 @@ export default function SuppliersPage() {
               {company ? (
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   <div style={{ width: 8, height: 8, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                     {company.short_name || company.name}
                   </span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 4 }}>
                     {compSuppliers.length} {compSuppliers.length === 1 ? "proveedor" : "proveedores"}
                   </span>
                   <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
@@ -582,12 +582,12 @@ export default function SuppliersPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {s.name}
                     </div>
                     {s.prefix ? (
                       <span style={{
-                        fontSize: 10, fontWeight: 700,
+                        fontSize: "0.625rem", fontWeight: 700,
                         fontFamily: "monospace",
                         padding: "2px 6px", borderRadius: "var(--border-radius-sm)",
                         background: "var(--bg-input)",
@@ -600,12 +600,12 @@ export default function SuppliersPage() {
                     ) : null}
                   </div>
                   {s.tax_id ? (
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>
                       RFC: {s.tax_id}
                     </div>
                   ) : null}
                   {s.client_number ? (
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
                       Cliente #{s.client_number}
                     </div>
                   ) : null}
@@ -662,7 +662,7 @@ export default function SuppliersPage() {
               </div>
 
               {/* Persona de contacto */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "var(--text-secondary)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                 {s.contact_name  ? <div>{s.contact_name}</div> : null}
                 {s.contact_phone ? <div>{s.contact_phone}</div> : null}
                 {s.contact_email ? <div style={{ wordBreak: "break-all" }}>{s.contact_email}</div> : null}
@@ -674,7 +674,7 @@ export default function SuppliersPage() {
               {/* Sucursales */}
               <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 10, marginTop: 4 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Sucursales ({s.branches?.length || 0})
                   </span>
                   <button
@@ -699,14 +699,14 @@ export default function SuppliersPage() {
                 {(s.branches || []).length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {(s.branches || []).map((b) => (
-                      <div key={b.id} style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 6 }}>
+                      <div key={b.id} style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "flex", gap: 6 }}>
                         <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
                         {b.address ? <span style={{ color: "var(--text-muted)" }}>· {b.address}</span> : null}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sin sucursales registradas.</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Sin sucursales registradas.</div>
                 )}
 
                 {/* Quick branch form */}
@@ -725,27 +725,27 @@ export default function SuppliersPage() {
                     display: "flex", flexDirection: "column", gap: 6,
                   }}>
                     <input
-                      style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                      style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                       placeholder="Nombre de la sucursal *"
                       value={quickBranch.name}
                       onChange={(e) => setQuickBranch({ ...quickBranch, name: e.target.value })}
                       autoFocus
                     />
                     <input
-                      style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                      style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                       placeholder="Dirección"
                       value={quickBranch.address}
                       onChange={(e) => setQuickBranch({ ...quickBranch, address: e.target.value })}
                     />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                       <input
-                        style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                        style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                         placeholder="Email sucursal"
                         value={quickBranch.email}
                         onChange={(e) => setQuickBranch({ ...quickBranch, email: e.target.value })}
                       />
                       <input
-                        style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                        style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                         placeholder="Teléfono sucursal"
                         value={quickBranch.phone}
                         onChange={(e) => setQuickBranch({ ...quickBranch, phone: e.target.value })}
@@ -837,10 +837,10 @@ export default function SuppliersPage() {
             marginBottom: 16,
           }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                 Proveedor activo
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
                 Solo los activos aparecen en los selectores de materiales y compras.
               </div>
             </div>
@@ -922,10 +922,10 @@ export default function SuppliersPage() {
             marginBottom: formTieneCredito ? 12 : 16,
           }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                 ¿Tiene crédito?
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
                 El proveedor otorga crédito a pagar después de la factura.
               </div>
             </div>
@@ -971,7 +971,7 @@ export default function SuppliersPage() {
                     onClick={() => setValue("dias_credito", d)}
                     style={{
                       padding: "5px 12px", borderRadius: "var(--border-radius-md)", cursor: "pointer",
-                      fontSize: 12, fontWeight: 600,
+                      fontSize: "0.75rem", fontWeight: 600,
                       border: "1px solid var(--border-default)",
                       background: formDiasCredito === d ? "var(--accent)" : "var(--bg-card)",
                       color: formDiasCredito === d ? "#fff" : "var(--text-secondary)",
@@ -991,7 +991,7 @@ export default function SuppliersPage() {
               <div style={sectionTitleStyle}>Sucursales</div>
 
               {editingBranches.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10 }}>
+                <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: 10 }}>
                   Sin sucursales registradas.
                 </div>
               ) : (
@@ -1066,11 +1066,11 @@ export default function SuppliersPage() {
                         borderRadius: "var(--border-radius-md)", background: "var(--bg-input)",
                       }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                          <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
                             {b.name}
                           </div>
                           {b.address ? (
-                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{b.address}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{b.address}</div>
                           ) : null}
                         </div>
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -1183,7 +1183,7 @@ export default function SuppliersPage() {
                     padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                     border: "1px dashed var(--border-strong)",
                     background: "transparent", color: "var(--text-secondary)",
-                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                     marginBottom: 10,
                   }}
                 >
@@ -1196,7 +1196,7 @@ export default function SuppliersPage() {
           {formError ? (
             <div style={{
               color: "var(--badge-text-red)",
-              marginBottom: 12, fontSize: 13, fontWeight: 600,
+              marginBottom: 12, fontSize: "0.8125rem", fontWeight: 600,
             }}>
               {formError}
             </div>
@@ -1224,7 +1224,7 @@ function menuBtnStyle(danger = false): CSSProperties {
     padding: "10px 14px", textAlign: "left",
     background: "transparent", border: "none",
     color: danger ? "var(--badge-text-red)" : "var(--text-primary)",
-    fontSize: 13, cursor: "pointer",
+    fontSize: "0.8125rem", cursor: "pointer",
   };
 }
 
@@ -1234,6 +1234,6 @@ function miniBtnStyle(primary = false): CSSProperties {
     border: primary ? "1px solid var(--accent)" : "1px solid var(--border-default)",
     background: primary ? "var(--accent)" : "var(--bg-card)",
     color: primary ? "#fff" : "var(--text-primary)",
-    fontSize: 12, fontWeight: 600, cursor: "pointer",
+    fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
   };
 }

@@ -204,9 +204,9 @@ export default function BuildingUtilityMeterModal({
                   onChange={() => setMeterType("dedicated")}
                   style={{ accentColor: "#8B2252" }}
                 />
-                <strong style={{ fontSize: 14 }}>Dedicado</strong>
+                <strong style={{ fontSize: "0.875rem" }}>Dedicado</strong>
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                 Dedicado — asignado a una sola unidad
               </p>
             </label>
@@ -231,9 +231,9 @@ export default function BuildingUtilityMeterModal({
                   onChange={() => setMeterType("shared")}
                   style={{ accentColor: "#8B2252" }}
                 />
-                <strong style={{ fontSize: 14 }}>Compartido</strong>
+                <strong style={{ fontSize: "0.875rem" }}>Compartido</strong>
               </div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                 Compartido — distribuido entre varias unidades
               </p>
             </label>
@@ -261,9 +261,9 @@ export default function BuildingUtilityMeterModal({
                       style={{ accentColor: "#8B2252" }}
                     />
                     <Building2 size={14} />
-                    <strong style={{ fontSize: 14 }}>La empresa paga y cobra</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>La empresa paga y cobra</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     La empresa recibe la factura y genera un cobro mensual al inquilino.
                   </p>
                 </label>
@@ -285,9 +285,9 @@ export default function BuildingUtilityMeterModal({
                       style={{ accentColor: "#8B2252" }}
                     />
                     <User size={14} />
-                    <strong style={{ fontSize: 14 }}>El inquilino paga directo</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>El inquilino paga directo</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     Cada inquilino tiene su propio contrato. La empresa no interviene ni cobra.
                   </p>
                 </label>
@@ -329,9 +329,9 @@ export default function BuildingUtilityMeterModal({
                       onChange={() => setBillingMode("charged")}
                       style={{ accentColor: "#8B2252" }}
                     />
-                    <strong style={{ fontSize: 14 }}>Se cobra al inquilino</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Se cobra al inquilino</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     El costo se distribuye y genera cobros.
                   </p>
                 </label>
@@ -356,9 +356,9 @@ export default function BuildingUtilityMeterModal({
                       onChange={() => setBillingMode("included")}
                       style={{ accentColor: "#8B2252" }}
                     />
-                    <strong style={{ fontSize: 14 }}>Incluido en renta</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Incluido en renta</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     Solo registro de gasto — sin cobro.
                   </p>
                 </label>
@@ -372,7 +372,7 @@ export default function BuildingUtilityMeterModal({
                   background: "#eff6ff",
                   borderRadius: "var(--border-radius-md)",
                   marginBottom: 16,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   color: "#1d4ed8",
                   display: "flex",
                   alignItems: "flex-start",
@@ -389,7 +389,7 @@ export default function BuildingUtilityMeterModal({
                   background: "var(--bg-page)",
                   borderRadius: "var(--border-radius-md)",
                   marginBottom: 16,
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   color: "var(--text-secondary)",
                   display: "flex",
                   alignItems: "flex-start",
@@ -427,9 +427,9 @@ export default function BuildingUtilityMeterModal({
                       style={{ accentColor: "#8B2252" }}
                     />
                     <CalendarDays size={14} />
-                    <strong style={{ fontSize: 14 }}>Mensual</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Mensual</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     Se cobra cada mes
                   </p>
                 </label>
@@ -451,9 +451,9 @@ export default function BuildingUtilityMeterModal({
                       style={{ accentColor: "#8B2252" }}
                     />
                     <Calendar size={14} />
-                    <strong style={{ fontSize: 14 }}>Bimestral</strong>
+                    <strong style={{ fontSize: "0.875rem" }}>Bimestral</strong>
                   </div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.4 }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.4 }}>
                     Se cobra cada dos meses (ej. CFE)
                   </p>
                 </label>
@@ -490,7 +490,7 @@ export default function BuildingUtilityMeterModal({
                     background: "#eff6ff",
                     borderRadius: "var(--border-radius-md)",
                     marginBottom: 16,
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     color: "#1d4ed8",
                     display: "flex",
                     alignItems: "flex-start",

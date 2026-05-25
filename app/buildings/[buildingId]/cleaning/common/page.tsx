@@ -233,7 +233,7 @@ export default function CleaningCommonPage() {
             borderRadius: "var(--border-radius-lg)",
             background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
             color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
-            fontSize: 14,
+            fontSize: "0.875rem",
             fontWeight: 600,
           }}
         >
@@ -252,7 +252,7 @@ export default function CleaningCommonPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     color: "var(--text-secondary)",
                     cursor: "pointer",
                   }}
@@ -279,7 +279,7 @@ export default function CleaningCommonPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: 10,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     color: "var(--text-secondary)",
                     cursor: "pointer",
                   }}
@@ -337,7 +337,7 @@ export default function CleaningCommonPage() {
               background: "var(--metric-bg-amber)",
               border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               lineHeight: 1.5,
             }}

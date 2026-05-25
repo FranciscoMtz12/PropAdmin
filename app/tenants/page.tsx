@@ -188,7 +188,7 @@ const textareaStyle: CSSProperties = {
 
 const labelStyle: CSSProperties = {
   display: "block",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   marginBottom: 8,
   color: "var(--text-primary)",
@@ -196,7 +196,7 @@ const labelStyle: CSSProperties = {
 
 const errorTextStyle: CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -722,7 +722,7 @@ export default function TenantsPage() {
               border: `1px solid ${colors.border}`,
               background: colors.background,
               color: colors.color,
-              fontSize: 12,
+              fontSize: "0.75rem",
               fontWeight: 800,
               whiteSpace: "nowrap",
             }}
@@ -865,7 +865,7 @@ export default function TenantsPage() {
             <div style={{ flex: 1 }}>
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 700,
                   color: "var(--text-primary)",
                 }}
@@ -876,7 +876,7 @@ export default function TenantsPage() {
               <div
                 style={{
                   marginTop: 6,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   lineHeight: 1.6,
                   color: "var(--text-muted)",
                 }}
@@ -999,7 +999,7 @@ export default function TenantsPage() {
         <div className="mod-table-wrap">
         {isGroupMode ? (
           tenantsByCompany.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Sin inquilinos en las empresas activas.</p>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin inquilinos en las empresas activas.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
               {tenantsByCompany.map(({ company, compTenants }) => {
@@ -1008,10 +1008,10 @@ export default function TenantsPage() {
                   <div key={company.id}>
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                         {company.short_name || company.name}
                       </span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 4 }}>
                         {compTenants.length} {compTenants.length === 1 ? "inquilino" : "inquilinos"}
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
@@ -1054,7 +1054,7 @@ export default function TenantsPage() {
         </div>
 
         {rentHistoryData.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No hay historial de precios registrado.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>No hay historial de precios registrado.</p>
         ) : (
           <div style={{ display: "grid", gap: 20 }}>
             {rentHistoryData.map(({ building, entries }) => (
@@ -1062,16 +1062,16 @@ export default function TenantsPage() {
                 {/* Encabezado del edificio */}
                 <div style={{
                   display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
-                  fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
+                  fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)",
                 }}>
                   <Building2 size={15} style={{ color: "var(--text-muted)" }} />
                   {building.name}
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--text-muted)" }}>
                     · {entries.length} unidad{entries.length !== 1 ? "es" : ""}
                   </span>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(17.5rem, 1fr))", gap: 10 }}>
                   {entries.map(({ unit, leases: unitLeases }) => {
                     const currentLease  = unitLeases.find((l) => l.status === "ACTIVE");
                     const currentRent   = currentLease?.rent_amount ?? null;
@@ -1089,23 +1089,23 @@ export default function TenantsPage() {
                         {/* Header: nombre unidad + precio actual */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
                           <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                            <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                               {unit.display_code || unit.unit_number || "Unidad"}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 2 }}>
                               {currentLease ? "Contrato activo" : "Sin contrato activo"}
                             </div>
                           </div>
                           <div style={{ textAlign: "right", flexShrink: 0 }}>
-                            <div style={{ fontSize: 17, fontWeight: 800, color: currentRent ? "var(--text-primary)" : "var(--text-muted)" }}>
+                            <div style={{ fontSize: "1.0625rem", fontWeight: 800, color: currentRent ? "var(--text-primary)" : "var(--text-muted)" }}>
                               {formatCurrency(currentRent)}
                             </div>
                             {direction === "up" ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 11, fontWeight: 700, color: "#16a34a" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "#16a34a" }}>
                                 <TrendingUp size={12} /> subió
                               </div>
                             ) : direction === "down" ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 11, fontWeight: 700, color: "#DC2626" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "#DC2626" }}>
                                 <TrendingDown size={12} /> bajó
                               </div>
                             ) : null}
@@ -1125,7 +1125,7 @@ export default function TenantsPage() {
                                   display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
                                   padding: "5px 8px", borderRadius: "var(--border-radius-md)",
                                   background: isActive ? "var(--icon-bg-green)" : "var(--bg-input)",
-                                  fontSize: 12,
+                                  fontSize: "0.75rem",
                                 }}>
                                   <span style={{ fontWeight: 700, color: "var(--text-primary)", minWidth: 80, fontFamily: "monospace" }}>
                                     {formatCurrency(lease.rent_amount)}
@@ -1135,11 +1135,11 @@ export default function TenantsPage() {
                                     {lease.end_date ? ` → ${formatDate(lease.end_date)}` : ""}
                                   </span>
                                   {isActive ? (
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
+                                    <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
                                   ) : null}
                                   {diff != null && diff !== 0 ? (
                                     <span style={{
-                                      fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: "var(--border-radius-md)",
+                                      fontSize: "0.625rem", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--border-radius-md)",
                                       color: diff > 0 ? "#10B981" : "#DC2626",
                                       background: diff > 0 ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
                                     }}>
@@ -1172,7 +1172,7 @@ export default function TenantsPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
                 gap: 16,
               }}
             >
@@ -1265,7 +1265,7 @@ export default function TenantsPage() {
                   borderRadius: "var(--border-radius-lg)",
                   background: "var(--badge-bg-red)",
                   color: "var(--badge-text-red)",
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
               >
@@ -1311,7 +1311,7 @@ export default function TenantsPage() {
               background: "var(--metric-bg-amber)",
               border: "1px solid #FED7AA",
               color: "var(--badge-text-amber)",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               lineHeight: 1.5,
             }}
@@ -1354,13 +1354,13 @@ export default function TenantsPage() {
 }
 
 const metricLabelStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "0.8125rem",
   color: "var(--text-muted)",
   fontWeight: 600,
 };
 
 const metricValueStyle: CSSProperties = {
-  fontSize: 28,
+  fontSize: "1.75rem",
   color: "var(--text-primary)",
   fontWeight: 800,
 };
@@ -1369,7 +1369,7 @@ const filterLabelStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   color: "var(--text-muted)",
   textTransform: "uppercase",
@@ -1377,13 +1377,13 @@ const filterLabelStyle: CSSProperties = {
 };
 
 const cellPrimaryStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "0.8125rem",
   color: "var(--text-primary)",
   fontWeight: 700,
 };
 
 const cellSecondaryStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: "var(--text-muted)",
 };
 
@@ -1396,7 +1396,7 @@ const dropdownTriggerStyle: CSSProperties = {
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   color: "var(--text-secondary)",
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1427,7 +1427,7 @@ const dropdownItemStyle: CSSProperties = {
   border: "none",
   background: "var(--bg-card)",
   color: "var(--text-secondary)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1443,7 +1443,7 @@ const dropdownPortalItemStyle: CSSProperties = {
   border: "none",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1459,7 +1459,7 @@ const dropdownPortalSecondaryItemStyle: CSSProperties = {
   border: "none",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1475,7 +1475,7 @@ const dropdownDeleteItemStyle: CSSProperties = {
   border: "none",
   background: "var(--badge-bg-red)",
   color: "var(--badge-text-red)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };

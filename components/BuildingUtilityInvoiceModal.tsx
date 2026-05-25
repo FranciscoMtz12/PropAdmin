@@ -430,12 +430,12 @@ export default function BuildingUtilityInvoiceModal({
     fontWeight: 600,
     color: "var(--text-secondary)",
     borderBottom: "2px solid var(--border-default)",
-    fontSize: 12,
+    fontSize: "0.75rem",
   }
   const tdStyle: React.CSSProperties = {
     padding: "8px 10px",
     verticalAlign: "middle",
-    fontSize: 13,
+    fontSize: "0.8125rem",
   }
 
   return (
@@ -446,10 +446,10 @@ export default function BuildingUtilityInvoiceModal({
     >
       {/* Subtitle row */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginBottom: 16 }}>
-        <span style={{ fontSize: 13, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 4 }}>
           <MapPin size={13} />{building.name}
         </span>
-        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
           {[
             meter.provider_name || "Sin proveedor",
             meter.billing_frequency === "bimonthly" ? "Bimestral" : null,
@@ -465,7 +465,7 @@ export default function BuildingUtilityInvoiceModal({
           background: "rgba(245,158,11,0.1)",
           borderRadius: "var(--border-radius-md)",
           marginBottom: 14,
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: "var(--text-primary)",
           display: "flex",
           alignItems: "flex-start",
@@ -484,7 +484,7 @@ export default function BuildingUtilityInvoiceModal({
             background: "rgba(245,158,11,0.1)",
             borderRadius: "var(--border-radius-md)",
             marginBottom: 14,
-            fontSize: 13,
+            fontSize: "0.8125rem",
             color: "var(--text-primary)",
           }}>{msg}</p>
         ) : null}
@@ -496,7 +496,7 @@ export default function BuildingUtilityInvoiceModal({
             value={totalAmount}
             onChange={e => setTotalAmount(e.target.value)}
             placeholder="0.00"
-            style={{ ...INPUT_STYLE, fontSize: 18, fontWeight: 700 }}
+            style={{ ...INPUT_STYLE, fontSize: "1.125rem", fontWeight: 700 }}
             step="0.01"
             min="0"
             autoFocus
@@ -549,15 +549,15 @@ export default function BuildingUtilityInvoiceModal({
             }}
           >
             {pdfFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{pdfFile.name}
               </p>
             ) : existingInvoice?.pdf_path ? (
-              <p style={{ margin: 0, color: "#1d4ed8", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "#1d4ed8", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />PDF existente — toca para reemplazar
               </p>
             ) : (
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />Toca para adjuntar PDF de la factura
               </p>
             )}
@@ -571,7 +571,7 @@ export default function BuildingUtilityInvoiceModal({
             background: "var(--bg-page)",
             borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
-            fontSize: 13,
+            fontSize: "0.8125rem",
             color: "var(--text-secondary)",
             display: "flex",
             alignItems: "flex-start",
@@ -590,7 +590,7 @@ export default function BuildingUtilityInvoiceModal({
             background: "#eff6ff",
             borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
-            fontSize: 13,
+            fontSize: "0.8125rem",
             color: "#1d4ed8",
             display: "flex",
             alignItems: "flex-start",
@@ -610,7 +610,7 @@ export default function BuildingUtilityInvoiceModal({
                 padding: "10px 14px",
                 background: "rgba(245,158,11,0.1)",
                 borderRadius: "var(--border-radius-md)",
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 color: "var(--text-primary)",
                 display: "flex",
                 alignItems: "flex-start",
@@ -621,11 +621,11 @@ export default function BuildingUtilityInvoiceModal({
               </div>
             ) : (
               <>
-                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+                <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>
                   Distribución equitativa — {tenantedUnitIds.length} unidades
                 </p>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={thStyle}>Depa</th>
@@ -663,7 +663,7 @@ export default function BuildingUtilityInvoiceModal({
         )}
 
         {isShared && !isIncluded && loadingLeases && (
-          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: 16 }}>
             Cargando inquilinos activos...
           </p>
         )}
@@ -674,7 +674,7 @@ export default function BuildingUtilityInvoiceModal({
             background: "var(--bg-page)",
             borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
-            fontSize: 13,
+            fontSize: "0.8125rem",
             color: "var(--text-secondary)",
             display: "flex",
             alignItems: "flex-start",

@@ -158,7 +158,7 @@ function StatusPill({ due_date, payment_status, todayStr }: {
       display: "inline-flex", alignItems: "center", gap: 4,
       padding: "5px 10px", borderRadius: 999,
       background: bg, color: text, border: `1px solid ${border}`,
-      fontSize: 12, fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0,
+      fontSize: "0.75rem", fontWeight: 800, whiteSpace: "nowrap", flexShrink: 0,
     }}>
       <Icon size={10} />
       {label}
@@ -171,21 +171,21 @@ function StatusPill({ due_date, payment_status, todayStr }: {
 const ACT_PRIMARY: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 14px", borderRadius: "var(--border-radius-md)", border: "none",
-  background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 13, fontWeight: 600,
+  background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 600,
 }
 
 const ACT_GHOST: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 14px", borderRadius: "var(--border-radius-md)",
   border: "1px solid var(--border-default)", background: "transparent",
-  cursor: "pointer", fontSize: 13, color: "var(--text-secondary)",
+  cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-secondary)",
 }
 
 const ACT_DANGER: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 14px", borderRadius: "var(--border-radius-md)",
   border: "1px solid #dc2626", background: "transparent",
-  cursor: "pointer", fontSize: 13, color: "#dc2626",
+  cursor: "pointer", fontSize: "0.8125rem", color: "#dc2626",
 }
 
 /* ─── Shared card wrapper style ──────────────────────────────────── */
@@ -708,13 +708,13 @@ export default function PaymentsPage() {
               >
                 <span style={{ width: 8, height: 8, borderRadius: 999, background: col.dot, flexShrink: 0 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: col.text }}>{notif.title}</span>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: col.text }}>{notif.title}</span>
                   {notif.description && (
-                    <span style={{ fontSize: 12, color: col.text, opacity: 0.8, marginLeft: 8 }}>{notif.description}</span>
+                    <span style={{ fontSize: "0.75rem", color: col.text, opacity: 0.8, marginLeft: 8 }}>{notif.description}</span>
                   )}
                 </div>
                 {notif.count != null && notif.count > 1 && (
-                  <span style={{ fontSize: 12, fontWeight: 700, color: col.text, background: `rgba(0,0,0,0.08)`, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: col.text, background: `rgba(0,0,0,0.08)`, borderRadius: 999, padding: "2px 8px", whiteSpace: "nowrap" }}>
                     {notif.count}
                   </span>
                 )}
@@ -729,7 +729,7 @@ export default function PaymentsPage() {
         <button type="button" onClick={() => navMonth(-1)} style={{ width: 36, height: 36, borderRadius: "8px 0 0 8px", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>
           <ChevronLeft size={16} />
         </button>
-        <div style={{ padding: "0 24px", height: 36, display: "flex", alignItems: "center", borderTop: "1px solid var(--border-default)", borderBottom: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: 14, fontWeight: 700, minWidth: 160, justifyContent: "center" }}>
+        <div style={{ padding: "0 24px", height: 36, display: "flex", alignItems: "center", borderTop: "1px solid var(--border-default)", borderBottom: "1px solid var(--border-default)", background: "var(--bg-card)", fontSize: "0.875rem", fontWeight: 700, minWidth: 160, justifyContent: "center" }}>
           {periodLabel}
         </div>
         <button type="button" onClick={() => navMonth(1)} style={{ width: 36, height: 36, borderRadius: "0 8px 8px 0", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>
@@ -738,7 +738,7 @@ export default function PaymentsPage() {
       </div>
 
       {/* Metrics */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard label="Pendientes de pagar" value={pageLoading ? "…" : pendingCount} icon={<Clock size={18} />} variant={pendingCount > 0 ? "amber" : "green"} />
         <MetricCard label="Pagados" value={pageLoading ? "…" : paidCount} icon={<CheckCircle size={18} />} variant={paidCount > 0 ? "green" : "neutral"} />
         <MetricCard label="Total pendiente" value={pageLoading ? "…" : formatMXN(totalPending)} icon={<DollarSign size={18} />} variant={totalPending > 0 ? "amber" : "green"} />
@@ -762,7 +762,7 @@ export default function PaymentsPage() {
         {activeTab === "services" && (
           <>
             {pageLoading ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
             ) : allInvoices.length === 0 ? (
               <AppEmptyState
                 title="No hay facturas de servicios en este período"
@@ -777,14 +777,14 @@ export default function PaymentsPage() {
                     {/* Building header */}
                     <div style={{ padding: "8px 20px", display: "flex", alignItems: "center", gap: 6, background: "var(--bg-page)", borderBottom: "1px solid var(--border-default)" }}>
                       <MapPin size={12} style={{ color: "var(--text-muted)" }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>
                         {group.building_name}
                       </span>
                       {company && (
                         <>
                           <span style={{ color: "var(--border-default)" }}>·</span>
                           <span style={{ width: 7, height: 7, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
-                          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>{company.short_name || company.name}</span>
+                          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>{company.short_name || company.name}</span>
                         </>
                       )}
                     </div>
@@ -806,19 +806,19 @@ export default function PaymentsPage() {
                           >
                             <ConceptIcon type={inv.service_type} />
                             <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
+                              <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>
                                 {SERVICE_TYPE_LABEL[inv.service_type as keyof typeof SERVICE_TYPE_LABEL] ?? inv.service_type}
                                 {inv.provider_name ? ` — ${inv.provider_name}` : ""}
                               </div>
-                              {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{sub}</div>}
+                              {sub && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{sub}</div>}
                             </div>
                             {inv.due_date && (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: dueDateColor(inv.due_date, inv.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.75rem", color: dueDateColor(inv.due_date, inv.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
                                 <Calendar size={12} />
                                 {formatDueDateNatural(inv.due_date)}
                               </span>
                             )}
-                            <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                            <span style={{ fontWeight: 700, fontSize: "0.875rem", flexShrink: 0 }}>
                               {formatMXN(Number(inv.total_amount))}
                             </span>
                             <span
@@ -840,37 +840,37 @@ export default function PaymentsPage() {
                             <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                               <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                                 {inv.provider_name && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                     Proveedor: {inv.provider_name}
                                   </span>
                                 )}
                                 {inv.meter_number && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                     Medidor: {inv.meter_number}
                                   </span>
                                 )}
-                                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                   <Calendar size={12} />
                                   Período: {MONTH_NAMES[inv.period_month - 1]} {inv.period_year}
                                 </span>
                                 {inv.total_consumption != null && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                     Consumo: {inv.total_consumption} {inv.consumption_unit ?? ""}
                                   </span>
                                 )}
                                 {inv.folio && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                     Folio: {inv.folio}
                                   </span>
                                 )}
                                 {inv.due_date && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: dueDateColor(inv.due_date, inv.payment_status, todayStr) }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: dueDateColor(inv.due_date, inv.payment_status, todayStr) }}>
                                     <Calendar size={12} />
                                     Fecha límite: {formatDueDateNatural(inv.due_date)}
                                   </span>
                                 )}
                                 {inv.paid_at && (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                     <CheckCircle2 size={12} />
                                     Pagado el: {formatDate(inv.paid_at)}
                                   </span>
@@ -878,7 +878,7 @@ export default function PaymentsPage() {
                               </div>
                               <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                                 {isLoading ? (
-                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
+                                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                                     <Loader2 size={13} /> Actualizando...
                                   </span>
                                 ) : inv.payment_status === "unpaid" ? (
@@ -905,7 +905,7 @@ export default function PaymentsPage() {
                 })}
 
                 {/* Totals */}
-                <div style={{ padding: "10px 20px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", background: "var(--bg-page)" }}>
+                <div style={{ padding: "10px 20px", textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", background: "var(--bg-page)" }}>
                   Pendiente: <strong>{formatMXN(unpaidInvoices.reduce((s, i) => s + Number(i.total_amount), 0))}</strong>
                   {" · "}
                   Pagado: <strong>{formatMXN(paidInvoices.reduce((s, i) => s + Number(i.total_amount), 0))}</strong>
@@ -919,12 +919,12 @@ export default function PaymentsPage() {
         {activeTab === "reports" && (
           <>
             <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <a href="/purchases/reporte-pagos" style={{ fontSize: 12, color: "var(--text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <a href="/purchases/reporte-pagos" style={{ fontSize: "0.75rem", color: "var(--text-muted)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
                 Los reportes se generan desde Compras →
               </a>
             </div>
             {pageLoading ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
             ) : reports.length === 0 ? (
               <AppEmptyState
                 title="No hay reportes de compras en este período"
@@ -950,12 +950,12 @@ export default function PaymentsPage() {
                       <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                         <div>
                           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                            <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
+                            <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                               Reporte {report.folio ?? report.id.slice(0, 8)}{report.week_number ? ` — Semana ${report.week_number}` : ""}
                             </span>
                             <AppBadge variant={statusVariant}>{statusLabel}</AppBadge>
                           </div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4 }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 4 }}>
                             {[
                               report.report_date ? formatDate(report.report_date) : null,
                               report.elaborated_by ? report.elaborated_by : null,
@@ -964,13 +964,13 @@ export default function PaymentsPage() {
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           {calcStatus !== "paid" && (
-                            <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>{formatMXN(total)}</span>
+                            <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>{formatMXN(total)}</span>
                           )}
                           {hasPending && (
                             <button
                               type="button"
                               onClick={() => void markAllReportPaid(report)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: 12, fontWeight: 600 }}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}
                             >
                               <CheckCircle2 size={13} /> Marcar todo pagado
                             </button>
@@ -980,7 +980,7 @@ export default function PaymentsPage() {
 
                       {report.items.length === 0 ? (
                         <div style={{ padding: "20px 16px" }}>
-                          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>Sin items registrados.</p>
+                          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>Sin items registrados.</p>
                         </div>
                       ) : (
                         <div style={ITEMS_GRID}>
@@ -999,16 +999,16 @@ export default function PaymentsPage() {
                                 >
                                   <ConceptIcon type="report" />
                                   <div style={{ flex: 1, minWidth: 0 }}>
-                                    <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{item.description}</div>
-                                    {item.vendor_name && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{item.vendor_name}</div>}
+                                    <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>{item.description}</div>
+                                    {item.vendor_name && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{item.vendor_name}</div>}
                                   </div>
                                   {item.due_date && (
-                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: dueDateColor(item.due_date, item.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
+                                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.75rem", color: dueDateColor(item.due_date, item.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
                                       <Calendar size={12} />
                                       {formatDueDateNatural(item.due_date)}
                                     </span>
                                   )}
-                                  <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                                  <span style={{ fontWeight: 700, fontSize: "0.875rem", flexShrink: 0 }}>
                                     {formatMXN(Number(item.amount))}
                                   </span>
                                   <span
@@ -1030,24 +1030,24 @@ export default function PaymentsPage() {
                                   <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                                     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                                       {item.vendor_name && (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                           Proveedor: {item.vendor_name}
                                         </span>
                                       )}
                                       {item.due_date && (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: dueDateColor(item.due_date, item.payment_status, todayStr) }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: dueDateColor(item.due_date, item.payment_status, todayStr) }}>
                                           <Calendar size={12} />
                                           Fecha límite: {formatDueDateNatural(item.due_date)}
                                         </span>
                                       )}
                                       {item.paid_at && (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                           <CheckCircle2 size={12} />
                                           Pagado el: {formatDate(item.paid_at)}
                                         </span>
                                       )}
                                       {po && (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                           <ClipboardList size={12} />
                                           OC{" "}
                                           <a href={`/purchases/${po.id}`} style={{ color: "#8B2252", textDecoration: "none", fontWeight: 600 }}>
@@ -1062,7 +1062,7 @@ export default function PaymentsPage() {
                                     </div>
                                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                                       {isLoading ? (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                                           <Loader2 size={13} /> Actualizando...
                                         </span>
                                       ) : item.payment_status === "unpaid" ? (
@@ -1101,7 +1101,7 @@ export default function PaymentsPage() {
               </div>
             )}
             {pageLoading ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
             ) : manualPayments.length === 0 ? (
               <AppEmptyState
                 title="No hay pagos manuales en este período"
@@ -1126,16 +1126,16 @@ export default function PaymentsPage() {
                       >
                         <ConceptIcon type="manual" />
                         <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>{mp.title}</div>
-                          {mp.building_name && <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{mp.building_name}</div>}
+                          <div style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>{mp.title}</div>
+                          {mp.building_name && <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 500, marginTop: 2 }}>{mp.building_name}</div>}
                         </div>
                         {mp.due_date && (
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: dueDateColor(mp.due_date, mp.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.75rem", color: dueDateColor(mp.due_date, mp.payment_status, todayStr), flexShrink: 0, whiteSpace: "nowrap" }}>
                             <Calendar size={12} />
                             {formatDueDateNatural(mp.due_date)}
                           </span>
                         )}
-                        <span style={{ fontWeight: 700, fontSize: 14, flexShrink: 0 }}>
+                        <span style={{ fontWeight: 700, fontSize: "0.875rem", flexShrink: 0 }}>
                           {formatMXN(Number(mp.amount))}
                         </span>
                         <span
@@ -1157,23 +1157,23 @@ export default function PaymentsPage() {
                         <div style={{ borderTop: "1px solid var(--border-default)", padding: "14px 16px" }}>
                           <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 24px", marginBottom: 12 }}>
                             {mp.building_name && (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                 <MapPin size={12} />
                                 Edificio: {mp.building_name}
                               </span>
                             )}
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                               <Calendar size={12} />
                               Período: {MONTH_NAMES[mp.period_month - 1]} {mp.period_year}
                             </span>
                             {mp.due_date && (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: dueDateColor(mp.due_date, mp.payment_status, todayStr) }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: dueDateColor(mp.due_date, mp.payment_status, todayStr) }}>
                                 <Calendar size={12} />
                                 Fecha límite: {formatDueDateNatural(mp.due_date)}
                               </span>
                             )}
                             {mp.paid_at && (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, color: "var(--text-muted)" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                 <CheckCircle2 size={12} />
                                 Pagado el: {formatDate(mp.paid_at)}
                               </span>
@@ -1181,7 +1181,7 @@ export default function PaymentsPage() {
                           </div>
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             {isLoading ? (
-                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 13, color: "var(--text-muted)" }}>
+                              <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                                 <Loader2 size={13} /> Actualizando...
                               </span>
                             ) : mp.payment_status === "unpaid" ? (
@@ -1208,7 +1208,7 @@ export default function PaymentsPage() {
                 </div>{/* /ITEMS_GRID */}
 
                 {/* Totals */}
-                <div style={{ padding: "10px 20px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", background: "var(--bg-page)" }}>
+                <div style={{ padding: "10px 20px", textAlign: "right", fontSize: "0.75rem", color: "var(--text-muted)", background: "var(--bg-page)" }}>
                   Pendiente: <strong>{formatMXN(unpaidManual.reduce((s, m) => s + Number(m.amount), 0))}</strong>
                   {" · "}
                   Pagado: <strong>{formatMXN(paidManual.reduce((s, m) => s + Number(m.amount), 0))}</strong>
@@ -1238,7 +1238,7 @@ export default function PaymentsPage() {
           </AppFormField>
 
           <div style={{ marginBottom: 16 }}>
-            <p style={{ margin: "0 0 8px", fontSize: 13, fontWeight: 600, color: "var(--text-secondary)" }}>Items *</p>
+            <p style={{ margin: "0 0 8px", fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)" }}>Items *</p>
             <div style={{ display: "grid", gap: 8 }}>
               {newReportItems.map((item, idx) => (
                 <div key={idx} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 110px 130px 32px", gap: 8, alignItems: "center" }}>
@@ -1246,20 +1246,20 @@ export default function PaymentsPage() {
                     placeholder="Descripción *"
                     value={item.description}
                     onChange={e => setNewReportItems(prev => prev.map((it, i) => i === idx ? { ...it, description: e.target.value } : it))}
-                    style={{ ...INPUT_STYLE, fontSize: 13 }}
+                    style={{ ...INPUT_STYLE, fontSize: "0.8125rem" }}
                   />
                   <input
                     placeholder="Proveedor"
                     value={item.vendor_name}
                     onChange={e => setNewReportItems(prev => prev.map((it, i) => i === idx ? { ...it, vendor_name: e.target.value } : it))}
-                    style={{ ...INPUT_STYLE, fontSize: 13 }}
+                    style={{ ...INPUT_STYLE, fontSize: "0.8125rem" }}
                   />
                   <input
                     type="number"
                     placeholder="Monto *"
                     value={item.amount}
                     onChange={e => setNewReportItems(prev => prev.map((it, i) => i === idx ? { ...it, amount: e.target.value } : it))}
-                    style={{ ...INPUT_STYLE, fontSize: 13 }}
+                    style={{ ...INPUT_STYLE, fontSize: "0.8125rem" }}
                     min="0"
                     step="0.01"
                   />
@@ -1267,7 +1267,7 @@ export default function PaymentsPage() {
                     type="date"
                     value={item.due_date}
                     onChange={e => setNewReportItems(prev => prev.map((it, i) => i === idx ? { ...it, due_date: e.target.value } : it))}
-                    style={{ ...INPUT_STYLE, fontSize: 13 }}
+                    style={{ ...INPUT_STYLE, fontSize: "0.8125rem" }}
                   />
                   <button
                     type="button"
@@ -1283,7 +1283,7 @@ export default function PaymentsPage() {
             <button
               type="button"
               onClick={() => setNewReportItems(prev => [...prev, { description: "", vendor_name: "", amount: "", due_date: todayStr }])}
-              style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, padding: "6px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer" }}
+              style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.8125rem", padding: "6px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer" }}
             >
               <Plus size={13} /> Agregar item
             </button>
@@ -1295,7 +1295,7 @@ export default function PaymentsPage() {
               onClick={() => reportPdfRef.current?.click()}
               style={{ padding: "14px", borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "center", border: `2px dashed ${reportPdfFile ? "rgba(16,185,129,0.5)" : "var(--border-default)"}`, background: reportPdfFile ? "rgba(16,185,129,0.08)" : "var(--bg-card)" }}
             >
-              <span style={{ fontSize: 13, color: reportPdfFile ? "#10B981" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: "0.8125rem", color: reportPdfFile ? "#10B981" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{reportPdfFile ? reportPdfFile.name : "Toca para adjuntar PDF"}
               </span>
             </div>

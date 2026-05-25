@@ -76,7 +76,7 @@ export default function AppTabs({
                   : "1px solid var(--border-default)",
                 background: isActive ? "var(--accent)" : "var(--bg-card)",
                 color: isActive ? "#ffffff" : "var(--text-secondary)",
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 whiteSpace: "nowrap",
@@ -111,7 +111,7 @@ export default function AppTabs({
                     borderRadius: "var(--border-radius-full, 999px)",
                     background: isActive ? "rgba(255,255,255,0.25)" : "var(--divider)",
                     color: isActive ? "#ffffff" : "var(--text-secondary)",
-                    fontSize: 12,
+                    fontSize: "0.75rem",
                     fontWeight: 700,
                   }}
                 >
@@ -131,7 +131,7 @@ export default function AppTabs({
                   padding: item.notifDot.count > 1 ? "0 4px" : 0,
                   borderRadius: "var(--border-radius-full, 999px)",
                   background: item.notifDot.color,
-                  fontSize: 10,
+                  fontSize: "0.625rem",
                   fontWeight: 700,
                   color: "#ffffff",
                   display: "flex",

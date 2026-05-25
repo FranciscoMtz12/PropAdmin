@@ -88,13 +88,13 @@ type LeaseInvoiceGroup = {
 };
 
 const sectionTextStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   lineHeight: 1.6,
   color: "var(--text-muted)",
 };
 
 const strongValueStyle: CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -106,7 +106,7 @@ const badgeBaseStyle: CSSProperties = {
   gap: 6,
   padding: "6px 10px",
   borderRadius: 999,
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 800,
 };
 
@@ -641,7 +641,7 @@ export default function InvoiceGenerationPage() {
           }}
         >
           <div style={{ display: "grid", gap: 4 }}>
-            <div style={{ ...strongValueStyle, fontSize: 18 }}>
+            <div style={{ ...strongValueStyle, fontSize: "1.125rem" }}>
               Periodo actual
             </div>
             <div style={sectionTextStyle}>
@@ -687,7 +687,7 @@ export default function InvoiceGenerationPage() {
             <div>
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 700,
                   color: "var(--text-primary)",
                 }}
@@ -709,7 +709,7 @@ export default function InvoiceGenerationPage() {
       {!loading && groups.length === 0 ? (
         <AppCard>
           <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ ...strongValueStyle, fontSize: 18 }}>
+            <div style={{ ...strongValueStyle, fontSize: "1.125rem" }}>
               No hay contratos vigentes para este periodo
             </div>
             <div style={sectionTextStyle}>
@@ -739,7 +739,7 @@ export default function InvoiceGenerationPage() {
                     }}
                   >
                     <div style={{ display: "grid", gap: 6 }}>
-                      <div style={{ ...strongValueStyle, fontSize: 18 }}>
+                      <div style={{ ...strongValueStyle, fontSize: "1.125rem" }}>
                         {group.tenant_name}
                       </div>
 
@@ -754,7 +754,7 @@ export default function InvoiceGenerationPage() {
                             alignItems: "center",
                             gap: 6,
                             color: "var(--text-secondary)",
-                            fontSize: 14,
+                            fontSize: "0.875rem",
                             fontWeight: 700,
                           }}
                         >
@@ -768,7 +768,7 @@ export default function InvoiceGenerationPage() {
                             alignItems: "center",
                             gap: 6,
                             color: "var(--text-muted)",
-                            fontSize: 14,
+                            fontSize: "0.875rem",
                             fontWeight: 600,
                           }}
                         >
@@ -794,7 +794,7 @@ export default function InvoiceGenerationPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))",
                       gap: 12,
                     }}
                   >
@@ -832,7 +832,7 @@ export default function InvoiceGenerationPage() {
                         color: "var(--text-secondary)",
                         borderRadius: "var(--border-radius-lg)",
                         padding: "10px 14px",
-                        fontSize: 14,
+                        fontSize: "0.875rem",
                         fontWeight: 700,
                         cursor: "pointer",
                       }}
@@ -891,7 +891,7 @@ export default function InvoiceGenerationPage() {
                                   display: "inline-flex",
                                   alignItems: "center",
                                   gap: 8,
-                                  fontSize: 15,
+                                  fontSize: "0.9375rem",
                                   fontWeight: 800,
                                   color: "var(--text-primary)",
                                 }}

@@ -94,11 +94,11 @@ export default function SaproaRoadmapPage() {
                   {/* Content */}
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 3 }}>
-                      <span style={{ fontSize: 12, fontWeight: 800, color: config.color, minWidth: 28 }}>{item.id}</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{item.label}</span>
+                      <span style={{ fontSize: "0.75rem", fontWeight: 800, color: config.color, minWidth: 28 }}>{item.id}</span>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>{item.label}</span>
                       <AppBadge variant={config.badgeVariant}>{item.category}</AppBadge>
                     </div>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
                       {item.description}
                     </p>
                   </div>

@@ -134,12 +134,12 @@ export default function SaproaImpersonarPage() {
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 8 }}>
             <Shield size={14} color={SAPROA_ACCENT} />
-            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Grupo → Empresa → Usuario</span>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Grupo → Empresa → Usuario</span>
           </div>
 
           <div style={{ padding: "8px", maxHeight: 520, overflowY: "auto" }}>
             {loading ? (
-              <p style={{ padding: "8px", fontSize: 12, color: "var(--text-muted)" }}>Cargando...</p>
+              <p style={{ padding: "8px", fontSize: "0.75rem", color: "var(--text-muted)" }}>Cargando...</p>
             ) : (
               <motion.div variants={staggerContainer} initial="hidden" animate="show">
                 {groups.map(group => {
@@ -158,10 +158,10 @@ export default function SaproaImpersonarPage() {
                           <ChevronRight size={11} color="var(--text-muted)" />
                         </motion.div>
                         <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-secondary)", textTransform: "uppercase", flex: 1 }}>
+                        <span style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-secondary)", textTransform: "uppercase", flex: 1 }}>
                           {group.short_name || group.name}
                         </span>
-                        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{gc.length}</span>
+                        <span style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>{gc.length}</span>
                       </div>
 
                       <AnimatePresence>
@@ -178,7 +178,7 @@ export default function SaproaImpersonarPage() {
                                     className="hover-subtle"
                                   >
                                     <span style={{ width: 7, height: 7, borderRadius: "50%", background: cdot, flexShrink: 0 }} />
-                                    <span style={{ fontSize: 12, fontWeight: isCoOpen ? 700 : 400, color: "var(--text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: isCoOpen ? 700 : 400, color: "var(--text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                       {company.short_name || company.name}
                                     </span>
                                     <motion.div animate={{ rotate: isCoOpen ? 90 : 0 }} transition={{ duration: 0.15 }}>
@@ -190,9 +190,9 @@ export default function SaproaImpersonarPage() {
                                     {isCoOpen && (
                                       <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.2 }} style={{ overflow: "hidden" }}>
                                         {loadingUsersByCompany[company.id] ? (
-                                          <div style={{ padding: "6px 8px 6px 40px", fontSize: 11, color: "var(--text-muted)" }}>Cargando...</div>
+                                          <div style={{ padding: "6px 8px 6px 40px", fontSize: "0.6875rem", color: "var(--text-muted)" }}>Cargando...</div>
                                         ) : (usersByCompany[company.id] ?? []).length === 0 ? (
-                                          <div style={{ padding: "6px 8px 6px 40px", fontSize: 11, color: "var(--text-muted)" }}>Sin usuarios</div>
+                                          <div style={{ padding: "6px 8px 6px 40px", fontSize: "0.6875rem", color: "var(--text-muted)" }}>Sin usuarios</div>
                                         ) : (
                                           (usersByCompany[company.id] ?? []).map(u => {
                                             const isSelected = impersonatedUserId === u.id;
@@ -203,12 +203,12 @@ export default function SaproaImpersonarPage() {
                                                 style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 38px", borderRadius: "var(--border-radius-md)", cursor: "pointer", borderLeft: isSelected ? `2px solid ${SAPROA_ACCENT}` : "2px solid transparent" }}
                                                 className="hover-subtle"
                                               >
-                                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: isSelected ? SAPROA_ACCENT : "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 9, fontWeight: 700, color: isSelected ? "#fff" : "var(--text-muted)", flexShrink: 0 }}>
+                                                <div style={{ width: 22, height: 22, borderRadius: "50%", background: isSelected ? SAPROA_ACCENT : "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5625rem", fontWeight: 700, color: isSelected ? "#fff" : "var(--text-muted)", flexShrink: 0 }}>
                                                   {initials(u.full_name || u.email)}
                                                 </div>
                                                 <div style={{ flex: 1, minWidth: 0 }}>
-                                                  <div style={{ fontSize: 11, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.full_name || u.email}</div>
-                                                  <div style={{ fontSize: 10, color: "var(--text-muted)" }}>{ROLE_LABEL[u.role] ?? u.role}</div>
+                                                  <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.full_name || u.email}</div>
+                                                  <div style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>{ROLE_LABEL[u.role] ?? u.role}</div>
                                                 </div>
                                               </div>
                                             );
@@ -238,10 +238,10 @@ export default function SaproaImpersonarPage() {
                         <ChevronRight size={11} color="var(--text-muted)" />
                       </motion.div>
                       <span style={{ width: 10, height: 10, borderRadius: "50%", background: "#6b7280", flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-muted)", textTransform: "uppercase", flex: 1 }}>
+                      <span style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-muted)", textTransform: "uppercase", flex: 1 }}>
                         Sin grupo
                       </span>
-                      <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{ungrouped.length}</span>
+                      <span style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>{ungrouped.length}</span>
                     </div>
                   </motion.div>
                 )}
@@ -256,18 +256,18 @@ export default function SaproaImpersonarPage() {
             <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                 <Eye size={18} color={SAPROA_ACCENT} />
-                <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>Vista simulada activa</span>
+                <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>Vista simulada activa</span>
               </div>
-              <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
+              <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 8 }}>
                 <strong>Empresa:</strong> {impersonatedCompanyName ?? "—"}
               </div>
               {impersonationMode === "user" && impersonatedUserEmail && (
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
+                <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 8 }}>
                   <strong>Usuario:</strong> {impersonatedUserEmail}
                 </div>
               )}
               {impersonationMode === "company" && (
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
+                <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 8 }}>
                   <strong>Modo:</strong> Vista completa de empresa
                 </div>
               )}
@@ -283,18 +283,18 @@ export default function SaproaImpersonarPage() {
             <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "24px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                 <Shield size={18} color={SAPROA_ACCENT} />
-                <span style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>¿Qué es la vista simulada?</span>
+                <span style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>¿Qué es la vista simulada?</span>
               </div>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
+              <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.6, margin: 0 }}>
                 La vista simulada te permite ver la plataforma exactamente como la ve una empresa o un usuario específico,
                 sin cambiar tu cuenta ni los datos reales.
               </p>
-              <ul style={{ marginTop: 12, paddingLeft: 18, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.8 }}>
+              <ul style={{ marginTop: 12, paddingLeft: 18, fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.8 }}>
                 <li>Haz click en un <strong>grupo</strong> para activar la vista consolidada multi-empresa.</li>
                 <li>Haz click en una <strong>empresa</strong> para ver su dashboard completo.</li>
                 <li>Haz click en un <strong>usuario</strong> para ver la plataforma con su rol específico.</li>
               </ul>
-              <p style={{ marginTop: 12, fontSize: 12, color: "var(--text-muted)", lineHeight: 1.5 }}>
+              <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
                 El banner "Vista simulada" aparecerá en la parte superior para recordarte que estás en modo de simulación.
                 Haz click en "Salir de vista simulada" para volver al Control Center.
               </p>

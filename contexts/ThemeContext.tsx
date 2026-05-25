@@ -164,7 +164,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (lastUid) {
       /* Leer font scale inmediatamente para evitar flash de tamaño */
       const storedScale = parseFloat(localStorage.getItem(fontScaleKey(lastUid)) ?? "1");
-      if ([0.875, 1, 1.125, 1.25].includes(storedScale)) {
+      if ([0.80, 1, 1.20, 1.40].includes(storedScale)) {
         setFontScaleState(storedScale);
         document.documentElement.style.setProperty('--font-scale', String(storedScale));
       }
@@ -370,7 +370,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
 
     /* font_scale: localStorage > BD > 1.0 */
-    const VALID_SCALES = [0.875, 1, 1.125, 1.25];
+    const VALID_SCALES = [0.80, 1, 1.20, 1.40];
     const localScaleRaw = parseFloat(localStorage.getItem(fontScaleKey(userId)) ?? "1");
     const localScale = VALID_SCALES.includes(localScaleRaw) ? localScaleRaw : null;
     const dbScale = data?.font_scale != null && VALID_SCALES.includes(data.font_scale as number) ? (data.font_scale as number) : null;
@@ -419,6 +419,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   function setFontScale(scale: number) {
     setFontScaleState(scale);
+    window.dispatchEvent(new CustomEvent('font-scale-change', { detail: scale }));
     if (user?.id) {
       localStorage.setItem(fontScaleKey(user.id), String(scale));
       void supabase.from("user_preferences").upsert(

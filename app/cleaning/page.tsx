@@ -937,7 +937,7 @@ export default function CleaningPage() {
             {overdueLogs.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                <div style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   {overdueLogs.length} limpieza{overdueLogs.length !== 1 ? "s" : ""} de días anteriores sin completar
                 </div>
               </div>
@@ -945,7 +945,7 @@ export default function CleaningPage() {
             {todayLogs.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
                 <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-                <div style={{ flex: 1, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                <div style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   {todayLogs.length} limpieza{todayLogs.length !== 1 ? "s" : ""} de hoy pendiente{todayLogs.length !== 1 ? "s" : ""}
                 </div>
               </div>
@@ -973,7 +973,7 @@ export default function CleaningPage() {
                 borderRadius: "var(--border-radius-xl)",
                 border: "none",
                 cursor: "pointer",
-                fontSize: 14,
+                fontSize: "0.875rem",
                 fontWeight: 500,
                 background: active ? "#6b21a8" : "transparent",
                 color: active ? "#fff" : "var(--text-secondary)",
@@ -986,11 +986,11 @@ export default function CleaningPage() {
         {tab === "week" && (
           <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8 }}>
             <button onClick={() => setWeekOffset((o) => o - 1)} style={navBtnStyle}><ChevronLeft size={16} /></button>
-            <span style={{ fontWeight: 600, fontSize: 14, color: "var(--text-primary)", minWidth: 120, textAlign: "center" }}>
+            <span style={{ fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)", minWidth: 120, textAlign: "center" }}>
               {formatWeekRange(weekMonday)}
             </span>
             <button onClick={() => setWeekOffset((o) => o + 1)} style={navBtnStyle}><ChevronRight size={16} /></button>
-            <button onClick={() => setWeekOffset(0)} style={{ padding: ".4rem .9rem", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 12, fontWeight: 500, cursor: "pointer" }}>
+            <button onClick={() => setWeekOffset(0)} style={{ padding: ".4rem .9rem", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 500, cursor: "pointer" }}>
               Hoy
             </button>
           </div>
@@ -1034,11 +1034,11 @@ export default function CleaningPage() {
               <CheckCircle2 size={24} color="#16A34A" />
               <div>
                 <div style={{ fontWeight: 700, color: "var(--metric-value-green)" }}>Completada</div>
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                   {selectedTaskLog.completed_at ? new Date(selectedTaskLog.completed_at).toLocaleString("es-MX") : "Sin fecha"}
                 </div>
                 {selectedTaskLog.notes && (
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{selectedTaskLog.notes}</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 4 }}>{selectedTaskLog.notes}</div>
                 )}
               </div>
             </div>
@@ -1059,11 +1059,11 @@ export default function CleaningPage() {
             {selectedTaskChecklist.length > 0 ? (
               <div style={{ marginBottom: 14 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                  <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px" }}>
+                  <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px" }}>
                     CHECKLIST
                   </div>
                   {isSaving && (
-                    <span style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                    <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontStyle: "italic" }}>
                       Guardando...
                     </span>
                   )}
@@ -1081,7 +1081,7 @@ export default function CleaningPage() {
                           padding: "6px 10px",
                           border: "1px solid var(--border-default)",
                           borderRadius: "var(--border-radius-md)",
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           cursor: canEdit ? "pointer" : "default",
                           background: isChecked ? "var(--metric-bg-green)" : "transparent",
                           color: isChecked ? "var(--metric-value-green)" : "var(--text-primary)",
@@ -1103,14 +1103,14 @@ export default function CleaningPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 14, padding: 12, border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 14, padding: 12, border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
                 Sin checklist configurado para este tipo.
               </div>
             )}
 
             {canEdit && (
               <div style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
+                <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>
                   Notas (opcional)
                 </label>
                 <textarea
@@ -1122,7 +1122,7 @@ export default function CleaningPage() {
                     width: "100%",
                     padding: 10,
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
                     color: "var(--text-primary)",
@@ -1136,7 +1136,7 @@ export default function CleaningPage() {
             )}
 
             {!canEdit && (
-              <div style={{ fontSize: 12, color: "var(--text-muted)", fontStyle: "italic", marginBottom: 14, padding: "10px 12px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontStyle: "italic", marginBottom: 14, padding: "10px 12px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)" }}>
                 Solo lectura — contacta al equipo de mantenimiento.
               </div>
             )}
@@ -1215,7 +1215,7 @@ export default function CleaningPage() {
                     width: "100%",
                     padding: 10,
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
                     color: "var(--text-primary)",
@@ -1235,7 +1235,7 @@ export default function CleaningPage() {
                     width: "100%",
                     padding: 10,
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     background: "var(--bg-input)",
                     border: "1px solid var(--border-default)",
                     color: "var(--text-primary)",
@@ -1291,9 +1291,9 @@ export default function CleaningPage() {
             { label: "Servicio premium", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
           ].map((s, i, arr) => (
             <div key={i} className="mod-stat-cell" style={{ flex: 1, padding: "14px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
-              <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
-              <div style={{ fontSize: 24, fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
-              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
+              <div style={{ fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
+              <div style={{ fontSize: "1.5rem", fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
             </div>
           ))}
         </div>
@@ -1327,7 +1327,7 @@ export default function CleaningPage() {
                   background: active ? l.bg : "#f3f4f6",
                   border: `1.5px solid ${active ? l.color : "#d1d5db"}`,
                   color: active ? "var(--text-primary)" : "#9ca3af",
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 500,
                   cursor: "pointer",
                 }}
@@ -1367,7 +1367,7 @@ export default function CleaningPage() {
                   gap: 6,
                 }}
               >
-                <div style={{ fontSize: 11, fontWeight: 700, color: isCurrentDay ? "var(--accent)" : "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: isCurrentDay ? "var(--accent)" : "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   {DAY_SHORT[dayOfWeek]} {date.getDate()}
                 </div>
                 {visibleTasks.length === 0 ? null : visibleTasks.map((task) => {
@@ -1398,10 +1398,10 @@ export default function CleaningPage() {
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 4 }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontWeight: 600, fontSize: 12, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontWeight: 600, fontSize: "0.75rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {building?.name ?? (unit ? (unit.display_code || unit.unit_number) : visuals.label)}
                           </div>
-                          <div style={{ fontSize: 11, color: done ? "var(--text-muted)" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: "0.6875rem", color: done ? "var(--text-muted)" : "var(--text-secondary)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {task.source === "unit" && task.startTime
                               ? `${unit ? (unit.display_code || unit.unit_number) : ""} · ${formatTimeAmPm(task.startTime)}`
                               : task.timeBlock
@@ -1465,7 +1465,7 @@ export default function CleaningPage() {
         <div style={{ marginTop: 20 }}>
           <SectionCard title="Cumplimiento por edificio — esta semana" icon={<Building2 size={18} />}>
             {byBuildingStats.length === 0 ? (
-              <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>No hay tareas programadas esta semana.</div>
+              <div style={{ padding: 16, color: "var(--text-muted)", fontSize: "0.8125rem" }}>No hay tareas programadas esta semana.</div>
             ) : (
               <div>
                 {byBuildingStats.map((b) => {
@@ -1474,13 +1474,13 @@ export default function CleaningPage() {
                   return (
                     <div key={b.id} style={{ marginBottom: 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                        <span style={{ fontWeight: 600, fontSize: 14 }}>{b.name}</span>
-                        <span style={{ fontWeight: 700, fontSize: 14, color }}>{pct}%</span>
+                        <span style={{ fontWeight: 600, fontSize: "0.875rem" }}>{b.name}</span>
+                        <span style={{ fontWeight: 700, fontSize: "0.875rem", color }}>{pct}%</span>
                       </div>
                       <div style={{ background: "var(--border-default)", borderRadius: 99, height: 8 }}>
                         <div style={{ width: `${pct}%`, background: color, borderRadius: 99, height: 8, transition: "width 0.4s" }} />
                       </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6875rem", color: "var(--text-secondary)", marginTop: 4 }}>
                         <span>{b.completed} completadas</span>
                         <span>{b.total - b.completed} pendientes</span>
                       </div>
@@ -1499,9 +1499,9 @@ export default function CleaningPage() {
     return (
       <SectionCard title={`Cumplimiento por edificio · ${formatWeekRange(weekMonday)}`} icon={<Building2 size={18} />}>
         {byBuildingStats.length === 0 ? (
-          <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>No hay tareas programadas esta semana.</div>
+          <div style={{ padding: 16, color: "var(--text-muted)", fontSize: "0.8125rem" }}>No hay tareas programadas esta semana.</div>
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(17.5rem, 1fr))", gap: 12 }}>
             {byBuildingStats.map((b) => {
               const color = b.rate >= 80 ? "#10B981" : b.rate >= 60 ? "#F59E0B" : "#EF4444";
               const buildingData = buildingById.get(b.id);
@@ -1511,20 +1511,20 @@ export default function CleaningPage() {
                   {company && (
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                       <span style={{ width: 7, height: 7, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
                     </div>
                   )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div>
-                      <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{b.name}</div>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>{b.completed} / {b.total} tareas</div>
+                      <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>{b.name}</div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{b.completed} / {b.total} tareas</div>
                     </div>
-                    <div style={{ fontSize: 20, fontWeight: 800, color }}>{b.rate.toFixed(0)}%</div>
+                    <div style={{ fontSize: "1.25rem", fontWeight: 800, color }}>{b.rate.toFixed(0)}%</div>
                   </div>
                   <div style={{ height: 8, background: "var(--divider)", borderRadius: "var(--border-radius-sm)", overflow: "hidden" }}>
                     <div style={{ width: `${b.rate}%`, height: "100%", background: color, transition: "width .4s" }} />
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6 }}>
                     <span><CheckCircle2 size={10} style={{ verticalAlign: "middle" }} /> {b.completed} completadas</span>
                     <span><Clock3 size={10} style={{ verticalAlign: "middle" }} /> {b.pending} pendientes</span>
                   </div>
@@ -1563,10 +1563,10 @@ export default function CleaningPage() {
 
         <SectionCard title="Últimos 30 días" icon={<Clock3 size={18} />} style={{ marginTop: 16 }}>
           {historyRows.length === 0 ? (
-            <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>Sin registros en el periodo.</div>
+            <div style={{ padding: 16, color: "var(--text-muted)", fontSize: "0.8125rem" }}>Sin registros en el periodo.</div>
           ) : (
             <div style={{ overflowX: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
                     <th style={thStyle}>Fecha</th>
@@ -1586,7 +1586,7 @@ export default function CleaningPage() {
                       <tr key={r.id} style={{ borderBottom: "1px solid var(--border-subtle)" }}>
                         <td style={tdStyle}>{r.scheduled_date}</td>
                         <td style={tdStyle}>
-                          <span style={{ background: visuals.bg, color: visuals.text, borderRadius: "var(--border-radius-sm)", padding: "2px 6px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${visuals.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <span style={{ background: visuals.bg, color: visuals.text, borderRadius: "var(--border-radius-sm)", padding: "2px 6px", fontSize: "0.6875rem", fontWeight: 500, borderLeft: `3px solid ${visuals.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
                             {CLEANING_TYPE_ICONS[r.cleaning_type] ?? <Sparkles size={10} />} {visuals.label}
                           </span>
                         </td>
@@ -1634,11 +1634,11 @@ export default function CleaningPage() {
                     const v = CLEANING_TYPE_COLORS[s.cleaning_type] ?? DEFAULT_CLEANING_VISUALS;
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
-                        <span style={{ background: v.bg, color: v.text, borderRadius: "var(--border-radius-sm)", padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ background: v.bg, color: v.text, borderRadius: "var(--border-radius-sm)", padding: "3px 8px", fontSize: "0.6875rem", fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
                           {CLEANING_TYPE_ICONS[s.cleaning_type] ?? <Sparkles size={10} />} {v.label}
                         </span>
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                           {s.time_block ? TIME_BLOCK_LABEL[s.time_block] : "—"}
                         </span>
                         <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
@@ -1657,11 +1657,11 @@ export default function CleaningPage() {
                     const u = unitById.get(s.unit_id);
                     return (
                       <div key={s.id} style={scheduleRowStyle}>
-                        <span style={{ background: v.bg, color: v.text, borderRadius: "var(--border-radius-sm)", padding: "3px 8px", fontSize: 11, fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ background: v.bg, color: v.text, borderRadius: "var(--border-radius-sm)", padding: "3px 8px", fontSize: "0.6875rem", fontWeight: 500, borderLeft: `3px solid ${v.border}`, display: "inline-flex", alignItems: "center", gap: 4 }}>
                           {CLEANING_TYPE_ICONS.unit_interior} {u?.display_code || u?.unit_number || "Unidad"}
                         </span>
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{DAY_LONG[s.day_of_week]}</span>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                           {s.start_time || "—"} · {s.duration_hours ?? 0}h
                         </span>
                         <div style={{ display: "flex", gap: 4, justifyContent: "flex-end" }}>
@@ -1686,7 +1686,7 @@ export default function CleaningPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {buildingsWithoutSchedules.map((b) => (
                 <div key={b.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 12px", border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{b.name}</span>
+                  <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{b.name}</span>
                   <UiButton variant="secondary" icon={<Plus size={12} />} onClick={() => openNewScheduleForBuilding(b.id)}>
                     Agregar horario
                   </UiButton>
@@ -1718,7 +1718,7 @@ const navBtnStyle: React.CSSProperties = {
 const thStyle: React.CSSProperties = {
   textAlign: "left",
   padding: "10px 12px",
-  fontSize: 11,
+  fontSize: "0.6875rem",
   fontWeight: 600,
   color: "var(--text-muted)",
   textTransform: "uppercase",
@@ -1727,13 +1727,13 @@ const thStyle: React.CSSProperties = {
 
 const tdStyle: React.CSSProperties = {
   padding: "10px 12px",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   color: "var(--text-primary)",
 };
 
 const filterLabelStyle: React.CSSProperties = {
   display: "block",
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 600,
   color: "var(--text-secondary)",
   marginBottom: 6,
@@ -1773,9 +1773,9 @@ function Field({
 }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{label}</label>
+      <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>{label}</label>
       {children}
-      {error && <span style={{ fontSize: 11, color: "#ef4444" }}>{error}</span>}
+      {error && <span style={{ fontSize: "0.6875rem", color: "#ef4444" }}>{error}</span>}
     </div>
   );
 }

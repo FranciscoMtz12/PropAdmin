@@ -301,7 +301,7 @@ export default function CleaningUnitsPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))",
               gap: 16,
             }}
           >
@@ -332,7 +332,7 @@ export default function CleaningUnitsPage() {
               borderRadius: "var(--border-radius-lg)",
               background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
               color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
             }}
           >
@@ -419,7 +419,7 @@ export default function CleaningUnitsPage() {
                               gap: 8,
                               padding: "6px 10px",
                               borderRadius: 999,
-                              fontSize: 13,
+                              fontSize: "0.8125rem",
                               fontWeight: 600,
                               background: badgeBackground,
                               color: badgeColor,
@@ -464,7 +464,7 @@ export default function CleaningUnitsPage() {
                               <div style={{ position: "absolute", right: 0, top: "calc(100% + 6px)", minWidth: 180, borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-card)", boxShadow: "var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12))", padding: 6, display: "grid", gap: 4, zIndex: 30 }}>
                                 <a
                                   href={`/buildings/${buildingId}/cleaning/units/${row.id}`}
-                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600 }}
+                                  style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", textDecoration: "none", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600 }}
                                 >
                                   <Settings2 size={14} />
                                   Configurar
@@ -477,7 +477,7 @@ export default function CleaningUnitsPage() {
                                       void toggleScheduleStatus(row.scheduleId as string, row.cleaningState !== "active");
                                     }}
                                     disabled={isToggling}
-                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
                                   >
                                     {row.cleaningState === "active" ? <PauseCircle size={14} /> : <PlayCircle size={14} />}
                                     {isToggling ? "Guardando..." : row.cleaningState === "active" ? "Desactivar" : "Activar"}
@@ -501,7 +501,7 @@ export default function CleaningUnitsPage() {
 }
 
 const labelTinyStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
@@ -509,7 +509,7 @@ const labelTinyStyle: CSSProperties = {
 };
 
 const valueStrongStyle: CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -517,7 +517,7 @@ const valueStrongStyle: CSSProperties = {
 const tableHeadStyle: CSSProperties = {
   textAlign: "left",
   padding: "12px 14px",
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
@@ -528,7 +528,7 @@ const tableHeadStyle: CSSProperties = {
 
 const tableCellStyle: CSSProperties = {
   padding: "14px",
-  fontSize: 14,
+  fontSize: "0.875rem",
   color: "var(--text-secondary)",
   verticalAlign: "middle",
 };

@@ -32,7 +32,7 @@ const ENTREGA_OPTIONS = [
   { value: "acabada",      label: "Entrega acabada",          desc: "Lista para instalar mobiliario" },
 ] as const;
 
-const errorStyle: React.CSSProperties = { color: "#EF4444", fontSize: 12, marginTop: 4 };
+const errorStyle: React.CSSProperties = { color: "#EF4444", fontSize: "0.75rem", marginTop: 4 };
 
 export default function CommercialTypologyModal({ open, buildingId, companyId, onClose, onCreated }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);
@@ -113,11 +113,11 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                 background: step > i + 1 ? "#1D9E75" : step === i + 1 ? "#0369a1" : "var(--border-default)",
                 color: step >= i + 1 ? "#fff" : "var(--text-muted)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700,
+                fontSize: "0.6875rem", fontWeight: 700,
               }}>
                 {step > i + 1 ? "✓" : i + 1}
               </div>
-              <span style={{ fontSize: 9, color: step >= i + 1 ? "#0369a1" : "var(--text-muted)", fontWeight: step === i + 1 ? 700 : 400 }}>
+              <span style={{ fontSize: "0.5625rem", color: step >= i + 1 ? "#0369a1" : "var(--text-muted)", fontWeight: step === i + 1 ? 700 : 400 }}>
                 {label}
               </span>
             </div>
@@ -163,8 +163,8 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                       {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0369a1" }} />}
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{opt.label}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-muted)" }}>{opt.desc}</p>
+                      <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{opt.label}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>{opt.desc}</p>
                     </div>
                   </button>
                 );
@@ -182,7 +182,7 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
       {/* Step 2: Instalaciones */}
       {step === 2 && (
         <>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
             Selecciona las instalaciones disponibles en este tipo de local.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 20 }}>
@@ -202,9 +202,9 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                   }}
                 >
                   <div style={{ width: 16, height: 16, borderRadius: "var(--border-radius-sm)", border: `2px solid ${sel ? "#0369a1" : "var(--border-default)"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: sel ? "#0369a1" : "transparent" }}>
-                    {sel && <span style={{ color: "#fff", fontSize: 10, lineHeight: 1 }}>✓</span>}
+                    {sel && <span style={{ color: "#fff", fontSize: "0.625rem", lineHeight: 1 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{label}</span>
+                  <span style={{ fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{label}</span>
                 </button>
               );
             })}
@@ -220,7 +220,7 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
       {/* Step 3: Superficie */}
       {step === 3 && (
         <>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
             Superficie de referencia para esta tipología. Puede dejarse vacío.
           </p>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 20 }}>
@@ -233,12 +233,12 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
           </div>
 
           {/* Resumen */}
-          <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: 12, color: "var(--text-secondary)" }}>
-            <strong style={{ color: "var(--text-primary)", fontSize: 14 }}>{name}</strong>
-            {entrega && <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a115", color: "#0369a1", fontSize: 11, fontWeight: 600 }}>{ENTREGA_OPTIONS.find(o => o.value === entrega)?.label}</span>}
+          <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+            <strong style={{ color: "var(--text-primary)", fontSize: "0.875rem" }}>{name}</strong>
+            {entrega && <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a115", color: "#0369a1", fontSize: "0.6875rem", fontWeight: 600 }}>{ENTREGA_OPTIONS.find(o => o.value === entrega)?.label}</span>}
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
               {INSTALACIONES.filter(i => flags[i.key]).map(i => (
-                <span key={i.key} style={{ padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a112", color: "#0369a1", fontSize: 11 }}>{i.label}</span>
+                <span key={i.key} style={{ padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a112", color: "#0369a1", fontSize: "0.6875rem" }}>{i.label}</span>
               ))}
             </div>
           </div>

@@ -34,7 +34,7 @@ export default function GroupBanner() {
     >
       {/* Nombre del grupo */}
       <span style={{
-        fontSize: 13, fontWeight: 700, color: GROUP_COLOR, whiteSpace: "nowrap",
+        fontSize: "0.8125rem", fontWeight: 700, color: GROUP_COLOR, whiteSpace: "nowrap",
       }}>
         {impersonatedGroupName
           ? (impersonatedGroupName.startsWith("Grupo") ? impersonatedGroupName : `Grupo ${impersonatedGroupName}`)
@@ -82,7 +82,7 @@ export default function GroupBanner() {
                 />
               ) : (
                 <span style={{
-                  fontSize: 9, fontWeight: 700, color: "#fff", userSelect: "none", lineHeight: 1,
+                  fontSize: "0.5625rem", fontWeight: 700, color: "#fff", userSelect: "none", lineHeight: 1,
                 }}>
                   {abbr}
                 </span>

@@ -142,7 +142,7 @@ const ASSET_DEFAULTS: AssetFormValues = {
 
 const errorTextStyle: CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };

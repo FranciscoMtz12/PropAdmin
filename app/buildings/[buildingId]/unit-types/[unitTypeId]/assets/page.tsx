@@ -81,7 +81,7 @@ const TEMPLATE_ASSET_DEFAULTS: TemplateAssetFormValues = {
 
 const errorTextStyle: React.CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -488,7 +488,7 @@ export default function UnitTypeAssetsPage() {
                             color: "var(--text-primary)",
                             borderRadius: "var(--border-radius-md)",
                             padding: "9px 10px",
-                            fontSize: 13,
+                            fontSize: "0.8125rem",
                             fontWeight: 600,
                             cursor: "pointer",
                           }}
@@ -510,7 +510,7 @@ export default function UnitTypeAssetsPage() {
                             color: "var(--badge-text-red)",
                             borderRadius: "var(--border-radius-md)",
                             padding: "9px 10px",
-                            fontSize: 13,
+                            fontSize: "0.8125rem",
                             fontWeight: 600,
                             cursor: "pointer",
                           }}
@@ -542,7 +542,7 @@ export default function UnitTypeAssetsPage() {
               background: "var(--metric-bg-amber)",
               border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               lineHeight: 1.5,
             }}
@@ -559,7 +559,7 @@ export default function UnitTypeAssetsPage() {
                 background: "var(--badge-bg-red)",
                 border: "1px solid var(--metric-border-red)",
                 color: "var(--badge-text-red)",
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 fontWeight: 600,
                 lineHeight: 1.5,
               }}

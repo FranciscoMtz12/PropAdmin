@@ -132,7 +132,7 @@ export default function BuildingUtilitySubMetersModal({
           borderRadius: "var(--border-radius-lg)",
           background: "rgba(245,158,11,0.1)",
           color: "var(--text-primary)",
-          fontSize: 13,
+          fontSize: "0.8125rem",
           fontWeight: 600,
           lineHeight: 1.5,
           marginBottom: 20,
@@ -175,7 +175,7 @@ export default function BuildingUtilitySubMetersModal({
                   gap: 10,
                   cursor: "pointer",
                   fontWeight: 600,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   color: "var(--text-primary)",
                 }}
               >
@@ -201,7 +201,7 @@ export default function BuildingUtilitySubMetersModal({
                   <div style={{ display: "grid", gap: 6 }}>
                     <label
                       style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 600,
                         color: "var(--text-secondary)",
                       }}
@@ -220,7 +220,7 @@ export default function BuildingUtilitySubMetersModal({
                   <div style={{ display: "grid", gap: 6 }}>
                     <label
                       style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 600,
                         color: "var(--text-secondary)",
                       }}
@@ -244,7 +244,7 @@ export default function BuildingUtilitySubMetersModal({
         })}
 
         {sortedUnits.length === 0 && (
-          <p style={{ color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: "24px 0" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", textAlign: "center", padding: "24px 0" }}>
             No hay unidades en este edificio.
           </p>
         )}

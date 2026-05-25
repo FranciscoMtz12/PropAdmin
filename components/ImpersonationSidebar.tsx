@@ -49,19 +49,19 @@ function UserRow({
         width: 26, height: 26, borderRadius: "50%",
         background: selected ? SAPROA_COLOR : "rgba(255,255,255,0.15)",
         display: "flex", alignItems: "center", justifyContent: "center",
-        fontSize: 10, fontWeight: 700, color: "#fff", flexShrink: 0,
+        fontSize: "0.625rem", fontWeight: 700, color: "#fff", flexShrink: 0,
         transition: "background 0.12s",
       }}>
         {avatarText}
       </div>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
-          fontSize: 12, fontWeight: selected ? 700 : 500, color: "#fff",
+          fontSize: "0.75rem", fontWeight: selected ? 700 : 500, color: "#fff",
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>
           {appUser.full_name || appUser.email}
         </div>
-        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
+        <div style={{ fontSize: "0.625rem", color: "rgba(255,255,255,0.45)", marginTop: 1 }}>
           {ROLE_LABEL[appUser.role] ?? appUser.role}
         </div>
       </div>
@@ -101,7 +101,7 @@ function CompanyRow({
       >
         <div style={{ width: 8, height: 8, borderRadius: "50%", background: dot, flexShrink: 0 }} />
         <span style={{
-          fontSize: 12, fontWeight: isOpen ? 700 : 400,
+          fontSize: "0.75rem", fontWeight: isOpen ? 700 : 400,
           color: isOpen ? "#fff" : "rgba(255,255,255,0.82)",
           flex: 1, minWidth: 0,
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -127,11 +127,11 @@ function CompanyRow({
             style={{ overflow: "hidden" }}
           >
             {loadingUsers ? (
-              <div style={{ padding: "6px 8px 6px 40px", color: "rgba(255,255,255,0.38)", fontSize: 11 }}>
+              <div style={{ padding: "6px 8px 6px 40px", color: "rgba(255,255,255,0.38)", fontSize: "0.6875rem" }}>
                 Cargando...
               </div>
             ) : users.length === 0 ? (
-              <div style={{ padding: "6px 8px 6px 40px", color: "rgba(255,255,255,0.30)", fontSize: 11 }}>
+              <div style={{ padding: "6px 8px 6px 40px", color: "rgba(255,255,255,0.30)", fontSize: "0.6875rem" }}>
                 Sin usuarios
               </div>
             ) : (
@@ -197,7 +197,7 @@ function GroupRow({
           background: groupColor, flexShrink: 0,
         }} />
         <span style={{
-          fontSize: 11, fontWeight: 700, letterSpacing: "0.04em",
+          fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em",
           color: isOpen ? "rgba(255,255,255,0.90)" : "rgba(255,255,255,0.55)",
           textTransform: "uppercase" as const,
           flex: 1, minWidth: 0,
@@ -205,7 +205,7 @@ function GroupRow({
         }}>
           {group.short_name || group.name}
         </span>
-        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.30)", flexShrink: 0 }}>
+        <span style={{ fontSize: "0.625rem", color: "rgba(255,255,255,0.30)", flexShrink: 0 }}>
           {companies.length}
         </span>
       </motion.div>
@@ -422,7 +422,7 @@ export default function ImpersonationSidebar() {
         flexShrink: 0,
       }}>
         <Shield size={15} color={SAPROA_COLOR} />
-        <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
+        <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#fff", letterSpacing: "-0.01em" }}>
           Ver como empresa
         </span>
       </div>
@@ -431,7 +431,7 @@ export default function ImpersonationSidebar() {
       {/* Árbol grupo → empresa → usuario */}
       <div style={{ flex: 1, overflowY: "auto", padding: "8px 8px 4px" }}>
         {loading ? (
-          <div style={{ padding: "8px 8px", color: "rgba(255,255,255,0.40)", fontSize: 12 }}>
+          <div style={{ padding: "8px 8px", color: "rgba(255,255,255,0.40)", fontSize: "0.75rem" }}>
             Cargando...
           </div>
         ) : (
@@ -484,7 +484,7 @@ export default function ImpersonationSidebar() {
             borderRadius: "var(--border-radius-md)",
             border: "none", background: "transparent",
             color: "rgba(255,255,255,0.45)",
-            fontSize: 12, fontWeight: 600,
+            fontSize: "0.75rem", fontWeight: 600,
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
           }}
@@ -515,11 +515,11 @@ export default function ImpersonationSidebar() {
             <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
               <Eye size={13} color={SAPROA_COLOR} style={{ flexShrink: 0, marginTop: 2 }} />
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: SAPROA_COLOR }}>
+                <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: SAPROA_COLOR }}>
                   Vista simulada
                 </div>
                 <div style={{
-                  fontSize: 11,
+                  fontSize: "0.6875rem",
                   color: "rgba(255,255,255,0.58)",
                   marginTop: 2,
                   overflow: "hidden",
@@ -541,7 +541,7 @@ export default function ImpersonationSidebar() {
                 border: `1px solid rgba(139,34,82,0.45)`,
                 background: "transparent",
                 color: SAPROA_COLOR,
-                fontSize: 12, fontWeight: 700,
+                fontSize: "0.75rem", fontWeight: 700,
                 cursor: "pointer",
                 display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
               }}

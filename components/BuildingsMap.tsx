@@ -109,7 +109,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
                   : "1px solid var(--border-default)",
                 background: isActive ? "#8B2252" : "transparent",
                 color: isActive ? "#FFFFFF" : "var(--text-primary)",
-                fontSize: 12,
+                fontSize: "0.75rem",
                 fontWeight: 600,
                 cursor: "pointer",
                 transition: "all 0.15s",
@@ -137,7 +137,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
                 : "1px solid var(--border-default)",
               background: editMode ? "#10B981" : "transparent",
               color: editMode ? "#FFFFFF" : "var(--text-primary)",
-              fontSize: 12,
+              fontSize: "0.75rem",
               fontWeight: 600,
               cursor: "pointer",
               transition: "all 0.15s",
@@ -159,7 +159,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
             background: "var(--metric-bg-amber, #FEF3C7)",
             border: "1px solid #FDE68A",
             color: "var(--badge-text-amber, #92400E)",
-            fontSize: 13,
+            fontSize: "0.8125rem",
             fontWeight: 600,
           }}
         >
@@ -200,18 +200,18 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
         >
           <Popup>
             <div style={{ minWidth: 180 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 700, marginBottom: 4 }}>
                 {b.name}
               </div>
               {b.address ? (
-                <div style={{ fontSize: 12, color: "#6B7280", marginBottom: 8 }}>
+                <div style={{ fontSize: "0.75rem", color: "#6B7280", marginBottom: 8 }}>
                   {b.address}
                 </div>
               ) : null}
               <Link
                 href={`/buildings/${b.id}`}
                 style={{
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 600,
                   color: "#4338CA",
                   textDecoration: "none",

@@ -47,13 +47,13 @@ type ReportedPayment = {
 type ReviewTab = "pending_review" | "approved" | "rejected";
 
 const sectionTextStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   lineHeight: 1.6,
   color: "var(--text-secondary)",
 };
 
 const strongValueStyle: CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -64,7 +64,7 @@ const badgeStyleBase: CSSProperties = {
   justifyContent: "center",
   padding: "6px 10px",
   borderRadius: 999,
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 800,
 };
 
@@ -505,7 +505,7 @@ export default function ReportedPaymentsPage() {
             <div>
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 700,
                   color: "var(--text-primary)",
                 }}
@@ -537,7 +537,7 @@ export default function ReportedPaymentsPage() {
                     color: isActive ? "var(--icon-color-blue)" : "var(--text-secondary)",
                     borderRadius: "var(--border-radius-lg)",
                     padding: "10px 14px",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 800,
                     cursor: "pointer",
                   }}
@@ -578,7 +578,7 @@ export default function ReportedPaymentsPage() {
             <div>
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 700,
                   color: "var(--text-primary)",
                 }}
@@ -642,7 +642,7 @@ export default function ReportedPaymentsPage() {
                     style={{
                       display: "grid",
                       gridTemplateColumns:
-                        "repeat(auto-fit, minmax(180px, 1fr))",
+                        "repeat(auto-fit, minmax(11.25rem, 1fr))",
                       gap: 12,
                     }}
                   >
@@ -672,7 +672,7 @@ export default function ReportedPaymentsPage() {
                     >
                       <div
                         style={{
-                          fontSize: 14,
+                          fontSize: "0.875rem",
                           fontWeight: 700,
                           color: "var(--text-primary)",
                           marginBottom: 4,
@@ -696,7 +696,7 @@ export default function ReportedPaymentsPage() {
                     >
                       <div
                         style={{
-                          fontSize: 14,
+                          fontSize: "0.875rem",
                           fontWeight: 700,
                           color: "var(--badge-text-red)",
                           marginBottom: 4,
@@ -732,7 +732,7 @@ export default function ReportedPaymentsPage() {
                           display: "inline-flex",
                           alignItems: "center",
                           gap: 6,
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           color: "var(--text-secondary)",
                         }}
                       >
@@ -748,7 +748,7 @@ export default function ReportedPaymentsPage() {
                         borderRadius: "var(--border-radius-lg)",
                         padding: 12,
                         color: "var(--text-secondary)",
-                        fontSize: 14,
+                        fontSize: "0.875rem",
                         fontWeight: 600,
                       }}
                     >
@@ -848,7 +848,7 @@ export default function ReportedPaymentsPage() {
             <label style={{ display: "grid", gap: 8 }}>
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 800,
                   color: "var(--text-secondary)",
                   textTransform: "uppercase",
@@ -892,7 +892,7 @@ export default function ReportedPaymentsPage() {
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                   color: "var(--text-primary)",
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 700,
                   cursor: "pointer",
                 }}

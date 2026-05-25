@@ -77,7 +77,7 @@ type UnitTypeAssetCountRow = {
 const dropdownTriggerStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)",
-  color: "var(--text-primary)", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  color: "var(--text-primary)", padding: "8px 10px", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
 };
 
 const dropdownMenuStyle: React.CSSProperties = {
@@ -89,18 +89,18 @@ const dropdownMenuStyle: React.CSSProperties = {
 const dropdownItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
   border: "none", background: "transparent", color: "var(--text-primary)",
-  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
 };
 
 const dropdownDeleteItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
   border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
-  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
 };
 
 const errorTextStyle: React.CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -543,7 +543,7 @@ export default function BuildingUnitTypesPage() {
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "10px", marginBottom: "14px" }}>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Equipamiento base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
@@ -605,11 +605,11 @@ export default function BuildingUnitTypesPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: "0.875rem", fontWeight: 600, lineHeight: 1.5 }}>
             ¿Eliminar la tipología <strong>{unitTypeToDelete?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>

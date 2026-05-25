@@ -143,7 +143,7 @@ export default function LoginPage() {
           color: "rgba(255,255,255,.7)",
           borderRadius: "var(--border-radius-xl)",
           padding: ".4rem 1rem",
-          fontSize: 12,
+          fontSize: "0.75rem",
           cursor: "pointer",
           zIndex: 2,
         }}
@@ -177,7 +177,7 @@ export default function LoginPage() {
               style={{ objectFit: "contain" }}
             />
           </div>
-          <div style={{ fontSize: 20, fontWeight: 500, color: "#fff" }}>
+          <div style={{ fontSize: "1.25rem", fontWeight: 500, color: "#fff" }}>
             Iniciar sesión
           </div>
         </div>
@@ -190,7 +190,7 @@ export default function LoginPage() {
           <div>
             <label
               style={{
-                fontSize: 12,
+                fontSize: "0.75rem",
                 color: "rgba(255,255,255,.5)",
                 display: "block",
                 marginBottom: 6,
@@ -210,12 +210,12 @@ export default function LoginPage() {
                 border: "1px solid rgba(255,255,255,.15)",
                 borderRadius: "var(--border-radius-md)",
                 color: "#fff",
-                fontSize: 14,
+                fontSize: "0.875rem",
                 outline: "none",
               }}
             />
             {errors.email && (
-              <p style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>
+              <p style={{ fontSize: "0.6875rem", color: "#f87171", marginTop: 4 }}>
                 {errors.email.message}
               </p>
             )}
@@ -224,7 +224,7 @@ export default function LoginPage() {
           <div>
             <label
               style={{
-                fontSize: 12,
+                fontSize: "0.75rem",
                 color: "rgba(255,255,255,.5)",
                 display: "block",
                 marginBottom: 6,
@@ -244,12 +244,12 @@ export default function LoginPage() {
                 border: "1px solid rgba(255,255,255,.15)",
                 borderRadius: "var(--border-radius-md)",
                 color: "#fff",
-                fontSize: 14,
+                fontSize: "0.875rem",
                 outline: "none",
               }}
             />
             {errors.password && (
-              <p style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>
+              <p style={{ fontSize: "0.6875rem", color: "#f87171", marginTop: 4 }}>
                 {errors.password.message}
               </p>
             )}
@@ -262,7 +262,7 @@ export default function LoginPage() {
                 border: "1px solid rgba(239,68,68,.3)",
                 borderRadius: "var(--border-radius-md)",
                 padding: ".6rem .9rem",
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 color: "#fca5a5",
               }}
             >
@@ -280,7 +280,7 @@ export default function LoginPage() {
               border: "none",
               borderRadius: "var(--border-radius-md)",
               color: "#fff",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 500,
               cursor: isSubmitting ? "not-allowed" : "pointer",
               transition: "background .2s",
@@ -304,7 +304,7 @@ export default function LoginPage() {
           position: "relative",
           zIndex: 2,
           marginTop: "1.5rem",
-          fontSize: 11,
+          fontSize: "0.6875rem",
           color: "rgba(255,255,255,.25)",
           letterSpacing: 1,
         }}

@@ -211,7 +211,7 @@ export default function DashboardAdministracionPage() {
       />
 
       {/* ── Fila 1: Métricas ──────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.12rem, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard
           label="Ocupación"
           value={pageLoading ? "…" : `${occupiedUnits}/${totalUnits} depas`}
@@ -243,12 +243,12 @@ export default function DashboardAdministracionPage() {
       </div>
 
       {/* ── Fila 2: Dos columnas ──────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(21.25rem, 1fr))", gap: 24 }}>
 
         {/* Contratos por vencer */}
         <SectionCard title="Contratos por vencer" subtitle="Próximos 60 días">
           {pageLoading ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : expiringLeases.length === 0 ? (
             <AppEmptyState
               title="Sin contratos por vencer"
@@ -264,10 +264,10 @@ export default function DashboardAdministracionPage() {
                   header: "Inquilino",
                   render: (row) => (
                     <div>
-                      <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <span style={{ fontWeight: 600, fontSize: "0.8125rem", display: "block", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {row.tenantName}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {row.buildingName} · {row.unitLabel}
                       </span>
                     </div>
@@ -284,7 +284,7 @@ export default function DashboardAdministracionPage() {
                     return (
                       <div style={{ textAlign: "right" }}>
                         <AppBadge variant={v}>{l}</AppBadge>
-                        <span style={{ display: "block", fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                        <span style={{ display: "block", fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 2 }}>
                           {row.daysLeft} días
                         </span>
                       </div>
@@ -299,7 +299,7 @@ export default function DashboardAdministracionPage() {
         {/* Cobranza por edificio */}
         <SectionCard title="Cobranza por edificio" subtitle="Mes actual — menor % primero">
           {pageLoading ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : buildingColl.length === 0 ? (
             <AppEmptyState
               title="Sin datos de cobranza"
@@ -310,8 +310,8 @@ export default function DashboardAdministracionPage() {
               {buildingColl.map(b => (
                 <div key={b.id}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                       {formatMXN(b.collected)}{" "}
                       <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>/ {formatMXN(b.expected)}</span>
                     </span>
@@ -327,7 +327,7 @@ export default function DashboardAdministracionPage() {
                       }}
                     />
                   </div>
-                  <span style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3, display: "block" }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3, display: "block" }}>
                     {b.pct}% cobrado
                   </span>
                 </div>

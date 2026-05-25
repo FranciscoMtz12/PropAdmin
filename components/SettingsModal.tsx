@@ -179,7 +179,7 @@ export default function SettingsModal({
           <h2
             style={{
               margin: 0,
-              fontSize: 18,
+              fontSize: "1.125rem",
               fontWeight: 800,
               color: "var(--text-primary)",
             }}
@@ -210,7 +210,7 @@ export default function SettingsModal({
 
         {/* Contenido */}
         {loadingPrefs ? (
-          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>
             Cargando preferencias...
           </p>
         ) : (
@@ -220,7 +220,7 @@ export default function SettingsModal({
             <section>
               <p
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   color: "var(--text-muted)",
                   textTransform: "uppercase",
@@ -254,7 +254,7 @@ export default function SettingsModal({
             <section>
               <p
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   color: "var(--text-muted)",
                   textTransform: "uppercase",
@@ -334,10 +334,10 @@ function ToggleRow({
           {icon}
         </div>
         <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
+          <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
             {label}
           </p>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>
             {description}
           </p>
         </div>
@@ -419,11 +419,11 @@ function InfoRow({
         >
           {icon}
         </div>
-        <span style={{ fontSize: 14, color: "var(--text-muted)" }}>{label}</span>
+        <span style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>{label}</span>
       </div>
       <span
         style={{
-          fontSize: 14,
+          fontSize: "0.875rem",
           fontWeight: 600,
           color: "var(--text-primary)",
           textAlign: "right",

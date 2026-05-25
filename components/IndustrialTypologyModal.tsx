@@ -22,7 +22,7 @@ const ACCESO_OPTIONS = [
   { value: "multiple", label: "Múltiple",           desc: "Combinación de accesos" },
 ] as const;
 
-const errorStyle: React.CSSProperties = { color: "#EF4444", fontSize: 12, marginTop: 4 };
+const errorStyle: React.CSSProperties = { color: "#EF4444", fontSize: "0.75rem", marginTop: 4 };
 const amber = "#b45309";
 
 export default function IndustrialTypologyModal({ open, buildingId, companyId, onClose, onCreated }: Props) {
@@ -98,11 +98,11 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
                 background: step > i + 1 ? "#1D9E75" : step === i + 1 ? amber : "var(--border-default)",
                 color: step >= i + 1 ? "#fff" : "var(--text-muted)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: 11, fontWeight: 700,
+                fontSize: "0.6875rem", fontWeight: 700,
               }}>
                 {step > i + 1 ? "✓" : i + 1}
               </div>
-              <span style={{ fontSize: 9, color: step >= i + 1 ? amber : "var(--text-muted)", fontWeight: step === i + 1 ? 700 : 400 }}>
+              <span style={{ fontSize: "0.5625rem", color: step >= i + 1 ? amber : "var(--text-muted)", fontWeight: step === i + 1 ? 700 : 400 }}>
                 {label}
               </span>
             </div>
@@ -128,7 +128,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
           </AppFormField>
 
           <div style={{ marginBottom: 4 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
               Áreas (m²)
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
@@ -143,7 +143,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
               </AppFormField>
             </div>
             {total > 0 && (
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+              <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 4 }}>
                 Total: <strong>{total.toLocaleString("es-MX")} m²</strong>
               </p>
             )}
@@ -195,8 +195,8 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
                       cursor: "pointer", transition: "all 0.15s ease",
                     }}
                   >
-                    <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? amber : "var(--text-primary)" }}>{opt.label}</p>
-                    <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)" }}>{opt.desc}</p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? amber : "var(--text-primary)" }}>{opt.label}</p>
+                    <p style={{ margin: 0, fontSize: "0.625rem", color: "var(--text-muted)" }}>{opt.desc}</p>
                   </button>
                 );
               })}
@@ -204,15 +204,15 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
           </AppFormField>
 
           {/* Resumen */}
-          <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: 12, color: "var(--text-secondary)" }}>
-            <strong style={{ color: "var(--text-primary)", fontSize: 14 }}>{name}</strong>
+          <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+            <strong style={{ color: "var(--text-primary)", fontSize: "0.875rem" }}>{name}</strong>
             {total > 0 && <span style={{ marginLeft: 8, color: "var(--text-muted)" }}>{total.toLocaleString("es-MX")} m² totales</span>}
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {sqmBodega && <span style={{ fontSize: 11 }}>{sqmBodega} m² bodega</span>}
-              {sqmOficina && <span style={{ fontSize: 11 }}>{sqmOficina} m² oficina</span>}
-              {sqmPatio && <span style={{ fontSize: 11 }}>{sqmPatio} m² patio</span>}
-              {alturaLibre && <span style={{ fontSize: 11 }}>Alt. libre: {alturaLibre} m</span>}
-              {capacidadElectrica && <span style={{ fontSize: 11 }}>{capacidadElectrica}</span>}
+              {sqmBodega && <span style={{ fontSize: "0.6875rem" }}>{sqmBodega} m² bodega</span>}
+              {sqmOficina && <span style={{ fontSize: "0.6875rem" }}>{sqmOficina} m² oficina</span>}
+              {sqmPatio && <span style={{ fontSize: "0.6875rem" }}>{sqmPatio} m² patio</span>}
+              {alturaLibre && <span style={{ fontSize: "0.6875rem" }}>Alt. libre: {alturaLibre} m</span>}
+              {capacidadElectrica && <span style={{ fontSize: "0.6875rem" }}>{capacidadElectrica}</span>}
             </div>
           </div>
 

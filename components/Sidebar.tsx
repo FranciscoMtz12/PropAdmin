@@ -247,7 +247,7 @@ function NavItem({
             : active
               ? "#ffffff"
               : "rgba(255,255,255,0.82)",
-          fontSize: 14,
+          fontSize: "0.875rem",
           fontWeight: active ? 700 : 500,
           whiteSpace: "nowrap",
           overflow: "hidden",
@@ -272,7 +272,7 @@ function NavItem({
         borderRadius: 999,
         background: "transparent",
         border: `1.5px solid ${badgeColor}`,
-        fontSize: 11,
+        fontSize: "0.6875rem",
         fontWeight: 700,
         color: badgeColor,
         lineHeight: 1,
@@ -320,7 +320,7 @@ function SidebarSection({
       {title && (
         <div
           style={{
-            fontSize: 12,
+            fontSize: "0.75rem",
             color: "rgba(255,255,255,0.55)",
             textTransform: "uppercase",
             letterSpacing: "0.06em",
@@ -530,7 +530,7 @@ export default function Sidebar() {
                     width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
                     background: SAPROA_ACCENT,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 900, fontSize: 18, color: "#ffffff",
+                    fontWeight: 900, fontSize: "1.125rem", color: "#ffffff",
                     letterSpacing: "-0.02em", flexShrink: 0,
                   }}
                 >
@@ -548,7 +548,7 @@ export default function Sidebar() {
                     width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
                     background: accentColor,
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 800, fontSize: 14, color: "#ffffff",
+                    fontWeight: 800, fontSize: "0.875rem", color: "#ffffff",
                     letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
                   }}
                 >
@@ -585,7 +585,7 @@ export default function Sidebar() {
                     <div style={{ padding: "12px 4px 4px" }}>
                       <span
                         style={{
-                          fontSize: 10,
+                          fontSize: "0.625rem",
                           fontWeight: 700,
                           letterSpacing: "0.10em",
                           color: "rgba(255,255,255,0.38)",
@@ -626,11 +626,11 @@ export default function Sidebar() {
         >
           {/* Datos de sesión */}
           <div className="sidebar-user-info" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>
+            <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>
               Sesión actual
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{sessionName}</span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.58)" }}>{sessionEmail}</span>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#FFFFFF" }}>{sessionName}</span>
+            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.58)" }}>{sessionEmail}</span>
             {isSuperAdmin && (
               <span
                 style={{
@@ -642,7 +642,7 @@ export default function Sidebar() {
                   background: "rgba(34,197,94,0.14)",
                   border: "1px solid rgba(34,197,94,0.25)",
                   color: "#86EFAC",
-                  fontSize: 11,
+                  fontSize: "0.6875rem",
                   fontWeight: 800,
                   letterSpacing: "0.04em",
                 }}
@@ -660,7 +660,7 @@ export default function Sidebar() {
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
               padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
               border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
-              color: "#FFFFFF", fontWeight: 700, fontSize: 13, cursor: "pointer",
+              color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}
           >
             <Settings size={15} />
@@ -675,7 +675,7 @@ export default function Sidebar() {
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
               padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
               border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
-              color: "#FFFFFF", fontWeight: 700, fontSize: 13, cursor: "pointer",
+              color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}
           >
             <LogOut size={15} />

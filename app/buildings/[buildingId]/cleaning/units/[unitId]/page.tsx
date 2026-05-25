@@ -96,7 +96,7 @@ const checkboxRowStyle: CSSProperties = {
 
 const errorTextStyle: CSSProperties = {
   color: "#EF4444",
-  fontSize: 12,
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -417,7 +417,7 @@ export default function CleaningUnitDetailPage() {
                   borderRadius: "var(--border-radius-lg)",
                   background: msg.includes("correctamente") ? "var(--badge-bg-green)" : "var(--badge-bg-red)",
                   color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
               >
@@ -438,7 +438,7 @@ export default function CleaningUnitDetailPage() {
 }
 
 const labelTinyStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   letterSpacing: "0.04em",
   textTransform: "uppercase",
@@ -446,7 +446,7 @@ const labelTinyStyle: CSSProperties = {
 };
 
 const valueStrongStyle: CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };

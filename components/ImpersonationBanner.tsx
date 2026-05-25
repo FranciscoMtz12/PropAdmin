@@ -63,7 +63,7 @@ export function ImpersonationBanner() {
       <span
         style={{
           flex: 1,
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: SAPROA_ACCENT,
           fontWeight: 600,
           lineHeight: 1.4,
@@ -88,7 +88,7 @@ export function ImpersonationBanner() {
           border: "1px solid rgba(99,102,241,0.4)",
           background: "transparent",
           color: SAPROA_ACCENT,
-          fontSize: 12,
+          fontSize: "0.75rem",
           fontWeight: 700,
           cursor: "pointer",
           whiteSpace: "nowrap",

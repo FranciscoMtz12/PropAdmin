@@ -30,7 +30,7 @@ export default function AppFormField({
         style={{
           display: "block",
           marginBottom: 8,
-          fontSize: 14,
+          fontSize: "0.875rem",
           fontWeight: 600,
           color: "var(--text-primary)",
         }}
@@ -46,7 +46,7 @@ export default function AppFormField({
           style={{
             marginTop: 8,
             marginBottom: 0,
-            fontSize: 12,
+            fontSize: "0.75rem",
             color: "var(--text-muted)",
           }}
         >
@@ -59,7 +59,7 @@ export default function AppFormField({
           style={{
             marginTop: 8,
             marginBottom: 0,
-            fontSize: 12,
+            fontSize: "0.75rem",
             fontWeight: 600,
             color: "var(--badge-text-red)",
           }}
