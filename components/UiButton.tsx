@@ -20,6 +20,7 @@ type UiButtonProps = {
   variant?: "primary" | "secondary";
   disabled?: boolean;
   icon?: ReactNode;
+  style?: CSSProperties;
 };
 
 export default function UiButton({
@@ -31,6 +32,7 @@ export default function UiButton({
   variant = "secondary",
   disabled = false,
   icon,
+  style: styleProp,
 }: UiButtonProps) {
   const style: CSSProperties = {
     display: "inline-flex",
@@ -51,6 +53,7 @@ export default function UiButton({
     cursor: disabled ? "not-allowed" : "pointer",
     opacity: disabled ? 0.65 : 1,
     transition: "opacity 0.15s",
+    ...styleProp,
   };
 
   const content = (

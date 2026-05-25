@@ -22,6 +22,7 @@ import {
   CalendarDays,
   CreditCard,
   DollarSign,
+  Eye,
   FileText,
   KeyRound,
   Layers,
@@ -30,6 +31,7 @@ import {
   MessageSquare,
   Package,
   Settings,
+  Shield,
   ShoppingCart,
   Sparkles,
   Truck,
@@ -58,6 +60,36 @@ type NavSection = {
   label: string;
   items: SidebarItem[];
 };
+
+const SAPROA_ACCENT = "#6366F1";
+
+/* ─── SAPROA Admin sections (superadmin sin impersonar) ─────────── */
+
+const SAPROA_SECTIONS: NavSection[] = [
+  {
+    label: "PLATAFORMA",
+    items: [
+      { label: "Overview",  href: "/saproa-admin/overview",  icon: LayoutDashboard },
+      { label: "Empresas",  href: "/saproa-admin/empresas",  icon: Building2       },
+      { label: "Usuarios",  href: "/saproa-admin/usuarios",  icon: Users           },
+    ],
+  },
+  {
+    label: "DEVELOPER",
+    items: [
+      { label: "Impersonar", href: "/saproa-admin/impersonar", icon: Eye          },
+      { label: "Roadmap",    href: "/saproa-admin/roadmap",    icon: FileText     },
+      { label: "Sandbox",    href: "#",                        icon: Sparkles, disabled: true },
+    ],
+  },
+  {
+    label: "SOPORTE",
+    items: [
+      { label: "Feedback", href: "/saproa-admin/feedback", icon: MessageSquare },
+      { label: "Sistema",  href: "/saproa-admin/sistema",  icon: Settings      },
+    ],
+  },
+];
 
 /* ─── Admin sections ─────────────────────────────────────────────── */
 
@@ -325,7 +357,10 @@ export default function Sidebar() {
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
-  const { impersonationMode } = useImpersonation();
+  const { impersonationMode, isRealSuperAdmin, isImpersonating } = useImpersonation();
+
+  /* Modo SAPROA Control Center: superadmin real SIN impersonar ninguna empresa */
+  const isSaproaMode = isRealSuperAdmin && !isImpersonating;
   const { moduleStats } = useNotifications(user?.company_id ?? "");
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
@@ -338,6 +373,7 @@ export default function Sidebar() {
   const isField = user?.role === "field";
 
   const activeSections: NavSection[] = (() => {
+    if (isSaproaMode) return SAPROA_SECTIONS;
     if (isSuperAdmin) return ALL_ADMIN_SECTIONS;
     // titular: todo excepto /users y /feedback (panel superadmin)
     if (user?.role === "titular") {
@@ -372,10 +408,10 @@ export default function Sidebar() {
     router.push("/");
   }
 
-  const sidebarTitle = impersonationMode === 'group'
-    ? "Vista consolidada"
-    : isSuperAdmin
-      ? "Control total del sistema"
+  const sidebarTitle = isSaproaMode
+    ? "Control center"
+    : impersonationMode === "group"
+      ? "Vista consolidada"
       : isPortalPath
         ? "Portal del inquilino"
         : "Gestión de Propiedades";
@@ -388,6 +424,7 @@ export default function Sidebar() {
   /* Superadmin sin company_id usa el nombre de la plataforma SAPROA */
   const displayName = (isSuperAdmin && !user?.company_id) ? platformName : shortName;
   const logoInitials = initials(displayName);
+  const activeAccent = isSaproaMode ? SAPROA_ACCENT : groupColor;
 
   return (
     <>
@@ -419,7 +456,7 @@ export default function Sidebar() {
         width: 44,
         height: 44,
         borderRadius: "50%",
-        background: groupColor,
+        background: activeAccent,
         border: "none",
         cursor: "pointer",
         alignItems: "center",
@@ -465,7 +502,7 @@ export default function Sidebar() {
       }}
     >
       {/* ── Barra de acento superior (3px) ──────────────────────── */}
-      <div style={{ height: 3, background: groupColor, flexShrink: 0, transition: "background 0.3s" }} />
+      <div style={{ height: 3, background: activeAccent, flexShrink: 0, transition: "background 0.3s" }} />
 
       {/* ── Área scrollable ──────────────────────────────────────── */}
       <div
@@ -482,7 +519,20 @@ export default function Sidebar() {
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* ── Área de logo (altura fija 56px) ─────────────────── */}
           <div style={{ height: 56, display: "flex", alignItems: "center", gap: 12, paddingTop: 4 }}>
-            {activeLogo ? (
+            {isSaproaMode ? (
+              /* Logo SAPROA Control Center — círculo índigo con "S" */
+              <div
+                style={{
+                  width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
+                  background: SAPROA_ACCENT,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontWeight: 900, fontSize: 18, color: "#ffffff",
+                  letterSpacing: "-0.02em", flexShrink: 0,
+                }}
+              >
+                <Shield size={18} color="#fff" />
+              </div>
+            ) : activeLogo ? (
               <img
                 src={activeLogo}
                 alt={shortName}
@@ -503,7 +553,7 @@ export default function Sidebar() {
             )}
             <div className="sidebar-logo-text" style={{ minWidth: 0 }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {displayName}
+                {isSaproaMode ? "SAPROA" : displayName}
               </div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.52)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {sidebarTitle}
@@ -520,7 +570,7 @@ export default function Sidebar() {
               title=""
               items={FIELD_ITEMS}
               pathname={pathname}
-              accentColor={groupColor}
+              accentColor={activeAccent}
             />
           ) : isPortalPath ? (
             <SidebarSection
@@ -528,13 +578,13 @@ export default function Sidebar() {
               items={TENANT_ITEMS}
               pathname={pathname}
               previewTenantId={previewTenantId}
-              accentColor={groupColor}
+              accentColor={activeAccent}
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
               {activeSections.map((section, idx) => (
                 <div key={idx}>
-                  {section.label && isSuperAdmin && (
+                  {section.label && (isSuperAdmin || isSaproaMode) && (
                     <div style={{ padding: "12px 4px 4px" }}>
                       <span
                         style={{
@@ -555,7 +605,7 @@ export default function Sidebar() {
                         key={item.href ?? item.label}
                         item={item}
                         pathname={pathname}
-                        accentColor={groupColor}
+                        accentColor={activeAccent}
                         notifBadge={getItemBadge(item)}
                       />
                     ))}

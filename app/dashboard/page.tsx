@@ -45,6 +45,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS, MODULE_LABELS } from "@/lib/notifications";
 
@@ -298,6 +299,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { isDark } = useTheme();
+  const { isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   const role = user?.role;
   const isSuperOrAdmin = role === 'superadmin' || user?.is_superadmin || role === 'administracion' || role === 'directivo';
@@ -333,6 +335,14 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && !user) router.push("/");
   }, [loading, user, router]);
+
+  /* Superadmin sin impersonar → Control Center SAPROA */
+  useEffect(() => {
+    if (loading) return;
+    if (isRealSuperAdmin && !isImpersonating) {
+      router.replace('/saproa-admin/overview');
+    }
+  }, [loading, isRealSuperAdmin, isImpersonating, router]);
 
   /* Redirect por rol a dashboard específico */
   useEffect(() => {
