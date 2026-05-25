@@ -395,16 +395,16 @@ export default function HomePage() {
             <img
               src={logoUrl}
               alt={shortName || "Logo"}
-              style={{ height: 44, objectFit: "contain", filter: "brightness(0) invert(1)", flexShrink: 0 }}
+              style={{ height: "clamp(36px, 4vw, 56px)", objectFit: "contain", filter: "brightness(0) invert(1)", flexShrink: 0 }}
             />
           ) : (
             <div
               style={{
-                width: 44, height: 44,
+                width: "clamp(44px, 4vw, 60px)", height: "clamp(44px, 4vw, 60px)",
                 borderRadius: 12,
                 background: accentColor,
                 display: "grid", placeItems: "center",
-                color: "#fff", fontSize: 15, fontWeight: 700,
+                color: "#fff", fontSize: "clamp(14px, 1.5vw, 20px)", fontWeight: 700,
                 flexShrink: 0,
               }}
             >
