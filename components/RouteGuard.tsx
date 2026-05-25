@@ -87,6 +87,9 @@ export default function RouteGuard() {
       return;
     }
 
+    // /home es accesible para cualquier usuario admin autenticado (incluyendo superadmin en modo impersonación)
+    if (pathname === "/home") return;
+
     // Field: solo /campo/*
     if (user.role === "field") {
       if (!pathname.startsWith("/campo")) { router.replace("/campo/dashboard"); return; }
@@ -99,9 +102,6 @@ export default function RouteGuard() {
       if (portalPublic) { router.replace("/portal/dashboard"); return; }
       return;
     }
-
-    // /home es accesible para cualquier usuario admin autenticado
-    if (pathname === "/home") return;
 
     // Superadmin saltea el enforcement granular pero sigue con las redirecciones generales
     const skipGranular = user.role === "superadmin" || user.is_superadmin;
