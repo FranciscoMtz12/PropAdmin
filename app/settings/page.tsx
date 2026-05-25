@@ -16,7 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
-import { type QuickLink, ALL_MODULES, getDefaultQuickLinks, ICON_MAP } from "@/lib/quick-links";
+import { type QuickLink, getAllowedModules, getDefaultQuickLinks, ICON_MAP } from "@/lib/quick-links";
 
 import AppBadge from "@/components/AppBadge";
 import AppGrid from "@/components/AppGrid";
@@ -664,6 +664,12 @@ export default function SettingsPage() {
     });
   }
 
+  function updateQuickLinkCustomPath(path: string, customPath: string) {
+    setQuickLinks(prev => prev.map(l =>
+      l.path === path ? { ...l, customPath: customPath.trim() || undefined } : l
+    ));
+  }
+
   // ─── Tab navigation ──────────────────────────────────────────────
   function handleTabChange(key: string) {
     setActiveTab(key as TabKey);
@@ -1231,74 +1237,93 @@ export default function SettingsPage() {
                 Los primeros 4 accesos aparecen arriba y los siguientes 3 abajo. Máximo 7.
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {ALL_MODULES.map(mod => {
+                {getAllowedModules(user?.role ?? "").map(mod => {
                   const selIdx = quickLinks.findIndex(l => l.path === mod.path);
                   const isSelected = selIdx !== -1;
                   const atMax = quickLinks.length >= 7 && !isSelected;
                   const Icon = ICON_MAP[mod.icon];
+                  const selectedLink = isSelected ? quickLinks[selIdx] : null;
                   return (
                     <div
                       key={mod.path}
                       style={{
                         display: "flex",
-                        alignItems: "center",
-                        gap: 10,
+                        flexDirection: "column",
                         padding: "9px 12px",
                         borderRadius: "var(--border-radius-md)",
                         background: isSelected ? "var(--bg-subtle)" : "transparent",
                         border: isSelected ? "1px solid var(--border-default)" : "1px solid transparent",
                         opacity: atMax ? 0.45 : 1,
+                        gap: isSelected ? 6 : 0,
                       }}
                     >
-                      {Icon && (
-                        <span style={{ color: "var(--text-secondary)", display: "flex", flexShrink: 0 }}>
-                          <Icon size={15} />
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {Icon && (
+                          <span style={{ color: "var(--text-secondary)", display: "flex", flexShrink: 0 }}>
+                            <Icon size={15} />
+                          </span>
+                        )}
+                        <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+                          {mod.label}
                         </span>
-                      )}
-                      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
-                        {mod.label}
-                      </span>
+                        {isSelected && (
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 20, textAlign: "center" }}>
+                            {selIdx + 1}
+                          </span>
+                        )}
+                        {isSelected && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                            <button
+                              type="button"
+                              disabled={selIdx === 0}
+                              onClick={() => moveQuickLink(selIdx, selIdx - 1)}
+                              style={{
+                                background: "none", border: "none", padding: "1px 3px", cursor: selIdx === 0 ? "not-allowed" : "pointer",
+                                color: selIdx === 0 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
+                              }}
+                              title="Subir"
+                            >
+                              <ChevronUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={selIdx === quickLinks.length - 1}
+                              onClick={() => moveQuickLink(selIdx, selIdx + 1)}
+                              style={{
+                                background: "none", border: "none", padding: "1px 3px",
+                                cursor: selIdx === quickLinks.length - 1 ? "not-allowed" : "pointer",
+                                color: selIdx === quickLinks.length - 1 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
+                              }}
+                              title="Bajar"
+                            >
+                              <ChevronDown size={13} />
+                            </button>
+                          </div>
+                        )}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={atMax}
+                          onChange={() => toggleQuickLink(mod)}
+                          style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: atMax ? "not-allowed" : "pointer", flexShrink: 0 }}
+                        />
+                      </div>
                       {isSelected && (
-                        <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 20, textAlign: "center" }}>
-                          {selIdx + 1}
-                        </span>
+                        <input
+                          type="text"
+                          placeholder={`URL personalizada (opcional, default: ${mod.path})`}
+                          value={selectedLink?.customPath ?? ""}
+                          onChange={e => updateQuickLinkCustomPath(mod.path, e.target.value)}
+                          style={{
+                            fontSize: 11, padding: "4px 8px",
+                            border: "1px solid var(--border-default)",
+                            borderRadius: "var(--border-radius-sm)",
+                            background: "var(--bg-input)",
+                            color: "var(--text-secondary)",
+                            outline: "none", width: "100%", boxSizing: "border-box",
+                          }}
+                        />
                       )}
-                      {isSelected && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
-                          <button
-                            type="button"
-                            disabled={selIdx === 0}
-                            onClick={() => moveQuickLink(selIdx, selIdx - 1)}
-                            style={{
-                              background: "none", border: "none", padding: "1px 3px", cursor: selIdx === 0 ? "not-allowed" : "pointer",
-                              color: selIdx === 0 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
-                            }}
-                            title="Subir"
-                          >
-                            <ChevronUp size={13} />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={selIdx === quickLinks.length - 1}
-                            onClick={() => moveQuickLink(selIdx, selIdx + 1)}
-                            style={{
-                              background: "none", border: "none", padding: "1px 3px",
-                              cursor: selIdx === quickLinks.length - 1 ? "not-allowed" : "pointer",
-                              color: selIdx === quickLinks.length - 1 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
-                            }}
-                            title="Bajar"
-                          >
-                            <ChevronDown size={13} />
-                          </button>
-                        </div>
-                      )}
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        disabled={atMax}
-                        onChange={() => toggleQuickLink(mod)}
-                        style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: atMax ? "not-allowed" : "pointer", flexShrink: 0 }}
-                      />
                     </div>
                   );
                 })}

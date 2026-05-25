@@ -247,8 +247,10 @@ export default function HomePage() {
   const logoInitials = initials(shortName || company);
   const userInitials = initials(user?.full_name || "");
 
-  const links1 = quickLinks.slice(0, 4);
-  const links2 = quickLinks.slice(4, 7);
+  const DASHBOARD_LINK: QuickLink = { label: "Dashboard", icon: "ti-layout-dashboard", path: "/dashboard" };
+  const displayLinks = [DASHBOARD_LINK, ...quickLinks.filter(l => l.path !== "/dashboard")];
+  const links1 = displayLinks.slice(0, 4);
+  const links2 = displayLinks.slice(4, 7);
   const ticketsNormales = (metrics?.ticketsAbiertos ?? 0) - (metrics?.ticketsUrgentes ?? 0);
 
   /* Loading state — dark bg before user loads */
@@ -310,9 +312,9 @@ export default function HomePage() {
         style={{
           position: "relative",
           zIndex: 1,
-          maxWidth: 1060,
+          maxWidth: 900,
           margin: "0 auto",
-          padding: isMobile ? "24px 16px 48px" : "40px 36px 64px",
+          padding: isMobile ? "24px 16px 48px" : "40px 48px 64px",
           minHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
@@ -490,7 +492,7 @@ export default function HomePage() {
         </motion.div>
 
         {/* ── Accesos rápidos ──────────────────────────────────────── */}
-        {quickLinks.length > 0 && (
+        {displayLinks.length > 0 && (
           <motion.div
             variants={linksStagger}
             initial="initial"
@@ -499,28 +501,28 @@ export default function HomePage() {
           >
             {isMobile ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px" }}>
-                {quickLinks.map(link => (
+                {displayLinks.map(link => (
                   <motion.div key={link.path} variants={itemVariant}>
-                    <LinkBtn link={link} onClick={() => router.push(link.path)} />
+                    <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
                   </motion.div>
                 ))}
               </div>
             ) : (
               <>
                 {links1.length > 0 && (
-                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", justifyContent: "center" }}>
                     {links1.map(link => (
                       <motion.div key={link.path} variants={itemVariant}>
-                        <LinkBtn link={link} onClick={() => router.push(link.path)} />
+                        <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
                       </motion.div>
                     ))}
                   </div>
                 )}
                 {links2.length > 0 && (
-                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", paddingLeft: 72 }}>
+                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", justifyContent: "center", marginLeft: 44 }}>
                     {links2.map(link => (
                       <motion.div key={link.path} variants={itemVariant}>
-                        <LinkBtn link={link} onClick={() => router.push(link.path)} />
+                        <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
                       </motion.div>
                     ))}
                   </div>

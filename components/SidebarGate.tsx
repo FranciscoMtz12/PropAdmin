@@ -10,6 +10,7 @@ export default function SidebarGate() {
 
   const isPublicRoute =
     pathname === "/" ||
+    pathname === "/home" ||
     pathname === "/login" ||
     pathname === "/register" ||
     pathname === "/portal/login" ||
