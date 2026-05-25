@@ -583,7 +583,6 @@ export default function PurchasesPage() {
     setSuppliers(suppliersMapped);
     setBuildings((buildingData as BuildingOption[]) || []);
     setSigners((signerData as Signer[]) || []);
-    console.log("fieldUsers raw:", fieldUserData, "error:", fieldUserError);
     setFieldUsers((fieldUserData as FieldUser[]) || []);
 
     if (companyData && "name" in companyData) {
@@ -784,15 +783,10 @@ export default function PurchasesPage() {
       signer_name:          data.signerName?.trim()        || null,
     };
 
-    console.log("[purchases] manualForm snapshot:", data);
-    console.log("[purchases] payload:", payload);
-    console.log("[purchases] editingOrderId:", editingOrderId);
-
     let targetOrderId: string | null = null;
 
     if (editingOrderId) {
       /* EDITAR: UPDATE purchase_orders + DELETE+INSERT items */
-      console.log("[purchases] UPDATE purchase_orders", { id: editingOrderId, payload });
       const updPayload = {
         ...payload,
         updated_at: new Date().toISOString(),
@@ -803,7 +797,6 @@ export default function PurchasesPage() {
         .update(updPayload)
         .eq("id", editingOrderId)
         .select();
-      console.log("[purchases] UPDATE result:", { data: updData, error: updErr });
       if (updErr) {
         setFormError(`No se pudo actualizar: ${updErr.message}`);
         return;
@@ -817,7 +810,6 @@ export default function PurchasesPage() {
         .eq("purchase_order_id", editingOrderId)
         .is("deleted_at", null)
         .select();
-      console.log("[purchases] soft-delete items result:", { data: delData, error: delErr });
     } else {
       /* CREAR: generar folio compuesto + INSERT purchase_orders */
       const folio = await generateNextFolio(
@@ -831,13 +823,11 @@ export default function PurchasesPage() {
         status:     "pending",
         ...payload,
       };
-      console.log("[purchases] INSERT purchase_orders:", insertBody);
       const { data: inserted, error: insertErr } = await supabase
         .from("purchase_orders")
         .insert(insertBody)
         .select("id")
         .single();
-      console.log("[purchases] INSERT result:", { data: inserted, error: insertErr });
       if (insertErr || !inserted) {
         setFormError("No se pudo crear la orden de compra.");
         return;
@@ -853,12 +843,10 @@ export default function PurchasesPage() {
       unit_price:        it.unit_price.trim() ? Number(it.unit_price) : null,
     }));
 
-    console.log("[purchases] INSERT purchase_order_items:", itemsPayload);
     const { data: itemsIns, error: itemsErr } = await supabase
       .from("purchase_order_items")
       .insert(itemsPayload)
       .select();
-    console.log("[purchases] items INSERT result:", { data: itemsIns, error: itemsErr });
 
     /* Si es un firmante nuevo (no estaba en la lista), persistir para futuras OC */
     const trimmedSigner = data.signerName?.trim() || "";
@@ -876,7 +864,6 @@ export default function PurchasesPage() {
             role:       "signer",
           })
           .select();
-        console.log("[purchases] new signer INSERT result:", { data: signerIns, error: signerInsErr });
       }
     }
 
@@ -1485,14 +1472,6 @@ export default function PurchasesPage() {
       const logoPrint = printSrc    ? await prepareLogoForPDF(printSrc,    110, 45) : null;
       const logoGroup = logoGroupUrl ? await prepareLogoForPDF(logoGroupUrl, 80, 45) : null;
 
-      console.log("items con precios:", JSON.stringify(
-        items.map((it) => ({
-          desc: it.description,
-          unit_price: it.unit_price,
-          mapped: it.unit_price || 0,
-        })), null, 2
-      ));
-
       /* renderPurchaseOrderPage ahora es async y se auto-descarga vía html2pdf */
       await renderPurchaseOrderPage(null, {
         folio:              order.folio,
@@ -1502,13 +1481,7 @@ export default function PurchasesPage() {
         cfdiUse:            supplier?.cfdi_use || null,
         clientNumber:       supplier?.client_number || null,
         branchName,
-        items:              (() => {
-          console.log("items para PDF:", JSON.stringify(items.map((i) => ({
-            description: i.description,
-            unit_price: i.unit_price,
-          })), null, 2));
-          return items.map((it) => ({ quantity: it.quantity, unit: it.unit, description: it.description, unitPrice: it.unit_price || 0 }));
-        })(),
+        items:              items.map((it) => ({ quantity: it.quantity, unit: it.unit, description: it.description, unitPrice: it.unit_price || 0 })),
         buildingName:       building?.name || "",
         projectDescription: order.project_description || "",
         responsibleName:    order.responsible_name  || "",
@@ -2206,7 +2179,6 @@ export default function PurchasesPage() {
                     {/* ── Sección 2a: Conceptos facturados del XML ── */}
                     {o.status === "invoiced" ? (() => {
                       const meta = getInvoiceMeta(o);
-                      console.log('invoice meta:', meta);
                       const conceptos = meta && Array.isArray((meta as { conceptos?: unknown[] }).conceptos)
                         ? (meta as { conceptos: { descripcion: string; cantidad: string; valorUnitario: string; importe: string }[] }).conceptos
                         : [];

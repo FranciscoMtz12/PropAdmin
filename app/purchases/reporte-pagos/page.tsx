@@ -546,21 +546,10 @@ export default function ReportePagosPage() {
   /* ── Guardar (crear o editar) ───────────────────────────────── */
 
   const handleSave = rhfSubmit(async (data) => {
-    /* ── Logs de validación ────────────────────────────────────── */
-    console.log("[handleSave] user:", user);
-    console.log("[handleSave] editingReportId:", editingReportId);
-    console.log("[handleSave] elaboratedBy (signerName):", data.signerName);
-    console.log("[handleSave] reportDate:", data.reportDate);
-    console.log("[handleSave] folio computed:", folio, "week:", week, "year:", year);
-    console.log("[handleSave] itemDrafts size:", itemDrafts.size, "entries:", Array.from(itemDrafts.entries()));
-    console.log("[handleSave] customSignerMode:", customSignerMode);
-
     if (!user?.company_id) {
-      console.log("[handleSave] ABORT: no company_id en user");
       return;
     }
     if (itemDrafts.size === 0) {
-      console.log("[handleSave] ABORT: itemDrafts vacío");
       setError("Selecciona al menos una OC.");
       return;
     }
