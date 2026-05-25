@@ -27,7 +27,7 @@
       created_at, deleted_at
 */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
@@ -60,6 +60,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
 import { type PurchaseReturn, type PurchaseOrderVersionType, type PurchaseOrderInvoice, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
 
@@ -129,6 +130,7 @@ type POItem = {
 type PurchaseOrder = {
   id:                   string;
   folio:                string;
+  company_id:           string | null;
   supplier_id:          string;
   supplier_branch_id:   string | null;
   supplier_prefix:      string | null;
@@ -257,6 +259,8 @@ const purchasesErrorTextStyle: CSSProperties = {
 
 export default function PurchasesPage() {
   const { user, loading: userLoading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const router = useRouter();
   const { legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, logoGroupUrl, purchasesContactPhone, purchasesContactEmail } = useTheme();
 
@@ -360,9 +364,9 @@ export default function PurchasesPage() {
   /* ── Load ──────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin)) void loadAll(user?.company_id ?? null);
+    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadAll(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user]);
+  }, [userLoading, user, isGroupMode]);
 
   async function loadAll(companyId: string | null) {
     setLoading(true);
@@ -445,7 +449,7 @@ export default function PurchasesPage() {
     }
 
     type OCRow = {
-      id: string; folio: string; supplier_id: string;
+      id: string; folio: string; company_id: string | null; supplier_id: string;
       supplier_branch_id: string | null;
       supplier_prefix: string | null;
       maintenance_log_id: string | null; building_id: string | null;
@@ -494,6 +498,7 @@ export default function PurchasesPage() {
       return {
         id:                   r.id,
         folio:                r.folio,
+        company_id:           r.company_id ?? null,
         supplier_id:          r.supplier_id,
         supplier_branch_id:   r.supplier_branch_id,
         supplier_prefix:      r.supplier_prefix,
@@ -635,6 +640,7 @@ export default function PurchasesPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
+      if (isGroupMode && o.company_id && !groupCompanyIds.includes(o.company_id)) return false;
       /* Filtro por mes (created_at) */
       const d = new Date(o.created_at);
       if (d.getFullYear() !== selectedYear || d.getMonth() + 1 !== selectedMonth) return false;
@@ -652,8 +658,25 @@ export default function PurchasesPage() {
         if (!hay.includes(q)) return false;
       }
       return true;
+    })
+    .sort((a, b) => {
+      if (!isGroupMode) return 0;
+      const ai = groupCompanyIds.indexOf(a.company_id ?? "");
+      const bi = groupCompanyIds.indexOf(b.company_id ?? "");
+      if (ai !== bi) return ai - bi;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [orders, filterSupplier, filterStatus, search, selectedYear, selectedMonth]);
+  }, [orders, isGroupMode, groupCompanyIds, filterSupplier, filterStatus, search, selectedYear, selectedMonth]);
+
+  const ordersByCompany = useMemo(() => {
+    if (!isGroupMode) return null;
+    const map = new Map<string, { company: typeof groupCompanies[0]; orders: PurchaseOrder[] }>();
+    groupCompanies.forEach(c => map.set(c.id, { company: c, orders: [] }));
+    filtered.forEach(o => {
+      if (o.company_id && map.has(o.company_id)) map.get(o.company_id)!.orders.push(o);
+    });
+    return [...map.values()].filter(g => g.orders.length > 0);
+  }, [isGroupMode, groupCompanies, filtered]);
 
   /* ── Folio generation ──────────────────────────────────────────── */
 
@@ -1565,9 +1588,11 @@ export default function PurchasesPage() {
             >
               Reporte de pagos
             </UiButton>
-            <UiButton variant="primary" onClick={openCreateModal} icon={<Plus size={16} />}>
-              Nueva OC manual
-            </UiButton>
+            {!isGroupMode && (
+              <UiButton variant="primary" onClick={openCreateModal} icon={<Plus size={16} />}>
+                Nueva OC manual
+              </UiButton>
+            )}
           </>
         }
       />
@@ -1758,6 +1783,9 @@ export default function PurchasesPage() {
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((o, index) => {
+            const prevO = index > 0 ? filtered[index - 1] : null;
+            const showHeader = isGroupMode && o.company_id != null && (!prevO || prevO.company_id !== o.company_id);
+            const sectionCo = showHeader ? groupCompanies.find(c => c.id === o.company_id) : undefined;
             const isExpanded = expandedOrderId === o.id;
             const items      = itemsByOrderId[o.id] || [];
             const hasPrices  = items.some((it) => it.unit_price != null && Number(it.unit_price) > 0);
@@ -1769,8 +1797,15 @@ export default function PurchasesPage() {
             const fechaLarga = formatDateLong(o.created_at);
 
             return (
+              <Fragment key={o.id}>
+                {showHeader && sectionCo && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: index > 0 ? 8 : 0, marginBottom: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: sectionCo.brand_color || "var(--accent)", flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>{sectionCo.short_name || sectionCo.name}</span>
+                    <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                  </div>
+                )}
               <motion.div
-                key={o.id}
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3, delay: index * 0.05 }}
@@ -2727,6 +2762,7 @@ export default function PurchasesPage() {
                 </AnimatePresence>
               </AppCard>
               </motion.div>
+              </Fragment>
             );
           })}
         </div>

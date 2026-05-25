@@ -37,6 +37,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -143,6 +144,8 @@ const errorTextStyle: CSSProperties = {
 
 export default function SuppliersPage() {
   const { user, loading: userLoading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [loading,   setLoading]   = useState(true);
@@ -188,9 +191,9 @@ export default function SuppliersPage() {
   /* ── Load ────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin)) void loadSuppliers(user?.company_id ?? null);
+    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadSuppliers(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user]);
+  }, [userLoading, user, isGroupMode]);
 
   async function loadSuppliers(companyId: string | null) {
     setLoading(true);
@@ -220,14 +223,32 @@ export default function SuppliersPage() {
     setLoading(false);
   }
 
+  /* ── Grupo mode derivados ────────────────────────────────────────── */
+
+  const displayedSuppliers = useMemo(() => {
+    if (!isGroupMode) return suppliers;
+    return suppliers.filter((s) => groupCompanyIds.includes(s.company_id));
+  }, [suppliers, isGroupMode, groupCompanyIds]);
+
+  const suppliersByCompany = useMemo(() => {
+    if (!isGroupMode) return [];
+    return groupCompanies
+      .filter((c) => groupCompanyIds.includes(c.id))
+      .map((company) => ({
+        company,
+        compSuppliers: displayedSuppliers.filter((s) => s.company_id === company.id),
+      }))
+      .filter(({ compSuppliers }) => compSuppliers.length > 0);
+  }, [isGroupMode, groupCompanies, groupCompanyIds, displayedSuppliers]);
+
   /* ── Metrics ─────────────────────────────────────────────────────── */
 
   const { total, activeCount, inactiveCount } = useMemo(() => {
-    const total         = suppliers.length;
-    const activeCount   = suppliers.filter((s) => s.active).length;
+    const total         = displayedSuppliers.length;
+    const activeCount   = displayedSuppliers.filter((s) => s.active).length;
     const inactiveCount = total - activeCount;
     return { total, activeCount, inactiveCount };
-  }, [suppliers]);
+  }, [displayedSuppliers]);
 
   /* ── Form handlers ───────────────────────────────────────────────── */
 
@@ -493,9 +514,11 @@ export default function SuppliersPage() {
         titleIcon={<Truck size={18} />}
         subtitle="Catálogo de proveedores y sus sucursales."
         actions={
-          <UiButton variant="primary" onClick={openCreate} icon={<Plus size={16} />}>
-            Nuevo proveedor
-          </UiButton>
+          !isGroupMode ? (
+            <UiButton variant="primary" onClick={openCreate} icon={<Plus size={16} />}>
+              Nuevo proveedor
+            </UiButton>
+          ) : undefined
         }
       />
 
@@ -520,15 +543,33 @@ export default function SuppliersPage() {
       {/* Lista */}
       {loading ? (
         <AppCard><p style={{ margin: 0, color: "var(--text-muted)" }}>Cargando proveedores...</p></AppCard>
-      ) : suppliers.length === 0 ? (
+      ) : displayedSuppliers.length === 0 ? (
         <AppCard>
           <p style={{ margin: 0, color: "var(--text-muted)" }}>
-            No hay proveedores. Crea el primero con el botón de arriba.
+            {isGroupMode ? "Las empresas activas no tienen proveedores registrados." : "No hay proveedores. Crea el primero con el botón de arriba."}
           </p>
         </AppCard>
       ) : (
-        <AppGrid minWidth={320}>
-          {suppliers.map((s, index) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: isGroupMode ? 32 : 0 }}>
+          {(isGroupMode
+            ? suppliersByCompany
+            : [{ company: null, compSuppliers: displayedSuppliers }] as Array<{ company: typeof groupCompanies[0] | null; compSuppliers: Supplier[] }>
+          ).map(({ company, compSuppliers }) => (
+            <div key={company?.id ?? "all"}>
+              {company ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                    {company.short_name || company.name}
+                  </span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                    {compSuppliers.length} {compSuppliers.length === 1 ? "proveedor" : "proveedores"}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
+                </div>
+              ) : null}
+              <AppGrid minWidth={320}>
+                {compSuppliers.map((s, index) => (
             <motion.div
               key={s.id}
               initial={{ opacity: 0, y: 16 }}
@@ -734,7 +775,10 @@ export default function SuppliersPage() {
             </AppCard>
             </motion.div>
           ))}
-        </AppGrid>
+              </AppGrid>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Modal crear/editar */}

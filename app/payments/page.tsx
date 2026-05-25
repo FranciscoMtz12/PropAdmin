@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import {
   AlertCircle, Calendar, CheckCircle, CheckCircle2,
   ChevronDown, ChevronLeft, ChevronRight, ChevronUp,
@@ -12,6 +12,7 @@ import toast from "react-hot-toast"
 
 import { supabase } from "@/lib/supabaseClient"
 import { useCurrentUser } from "@/contexts/UserContext"
+import { useImpersonation } from "@/contexts/ImpersonationContext"
 import { useNotifications } from "@/app/hooks/useNotifications"
 import { SEVERITY_COLORS } from "@/lib/notifications"
 import PageContainer from "@/components/PageContainer"
@@ -49,6 +50,7 @@ type InvoiceRow = BuildingUtilityInvoice & {
 type BuildingInvoiceGroup = {
   building_id: string
   building_name: string
+  company_id: string | null
   invoices: InvoiceRow[]
 }
 
@@ -221,6 +223,8 @@ const CHEVRON_WRAP: React.CSSProperties = {
 
 export default function PaymentsPage() {
   const { user, loading } = useCurrentUser()
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation()
+  const isGroupMode = impersonationMode === 'group'
   const { byModule } = useNotifications(user?.company_id ?? "")
   const now = new Date()
   const todayStr = now.toISOString().split("T")[0]
@@ -267,8 +271,8 @@ export default function PaymentsPage() {
   const [mpMsg, setMpMsg]               = useState("")
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadData()
-  }, [user, year, month])
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadData()
+  }, [user, year, month, isGroupMode])
 
   function navMonth(delta: number) {
     let m = month + delta, y = year
@@ -286,7 +290,7 @@ export default function PaymentsPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return
     setPageLoading(true)
     const cid = user?.company_id ?? null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -319,7 +323,7 @@ export default function PaymentsPage() {
         .or("is_test.eq.false,is_test.is.null")
         .order("report_date", { ascending: false }),
       co(supabase.from("buildings")
-        .select("id, name"))
+        .select("id, name, company_id"))
         .is("deleted_at", null)
         .order("name"),
     ])
@@ -327,11 +331,12 @@ export default function PaymentsPage() {
     const invoiceList  = (invRes.data  || []) as BuildingUtilityInvoice[]
     const mpList       = (mpRes.data   || []) as ManualPayment[]
     const reportList   = (rptRes.data  || []) as PaymentReport[]
-    const buildingList = (bldRes.data  || []) as Array<{ id: string; name: string }>
+    const buildingList = (bldRes.data  || []) as Array<{ id: string; name: string; company_id: string | null }>
 
     setAllBuildings(buildingList)
     const buildingMap: Record<string, string> = {}
-    buildingList.forEach(b => { buildingMap[b.id] = b.name })
+    const buildingCompanyMap: Record<string, string | null> = {}
+    buildingList.forEach(b => { buildingMap[b.id] = b.name; buildingCompanyMap[b.id] = b.company_id ?? null })
 
     const meterIds  = [...new Set(invoiceList.map(i => i.building_utility_meter_id))]
     const reportIds = reportList.map(r => r.id)
@@ -374,7 +379,8 @@ export default function PaymentsPage() {
     const groupMap = new Map<string, BuildingInvoiceGroup>()
     for (const inv of enriched) {
       const g = groupMap.get(inv.building_id) ?? {
-        building_id: inv.building_id, building_name: inv.building_name, invoices: [],
+        building_id: inv.building_id, building_name: inv.building_name,
+        company_id: buildingCompanyMap[inv.building_id] ?? null, invoices: [],
       }
       g.invoices.push(inv)
       groupMap.set(inv.building_id, g)
@@ -654,7 +660,12 @@ export default function PaymentsPage() {
 
   /* ── Metrics ─────────────────────────────────────────────────────── */
 
-  const allInvoices    = invoiceGroups.flatMap(g => g.invoices)
+  const filteredInvoiceGroups = useMemo(() => {
+    if (!isGroupMode) return invoiceGroups
+    return invoiceGroups.filter(g => g.company_id != null && groupCompanyIds.includes(g.company_id))
+  }, [isGroupMode, invoiceGroups, groupCompanyIds])
+
+  const allInvoices    = filteredInvoiceGroups.flatMap(g => g.invoices)
   const unpaidInvoices = allInvoices.filter(i => i.payment_status === "unpaid")
   const paidInvoices   = allInvoices.filter(i => i.payment_status === "paid")
   const unpaidManual   = manualPayments.filter(m => m.payment_status === "unpaid")
@@ -759,7 +770,9 @@ export default function PaymentsPage() {
               />
             ) : (
               <div style={CARD}>
-                {invoiceGroups.map(group => (
+                {filteredInvoiceGroups.map(group => {
+                  const company = isGroupMode ? groupCompanies.find(c => c.id === group.company_id) : undefined
+                  return (
                   <div key={group.building_id}>
                     {/* Building header */}
                     <div style={{ padding: "8px 20px", display: "flex", alignItems: "center", gap: 6, background: "var(--bg-page)", borderBottom: "1px solid var(--border-default)" }}>
@@ -767,6 +780,13 @@ export default function PaymentsPage() {
                       <span style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "var(--text-muted)" }}>
                         {group.building_name}
                       </span>
+                      {company && (
+                        <>
+                          <span style={{ color: "var(--border-default)" }}>·</span>
+                          <span style={{ width: 7, height: 7, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
+                          <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>{company.short_name || company.name}</span>
+                        </>
+                      )}
                     </div>
 
                     {/* Invoice rows */}
@@ -881,7 +901,8 @@ export default function PaymentsPage() {
                     })}
                     </div>{/* /ITEMS_GRID */}
                   </div>
-                ))}
+                  )
+                })}
 
                 {/* Totals */}
                 <div style={{ padding: "10px 20px", textAlign: "right", fontSize: 12, color: "var(--text-muted)", background: "var(--bg-page)" }}>
@@ -1072,11 +1093,13 @@ export default function PaymentsPage() {
         {/* ── TAB 3: MANUALES ─────────────────────────────────────── */}
         {activeTab === "manual" && (
           <>
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
-              <UiButton variant="primary" icon={<Plus size={15} />} onClick={() => openMpModal()}>
-                Agregar pago
-              </UiButton>
-            </div>
+            {!isGroupMode && (
+              <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 16 }}>
+                <UiButton variant="primary" icon={<Plus size={15} />} onClick={() => openMpModal()}>
+                  Agregar pago
+                </UiButton>
+              </div>
+            )}
             {pageLoading ? (
               <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
             ) : manualPayments.length === 0 ? (

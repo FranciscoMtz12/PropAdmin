@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   AlertTriangle, CheckCircle, ChevronDown, ChevronLeft, ChevronRight, Clock,
@@ -11,6 +11,7 @@ import {
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import {
   type BuildingUtilityMeter, type BuildingUtilityInvoice, type BuildingUtilityInvoiceItem,
   meterGeneratesCharge, SERVICE_TYPE_LABEL, SERVICE_TYPE_UNIT,
@@ -53,6 +54,7 @@ function proxyUrl(url: string): string {
 type BuildingGroup = {
   building_id: string;
   building_name: string;
+  company_id: string | null;
   utility_meters: BuildingUtilityMeter[];
   invoices: Map<string, BuildingUtilityInvoice>;
   units: { id: string; unit_number: string }[];
@@ -536,6 +538,8 @@ function PeriodSelector({
 
 export default function ServiciosPage() {
   const { user, loading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const { legalName, companyAddress, companyTaxId, accentColor, logoPrintUrl, logoGroupUrl } = useTheme();
   const router = useRouter();
 
@@ -572,15 +576,15 @@ export default function ServiciosPage() {
   }, [period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadData();
-  }, [user?.company_id, user?.is_superadmin, period.year, period.month]);
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadData();
+  }, [user?.company_id, user?.is_superadmin, isGroupMode, period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadPendingMeters();
-  }, [user?.company_id, user?.is_superadmin]);
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadPendingMeters();
+  }, [user?.company_id, user?.is_superadmin, isGroupMode]);
 
   async function loadPendingMeters() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
@@ -605,7 +609,7 @@ export default function ServiciosPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setPageLoading(true);
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -615,7 +619,7 @@ export default function ServiciosPage() {
     try {
       const { data: buildingsData, error: bErr } = await co(supabase
         .from("buildings")
-        .select("id, name"))
+        .select("id, name, company_id"))
         .is("deleted_at", null)
         .order("name");
       if (bErr) throw bErr;
@@ -673,13 +677,14 @@ export default function ServiciosPage() {
       const totalConfigured = [...utilMetersByBuilding.values()].reduce((n, arr) => n + arr.length, 0);
       setHasAnyMeters(totalConfigured > 0);
 
-      const result: BuildingGroup[] = (buildingsData as { id: string; name: string }[])
+      const result: BuildingGroup[] = (buildingsData as { id: string; name: string; company_id: string | null }[])
         .map(b => {
           const utilMeters = (utilMetersByBuilding.get(b.id) ?? [])
             .filter(m => shouldBillThisPeriod(m, year, month));
           return {
             building_id:    b.id,
             building_name:  b.name,
+            company_id:     b.company_id ?? null,
             utility_meters: utilMeters,
             invoices:       invoicesByMeter,
             units:          unitsByBuilding.get(b.id) ?? [],
@@ -1099,14 +1104,19 @@ export default function ServiciosPage() {
 
   /* ── Metrics ──────────────────────────────────────────────────── */
 
-  const totalAmount = groups.reduce((sum, g) =>
+  const filteredGroups = useMemo(() => {
+    if (!isGroupMode) return groups;
+    return groups.filter(g => g.company_id != null && groupCompanyIds.includes(g.company_id));
+  }, [isGroupMode, groups, groupCompanyIds]);
+
+  const totalAmount = filteredGroups.reduce((sum, g) =>
     sum + g.utility_meters.reduce((s, m) => {
       const inv = g.invoices.get(m.id);
       return s + (inv ? Number(inv.total_amount) : 0);
     }, 0), 0);
 
   const serviceStats = (() => {
-    const allMeters = groups.flatMap(g => g.utility_meters.map(m => ({ m, g })));
+    const allMeters = filteredGroups.flatMap(g => g.utility_meters.map(m => ({ m, g })));
     const types = [...new Set(allMeters.map(({ m }) => m.service_type))];
     return types.map(type => {
       const meters = allMeters.filter(({ m }) => m.service_type === type);
@@ -1122,7 +1132,7 @@ export default function ServiciosPage() {
   /* ── Empty states ─────────────────────────────────────────────── */
 
   const showNoServices = !pageLoading && !hasAnyMeters;
-  const showNoPeriod   = !pageLoading && hasAnyMeters && groups.length === 0;
+  const showNoPeriod   = !pageLoading && hasAnyMeters && filteredGroups.length === 0;
 
   return (
     <PageContainer>
@@ -1268,8 +1278,9 @@ export default function ServiciosPage() {
         <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando servicios...</p>
       )}
 
-      {!pageLoading && groups.map(group => {
+      {!pageLoading && filteredGroups.map(group => {
         const bPend = group.utility_meters.filter(m => !group.invoices.has(m.id)).length;
+        const company = isGroupMode ? groupCompanies.find(c => c.id === group.company_id) : undefined;
 
         return (
           <div key={group.building_id} style={{ marginBottom: 20 }}>
@@ -1277,6 +1288,12 @@ export default function ServiciosPage() {
               title={group.building_name}
               subtitle={bPend === 0 ? "Todo facturado" : `${bPend} servicio${bPend > 1 ? "s" : ""} pendiente${bPend > 1 ? "s" : ""}`}
             >
+              {company && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
+                </div>
+              )}
               {group.utility_meters.map(meter => {
                 const invoice      = group.invoices.get(meter.id) ?? null;
                 const parts        = [meter.provider_name, meter.meter_number].filter(Boolean);

@@ -55,6 +55,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateOCPdf, generateOMPdf } from "@/lib/pdfTemplates";
 import { formatDateLong, formatDateMedium, formatDateShort } from "@/lib/dateUtils";
@@ -156,6 +157,7 @@ type BuildingOption = {
   name: string;
   code: string | null;
   address: string | null;
+  company_id?: string | null;
 };
 
 type UnitOption = {
@@ -587,6 +589,8 @@ export async function renderPurchaseOrderPage(_doc: any, p: OCPageParams) {
 
 export default function MaintenancePage() {
   const { user, loading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const { logoUrl, logoGroupUrl, legalName, companyAddress, companyTaxId, companyPhone, companyEmail, companyZipCode, purchasesContactPhone, purchasesContactEmail } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -667,9 +671,9 @@ export default function MaintenancePage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadPageData();
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadPageData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user]);
+  }, [user, isGroupMode]);
 
   /* Auto-expand por URL ?expand=<id> (entrada desde Compras) */
   useEffect(() => {
@@ -686,7 +690,7 @@ export default function MaintenancePage() {
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   async function loadPageData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setLoadingData(true);
     setMsg("");
 
@@ -708,7 +712,7 @@ export default function MaintenancePage() {
 
       co(supabase
         .from("buildings")
-        .select("id, name, code, address"))
+        .select("id, name, code, address, company_id"))
         .is("deleted_at", null)
         .order("name", { ascending: true }),
 
@@ -1364,9 +1368,18 @@ export default function MaintenancePage() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
+  const buildingCompanyMap = useMemo(
+    () => new Map(buildings.map(b => [b.id, b.company_id ?? null])),
+    [buildings],
+  );
+
   const filteredTickets = useMemo(() => {
     const q = searchQuery.trim() ? normalizeText(searchQuery.trim()) : "";
     return tickets.filter((t) => {
+      if (isGroupMode && t.building_id) {
+        const cid = buildingCompanyMap.get(t.building_id);
+        if (!cid || !groupCompanyIds.includes(cid)) return false;
+      }
       if (filterBuilding  !== "ALL" && t.building_id !== filterBuilding) return false;
       if (filterPriority  !== "ALL" && (t.priority || "").toLowerCase() !== filterPriority) return false;
       if (filterStatus    !== "ALL" && (t.status   || "").toLowerCase() !== filterStatus)   return false;
@@ -1380,7 +1393,7 @@ export default function MaintenancePage() {
       }
       return true;
     });
-  }, [tickets, filterBuilding, filterPriority, filterStatus, filterCategory, searchQuery]);
+  }, [tickets, isGroupMode, buildingCompanyMap, groupCompanyIds, filterBuilding, filterPriority, filterStatus, filterCategory, searchQuery]);
 
   const ticketTotals = useMemo(() => {
     const now = new Date();
@@ -1436,7 +1449,7 @@ export default function MaintenancePage() {
         subtitle="Gestión de tickets, seguimiento de trabajos y calendario operativo."
         titleIcon={<Wrench size={18} />}
         actions={
-          activeMainTab === "tickets" ? (
+          activeMainTab === "tickets" && !isGroupMode ? (
             <UiButton
               icon={<Plus size={16} />}
               onClick={() => { setCreateError(""); setShowCreateModal(true); }}
@@ -1665,13 +1678,23 @@ export default function MaintenancePage() {
               </AppCard>
             ) : (
               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "minmax(0, 1fr)" }}>
-                {filteredTickets.map((ticket, index) => (
+                {filteredTickets.map((ticket, index) => {
+                  const ticketCompany = isGroupMode && ticket.building_id
+                    ? groupCompanies.find(c => c.id === buildingCompanyMap.get(ticket.building_id!))
+                    : undefined;
+                  return (
                   <motion.div
                     key={ticket.id}
                     initial={{ opacity: 0, y: 16 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
+                    {ticketCompany && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingLeft: 2 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: ticketCompany.brand_color || "var(--accent)", flexShrink: 0 }} />
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{ticketCompany.short_name || ticketCompany.name}</span>
+                      </div>
+                    )}
                   <TicketCard
                     ticket={ticket}
                     isExpanded={expandedId === ticket.id}
@@ -1700,7 +1723,8 @@ export default function MaintenancePage() {
                     onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
                   />
                   </motion.div>
-                ))}
+                  );
+                })}
                 {tickets.length === 200 ? (
                   <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>
                     Mostrando los 200 tickets más recientes

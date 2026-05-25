@@ -23,6 +23,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -49,7 +50,7 @@ type DayOfWeek =
   | "sunday";
 type TabKey = "week" | "by_building" | "history" | "config";
 
-type Building = { id: string; name: string };
+type Building = { id: string; name: string; company_id?: string | null };
 type Unit = { id: string; building_id: string; unit_number: string | null; display_code: string | null };
 
 type BuildingSchedule = {
@@ -254,6 +255,8 @@ type ScheduleValues = z.infer<typeof scheduleSchema>;
 
 export default function CleaningPage() {
   const { user, loading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -303,12 +306,13 @@ export default function CleaningPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     void loadData();
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user?.company_id, user?.is_superadmin, isGroupMode]);
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setLoadingData(true);
 
     const cid = user?.company_id ?? null;
@@ -323,7 +327,7 @@ export default function CleaningPage() {
     const [bRes, uRes, bsRes, usRes, logsRes, chkRes] = await Promise.all([
       co(supabase
         .from("buildings")
-        .select("id, name"))
+        .select("id, name, company_id"))
         .is("deleted_at", null)
         .order("name"),
       co(supabase
@@ -388,6 +392,11 @@ export default function CleaningPage() {
   /* ── Derivados ────────────────────────────────────────────────── */
 
   const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
+
+  const displayedBuildings = useMemo(() => {
+    if (!isGroupMode) return buildings;
+    return buildings.filter(b => b.company_id != null && groupCompanyIds.includes(b.company_id));
+  }, [isGroupMode, buildings, groupCompanyIds]);
   const unitById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
   const unitsByBuilding = useMemo(() => {
     const m = new Map<string, Unit[]>();
@@ -556,7 +565,7 @@ export default function CleaningPage() {
 
   /* Por edificio (semana visible) */
   const byBuildingStats = useMemo(() => {
-    return buildings
+    return displayedBuildings
       .map((b) => {
         const bTasks = weekTasks.filter((t) => t.buildingId === b.id);
         const completed = bTasks.filter((t) => getLogForTask(t)?.status === "completed").length;
@@ -567,7 +576,7 @@ export default function CleaningPage() {
       .filter((b) => b.total > 0)
       .sort((a, b) => b.rate - a.rate);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [buildings, weekTasks, logIndex]);
+  }, [displayedBuildings, weekTasks, logIndex]);
 
   /* Historial últimos 30 días */
   const historyRows = useMemo(() => {
@@ -906,7 +915,7 @@ export default function CleaningPage() {
       <PageHeader
         title="Limpieza"
         titleIcon={<Sparkles size={18} />}
-        actions={
+        actions={!isGroupMode && (
           <div style={{ display: "flex", gap: 8 }}>
             <UiButton variant="secondary" icon={<Settings size={14} />} onClick={() => setTab("config")}>
               Configurar horario
@@ -915,7 +924,7 @@ export default function CleaningPage() {
               Nueva tarea
             </UiButton>
           </div>
-        }
+        )}
       />
 
       {/* ── Banners de limpieza ──────────────────────────────────── */}
@@ -1495,8 +1504,16 @@ export default function CleaningPage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 12 }}>
             {byBuildingStats.map((b) => {
               const color = b.rate >= 80 ? "#10B981" : b.rate >= 60 ? "#F59E0B" : "#EF4444";
+              const buildingData = buildingById.get(b.id);
+              const company = isGroupMode ? groupCompanies.find(c => c.id === buildingData?.company_id) : undefined;
               return (
                 <AppCard key={b.id} style={{ padding: 14 }}>
+                  {company && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
+                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
+                    </div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 10 }}>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{b.name}</div>

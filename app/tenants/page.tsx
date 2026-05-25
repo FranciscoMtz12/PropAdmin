@@ -29,6 +29,7 @@ import { z } from "zod";
 import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -99,6 +100,7 @@ type TenantFormValues = z.infer<typeof tenantSchema>;
 
 type TenantRow = {
   id: string;
+  company_id: string;
   fullName: string;
   email: string;
   phone: string;
@@ -241,12 +243,15 @@ export default function TenantsPage() {
 
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
+
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
 
     void loadTenantsPage();
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.company_id, user?.is_superadmin, isGroupMode]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -265,7 +270,7 @@ export default function TenantsPage() {
   }, []);
 
   async function loadTenantsPage() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
 
     setLoadingPage(true);
     setMessage("");
@@ -477,6 +482,7 @@ export default function TenantsPage() {
 
       return {
         id: tenant.id,
+        company_id: tenant.company_id,
         fullName: tenant.full_name,
         email: tenant.email || "—",
         phone: tenant.phone || "—",
@@ -499,6 +505,7 @@ export default function TenantsPage() {
 
   const filteredRows = useMemo(() => {
     return tenantRows.filter((row) => {
+      if (isGroupMode && !groupCompanyIds.includes(row.company_id)) return false;
       if (statusFilter !== "all" && row.status !== statusFilter) {
         return false;
       }
@@ -538,7 +545,18 @@ export default function TenantsPage() {
 
       return true;
     });
-  }, [tenantRows, statusFilter, buildingFilter, search]);
+  }, [tenantRows, statusFilter, buildingFilter, search, isGroupMode, groupCompanyIds]);
+
+  const tenantsByCompany = useMemo(() => {
+    if (!isGroupMode) return [];
+    return groupCompanies
+      .filter((c) => groupCompanyIds.includes(c.id))
+      .map((company) => ({
+        company,
+        compTenants: filteredRows.filter((t) => t.company_id === company.id),
+      }))
+      .filter(({ compTenants }) => compTenants.length > 0);
+  }, [isGroupMode, groupCompanies, groupCompanyIds, filteredRows]);
 
   const activeCount = tenantRows.filter((row) => row.status === "ACTIVE").length;
   const inactiveCount = tenantRows.filter((row) => row.status === "INACTIVE").length;
@@ -640,15 +658,175 @@ export default function TenantsPage() {
 
   if (!user) return null;
 
+  const TENANT_COLS = [
+    {
+      key: "fullName",
+      header: "Inquilino",
+      render: (row: TenantRow) => (
+        <div style={{ display: "grid", gap: 4 }}>
+          <span style={cellPrimaryStyle}>{row.fullName}</span>
+          <span style={cellSecondaryStyle}>{row.createdAtLabel}</span>
+        </div>
+      ),
+    },
+    {
+      key: "contact",
+      header: "Contacto",
+      render: (row: TenantRow) => (
+        <div style={{ display: "grid", gap: 4 }}>
+          <span style={cellPrimaryStyle}>{row.email}</span>
+          <span style={cellSecondaryStyle}>{row.phone}</span>
+        </div>
+      ),
+    },
+    {
+      key: "currentUnit",
+      header: "Unidad ligada",
+      render: (row: TenantRow) => (
+        <div style={{ display: "grid", gap: 4 }}>
+          <span style={cellPrimaryStyle}>{row.currentBuildingLabel}</span>
+          <span style={cellSecondaryStyle}>{row.currentUnitLabel}</span>
+        </div>
+      ),
+    },
+    {
+      key: "billing",
+      header: "Facturación",
+      render: (row: TenantRow) => (
+        <div style={{ display: "grid", gap: 4 }}>
+          <span style={cellPrimaryStyle}>{row.billingName}</span>
+          <span style={cellSecondaryStyle}>{row.billingEmail}</span>
+        </div>
+      ),
+    },
+    {
+      key: "taxId",
+      header: "RFC",
+      render: (row: TenantRow) => (
+        <span style={cellPrimaryStyle}>{row.taxId}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Estatus",
+      render: (row: TenantRow) => {
+        const colors = getStatusColors(row.status);
+        return (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: `1px solid ${colors.border}`,
+              background: colors.background,
+              color: colors.color,
+              fontSize: 12,
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {row.statusLabel}
+          </span>
+        );
+      },
+    },
+    {
+      key: "notes",
+      header: "Notas",
+      render: (row: TenantRow) => (
+        <span style={cellSecondaryStyle}>{row.notes}</span>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Acciones",
+      render: (row: TenantRow) => {
+        const tenant = tenants.find((item) => item.id === row.id);
+        const isOpen = openActionsTenantId === row.id;
+        return (
+          <div
+            style={{ position: "relative", display: "inline-block" }}
+            ref={isOpen ? actionsMenuRef : null}
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setOpenActionsTenantId((prev) =>
+                  prev === row.id ? null : row.id
+                )
+              }
+              style={dropdownTriggerStyle}
+            >
+              <MoreHorizontal size={14} />
+              Acciones
+              <ChevronDown size={14} />
+            </button>
+            <AnimatePresence>
+            {isOpen ? (
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.15 }}
+                style={dropdownMenuStyle}
+              >
+                {isSuperAdmin ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTenantPortalDashboard(row.id)}
+                      style={dropdownPortalItemStyle}
+                    >
+                      <ExternalLink size={14} />
+                      Ver dashboard portal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTenantPortalInvoices(row.id)}
+                      style={dropdownPortalSecondaryItemStyle}
+                    >
+                      <FileText size={14} />
+                      Ver adeudos
+                    </button>
+                  </>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => { if (tenant) openEditModal(tenant); }}
+                  style={dropdownItemStyle}
+                >
+                  Editar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openDeleteModal(row)}
+                  style={dropdownDeleteItemStyle}
+                >
+                  <Trash2 size={14} />
+                  Eliminar
+                </button>
+              </motion.div>
+            ) : null}
+            </AnimatePresence>
+          </div>
+        );
+      },
+    },
+  ];
+
   return (
     <PageContainer>
       <PageHeader
         title="Inquilinos"
         titleIcon={<User2 size={18} />}
         actions={
-          <UiButton onClick={openCreateModal} icon={<Plus size={16} />}>
-            Nuevo inquilino
-          </UiButton>
+          !isGroupMode ? (
+            <UiButton onClick={openCreateModal} icon={<Plus size={16} />}>
+              Nuevo inquilino
+            </UiButton>
+          ) : undefined
         }
       />
 
@@ -817,177 +995,44 @@ export default function TenantsPage() {
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }} style={{ marginTop: 16 }}>
-      <SectionCard title="Listado de inquilinos">
+      <SectionCard title={isGroupMode ? "Vista consolidada — Inquilinos" : "Listado de inquilinos"}>
         <div className="mod-table-wrap">
-        <AppTable
-          rows={filteredRows}
-          emptyState="Todavía no hay inquilinos registrados."
-          columns={[
-            {
-              key: "fullName",
-              header: "Inquilino",
-              render: (row: TenantRow) => (
-                <div style={{ display: "grid", gap: 4 }}>
-                  <span style={cellPrimaryStyle}>{row.fullName}</span>
-                  <span style={cellSecondaryStyle}>{row.createdAtLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "contact",
-              header: "Contacto",
-              render: (row: TenantRow) => (
-                <div style={{ display: "grid", gap: 4 }}>
-                  <span style={cellPrimaryStyle}>{row.email}</span>
-                  <span style={cellSecondaryStyle}>{row.phone}</span>
-                </div>
-              ),
-            },
-            {
-              key: "currentUnit",
-              header: "Unidad ligada",
-              render: (row: TenantRow) => (
-                <div style={{ display: "grid", gap: 4 }}>
-                  <span style={cellPrimaryStyle}>{row.currentBuildingLabel}</span>
-                  <span style={cellSecondaryStyle}>{row.currentUnitLabel}</span>
-                </div>
-              ),
-            },
-            {
-              key: "billing",
-              header: "Facturación",
-              render: (row: TenantRow) => (
-                <div style={{ display: "grid", gap: 4 }}>
-                  <span style={cellPrimaryStyle}>{row.billingName}</span>
-                  <span style={cellSecondaryStyle}>{row.billingEmail}</span>
-                </div>
-              ),
-            },
-            {
-              key: "taxId",
-              header: "RFC",
-              render: (row: TenantRow) => (
-                <span style={cellPrimaryStyle}>{row.taxId}</span>
-              ),
-            },
-            {
-              key: "status",
-              header: "Estatus",
-              render: (row: TenantRow) => {
-                const colors = getStatusColors(row.status);
-
+        {isGroupMode ? (
+          tenantsByCompany.length === 0 ? (
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Sin inquilinos en las empresas activas.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              {tenantsByCompany.map(({ company, compTenants }) => {
+                const compColor = company.brand_color || "var(--accent)";
                 return (
-                  <span
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      padding: "6px 10px",
-                      borderRadius: 999,
-                      border: `1px solid ${colors.border}`,
-                      background: colors.background,
-                      color: colors.color,
-                      fontSize: 12,
-                      fontWeight: 800,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {row.statusLabel}
-                  </span>
-                );
-              },
-            },
-            {
-              key: "notes",
-              header: "Notas",
-              render: (row: TenantRow) => (
-                <span style={cellSecondaryStyle}>{row.notes}</span>
-              ),
-            },
-            {
-              key: "actions",
-              header: "Acciones",
-              render: (row: TenantRow) => {
-                const tenant = tenants.find((item) => item.id === row.id);
-                const isOpen = openActionsTenantId === row.id;
-
-                return (
-                  <div
-                    style={{ position: "relative", display: "inline-block" }}
-                    ref={isOpen ? actionsMenuRef : null}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenActionsTenantId((prev) =>
-                          prev === row.id ? null : row.id
-                        )
-                      }
-                      style={dropdownTriggerStyle}
-                    >
-                      <MoreHorizontal size={14} />
-                      Acciones
-                      <ChevronDown size={14} />
-                    </button>
-
-                    <AnimatePresence>
-                    {isOpen ? (
-                      <motion.div
-                        initial={{ opacity: 0, y: -6, scale: 0.97 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -6, scale: 0.97 }}
-                        transition={{ duration: 0.15 }}
-                        style={dropdownMenuStyle}
-                      >
-                        {isSuperAdmin ? (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenTenantPortalDashboard(row.id)}
-                              style={dropdownPortalItemStyle}
-                            >
-                              <ExternalLink size={14} />
-                              Ver dashboard portal
-                            </button>
-
-                            <button
-                              type="button"
-                              onClick={() => handleOpenTenantPortalInvoices(row.id)}
-                              style={dropdownPortalSecondaryItemStyle}
-                            >
-                              <FileText size={14} />
-                              Ver adeudos
-                            </button>
-                          </>
-                        ) : null}
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (tenant) openEditModal(tenant);
-                          }}
-                          style={dropdownItemStyle}
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => openDeleteModal(row)}
-                          style={dropdownDeleteItemStyle}
-                        >
-                          <Trash2 size={14} />
-                          Eliminar
-                        </button>
-                      </motion.div>
-                    ) : null}
-                    </AnimatePresence>
+                  <div key={company.id}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                        {company.short_name || company.name}
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                        {compTenants.length} {compTenants.length === 1 ? "inquilino" : "inquilinos"}
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
+                    </div>
+                    <AppTable
+                      rows={compTenants}
+                      emptyState="Sin inquilinos en esta empresa."
+                      columns={TENANT_COLS}
+                    />
                   </div>
                 );
-              },
-            },
-          ]}
-        />
+              })}
+            </div>
+          )
+        ) : (
+          <AppTable
+            rows={filteredRows}
+            emptyState="Todavía no hay inquilinos registrados."
+            columns={TENANT_COLS}
+          />
+        )}
         </div>
       </SectionCard>
       </motion.div>

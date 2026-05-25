@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import MetricCard from "@/components/MetricCard";
@@ -51,6 +52,7 @@ type MeterGroup = {
 type BuildingGroup = {
   building_id: string;
   building_name: string;
+  company_id: string | null;
   meter_groups: MeterGroup[];
 };
 
@@ -70,6 +72,8 @@ const INV_VARIANT: Record<string, "green" | "amber" | "blue" | "gray"> = {
 
 export default function CobranzaMedidoresPage() {
   const { user, loading } = useCurrentUser();
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const now = new Date();
   const [year, setYear]   = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -94,19 +98,19 @@ export default function CobranzaMedidoresPage() {
   } | null>(null);
 
   useEffect(() => {
-    if (user?.company_id) void loadData();
-  }, [user, year, month]);
+    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadData();
+  }, [user, year, month, isGroupMode]);
 
   async function loadData() {
-    if (!user?.company_id) return;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setPageLoading(true);
 
-    const { data: mData } = await supabase
-      .from("building_utility_meters")
-      .select("*")
-      .eq("company_id", user.company_id)
-      .eq("active", true)
-      .is("deleted_at", null);
+    const cid = user?.company_id ?? null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+    const { data: mData } = await co(
+      supabase.from("building_utility_meters").select("*").eq("active", true).is("deleted_at", null)
+    );
 
     const mList = ((mData || []) as BuildingUtilityMeter[]).filter(meterGeneratesCharge);
 
@@ -138,7 +142,7 @@ export default function CobranzaMedidoresPage() {
     const today      = new Date().toISOString().split("T")[0];
 
     const [bRes, uRes, lRes, invRes, allURes] = await Promise.all([
-      supabase.from("buildings").select("id, name").in("id", buildingIds),
+      supabase.from("buildings").select("id, name, company_id").in("id", buildingIds),
       allUnitIds.length > 0
         ? supabase.from("units").select("id, unit_number").in("id", allUnitIds)
         : Promise.resolve({ data: [] }),
@@ -177,7 +181,11 @@ export default function CobranzaMedidoresPage() {
     }
 
     const buildingMap: Record<string, string> = {};
-    ((bRes.data || []) as Array<{ id: string; name: string }>).forEach(b => { buildingMap[b.id] = b.name; });
+    const buildingCompanyMap: Record<string, string | null> = {};
+    ((bRes.data || []) as Array<{ id: string; name: string; company_id: string | null }>).forEach(b => {
+      buildingMap[b.id] = b.name;
+      buildingCompanyMap[b.id] = b.company_id ?? null;
+    });
 
     const unitNumMap: Record<string, string> = {};
     ((uRes.data || []) as Array<{ id: string; unit_number: string }>).forEach(u => { unitNumMap[u.id] = u.unit_number; });
@@ -216,7 +224,7 @@ export default function CobranzaMedidoresPage() {
         unit_number: meter.unit_id ? unitNumMap[meter.unit_id] : undefined,
         tenant_name: meter.unit_id ? leasesByUnit.get(meter.unit_id)?.tenant_name : undefined,
       }));
-      return { building_id: bid, building_name: buildingMap[bid] ?? bid, meter_groups };
+      return { building_id: bid, building_name: buildingMap[bid] ?? bid, company_id: buildingCompanyMap[bid] ?? null, meter_groups };
     }).filter(g => g.meter_groups.length > 0);
 
     setGroups(grps);
@@ -225,13 +233,18 @@ export default function CobranzaMedidoresPage() {
     setPageLoading(false);
   }
 
+  const filteredGroups = useMemo(() => {
+    if (!isGroupMode) return groups;
+    return groups.filter(g => g.company_id != null && groupCompanyIds.includes(g.company_id));
+  }, [isGroupMode, groups, groupCompanyIds]);
+
   const totalSubMeters  = useMemo(
-    () => groups.reduce((s, g) => s + g.meter_groups.reduce((s2, mg) => s2 + mg.sub_meters.length, 0), 0),
-    [groups],
+    () => filteredGroups.reduce((s, g) => s + g.meter_groups.reduce((s2, mg) => s2 + mg.sub_meters.length, 0), 0),
+    [filteredGroups],
   );
   const capturedCount   = readings.length;
   const pendingReadings = totalSubMeters - capturedCount;
-  const totalMeters     = groups.reduce((s, g) => s + g.meter_groups.length, 0);
+  const totalMeters     = filteredGroups.reduce((s, g) => s + g.meter_groups.length, 0);
   const pendingInvoices = totalMeters - invoices.length;
   const cobrosCount     = invoices.filter(i => i.status === "charged").length;
 
@@ -269,7 +282,7 @@ export default function CobranzaMedidoresPage() {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard label="Edificios con servicios" value={groups.length} icon={<MapPin size={18} />} />
+        <MetricCard label="Edificios con servicios" value={filteredGroups.length} icon={<MapPin size={18} />} />
         <MetricCard label="Lecturas pendientes"  value={pageLoading ? "…" : pendingReadings}  icon={<Zap size={18} />}      variant={pendingReadings  > 0 ? "amber" : "green"} />
         <MetricCard label="Facturas pendientes"  value={pageLoading ? "…" : pendingInvoices}  icon={<FileText size={18} />} variant={pendingInvoices  > 0 ? "amber" : "green"} />
         <MetricCard label="Cobros generados"     value={pageLoading ? "…" : cobrosCount}      icon={<FileText size={18} />} variant={cobrosCount      > 0 ? "green" : "neutral"} />
@@ -277,7 +290,7 @@ export default function CobranzaMedidoresPage() {
 
       {pageLoading ? (
         <p style={{ color: "var(--text-muted)" }}>Cargando...</p>
-      ) : groups.length === 0 ? (
+      ) : filteredGroups.length === 0 ? (
         <AppEmptyState
           title="Sin servicios configurados"
           description="No hay servicios del edificio con cobro configurados todavía."
@@ -286,8 +299,16 @@ export default function CobranzaMedidoresPage() {
         />
       ) : (
         <div style={{ display: "grid", gap: 24 }}>
-          {groups.map(group => (
+          {filteredGroups.map(group => {
+            const company = isGroupMode ? groupCompanies.find(c => c.id === group.company_id) : undefined;
+            return (
             <SectionCard key={group.building_id} title={group.building_name} icon={<MapPin size={18} />}>
+              {company && (
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{company.short_name || company.name}</span>
+                </div>
+              )}
               <div style={{ display: "grid", gap: 20 }}>
                 {group.meter_groups.map(({ meter, sub_meters, unit_number, tenant_name }) => {
                   const invoice   = invoices.find(i => i.building_utility_meter_id === meter.id) ?? null;
@@ -318,18 +339,20 @@ export default function CobranzaMedidoresPage() {
                             </AppBadge>
                           )}
                         </div>
-                        <UiButton
-                          variant={invoice ? "secondary" : "primary"}
-                          icon={<FileText size={14} />}
-                          onClick={() => setInvoiceModal({
-                            meter,
-                            building: { id: group.building_id, name: group.building_name },
-                            existingInvoice: invoice,
-                            units: unitsByBuilding[group.building_id] ?? [],
-                          })}
-                        >
-                          {invoice ? "Ver / Editar" : "Registrar factura"}
-                        </UiButton>
+                        {!isGroupMode && (
+                          <UiButton
+                            variant={invoice ? "secondary" : "primary"}
+                            icon={<FileText size={14} />}
+                            onClick={() => setInvoiceModal({
+                              meter,
+                              building: { id: group.building_id, name: group.building_name },
+                              existingInvoice: invoice,
+                              units: unitsByBuilding[group.building_id] ?? [],
+                            })}
+                          >
+                            {invoice ? "Ver / Editar" : "Registrar factura"}
+                          </UiButton>
+                        )}
                       </div>
 
                       {/* Dedicated: show tenant info */}
@@ -369,9 +392,9 @@ export default function CobranzaMedidoresPage() {
                                 return (
                                   <div
                                     key={sm.id}
-                                    onClick={() => setCaptureModal({ subMeter: sm, meter, previousReading: prevReading })}
+                                    onClick={() => isGroupMode ? undefined : setCaptureModal({ subMeter: sm, meter, previousReading: prevReading })}
                                     style={{
-                                      padding: "10px 12px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
+                                      padding: "10px 12px", borderRadius: "var(--border-radius-lg)", cursor: isGroupMode ? "default" : "pointer",
                                       background: "var(--bg-page)",
                                       border: `1px solid ${isCaptured ? "#15803d" : "var(--border-default)"}`,
                                       borderLeft: `4px solid ${isCaptured ? "#15803d" : "#c2410c"}`,
@@ -406,7 +429,8 @@ export default function CobranzaMedidoresPage() {
                 })}
               </div>
             </SectionCard>
-          ))}
+            );
+          })}
         </div>
       )}
 
