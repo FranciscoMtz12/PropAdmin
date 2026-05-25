@@ -44,12 +44,11 @@ export const ALL_MODULES: QuickLink[] = [
 
 const BY_ROLE: Record<string, QuickLink[]> = {
   administracion: [
-    { label: "Cobranza",      icon: "ti-coin",          path: "/cobranza"      },
     { label: "Propiedades",   icon: "ti-building",      path: "/buildings"     },
-    { label: "Inquilinos",    icon: "ti-users",         path: "/tenants"       },
-    { label: "Pagos",         icon: "ti-receipt",       path: "/payments"      },
     { label: "Servicios",     icon: "ti-bolt",          path: "/servicios"     },
-    { label: "Mantenimiento", icon: "ti-tool",          path: "/mantenimiento" },
+    { label: "Pagos",         icon: "ti-receipt",       path: "/payments"      },
+    { label: "Cobranza",      icon: "ti-coin",          path: "/cobranza"      },
+    { label: "Inquilinos",    icon: "ti-users",         path: "/tenants"       },
     { label: "Analytics",     icon: "ti-chart-bar",     path: "/analytics"     },
   ],
   compras: [
@@ -88,7 +87,7 @@ export function getDefaultQuickLinks(role: string): QuickLink[] {
 
 /* Role-based module filtering — mirrors RouteGuard allowed paths */
 const ROLE_ALLOWED_PREFIXES: Record<string, string[]> = {
-  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants"],
+  administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants", "/analytics"],
   compras:        ["/dashboard", "/purchases", "/compras", "/suppliers"],
   mantenimiento:  ["/dashboard", "/maintenance", "/mantenimiento", "/cleaning"],
   directivo:      ["/dashboard", "/buildings", "/analytics", "/collections", "/cobranza", "/tenants"],

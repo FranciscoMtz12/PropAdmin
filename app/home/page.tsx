@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { AlertCircle, Calendar, Coins, LayoutDashboard, Wrench } from "lucide-react";
+import { AlertCircle, Calendar, Coins, Wrench } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -145,7 +145,7 @@ export default function HomePage() {
   const [now, setNow] = useState(() => new Date());
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
-  const [isMobile, setIsMobile] = useState(false);
+  const [windowWidth, setWindowWidth] = useState(1280);
 
   useEffect(() => {
     const id = setInterval(() => setNow(new Date()), 60_000);
@@ -153,7 +153,7 @@ export default function HomePage() {
   }, []);
 
   useEffect(() => {
-    const check = () => setIsMobile(window.innerWidth < 640);
+    const check = () => setWindowWidth(window.innerWidth);
     check();
     window.addEventListener("resize", check);
     return () => window.removeEventListener("resize", check);
@@ -253,6 +253,9 @@ export default function HomePage() {
   const links2 = displayLinks.slice(4, 7);
   const ticketsNormales = (metrics?.ticketsAbiertos ?? 0) - (metrics?.ticketsUrgentes ?? 0);
 
+  const isSmall = windowWidth < 768;
+  const isLarge = windowWidth >= 1280;
+
   /* Loading state — dark bg before user loads */
   if (loading) {
     return (
@@ -312,13 +315,13 @@ export default function HomePage() {
         style={{
           position: "relative",
           zIndex: 1,
-          maxWidth: 900,
+          maxWidth: isSmall ? "100%" : isLarge ? 1100 : 900,
           margin: "0 auto",
-          padding: isMobile ? "24px 16px 48px" : "40px 48px 64px",
+          padding: isSmall ? "24px 16px 48px" : isLarge ? "48px 64px 80px" : "40px 48px 64px",
           minHeight: "100dvh",
           display: "flex",
           flexDirection: "column",
-          gap: isMobile ? 32 : 44,
+          gap: isSmall ? 32 : isLarge ? 56 : 44,
         }}
       >
         {/* ── Topbar ──────────────────────────────────────────────── */}
@@ -353,44 +356,29 @@ export default function HomePage() {
             </div>
           )}
 
-          {/* Usuario + link al dashboard */}
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+          {/* Usuario */}
+          <div
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 8,
+              background: "rgba(255,255,255,0.05)",
+              border: "0.5px solid rgba(255,255,255,0.1)",
+              borderRadius: 100,
+              padding: "5px 14px 5px 6px",
+            }}
+          >
             <div
               style={{
-                display: "inline-flex", alignItems: "center", gap: 8,
-                background: "rgba(255,255,255,0.05)",
-                border: "0.5px solid rgba(255,255,255,0.1)",
-                borderRadius: 100,
-                padding: "5px 14px 5px 6px",
+                width: 28, height: 28, borderRadius: "50%",
+                background: accentColor,
+                display: "grid", placeItems: "center",
+                color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0,
               }}
             >
-              <div
-                style={{
-                  width: 28, height: 28, borderRadius: "50%",
-                  background: accentColor,
-                  display: "grid", placeItems: "center",
-                  color: "#fff", fontSize: 10, fontWeight: 700, flexShrink: 0,
-                }}
-              >
-                {userInitials}
-              </div>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" }}>
-                {user.full_name || user.email}
-              </span>
+              {userInitials}
             </div>
-            <button
-              type="button"
-              onClick={() => router.push("/dashboard")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: 5,
-                background: "none", border: "none",
-                color: "rgba(255,255,255,0.35)",
-                fontSize: 12, cursor: "pointer", padding: 0,
-              }}
-            >
-              <LayoutDashboard size={12} />
-              Ir al dashboard
-            </button>
+            <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" }}>
+              {user.full_name || user.email}
+            </span>
           </div>
         </div>
 
@@ -413,7 +401,7 @@ export default function HomePage() {
             {...fadeUp(0.15)}
             style={{
               margin: "0 0 8px",
-              fontSize: isMobile ? 26 : 34,
+              fontSize: isSmall ? 28 : isLarge ? 42 : 36,
               fontWeight: 500,
               color: "#fff",
               lineHeight: 1.25,
@@ -439,7 +427,7 @@ export default function HomePage() {
           animate="animate"
           style={{
             display: "grid",
-            gridTemplateColumns: isMobile ? "1fr" : "repeat(3, 1fr)",
+            gridTemplateColumns: isSmall ? "1fr" : "repeat(3, 1fr)",
             gap: 14,
           }}
         >
@@ -499,7 +487,7 @@ export default function HomePage() {
             animate="animate"
             style={{ display: "flex", flexDirection: "column", gap: 10 }}
           >
-            {isMobile ? (
+            {isSmall ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px" }}>
                 {displayLinks.map(link => (
                   <motion.div key={link.path} variants={itemVariant}>
@@ -510,7 +498,7 @@ export default function HomePage() {
             ) : (
               <>
                 {links1.length > 0 && (
-                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", justifyContent: "center" }}>
+                  <div style={{ display: "flex", gap: 36, flexWrap: "wrap", justifyContent: "center" }}>
                     {links1.map(link => (
                       <motion.div key={link.path} variants={itemVariant}>
                         <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
@@ -519,7 +507,7 @@ export default function HomePage() {
                   </div>
                 )}
                 {links2.length > 0 && (
-                  <div style={{ display: "flex", gap: 28, flexWrap: "wrap", justifyContent: "center", marginLeft: 44 }}>
+                  <div style={{ display: "flex", gap: 36, flexWrap: "wrap", justifyContent: "center", marginLeft: 44 }}>
                     {links2.map(link => (
                       <motion.div key={link.path} variants={itemVariant}>
                         <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
@@ -545,13 +533,13 @@ function LinkBtn({ link, onClick }: { link: QuickLink; onClick: () => void }) {
       type="button"
       onClick={onClick}
       style={{
-        display: "inline-flex", alignItems: "center", gap: 7,
+        display: "inline-flex", alignItems: "center", gap: 8,
         background: "none", border: "none",
         color: "rgba(255,255,255,0.45)",
-        fontSize: 13, fontWeight: 500, cursor: "pointer", padding: "2px 0",
+        fontSize: 14, fontWeight: 500, cursor: "pointer", padding: "2px 0",
       }}
     >
-      {Icon && <Icon size={15} />}
+      {Icon && <Icon size={18} />}
       {link.label}
     </button>
   );
@@ -595,6 +583,7 @@ const CARD: React.CSSProperties = {
   borderRadius: "var(--border-radius-xl, 16px)",
   padding: "20px 22px",
   backdropFilter: "blur(10px)",
+  minHeight: "calc(20vh)",
 };
 
 const BIG_VAL: React.CSSProperties = {
