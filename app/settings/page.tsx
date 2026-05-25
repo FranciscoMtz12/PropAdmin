@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertTriangle, Building2, CreditCard, Download, Info,
+  AlertTriangle, Building2, ChevronDown, ChevronUp, CreditCard, Download, Home, Info,
   Lock, Monitor, Send, Settings2, Shield,
   Trash2, Upload, User, UserPlus, Users, X,
 } from "lucide-react";
@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
+import { type QuickLink, ALL_MODULES, getDefaultQuickLinks, ICON_MAP } from "@/lib/quick-links";
 
 import AppBadge from "@/components/AppBadge";
 import AppGrid from "@/components/AppGrid";
@@ -273,6 +274,11 @@ export default function SettingsPage() {
   const [pwConfirm, setPwConfirm] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
+  // ── Tab: Mi cuenta — Pantalla de inicio
+  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
+  const [savingLinks, setSavingLinks] = useState(false);
+  const [quickLinksLoaded, setQuickLinksLoaded] = useState(false);
+
   // ── Tab: Sistema — Configuración SAPROA
   const [sapConfigId, setSapConfigId] = useState<string | null>(null);
   const [sapPlatformName, setSapPlatformName] = useState("SAPROA");
@@ -330,6 +336,12 @@ export default function SettingsPage() {
     if (activeTab === "usuarios" && !usersLoaded) void loadUsers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // ─── Load quick links when "cuenta" tab is active ────────────────
+  useEffect(() => {
+    if (activeTab === "cuenta" && !quickLinksLoaded && user?.id) void loadQuickLinks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.id, quickLinksLoaded]);
 
   // ─── Data loaders ────────────────────────────────────────────────
   async function loadCompany() {
@@ -604,6 +616,52 @@ export default function SettingsPage() {
     if (error) { toast.error(error.message); return; }
     setPwNew(""); setPwConfirm("");
     toast.success("Contraseña actualizada");
+  }
+
+  async function loadQuickLinks() {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from("user_preferences")
+      .select("quick_links")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const stored = data?.quick_links;
+    setQuickLinks(
+      stored && Array.isArray(stored) && (stored as unknown[]).length > 0
+        ? (stored as QuickLink[])
+        : getDefaultQuickLinks((user as { role?: string }).role ?? ""),
+    );
+    setQuickLinksLoaded(true);
+  }
+
+  async function saveQuickLinks() {
+    if (!user?.id) return;
+    setSavingLinks(true);
+    const { error } = await supabase
+      .from("user_preferences")
+      .upsert({ user_id: user.id, quick_links: quickLinks }, { onConflict: "user_id" });
+    setSavingLinks(false);
+    if (error) { toast.error("Error al guardar la pantalla de inicio"); return; }
+    toast.success("Pantalla de inicio guardada");
+  }
+
+  function toggleQuickLink(mod: QuickLink) {
+    setQuickLinks(prev => {
+      const idx = prev.findIndex(l => l.path === mod.path);
+      if (idx !== -1) return prev.filter(l => l.path !== mod.path);
+      if (prev.length >= 7) return prev;
+      return [...prev, mod];
+    });
+  }
+
+  function moveQuickLink(from: number, to: number) {
+    if (to < 0 || to >= quickLinks.length) return;
+    setQuickLinks(prev => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
   }
 
   // ─── Tab navigation ──────────────────────────────────────────────
@@ -1165,6 +1223,88 @@ export default function SettingsPage() {
                     }
                   }}
                 />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Pantalla de inicio" icon={<Home size={18} />}>
+              <p style={{ margin: "0 0 16px", fontSize: 12, color: "var(--text-secondary)" }}>
+                Los primeros 4 accesos aparecen arriba y los siguientes 3 abajo. Máximo 7.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {ALL_MODULES.map(mod => {
+                  const selIdx = quickLinks.findIndex(l => l.path === mod.path);
+                  const isSelected = selIdx !== -1;
+                  const atMax = quickLinks.length >= 7 && !isSelected;
+                  const Icon = ICON_MAP[mod.icon];
+                  return (
+                    <div
+                      key={mod.path}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 10,
+                        padding: "9px 12px",
+                        borderRadius: "var(--border-radius-md)",
+                        background: isSelected ? "var(--bg-subtle)" : "transparent",
+                        border: isSelected ? "1px solid var(--border-default)" : "1px solid transparent",
+                        opacity: atMax ? 0.45 : 1,
+                      }}
+                    >
+                      {Icon && (
+                        <span style={{ color: "var(--text-secondary)", display: "flex", flexShrink: 0 }}>
+                          <Icon size={15} />
+                        </span>
+                      )}
+                      <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+                        {mod.label}
+                      </span>
+                      {isSelected && (
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", minWidth: 20, textAlign: "center" }}>
+                          {selIdx + 1}
+                        </span>
+                      )}
+                      {isSelected && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                          <button
+                            type="button"
+                            disabled={selIdx === 0}
+                            onClick={() => moveQuickLink(selIdx, selIdx - 1)}
+                            style={{
+                              background: "none", border: "none", padding: "1px 3px", cursor: selIdx === 0 ? "not-allowed" : "pointer",
+                              color: selIdx === 0 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
+                            }}
+                            title="Subir"
+                          >
+                            <ChevronUp size={13} />
+                          </button>
+                          <button
+                            type="button"
+                            disabled={selIdx === quickLinks.length - 1}
+                            onClick={() => moveQuickLink(selIdx, selIdx + 1)}
+                            style={{
+                              background: "none", border: "none", padding: "1px 3px",
+                              cursor: selIdx === quickLinks.length - 1 ? "not-allowed" : "pointer",
+                              color: selIdx === quickLinks.length - 1 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
+                            }}
+                            title="Bajar"
+                          >
+                            <ChevronDown size={13} />
+                          </button>
+                        </div>
+                      )}
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        disabled={atMax}
+                        onChange={() => toggleQuickLink(mod)}
+                        style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: atMax ? "not-allowed" : "pointer", flexShrink: 0 }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                <SaveBtn saving={savingLinks} onClick={saveQuickLinks} label="Guardar pantalla de inicio" />
               </div>
             </SectionCard>
           </div>
