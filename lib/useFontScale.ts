@@ -2,7 +2,7 @@
 
 import { useTheme } from "@/contexts/ThemeContext";
 
-/** Returns the current font scale and a grid helper for adaptive layouts. */
+/** Returns fontScale + adaptive column counts for grids. */
 export function useFontScale() {
   const { fontScale } = useTheme();
 
@@ -13,4 +13,10 @@ export function useFontScale() {
   const cols2 = fontScale >= 1.40 ? 1 : 2;
 
   return { fontScale, cols3, cols2 };
+}
+
+/** Returns an icon pixel size scaled to the current font-scale. */
+export function useIconSize(base: number): number {
+  const { fontScale } = useFontScale();
+  return Math.round(base * fontScale);
 }

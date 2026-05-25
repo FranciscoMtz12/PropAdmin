@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { scaleIn } from "@/lib/animations";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
+import { useIconSize } from "@/lib/useFontScale";
 
 /*
   Card pequeña de métricas.
@@ -50,6 +51,7 @@ export default function MetricCard({
 }) {
   const cardStyle = variant ? VARIANT_CARD_STYLE[variant] : undefined;
   const valueColor = variant ? VARIANT_VALUE_COLOR[variant] : "var(--text-primary)";
+  const iconBoxSz = useIconSize(40);
 
   return (
     <motion.div variants={scaleIn} initial="hidden" animate="show" style={{ height: "100%" }}>
@@ -91,7 +93,7 @@ export default function MetricCard({
           ) : null}
         </div>
 
-        {icon ? <AppIconBox size={40} radius="var(--border-radius-md)">{icon}</AppIconBox> : null}
+        {icon ? <AppIconBox size={iconBoxSz} radius="var(--border-radius-md)">{icon}</AppIconBox> : null}
       </div>
     </AppCard>
     </motion.div>

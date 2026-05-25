@@ -29,6 +29,7 @@ import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useFontScale } from "@/lib/useFontScale";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -123,6 +124,7 @@ function formatDateShort(iso: string | null) {
 export default function AnalyticsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
+  const { fontScale } = useFontScale();
   const { isRealSuperAdmin } = useImpersonation();
 
   const [units, setUnits] = useState<Unit[]>([]);
@@ -713,7 +715,7 @@ export default function AnalyticsPage() {
         {occupancyHistory.length === 0 ? (
           <AppEmptyState title="Sin histórico" description="No hay datos suficientes." />
         ) : (
-          <ResponsiveContainer width="100%" height={240}>
+          <ResponsiveContainer width="100%" height={Math.round(240 * fontScale)}>
             <LineChart data={occupancyHistory} margin={{ top:4, right:12, left:0, bottom:4 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
               <XAxis dataKey="mes" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />

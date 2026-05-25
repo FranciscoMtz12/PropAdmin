@@ -43,6 +43,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
+import { useIconSize } from "@/lib/useFontScale";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
@@ -207,6 +208,7 @@ function NavItem({
   notifBadge?: { count: number; severity: 'critical' | 'warning' | 'brand' | 'info' } | null;
 }) {
   const Icon = item.icon;
+  const navIconSz = useIconSize(17);
   const resolvedHref =
     item.href && !item.disabled
       ? appendTenantPreviewToHref(item.href, previewTenantId)
@@ -230,7 +232,7 @@ function NavItem({
   const leftBlock = (
     <div className="sidebar-nav-item-left" style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
       <Icon
-        size={17}
+        size={navIconSz}
         color={
           item.disabled
             ? "rgba(255,255,255,0.35)"
@@ -358,6 +360,8 @@ export default function Sidebar() {
   const { user } = useCurrentUser();
   const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
   const { impersonationMode, isRealSuperAdmin, isImpersonating } = useImpersonation();
+  const footerIconSz = useIconSize(15);
+  const shieldIconSz = useIconSize(18);
 
   /* Modo SAPROA Control Center: superadmin real SIN impersonar ninguna empresa */
   const isSaproaMode = isRealSuperAdmin && !isImpersonating;
@@ -534,7 +538,7 @@ export default function Sidebar() {
                     letterSpacing: "-0.02em", flexShrink: 0,
                   }}
                 >
-                  <Shield size={18} color="#fff" />
+                  <Shield size={shieldIconSz} color="#fff" />
                 </div>
               ) : activeLogo ? (
                 <img
@@ -663,7 +667,7 @@ export default function Sidebar() {
               color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}
           >
-            <Settings size={15} />
+            <Settings size={footerIconSz} />
             <span className="sidebar-footer-text">Ajustes</span>
           </button>
 
@@ -678,7 +682,7 @@ export default function Sidebar() {
               color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}
           >
-            <LogOut size={15} />
+            <LogOut size={footerIconSz} />
             <span className="sidebar-footer-text">Cerrar sesión</span>
           </button>
         </div>

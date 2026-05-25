@@ -48,6 +48,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useFontScale } from "@/lib/useFontScale";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -318,6 +319,7 @@ function computeEstadoGeneral(records: CollectionRecord[]): CollectionStoredStat
 
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
+  const { fontScale } = useFontScale();
 
   const now = new Date();
   const [selectedYear, setSelectedYear]   = useState(now.getFullYear());
@@ -1230,14 +1232,14 @@ export default function CollectionsPage() {
         {/* Donut — distribución por monto */}
         <div style={donutCardStyle}>
           <p style={sectionLabelStyle}>Distribución del mes</p>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={Math.round(180 * fontScale)}>
             <PieChart>
               <Pie
                 data={donutData}
                 cx="50%"
                 cy="50%"
-                innerRadius={52}
-                outerRadius={78}
+                innerRadius={Math.round(52 * fontScale)}
+                outerRadius={Math.round(78 * fontScale)}
                 paddingAngle={3}
                 dataKey="value"
                 stroke="none"

@@ -107,6 +107,7 @@ import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useFontScale } from "@/lib/useFontScale";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
@@ -1027,6 +1028,7 @@ export default function BuildingDetailPage() {
   const buildingId   = params.buildingId as string;
   const { user, loading } = useCurrentUser();
   const { setPropertyAccent, resetPropertyAccent } = useTheme();
+  const { fontScale } = useFontScale();
   const { notifications: allNotifications } = useNotifications(user?.company_id ?? "");
 
   /* Estado de datos */
@@ -3762,14 +3764,14 @@ export default function BuildingDetailPage() {
                 />
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={Math.round(200 * fontScale)}>
                     <PieChart>
                       <Pie
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
+                        innerRadius={Math.round(60 * fontScale)}
+                        outerRadius={Math.round(90 * fontScale)}
                         paddingAngle={3}
                         dataKey="value"
                         nameKey="name"
@@ -3824,7 +3826,7 @@ export default function BuildingDetailPage() {
                   description="No hay cobros registrados para este edificio en el período seleccionado."
                 />
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={Math.round(200 * fontScale)}>
                   <BarChart data={collectionChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
                     <XAxis dataKey="label" tick={{ fontSize: "0.75rem", fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
@@ -3854,7 +3856,7 @@ export default function BuildingDetailPage() {
                 description="No hay datos suficientes para mostrar la tendencia de ocupación."
               />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={Math.round(220 * fontScale)}>
                 <LineChart data={occupancyTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
                   <XAxis dataKey="label" tick={{ fontSize: "0.75rem", fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />

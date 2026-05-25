@@ -300,7 +300,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { isDark } = useTheme();
-  const { cols3, cols2 } = useFontScale();
+  const { fontScale, cols3, cols2 } = useFontScale();
   const { isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   const role = user?.role;
@@ -808,8 +808,13 @@ export default function DashboardPage() {
   const monthName = new Date().toLocaleDateString("es-MX", { month: "long" });
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
-  /* Altura de placeholder de loading para las donas */
-  const DONUT_LOADING_HEIGHT = 220;
+  /* Radios y altura de las donas, escalan con font-scale */
+  const donutOuter = Math.round(84 * fontScale);
+  const donutInner = Math.round(58 * fontScale);
+  const donutHeight = Math.round(220 * fontScale);
+  const chartHeight = Math.round(280 * fontScale);
+  const cardGap = Math.round(20 * fontScale);
+  const DONUT_LOADING_HEIGHT = donutHeight;
 
   /* ─── Paleta de colores según modo ───────────────────────────────
      Centralizado aquí para que todos los elementos del render usen
@@ -849,8 +854,8 @@ export default function DashboardPage() {
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${cols3}, 1fr)`,
-          gap: 20,
-          marginBottom: 24,
+          gap: cardGap,
+          marginBottom: cardGap,
         }}
       >
         {/* ── Dona 1: Ocupación ─────────────────────────────────── */}
@@ -890,7 +895,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
+              <div className="dashboard-donut-wrap" style={{ position: "relative", height: donutHeight }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <PieChart>
                     <Pie
@@ -900,8 +905,8 @@ export default function DashboardPage() {
                       ]}
                       cx="50%"
                       cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
+                      innerRadius={donutInner}
+                      outerRadius={donutOuter}
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -993,15 +998,15 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Dona siempre visible — gris si no hay datos */}
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
+              <div className="dashboard-donut-wrap" style={{ position: "relative", height: donutHeight }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <PieChart>
                     <Pie
                       data={collectionDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
+                      innerRadius={donutInner}
+                      outerRadius={donutOuter}
                       paddingAngle={collectionDonutIsEmpty ? 0 : 2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1150,15 +1155,15 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
+              <div className="dashboard-donut-wrap" style={{ position: "relative", height: donutHeight }}>
                 <ResponsiveContainer width="100%" height="100%" minWidth={1}>
                   <PieChart>
                     <Pie
                       data={buildingDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
+                      innerRadius={donutInner}
+                      outerRadius={donutOuter}
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1255,7 +1260,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <div className="dashboard-bar-container">
-              <ResponsiveContainer width="100%" height={280} minWidth={1}>
+              <ResponsiveContainer width="100%" height={chartHeight} minWidth={1}>
                 <BarChart data={barChartData} barGap={4} barCategoryGap="28%" margin={{ top: 5, right: 10, bottom: 30, left: 0 }}>
                   <CartesianGrid vertical={false} stroke={c.chartGrid} />
                   <XAxis
@@ -1290,8 +1295,8 @@ export default function DashboardPage() {
         style={{
           display: "grid",
           gridTemplateColumns: `repeat(${cols2}, 1fr)`,
-          gap: 20,
-          marginBottom: 24,
+          gap: cardGap,
+          marginBottom: cardGap,
         }}
       >
         {/* ── Card A: Agenda de hoy ─────────────────────────────── */}
@@ -1666,7 +1671,7 @@ export default function DashboardPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.32 }}>
       <div
         className="dashboard-grid-2"
-        style={{ display: "grid", gridTemplateColumns: `repeat(${cols2}, 1fr)`, gap: 20, marginTop: 24 }}
+        style={{ display: "grid", gridTemplateColumns: `repeat(${cols2}, 1fr)`, gap: cardGap, marginTop: cardGap }}
       >
         {/* ── Card: Notificaciones activas ──────────────────────── */}
         <SectionCard
