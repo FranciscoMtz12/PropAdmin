@@ -261,7 +261,6 @@ export default function HomePage() {
 
   const isSmall = windowWidth < 768;
   const isLarge = windowWidth >= 1280;
-  const cardStyle = isLarge ? { ...CARD, minHeight: "calc(25vh)" } : CARD;
 
   /* Loading state — dark bg before user loads */
   if (loading) {
@@ -491,7 +490,7 @@ export default function HomePage() {
           }}
         >
           {/* Cobros pendientes */}
-          <motion.div variants={itemVariant} style={cardStyle}>
+          <motion.div variants={itemVariant} style={CARD}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
               <IconBox bg="rgba(226,75,74,0.18)"><Coins style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#f87171" /></IconBox>
               {(metrics?.cobrosVencidos ?? 0) > 0 && (
@@ -512,7 +511,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Tickets abiertos */}
-          <motion.div variants={itemVariant} style={cardStyle}>
+          <motion.div variants={itemVariant} style={CARD}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
               <IconBox bg="rgba(239,159,39,0.18)"><Wrench style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#fbbf24" /></IconBox>
               {(metrics?.ticketsUrgentes ?? 0) > 0 && (
@@ -527,7 +526,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Contratos por vencer */}
-          <motion.div variants={itemVariant} style={cardStyle}>
+          <motion.div variants={itemVariant} style={CARD}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
               <IconBox bg="rgba(99,102,241,0.18)"><Calendar style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#a5b4fc" /></IconBox>
               <Badge bg="rgba(99,102,241,0.2)" color="#a5b4fc">próximos 60 días</Badge>
@@ -669,7 +668,6 @@ const CARD: React.CSSProperties = {
   borderRadius: "var(--border-radius-xl, 16px)",
   padding: "clamp(16px, 2vw, 28px)",
   backdropFilter: "blur(10px)",
-  minHeight: "calc(20vh)",
 };
 
 const BIG_VAL: React.CSSProperties = {
