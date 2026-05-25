@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { AlertCircle, Calendar, Coins, LogOut, Wrench } from "lucide-react";
+import { AlertCircle, Calendar, Coins, LogOut, Settings, Wrench } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -419,7 +419,7 @@ export default function HomePage() {
               background: "rgba(255,255,255,0.05)",
               border: "0.5px solid rgba(255,255,255,0.1)",
               borderRadius: 100,
-              padding: "5px 14px 5px 6px",
+              padding: "5px 8px 5px 6px",
             }}
           >
             <div
@@ -435,6 +435,21 @@ export default function HomePage() {
             <span style={{ fontSize: 13, color: "rgba(255,255,255,0.8)", whiteSpace: "nowrap" }}>
               {user.full_name || user.email}
             </span>
+            <button
+              type="button"
+              onClick={() => router.push("/settings")}
+              title="Ajustes"
+              style={{
+                background: "none", border: "none", padding: "2px 3px",
+                color: "rgba(255,255,255,0.35)", cursor: "pointer",
+                display: "flex", alignItems: "center",
+                transition: "color 0.15s",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+              onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.35)")}
+            >
+              <Settings size={13} />
+            </button>
           </div>
         </div>
 

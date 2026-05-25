@@ -92,7 +92,7 @@ export default function RouteGuard() {
 
     // Field: solo /campo/*
     if (user.role === "field") {
-      if (!pathname.startsWith("/campo")) { router.replace("/campo/dashboard"); return; }
+      if (!pathname.startsWith("/campo") && pathname !== "/settings") { router.replace("/campo/dashboard"); return; }
       return;
     }
 
@@ -112,17 +112,17 @@ export default function RouteGuard() {
         return;
       }
       if (user.role === "compras") {
-        const allowed = ["/dashboard", "/purchases", "/suppliers"]
+        const allowed = ["/dashboard", "/purchases", "/suppliers", "/settings"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/purchases"); return; }
         return;
       }
       if (user.role === "mantenimiento") {
-        const allowed = ["/dashboard", "/maintenance", "/cleaning"]
+        const allowed = ["/dashboard", "/maintenance", "/cleaning", "/settings"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/maintenance"); return; }
         return;
       }
       if (user.role === "administracion") {
-        const allowed = ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants"]
+        const allowed = ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants", "/settings"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }
