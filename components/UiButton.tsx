@@ -6,6 +6,7 @@ import type { CSSProperties, ReactNode } from "react";
   Variants:
   - primary   → usa var(--accent) como fondo (color de marca de la empresa)
   - secondary → blanco con borde gris neutro
+  - ghost     → sin fondo, sin borde, texto secundario (para Cancelar en wizards)
 
   El variant "primary" se usa en botones de acción principal:
   "+ Nuevo", "Guardar", "Confirmar", etc.
@@ -17,7 +18,7 @@ type UiButtonProps = {
   onClick?: () => void;
   type?: "button" | "submit" | "reset";
   form?: string;
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "ghost";
   disabled?: boolean;
   icon?: ReactNode;
   style?: CSSProperties;
@@ -40,14 +41,15 @@ export default function UiButton({
     justifyContent: "center",
     gap: "8px",
     whiteSpace: "nowrap",
-    border:
-      variant === "primary"
-        ? "1px solid var(--accent)"
-        : "1px solid var(--border-default)",
+    border: variant === "primary"
+      ? "1px solid var(--accent)"
+      : variant === "ghost"
+      ? "none"
+      : "1px solid var(--border-default)",
     borderRadius: "var(--border-radius-sm)",
     padding: "11px 16px",
-    background: variant === "primary" ? "var(--btn-primary-bg)" : "var(--bg-card)",
-    color: variant === "primary" ? "#ffffff" : "var(--text-primary)",
+    background: variant === "primary" ? "var(--btn-primary-bg)" : variant === "ghost" ? "transparent" : "var(--bg-card)",
+    color: variant === "primary" ? "#ffffff" : variant === "ghost" ? "var(--text-secondary)" : "var(--text-primary)",
     fontWeight: 600,
     textDecoration: "none",
     cursor: disabled ? "not-allowed" : "pointer",

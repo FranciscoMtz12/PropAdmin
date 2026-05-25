@@ -284,6 +284,34 @@ a {
 }
 
 /* ════════════════════════════════════════════════════════════════════
+   Scrollbars — thin, accent color, no horizontal
+   ════════════════════════════════════════════════════════════════════ */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--accent);
+  border-radius: 4px;
+  opacity: 0.6;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  opacity: 1;
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Sidebar responsive
    Desktop (>1024px):  sidebar completo 280px
    Tablet (768-1024px): sidebar colapsado, solo íconos (72px)

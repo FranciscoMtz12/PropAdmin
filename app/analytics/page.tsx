@@ -28,6 +28,7 @@ import { motion } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -122,6 +123,7 @@ function formatDateShort(iso: string | null) {
 export default function AnalyticsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
+  const { isRealSuperAdmin } = useImpersonation();
 
   const [units, setUnits] = useState<Unit[]>([]);
   const [unitTypes, setUnitTypes] = useState<UnitType[]>([]);
@@ -134,7 +136,7 @@ export default function AnalyticsPage() {
   const allowedRoles = ["superadmin", "administracion", "directivo"];
   const hasAccess =
     !!user &&
-    (allowedRoles.includes(user.role) || Boolean(user.is_superadmin));
+    (allowedRoles.includes(user.role) || Boolean(user.is_superadmin) || isRealSuperAdmin);
 
   useEffect(() => {
     if (loading) return;
@@ -144,7 +146,10 @@ export default function AnalyticsPage() {
   }, [loading, user, hasAccess, router]);
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user?.company_id && !user?.is_superadmin && !isRealSuperAdmin) {
+      setLoadingData(false);
+      return;
+    }
     setLoadingData(true);
 
     const cid = user?.company_id ?? null;

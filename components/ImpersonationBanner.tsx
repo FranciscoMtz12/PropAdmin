@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
-import { useTheme } from "@/contexts/ThemeContext";
+
+const SAPROA_ACCENT = "#6366F1";
 
 export function ImpersonationBanner() {
   const router = useRouter();
@@ -15,7 +16,6 @@ export function ImpersonationBanner() {
     impersonatedUserEmail,
     stopImpersonation,
   } = useImpersonation();
-  const { groupColor } = useTheme();
 
   if (!isImpersonating || impersonationMode === "group") return null;
 
@@ -36,16 +36,11 @@ export function ImpersonationBanner() {
     router.push("/saproa-admin/overview");
   }
 
-  /* hex to rgba helper — appends 2-digit hex alpha */
-  const bg     = `${groupColor}14`;   // ~0.08 opacity
-  const border = `${groupColor}33`;   // ~0.20 opacity
-  const btnBorder = `${groupColor}66`; // ~0.40 opacity
-
   return (
     <div
       style={{
-        background: bg,
-        border: `1px solid ${border}`,
+        background: "rgba(99,102,241,0.08)",
+        border: "1px solid rgba(99,102,241,0.2)",
         borderRadius: "var(--border-radius-md)",
         padding: "9px 14px",
         marginBottom: 16,
@@ -60,16 +55,16 @@ export function ImpersonationBanner() {
           width: 8,
           height: 8,
           borderRadius: "50%",
-          background: groupColor,
+          background: SAPROA_ACCENT,
           flexShrink: 0,
         }}
       />
-      <Eye size={14} color={groupColor} style={{ flexShrink: 0 }} />
+      <Eye size={14} color={SAPROA_ACCENT} style={{ flexShrink: 0 }} />
       <span
         style={{
           flex: 1,
           fontSize: 13,
-          color: groupColor,
+          color: SAPROA_ACCENT,
           fontWeight: 600,
           lineHeight: 1.4,
         }}
@@ -90,9 +85,9 @@ export function ImpersonationBanner() {
         style={{
           padding: "4px 10px",
           borderRadius: "var(--border-radius-sm)",
-          border: `1px solid ${btnBorder}`,
+          border: "1px solid rgba(99,102,241,0.4)",
           background: "transparent",
-          color: groupColor,
+          color: SAPROA_ACCENT,
           fontSize: 12,
           fontWeight: 700,
           cursor: "pointer",

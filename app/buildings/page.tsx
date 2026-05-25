@@ -345,6 +345,8 @@ export default function BuildingsPage() {
   /* Estado del modal de creación en 4 pasos */
   const [createStep, setCreateStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<string[]>([]);
+  const [customSpaceOther, setCustomSpaceOther] = useState("");
+  const [customServiceOther, setCustomServiceOther] = useState("");
   const buildingCategory = watch("building_category");
   const buildingTags = watch("building_tags") ?? [];
 
@@ -1936,12 +1938,12 @@ export default function BuildingsPage() {
                 );
               })()}
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between", marginTop: 8 }}>
+                <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
+                  Cancelar
+                </UiButton>
                 <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
                   Siguiente →
-                </UiButton>
-                <UiButton type="button" onClick={closeCreateModal}>
-                  Cancelar
                 </UiButton>
               </div>
             </>
@@ -1979,11 +1981,6 @@ export default function BuildingsPage() {
                     <input {...register("construction_sqm")} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
                   </AppFormField>
                 </div>
-                {buildingCategory !== "land" && buildingCategory !== "residential_single" && (
-                  <AppFormField label="M² por unidad (referencia)">
-                    <input {...register("default_unit_sqm")} type="number" placeholder="Ej: 65" style={INPUT_STYLE} />
-                  </AppFormField>
-                )}
               </div>
 
               <AppFormField label="Dirección">
@@ -1998,16 +1995,18 @@ export default function BuildingsPage() {
                 />
               </AppFormField>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
-                  Siguiente →
-                </UiButton>
-                <UiButton type="button" onClick={() => setCreateStep(1)}>
-                  ← Atrás
-                </UiButton>
-                <UiButton type="button" onClick={closeCreateModal}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
+                <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
                   Cancelar
                 </UiButton>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <UiButton type="button" onClick={() => setCreateStep(1)}>
+                    ← Atrás
+                  </UiButton>
+                  <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                    Siguiente →
+                  </UiButton>
+                </div>
               </div>
             </>
           )}
@@ -2065,7 +2064,43 @@ export default function BuildingsPage() {
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {spaceFeatures.map((feat) => <FeatureCard key={feat.key} feat={feat} />)}
+                        <button
+                          type="button"
+                          onClick={() => setCustomSpaceOther(customSpaceOther === "__open__" ? "" : "__open__")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 12px", borderRadius: "var(--border-radius-md)", width: "100%", textAlign: "left",
+                            border: customSpaceOther && customSpaceOther !== "__open__" ? "2px solid var(--accent)" : "2px dashed var(--border-strong)",
+                            background: customSpaceOther && customSpaceOther !== "__open__" ? "var(--accent)12" : "var(--bg-card)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span style={{ fontSize: 13, fontWeight: 600, color: customSpaceOther && customSpaceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
+                        </button>
                       </div>
+                      {customSpaceOther === "__open__" && (
+                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                          <input
+                            type="text"
+                            placeholder="Ej: Azotea, Sótano..."
+                            autoFocus
+                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, background: "var(--bg-card)", color: "var(--text-primary)" }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) setCustomSpaceOther(val);
+                              }
+                              if (e.key === "Escape") setCustomSpaceOther("");
+                            }}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) setCustomSpaceOther(val); else setCustomSpaceOther("");
+                            }}
+                          />
+                          <button type="button" onClick={() => setCustomSpaceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13 }}>Quitar</button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2080,21 +2115,59 @@ export default function BuildingsPage() {
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {serviceFeatures.map((feat) => <FeatureCard key={feat.key} feat={feat} />)}
+                        <button
+                          type="button"
+                          onClick={() => setCustomServiceOther(customServiceOther === "__open__" ? "" : "__open__")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 12px", borderRadius: "var(--border-radius-md)", width: "100%", textAlign: "left",
+                            border: customServiceOther && customServiceOther !== "__open__" ? "2px solid var(--accent)" : "2px dashed var(--border-strong)",
+                            background: customServiceOther && customServiceOther !== "__open__" ? "var(--accent)12" : "var(--bg-card)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span style={{ fontSize: 13, fontWeight: 600, color: customServiceOther && customServiceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
+                        </button>
                       </div>
+                      {customServiceOther === "__open__" && (
+                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                          <input
+                            type="text"
+                            placeholder="Ej: Gas natural, Fibra óptica..."
+                            autoFocus
+                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, background: "var(--bg-card)", color: "var(--text-primary)" }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) setCustomServiceOther(val);
+                              }
+                              if (e.key === "Escape") setCustomServiceOther("");
+                            }}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) setCustomServiceOther(val); else setCustomServiceOther("");
+                            }}
+                          />
+                          <button type="button" onClick={() => setCustomServiceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13 }}>Quitar</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
-                  <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
-                    Siguiente →
-                  </UiButton>
-                  <UiButton type="button" onClick={() => setCreateStep(2)}>
-                    ← Atrás
-                  </UiButton>
-                  <UiButton type="button" onClick={closeCreateModal}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between", marginTop: 20 }}>
+                  <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
                     Cancelar
                   </UiButton>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <UiButton type="button" onClick={() => setCreateStep(2)}>
+                      ← Atrás
+                    </UiButton>
+                    <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                      Siguiente →
+                    </UiButton>
+                  </div>
                 </div>
               </>
             );
@@ -2112,8 +2185,10 @@ export default function BuildingsPage() {
             const landVal    = getValues("land_sqm");
             const constVal   = getValues("construction_sqm");
             const unitVal    = getValues("default_unit_sqm");
-            const visibleFeatures = getDefaultFeatures(selectedTypes[0] ?? "")
+            const allSelectedFeatures = getDefaultFeatures(selectedTypes[0] ?? "")
               .filter((f) => f.key !== "general_setup" && selectedFeatureKeys.includes(f.key));
+            const selectedSpaceFeatures = allSelectedFeatures.filter((f) => f.category === "space");
+            const selectedServiceFeatures = allSelectedFeatures.filter((f) => f.category === "service");
 
             const row = (label: string, content: ReactNode) => (
               <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 8, alignItems: "flex-start" }}>
@@ -2145,35 +2220,55 @@ export default function BuildingsPage() {
                   ))}
                   {row("Nombre", <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{nameVal || "—"}</span>)}
                   {codeVal ? row("Código", <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{codeVal}</span>) : null}
-                  {(landVal || constVal || unitVal) ? row("Superficie", (
+                  {(landVal || constVal) ? row("Superficie", (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {landVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{landVal} m² terreno</span>}
                       {constVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{constVal} m² const.</span>}
-                      {unitVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{unitVal} m² por unidad</span>}
                     </div>
                   )) : null}
                   {addressVal ? row("Dirección", <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{addressVal}</span>) : null}
-                  {visibleFeatures.length > 0 ? row("Características", (
+                  {(selectedSpaceFeatures.length > 0 || (customSpaceOther && customSpaceOther !== "__open__")) ? row("Espacios", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {visibleFeatures.map((f) => (
+                      {selectedSpaceFeatures.map((f) => (
                         <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
                           {f.label}
                         </span>
                       ))}
+                      {customSpaceOther && customSpaceOther !== "__open__" && (
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
+                          {customSpaceOther}
+                        </span>
+                      )}
+                    </div>
+                  )) : null}
+                  {(selectedServiceFeatures.length > 0 || (customServiceOther && customServiceOther !== "__open__")) ? row("Servicios", (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {selectedServiceFeatures.map((f) => (
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                          {f.label}
+                        </span>
+                      ))}
+                      {customServiceOther && customServiceOther !== "__open__" && (
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
+                          {customServiceOther}
+                        </span>
+                      )}
                     </div>
                   )) : null}
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <UiButton type="submit" variant="primary" disabled={isSubmitting}>
-                    {isSubmitting ? "Creando..." : "Crear propiedad"}
-                  </UiButton>
-                  <UiButton type="button" onClick={() => setCreateStep(3)}>
-                    ← Atrás
-                  </UiButton>
-                  <UiButton type="button" onClick={closeCreateModal}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
+                  <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
                     Cancelar
                   </UiButton>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <UiButton type="button" onClick={() => setCreateStep(3)}>
+                      ← Atrás
+                    </UiButton>
+                    <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+                      {isSubmitting ? "Creando..." : "Crear propiedad"}
+                    </UiButton>
+                  </div>
                 </div>
               </>
             );

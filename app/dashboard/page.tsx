@@ -840,81 +840,6 @@ export default function DashboardPage() {
         actions={<UiButton href="/buildings">Ver edificios</UiButton>}
       />
 
-      {/* ══ CARD: SETUP PENDIENTE ═══════════════════════════════════ */}
-      <AnimatePresence>
-        {!loadingSetup && setupProgress.length > 0 && (
-          <motion.div
-            key="setup-progress-card"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.25 }}
-            style={{ marginBottom: 24 }}
-          >
-            <SectionCard
-              title="Configuración pendiente"
-              subtitle={`${setupProgress.length} ${setupProgress.length === 1 ? "propiedad" : "propiedades"} sin completar`}
-              icon={<ClipboardList size={18} />}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {setupProgress.map((b, bi) => {
-                  const stepsArr = [
-                    { label: "Propiedad creada", done: b.steps.created, action: null },
-                    { label: "Tipología", done: b.steps.hasUnitTypes, action: { label: "Crear tipología", href: `/buildings/${b.buildingId}?tab=typologies` } },
-                    { label: "Unidades", done: b.steps.hasUnits, action: { label: "Agregar unidades", href: `/buildings/${b.buildingId}?tab=typologies` } },
-                    { label: "Servicios", done: b.steps.hasServices, action: { label: "Configurar servicios", href: `/buildings/${b.buildingId}?tab=services` } },
-                    { label: "Inquilino activo", done: b.steps.hasTenant, action: { label: "Agregar inquilino", href: "/tenants" } },
-                  ] as const;
-                  const completedCount = stepsArr.filter(s => s.done).length;
-                  const progressPct = (completedCount / stepsArr.length) * 100;
-                  const pendingSteps = stepsArr.filter(s => !s.done && s.action);
-                  return (
-                    <div key={b.buildingId} style={{ paddingBottom: bi < setupProgress.length - 1 ? 20 : 0, borderBottom: bi < setupProgress.length - 1 ? "1px solid var(--border-default)" : "none" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Building2 size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                          <a href={`/buildings/${b.buildingId}`} style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
-                            {b.buildingName}
-                          </a>
-                        </div>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/5</span>
-                      </div>
-                      {/* Barra de progreso */}
-                      <div style={{ height: 6, background: "var(--border-default)", borderRadius: 999, overflow: "hidden", marginBottom: 12 }}>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPct}%` }}
-                          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                          style={{ height: "100%", background: "var(--accent)", borderRadius: 999 }}
-                        />
-                      </div>
-                      {/* Chips de pasos pendientes */}
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {pendingSteps.map(step => step.action && (
-                          <a
-                            key={step.label}
-                            href={step.action.href}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              fontSize: 12, fontWeight: 600, color: "var(--accent)",
-                              border: "1px solid var(--accent)", borderRadius: "var(--border-radius-sm)",
-                              padding: "4px 10px", textDecoration: "none",
-                            }}
-                          >
-                            {step.action.label}
-                            <ChevronRight size={12} />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ══ FILA 1: TRES DONAS ════════════════════════════════════════ */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div
@@ -1548,7 +1473,7 @@ export default function DashboardPage() {
           display: "grid",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
           gap: 24,
-          alignItems: "start",
+          alignItems: "stretch",
         }}
       >
         {/* ── Tabla 1: Cobros vencidos urgentes ─────────────────── */}
@@ -1901,6 +1826,79 @@ export default function DashboardPage() {
         })()}
       </div>
       </motion.div>
+
+      {/* ══ CARD: SETUP PENDIENTE ═══════════════════════════════════ */}
+      <AnimatePresence>
+        {!loadingSetup && setupProgress.length > 0 && (
+          <motion.div
+            key="setup-progress-card"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ marginTop: 24 }}
+          >
+            <SectionCard
+              title="Configuración pendiente"
+              subtitle={`${setupProgress.length} ${setupProgress.length === 1 ? "propiedad" : "propiedades"} sin completar`}
+              icon={<ClipboardList size={18} />}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {setupProgress.map((b, bi) => {
+                  const stepsArr = [
+                    { label: "Propiedad creada", done: b.steps.created, action: null },
+                    { label: "Tipología", done: b.steps.hasUnitTypes, action: { label: "Crear tipología", href: `/buildings/${b.buildingId}?tab=typologies` } },
+                    { label: "Unidades", done: b.steps.hasUnits, action: { label: "Agregar unidades", href: `/buildings/${b.buildingId}?tab=typologies` } },
+                    { label: "Servicios", done: b.steps.hasServices, action: { label: "Configurar servicios", href: `/buildings/${b.buildingId}?tab=services` } },
+                    { label: "Inquilino activo", done: b.steps.hasTenant, action: { label: "Agregar inquilino", href: "/tenants" } },
+                  ] as const;
+                  const completedCount = stepsArr.filter(s => s.done).length;
+                  const progressPct = (completedCount / stepsArr.length) * 100;
+                  const pendingSteps = stepsArr.filter(s => !s.done && s.action);
+                  return (
+                    <div key={b.buildingId} style={{ paddingBottom: bi < setupProgress.length - 1 ? 20 : 0, borderBottom: bi < setupProgress.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Building2 size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                          <a href={`/buildings/${b.buildingId}`} style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
+                            {b.buildingName}
+                          </a>
+                        </div>
+                        <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/5</span>
+                      </div>
+                      <div style={{ height: 6, background: "var(--border-default)", borderRadius: 999, overflow: "hidden", marginBottom: 12 }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progressPct}%` }}
+                          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+                          style={{ height: "100%", background: "var(--accent)", borderRadius: 999 }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {pendingSteps.map(step => step.action && (
+                          <a
+                            key={step.label}
+                            href={step.action.href}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              fontSize: 12, fontWeight: 600, color: "var(--accent)",
+                              border: "1px solid var(--accent)", borderRadius: "var(--border-radius-sm)",
+                              padding: "4px 10px", textDecoration: "none",
+                            }}
+                          >
+                            {step.action.label}
+                            <ChevronRight size={12} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </PageContainer>
   );

@@ -84,7 +84,7 @@ const DEFAULT_EQ: Equipment = {
   cuartoServicio: { ...DEFAULT_BEDROOM_EQ },
   sala: { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [], guestBath: "NONE", guestBathShower: "NONE" },
   cocina: { ac: "NONE", hasHalfBath: false, stoveType: "NONE", stoveBurners: "4Q", oven: "NONE", fridge: "NONE", fridgeModel: "", others: [] },
-  lavanderia: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }], centroCarga: "NO", washer: "NO", dryer: "NONE" },
+  lavanderia: { boilers: [], centroCarga: "NO", washer: "NO", dryer: "NONE" },
   cuartoMaquinas: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }] },
   equiposFuncionales: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }], centroCarga: "NO", washer: "NO", dryer: "NONE" },
   aireCentral: { capacity: "5" },
@@ -750,6 +750,27 @@ function StepIndicator({ step }: { step: number }) {
   );
 }
 
+/* ─── Draft helpers ──────────────────────────────────────────────────── */
+
+function draftKey(buildingId: string) { return `typology_wizard_draft_${buildingId}`; }
+
+type DraftData = { step: number; s1: Step1; s2: Step2; eq: Equipment };
+
+function saveDraft(buildingId: string, data: DraftData) {
+  try { localStorage.setItem(draftKey(buildingId), JSON.stringify(data)); } catch {}
+}
+
+function loadDraftData(buildingId: string): DraftData | null {
+  try {
+    const raw = localStorage.getItem(draftKey(buildingId));
+    return raw ? (JSON.parse(raw) as DraftData) : null;
+  } catch { return null; }
+}
+
+function clearDraft(buildingId: string) {
+  try { localStorage.removeItem(draftKey(buildingId)); } catch {}
+}
+
 /* ─── Main component ─────────────────────────────────────────────────── */
 
 export default function UnitTypeWizardModal({ open, buildingId, companyId, onClose, onSuccess }: Props) {
@@ -764,6 +785,26 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   const [customSpaceInput, setCustomSpaceInput] = useState("");
   const [showCustomInput, setShowCustomInput]   = useState(false);
   const [visitedSpaces, setVisitedSpaces]       = useState<Set<string>>(new Set());
+  const [draftFound, setDraftFound]             = useState(false);
+
+  /* Auto-save draft on state change (debounced 400ms) */
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!open || !buildingId) return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      saveDraft(buildingId, { step, s1, s2, eq });
+    }, 400);
+    return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
+  }, [open, buildingId, step, s1, s2, eq]);
+
+  /* Check for existing draft when modal opens */
+  useEffect(() => {
+    if (open && buildingId) {
+      const draft = loadDraftData(buildingId);
+      if (draft && draft.s1.name.trim()) setDraftFound(true);
+    }
+  }, [open, buildingId]);
 
   const STEP_TITLES = ["Nueva tipología — Información", "Nueva tipología — Espacios", "Nueva tipología — Equipamiento", "Nueva tipología — Resumen"];
 
@@ -778,6 +819,24 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     setEq(JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment);
     setSelectedSpace(""); setSaving(false); setS1Error("");
     setCustomSpaceInput(""); setShowCustomInput(false); setVisitedSpaces(new Set());
+    setDraftFound(false);
+    if (buildingId) clearDraft(buildingId);
+  }
+
+  function restoreDraft() {
+    if (!buildingId) return;
+    const draft = loadDraftData(buildingId);
+    if (!draft) return;
+    setStep(draft.step);
+    setS1(draft.s1);
+    setS2(draft.s2);
+    setEq(draft.eq);
+    setDraftFound(false);
+  }
+
+  function discardDraft() {
+    if (buildingId) clearDraft(buildingId);
+    setDraftFound(false);
   }
 
   function handleClose() { reset(); onClose(); }
@@ -982,7 +1041,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function bedroomCount(b: BedroomEq) {
     return (b.hasOwnBath ? 1 : 0)
       + (b.ac !== "NONE" ? 1 : 0) + (b.fan === "YES" ? 1 : 0) + (b.heater !== "NONE" ? 1 : 0)
-      + (b.bed !== "NONE" ? 1 : 0) + (b.closet !== "NONE" ? 1 : 0) + (b.tv === "YES" ? 1 : 0)
+      + (b.bed !== "NONE" ? b.bedCount : 0) + (b.closet !== "NONE" ? 1 : 0) + (b.tv === "YES" ? 1 : 0)
       + b.furnitureOther.length;
   }
   function salaCount(s: SalaEq) {
@@ -1059,6 +1118,13 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       {/* ── PASO 1: Información ── */}
       {step === 1 && (
         <div style={{ display: "grid", gap: 14 }}>
+          {draftFound && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)" }}>
+              <span style={{ flex: 1, fontSize: 13, color: "#6366F1", fontWeight: 600 }}>Hay un borrador guardado de esta tipología. ¿Deseas restaurarlo?</span>
+              <button type="button" onClick={restoreDraft} style={{ padding: "4px 10px", fontSize: 12, fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid #6366F1", background: "#6366F1", color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>Restaurar</button>
+              <button type="button" onClick={discardDraft} style={{ padding: "4px 10px", fontSize: 12, fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(99,102,241,0.3)", background: "transparent", color: "#6366F1", cursor: "pointer", whiteSpace: "nowrap" }}>Descartar</button>
+            </div>
+          )}
           <AppFormField label="Nombre de la tipología" required>
             <input
               value={s1.name}
@@ -1456,6 +1522,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-input)" }}>
                         <g.Icon size={14} color={ACCENT} />
                         <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)", marginLeft: "auto" }}>{g.items.length} equipo{g.items.length !== 1 ? "s" : ""}</span>
                       </div>
                       <div style={{ padding: "10px 12px", display: "grid", gap: 4 }}>
                         {g.items.map((item, j) => (
