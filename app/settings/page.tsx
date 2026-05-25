@@ -205,7 +205,7 @@ function formatDate(iso: string) {
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
-  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle, setPropertyAccent } = useTheme();
+  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle, setPropertyAccent, fontScale, setFontScale } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const logoInputRef = useRef<HTMLInputElement>(null);
@@ -1113,6 +1113,46 @@ export default function SettingsPage() {
                           {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                         </div>
                         <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Tamaño de texto" subtitle="Ajusta el tamaño base de toda la interfaz. Se aplica de inmediato.">
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {([
+                  { scale: 0.875, abbr: "S",  label: "Pequeño"      },
+                  { scale: 1,     abbr: "M",  label: "Normal"       },
+                  { scale: 1.125, abbr: "L",  label: "Grande"       },
+                  { scale: 1.25,  abbr: "XL", label: "Extra grande" },
+                ] as { scale: number; abbr: string; label: string }[]).map(({ scale, abbr, label }) => {
+                  const active = fontScale === scale;
+                  return (
+                    <button
+                      key={scale}
+                      type="button"
+                      onClick={() => setFontScale(scale)}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                        padding: "16px 20px",
+                        borderRadius: "var(--border-radius-lg)",
+                        border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                        background: "var(--bg-card)", cursor: "pointer",
+                        flex: "1 1 100px", maxWidth: 160, outline: "none",
+                        transition: "border-color 0.15s",
+                      }}
+                    >
+                      <span style={{ fontSize: scale * 22, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)", lineHeight: 1 }}>
+                        Aa
+                      </span>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, justifyContent: "center" }}>
+                          <span style={{ fontSize: 13, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{abbr}</span>
+                          {active && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 6px" }}>Activo</span>}
+                        </div>
+                        <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>{label}</div>
                       </div>
                     </button>
                   );

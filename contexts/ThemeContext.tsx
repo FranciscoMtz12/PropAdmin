@@ -57,6 +57,8 @@ type ThemeContextType = {
   setShowDescriptions: (v: boolean) => void;
   uiTheme: 'clasico' | 'super_soft' | 'rigido';
   setUiTheme: (theme: 'clasico' | 'super_soft' | 'rigido') => void;
+  fontScale: number;
+  setFontScale: (scale: number) => void;
 };
 
 /* ─── Valor por defecto (antes de cargar empresa) ────────────────── */
@@ -92,6 +94,8 @@ const ThemeContext = createContext<ThemeContextType>({
   setShowDescriptions: () => {},
   uiTheme: 'clasico' as const,
   setUiTheme: () => {},
+  fontScale: 1,
+  setFontScale: () => {},
 });
 
 /* ─── Genera iniciales del short_name para el logo de fallback ───── */
@@ -107,8 +111,9 @@ export function initials(name: string): string {
 
 /* ─── Claves de localStorage por usuario ─────────────────────────── */
 
-function darkModeKey(uid: string) { return `darkMode_${uid}`; }
-function uiThemeKey(uid: string)  { return `uiTheme_${uid}`; }
+function darkModeKey(uid: string)   { return `darkMode_${uid}`; }
+function uiThemeKey(uid: string)   { return `uiTheme_${uid}`; }
+function fontScaleKey(uid: string) { return `fontScale_${uid}`; }
 
 /* ─── Provider ────────────────────────────────────────────────────── */
 
@@ -145,12 +150,24 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [isDark, setIsDark] = useState(false);
   const [showDescriptions, setShowDescriptions] = useState(true);
   const [uiTheme, setUiThemeState] = useState<'clasico' | 'super_soft' | 'rigido'>('clasico');
+  const [fontScale, setFontScaleState] = useState(1);
+
+  /* ── Aplicar --font-scale en :root cuando cambie fontScale ──────── */
+  useEffect(() => {
+    document.documentElement.style.setProperty('--font-scale', String(fontScale));
+  }, [fontScale]);
 
   /* ── Leer preferencia de modo guardada o del sistema (solo en cliente) ── */
   useEffect(() => {
     /* Intentar leer la preferencia del último usuario logueado para evitar flash */
     const lastUid = localStorage.getItem("last_user_id");
     if (lastUid) {
+      /* Leer font scale inmediatamente para evitar flash de tamaño */
+      const storedScale = parseFloat(localStorage.getItem(fontScaleKey(lastUid)) ?? "1");
+      if ([0.875, 1, 1.125, 1.25].includes(storedScale)) {
+        setFontScaleState(storedScale);
+        document.documentElement.style.setProperty('--font-scale', String(storedScale));
+      }
       const stored = localStorage.getItem(darkModeKey(lastUid));
       if (stored === "true" || stored === "false") {
         setIsDark(stored === "true");
@@ -324,7 +341,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = await supabase
       .from("user_preferences")
-      .select("dark_mode, show_descriptions, ui_theme")
+      .select("dark_mode, show_descriptions, ui_theme, font_scale")
       .eq("user_id", userId)
       .maybeSingle();
 
@@ -351,6 +368,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setIsDark(data.dark_mode);
       localStorage.setItem(darkModeKey(userId), String(data.dark_mode));
     }
+
+    /* font_scale: localStorage > BD > 1.0 */
+    const VALID_SCALES = [0.875, 1, 1.125, 1.25];
+    const localScaleRaw = parseFloat(localStorage.getItem(fontScaleKey(userId)) ?? "1");
+    const localScale = VALID_SCALES.includes(localScaleRaw) ? localScaleRaw : null;
+    const dbScale = data?.font_scale != null && VALID_SCALES.includes(data.font_scale as number) ? (data.font_scale as number) : null;
+    const finalScale = localScale ?? dbScale ?? 1;
+    localStorage.setItem(fontScaleKey(userId), String(finalScale));
+    setFontScaleState(finalScale);
   }
 
   async function setAccentStyle(style: 'solid' | 'metallic') {
@@ -391,6 +417,17 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  function setFontScale(scale: number) {
+    setFontScaleState(scale);
+    if (user?.id) {
+      localStorage.setItem(fontScaleKey(user.id), String(scale));
+      void supabase.from("user_preferences").upsert(
+        { user_id: user.id, font_scale: scale },
+        { onConflict: "user_id" },
+      );
+    }
+  }
+
   return (
     <ThemeContext.Provider
       value={{
@@ -422,6 +459,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setShowDescriptions,
         uiTheme,
         setUiTheme,
+        fontScale,
+        setFontScale,
       }}
     >
       {children}
