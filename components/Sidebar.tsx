@@ -652,6 +652,21 @@ export default function Sidebar() {
             )}
           </div>
 
+          {/* Ajustes */}
+          <button
+            type="button"
+            onClick={() => router.push("/settings")}
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
+              padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
+              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+              color: "#FFFFFF", fontWeight: 700, fontSize: 13, cursor: "pointer",
+            }}
+          >
+            <Settings size={15} />
+            <span className="sidebar-footer-text">Ajustes</span>
+          </button>
+
           {/* Cerrar sesión */}
           <button
             type="button"
