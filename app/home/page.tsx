@@ -373,12 +373,10 @@ export default function HomePage() {
           maxWidth: isSmall ? "100%" : isLarge ? 1100 : 900,
           margin: "0 auto",
           padding: isSmall ? "24px 16px 48px" : isLarge ? "40px 64px 56px" : "40px 48px 64px",
-          height: isLarge ? "100dvh" : undefined,
-          minHeight: isLarge ? undefined : "100dvh",
+          height: "100dvh",
           display: "flex",
           flexDirection: "column",
-          justifyContent: isLarge ? "space-between" : undefined,
-          gap: isSmall ? 32 : isLarge ? 0 : 44,
+          justifyContent: "space-between",
           boxSizing: "border-box",
         }}
       >
@@ -439,6 +437,9 @@ export default function HomePage() {
             </span>
           </div>
         </div>
+
+        {/* ── Middle: greeting + cards (centered, absorbs free space) */}
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: isSmall ? 24 : 32 }}>
 
         {/* ── Greeting ────────────────────────────────────────────── */}
         <div style={{ maxWidth: 640 }}>
@@ -537,13 +538,15 @@ export default function HomePage() {
           </motion.div>
         </motion.div>
 
+        </div>{/* end middle section */}
+
         {/* ── Accesos rápidos ──────────────────────────────────────── */}
         {displayLinks.length > 0 && (
           <motion.div
             variants={linksStagger}
             initial="initial"
             animate="animate"
-            style={{ display: "flex", flexDirection: "column", gap: 10 }}
+            style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: "clamp(24px, 3vh, 48px)" }}
           >
             {isSmall ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px" }}>
@@ -556,7 +559,7 @@ export default function HomePage() {
             ) : (
               <>
                 {links1.length > 0 && (
-                  <div style={{ display: "flex", gap: 36, flexWrap: "wrap", justifyContent: "center" }}>
+                  <div style={{ display: "flex", gap: "clamp(24px, 3vw, 48px)", flexWrap: "wrap", justifyContent: "center" }}>
                     {links1.map(link => (
                       <motion.div key={link.path} variants={itemVariant}>
                         <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
@@ -565,7 +568,7 @@ export default function HomePage() {
                   </div>
                 )}
                 {links2.length > 0 && (
-                  <div style={{ display: "flex", gap: 36, flexWrap: "wrap", justifyContent: "center", marginLeft: 44 }}>
+                  <div style={{ display: "flex", gap: "clamp(24px, 3vw, 48px)", flexWrap: "wrap", justifyContent: "center", marginLeft: 44 }}>
                     {links2.map(link => (
                       <motion.div key={link.path} variants={itemVariant}>
                         <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
@@ -612,7 +615,7 @@ export default function HomePage() {
 /* ─── Sub-components ──────────────────────────────────────────────────── */
 
 function LinkBtn({ link, onClick }: { link: QuickLink; onClick: () => void }) {
-  const Icon = ICON_MAP[link.icon];
+  const Icon = ICON_MAP[link.icon] as React.ComponentType<{ style?: React.CSSProperties; color?: string }> | undefined;
   return (
     <button
       type="button"
@@ -621,10 +624,10 @@ function LinkBtn({ link, onClick }: { link: QuickLink; onClick: () => void }) {
         display: "inline-flex", alignItems: "center", gap: 8,
         background: "none", border: "none",
         color: "rgba(255,255,255,0.45)",
-        fontSize: 14, fontWeight: 500, cursor: "pointer", padding: "2px 0",
+        fontSize: "clamp(13px, 1.3vw, 17px)", fontWeight: 500, cursor: "pointer", padding: "2px 0",
       }}
     >
-      {Icon && <Icon size={18} />}
+      {Icon && <Icon style={{ width: "clamp(16px, 1.5vw, 22px)", height: "clamp(16px, 1.5vw, 22px)" }} />}
       {link.label}
     </button>
   );
