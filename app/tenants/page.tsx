@@ -942,7 +942,7 @@ export default function TenantsPage() {
         >
           <AppCard>
             <div style={{ display: "grid", gap: 10 }}>
-              <div style={filterLabelStyle}>
+              <div className="search-label-mobile-hide" style={filterLabelStyle}>
                 <Search size={14} />
                 Buscar
               </div>
@@ -951,6 +951,7 @@ export default function TenantsPage() {
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Nombre, email, teléfono, RFC o unidad"
+                className="search-input-mobile"
                 style={inputStyle}
               />
             </div>

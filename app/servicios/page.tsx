@@ -207,7 +207,7 @@ function ServiceRow({
         )}
       </div>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
         {billingType === "fixed" ? (
           <>
             <AppBadge variant="gray">Monto fijo</AppBadge>

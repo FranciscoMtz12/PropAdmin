@@ -136,7 +136,7 @@ export default function AnalyticsPage() {
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const allowedRoles = ["superadmin", "administracion", "directivo"];
+  const allowedRoles = ["superadmin", "administracion", "directivo", "titular"];
   const hasAccess =
     !!user &&
     (allowedRoles.includes(user.role) || Boolean(user.is_superadmin) || isRealSuperAdmin);

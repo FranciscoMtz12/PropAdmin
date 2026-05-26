@@ -1583,6 +1583,7 @@ export default function MaintenancePage() {
             <AppCard>
               <div className="mod-filters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
                 <div
+                  className="search-label-mobile-hide"
                   style={{
                     display: "inline-flex", alignItems: "center", gap: 6,
                     fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)",
@@ -1593,7 +1594,7 @@ export default function MaintenancePage() {
                 </div>
 
                 {/* Buscador de texto libre */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
+                <div className="search-bar-compact-mobile" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
                   <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                   <input
                     value={searchQuery}
