@@ -11,7 +11,7 @@
   - Fondo: #0f1623 en dark mode, #1e2a3a en light mode
 */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -356,6 +356,33 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const handleTouchStart = useCallback((e: TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  }, []);
+
+  const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (window.innerWidth > 768) return;
+    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
+    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
+    if (Math.abs(deltaX) < Math.abs(deltaY)) return;
+    if (Math.abs(deltaX) < 50) return;
+    if (deltaX > 0 && touchStartX.current <= 30) setMobileOpen(true);
+    if (deltaX < 0) setMobileOpen(false);
+  }, []);
+
+  useEffect(() => {
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [handleTouchStart, handleTouchEnd]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
