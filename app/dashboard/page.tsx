@@ -320,6 +320,7 @@ export default function DashboardPage() {
   const [loadingSetup, setLoadingSetup] = useState(true);
 
   const [loadingData, setLoadingData] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   /* ── Datos crudos de Supabase ──────────────────────────────────── */
   const [units, setUnits] = useState<Unit[]>([]);
@@ -337,6 +338,13 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && !user) router.push("/");
   }, [loading, user, router]);
+
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   /* Superadmin sin impersonar → Control Center SAPROA */
   useEffect(() => {
@@ -808,9 +816,7 @@ export default function DashboardPage() {
   const monthName = new Date().toLocaleDateString("es-MX", { month: "long" });
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
-  /* Radios y altura de las donas, escalan con font-scale */
-  const donutOuter = Math.round(84 * fontScale);
-  const donutInner = Math.round(58 * fontScale);
+  /* Altura de la dona (loading state), escala con font-scale */
   const donutHeight = Math.round(220 * fontScale);
   const chartHeight = Math.round(280 * fontScale);
   const cardGap = Math.round(20 * fontScale);
@@ -834,6 +840,17 @@ export default function DashboardPage() {
     chartGrid:     isDark ? "#2D3748" : "#F2F4F7",
     /* Segmento neutro de las donas (vacío/sin datos) */
     donutEmpty:    isDark ? "#374151" : "#e5e7eb",
+  };
+
+  /* Mapea severidad a CSS variables que respetan dark mode */
+  const getSeverityStyle = (sev: string) => {
+    switch (sev) {
+      case 'critical': return { bg: 'var(--metric-bg-red)',   border: 'var(--metric-border-red)',   text: 'var(--metric-value-red)',   dot: 'var(--metric-value-red)'   };
+      case 'warning':  return { bg: 'var(--metric-bg-amber)', border: 'var(--metric-border-amber)', text: 'var(--metric-value-amber)', dot: 'var(--metric-value-amber)' };
+      case 'brand':    return { bg: 'var(--metric-bg-blue)',  border: 'var(--accent)',              text: 'var(--accent)',             dot: 'var(--accent)'             };
+      case 'info':     return { bg: 'var(--metric-bg-blue)',  border: 'var(--accent)',              text: 'var(--accent)',             dot: 'var(--accent)'             };
+      default:         return { bg: 'var(--bg-card)',         border: 'var(--border-default)',      text: 'var(--text-primary)',       dot: 'var(--text-muted)'         };
+    }
   };
 
   /* ─── Render ─────────────────────────────────────────────────── */
@@ -905,8 +922,8 @@ export default function DashboardPage() {
                       ]}
                       cx="50%"
                       cy="50%"
-                      innerRadius={donutInner}
-                      outerRadius={donutOuter}
+                      innerRadius="55%"
+                      outerRadius="80%"
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1005,8 +1022,8 @@ export default function DashboardPage() {
                       data={collectionDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={donutInner}
-                      outerRadius={donutOuter}
+                      innerRadius="55%"
+                      outerRadius="80%"
                       paddingAngle={collectionDonutIsEmpty ? 0 : 2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1162,8 +1179,8 @@ export default function DashboardPage() {
                       data={buildingDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={donutInner}
-                      outerRadius={donutOuter}
+                      innerRadius="55%"
+                      outerRadius="80%"
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1478,7 +1495,7 @@ export default function DashboardPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: `repeat(${cols2}, minmax(0, 1fr))`,
+          gridTemplateColumns: isMobile ? "1fr" : `repeat(${cols2}, minmax(0, 1fr))`,
           gap: 24,
           alignItems: "stretch",
         }}
@@ -1692,7 +1709,7 @@ export default function DashboardPage() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {notifications.map(notif => {
-                const col = SEVERITY_COLORS[notif.severity];
+                const col = getSeverityStyle(notif.severity);
                 return (
                   <div
                     key={notif.id}
