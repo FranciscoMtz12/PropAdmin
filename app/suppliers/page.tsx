@@ -44,6 +44,7 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
@@ -533,8 +534,15 @@ export default function SuppliersPage() {
         </AppCard>
       ) : null}
 
-      {/* Métricas */}
-      <AppGrid minWidth={220} style={{ marginBottom: 20 }}>
+      {/* Métricas mobile */}
+      <MetricCircles metrics={[
+        { value: total,         label: "Total",    color: "default" },
+        { value: activeCount,   label: "Activos",  color: "success" },
+        { value: inactiveCount, label: "Inactivos",color: "warning" },
+      ]} />
+
+      {/* Métricas desktop */}
+      <AppGrid minWidth={220} className="metric-grid-desktop-only" style={{ marginBottom: 20 }}>
         <MetricCard label="Total proveedores" value={total}         variant="neutral" icon={<Package size={18} />} />
         <MetricCard label="Activos"           value={activeCount}   variant="green"   />
         <MetricCard label="Inactivos"         value={inactiveCount} variant="amber"   />

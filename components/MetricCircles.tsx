@@ -50,6 +50,12 @@ function formatMetricValue(value: string | number): string {
   return result.length > 5 ? result.slice(0, 5) : result;
 }
 
+/* Todos los círculos tienen siempre el mismo ancho: 1/6 del contenedor.
+   El espacio sobrante cuando hay menos de 6 se distribuye con space-evenly. */
+const CIRCLE_WIDTH = "calc((100% - 30px) / 6)"; // (100% - 5 * 6px) / 6
+const NUM_FS = "calc((100vw - 32px) / 6 * 0.27)";
+const LBL_FS = "calc((100vw - 32px) / 6 * 0.13)";
+
 export default function MetricCircles({ metrics }: MetricCirclesProps) {
   const { uiTheme } = useTheme();
   const items = metrics.slice(0, 12);
@@ -58,9 +64,11 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
   const borderRadius =
     uiTheme === 'super_soft' ? '50%'
     : uiTheme === 'rigido'   ? '2px'
-    : 'var(--border-radius-md)'; // clasico default
+    : 'var(--border-radius-md)';
 
   const circleStyle: CSSProperties = {
+    width: CIRCLE_WIDTH,
+    flexShrink: 0,
     aspectRatio: "1",
     borderRadius,
     background: "var(--bg-card)",
@@ -78,54 +86,44 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
       className="metric-circles-mobile-only"
       style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}
     >
-      {rows.map((rowItems, ri) => {
-        const N = rowItems.length;
-        const numFs = `calc((100vw - 32px) / ${N} * 0.27)`;
-        const lblFs = `calc((100vw - 32px) / ${N} * 0.13)`;
-        return (
-          <div
-            key={ri}
-            style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(${N}, 1fr)`,
-              gap: 6,
-              justifyContent: items.length === 7 && ri === 1 ? "center" : undefined,
-            }}
-          >
-            {rowItems.map((m, i) => (
-              <div key={i} style={circleStyle}>
-                <span
-                  style={{
-                    fontSize: numFs,
-                    fontWeight: 600,
-                    lineHeight: 1.1,
-                    color: COLOR_MAP[m.color ?? "default"],
-                    whiteSpace: "nowrap",
-                  }}
-                >
-                  {formatMetricValue(m.value)}
-                </span>
-                <span
-                  style={{
-                    fontSize: lblFs,
-                    fontWeight: 500,
-                    lineHeight: 1.2,
-                    color: "var(--text-muted)",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    maxWidth: "90%",
-                    textAlign: "center",
-                    marginTop: 2,
-                  }}
-                >
-                  {m.label}
-                </span>
-              </div>
-            ))}
-          </div>
-        );
-      })}
+      {rows.map((rowItems, ri) => (
+        <div
+          key={ri}
+          style={{ display: "flex", justifyContent: "space-evenly" }}
+        >
+          {rowItems.map((m, i) => (
+            <div key={i} style={circleStyle}>
+              <span
+                style={{
+                  fontSize: NUM_FS,
+                  fontWeight: 600,
+                  lineHeight: 1.1,
+                  color: COLOR_MAP[m.color ?? "default"],
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {formatMetricValue(m.value)}
+              </span>
+              <span
+                style={{
+                  fontSize: LBL_FS,
+                  fontWeight: 500,
+                  lineHeight: 1.2,
+                  color: "var(--text-muted)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  maxWidth: "90%",
+                  textAlign: "center",
+                  marginTop: 2,
+                }}
+              >
+                {m.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      ))}
     </div>
   );
 }
