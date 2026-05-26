@@ -57,6 +57,7 @@ import { z } from "zod";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppGrid from "@/components/AppGrid";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
@@ -1197,6 +1198,12 @@ export default function CollectionsPage() {
       </div>
 
       {/* ── Métricas ── */}
+      <MetricCircles metrics={[
+        { value: formatCurrency(metrics.totalDue), label: "Total" },
+        { value: formatCurrency(metrics.collected), label: "Cobrado", color: "success" },
+        { value: formatCurrency(metrics.pendiente), label: "Pendiente", color: "warning" },
+        { value: formatCurrency(metrics.vencido), label: "Vencido", color: "danger" },
+      ]} />
       <AppGrid minWidth={200} style={{ marginTop: 24 }}>
         <MetricCard
           label="Total a cobrar"

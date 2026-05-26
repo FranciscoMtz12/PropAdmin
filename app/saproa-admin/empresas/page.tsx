@@ -95,6 +95,7 @@ export default function SaproaEmpresasPage() {
                 <motion.div
                   key={c.id}
                   variants={staggerItem}
+                  className="saproa-empresa-card"
                   style={{
                     display: "flex",
                     alignItems: "center",
@@ -119,7 +120,7 @@ export default function SaproaEmpresasPage() {
                   </div>
 
                   {/* Stats */}
-                  <div style={{ display: "flex", gap: 20, flexShrink: 0 }}>
+                  <div className="saproa-empresa-stats" style={{ display: "flex", gap: 20, flexShrink: 0 }}>
                     <div style={{ textAlign: "center" }}>
                       <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>{c.userCount}</div>
                       <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>usuarios</div>
@@ -139,9 +140,11 @@ export default function SaproaEmpresasPage() {
                   </div>
 
                   {/* Impersonar */}
-                  <UiButton variant="secondary" onClick={() => handleImpersonate(c)} style={{ flexShrink: 0 }}>
-                    Impersonar
-                  </UiButton>
+                  <div className="saproa-empresa-impersonar" style={{ flexShrink: 0 }}>
+                    <UiButton variant="secondary" onClick={() => handleImpersonate(c)} style={{ width: "100%" }}>
+                      Impersonar
+                    </UiButton>
+                  </div>
                 </motion.div>
               );
             })}

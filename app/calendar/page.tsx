@@ -1196,7 +1196,7 @@ export default function CalendarPage() {
     <PageContainer>
       <PageHeader
         title="Calendario"
-        subtitle="Vista general del sistema para organizar limpieza, mantenimiento, pagos y cobranza."
+        subtitle={<span className="calendar-subtitle-desktop">Vista general del sistema para organizar limpieza, mantenimiento, pagos y cobranza.</span>}
         titleIcon={<CalendarDays size={18} />}
       />
 

@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mobile Audit v2 — 2026-05-26</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0f1117;
+      color: #E2E8F0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+      padding: 24px;
+    }
+    .header {
+      border-bottom: 1px solid #1E2535;
+      padding-bottom: 20px;
+      margin-bottom: 32px;
+    }
+    .header h1 {
+      font-size: 1.75rem;
+      font-weight: 800;
+      color: #F1F5F9;
+      margin-bottom: 6px;
+    }
+    .header .meta {
+      color: #64748B;
+      font-size: 0.8125rem;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .summary-card {
+      background: #1E2535;
+      border: 1px solid #2D3748;
+      border-radius: 10px;
+      padding: 16px;
+      text-align: center;
+    }
+    .summary-card .num {
+      font-size: 2rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .summary-card .lbl {
+      font-size: 0.75rem;
+      color: #64748B;
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+    .section-title {
+      font-size: 0.6875rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #64748B;
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1E2535;
+    }
+    .fixes-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 32px;
+    }
+    .fix-row {
+      background: #1E2535;
+      border: 1px solid #2D3748;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .fix-id {
+      font-size: 0.6875rem;
+      font-weight: 800;
+      color: #64748B;
+      min-width: 32px;
+      padding-top: 2px;
+    }
+    .fix-body { flex: 1; min-width: 0; }
+    .fix-file {
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 0.6875rem;
+      color: #60A5FA;
+      margin-bottom: 4px;
+    }
+    .fix-desc {
+      font-size: 0.8125rem;
+      color: #94A3B8;
+      line-height: 1.5;
+    }
+    .fix-badges {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .pages-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 32px;
+    }
+    .page-card {
+      background: #1E2535;
+      border: 1px solid #2D3748;
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .page-path {
+      font-family: monospace;
+      font-size: 0.75rem;
+      color: #60A5FA;
+      margin-bottom: 4px;
+    }
+    .page-label {
+      font-size: 0.9375rem;
+      font-weight: 700;
+      color: #F1F5F9;
+      margin-bottom: 8px;
+    }
+    .page-fixes {
+      font-size: 0.6875rem;
+      color: #64748B;
+    }
+    .footer {
+      border-top: 1px solid #1E2535;
+      padding-top: 16px;
+      color: #475569;
+      font-size: 0.75rem;
+    }
+    /* Lightbox */
+    .lightbox { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:9999; align-items:center; justify-content:center; }
+    .lightbox.active { display:flex; }
+    .lightbox img { max-width:95vw; max-height:95vh; border-radius:8px; }
+    .thumb-link img { max-width:200px; cursor:pointer; border:2px solid #2D3748; border-radius:4px; transition:border-color 0.2s; }
+    .thumb-link img:hover { border-color:#60A5FA; }
+    @media (max-width: 768px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .pages-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="lb" class="lightbox" onclick="this.classList.remove('active')">
+  <img id="lb-img" src="" alt="Screenshot">
+</div>
+
+<div class="header">
+  <h1>Mobile Audit v2</h1>
+  <div class="meta">
+    Generado: 2026-05-26 &nbsp;·&nbsp;
+    Proyecto: PropAdmin &nbsp;·&nbsp;
+    Stack: Next.js App Router + TypeScript + Supabase
+  </div>
+</div>
+
+<!-- Resumen ejecutivo -->
+<div class="summary-grid">
+  <div class="summary-card">
+    <div class="num" style="color:#4ADE80">16</div>
+    <div class="lbl">Fixes aplicados</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#60A5FA">2</div>
+    <div class="lbl">Verificados OK</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#F59E0B">14</div>
+    <div class="lbl">Páginas auditadas</div>
+  </div>
+  <div class="summary-card">
+    <div class="num" style="color:#A855F7">0</div>
+    <div class="lbl">Errores TS</div>
+  </div>
+</div>
+
+<!-- Componente nuevo -->
+<div class="section-title">Componente creado</div>
+<div style="background:#1E2535;border:1px solid #2D3748;border-radius:10px;padding:16px 20px;margin-bottom:32px;">
+  <div style="font-size:1rem;font-weight:800;color:#A855F7;margin-bottom:8px">MetricCircles</div>
+  <div style="font-family:monospace;font-size:0.75rem;color:#60A5FA;margin-bottom:10px">components/MetricCircles.tsx</div>
+  <div style="color:#94A3B8;font-size:0.8125rem;margin-bottom:10px">
+    Componente de métricas circulares para mobile. Solo se muestra en pantallas ≤768px vía CSS (<code>.metric-circles-mobile-only</code>).
+    Soporta 1–12 métricas con distribución automática en filas (máx 2 filas, hasta 6 por fila).
+    Colores semánticos: default, success, danger, warning, info — mapeados a variables CSS --metric-value-*.
+    Tamaños de fuente calculados con <code>calc((100vw - 32px) / 6 * factor)</code> para escalar perfectamente.
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">≤6 métricas → 1 fila</span>
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">7 → 4+3</span>
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">8 → 4+4</span>
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">9 → 5+4</span>
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">10 → 5+5</span>
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">11 → 6+5</span>
+    <span style="background:#A855F722;color:#A855F7;border:1px solid #A855F744;border-radius:4px;padding:2px 8px;font-size:0.6875rem;font-weight:700">12 → 6+6</span>
+  </div>
+</div>
+
+<!-- Lista de fixes -->
+<div class="section-title">Fixes aplicados (18 total)</div>
+<div class="fixes-list">
+  <div class="fix-row">
+    <div class="fix-id">F01</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#A855F722;color:#A855F7;border:1px solid #A855F744">NEW COMPONENT</span>
+      </div>
+      <div class="fix-file">components/MetricCircles.tsx</div>
+      <div class="fix-desc">Nuevo componente MetricCircles — muestra métricas como círculos en mobile (≤768px). Solo visible en mobile via CSS .metric-circles-mobile-only. Soporta 1-12 métricas con distribución automática en filas. Colores semánticos via --metric-value-* CSS vars.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F02</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#10B98122;color:#10B981;border:1px solid #10B98144">CSS</span>
+      </div>
+      <div class="fix-file">app/globals.css</div>
+      <div class="fix-desc">Agregadas media queries para: .metric-circles-mobile-only (ocultar en desktop), .dashboard-grid-3 forzado a 3 cols en mobile, .dashboard-donut-wrap reducida a 120px, .dashboard-card-mobile padding 10px, .maintenance-filters-row flex-wrap, saproa-empresa-card flex-column mobile, saproa-overview-metrics grid 2×2, saproa-impersonar-grid 1 columna, .calendar-subtitle-desktop oculto en mobile, .dashboard-grid-2 gap 16px.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F03</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/buildings/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles antes del grid de MetricCards. Dos variantes: modo grupo (3 métricas: propiedades, unidades, ocupación) y modo individual (4 métricas: propiedades, alta ocupación, promedio, unidades).</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F04</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/collections/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles antes del AppGrid de MetricCards. 4 métricas: Total, Cobrado (success), Pendiente (warning), Vencido (danger).</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F05</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/maintenance/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles antes del AppGrid de tickets. 4 métricas: Total, Abiertos (danger), En proceso (warning), Resueltos (success). Solo tab de tickets.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F06</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/tenants/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles antes del AppGrid de inquilinos. 4 métricas: Total, Activos (success), Con lease (info), Inactivos (danger).</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F07</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/payments/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles antes del grid de MetricCards de pagos. 4 métricas: Pendientes (warning), Pagados (success), $ Pendiente (warning), $ Pagado (success).</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F08</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/servicios/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles con 4 métricas dinámicas: Edificios, Al día (success), Pendiente (warning), Servicios. MetricCard importado pero no usado en render — import mantenido (sin crash).</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F09</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/cleaning/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles con 6 métricas de la semana: Cumplimiento (color dinámico), Tareas hoy, Completadas (success), Pendientes (warning), Edificios activos, Premium.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F10</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#3B82F622;color:#3B82F6;border:1px solid #3B82F644">FEATURE</span>
+      </div>
+      <div class="fix-file">app/analytics/page.tsx</div>
+      <div class="fix-desc">Agregado MetricCircles con 6 métricas antes de la analytics-stat-bar: Ocupación (success), Personas (info), Contratos, Vencen 30d (warning), Vacantes (danger), Edificios.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F11</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44">FIX</span>
+      </div>
+      <div class="fix-file">app/saproa-admin/empresas/page.tsx</div>
+      <div class="fix-desc">Agregadas clases CSS a la card de empresa para layout mobile: saproa-empresa-card (flex-direction column), saproa-empresa-stats (flex row), saproa-empresa-impersonar (width 100%). Botón Impersonar a ancho completo en mobile.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F12</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44">FIX</span>
+      </div>
+      <div class="fix-file">app/saproa-admin/overview/page.tsx</div>
+      <div class="fix-desc">Agregadas clases saproa-overview-metrics (grid 2×2 en mobile) y saproa-overview-grid (1 columna en mobile) a los grids de métricas y contenido.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F13</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44">FIX</span>
+      </div>
+      <div class="fix-file">app/saproa-admin/impersonar/page.tsx</div>
+      <div class="fix-desc">Agregadas clases saproa-impersonar-grid (1 columna en mobile) y saproa-impersonar-tree al árbol de jerarquía Grupo→Empresa→Usuario.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F14</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44">FIX</span>
+      </div>
+      <div class="fix-file">app/calendar/page.tsx</div>
+      <div class="fix-desc">Subtitle del PageHeader envuelto en <span className='calendar-subtitle-desktop'> para ocultarlo en mobile via CSS.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F15</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#F59E0B22;color:#F59E0B;border:1px solid #F59E0B44">FIX</span>
+      </div>
+      <div class="fix-file">components/PageHeader.tsx</div>
+      <div class="fix-desc">Cambiado tipo de prop subtitle de string a ReactNode para permitir elementos JSX como el span con className para el fix del calendario.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F16</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#6B728022;color:#6B7280;border:1px solid #6B728044">CLEANUP</span>
+      </div>
+      <div class="fix-file">app/test-metrics/page.tsx</div>
+      <div class="fix-desc">Eliminado directorio y página de prueba app/test-metrics/page.tsx.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F17</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#0C1A3A;color:#60A5FA;border:1px solid #1E40AF">OK</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#94A3B822;color:#94A3B8;border:1px solid #94A3B844">VERIFY</span>
+      </div>
+      <div class="fix-file">components/Sidebar.tsx</div>
+      <div class="fix-desc">Verificado — todos los touch targets ya están en minHeight: 44px. No era necesario cambiar de 43 a 44.</div>
+    </div>
+  </div>
+  <div class="fix-row">
+    <div class="fix-id">F18</div>
+    <div class="fix-body">
+      <div class="fix-badges">
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#0C1A3A;color:#60A5FA;border:1px solid #1E40AF">OK</span>
+        <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.625rem;font-weight:700;background:#94A3B822;color:#94A3B8;border:1px solid #94A3B844">VERIFY</span>
+      </div>
+      <div class="fix-file">app/settings/page.tsx</div>
+      <div class="fix-desc">Las tabs de Settings ya tienen grid 2×2 mobile via .app-tabs-container (CSS ya existía desde versión anterior). No requirió cambio adicional.</div>
+    </div>
+  </div>
+</div>
+
+<!-- Páginas auditadas -->
+<div class="section-title">Páginas auditadas (14)</div>
+<div class="pages-grid">
+  <div class="page-card">
+    <div class="page-path">/dashboard</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Dashboard</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F01</code> <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F02</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Nuevo componente MetricCircles — muestra métricas como círculos en mobile (≤768px). Solo visible en mobile via CSS .metr…</div><div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregadas media queries para: .metric-circles-mobile-only (ocultar en desktop), .dashboard-grid-3 forzado a 3 cols en mo…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/buildings</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Propiedades</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F03</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles antes del grid de MetricCards. Dos variantes: modo grupo (3 métricas: propiedades, unidades, ocup…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/collections</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Cobranza</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F04</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles antes del AppGrid de MetricCards. 4 métricas: Total, Cobrado (success), Pendiente (warning), Venc…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/maintenance</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Mantenimiento</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F05</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles antes del AppGrid de tickets. 4 métricas: Total, Abiertos (danger), En proceso (warning), Resuelt…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/tenants</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Inquilinos</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F06</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles antes del AppGrid de inquilinos. 4 métricas: Total, Activos (success), Con lease (info), Inactivo…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/payments</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Pagos</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F07</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles antes del grid de MetricCards de pagos. 4 métricas: Pendientes (warning), Pagados (success), $ Pe…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/servicios</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Servicios</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F08</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles con 4 métricas dinámicas: Edificios, Al día (success), Pendiente (warning), Servicios. MetricCard…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/cleaning</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Limpieza</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F09</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles con 6 métricas de la semana: Cumplimiento (color dinámico), Tareas hoy, Completadas (success), Pe…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/analytics</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Analytics</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F10</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregado MetricCircles con 6 métricas antes de la analytics-stat-bar: Ocupación (success), Personas (info), Contratos, V…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/saproa-admin/empresas</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Saproa Empresas</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F11</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregadas clases CSS a la card de empresa para layout mobile: saproa-empresa-card (flex-direction column), saproa-empres…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/saproa-admin/overview</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Saproa Overview</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F12</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregadas clases saproa-overview-metrics (grid 2×2 en mobile) y saproa-overview-grid (1 columna en mobile) a los grids d…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/saproa-admin/impersonar</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Saproa Impersonar</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F13</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Agregadas clases saproa-impersonar-grid (1 columna en mobile) y saproa-impersonar-tree al árbol de jerarquía Grupo→Empre…</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/calendar</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Calendario</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#052E16;color:#4ADE80;border:1px solid #166534">FIXED</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F14</code> <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F15</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Subtitle del PageHeader envuelto en <span className='calendar-subtitle-desktop'> para ocultarlo en mobile via CSS.</div><div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Cambiado tipo de prop subtitle de string a ReactNode para permitir elementos JSX como el span con className para el fix …</div>
+  </div>
+  <div class="page-card">
+    <div class="page-path">/settings</div>
+    <div class="page-label" style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <span>Settings</span>
+      <span style="display:inline-block;padding:2px 8px;border-radius:4px;font-size:0.6875rem;font-weight:700;letter-spacing:0.06em;background:#0C1A3A;color:#60A5FA;border:1px solid #1E40AF">OK</span>
+    </div>
+    <div class="page-fixes" style="margin-top:8px">
+      Fixes: <code style="background:#0F1117;padding:1px 5px;border-radius:3px;color:#94A3B8">F18</code>
+    </div>
+    <div style="font-size:0.6875rem;color:#475569;margin-top:6px;line-height:1.4">Las tabs de Settings ya tienen grid 2×2 mobile via .app-tabs-container (CSS ya existía desde versión anterior). No requi…</div>
+  </div>
+</div>
+
+<!-- TypeScript check -->
+<div class="section-title">TypeScript check</div>
+<div style="background:#052E16;border:1px solid #166534;border-radius:8px;padding:14px 16px;margin-bottom:32px;display:flex;align-items:center;gap:12px">
+  <span style="font-size:1.25rem">✅</span>
+  <div>
+    <div style="font-weight:700;color:#4ADE80">npx tsc --noEmit — Sin errores</div>
+    <div style="font-size:0.75rem;color:#64748B;margin-top:2px">Todos los tipos correctos. PageHeader.subtitle extendido a ReactNode.</div>
+  </div>
+</div>
+
+<div class="footer">
+  PropAdmin — Mobile Audit Report v2 &nbsp;·&nbsp; 2026-05-26 &nbsp;·&nbsp;
+  Generado por Claude Sonnet 4.6 &nbsp;·&nbsp;
+  <a href="https://www.saproa.com" style="color:#60A5FA">saproa.com</a>
+</div>
+
+<script>
+function showImg(src) {
+  document.getElementById("lb-img").src = src;
+  document.getElementById("lb").classList.add("active");
+}
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") document.getElementById("lb").classList.remove("active");
+});
+</script>
+</body>
+</html>

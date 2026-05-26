@@ -28,6 +28,7 @@ import { useImpersonation } from "@/contexts/ImpersonationContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppBadge from "@/components/AppBadge";
 import Modal from "@/components/Modal";
@@ -1275,6 +1276,16 @@ export default function CleaningPage() {
   function renderWeekTab() {
     return (
       <>
+        {/* Circles mobile */}
+        <MetricCircles metrics={[
+          { value: `${weekStats.compliance.toFixed(0)}%`, label: "Cumplimiento", color: weekStats.compliance >= 80 ? "success" : weekStats.compliance >= 60 ? "warning" : "danger" },
+          { value: weekStats.todayTotal, label: "Tareas hoy" },
+          { value: weekStats.todayCompleted, label: "Completadas", color: "success" },
+          { value: weekStats.todayPending, label: "Pendientes", color: weekStats.todayPending > 0 ? "warning" : "success" },
+          { value: weekStats.activeBuildings, label: "Edificios" },
+          { value: weekStats.premiumUnits, label: "Premium" },
+        ]} />
+
         {/* Stat bar */}
         <div className="mod-stat-bar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 24, overflow: "hidden" }}>
           {[

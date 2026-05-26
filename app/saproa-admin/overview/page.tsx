@@ -134,6 +134,7 @@ export default function SaproaOverviewPage() {
         variants={staggerContainer}
         initial="hidden"
         animate="show"
+        className="saproa-overview-metrics"
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(12.5rem, 1fr))",
@@ -169,7 +170,7 @@ export default function SaproaOverviewPage() {
       </motion.div>
 
       {/* First row: Empresas + Feedback reciente */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
+      <div className="saproa-overview-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginBottom: 16 }}>
         <SectionCard title="Empresas del grupo" icon={<Building2 size={16} />}>
           <motion.div variants={staggerContainer} initial="hidden" animate="show" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {companies.slice(0, 6).map(c => {
@@ -227,7 +228,7 @@ export default function SaproaOverviewPage() {
       </div>
 
       {/* Second row: Roadmap pendientes + Acceso rápido */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+      <div className="saproa-overview-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <SectionCard title="Pendientes del roadmap" icon={<ChevronRight size={16} />}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {ROADMAP_PENDING.map(item => (

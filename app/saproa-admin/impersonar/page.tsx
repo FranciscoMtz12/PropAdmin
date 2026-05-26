@@ -129,9 +129,9 @@ export default function SaproaImpersonarPage() {
     <PageContainer>
       <PageHeader title="Impersonar empresa" subtitle="Simula la vista de cualquier empresa o usuario" titleIcon={<Eye size={18} />} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 20, alignItems: "start" }}>
+      <div className="saproa-impersonar-grid" style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 20, alignItems: "start" }}>
         {/* Left: tree */}
-        <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow: "hidden" }}>
+        <div className="saproa-impersonar-tree" style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid var(--border-default)", display: "flex", alignItems: "center", gap: 8 }}>
             <Shield size={14} color={SAPROA_ACCENT} />
             <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Grupo → Empresa → Usuario</span>

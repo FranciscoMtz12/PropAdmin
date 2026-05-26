@@ -35,6 +35,7 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import AppGrid from "@/components/AppGrid";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppTable from "@/components/AppTable";
 import UiButton from "@/components/UiButton";
@@ -890,6 +891,12 @@ export default function TenantsPage() {
         </AppCard>
       ) : null}
 
+      <MetricCircles metrics={[
+        { value: tenantRows.length, label: "Total" },
+        { value: activeCount, label: "Activos", color: "success" },
+        { value: withLeaseCount, label: "Con lease", color: "info" },
+        { value: inactiveCount, label: "Inactivos", color: "danger" },
+      ]} />
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <AppGrid minWidth={220}>
         <AppCard>

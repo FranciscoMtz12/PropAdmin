@@ -65,6 +65,7 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppTabs from "@/components/AppTabs";
@@ -1541,6 +1542,12 @@ export default function MaintenancePage() {
           <div style={{ display: "grid", gap: 18 }}>
 
             {/* Métricas */}
+            <MetricCircles metrics={[
+              { value: ticketTotals.total, label: "Total" },
+              { value: ticketTotals.open, label: "Abiertos", color: "danger" },
+              { value: ticketTotals.inProg, label: "En proceso", color: "warning" },
+              { value: ticketTotals.resolved, label: "Resueltos", color: "success" },
+            ]} />
             <AppGrid minWidth={220}>
               <MetricCard
                 label="Total tickets"

@@ -906,3 +906,123 @@ a {
   --card-shadow:    none;
   --sidebar-radius: 0;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   MetricCircles — solo mobile ≤768px
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 769px) {
+  .metric-circles-mobile-only { display: none !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Dashboard donuts — fila horizontal en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .dashboard-grid-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+  .dashboard-card-mobile {
+    padding: 10px !important;
+  }
+  .dashboard-donut-wrap {
+    height: 120px !important;
+  }
+  .dashboard-donut-wrap strong {
+    font-size: 1rem !important;
+  }
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .dashboard-chart-wrap {
+    overflow-x: hidden;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Maintenance — filtros en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .maintenance-filters-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .maintenance-filters-row > * {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   saproa-admin/empresas — layout mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .saproa-empresa-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .saproa-empresa-stats {
+    flex-direction: row !important;
+    gap: 20px !important;
+  }
+  .saproa-empresa-impersonar {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   saproa-admin/overview — métricas en grid 2×2 mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .saproa-overview-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .saproa-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   saproa-admin/impersonar — padding mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .saproa-impersonar-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .saproa-impersonar-tree {
+    padding: 8px !important;
+  }
+  .saproa-impersonar-tree [style*="padding-left: 22px"],
+  .saproa-impersonar-tree [style*="padding-left: 40px"],
+  .saproa-impersonar-tree [style*="padding-left: 38px"] {
+    /* reduce indentation on mobile via padding override — each level narrower */
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Calendar — ocultar subtitle largo en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .calendar-subtitle-desktop { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Gap lateral consistency — grids 2-col en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .dashboard-grid-2 { gap: 16px !important; }
+}

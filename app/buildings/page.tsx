@@ -75,6 +75,7 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppSelect from "@/components/AppSelect";
@@ -898,46 +899,61 @@ export default function BuildingsPage() {
 
       {/* ── Métricas del portafolio ── */}
       {isGroupMode && groupStats ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
-          <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
-          <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
-          <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
-        </div>
+        <>
+          <MetricCircles metrics={[
+            { value: groupStats.total, label: "Propiedades" },
+            { value: groupStats.totalUnits, label: "Unidades" },
+            { value: `${groupStats.occupancyPct}%`, label: "Ocupación" },
+          ]} />
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
+            <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
+            <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
+            <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
+          </div>
+        </>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
-          <MetricCard
-            label="Total de propiedades"
-            value={portfolioStats.total}
-            icon={<Warehouse size={18} />}
-            helper="Portafolio actual"
-          />
-          <MetricCard
-            label="Al 75 %+ de ocupación"
-            value={portfolioStats.highOccupancy}
-            icon={<Building2 size={18} />}
-            helper="Propiedades en alta ocupación"
-            variant="green"
-          />
-          <MetricCard
-            label="Ocupación promedio"
-            value={`${portfolioStats.avgOccupancy}%`}
-            icon={<TrendingUp size={18} />}
-            helper="Promedio del portafolio"
-          />
-          <MetricCard
-            label="Unidades en portafolio"
-            value={portfolioStats.totalPortfolioUnits}
-            icon={<Home size={18} />}
-            helper="Total de departamentos"
-          />
-        </div>
+        <>
+          <MetricCircles metrics={[
+            { value: portfolioStats.total, label: "Propiedades" },
+            { value: portfolioStats.highOccupancy, label: "Alta ocup.", color: "success" },
+            { value: `${portfolioStats.avgOccupancy}%`, label: "Prom. ocup." },
+            { value: portfolioStats.totalPortfolioUnits, label: "Unidades" },
+          ]} />
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))",
+              gap: 16,
+              marginBottom: 24,
+            }}
+          >
+            <MetricCard
+              label="Total de propiedades"
+              value={portfolioStats.total}
+              icon={<Warehouse size={18} />}
+              helper="Portafolio actual"
+            />
+            <MetricCard
+              label="Al 75 %+ de ocupación"
+              value={portfolioStats.highOccupancy}
+              icon={<Building2 size={18} />}
+              helper="Propiedades en alta ocupación"
+              variant="green"
+            />
+            <MetricCard
+              label="Ocupación promedio"
+              value={`${portfolioStats.avgOccupancy}%`}
+              icon={<TrendingUp size={18} />}
+              helper="Promedio del portafolio"
+            />
+            <MetricCard
+              label="Unidades en portafolio"
+              value={portfolioStats.totalPortfolioUnits}
+              icon={<Home size={18} />}
+              helper="Total de departamentos"
+            />
+          </div>
+        </>
       )}
 
       {/* ── Lista de edificios ── */}

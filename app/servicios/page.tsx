@@ -24,6 +24,7 @@ import JSZip from "jszip";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import SectionCard from "@/components/SectionCard";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
@@ -1187,6 +1188,13 @@ export default function ServiciosPage() {
         onPrev={prevPeriod}
         onNext={nextPeriod}
       />
+
+      <MetricCircles metrics={[
+        { value: filteredGroups.length, label: "Edificios" },
+        { value: serviceStats.filter(s => s.allDone).length, label: "Al día", color: "success" },
+        { value: serviceStats.filter(s => !s.allDone).length, label: "Pendiente", color: "warning" },
+        { value: serviceStats.length, label: "Servicios" },
+      ]} />
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12, marginBottom: 24 }}>
 

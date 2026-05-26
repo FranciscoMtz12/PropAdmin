@@ -18,6 +18,7 @@ import { SEVERITY_COLORS } from "@/lib/notifications"
 import PageContainer from "@/components/PageContainer"
 import PageHeader from "@/components/PageHeader"
 import MetricCard from "@/components/MetricCard"
+import MetricCircles from "@/components/MetricCircles"
 import SectionCard from "@/components/SectionCard"
 import AppTabs from "@/components/AppTabs"
 import AppEmptyState from "@/components/AppEmptyState"
@@ -738,6 +739,12 @@ export default function PaymentsPage() {
       </div>
 
       {/* Metrics */}
+      <MetricCircles metrics={[
+        { value: pageLoading ? "…" : pendingCount, label: "Pendientes", color: pendingCount > 0 ? "warning" : "success" },
+        { value: pageLoading ? "…" : paidCount, label: "Pagados", color: "success" },
+        { value: pageLoading ? "…" : formatMXN(totalPending), label: "$ Pendiente", color: totalPending > 0 ? "warning" : "success" },
+        { value: pageLoading ? "…" : formatMXN(totalPaid), label: "$ Pagado", color: "success" },
+      ]} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard label="Pendientes de pagar" value={pageLoading ? "…" : pendingCount} icon={<Clock size={18} />} variant={pendingCount > 0 ? "amber" : "green"} />
         <MetricCard label="Pagados" value={pageLoading ? "…" : paidCount} icon={<CheckCircle size={18} />} variant={paidCount > 0 ? "green" : "neutral"} />

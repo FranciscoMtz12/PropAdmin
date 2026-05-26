@@ -34,6 +34,7 @@ import { useFontScale } from "@/lib/useFontScale";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
@@ -523,6 +524,14 @@ export default function AnalyticsPage() {
       <PageHeader title="Analytics" titleIcon={<BarChart2 size={18} />} />
 
       {/* ════ SECCIÓN 1: Stat bar compacta ════════════════════════════ */}
+      <MetricCircles metrics={[
+        { value: `${occupancyRate.toFixed(0)}%`, label: "Ocupación", color: "success" },
+        { value: estimatedPeople, label: "Personas", color: "info" },
+        { value: activeLeases.length, label: "Contratos" },
+        { value: leasesExpiring30.length, label: "Vencen 30d", color: "warning" },
+        { value: vacantUnits, label: "Vacantes", color: "danger" },
+        { value: buildings.length, label: "Edificios" },
+      ]} />
       <div className="analytics-stat-bar" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow:"hidden", marginBottom:"1rem" }}>
         {[
           { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"#10B981" },

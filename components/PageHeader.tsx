@@ -28,7 +28,7 @@ export default function PageHeader({
   titleIcon,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
   titleIcon?: ReactNode;
 }) {
