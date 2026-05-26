@@ -1369,6 +1369,14 @@ export default function MaintenancePage() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const buildingCompanyMap = useMemo(
     () => new Map(buildings.map(b => [b.id, b.company_id ?? null])),
     [buildings],
@@ -1581,98 +1589,180 @@ export default function MaintenancePage() {
 
             {/* Filtros */}
             <AppCard>
-              <div className="mod-filters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                <div
-                  className="search-label-mobile-hide"
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)",
-                    textTransform: "uppercase", letterSpacing: "0.04em",
-                  }}
-                >
-                  <Filter size={14} /> Filtros
-                </div>
-
-                {/* Buscador de texto libre */}
-                <div className="search-bar-compact-mobile" style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
-                  <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar ticket o descripción..."
-                    style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.8125rem", color: "var(--text-primary)" }}
-                  />
-                  {searchQuery ? (
-                    <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
-                      <X size={14} />
+              {isMobile ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
+                    <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar ticket o descripción..."
+                      style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.875rem", color: "var(--text-primary)" }}
+                    />
+                    {searchQuery ? (
+                      <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
+                        <X size={14} />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minHeight: 32 }}>
+                    <button
+                      type="button"
+                      onClick={() => setFilterPriority("ALL")}
+                      style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === "ALL" ? "var(--accent)" : "var(--bg-input)", color: filterPriority === "ALL" ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                    >
+                      Todas
+                    </button>
+                    {PRIORITIES.map((p) => (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setFilterPriority(p.value)}
+                        style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === p.value ? "var(--accent)" : "var(--bg-input)", color: filterPriority === p.value ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      style={{ width: "100%", padding: "6px 8px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                    >
+                      <option value="ALL">Todos los estados</option>
+                      {TICKET_STATUSES.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterBuilding}
+                      onChange={(e) => setFilterBuilding(e.target.value)}
+                      style={{ width: "100%", padding: "6px 8px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                    >
+                      <option value="ALL">Todos los edificios</option>
+                      {buildings.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    style={{ width: "100%", padding: "6px 12px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                  >
+                    <option value="ALL">Todas las categorías</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  {hasFilters ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterBuilding("ALL");
+                        setFilterPriority("ALL");
+                        setFilterStatus("ALL");
+                        setFilterCategory("ALL");
+                      }}
+                      style={{ padding: "6px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Limpiar filtros
                     </button>
                   ) : null}
                 </div>
-
-                <select
-                  value={filterBuilding}
-                  onChange={(e) => setFilterBuilding(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todos los edificios</option>
-                  {buildings.map((b) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 180, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todas las prioridades</option>
-                  {PRIORITIES.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 170, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todos los estados</option>
-                  {TICKET_STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todas las categorías</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-
-                {hasFilters ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilterBuilding("ALL");
-                      setFilterPriority("ALL");
-                      setFilterStatus("ALL");
-                      setFilterCategory("ALL");
-                    }}
+              ) : (
+                <div className="mod-filters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <div
                     style={{
-                      padding: "9px 12px", borderRadius: "var(--border-radius-md)",
-                      border: "1px solid var(--border-default)",
-                      background: "transparent", color: "var(--text-muted)",
-                      fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)",
+                      textTransform: "uppercase", letterSpacing: "0.04em",
                     }}
                   >
-                    Limpiar filtros
-                  </button>
-                ) : null}
-              </div>
+                    <Filter size={14} /> Filtros
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
+                    <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar ticket o descripción..."
+                      style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.8125rem", color: "var(--text-primary)" }}
+                    />
+                    {searchQuery ? (
+                      <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
+                        <X size={14} />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <select
+                    value={filterBuilding}
+                    onChange={(e) => setFilterBuilding(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todos los edificios</option>
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterPriority}
+                    onChange={(e) => setFilterPriority(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 180, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todas las prioridades</option>
+                    {PRIORITIES.map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 170, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todos los estados</option>
+                    {TICKET_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todas las categorías</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+
+                  {hasFilters ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterBuilding("ALL");
+                        setFilterPriority("ALL");
+                        setFilterStatus("ALL");
+                        setFilterCategory("ALL");
+                      }}
+                      style={{
+                        padding: "9px 12px", borderRadius: "var(--border-radius-md)",
+                        border: "1px solid var(--border-default)",
+                        background: "transparent", color: "var(--text-muted)",
+                        fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
+                      }}
+                    >
+                      Limpiar filtros
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </AppCard>
 
             {/* Lista de tickets */}

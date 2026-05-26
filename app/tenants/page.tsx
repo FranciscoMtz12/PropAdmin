@@ -242,6 +242,14 @@ export default function TenantsPage() {
 
   const [rentBuildingFilter, setRentBuildingFilter] = useState<string>("all");
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
   const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
@@ -931,74 +939,114 @@ export default function TenantsPage() {
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }} style={{ marginTop: 16 }}>
       <SectionCard title="Filtros">
-        <div
-          className="tenants-filter-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(260px, 1.2fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr)",
-            gap: 16,
-          }}
-        >
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div className="search-label-mobile-hide" style={filterLabelStyle}>
-                <Search size={14} />
-                Buscar
-              </div>
-
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
+              <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nombre, email, teléfono, RFC o unidad"
-                className="search-input-mobile"
-                style={inputStyle}
+                placeholder="Nombre, email, RFC o unidad"
+                style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.875rem", color: "var(--text-primary)" }}
               />
             </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <User2 size={14} />
-                Estatus
-              </div>
-
-              <AppSelect
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as "all" | "ACTIVE" | "INACTIVE")
-                }
-              >
-                <option value="all">Todos</option>
-                <option value="ACTIVE">Activos</option>
-                <option value="INACTIVE">Inactivos</option>
-              </AppSelect>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minHeight: 32 }}>
+              {(["all", "ACTIVE", "INACTIVE"] as const).map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setStatusFilter(val)}
+                  style={{
+                    padding: "4px 10px", fontSize: "0.75rem",
+                    borderRadius: "var(--border-radius-md)",
+                    border: "0.5px solid var(--border-default)",
+                    background: statusFilter === val ? "var(--accent)" : "var(--bg-input)",
+                    color: statusFilter === val ? "#fff" : "var(--text-secondary)",
+                    cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                  }}
+                >
+                  {val === "all" ? "Todos" : val === "ACTIVE" ? "Activos" : "Inactivos"}
+                </button>
+              ))}
             </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <Building2 size={14} />
-                Edificio
+            <select
+              value={buildingFilter}
+              onChange={(e) => setBuildingFilter(e.target.value)}
+              style={{ width: "100%", padding: "6px 12px", height: 32, fontSize: "0.875rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+            >
+              <option value="all">Todos los edificios</option>
+              <option value="no_lease">Sin lease activo</option>
+              {buildings.map((building) => (
+                <option key={building.id} value={building.id}>{building.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div
+            className="tenants-filter-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "minmax(260px, 1.2fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr)",
+              gap: 16,
+            }}
+          >
+            <AppCard>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={filterLabelStyle}>
+                  <Search size={14} />
+                  Buscar
+                </div>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Nombre, email, teléfono, RFC o unidad"
+                  style={inputStyle}
+                />
               </div>
+            </AppCard>
 
-              <AppSelect
-                value={buildingFilter}
-                onChange={(e) => setBuildingFilter(e.target.value)}
-              >
-                <option value="all">Todos</option>
-                <option value="no_lease">Sin lease activo</option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
-                  </option>
-                ))}
-              </AppSelect>
-            </div>
-          </AppCard>
-        </div>
+            <AppCard>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={filterLabelStyle}>
+                  <User2 size={14} />
+                  Estatus
+                </div>
+                <AppSelect
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as "all" | "ACTIVE" | "INACTIVE")
+                  }
+                >
+                  <option value="all">Todos</option>
+                  <option value="ACTIVE">Activos</option>
+                  <option value="INACTIVE">Inactivos</option>
+                </AppSelect>
+              </div>
+            </AppCard>
+
+            <AppCard>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={filterLabelStyle}>
+                  <Building2 size={14} />
+                  Edificio
+                </div>
+                <AppSelect
+                  value={buildingFilter}
+                  onChange={(e) => setBuildingFilter(e.target.value)}
+                >
+                  <option value="all">Todos</option>
+                  <option value="no_lease">Sin lease activo</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
+                </AppSelect>
+              </div>
+            </AppCard>
+          </div>
+        )}
       </SectionCard>
       </motion.div>
 
