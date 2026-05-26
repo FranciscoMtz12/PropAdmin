@@ -34,6 +34,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
   ChevronLeft,
@@ -281,6 +282,13 @@ function formatWeekRange(start: Date) {
   return `${start.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()} - ${end.getDate()} ${MONTH_LABELS[end.getMonth()]} ${end.getFullYear()}`;
 }
 
+function formatWeekRangeMobile(start: Date) {
+  const end = addDays(start, 5);
+  const startStr = `${start.getDate()} ${MONTH_LABELS[start.getMonth()].slice(0, 3)}`;
+  const endStr = `${end.getDate()} ${MONTH_LABELS[end.getMonth()].slice(0, 3)}`;
+  return `${startStr} – ${endStr}`;
+}
+
 function formatMonthLabel(date: Date) {
   return `${MONTH_LABELS[date.getMonth()]} ${date.getFullYear()}`;
 }
@@ -514,7 +522,8 @@ function renderModuleToggle(
   label: string,
   active: boolean,
   onClick: () => void,
-  moduleKey: string
+  moduleKey: string,
+  compact = false
 ) {
   const palette = MODULE_COLORS[moduleKey];
   return (
@@ -526,22 +535,22 @@ function renderModuleToggle(
           ? `1.5px solid ${palette?.border ?? "var(--border-default)"}`
           : "1.5px solid var(--border-default)",
         borderRadius: 999,
-        padding: "8px 12px",
+        padding: compact ? "4px 8px" : "8px 12px",
         background: active ? (palette?.bg ?? "var(--bg-card)") : "var(--bg-card)",
         color: active ? (palette?.text ?? "var(--text-primary)") : "var(--text-muted)",
         opacity: active ? 1 : 0.6,
-        fontSize: "0.8125rem",
+        fontSize: compact ? "0.625rem" : "0.8125rem",
         fontWeight: 700,
         cursor: "pointer",
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
+        gap: compact ? 4 : 8,
       }}
     >
       <span
         style={{
-          width: 10,
-          height: 10,
+          width: compact ? 7 : 10,
+          height: compact ? 7 : 10,
           borderRadius: 999,
           background: palette?.border ?? "var(--border-default)",
           display: "inline-block",
@@ -585,6 +594,7 @@ export default function CalendarPage() {
   const [dayEventsModal, setDayEventsModal] = useState<DayEventsModalState | null>(null);
 
   const [isMobile, setIsMobile] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -1198,6 +1208,29 @@ export default function CalendarPage() {
         title="Calendario"
         subtitle={<span className="calendar-subtitle-desktop">Vista general del sistema para organizar limpieza, mantenimiento, pagos y cobranza.</span>}
         titleIcon={<CalendarDays size={18} />}
+        actions={
+          isMobile ? (
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((p) => !p)}
+              aria-label="Filtros"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 44,
+                minHeight: 44,
+                borderRadius: "var(--border-radius-md)",
+                border: "1px solid var(--border-default)",
+                background: filtersOpen ? "var(--accent)" : "var(--bg-card)",
+                color: filtersOpen ? "#fff" : "var(--text-primary)",
+                cursor: "pointer",
+              }}
+            >
+              <Filter size={18} />
+            </button>
+          ) : undefined
+        }
       />
 
       {msg ? (
@@ -1218,130 +1251,163 @@ export default function CalendarPage() {
 
 
       <SectionCard
-        title="Calendario general"
-        subtitle="Vista general de limpieza, mantenimiento, pagos y cobranza con seguimiento semanal, mensual y anual."
-        icon={<CalendarDays size={18} />}
+        title={isMobile ? undefined : "Calendario general"}
+        subtitle={isMobile ? undefined : "Vista general de limpieza, mantenimiento, pagos y cobranza con seguimiento semanal, mensual y anual."}
+        icon={isMobile ? undefined : <CalendarDays size={18} />}
       >
         <AppCard>
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 24 }}>
+            {/* View tabs + desktop nav */}
             <div
               className="cal-controls-outer"
               style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 12,
+                gap: isMobile ? 8 : 12,
                 justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 6 : 10 }}>
                 {renderViewTab("Semana", viewMode === "week", () => setViewMode("week"))}
                 {renderViewTab("Mes", viewMode === "month", () => setViewMode("month"))}
                 {renderViewTab("Año", viewMode === "year", () => setViewMode("year"))}
               </div>
 
-              <div
-                className="cal-nav-btns"
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 10,
-                  alignItems: "center",
-                }}
-              >
-                <UiButton onClick={goPrevious} icon={<ChevronLeft size={16} />}>
-                  {viewMode === "week"
-                    ? "Semana anterior"
-                    : viewMode === "month"
-                    ? "Mes anterior"
-                    : "Año anterior"}
-                </UiButton>
+              {!isMobile && (
+                <div
+                  className="cal-nav-btns"
+                  style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}
+                >
+                  <UiButton onClick={goPrevious} icon={<ChevronLeft size={16} />}>
+                    {viewMode === "week" ? "Semana anterior" : viewMode === "month" ? "Mes anterior" : "Año anterior"}
+                  </UiButton>
+                  <button
+                    onClick={() => setReferenceDate(new Date())}
+                    style={{
+                      padding: ".35rem .85rem",
+                      borderRadius: "var(--border-radius-md)",
+                      border: "1px solid var(--border-default)",
+                      background: "var(--bg-card)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.75rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Hoy
+                  </button>
+                  <UiButton onClick={goNext} icon={<ChevronRight size={16} />}>
+                    {viewMode === "week" ? "Semana siguiente" : viewMode === "month" ? "Mes siguiente" : "Año siguiente"}
+                  </UiButton>
+                </div>
+              )}
+            </div>
 
+            {/* Mobile compact nav: ← range → Hoy */}
+            {isMobile && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <button
+                  type="button"
+                  onClick={goPrevious}
+                  style={{
+                    minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center",
+                    justifyContent: "center", borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    color: "var(--text-primary)", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span style={{
+                  flex: 1, textAlign: "center", fontSize: "0.8125rem", fontWeight: 700,
+                  color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {viewMode === "week" ? formatWeekRangeMobile(weekStart) : currentLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  style={{
+                    minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center",
+                    justifyContent: "center", borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    color: "var(--text-primary)", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setReferenceDate(new Date())}
                   style={{
-                    padding: ".35rem .85rem",
-                    borderRadius: "var(--border-radius-md)",
-                    border: "1px solid var(--border-default)",
-                    background: "var(--bg-card)",
-                    color: "var(--text-primary)",
-                    fontSize: "0.75rem",
-                    fontWeight: 500,
-                    cursor: "pointer",
+                    minHeight: 44, padding: "0 10px", borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600,
+                    cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                   }}
                 >
                   Hoy
                 </button>
-
-                <UiButton onClick={goNext} icon={<ChevronRight size={16} />}>
-                  {viewMode === "week"
-                    ? "Semana siguiente"
-                    : viewMode === "month"
-                    ? "Mes siguiente"
-                    : "Año siguiente"}
-                </UiButton>
               </div>
-            </div>
+            )}
 
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: "0.8125rem",
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                <Filter size={14} />
-                Edificio
-              </div>
-
-              <select
-                value={selectedBuildingId}
-                onChange={(e) => setSelectedBuildingId(e.target.value)}
-                className="cal-building-select"
-                style={{
-                  minWidth: 240,
-                  padding: "10px 12px",
-                  borderRadius: "var(--border-radius-lg)",
-                  border: "1px solid var(--border-default)",
-                  background: "var(--bg-card)",
-                  color: "var(--text-primary)",
-                  fontSize: "0.875rem",
-                }}
-              >
-                <option value="all">Todos los edificios</option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 10,
-                alignItems: "center",
-              }}
-            >
-              {renderModuleToggle("Limpieza", showCleaning, () => setShowCleaning((prev) => !prev), "cleaning")}
-              {renderModuleToggle("Mantenimiento", showMaintenance, () => setShowMaintenance((prev) => !prev), "maintenance")}
-              {renderModuleToggle("Cobranza", showCollections, () => setShowCollections((prev) => !prev), "collections")}
-            </div>
+            {/* Filters: collapsible on mobile, always visible on desktop */}
+            <AnimatePresence initial={false}>
+              {(!isMobile || filtersOpen) && (
+                <motion.div
+                  key="cal-filters"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  style={{ overflow: "hidden" }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 8 : 12 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+                      {!isMobile && (
+                        <div
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 8,
+                            fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)",
+                            textTransform: "uppercase", letterSpacing: "0.04em",
+                          }}
+                        >
+                          <Filter size={14} />
+                          Edificio
+                        </div>
+                      )}
+                      <select
+                        value={selectedBuildingId}
+                        onChange={(e) => setSelectedBuildingId(e.target.value)}
+                        className="cal-building-select"
+                        style={{
+                          minWidth: isMobile ? "100%" : 240,
+                          padding: isMobile ? "8px 10px" : "10px 12px",
+                          borderRadius: "var(--border-radius-lg)",
+                          border: "1px solid var(--border-default)",
+                          background: "var(--bg-card)",
+                          color: "var(--text-primary)",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        <option value="all">Todos los edificios</option>
+                        {buildings.map((building) => (
+                          <option key={building.id} value={building.id}>
+                            {building.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 6 : 10, alignItems: "center" }}>
+                      {renderModuleToggle("Limpieza", showCleaning, () => setShowCleaning((prev) => !prev), "cleaning", isMobile)}
+                      {renderModuleToggle("Mantenimiento", showMaintenance, () => setShowMaintenance((prev) => !prev), "maintenance", isMobile)}
+                      {renderModuleToggle("Cobranza", showCollections, () => setShowCollections((prev) => !prev), "collections", isMobile)}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {viewMode === "week" ? (
               isMobile ? (
