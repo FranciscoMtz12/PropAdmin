@@ -139,7 +139,7 @@ const itemVariant = {
 export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const { accentColor, logoUrl, shortName } = useTheme();
+  const { accentColor, logoUrl, shortName, uiTheme } = useTheme();
   const { isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   const [now, setNow] = useState(() => new Date());
@@ -261,6 +261,7 @@ export default function HomePage() {
 
   const isSmall = windowWidth < 768;
   const isLarge = windowWidth >= 1280;
+  const cardBorderRadius = uiTheme === 'super_soft' ? 24 : uiTheme === 'rigido' ? 2 : 12;
 
   /* Loading state — dark bg before user loads */
   if (loading) {
@@ -564,12 +565,46 @@ export default function HomePage() {
             style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: "clamp(24px, 3vh, 48px)" }}
           >
             {isSmall ? (
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "6px 20px" }}>
-                {displayLinks.map(link => (
-                  <motion.div key={link.path} variants={itemVariant}>
-                    <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
-                  </motion.div>
-                ))}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+                {displayLinks.map((link, idx) => {
+                  const Icon = ICON_MAP[link.icon] as React.ComponentType<{ style?: React.CSSProperties; color?: string }> | undefined;
+                  const isLastOdd = idx === displayLinks.length - 1 && displayLinks.length % 2 !== 0;
+                  return (
+                    <motion.div
+                      key={link.path}
+                      variants={itemVariant}
+                      style={{
+                        gridColumn: isLastOdd ? "1 / -1" : undefined,
+                        width: isLastOdd ? "50%" : undefined,
+                        margin: isLastOdd ? "0 auto" : undefined,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => router.push(link.customPath || link.path)}
+                        style={{
+                          width: "100%",
+                          padding: 16,
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: "center",
+                          gap: 8,
+                          background: "rgba(255,255,255,0.08)",
+                          border: "0.5px solid rgba(255,255,255,0.12)",
+                          borderRadius: cardBorderRadius,
+                          minHeight: 80,
+                          cursor: "pointer",
+                          color: "rgba(255,255,255,0.7)",
+                          fontWeight: 500,
+                          boxSizing: "border-box",
+                        }}
+                      >
+                        {Icon && <Icon style={{ width: 20, height: 20 }} color="rgba(255,255,255,0.7)" />}
+                        <span style={{ fontSize: 13, lineHeight: 1.2, textAlign: "center" }}>{link.label}</span>
+                      </button>
+                    </motion.div>
+                  );
+                })}
               </div>
             ) : (
               <>

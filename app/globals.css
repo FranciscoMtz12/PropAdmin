@@ -899,8 +899,8 @@ a {
    ════════════════════════════════════════════════════════════════════ */
 
 [data-theme="rigido"] {
-  --border-radius-sm: 2px;
-  --border-radius-md: 4px;
+  --border-radius-sm: 1px;
+  --border-radius-md: 2px;
   --border-radius-lg: 4px;
   --border-radius-xl: 6px;
   --card-shadow:    none;
