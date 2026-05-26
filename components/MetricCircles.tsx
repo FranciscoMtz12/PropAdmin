@@ -20,12 +20,15 @@ const COLOR_MAP: Record<NonNullable<MetricItem["color"]>, string> = {
   info:    "var(--metric-value-blue)",
 };
 
-function chunkItems<T>(arr: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let i = 0; i < arr.length; i += size) {
-    chunks.push(arr.slice(i, i + size));
-  }
-  return chunks;
+function computeRows<T>(items: T[]): T[][] {
+  const n = items.length;
+  if (n <= 6)  return [items];
+  if (n === 7)  return [items.slice(0, 4), items.slice(4)];
+  if (n === 8)  return [items.slice(0, 4), items.slice(4)];
+  if (n === 9)  return [items.slice(0, 5), items.slice(5)];
+  if (n === 10) return [items.slice(0, 5), items.slice(5)];
+  if (n === 11) return [items.slice(0, 6), items.slice(6)];
+  return        [items.slice(0, 6), items.slice(6, 12)];
 }
 
 function formatMetricValue(value: string | number): string {
@@ -50,15 +53,12 @@ function formatMetricValue(value: string | number): string {
 export default function MetricCircles({ metrics }: MetricCirclesProps) {
   const { uiTheme } = useTheme();
   const items = metrics.slice(0, 12);
-  const rows = chunkItems(items, 6);
+  const rows = computeRows(items);
 
   const borderRadius =
     uiTheme === 'super_soft' ? '50%'
     : uiTheme === 'rigido'   ? '2px'
     : 'var(--border-radius-md)'; // clasico default
-
-  const numFs = "calc((100vw - 32px) / 6 * 0.27)";
-  const lblFs = "calc((100vw - 32px) / 6 * 0.13)";
 
   const circleStyle: CSSProperties = {
     aspectRatio: "1",
@@ -79,14 +79,17 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
       style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}
     >
       {rows.map((rowItems, ri) => {
-        const empties = 6 - rowItems.length;
+        const N = rowItems.length;
+        const numFs = `calc((100vw - 32px) / ${N} * 0.27)`;
+        const lblFs = `calc((100vw - 32px) / ${N} * 0.13)`;
         return (
           <div
             key={ri}
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+              gridTemplateColumns: `repeat(${N}, 1fr)`,
               gap: 6,
+              justifyContent: items.length === 7 && ri === 1 ? "center" : undefined,
             }}
           >
             {rowItems.map((m, i) => (
@@ -119,9 +122,6 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
                   {m.label}
                 </span>
               </div>
-            ))}
-            {Array.from({ length: empties }, (_, ei) => (
-              <div key={`empty-${ei}`} style={{ aspectRatio: "1" }} />
             ))}
           </div>
         );

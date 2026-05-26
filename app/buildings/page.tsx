@@ -1455,7 +1455,7 @@ export default function BuildingsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={portfolioTrend}
-                margin={{ top: 8, right: 48, left: 0, bottom: 4 }}
+                margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
@@ -1482,7 +1482,7 @@ export default function BuildingsPage() {
                   tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
-                  width={44}
+                  width={35}
                 />
                 <Tooltip
                   contentStyle={{
