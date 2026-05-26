@@ -895,8 +895,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: donutHeight }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+              <div style={{ position: "relative", width: "100%" }}>
+                <ResponsiveContainer width="100%" aspect={1}>
                   <PieChart>
                     <Pie
                       data={[
@@ -998,8 +998,8 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Dona siempre visible — gris si no hay datos */}
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: donutHeight }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+              <div style={{ position: "relative", width: "100%" }}>
+                <ResponsiveContainer width="100%" aspect={1}>
                   <PieChart>
                     <Pie
                       data={collectionDonutData}
@@ -1155,8 +1155,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: donutHeight }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+              <div style={{ position: "relative", width: "100%" }}>
+                <ResponsiveContainer width="100%" aspect={1}>
                   <PieChart>
                     <Pie
                       data={buildingDonutData}
@@ -1476,10 +1476,9 @@ export default function DashboardPage() {
       */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.24 }}>
       <div
-        className="dashboard-grid-3"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+          gridTemplateColumns: `repeat(${cols2}, minmax(0, 1fr))`,
           gap: 24,
           alignItems: "stretch",
         }}
@@ -1684,8 +1683,8 @@ export default function DashboardPage() {
             <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Calculando...</p>
           ) : notifications.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
-              <CheckCircle2 size={36} color="#22C55E" />
-              <p style={{ margin: 0, fontWeight: 700, color: "#22C55E", fontSize: "0.9375rem" }}>Todo al día</p>
+              <CheckCircle2 size={36} color="var(--metric-value-green)" />
+              <p style={{ margin: 0, fontWeight: 700, color: "var(--metric-value-green)", fontSize: "0.9375rem" }}>Todo al día</p>
               <p style={{ margin: 0, fontSize: "0.75rem", color: c.textMuted, textAlign: "center" }}>
                 No hay alertas operativas pendientes.
               </p>
