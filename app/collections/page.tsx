@@ -1204,7 +1204,7 @@ export default function CollectionsPage() {
         { value: formatCurrency(metrics.pendiente), label: "Pendiente", color: "warning" },
         { value: formatCurrency(metrics.vencido), label: "Vencido", color: "danger" },
       ]} />
-      <AppGrid minWidth={200} style={{ marginTop: 24 }}>
+      <AppGrid minWidth={200} className="metric-grid-desktop-only" style={{ marginTop: 24 }}>
         <MetricCard
           label="Total a cobrar"
           value={formatCurrency(metrics.totalDue)}

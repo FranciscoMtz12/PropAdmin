@@ -1026,3 +1026,37 @@ a {
 @media (max-width: 767px) {
   .dashboard-grid-2 { gap: 16px !important; }
 }
+
+/* ══ MetricCards rectangulares — ocultar en mobile (MetricCircles toma su lugar) ══ */
+@media (max-width: 768px) {
+  .metric-grid-desktop-only { display: none !important; }
+}
+
+/* ══ FIX 4 — Dashboard donuts sin card en mobile ══ */
+@media (max-width: 768px) {
+  .dashboard-card-mobile {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 4px 0 !important;
+    border-radius: 0 !important;
+  }
+  .dashboard-donut-label-text {
+    font-size: 0.6rem !important;
+  }
+}
+
+/* ══ FIX 5 — Recharts responsive height cap en mobile ══ */
+@media (max-width: 768px) {
+  .dashboard-bar-container .recharts-responsive-container { height: 180px !important; }
+}
+
+/* ══ FIX 6+7 — Una sola columna en mobile para grids de 2+ col ══ */
+@media (max-width: 768px) {
+  .collections-grid-2,
+  .buildings-section-grid,
+  .analytics-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}

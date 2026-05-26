@@ -905,7 +905,7 @@ export default function BuildingsPage() {
             { value: groupStats.totalUnits, label: "Unidades" },
             { value: `${groupStats.occupancyPct}%`, label: "Ocupación" },
           ]} />
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
+          <div className="metric-grid-desktop-only" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
             <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
             <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
             <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
@@ -920,6 +920,7 @@ export default function BuildingsPage() {
             { value: portfolioStats.totalPortfolioUnits, label: "Unidades" },
           ]} />
           <div
+            className="metric-grid-desktop-only"
             style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))",

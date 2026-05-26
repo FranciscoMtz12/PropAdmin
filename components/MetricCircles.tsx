@@ -1,5 +1,6 @@
 "use client";
 import type { CSSProperties } from "react";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface MetricItem {
   value: string | number;
@@ -29,9 +30,34 @@ function computeRows(n: number): number[] {
   return [6, Math.min(n - 6, 6)];
 }
 
+function formatMetricValue(value: string | number): string {
+  const str = String(value).trim();
+  if (str.includes('%')) return str; // ej: "92%" → sin cambio
+  const hasCurrency = str.startsWith('$');
+  const raw = str.replace(/^\$/, '').replace(/,/g, '');
+  const n = parseFloat(raw);
+  if (isNaN(n)) return str.length > 5 ? str.slice(0, 5) : str;
+  let out: string;
+  if (Math.abs(n) >= 1_000_000) {
+    out = (n / 1_000_000).toFixed(1).replace(/\.0$/, '') + 'M';
+  } else if (Math.abs(n) >= 1_000) {
+    out = (n / 1_000).toFixed(1).replace(/\.0$/, '') + 'k';
+  } else {
+    out = n % 1 === 0 ? String(Math.round(n)) : n.toFixed(1);
+  }
+  const result = hasCurrency ? '$' + out : out;
+  return result.length > 5 ? result.slice(0, 5) : result;
+}
+
 export default function MetricCircles({ metrics }: MetricCirclesProps) {
+  const { uiTheme } = useTheme();
   const items = metrics.slice(0, 12);
   const rows = computeRows(items.length);
+
+  const borderRadius =
+    uiTheme === 'super_soft' ? '50%'
+    : uiTheme === 'rigido'   ? '2px'
+    : 'var(--border-radius-md)'; // clasico default
 
   let offset = 0;
   const numFs = "calc((100vw - 32px) / 6 * 0.27)";
@@ -39,7 +65,7 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
 
   const circleStyle: CSSProperties = {
     aspectRatio: "1",
-    borderRadius: "50%",
+    borderRadius,
     background: "var(--bg-card)",
     border: "1.5px solid var(--border-default)",
     display: "flex",
@@ -82,7 +108,7 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {m.value}
+                  {formatMetricValue(m.value)}
                 </span>
                 <span
                   style={{

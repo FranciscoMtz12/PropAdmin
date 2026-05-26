@@ -12,14 +12,17 @@ export default function AppGrid({
   minWidth = 280,
   gap = 16,
   style,
+  className,
 }: {
   children: ReactNode;
   minWidth?: number;
   gap?: number;
   style?: CSSProperties;
+  className?: string;
 }) {
   return (
     <div
+      className={className}
       style={{
         display: "grid",
         gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}px, 1fr))`,

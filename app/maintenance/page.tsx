@@ -1548,7 +1548,7 @@ export default function MaintenancePage() {
               { value: ticketTotals.inProg, label: "En proceso", color: "warning" },
               { value: ticketTotals.resolved, label: "Resueltos", color: "success" },
             ]} />
-            <AppGrid minWidth={220}>
+            <AppGrid minWidth={220} className="metric-grid-desktop-only">
               <MetricCard
                 label="Total tickets"
                 value={ticketTotals.total}
@@ -1747,7 +1747,7 @@ export default function MaintenancePage() {
         {activeMainTab === "calendar" ? (
           <div style={{ display: "grid", gap: 18 }}>
 
-            <AppGrid minWidth={220}>
+            <AppGrid minWidth={220} className="metric-grid-desktop-only">
               <MetricCard
                 label="Vista activa"
                 value={viewMode === "week" ? "Semana" : viewMode === "month" ? "Mes" : "Año"}
