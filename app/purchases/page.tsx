@@ -70,6 +70,7 @@ import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import ReturnModal from "@/components/ReturnModal";
@@ -1659,8 +1660,20 @@ export default function PurchasesPage() {
         </AppCard>
       ) : null}
 
-      {/* Métricas — stat bar compacta */}
-      <div className="purchases-statbar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 20, overflow: "hidden" }}>
+      {/* Métricas mobile — MetricCircles */}
+      <MetricCircles metrics={[
+        { value: metrics.total,     label: "Total OC",   color: "default" },
+        { value: metrics.draft,     label: "Borradores", color: "default" },
+        { value: metrics.pending,   label: "Por enviar", color: "warning" },
+        { value: metrics.sent,      label: "Enviadas",   color: "info"    },
+        { value: metrics.partial,   label: "Surtido",    color: "warning" },
+        { value: metrics.received,  label: "Completadas",color: "success" },
+        { value: metrics.invoiced,  label: "Facturadas", color: "info"    },
+        { value: metrics.cancelled, label: "Canceladas", color: "danger"  },
+      ]} />
+
+      {/* Métricas — stat bar compacta (desktop) */}
+      <div className="purchases-statbar metric-grid-desktop-only" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 20, overflow: "hidden" }}>
         {[
           { label: "Total OC",        value: metrics.total,     sub: "todas" },
           { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
