@@ -940,8 +940,8 @@ export default function TenantsPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }} style={{ marginTop: 16 }}>
       <SectionCard title="Filtros">
         {isMobile ? (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
               <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <input
                 value={search}
@@ -950,14 +950,14 @@ export default function TenantsPage() {
                 style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.875rem", color: "var(--text-primary)" }}
               />
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", minHeight: 32 }}>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {(["all", "ACTIVE", "INACTIVE"] as const).map((val) => (
                 <button
                   key={val}
                   type="button"
                   onClick={() => setStatusFilter(val)}
                   style={{
-                    padding: "4px 10px", fontSize: "0.75rem",
+                    padding: "4px 10px", fontSize: "0.75rem", minHeight: 32,
                     borderRadius: "var(--border-radius-md)",
                     border: "0.5px solid var(--border-default)",
                     background: statusFilter === val ? "var(--accent)" : "var(--bg-input)",
@@ -972,7 +972,7 @@ export default function TenantsPage() {
             <select
               value={buildingFilter}
               onChange={(e) => setBuildingFilter(e.target.value)}
-              style={{ width: "100%", padding: "6px 12px", height: 32, fontSize: "0.875rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+              style={{ width: "100%", padding: "6px 10px", height: 32, fontSize: "0.875rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
             >
               <option value="all">Todos los edificios</option>
               <option value="no_lease">Sin lease activo</option>

@@ -502,12 +502,12 @@ export default function HomePage() {
           animate="animate"
           style={{
             display: "grid",
-            gridTemplateColumns: isSmall ? "1fr" : "repeat(3, 1fr)",
+            gridTemplateColumns: isSmall ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
             gap: 14,
           }}
         >
           {/* Cobros pendientes */}
-          <motion.div variants={itemVariant} style={CARD}>
+          <motion.div variants={itemVariant} style={{ ...CARD, borderRadius: cardBorderRadius }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
               <IconBox bg="rgba(226,75,74,0.18)"><Coins style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#f87171" /></IconBox>
               {(metrics?.cobrosVencidos ?? 0) > 0 && (
@@ -528,7 +528,7 @@ export default function HomePage() {
           </motion.div>
 
           {/* Tickets abiertos */}
-          <motion.div variants={itemVariant} style={CARD}>
+          <motion.div variants={itemVariant} style={{ ...CARD, borderRadius: cardBorderRadius }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
               <IconBox bg="rgba(239,159,39,0.18)"><Wrench style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#fbbf24" /></IconBox>
               {(metrics?.ticketsUrgentes ?? 0) > 0 && (
@@ -543,7 +543,14 @@ export default function HomePage() {
           </motion.div>
 
           {/* Contratos por vencer */}
-          <motion.div variants={itemVariant} style={CARD}>
+          <motion.div
+            variants={itemVariant}
+            style={{
+              ...CARD,
+              borderRadius: cardBorderRadius,
+              ...(isSmall ? { gridColumn: "1 / -1", maxWidth: "50%", margin: "0 auto", width: "100%" } : {}),
+            }}
+          >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
               <IconBox bg="rgba(99,102,241,0.18)"><Calendar style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#a5b4fc" /></IconBox>
               <Badge bg="rgba(99,102,241,0.2)" color="#a5b4fc">próximos 60 días</Badge>
@@ -564,69 +571,23 @@ export default function HomePage() {
             animate="animate"
             style={{ display: "flex", flexDirection: "column", gap: 10, paddingBottom: "clamp(24px, 3vh, 48px)" }}
           >
-            {isSmall ? (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-                {displayLinks.map((link, idx) => {
-                  const Icon = ICON_MAP[link.icon] as React.ComponentType<{ style?: React.CSSProperties; color?: string }> | undefined;
-                  const isLastOdd = idx === displayLinks.length - 1 && displayLinks.length % 2 !== 0;
-                  return (
-                    <motion.div
-                      key={link.path}
-                      variants={itemVariant}
-                      style={{
-                        gridColumn: isLastOdd ? "1 / -1" : undefined,
-                        width: isLastOdd ? "50%" : undefined,
-                        margin: isLastOdd ? "0 auto" : undefined,
-                      }}
-                    >
-                      <button
-                        type="button"
-                        onClick={() => router.push(link.customPath || link.path)}
-                        style={{
-                          width: "100%",
-                          padding: 16,
-                          display: "flex",
-                          flexDirection: "column",
-                          alignItems: "center",
-                          gap: 8,
-                          background: "rgba(255,255,255,0.08)",
-                          border: "0.5px solid rgba(255,255,255,0.12)",
-                          borderRadius: cardBorderRadius,
-                          minHeight: 80,
-                          cursor: "pointer",
-                          color: "rgba(255,255,255,0.7)",
-                          fontWeight: 500,
-                          boxSizing: "border-box",
-                        }}
-                      >
-                        {Icon && <Icon style={{ width: 20, height: 20 }} color="rgba(255,255,255,0.7)" />}
-                        <span style={{ fontSize: 13, lineHeight: 1.2, textAlign: "center" }}>{link.label}</span>
-                      </button>
-                    </motion.div>
-                  );
-                })}
+            {links1.length > 0 && (
+              <div style={{ display: "flex", gap: isSmall ? "clamp(20px, 5vw, 36px)" : "clamp(24px, 3vw, 48px)", flexWrap: "wrap", justifyContent: "center" }}>
+                {links1.map(link => (
+                  <motion.div key={link.path} variants={itemVariant}>
+                    <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
+                  </motion.div>
+                ))}
               </div>
-            ) : (
-              <>
-                {links1.length > 0 && (
-                  <div style={{ display: "flex", gap: "clamp(24px, 3vw, 48px)", flexWrap: "wrap", justifyContent: "center" }}>
-                    {links1.map(link => (
-                      <motion.div key={link.path} variants={itemVariant}>
-                        <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-                {links2.length > 0 && (
-                  <div style={{ display: "flex", gap: "clamp(24px, 3vw, 48px)", flexWrap: "wrap", justifyContent: "center", marginLeft: 44 }}>
-                    {links2.map(link => (
-                      <motion.div key={link.path} variants={itemVariant}>
-                        <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
-                      </motion.div>
-                    ))}
-                  </div>
-                )}
-              </>
+            )}
+            {links2.length > 0 && (
+              <div style={{ display: "flex", gap: isSmall ? "clamp(20px, 5vw, 36px)" : "clamp(24px, 3vw, 48px)", flexWrap: "wrap", justifyContent: "center", marginLeft: isSmall ? 32 : 44 }}>
+                {links2.map(link => (
+                  <motion.div key={link.path} variants={itemVariant}>
+                    <LinkBtn link={link} onClick={() => router.push(link.customPath || link.path)} />
+                  </motion.div>
+                ))}
+              </div>
             )}
           </motion.div>
         )}

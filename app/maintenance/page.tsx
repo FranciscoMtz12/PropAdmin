@@ -1590,8 +1590,8 @@ export default function MaintenancePage() {
             {/* Filtros */}
             <AppCard>
               {isMobile ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
                     <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
                     <input
                       value={searchQuery}
@@ -1605,11 +1605,11 @@ export default function MaintenancePage() {
                       </button>
                     ) : null}
                   </div>
-                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap", minHeight: 32 }}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
                       type="button"
                       onClick={() => setFilterPriority("ALL")}
-                      style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === "ALL" ? "var(--accent)" : "var(--bg-input)", color: filterPriority === "ALL" ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                      style={{ padding: "4px 10px", fontSize: "0.75rem", minHeight: 32, borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === "ALL" ? "var(--accent)" : "var(--bg-input)", color: filterPriority === "ALL" ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                     >
                       Todas
                     </button>
@@ -1618,7 +1618,7 @@ export default function MaintenancePage() {
                         key={p.value}
                         type="button"
                         onClick={() => setFilterPriority(p.value)}
-                        style={{ padding: "4px 10px", fontSize: "0.75rem", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === p.value ? "var(--accent)" : "var(--bg-input)", color: filterPriority === p.value ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                        style={{ padding: "4px 10px", fontSize: "0.75rem", minHeight: 32, borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === p.value ? "var(--accent)" : "var(--bg-input)", color: filterPriority === p.value ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
                       >
                         {p.label}
                       </button>
@@ -1649,7 +1649,7 @@ export default function MaintenancePage() {
                   <select
                     value={filterCategory}
                     onChange={(e) => setFilterCategory(e.target.value)}
-                    style={{ width: "100%", padding: "6px 12px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                    style={{ width: "100%", padding: "6px 10px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
                   >
                     <option value="ALL">Todas las categorías</option>
                     {categories.map((c) => (
@@ -1665,7 +1665,7 @@ export default function MaintenancePage() {
                         setFilterStatus("ALL");
                         setFilterCategory("ALL");
                       }}
-                      style={{ padding: "6px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+                      style={{ padding: "6px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
                     >
                       Limpiar filtros
                     </button>
