@@ -898,7 +898,7 @@ export default function TenantsPage() {
         { value: inactiveCount, label: "Inactivos", color: "danger" },
       ]} />
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <AppGrid minWidth={220}>
+      <AppGrid minWidth={220} className="metric-grid-desktop-only">
         <AppCard>
           <div style={{ display: "grid", gap: 8 }}>
             <div style={metricLabelStyle}>Total</div>

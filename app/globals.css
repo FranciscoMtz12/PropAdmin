@@ -1060,3 +1060,15 @@ a {
     gap: 12px !important;
   }
 }
+
+/* ══ FIX 9 — Collections donuts en columna en mobile ══ */
+@media (max-width: 768px) {
+  .collections-chart-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ══ FIX 12 — Stat bars: ocultar en mobile (MetricCircles toma su lugar) ══ */
+@media (max-width: 768px) {
+  .mod-stat-bar { display: none !important; }
+}

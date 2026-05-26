@@ -1235,7 +1235,7 @@ export default function CollectionsPage() {
       </AppGrid>
 
       {/* ── Gráfica donut + barra de cantidades ── */}
-      <div style={{ ...chartRowStyle, marginTop: 24 }}>
+      <div className="collections-chart-row" style={{ ...chartRowStyle, marginTop: 24 }}>
         {/* Donut — distribución por monto */}
         <div style={donutCardStyle}>
           <p style={sectionLabelStyle}>Distribución del mes</p>

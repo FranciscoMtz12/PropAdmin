@@ -1196,7 +1196,7 @@ export default function ServiciosPage() {
         { value: serviceStats.length, label: "Servicios" },
       ]} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12, marginBottom: 24 }}>
+      <div className="metric-grid-desktop-only" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12, marginBottom: 24 }}>
 
         {/* Per-service-type cards */}
         {!pageLoading && serviceStats.map(({ type, total, registered, allDone }) => (
