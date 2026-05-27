@@ -370,8 +370,8 @@ export default function Sidebar() {
     const deltaX = e.changedTouches[0].clientX - touchStartX.current;
     const deltaY = e.changedTouches[0].clientY - touchStartY.current;
     if (Math.abs(deltaX) < Math.abs(deltaY)) return;
-    if (Math.abs(deltaX) < 50) return;
-    if (deltaX > 0 && touchStartX.current <= 30) setMobileOpen(true);
+    if (Math.abs(deltaX) < 40) return;
+    if (deltaX > 0 && touchStartX.current <= 50) setMobileOpen(true);
     if (deltaX < 0) setMobileOpen(false);
   }, []);
 
