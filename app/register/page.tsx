@@ -736,8 +736,12 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div style={{ position: "relative", zIndex: 2, marginTop: "1.5rem", fontSize: "0.6875rem", color: "rgba(255,255,255,.25)", letterSpacing: 1 }}>
-        SAPROA © {new Date().getFullYear()}
+      <div style={{ position: "relative", zIndex: 2, marginTop: "1.5rem", fontSize: "0.6875rem", color: "rgba(255,255,255,.25)", letterSpacing: 1, display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
+        <span>© {new Date().getFullYear()} SAPROA</span>
+        <span>·</span>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Aviso de privacidad</a>
+        <span>·</span>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Términos y condiciones</a>
       </div>
     </div>
   );

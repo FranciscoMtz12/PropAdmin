@@ -298,6 +298,16 @@ export default function LoginPage() {
               Regístrate →
             </a>
           </p>
+
+          <p style={{ textAlign: "center", marginTop: "8px", fontSize: "0.6875rem", color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
+            Al iniciar sesión aceptas nuestros{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>
+              Términos y condiciones
+            </a>{" "}y{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>
+              Aviso de privacidad
+            </a>
+          </p>
         </form>
       </div>
 
@@ -310,9 +320,17 @@ export default function LoginPage() {
           fontSize: "0.6875rem",
           color: "rgba(255,255,255,.25)",
           letterSpacing: 1,
+          display: "flex",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+          justifyContent: "center",
         }}
       >
-        SAPROA © {new Date().getFullYear()}
+        <span>© {new Date().getFullYear()} SAPROA</span>
+        <span>·</span>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Aviso de privacidad</a>
+        <span>·</span>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Términos y condiciones</a>
       </div>
     </div>
   );
