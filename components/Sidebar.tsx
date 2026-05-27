@@ -353,9 +353,16 @@ function SidebarSection({
 
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
 
   const swipeStartX = useRef(0);
   const swipeStartY = useRef(0);
@@ -455,18 +462,18 @@ export default function Sidebar() {
 
   return (
     <>
-    {/* Zona de swipe para abrir sidebar — borde izquierdo 20px, solo cuando sidebar cerrado */}
-    {!mobileOpen && (
+    {/* Zona de swipe para abrir sidebar — debajo del hamburger, solo en mobile cuando sidebar cerrado */}
+    {isMobile && !mobileOpen && (
       <div
         onTouchStart={onSwipeStart}
         onTouchEnd={onSwipeEndOpen}
         style={{
           position: "fixed",
-          top: 0,
+          top: 60,
           left: 0,
           width: 20,
-          height: "100%",
-          zIndex: 48,
+          height: "calc(100% - 60px)",
+          zIndex: 9999,
         }}
       />
     )}
