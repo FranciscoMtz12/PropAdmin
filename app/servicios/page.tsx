@@ -1101,14 +1101,14 @@ export default function ServiciosPage() {
     }
   }
 
-  if (loading || !user) return null;
-
-  /* ── Metrics ──────────────────────────────────────────────────── */
+  /* ── Metrics (hooks must be before any early return) ─────────── */
 
   const filteredGroups = useMemo(() => {
     if (!isGroupMode) return groups;
     return groups.filter(g => g.company_id != null && groupCompanyIds.includes(g.company_id));
   }, [isGroupMode, groups, groupCompanyIds]);
+
+  if (loading || !user) return null;
 
   const totalAmount = filteredGroups.reduce((sum, g) =>
     sum + g.utility_meters.reduce((s, m) => {
