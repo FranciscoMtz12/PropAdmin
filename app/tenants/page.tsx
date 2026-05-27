@@ -41,6 +41,7 @@ import AppTable from "@/components/AppTable";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
 import AppSelect from "@/components/AppSelect";
+import SensitiveField from "@/components/SensitiveField";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Tenant = {
@@ -683,8 +684,8 @@ export default function TenantsPage() {
       header: "Contacto",
       render: (row: TenantRow) => (
         <div style={{ display: "grid", gap: 4 }}>
-          <span style={cellPrimaryStyle}>{row.email}</span>
-          <span style={cellSecondaryStyle}>{row.phone}</span>
+          <SensitiveField value={row.email} type="email" />
+          <SensitiveField value={row.phone} type="phone" />
         </div>
       ),
     },
@@ -712,7 +713,7 @@ export default function TenantsPage() {
       key: "taxId",
       header: "RFC",
       render: (row: TenantRow) => (
-        <span style={cellPrimaryStyle}>{row.taxId}</span>
+        <SensitiveField value={row.taxId === "—" ? null : row.taxId} type="rfc" />
       ),
     },
     {

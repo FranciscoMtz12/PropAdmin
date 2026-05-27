@@ -8,6 +8,17 @@ type RenewalBody = {
 
 export async function POST(request: Request) {
   try {
+    // Validate tenant auth token
+    const authHeader = request.headers.get("authorization");
+    const token = authHeader?.replace(/^Bearer\s+/i, "");
+    if (!token) {
+      return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+    }
+    const { data: callerAuth, error: callerAuthError } = await supabaseAdmin.auth.getUser(token);
+    if (callerAuthError || !callerAuth?.user) {
+      return NextResponse.json({ error: "Sesión inválida." }, { status: 401 });
+    }
+
     const body = (await request.json()) as RenewalBody;
 
     const leaseId = body.leaseId?.trim();
@@ -55,14 +66,15 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3) Obtener usuario autenticado por bearer/cookies no lo estamos validando server-side todavía.
-    // En esta fase dependemos del flujo cliente + RouteGuard + tenant auth ya enlazado.
-    // Más adelante esto debe reforzarse con auth SSR.
+    // 3) Verificar que el usuario autenticado corresponde al tenant del contrato
     if (!tenant.auth_user_id) {
       return NextResponse.json(
         { error: "El inquilino no tiene cuenta activada para el portal." },
         { status: 400 }
       );
+    }
+    if (callerAuth.user.id !== tenant.auth_user_id) {
+      return NextResponse.json({ error: "No autorizado para este contrato." }, { status: 403 });
     }
 
     // 4) Insertar respuesta histórica

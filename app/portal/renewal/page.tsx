@@ -352,10 +352,13 @@ export default function PortalRenewalPage() {
     setSubmitError("");
 
     try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token ?? "";
       const response = await fetch("/api/portal/renewal-response", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
         },
         body: JSON.stringify({
           leaseId: lease.id,

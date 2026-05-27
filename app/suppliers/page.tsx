@@ -49,6 +49,7 @@ import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
 import AppBadge from "@/components/AppBadge";
+import SensitiveField from "@/components/SensitiveField";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -608,8 +609,8 @@ export default function SuppliersPage() {
                     ) : null}
                   </div>
                   {s.tax_id ? (
-                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>
-                      RFC: {s.tax_id}
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
+                      RFC: <SensitiveField value={s.tax_id} type="rfc" />
                     </div>
                   ) : null}
                   {s.client_number ? (
@@ -672,8 +673,8 @@ export default function SuppliersPage() {
               {/* Persona de contacto */}
               <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                 {s.contact_name  ? <div>{s.contact_name}</div> : null}
-                {s.contact_phone ? <div>{s.contact_phone}</div> : null}
-                {s.contact_email ? <div style={{ wordBreak: "break-all" }}>{s.contact_email}</div> : null}
+                {s.contact_phone ? <div><SensitiveField value={s.contact_phone} type="phone" /></div> : null}
+                {s.contact_email ? <div><SensitiveField value={s.contact_email} type="email" /></div> : null}
                 {!s.contact_name && !s.contact_phone && !s.contact_email ? (
                   <div style={{ color: "var(--text-muted)" }}>Sin persona de contacto</div>
                 ) : null}

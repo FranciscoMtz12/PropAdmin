@@ -63,6 +63,7 @@ import AppStatBar from "@/components/AppStatBar";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 import AppSelect from "@/components/AppSelect";
+import SensitiveField from "@/components/SensitiveField";
 
 type Building = {
   id: string;
@@ -1781,7 +1782,9 @@ export default function UnitDetailPage() {
                         <div style={miniGroupStyle}>
                           <div style={miniLabelStyle}>RFC de facturación</div>
                           <div style={miniValueStyle}>
-                            {lease.billing_tax_id || "Sin definir"}
+                            {lease.billing_tax_id
+                              ? <SensitiveField value={lease.billing_tax_id} type="rfc" />
+                              : "Sin definir"}
                           </div>
                         </div>
 
@@ -1955,11 +1958,12 @@ export default function UnitDetailPage() {
 
                         <div style={historyMetaTextStyle}>
                           Facturación:{" "}
-                          {lease.billing_name || lease.billing_email || lease.billing_tax_id
-                            ? `${lease.billing_name || "Sin nombre"} · ${
-                                lease.billing_email || "Sin email"
-                              }${lease.billing_tax_id ? ` · RFC ${lease.billing_tax_id}` : ""}`
-                            : "Sin datos de facturación"}
+                          {lease.billing_name || lease.billing_email || lease.billing_tax_id ? (
+                            <>
+                              {lease.billing_name || "Sin nombre"} · {lease.billing_email || "Sin email"}
+                              {lease.billing_tax_id ? <> · RFC <SensitiveField value={lease.billing_tax_id} type="rfc" /></> : null}
+                            </>
+                          ) : "Sin datos de facturación"}
                         </div>
 
                         <div style={{ marginTop: "4px" }}>
