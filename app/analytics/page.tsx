@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   BarChart2,
   Users,
@@ -10,6 +10,9 @@ import {
   Home,
   TrendingUp,
   KeyRound,
+  Wrench,
+  Droplets,
+  Zap,
 } from "lucide-react";
 import {
   BarChart,
@@ -39,6 +42,7 @@ import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
+import AppTabs, { AppTabPanel } from "@/components/AppTabs";
 
 /* ═══ Tipos ═══════════════════════════════════════════════════════ */
 
@@ -135,6 +139,14 @@ export default function AnalyticsPage() {
   const [buildings, setBuildings] = useState<Building[]>([]);
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+
+  const searchParams = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get("tab") ?? "portafolio");
+
+  function handleTabChange(key: string) {
+    setActiveTab(key);
+    router.replace(`?tab=${key}`, { scroll: false });
+  }
 
   const allowedRoles = ["superadmin", "administracion", "directivo", "titular"];
   const hasAccess =
@@ -519,380 +531,418 @@ export default function AnalyticsPage() {
 
   if (!user || !hasAccess) return null;
 
+  const ANALYTICS_TABS = [
+    { key: "portafolio",    label: "Portafolio",    icon: <Building2 size={15} /> },
+    { key: "cobranza",      label: "Cobranza",      icon: <TrendingUp size={15} /> },
+    { key: "mantenimiento", label: "Mantenimiento", icon: <Wrench size={15} /> },
+    { key: "limpieza",      label: "Limpieza",      icon: <Droplets size={15} /> },
+    { key: "servicios",     label: "Servicios",     icon: <Zap size={15} /> },
+  ];
+
   return (
     <PageContainer>
       <PageHeader title="Analytics" titleIcon={<BarChart2 size={18} />} />
 
-      {/* ════ SECCIÓN 1: Stat bar compacta ════════════════════════════ */}
-      <MetricCircles metrics={[
-        { value: `${occupancyRate.toFixed(0)}%`, label: "Ocupación", color: "success" },
-        { value: estimatedPeople, label: "Personas", color: "info" },
-        { value: activeLeases.length, label: "Contratos" },
-        { value: leasesExpiring30.length, label: "Vencen 30d", color: "warning" },
-        { value: vacantUnits, label: "Vacantes", color: "danger" },
-        { value: buildings.length, label: "Edificios" },
-      ]} />
-      <div className="analytics-stat-bar metric-grid-desktop-only" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow:"hidden", marginBottom:"1rem" }}>
-        {[
-          { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"var(--metric-value-green)" },
-          { label:"Personas", value:estimatedPeople, sub:"estimadas", color:"var(--metric-value-blue)" },
-          { label:"Contratos", value:activeLeases.length, sub:"activos" },
-          { label:"Vencen 30d", value:leasesExpiring30.length, sub:"contratos", color:"var(--metric-value-amber)" },
-          { label:"Vacantes", value:vacantUnits, sub:"unidades", color:"var(--metric-value-red)" },
-          { label:"Edificios", value:buildings.length, sub:"activos" },
-        ].map((s, i, arr) => (
-          <div key={i} className="mod-stat-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
-            <div style={{ fontSize: "0.625rem", color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
-            <div style={{ fontSize: "1rem", fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
-            <div style={{ fontSize: "0.625rem", color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
-          </div>
-        ))}
-      </div>
+      <AppTabs items={ANALYTICS_TABS} activeKey={activeTab} onChange={handleTabChange} />
+      <div style={{ height: 16 }} />
 
-      {/* ════ SECCIÓN 2: Ocupación por edificio + Contratos por vencer ══════ */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:16, marginBottom:16 }} className="dashboard-grid-2">
-        <SectionCard title="Ocupación por edificio" icon={<Building2 size={18} />}>
-          {occupancyByBuilding.length === 0 ? (
-            <AppEmptyState title="Sin edificios" description="No hay datos para mostrar." />
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-              {occupancyByBuilding.map((b) => {
-                const color = b.rate >= 80 ? "var(--metric-value-green)" : b.rate >= 50 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
-                return (
-                  <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                    <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                      {b.name}
-                    </div>
-                    <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
-                      <div style={{ width:`${b.rate}%`, height:"100%", background:color, transition:"width .4s" }} />
-                    </div>
-                    <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:70, textAlign:"right" }}>
-                      {b.rate.toFixed(0)}% · {b.occ}/{b.total}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </SectionCard>
+      <AppTabPanel activeKey={activeTab}>
 
-        <SectionCard title="Contratos por vencer" icon={<Clock3 size={18} />}>
-          {leasesExpiring30.length === 0 ? (
-            <AppEmptyState title="Sin próximos vencimientos" description="Nada vence en los próximos 30 días." />
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              {leasesExpiring30.slice(0, 10).map((l) => {
-                const days = l.end_date ? daysBetween(new Date().toISOString(), l.end_date) : 0;
-                const variant: "red" | "amber" | "green" = days < 15 ? "red" : days < 30 ? "amber" : "green";
-                const u = unitById.get(l.unit_id);
-                const t = tenantById.get(l.tenant_id);
-                return (
-                  <div key={l.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
-                    <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
-                      <span style={{ fontSize: "0.8125rem", fontWeight:600, color:"var(--text-primary)" }}>{t?.full_name || "—"}</span>
-                      <span style={{ fontSize: "0.6875rem", color:"var(--text-muted)" }}>{u?.display_code || u?.unit_number || "—"}</span>
-                    </div>
-                    <AppBadge variant={variant}>{days} {days === 1 ? "día" : "días"}</AppBadge>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </SectionCard>
-      </div>
-
-      {/* ════ SECCIÓN 3: Desempeño por tipología ══════════════════════════ */}
-      <SectionCard title="Desempeño por tipología" icon={<Home size={18} />}>
-        {typologyPerformance.length === 0 ? (
-          <AppEmptyState title="Sin tipologías" description="Crea tipologías para ver análisis." />
-        ) : (
-          <motion.div
-            variants={staggerContainer}
-            initial="hidden"
-            animate="show"
-            style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: 16 }}
-          >
-            {typologyPerformance.map((t) => {
-              const demandColor =
-                t.demand === "alta" ? "green" : t.demand === "media" ? "amber" : "gray";
-              const demandLabel =
-                t.demand === "alta" ? "Alta demanda" : t.demand === "media" ? "Media demanda" : "Baja demanda";
-              return (
-                <motion.div key={t.id} variants={staggerItem}>
-                  <AppCard style={{ padding: 14 }}>
-                    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
-                      <div>
-                        <div style={{ fontSize: "0.8125rem", fontWeight:700, color:"var(--text-primary)" }}>{t.name}</div>
-                        <div style={{ fontSize: "0.6875rem", color:"var(--text-muted)" }}>{t.bedrooms} recámara{t.bedrooms === 1 ? "" : "s"}</div>
-                      </div>
-                      <AppBadge variant={demandColor}>{demandLabel}</AppBadge>
-                    </div>
-                    <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize: "0.75rem" }}>
-                      <div>
-                        <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>Ocupación</div>
-                        <div style={{ fontWeight:600, fontSize: "0.9375rem", color:"var(--text-primary)" }}>
-                          {t.rate.toFixed(0)}%
-                        </div>
-                        <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>{t.occupied}/{t.total}</div>
-                      </div>
-                      <div>
-                        <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>Días vacío promedio</div>
-                        <div style={{ fontWeight:600, fontSize: "0.9375rem", color:"var(--text-primary)" }}>
-                          {t.avgVacancy !== null ? `${t.avgVacancy}d` : "Sin datos"}
-                        </div>
-                      </div>
-                    </div>
-                  </AppCard>
-                </motion.div>
-              );
-            })}
-          </motion.div>
-        )}
-      </SectionCard>
-
-      <div style={{ height:16 }} />
-
-      {/* ════ SECCIÓN 4: Mayor rotación ═══════════════════════════════════ */}
-      <SectionCard title="Mayor rotación" icon={<TrendingUp size={18} />} subtitle="Unidades con más inquilinos históricos" style={{ marginBottom:16 }}>
-        {rotationRanking.length === 0 ? (
-          <AppEmptyState title="Sin rotación" description="No hay historial suficiente." />
-        ) : (
-          <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-            {rotationRanking.map((r) => (
-              <div key={r.unitId} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                  {r.label} · {r.building}
-                </div>
-                <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
-                  <div style={{ width:`${(r.count / maxRotation) * 100}%`, height:"100%", background:"#EC4899" }} />
-                </div>
-                <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
-                  {r.count} {r.count === 1 ? "contrato" : "contratos"}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </SectionCard>
-
-      {/* ════ SECCIÓN 5: Contratos más largos ═════════════════════════════ */}
-      <SectionCard title="Inquilinos más leales" icon={<KeyRound size={18} />} subtitle="Contratos activos ordenados por duración">
-        {longestLeases.length === 0 ? (
-          <AppEmptyState title="Sin contratos activos" description="No hay contratos para rankear." />
-        ) : (
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
-              <thead>
-                <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
-                  <th style={thStyle}>Inquilino</th>
-                  <th style={thStyle}>Departamento</th>
-                  <th style={thStyle}>Edificio</th>
-                  <th style={thStyle}>Inicio</th>
-                  <th style={thStyle}>Duración</th>
-                  <th style={thStyle}>Vencimiento</th>
-                </tr>
-              </thead>
-              <tbody>
-                {longestLeases.map((r) => {
-                  const variant: "green" | "blue" | "gray" =
-                    r.duration > 24 ? "green" : r.duration >= 12 ? "blue" : "gray";
-                  const label =
-                    r.duration > 24 ? "Leal" : r.duration >= 12 ? "Estable" : "Reciente";
-                  return (
-                    <tr key={r.id} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
-                      <td style={tdStyle}><strong>{r.tenant}</strong></td>
-                      <td style={tdStyle}>{r.unit}</td>
-                      <td style={tdStyle}>{r.building}</td>
-                      <td style={tdStyle}>{formatDateShort(r.start)}</td>
-                      <td style={tdStyle}>
-                        <AppBadge variant={variant}>{r.duration} meses · {label}</AppBadge>
-                      </td>
-                      <td style={tdStyle}>{formatDateShort(r.end)}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SectionCard>
-
-      <div style={{ height:16 }} />
-
-      {/* ════ SECCIÓN 7: Tendencia ocupación vs vacantes ══════════════════ */}
-      <SectionCard title="Tendencia ocupación" icon={<TrendingUp size={18} />} subtitle="% ocupación vs. vacantes · últimos 6 meses">
-        {occupancyHistory.length === 0 ? (
-          <AppEmptyState title="Sin histórico" description="No hay datos suficientes." />
-        ) : (
-          <ResponsiveContainer width="100%" height={Math.round(240 * fontScale)}>
-            <LineChart data={occupancyHistory} margin={{ top:4, right:12, left:0, bottom:4 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
-              <XAxis dataKey="mes" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
-              <YAxis yAxisId="left" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} tickFormatter={(v) => `${v}%`} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
-              <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem" }} />
-              <Legend wrapperStyle={{ fontSize: "0.6875rem", paddingTop:6 }} />
-              <Line yAxisId="left" type="monotone" dataKey="ocupacion" name="% Ocupación" stroke="#10B981" strokeWidth={2.5} dot={{ r:3 }} />
-              <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
-            </LineChart>
-          </ResponsiveContainer>
-        )}
-      </SectionCard>
-
-      <div style={{ height:16 }} />
-
-      {/* ════ SECCIÓN 8: Eficiencia de cobro por edificio ═════════════════ */}
-      <SectionCard title="Eficiencia de cobro por edificio" icon={<Building2 size={18} />} subtitle="Últimos 12 meses · cobrado / esperado">
-        {collectionEfficiency.length === 0 ? (
-          <AppEmptyState title="Sin cobros" description="No hay datos de cobranza en el periodo." />
-        ) : (
-          <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
-            {collectionEfficiency.map((b) => {
-              const color = b.rate >= 90 ? "var(--metric-value-green)" : b.rate >= 70 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
-              return (
-                <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
-                  <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
-                    {b.name}
-                  </div>
-                  <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
-                    <div style={{ width:`${Math.min(100, b.rate)}%`, height:"100%", background:color, transition:"width .4s" }} />
-                  </div>
-                  <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", minWidth:140, lineHeight:1.3 }}>
-                    <span style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)" }}>
-                      {b.rate.toFixed(0)}%
-                    </span>
-                    {b.missing > 0 && (
-                      <span style={{ fontSize: "0.625rem", color:"var(--metric-value-red)" }}>
-                        {formatCurrency(b.missing)} pendiente
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </SectionCard>
-
-      <div style={{ height:16 }} />
-
-      {/* ════ SECCIÓN 9: Comportamiento de pago de inquilinos ═════════════ */}
-      <SectionCard title="Comportamiento de pago" icon={<Users size={18} />} subtitle="Inquilinos con historial de cobros">
-        {tenantPaymentBehavior.length === 0 ? (
-          <AppEmptyState title="Sin historial" description="No hay pagos registrados por inquilino." />
-        ) : (
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
-              <thead>
-                <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
-                  <th style={thStyle}>Inquilino</th>
-                  <th style={thStyle}>Edificio</th>
-                  <th style={thStyle}>% Cobrado</th>
-                  <th style={thStyle}>Puntualidad</th>
-                  <th style={thStyle}>Días retraso</th>
-                  <th style={thStyle}>Evaluación</th>
-                </tr>
-              </thead>
-              <tbody>
-                {tenantPaymentBehavior.map((r) => {
-                  const variant: "green" | "blue" | "amber" | "red" =
-                    r.evaluation === "excelente" ? "green" :
-                    r.evaluation === "bueno" ? "blue" :
-                    r.evaluation === "regular" ? "amber" : "red";
-                  const label =
-                    r.evaluation === "excelente" ? "Excelente" :
-                    r.evaluation === "bueno" ? "Bueno" :
-                    r.evaluation === "regular" ? "Regular" : "Atención";
-                  return (
-                    <tr key={r.tenantId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
-                      <td style={tdStyle}><strong>{r.tenantName}</strong></td>
-                      <td style={tdStyle}>{r.building}</td>
-                      <td style={tdStyle}>{r.collectedRate.toFixed(0)}%</td>
-                      <td style={tdStyle}>{r.punctualityRate.toFixed(0)}%</td>
-                      <td style={tdStyle}>{r.avgLateDays > 0 ? `${r.avgLateDays}d` : "—"}</td>
-                      <td style={tdStyle}>
-                        <AppBadge variant={variant}>{label}</AppBadge>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </SectionCard>
-
-      <div style={{ height:16 }} />
-
-      {/* ════ SECCIÓN 10: Historial de precios de renta ═══════════════════ */}
-      <SectionCard title="Historial de precios de renta" icon={<TrendingUp size={18} />} subtitle="Unidades ocupadas · tendencia vs. promedio histórico">
-        {rentHistory.length === 0 ? (
-          <AppEmptyState title="Sin histórico de rentas" description="No hay unidades con datos de renta." />
-        ) : (
-          <div style={{ overflowX:"auto" }}>
-            <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
-              <thead>
-                <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
-                  <th style={thStyle}>Unidad</th>
-                  <th style={thStyle}>Edificio</th>
-                  <th style={thStyle}>Tipología</th>
-                  <th style={thStyle}>Renta actual</th>
-                  <th style={thStyle}>Promedio histórico</th>
-                  <th style={thStyle}>Tendencia</th>
-                  <th style={thStyle}>Duración promedio</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rentHistory.slice(0, 15).map((r) => {
-                  const trendIcon = r.trend === "up" ? "↑" : r.trend === "down" ? "↓" : "→";
-                  const trendColor = r.trend === "up" ? "var(--metric-value-green)" : r.trend === "down" ? "var(--metric-value-red)" : "var(--text-muted)";
-                  return (
-                    <tr key={r.unitId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
-                      <td style={tdStyle}><strong>{r.unitLabel}</strong></td>
-                      <td style={tdStyle}>{r.building}</td>
-                      <td style={tdStyle}>{r.typology}</td>
-                      <td style={tdStyle}>{r.currentRent != null ? formatCurrency(r.currentRent) : "—"}</td>
-                      <td style={tdStyle}>{r.avgRent > 0 ? formatCurrency(r.avgRent) : "—"}</td>
-                      <td style={{ ...tdStyle, color: trendColor, fontWeight: 700, fontSize: "1rem" }}>
-                        {trendIcon}
-                      </td>
-                      <td style={tdStyle}>{r.avgDuration != null ? `${r.avgDuration} meses` : "—"}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {avgRentByTypology.length > 0 && (
-          <div style={{ marginTop: 16, padding: 14, background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)" }}>
-            <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px", marginBottom: 10 }}>
-              RENTA PROMEDIO POR TIPOLOGÍA
-            </div>
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              {avgRentByTypology.map((t, i) => (
-                <div key={t.id} style={{
-                  flex: "1 1 160px",
-                  padding: "10px 12px",
-                  background: "var(--bg-card)",
-                  border: "1px solid var(--border-default)",
-                  borderLeft: `4px solid ${BUILDING_COLORS[i % BUILDING_COLORS.length]}`,
-                  borderRadius: "var(--border-radius-md)",
-                }}>
-                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{t.name}</div>
-                  <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
-                    {formatCurrency(t.avg)}
-                  </div>
-                  <div style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>
-                    {t.count} contrato{t.count === 1 ? "" : "s"}
-                  </div>
+        {/* ═══ PORTAFOLIO ═══════════════════════════════════════════════ */}
+        {activeTab === "portafolio" && (
+          <>
+            <MetricCircles metrics={[
+              { value: `${occupancyRate.toFixed(0)}%`, label: "Ocupación", color: "success" },
+              { value: estimatedPeople, label: "Personas", color: "info" },
+              { value: activeLeases.length, label: "Contratos" },
+              { value: leasesExpiring30.length, label: "Vencen 30d", color: "warning" },
+              { value: vacantUnits, label: "Vacantes", color: "danger" },
+              { value: buildings.length, label: "Edificios" },
+            ]} />
+            <div className="analytics-stat-bar metric-grid-desktop-only" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow:"hidden", marginBottom:"1rem" }}>
+              {[
+                { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"var(--metric-value-green)" },
+                { label:"Personas", value:estimatedPeople, sub:"estimadas", color:"var(--metric-value-blue)" },
+                { label:"Contratos", value:activeLeases.length, sub:"activos" },
+                { label:"Vencen 30d", value:leasesExpiring30.length, sub:"contratos", color:"var(--metric-value-amber)" },
+                { label:"Vacantes", value:vacantUnits, sub:"unidades", color:"var(--metric-value-red)" },
+                { label:"Edificios", value:buildings.length, sub:"activos" },
+              ].map((s, i, arr) => (
+                <div key={i} className="mod-stat-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
+                  <div style={{ fontSize: "0.625rem", color:"var(--text-muted)", marginBottom:2 }}>{s.label}</div>
+                  <div style={{ fontSize: "1rem", fontWeight:600, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+                  <div style={{ fontSize: "0.625rem", color:"var(--text-muted)", marginTop:1 }}>{s.sub}</div>
                 </div>
               ))}
             </div>
-          </div>
+
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(2, 1fr)", gap:16, marginBottom:16 }} className="dashboard-grid-2">
+              <SectionCard title="Ocupación por edificio" icon={<Building2 size={18} />}>
+                {occupancyByBuilding.length === 0 ? (
+                  <AppEmptyState title="Sin edificios" description="No hay datos para mostrar." />
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                    {occupancyByBuilding.map((b) => {
+                      const color = b.rate >= 80 ? "var(--metric-value-green)" : b.rate >= 50 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
+                      return (
+                        <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                          <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                            {b.name}
+                          </div>
+                          <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
+                            <div style={{ width:`${b.rate}%`, height:"100%", background:color, transition:"width .4s" }} />
+                          </div>
+                          <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:70, textAlign:"right" }}>
+                            {b.rate.toFixed(0)}% · {b.occ}/{b.total}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </SectionCard>
+
+              <SectionCard title="Contratos por vencer" icon={<Clock3 size={18} />}>
+                {leasesExpiring30.length === 0 ? (
+                  <AppEmptyState title="Sin próximos vencimientos" description="Nada vence en los próximos 30 días." />
+                ) : (
+                  <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                    {leasesExpiring30.slice(0, 10).map((l) => {
+                      const days = l.end_date ? daysBetween(new Date().toISOString(), l.end_date) : 0;
+                      const variant: "red" | "amber" | "green" = days < 15 ? "red" : days < 30 ? "amber" : "green";
+                      const u = unitById.get(l.unit_id);
+                      const t = tenantById.get(l.tenant_id);
+                      return (
+                        <div key={l.id} style={{ display:"flex", alignItems:"center", justifyContent:"space-between", padding:"8px 10px", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)" }}>
+                          <div style={{ display:"flex", flexDirection:"column", gap:2, minWidth:0 }}>
+                            <span style={{ fontSize: "0.8125rem", fontWeight:600, color:"var(--text-primary)" }}>{t?.full_name || "—"}</span>
+                            <span style={{ fontSize: "0.6875rem", color:"var(--text-muted)" }}>{u?.display_code || u?.unit_number || "—"}</span>
+                          </div>
+                          <AppBadge variant={variant}>{days} {days === 1 ? "día" : "días"}</AppBadge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </SectionCard>
+            </div>
+
+            <SectionCard title="Desempeño por tipología" icon={<Home size={18} />}>
+              {typologyPerformance.length === 0 ? (
+                <AppEmptyState title="Sin tipologías" description="Crea tipologías para ver análisis." />
+              ) : (
+                <motion.div
+                  variants={staggerContainer}
+                  initial="hidden"
+                  animate="show"
+                  style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: 16 }}
+                >
+                  {typologyPerformance.map((t) => {
+                    const demandColor =
+                      t.demand === "alta" ? "green" : t.demand === "media" ? "amber" : "gray";
+                    const demandLabel =
+                      t.demand === "alta" ? "Alta demanda" : t.demand === "media" ? "Media demanda" : "Baja demanda";
+                    return (
+                      <motion.div key={t.id} variants={staggerItem}>
+                        <AppCard style={{ padding: 14 }}>
+                          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:10 }}>
+                            <div>
+                              <div style={{ fontSize: "0.8125rem", fontWeight:700, color:"var(--text-primary)" }}>{t.name}</div>
+                              <div style={{ fontSize: "0.6875rem", color:"var(--text-muted)" }}>{t.bedrooms} recámara{t.bedrooms === 1 ? "" : "s"}</div>
+                            </div>
+                            <AppBadge variant={demandColor}>{demandLabel}</AppBadge>
+                          </div>
+                          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:8, fontSize: "0.75rem" }}>
+                            <div>
+                              <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>Ocupación</div>
+                              <div style={{ fontWeight:600, fontSize: "0.9375rem", color:"var(--text-primary)" }}>
+                                {t.rate.toFixed(0)}%
+                              </div>
+                              <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>{t.occupied}/{t.total}</div>
+                            </div>
+                            <div>
+                              <div style={{ color:"var(--text-muted)", fontSize: "0.625rem" }}>Días vacío promedio</div>
+                              <div style={{ fontWeight:600, fontSize: "0.9375rem", color:"var(--text-primary)" }}>
+                                {t.avgVacancy !== null ? `${t.avgVacancy}d` : "Sin datos"}
+                              </div>
+                            </div>
+                          </div>
+                        </AppCard>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </SectionCard>
+
+            <div style={{ height:16 }} />
+
+            <SectionCard title="Mayor rotación" icon={<TrendingUp size={18} />} subtitle="Unidades con más inquilinos históricos" style={{ marginBottom:16 }}>
+              {rotationRanking.length === 0 ? (
+                <AppEmptyState title="Sin rotación" description="No hay historial suficiente." />
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
+                  {rotationRanking.map((r) => (
+                    <div key={r.unitId} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                      <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:110, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                        {r.label} · {r.building}
+                      </div>
+                      <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
+                        <div style={{ width:`${(r.count / maxRotation) * 100}%`, height:"100%", background:"#EC4899" }} />
+                      </div>
+                      <div style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)", minWidth:50, textAlign:"right" }}>
+                        {r.count} {r.count === 1 ? "contrato" : "contratos"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </SectionCard>
+
+            <SectionCard title="Inquilinos más leales" icon={<KeyRound size={18} />} subtitle="Contratos activos ordenados por duración">
+              {longestLeases.length === 0 ? (
+                <AppEmptyState title="Sin contratos activos" description="No hay contratos para rankear." />
+              ) : (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
+                        <th style={thStyle}>Inquilino</th>
+                        <th style={thStyle}>Departamento</th>
+                        <th style={thStyle}>Edificio</th>
+                        <th style={thStyle}>Inicio</th>
+                        <th style={thStyle}>Duración</th>
+                        <th style={thStyle}>Vencimiento</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {longestLeases.map((r) => {
+                        const variant: "green" | "blue" | "gray" =
+                          r.duration > 24 ? "green" : r.duration >= 12 ? "blue" : "gray";
+                        const label =
+                          r.duration > 24 ? "Leal" : r.duration >= 12 ? "Estable" : "Reciente";
+                        return (
+                          <tr key={r.id} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
+                            <td style={tdStyle}><strong>{r.tenant}</strong></td>
+                            <td style={tdStyle}>{r.unit}</td>
+                            <td style={tdStyle}>{r.building}</td>
+                            <td style={tdStyle}>{formatDateShort(r.start)}</td>
+                            <td style={tdStyle}>
+                              <AppBadge variant={variant}>{r.duration} meses · {label}</AppBadge>
+                            </td>
+                            <td style={tdStyle}>{formatDateShort(r.end)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+
+            <div style={{ height:16 }} />
+
+            <SectionCard title="Tendencia ocupación" icon={<TrendingUp size={18} />} subtitle="% ocupación vs. vacantes · últimos 6 meses">
+              {occupancyHistory.length === 0 ? (
+                <AppEmptyState title="Sin histórico" description="No hay datos suficientes." />
+              ) : (
+                <ResponsiveContainer width="100%" height={Math.round(240 * fontScale)}>
+                  <LineChart data={occupancyHistory} margin={{ top:4, right:12, left:0, bottom:4 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" />
+                    <XAxis dataKey="mes" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
+                    <YAxis yAxisId="left" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} tickFormatter={(v) => `${v}%`} />
+                    <YAxis yAxisId="right" orientation="right" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
+                    <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem" }} />
+                    <Legend wrapperStyle={{ fontSize: "0.6875rem", paddingTop:6 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="ocupacion" name="% Ocupación" stroke="#10B981" strokeWidth={2.5} dot={{ r:3 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
+                  </LineChart>
+                </ResponsiveContainer>
+              )}
+            </SectionCard>
+
+            <div style={{ height:16 }} />
+
+            <SectionCard title="Historial de precios de renta" icon={<TrendingUp size={18} />} subtitle="Unidades ocupadas · tendencia vs. promedio histórico">
+              {rentHistory.length === 0 ? (
+                <AppEmptyState title="Sin histórico de rentas" description="No hay unidades con datos de renta." />
+              ) : (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
+                        <th style={thStyle}>Unidad</th>
+                        <th style={thStyle}>Edificio</th>
+                        <th style={thStyle}>Tipología</th>
+                        <th style={thStyle}>Renta actual</th>
+                        <th style={thStyle}>Promedio histórico</th>
+                        <th style={thStyle}>Tendencia</th>
+                        <th style={thStyle}>Duración promedio</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {rentHistory.slice(0, 15).map((r) => {
+                        const trendIcon = r.trend === "up" ? "↑" : r.trend === "down" ? "↓" : "→";
+                        const trendColor = r.trend === "up" ? "var(--metric-value-green)" : r.trend === "down" ? "var(--metric-value-red)" : "var(--text-muted)";
+                        return (
+                          <tr key={r.unitId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
+                            <td style={tdStyle}><strong>{r.unitLabel}</strong></td>
+                            <td style={tdStyle}>{r.building}</td>
+                            <td style={tdStyle}>{r.typology}</td>
+                            <td style={tdStyle}>{r.currentRent != null ? formatCurrency(r.currentRent) : "—"}</td>
+                            <td style={tdStyle}>{r.avgRent > 0 ? formatCurrency(r.avgRent) : "—"}</td>
+                            <td style={{ ...tdStyle, color: trendColor, fontWeight: 700, fontSize: "1rem" }}>
+                              {trendIcon}
+                            </td>
+                            <td style={tdStyle}>{r.avgDuration != null ? `${r.avgDuration} meses` : "—"}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {avgRentByTypology.length > 0 && (
+                <div style={{ marginTop: 16, padding: 14, background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)" }}>
+                  <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-secondary)", letterSpacing: "0.5px", marginBottom: 10 }}>
+                    RENTA PROMEDIO POR TIPOLOGÍA
+                  </div>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {avgRentByTypology.map((t, i) => (
+                      <div key={t.id} style={{
+                        flex: "1 1 160px",
+                        padding: "10px 12px",
+                        background: "var(--bg-card)",
+                        border: "1px solid var(--border-default)",
+                        borderLeft: `4px solid ${BUILDING_COLORS[i % BUILDING_COLORS.length]}`,
+                        borderRadius: "var(--border-radius-md)",
+                      }}>
+                        <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{t.name}</div>
+                        <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>
+                          {formatCurrency(t.avg)}
+                        </div>
+                        <div style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>
+                          {t.count} contrato{t.count === 1 ? "" : "s"}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </SectionCard>
+          </>
         )}
-      </SectionCard>
+
+        {/* ═══ COBRANZA ═════════════════════════════════════════════════ */}
+        {activeTab === "cobranza" && (
+          <>
+            <SectionCard title="Eficiencia de cobro por edificio" icon={<Building2 size={18} />} subtitle="Últimos 12 meses · cobrado / esperado">
+              {collectionEfficiency.length === 0 ? (
+                <AppEmptyState title="Sin cobros" description="No hay datos de cobranza en el periodo." />
+              ) : (
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {collectionEfficiency.map((b) => {
+                    const color = b.rate >= 90 ? "var(--metric-value-green)" : b.rate >= 70 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
+                    return (
+                      <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
+                        <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                          {b.name}
+                        </div>
+                        <div style={{ flex:1, height:10, background:"var(--divider)", borderRadius: "var(--border-radius-sm)", overflow:"hidden" }}>
+                          <div style={{ width:`${Math.min(100, b.rate)}%`, height:"100%", background:color, transition:"width .4s" }} />
+                        </div>
+                        <div style={{ display:"flex", flexDirection:"column", alignItems:"flex-end", minWidth:140, lineHeight:1.3 }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight:600, color:"var(--text-primary)" }}>
+                            {b.rate.toFixed(0)}%
+                          </span>
+                          {b.missing > 0 && (
+                            <span style={{ fontSize: "0.625rem", color:"var(--metric-value-red)" }}>
+                              {formatCurrency(b.missing)} pendiente
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </SectionCard>
+
+            <div style={{ height:16 }} />
+
+            <SectionCard title="Comportamiento de pago" icon={<Users size={18} />} subtitle="Inquilinos con historial de cobros">
+              {tenantPaymentBehavior.length === 0 ? (
+                <AppEmptyState title="Sin historial" description="No hay pagos registrados por inquilino." />
+              ) : (
+                <div style={{ overflowX:"auto" }}>
+                  <table style={{ width:"100%", borderCollapse:"collapse", fontSize: "0.8125rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom:"1px solid var(--border-default)" }}>
+                        <th style={thStyle}>Inquilino</th>
+                        <th style={thStyle}>Edificio</th>
+                        <th style={thStyle}>% Cobrado</th>
+                        <th style={thStyle}>Puntualidad</th>
+                        <th style={thStyle}>Días retraso</th>
+                        <th style={thStyle}>Evaluación</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {tenantPaymentBehavior.map((r) => {
+                        const variant: "green" | "blue" | "amber" | "red" =
+                          r.evaluation === "excelente" ? "green" :
+                          r.evaluation === "bueno" ? "blue" :
+                          r.evaluation === "regular" ? "amber" : "red";
+                        const label =
+                          r.evaluation === "excelente" ? "Excelente" :
+                          r.evaluation === "bueno" ? "Bueno" :
+                          r.evaluation === "regular" ? "Regular" : "Atención";
+                        return (
+                          <tr key={r.tenantId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
+                            <td style={tdStyle}><strong>{r.tenantName}</strong></td>
+                            <td style={tdStyle}>{r.building}</td>
+                            <td style={tdStyle}>{r.collectedRate.toFixed(0)}%</td>
+                            <td style={tdStyle}>{r.punctualityRate.toFixed(0)}%</td>
+                            <td style={tdStyle}>{r.avgLateDays > 0 ? `${r.avgLateDays}d` : "—"}</td>
+                            <td style={tdStyle}>
+                              <AppBadge variant={variant}>{label}</AppBadge>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </SectionCard>
+          </>
+        )}
+
+        {/* ═══ MANTENIMIENTO ════════════════════════════════════════════ */}
+        {activeTab === "mantenimiento" && (
+          <AppEmptyState
+            title="Próximamente — Analytics de Mantenimiento"
+            description="Aquí verás métricas de tickets, tiempos de resolución y costos por categoría."
+          />
+        )}
+
+        {/* ═══ LIMPIEZA ═════════════════════════════════════════════════ */}
+        {activeTab === "limpieza" && (
+          <AppEmptyState
+            title="Próximamente — Analytics de Limpieza"
+            description="Aquí verás frecuencia de servicios, cumplimiento y costo por unidad."
+          />
+        )}
+
+        {/* ═══ SERVICIOS ════════════════════════════════════════════════ */}
+        {activeTab === "servicios" && (
+          <AppEmptyState
+            title="Próximamente — Analytics de Servicios"
+            description="Aquí verás métricas de servicios comunes y consumo por edificio."
+          />
+        )}
+
+      </AppTabPanel>
     </PageContainer>
   );
 }
