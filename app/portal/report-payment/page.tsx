@@ -778,11 +778,7 @@ export default function PortalReportPaymentPage() {
           throw uploadError;
         }
 
-        const { data: publicUrlData } = supabase.storage
-          .from("payment-proofs")
-          .getPublicUrl(filePath);
-
-        proofFileUrl = publicUrlData.publicUrl;
+        proofFileUrl = null;
         proofFilePath = filePath;
         proofFileName = proofFile.name;
         proofFileType = proofFile.type;

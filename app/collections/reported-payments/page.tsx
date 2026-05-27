@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrl } from "@/lib/storage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { INPUT_STYLE } from "@/lib/pageStyles";
 
@@ -283,15 +284,13 @@ export default function ReportedPaymentsPage() {
     setPageError("");
 
     try {
-      const { data } = supabase.storage
-        .from("payment-proofs")
-        .getPublicUrl(payment.proof_file_path);
+      const signedUrl = await getSignedUrl("payment-proofs", payment.proof_file_path);
 
-      if (!data?.publicUrl) {
+      if (!signedUrl) {
         throw new Error("No pude generar la URL del comprobante.");
       }
 
-      window.open(data.publicUrl, "_blank", "noopener,noreferrer");
+      window.open(signedUrl, "_blank", "noopener,noreferrer");
     } catch (error: any) {
       console.error("Error abriendo comprobante:", error);
       setPageError(

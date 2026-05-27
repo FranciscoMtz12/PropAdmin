@@ -57,6 +57,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrl } from "@/lib/storage";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
 import { type PurchaseReturn, type PurchaseOrderVersionType, type PurchaseOrderInvoice, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -1406,13 +1407,11 @@ export default function PurchasesPage() {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("purchase-orders").getPublicUrl(path);
-    const pdfUrl = urlData?.publicUrl ? urlData.publicUrl + "?t=" + Date.now() : null;
     const nowIso = new Date().toISOString();
 
     const { error: updErr } = await supabase
       .from("purchase_orders")
-      .update({ pdf_url: pdfUrl, status: "sent", sent_at: nowIso, updated_at: nowIso })
+      .update({ pdf_url: path, status: "sent", sent_at: nowIso, updated_at: nowIso })
       .eq("id", orderId);
 
     if (updErr) {
@@ -1426,7 +1425,7 @@ export default function PurchasesPage() {
     /* Refrescar en memoria */
     setOrders((prev) => prev.map((o) =>
       o.id === orderId
-        ? { ...o, pdf_url: pdfUrl, status: "sent" as Status, sent_at: nowIso }
+        ? { ...o, pdf_url: path, status: "sent" as Status, sent_at: nowIso }
         : o
     ));
     setUploadingId(null);
@@ -2664,10 +2663,12 @@ export default function PurchasesPage() {
                         {/* PDF firmado */}
                         {o.pdf_url ? (
                           <>
-                            <a
-                              href={o.pdf_url + (o.pdf_url.includes("?") ? "" : "?t=" + Date.now())}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const url = await getSignedUrl("purchase-orders", o.pdf_url);
+                                if (url) window.open(url, "_blank", "noopener,noreferrer");
+                              }}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
@@ -2675,13 +2676,13 @@ export default function PurchasesPage() {
                                 background: "var(--metric-bg-green)",
                                 color: "var(--metric-value-green)",
                                 fontSize: "0.8125rem", fontWeight: 600,
-                                textDecoration: "none",
+                                cursor: "pointer",
                               }}
                             >
                               <CheckCircle2 size={14} />
                               Ver PDF firmado
                               <ExternalLink size={12} />
-                            </a>
+                            </button>
                             <button
                               type="button"
                               onClick={() => triggerSignedPdfUpload(o.id)}

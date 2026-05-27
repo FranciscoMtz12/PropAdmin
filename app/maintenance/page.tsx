@@ -54,6 +54,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrls } from "@/lib/storage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -611,6 +612,7 @@ export default function MaintenancePage() {
   /* ── Tickets ────────────────────────────────────────────────────── */
   const [tickets, setTickets]         = useState<Ticket[]>([]);
   const [expandedId, setExpandedId]   = useState<string | null>(null);
+  const [signedPhotoUrls, setSignedPhotoUrls] = useState<Record<string, string>>({});
   const [openActionsId, setOpenActionsId] = useState<string | null>(null);
 
   const [materialsByTicket, setMaterialsByTicket] =
@@ -687,6 +689,17 @@ export default function MaintenancePage() {
     void handleToggleExpand(expand);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, tickets]);
+
+  /* Cargar signed URLs cuando se expande un ticket con fotos */
+  useEffect(() => {
+    if (!expandedId) return;
+    const ticket = tickets.find(t => t.id === expandedId);
+    const photos = ticket?.photos?.filter(Boolean) ?? [];
+    if (photos.length === 0) return;
+    void getSignedUrls("maintenance-photos", photos).then(signed =>
+      setSignedPhotoUrls(prev => ({ ...prev, ...signed }))
+    );
+  }, [expandedId, tickets]);
 
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
@@ -1033,11 +1046,7 @@ export default function MaintenancePage() {
       return;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("maintenance-photos")
-      .getPublicUrl(uploadData.path);
-
-    const newPhotos = [...(ticket.photos || []), urlData.publicUrl];
+    const newPhotos = [...(ticket.photos || []), uploadData.path];
 
     const { error: updateError } = await supabase
       .from("maintenance_logs")
@@ -1069,9 +1078,13 @@ export default function MaintenancePage() {
 
     /* Best-effort: eliminar del bucket también */
     try {
-      const parts = photoUrl.split("/storage/v1/object/public/maintenance-photos/");
-      if (parts.length === 2) {
-        await supabase.storage.from("maintenance-photos").remove([parts[1]]);
+      // Backward-compat: handle both old full public URLs and new paths
+      const marker = "/storage/v1/object/public/maintenance-photos/";
+      const storagePath = photoUrl.includes(marker)
+        ? photoUrl.split(marker)[1]?.split("?")[0]
+        : photoUrl;
+      if (storagePath) {
+        await supabase.storage.from("maintenance-photos").remove([storagePath]);
       }
     } catch {
       /* no es crítico */
@@ -1819,6 +1832,7 @@ export default function MaintenancePage() {
                     purchaseOrders={purchaseOrdersByTicket[ticket.id] || []}
                     ocItems={ocItemsByTicket[ticket.id] || []}
                     onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
+                    signedPhotoUrls={signedPhotoUrls}
                   />
                   </motion.div>
                   );
@@ -2224,6 +2238,7 @@ function TicketCard({
   purchaseOrders,
   ocItems,
   onOpenPurchaseOrder,
+  signedPhotoUrls = {},
 }: {
   ticket: Ticket;
   isExpanded: boolean;
@@ -2234,6 +2249,7 @@ function TicketCard({
   onOpenStatusModal: (t: Ticket) => void;
   onArchive: (id: string) => void;
   editingMaterials: MaterialDraft[];
+  signedPhotoUrls?: Record<string, string>;
   onMaterialsChange: (drafts: MaterialDraft[]) => void;
   onSaveMaterials: () => Promise<void>;
   savingMaterials: boolean;
@@ -2458,21 +2474,23 @@ function TicketCard({
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(6.875rem, 1fr))", gap: 10 }}>
-                {photos.slice(0, 6).map((url, idx) => (
+                {photos.slice(0, 6).map((urlOrPath, idx) => {
+                  const src = signedPhotoUrls[urlOrPath] || urlOrPath;
+                  return (
                   <div
-                    key={url}
+                    key={urlOrPath}
                     style={{ position: "relative", borderRadius: "var(--border-radius-md)", overflow: "hidden", border: "1px solid var(--border-default)", aspectRatio: "1" }}
                   >
-                    <a href={url} target="_blank" rel="noopener noreferrer">
+                    <a href={src} target="_blank" rel="noopener noreferrer">
                       <img
-                        src={url}
+                        src={src}
                         alt={`Foto ${idx + 1}`}
                         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                       />
                     </a>
                     <button
                       type="button"
-                      onClick={() => onDeletePhoto(url)}
+                      onClick={() => onDeletePhoto(urlOrPath)}
                       style={{
                         position: "absolute", top: 4, right: 4,
                         width: 22, height: 22, borderRadius: "50%",
@@ -2483,7 +2501,8 @@ function TicketCard({
                       <X size={12} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
                 {photos.length > 6 ? (
                   <div style={{ borderRadius: "var(--border-radius-md)", border: "1px dashed var(--border-default)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, aspectRatio: "1" }}>
                     +{photos.length - 6} más

@@ -19,6 +19,7 @@ import Webcam from "react-webcam";
 
 import { sortByNatural } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrl, getSignedUrls } from "@/lib/storage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import Modal from "@/components/Modal";
 
@@ -62,7 +63,8 @@ type MaterialGroup = {
 type CreatePhoto = {
   id: string;
   localUrl: string;
-  publicUrl: string | null;
+  previewUrl: string | null;   // signed URL for preview (temporary)
+  uploadedPath: string | null; // storage path saved to DB
   uploading: boolean;
 };
 
@@ -129,11 +131,12 @@ export default function CampoTicketsPage() {
   const { user, loading } = useCurrentUser();
 
   /* List */
-  const [tickets,     setTickets]     = useState<Ticket[]>([]);
-  const [buildings,   setBuildings]   = useState<Building[]>([]);
-  const [filter,      setFilter]      = useState<StatusFilter>("all");
-  const [loadingData, setLoadingData] = useState(true);
-  const [expandedId,  setExpandedId]  = useState<string | null>(null);
+  const [tickets,         setTickets]         = useState<Ticket[]>([]);
+  const [buildings,       setBuildings]       = useState<Building[]>([]);
+  const [filter,          setFilter]          = useState<StatusFilter>("all");
+  const [loadingData,     setLoadingData]     = useState(true);
+  const [expandedId,      setExpandedId]      = useState<string | null>(null);
+  const [signedPhotoUrls, setSignedPhotoUrls] = useState<Record<string, string>>({});
 
   /* Detail per ticket — materiales agrupados por proveedor */
   const [ticketMaterialGroups, setTicketMaterialGroups] = useState<Record<string, MaterialGroup[]>>({});
@@ -356,11 +359,11 @@ export default function CampoTicketsPage() {
     for (const file of files) {
       const id       = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const localUrl = URL.createObjectURL(file);
-      setCPhotos(prev => [...prev, { id, localUrl, publicUrl: null, uploading: true }]);
+      setCPhotos(prev => [...prev, { id, localUrl, previewUrl: null, uploadedPath: null, uploading: true }]);
 
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path      = `temp/${user.id}-${id}-${cleanName}`;
-      const { data, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
       if (uploadErr) {
@@ -369,10 +372,10 @@ export default function CampoTicketsPage() {
         setCPhotos(prev => prev.filter(p => p.id !== id));
         continue;
       }
-      const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
+      const previewUrl = await getSignedUrl("maintenance-photos", path);
       setCPhotos(prev => prev.map(p =>
         p.id === id
-          ? { ...p, publicUrl: urlData?.publicUrl || null, uploading: false }
+          ? { ...p, previewUrl, uploadedPath: path, uploading: false }
           : p
       ));
     }
@@ -397,7 +400,7 @@ export default function CampoTicketsPage() {
     for (const file of files) {
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path      = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${cleanName}`;
-      const { data, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
       if (uploadErr) {
@@ -405,13 +408,15 @@ export default function CampoTicketsPage() {
         toast.error("Error al subir: " + uploadErr.message);
         continue;
       }
-      const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
-      if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
+      newUrls.push(path); // store path, not public URL
     }
     if (newUrls.length === 0) return;
     const updated = [...(ticket?.photos || []), ...newUrls];
     await supabase.from("maintenance_logs").update({ photos: updated }).eq("id", ticketId);
     setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, photos: updated } : t));
+    // Preload signed URLs for the newly added photos
+    const signed = await getSignedUrls("maintenance-photos", newUrls);
+    setSignedPhotoUrls(prev => ({ ...prev, ...signed }));
   }
 
   /* ── Webcam: capturar foto y reutilizar los handlers de upload existentes ── */
@@ -457,8 +462,8 @@ export default function CampoTicketsPage() {
     setSaving(true);
 
     const photoUrls: string[] = cPhotos
-      .filter(p => p.publicUrl)
-      .map(p => p.publicUrl as string);
+      .filter(p => p.uploadedPath)
+      .map(p => p.uploadedPath as string);
 
     const isFixedArea = FIXED_AREA_VALUES.has(form.area);
     const unitId      = !isFixedArea && form.area ? form.area : null;
@@ -489,6 +494,13 @@ export default function CampoTicketsPage() {
   async function handleToggleExpand(ticketId: string) {
     if (expandedId === ticketId) { setExpandedId(null); return; }
     setExpandedId(ticketId);
+    // Load signed URLs for this ticket's photos
+    const ticket = tickets.find(t => t.id === ticketId);
+    const photos = ticket?.photos?.filter(Boolean) ?? [];
+    if (photos.length > 0) {
+      const signed = await getSignedUrls("maintenance-photos", photos);
+      setSignedPhotoUrls(prev => ({ ...prev, ...signed }));
+    }
     if (!ticketMaterialGroups[ticketId]) {
       setTicketMatsLoading(prev => ({ ...prev, [ticketId]: true }));
       const { data } = await supabase
@@ -939,13 +951,16 @@ export default function CampoTicketsPage() {
                         <p style={sectionLabel}>Fotos {photos.length > 0 ? `(${photos.length})` : ""}</p>
                         {photos.length > 0 && (
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 10 }}>
-                            {photos.map((url, i) => (
+                            {photos.map((urlOrPath, i) => {
+                              const src = signedPhotoUrls[urlOrPath] || urlOrPath;
+                              return (
                               <img
-                                key={i} src={url} alt={`Foto ${i + 1}`}
+                                key={i} src={src} alt={`Foto ${i + 1}`}
                                 style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", cursor: "pointer" }}
-                                onClick={() => window.open(url, "_blank")}
+                                onClick={() => src && window.open(src, "_blank")}
                               />
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                         <button
@@ -1269,7 +1284,7 @@ export default function CampoTicketsPage() {
                       {cPhotos.map((p, i) => (
                         <div key={p.id} style={{ position: "relative" }}>
                           <img
-                            src={p.publicUrl || p.localUrl}
+                            src={p.previewUrl || p.localUrl}
                             alt={`Foto ${i + 1}`}
                             style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", opacity: p.uploading ? 0.5 : 1 }}
                           />
