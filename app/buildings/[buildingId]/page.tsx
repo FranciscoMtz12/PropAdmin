@@ -94,6 +94,7 @@ import {
   Trash2,
   Trees,
   Truck,
+  Users,
   Warehouse,
   Waves,
   Wifi,
@@ -6246,10 +6247,10 @@ export default function BuildingDetailPage() {
             const dashOffset = circ * (1 - completedCount / totalCount);
 
             const CATS = [
-              { key: 'estructura' as const, label: 'Estructura', emoji: '🏗️' },
-              { key: 'servicios'  as const, label: 'Servicios',  emoji: '⚡' },
-              { key: 'operacion'  as const, label: 'Operación',  emoji: '🤝' },
-              { key: 'documentos' as const, label: 'Documentos', emoji: '📁' },
+              { key: 'estructura' as const, label: 'Estructura', icon: <Wrench     size={16} /> },
+              { key: 'servicios'  as const, label: 'Servicios',  icon: <Zap        size={16} /> },
+              { key: 'operacion'  as const, label: 'Operación',  icon: <Users      size={16} /> },
+              { key: 'documentos' as const, label: 'Documentos', icon: <FolderOpen size={16} /> },
             ];
 
             return (
@@ -6326,7 +6327,7 @@ export default function BuildingDetailPage() {
                             })}
                             style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
                           >
-                            <span style={{ fontSize: "1rem", lineHeight: 1 }}>{cat.emoji}</span>
+                            <span style={{ display: "flex", alignItems: "center", color: catDone ? "var(--metric-value-green)" : "var(--accent)" }}>{cat.icon}</span>
                             <span style={{ fontWeight: 600, fontSize: "0.8125rem", flex: 1, color: catDone ? "var(--metric-value-green)" : "var(--text-primary)" }}>
                               {cat.label}
                             </span>
