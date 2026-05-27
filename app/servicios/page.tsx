@@ -547,7 +547,7 @@ export default function ServiciosPage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace("/"); return; }
-    const ok = user.role === "administracion" || user.role === "superadmin" || user.is_superadmin;
+    const ok = user.role === "titular" || user.role === "administracion" || user.role === "superadmin" || user.is_superadmin;
     if (!ok) router.replace("/dashboard");
   }, [user, loading, router]);
 
