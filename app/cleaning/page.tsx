@@ -114,11 +114,11 @@ type WeekTask = {
 /* ═══ Constantes ══════════════════════════════════════════════════ */
 
 const CLEANING_TYPE_COLORS: Partial<Record<CleaningType, { bg: string; text: string; border: string; label: string; icon: string }>> = {
-  common_area:   { bg: "#fff7ed", text: "#9a3412", border: "#f97316", label: "Áreas comunes",     icon: "🏢" },
-  unit_interior: { bg: "#fdf4ff", text: "#6b21a8", border: "#a855f7", label: "Interior premium", icon: "✨" },
+  common_area:   { bg: "rgba(249,115,22,0.12)", text: "var(--text-primary)", border: "#f97316", label: "Áreas comunes",     icon: "🏢" },
+  unit_interior: { bg: "rgba(168,85,247,0.12)", text: "var(--text-primary)", border: "#a855f7", label: "Interior premium", icon: "✨" },
 };
 
-const DEFAULT_CLEANING_VISUALS = { bg: "#f3f4f6", text: "#374151", border: "#d1d5db", label: "Limpieza", icon: "🧹" };
+const DEFAULT_CLEANING_VISUALS = { bg: "var(--bg-page)", text: "var(--text-primary)", border: "var(--border-default)", label: "Limpieza", icon: "🧹" };
 
 const CLEANING_TYPE_ICONS: Record<string, React.ReactNode> = {
   common_area:   <Building2 size={10} />,
@@ -976,7 +976,7 @@ export default function CleaningPage() {
                 cursor: "pointer",
                 fontSize: "0.875rem",
                 fontWeight: 500,
-                background: active ? "#6b21a8" : "transparent",
+                background: active ? "var(--accent)" : "transparent",
                 color: active ? "#fff" : "var(--text-secondary)",
               }}
             >
@@ -1312,9 +1312,9 @@ export default function CleaningPage() {
         {/* Leyenda / Filtros */}
         <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
           {[
-            { label: "Áreas comunes",    type: "common_area",   color: "#f97316", bg: "#fff7ed" },
-            { label: "Interior premium", type: "unit_interior", color: "#a855f7", bg: "#fdf4ff" },
-            { label: "Completada",       type: "completed",     color: "#22c55e", bg: "#f0fdf4" },
+            { label: "Áreas comunes",    type: "common_area",   color: "#f97316", bg: "rgba(249,115,22,0.12)" },
+            { label: "Interior premium", type: "unit_interior", color: "#a855f7", bg: "rgba(168,85,247,0.12)" },
+            { label: "Completada",       type: "completed",     color: "#22c55e", bg: "rgba(34,197,94,0.12)" },
           ].map((l) => {
             const active = activeFilters.has(l.type);
             return (
@@ -1335,15 +1335,15 @@ export default function CleaningPage() {
                   gap: 6,
                   padding: "4px 10px",
                   borderRadius: 999,
-                  background: active ? l.bg : "#f3f4f6",
-                  border: `1.5px solid ${active ? l.color : "#d1d5db"}`,
-                  color: active ? "var(--text-primary)" : "#9ca3af",
+                  background: active ? l.bg : "var(--bg-page)",
+                  border: `1.5px solid ${active ? l.color : "var(--border-default)"}`,
+                  color: active ? "var(--text-primary)" : "var(--text-muted)",
                   fontSize: "0.75rem",
                   fontWeight: 500,
                   cursor: "pointer",
                 }}
               >
-                <div style={{ width: 10, height: 10, borderRadius: "var(--border-radius-sm)", background: active ? l.color : "#d1d5db", flexShrink: 0 }} />
+                <div style={{ width: 10, height: 10, borderRadius: "var(--border-radius-sm)", background: active ? l.color : "var(--border-default)", flexShrink: 0 }} />
                 {l.label}
               </button>
             );
@@ -1393,10 +1393,10 @@ export default function CleaningPage() {
                       type="button"
                       onClick={() => setSelectedTask(task)}
                       style={{
-                        background: done ? "#f3f4f6" : visuals.bg,
-                        color: done ? "#6b7280" : visuals.text,
+                        background: done ? "var(--bg-page)" : visuals.bg,
+                        color: done ? "var(--text-muted)" : visuals.text,
                         border: "none",
-                        borderLeft: `3px solid ${done ? "#6b7280" : visuals.border}`,
+                        borderLeft: `3px solid ${done ? "var(--border-default)" : visuals.border}`,
                         borderRadius: "var(--border-radius-sm)",
                         padding: "6px 8px",
                         textAlign: "left",
@@ -1444,13 +1444,13 @@ export default function CleaningPage() {
                             const strokeDashoffset = circumference * (1 - progress);
                             return (
                               <svg width={24} height={24} style={{ flexShrink: 0, transform: "rotate(-90deg)" }}>
-                                <circle cx={12} cy={12} r={radius} fill="none" stroke="#e5e7eb" strokeWidth={3} />
+                                <circle cx={12} cy={12} r={radius} fill="none" stroke="var(--border-default)" strokeWidth={3} />
                                 <circle
                                   cx={12}
                                   cy={12}
                                   r={radius}
                                   fill="none"
-                                  stroke="#6b21a8"
+                                  stroke="var(--accent)"
                                   strokeWidth={3}
                                   strokeDasharray={circumference}
                                   strokeDashoffset={strokeDashoffset}
@@ -1460,7 +1460,7 @@ export default function CleaningPage() {
                             );
                           }
                           return (
-                            <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid #d1d5db", flexShrink: 0 }} />
+                            <div style={{ width: 20, height: 20, borderRadius: "50%", border: "2px solid var(--border-default)", flexShrink: 0 }} />
                           );
                         })()}
                       </div>

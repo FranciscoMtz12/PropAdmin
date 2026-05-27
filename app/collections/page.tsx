@@ -1198,12 +1198,14 @@ export default function CollectionsPage() {
       </div>
 
       {/* ── Métricas ── */}
-      <MetricCircles metrics={[
-        { value: formatCurrency(metrics.totalDue), label: "Total" },
-        { value: formatCurrency(metrics.collected), label: "Cobrado", color: "success" },
-        { value: formatCurrency(metrics.pendiente), label: "Pendiente", color: "warning" },
-        { value: formatCurrency(metrics.vencido), label: "Vencido", color: "danger" },
-      ]} />
+      <div style={{ marginBottom: 24 }}>
+        <MetricCircles metrics={[
+          { value: formatCurrency(metrics.totalDue), label: "Total" },
+          { value: formatCurrency(metrics.collected), label: "Cobrado", color: "success" },
+          { value: formatCurrency(metrics.pendiente), label: "Pendiente", color: "warning" },
+          { value: formatCurrency(metrics.vencido), label: "Vencido", color: "danger" },
+        ]} />
+      </div>
       <AppGrid minWidth={200} className="metric-grid-desktop-only" style={{ marginTop: 24 }}>
         <MetricCard
           label="Total a cobrar"
