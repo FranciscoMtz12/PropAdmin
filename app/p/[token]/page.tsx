@@ -204,7 +204,7 @@ export default async function PublicUnitPage({
           position: "absolute",
           top: 14,
           right: 14,
-          background: isAvailable ? "#10B981" : "#EF4444",
+          background: isAvailable ? "var(--metric-bg-green)" : "var(--metric-bg-red)",
           color: "#fff",
           fontWeight: 700,
           fontSize: "0.8125rem",

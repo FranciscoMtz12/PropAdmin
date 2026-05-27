@@ -176,14 +176,14 @@ const STATUS_LABEL: Record<Status, string> = {
 };
 
 const STATUS_FILTERS: { value: "ALL" | Status; label: string; color: string; bg: string }[] = [
-  { value: "ALL",       label: "Todos",            color: "#6b7280", bg: "#f3f4f6" },
-  { value: "draft",     label: "Borrador",          color: "#6b7280", bg: "#f3f4f6" },
-  { value: "pending",   label: "Pendiente firma",   color: "#d97706", bg: "#fffbeb" },
-  { value: "sent",      label: "Enviada",           color: "#2563eb", bg: "#eff6ff" },
-  { value: "partial",   label: "Surtido parcial",   color: "#d97706", bg: "#fffbeb" },
-  { value: "received",  label: "Completada",        color: "#16a34a", bg: "#f0fdf4" },
+  { value: "ALL",       label: "Todos",            color: "var(--text-secondary)", bg: "#f3f4f6" },
+  { value: "draft",     label: "Borrador",          color: "var(--text-secondary)", bg: "#f3f4f6" },
+  { value: "pending",   label: "Pendiente firma",   color: "var(--metric-value-amber)", bg: "#fffbeb" },
+  { value: "sent",      label: "Enviada",           color: "var(--metric-value-blue)", bg: "#eff6ff" },
+  { value: "partial",   label: "Surtido parcial",   color: "var(--metric-value-amber)", bg: "#fffbeb" },
+  { value: "received",  label: "Completada",        color: "var(--metric-value-green)", bg: "#f0fdf4" },
   { value: "invoiced",  label: "Facturada",         color: "#7c3aed", bg: "#f5f3ff" },
-  { value: "cancelled", label: "Cancelada",         color: "#dc2626", bg: "#fef2f2" },
+  { value: "cancelled", label: "Cancelada",         color: "var(--metric-value-red)", bg: "#fef2f2" },
 ];
 
 type StatusVariantValue = "amber" | "blue" | "green" | "red" | "gray" | "purple";
@@ -250,7 +250,7 @@ const EMPTY_MANUAL_FORM: ManualFormValues = {
 };
 
 const purchasesErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -1575,7 +1575,7 @@ export default function PurchasesPage() {
       {overdueOCsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {overdueOCsBanner.length} orden{overdueOCsBanner.length !== 1 ? "es" : ""} llevan más de 1 día pendiente{overdueOCsBanner.length !== 1 ? "s" : ""} de aprobación
             </span>
@@ -1595,7 +1595,7 @@ export default function PurchasesPage() {
       {partialOCsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {partialOCsBanner.length} orden{partialOCsBanner.length !== 1 ? "es" : ""} surtidas parcialmente requieren seguimiento
             </span>
@@ -1677,12 +1677,12 @@ export default function PurchasesPage() {
         {[
           { label: "Total OC",        value: metrics.total,     sub: "todas" },
           { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
-          { label: "Por enviar",      value: metrics.pending,   sub: "aprobadas", color: "#F59E0B" },
-          { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "#3B82F6" },
-          { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "#F59E0B" },
-          { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "#10B981" },
+          { label: "Por enviar",      value: metrics.pending,   sub: "aprobadas", color: "var(--metric-value-amber)" },
+          { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "var(--metric-value-blue)" },
+          { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "var(--metric-value-amber)" },
+          { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "var(--metric-value-green)" },
           { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "#7c3aed" },
-          { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "#EF4444" },
+          { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "var(--metric-value-red)" },
         ].map((s, i, arr) => (
           <div key={i} className="purchases-statbar-cell" style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
             <div style={{ fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
@@ -1836,7 +1836,7 @@ export default function PurchasesPage() {
                           <span style={{
                             display: "inline-flex", alignItems: "center", gap: 4,
                             padding: "3px 8px", borderRadius: "var(--border-radius-xl)",
-                            background: "#EFF6FF", color: "#1D4ED8",
+                            background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
                             fontSize: "0.6875rem", fontWeight: 700,
                           }}>
                             <Wrench size={11} />
@@ -1859,8 +1859,8 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
-                            color: "#2563eb", border: "1px solid #93c5fd",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-blue)",
+                            color: "var(--metric-value-blue)", border: "1px solid #93c5fd",
                           }}>
                             V{vNum} activa
                           </span>
@@ -1879,8 +1879,8 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "rgba(16,185,129,0.1)",
-                            color: "#10B981", border: "1px solid rgba(16,185,129,0.3)",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-green)",
+                            color: "var(--metric-value-green)", border: "1px solid var(--metric-border-green)",
                           }}>
                             Cerrada vía V{maxV}
                           </span>
@@ -1891,8 +1891,8 @@ export default function PurchasesPage() {
                       {o.version_type === "exchange" ? (
                         <span style={{
                           fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
-                          borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
-                          color: "#1d4ed8", border: "1px solid #93c5fd",
+                          borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-blue)",
+                          color: "var(--metric-value-blue)", border: "1px solid #93c5fd",
                         }}>
                           🔄 Cambio
                         </span>
@@ -1904,8 +1904,8 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "#fff7ed",
-                            color: "#c2410c", border: "1px solid #fdba74",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-amber)",
+                            color: "var(--metric-value-amber)", border: "1px solid #fdba74",
                             display: "inline-flex", alignItems: "center", gap: 4,
                           }}>
                             <RotateCcw size={10} />
@@ -1925,8 +1925,8 @@ export default function PurchasesPage() {
                         return (
                           <span style={{
                             fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
-                            color: "#1d4ed8", border: "1px solid #93c5fd",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-blue)",
+                            color: "var(--metric-value-blue)", border: "1px solid #93c5fd",
                           }}>
                             🔄 Cambio pendiente
                           </span>
@@ -2009,7 +2009,7 @@ export default function PurchasesPage() {
                                 style={{
                                   display: "inline-flex", alignItems: "center", gap: 4,
                                   padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                                  background: "#EFF6FF", color: "#1D4ED8",
+                                  background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
                                   fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace",
                                   border: "none", cursor: "pointer",
                                 }}
@@ -2028,7 +2028,7 @@ export default function PurchasesPage() {
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 4,
                                     padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                                    background: "rgba(16,185,129,0.1)", color: "#10B981",
+                                    background: "var(--metric-bg-green)", color: "var(--metric-value-green)",
                                     fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace",
                                     border: "none", cursor: "pointer",
                                   }}
@@ -2067,7 +2067,7 @@ export default function PurchasesPage() {
                             <span style={{
                               display: "inline-flex", alignItems: "center", gap: 4,
                               padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                              background: "#EFF6FF", color: "#1D4ED8",
+                              background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
                               fontSize: "0.75rem", fontWeight: 700,
                             }}>
                               {o.ticket_number ? `MT-${o.ticket_number}` : "Ticket ligado"}
@@ -2077,17 +2077,17 @@ export default function PurchasesPage() {
                             <span style={{ color: "var(--text-secondary)" }}>
                               <strong style={{ color: "var(--text-primary)" }}>{prog.itemTotal}</strong> piezas pedidas
                             </span>
-                            <span style={{ color: "#15803D" }}>
+                            <span style={{ color: "var(--metric-value-green)" }}>
                               <strong>{prog.itemReceived.toFixed(0)}</strong> surtidos
                             </span>
-                            <span style={{ color: pendientes > 0 ? "#F59E0B" : "var(--text-muted)" }}>
+                            <span style={{ color: pendientes > 0 ? "var(--metric-value-amber)" : "var(--text-muted)" }}>
                               <strong>{pendientes.toFixed(0)}</strong> pendientes
                             </span>
                           </div>
                           <div style={{ height: 8, background: "var(--border-default)", borderRadius: "var(--border-radius-sm)", overflow: "hidden" }}>
                             <div style={{
                               height: "100%", borderRadius: "var(--border-radius-sm)",
-                              background: pct === 100 ? "#16a34a" : "#3B82F6",
+                              background: pct === 100 ? "var(--metric-bg-green)" : "var(--metric-bg-blue)",
                               width: `${pct}%`,
                               transition: "width 0.4s ease",
                             }} />
@@ -2162,7 +2162,7 @@ export default function PurchasesPage() {
                                       <span style={{
                                         display: "inline-block", marginLeft: 8,
                                         padding: "1px 7px", borderRadius: 999,
-                                        background: "rgba(16,185,129,0.1)", color: "#10B981",
+                                        background: "var(--metric-bg-green)", color: "var(--metric-value-green)",
                                         fontSize: "0.6875rem", fontWeight: 600,
                                       }}>
                                         Ya surtido en {o.folio}
@@ -2292,7 +2292,7 @@ export default function PurchasesPage() {
                                       <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-primary)" }}>{it.description}</td>
                                       <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{it.quantity} {it.unit}</td>
                                       <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{it.quantity_received ?? 0} {it.unit}</td>
-                                      <td style={{ ...tdStyle, color: "#ef4444", fontWeight: 700 }}>
+                                      <td style={{ ...tdStyle, color: "var(--metric-value-red)", fontWeight: 700 }}>
                                         -{diff} {it.unit}
                                       </td>
                                     </tr>
@@ -2365,13 +2365,13 @@ export default function PurchasesPage() {
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                                   <span style={{
                                     fontSize: "0.6875rem", fontWeight: 700, padding: "2px 8px", borderRadius: "var(--border-radius-xl)",
-                                    background: isExchange ? "#eff6ff" : "#fff7ed",
-                                    color:      isExchange ? "#1d4ed8" : "#c2410c",
+                                    background: isExchange ? "var(--metric-bg-blue)" : "var(--metric-bg-amber)",
+                                    color:      isExchange ? "var(--metric-value-blue)" : "var(--metric-value-amber)",
                                     border:     isExchange ? "1px solid #93c5fd" : "1px solid #fdba74",
                                   }}>
                                     {isExchange ? "Cambio" : "Devolución"} #{ri + 1}
                                   </span>
-                                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: isExchange ? "var(--accent)" : "#DC2626" }}>
+                                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: isExchange ? "var(--accent)" : "var(--metric-value-red)" }}>
                                     {isExchange ? "🔄" : "↩"} {RETURN_REASON_LABEL[ret.reason]}
                                   </span>
                                   <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "auto" }}>
@@ -2391,7 +2391,7 @@ export default function PurchasesPage() {
                                   <div style={{
                                     marginTop: 4, paddingTop: 8,
                                     borderTop: "1px solid #bfdbfe",
-                                    fontSize: "0.8125rem", color: "#1d4ed8",
+                                    fontSize: "0.8125rem", color: "var(--metric-value-blue)",
                                     display: "flex", alignItems: "center", gap: 6,
                                   }}>
                                     <span>→ OC de cambio:</span>
@@ -2401,7 +2401,7 @@ export default function PurchasesPage() {
                                         style={{
                                           display: "inline-flex", alignItems: "center", gap: 4,
                                           padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                                          background: "#eff6ff", color: "#1d4ed8",
+                                          background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
                                           fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace",
                                           border: "none", cursor: "pointer",
                                         }}
@@ -2415,9 +2415,9 @@ export default function PurchasesPage() {
                                       <span style={{
                                         fontSize: "0.6875rem", fontWeight: 600, padding: "2px 7px",
                                         borderRadius: "var(--border-radius-xl)",
-                                        background: replOrder.status === "received" ? "rgba(16,185,129,0.1)" : "rgba(37,99,235,0.1)",
-                                        color:      replOrder.status === "received" ? "#10B981" : "var(--accent)",
-                                        border:     replOrder.status === "received" ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(37,99,235,0.3)",
+                                        background: replOrder.status === "received" ? "var(--metric-bg-green)" : "var(--metric-bg-blue)",
+                                        color:      replOrder.status === "received" ? "var(--metric-value-green)" : "var(--accent)",
+                                        border:     replOrder.status === "received" ? "1px solid var(--metric-border-green)" : "1px solid rgba(37,99,235,0.3)",
                                       }}>
                                         {STATUS_LABEL[replOrder.status]}
                                       </span>
@@ -2464,7 +2464,7 @@ export default function PurchasesPage() {
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                border: "1px solid #10B981", background: "#10B981", color: "#fff",
+                                border: "1px solid var(--metric-border-green)", background: "var(--metric-bg-green)", color: "var(--metric-value-green)",
                                 fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                               }}
                             >
@@ -2478,7 +2478,7 @@ export default function PurchasesPage() {
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                border: "1px solid #F59E0B", background: "transparent", color: "#b45309",
+                                border: "1px solid var(--metric-border-amber)", background: "transparent", color: "var(--metric-value-amber)",
                                 fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                               }}
                             >
@@ -2511,7 +2511,7 @@ export default function PurchasesPage() {
                                     style={{
                                       display: "inline-flex", alignItems: "center", gap: 6,
                                       padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                      border: "1px solid #ea580c", background: "#ea580c", color: "#fff",
+                                      border: "1px solid var(--metric-border-amber)", background: "var(--metric-value-amber)", color: "#fff",
                                       fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                                     }}
                                   >
@@ -2529,7 +2529,7 @@ export default function PurchasesPage() {
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 6,
                                     padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                    border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
+                                    border: "1px solid var(--metric-border-blue)", background: "transparent", color: "var(--metric-value-blue)",
                                     fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                                   }}
                                 >
@@ -3182,7 +3182,7 @@ export default function PurchasesPage() {
                     padding: "8px 14px", borderRadius: "var(--border-radius-md)", flexShrink: 0,
                     border: `1px solid ${xmlUploaded ? "rgba(16,185,129,0.4)" : "var(--border-strong)"}`,
                     background: xmlUploaded ? "rgba(16,185,129,0.08)" : "var(--bg-card)",
-                    color: xmlUploaded ? "#10B981" : "var(--text-secondary)",
+                    color: xmlUploaded ? "var(--metric-value-green)" : "var(--text-secondary)",
                     fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
                   }}
                 >
@@ -3204,7 +3204,7 @@ export default function PurchasesPage() {
                     background: rfcMatch ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
                     border: `1px solid ${rfcMatch ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`,
                     fontSize: "0.75rem",
-                    color: rfcMatch ? "#10B981" : "var(--text-primary)",
+                    color: rfcMatch ? "var(--metric-value-green)" : "var(--text-primary)",
                   }}>
                     RFC Emisor: <strong>{xmlRfcEmisor}</strong>
                     {xmlNombreEmisor ? ` — ${xmlNombreEmisor}` : ""}

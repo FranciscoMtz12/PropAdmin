@@ -32,7 +32,7 @@ const ENTREGA_OPTIONS = [
   { value: "acabada",      label: "Entrega acabada",          desc: "Lista para instalar mobiliario" },
 ] as const;
 
-const errorStyle: React.CSSProperties = { color: "#EF4444", fontSize: "0.75rem", marginTop: 4 };
+const errorStyle: React.CSSProperties = { color: "var(--metric-value-red)", fontSize: "0.75rem", marginTop: 4 };
 
 export default function CommercialTypologyModal({ open, buildingId, companyId, onClose, onCreated }: Props) {
   const [step, setStep] = useState<1 | 2 | 3>(1);

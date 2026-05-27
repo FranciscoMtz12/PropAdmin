@@ -224,7 +224,7 @@ function ServiceRow({
                 style={{
                   padding: "5px 12px", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", fontWeight: 600,
                   cursor: generatingFixedCobro ? "default" : "pointer",
-                  border: "none", background: "#8B2252", color: "#fff", whiteSpace: "nowrap",
+                  border: "none", background: "var(--accent)", color: "#fff", whiteSpace: "nowrap",
                   opacity: generatingFixedCobro ? 0.6 : 1,
                 }}
               >
@@ -273,7 +273,7 @@ function ServiceRow({
                     fontWeight: 600,
                     cursor: "pointer",
                     border: isBtnPrimary ? "none" : "1px solid var(--border-default)",
-                    background: isBtnPrimary ? "#8B2252" : "transparent",
+                    background: isBtnPrimary ? "var(--accent)" : "transparent",
                     color: isBtnPrimary ? "#fff" : "var(--text-primary)",
                     whiteSpace: "nowrap",
                   }}
@@ -311,7 +311,7 @@ function ServiceRow({
                       fontWeight: 600,
                       cursor: "pointer",
                       border: "none",
-                      background: "#8B2252",
+                      background: "var(--accent)",
                       color: "#fff",
                       whiteSpace: "nowrap",
                     }}
@@ -1154,7 +1154,7 @@ export default function ServiciosPage() {
           }}
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-            <AlertTriangle size={16} style={{ color: "#f59e0b", flexShrink: 0 }} />
+            <AlertTriangle size={16} style={{ color: "var(--metric-value-amber)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>
               Servicios pendientes de atención
             </span>
@@ -1227,7 +1227,7 @@ export default function ServiciosPage() {
             <p style={{
               margin: 0, fontSize: "0.75rem", fontWeight: 600,
               display: "flex", alignItems: "center", gap: 4,
-              color: allDone ? "#15803d" : "#b45309",
+              color: allDone ? "var(--metric-value-green)" : "var(--metric-value-amber)",
             }}>
               {allDone
                 ? <><CheckCircle size={12} /> Al día</>

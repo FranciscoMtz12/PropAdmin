@@ -240,7 +240,7 @@ const positiveAmountString = () =>
     });
 
 const collectionsErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -281,7 +281,7 @@ function getStatusLabel(status: CollectionStoredStatus) {
 function getStatusColors(status: CollectionStoredStatus) {
   if (status === "collected") return { bg: "var(--badge-bg-green)",  text: "var(--badge-text-green)",  border: "var(--metric-border-green)" };
   if (status === "partial")   return { bg: "var(--metric-bg-neutral)", text: "var(--badge-text-blue)",  border: "#BFDBFE" };
-  if (status === "pending")   return { bg: "#FEFCE8",                text: "#A16207",                  border: "#FDE68A" };
+  if (status === "pending")   return { bg: "var(--metric-bg-amber)",  text: "var(--metric-value-amber)", border: "var(--metric-border-amber)" };
   return                             { bg: "var(--badge-bg-red)",    text: "var(--badge-text-red)",    border: "#FECACA" };
 }
 
@@ -296,13 +296,13 @@ function getChargeTypeLabel(type: CollectionChargeType) {
 
 function getChargeTypeIcon(type: CollectionChargeType) {
   if (type === "rent")            return <House size={15} color="var(--badge-text-blue)" />;
-  if (type === "maintenance_fee") return <Wrench size={15} color="#D97706" />;
-  if (type === "electricity")     return <Zap size={15} color="#2563EB" />;
+  if (type === "maintenance_fee") return <Wrench size={15} color="var(--metric-value-amber)" />;
+  if (type === "electricity")     return <Zap size={15} color="var(--metric-value-blue)" />;
   if (type === "water")           return <Droplets size={15} color="#0EA5E9" />;
   if (type === "gas")             return <Flame size={15} color="#EA580C" />;
   if (type === "amenities")       return <Gem size={15} color="#7C3AED" />;
   if (type === "parking")         return <CarFront size={15} color="#0F766E" />;
-  if (type === "penalty")         return <AlertTriangle size={15} color="#DC2626" />;
+  if (type === "penalty")         return <AlertTriangle size={15} color="var(--metric-value-red)" />;
   return                                 <Receipt size={15} color="#6D28D9" />;
 }
 
@@ -1124,7 +1124,7 @@ export default function CollectionsPage() {
       {overdueRecordsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {overdueRecordsBanner.length} cobro{overdueRecordsBanner.length !== 1 ? "s" : ""} vencido{overdueRecordsBanner.length !== 1 ? "s" : ""}
             </span>
@@ -1150,7 +1150,7 @@ export default function CollectionsPage() {
       {dueSoonRecordsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {dueSoonRecordsBanner.length} cobro{dueSoonRecordsBanner.length !== 1 ? "s" : ""} vence{dueSoonRecordsBanner.length !== 1 ? "n" : ""} en los próximos 5 días
             </span>
@@ -1165,7 +1165,7 @@ export default function CollectionsPage() {
       {missingReadingsCount > 0 && (
         <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               Hay lecturas de medidores pendientes de capturar ({missingReadingsCount} sin registrar)
             </span>
@@ -1290,21 +1290,21 @@ export default function CollectionsPage() {
                 {/* Barra apilada horizontal */}
                 <div style={{ display: "flex", height: 20, borderRadius: "var(--border-radius-md)", overflow: "hidden", gap: 2 }}>
                   {countData.overdue > 0 && (
-                    <div style={{ flex: countData.overdue, background: "#EF4444", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
+                    <div style={{ flex: countData.overdue, background: "var(--metric-value-red)", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
                   )}
                   {countData.pending > 0 && (
-                    <div style={{ flex: countData.pending, background: "#F59E0B", minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
+                    <div style={{ flex: countData.pending, background: "var(--metric-value-amber)", minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
                   )}
                   {countData.collected > 0 && (
-                    <div style={{ flex: countData.collected, background: "#10B981", minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
+                    <div style={{ flex: countData.collected, background: "var(--metric-value-green)", minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
                   )}
                 </div>
                 {/* Leyenda de conteos */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                   {[
-                    { label: "Vencido",   count: countData.overdue,   color: "#EF4444" },
-                    { label: "Pendiente", count: countData.pending,   color: "#F59E0B" },
-                    { label: "Cobrado",   count: countData.collected, color: "#10B981" },
+                    { label: "Vencido",   count: countData.overdue,   color: "var(--metric-value-red)"   },
+                    { label: "Pendiente", count: countData.pending,   color: "var(--metric-value-amber)" },
+                    { label: "Cobrado",   count: countData.collected, color: "var(--metric-value-green)" },
                   ].map(({ label, count, color }) => (
                     <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <span style={{ fontSize: "1.125rem", fontWeight: 800, color }}>{count}</span>
@@ -1481,8 +1481,8 @@ export default function CollectionsPage() {
                                 ) : (
                                   <>
                                     <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Total: {formatCurrency(record.amount_due)}</span>
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "#10B981" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
-                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "#EF4444" : "#10B981" }}>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--metric-value-green)" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "var(--metric-value-red)" : "var(--metric-value-green)" }}>
                                       Resta: {formatCurrency(Math.max(record.amount_due - (record.amount_collected || 0), 0))}
                                     </span>
                                   </>
@@ -1698,7 +1698,7 @@ export default function CollectionsPage() {
               <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(abonoRecord.amount_due)}</strong>
               {(abonoRecord.amount_collected || 0) > 0 ? (
                 <> · Ya abonado:{" "}
-                  <strong style={{ color: "#10B981" }}>{formatCurrency(abonoRecord.amount_collected || 0)}</strong>
+                  <strong style={{ color: "var(--metric-value-green)" }}>{formatCurrency(abonoRecord.amount_collected || 0)}</strong>
                 </>
               ) : null}
             </p>

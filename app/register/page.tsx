@@ -420,7 +420,7 @@ export default function RegisterPage() {
                 style={{
                   ...cardBase,
                   background: active ? "rgba(139,34,82,.3)" : "rgba(255,255,255,.04)",
-                  border: active ? "1px solid #8B2252" : "1px solid rgba(255,255,255,.15)",
+                  border: active ? "1px solid var(--accent)" : "1px solid rgba(255,255,255,.15)",
                   color: "#fff",
                   textAlign: "left",
                 }}
@@ -674,7 +674,7 @@ export default function RegisterPage() {
                   width: active ? 28 : 8,
                   height: 8,
                   borderRadius: 999,
-                  background: done ? "#8B2252" : active ? "#8B2252" : "rgba(255,255,255,.2)",
+                  background: done ? "var(--accent)" : active ? "var(--accent)" : "rgba(255,255,255,.2)",
                   opacity: active ? 1 : done ? 0.7 : 0.4,
                   transition: "all .2s",
                 }}
@@ -685,7 +685,7 @@ export default function RegisterPage() {
 
         {/* Step label */}
         <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "rgba(255,255,255,.6)", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#8B2252" }}>Paso {step + 1} de {STEPS.length}</span>
+          <span style={{ color: "var(--accent)" }}>Paso {step + 1} de {STEPS.length}</span>
           <span style={{ color: "rgba(255,255,255,.2)" }}>—</span>
           <span>{STEPS[step].label}</span>
         </div>
@@ -717,7 +717,7 @@ export default function RegisterPage() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: submitting ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.875rem", fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: submitting ? "rgba(139,34,82,.5)" : "var(--accent)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.875rem", fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
             >
               {submitting ? "Creando cuenta..." : (
                 <><CheckCircle size={15} /> Crear cuenta</>
@@ -728,7 +728,7 @@ export default function RegisterPage() {
               type="button"
               onClick={nextStep}
               disabled={validatingToken}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.875rem", fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "var(--accent)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.875rem", fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
             >
               {validatingToken ? "Verificando..." : <>{" "}Continuar <ArrowRight size={15} /></>}
             </button>

@@ -536,16 +536,16 @@ export default function UtilityInvoiceModal({
             onClick={() => fileRef.current?.click()}
             style={{
               padding: "16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer", textAlign: "center",
-              border: `2px dashed ${pdfFile ? "#15803d" : existingInvoice?.pdf_path ? "#1d4ed8" : "var(--border-default)"}`,
-              background: pdfFile ? "#dcfce7" : existingInvoice?.pdf_path ? "#eff6ff" : "var(--bg-card)",
+              border: `2px dashed ${pdfFile ? "var(--metric-border-green)" : existingInvoice?.pdf_path ? "var(--metric-border-blue)" : "var(--border-default)"}`,
+              background: pdfFile ? "var(--metric-bg-green)" : existingInvoice?.pdf_path ? "var(--metric-bg-blue)" : "var(--bg-card)",
             }}
           >
             {pdfFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-green)", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{pdfFile.name}
               </p>
             ) : existingInvoice?.pdf_path ? (
-              <p style={{ margin: 0, color: "#1d4ed8", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-blue)", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />PDF existente — toca para reemplazar
               </p>
             ) : (
@@ -566,7 +566,7 @@ export default function UtilityInvoiceModal({
 
         {/* Dedicated + company contract */}
         {!isShared && !isTenantContract && amountValid && (
-          <div style={{ padding: "12px 14px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ padding: "12px 14px", background: "var(--metric-bg-blue)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "var(--metric-value-blue)", display: "flex", alignItems: "flex-start", gap: 8 }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             El cobro de <strong>${formattedAmount}</strong> se asignará directamente a Depa{" "}
             <strong>{dedicatedUnit?.unit_number ?? "—"}</strong>.
@@ -585,7 +585,7 @@ export default function UtilityInvoiceModal({
         {isShared && !isIncluded && amountValid && !loadingData && (
           <div style={{ marginBottom: 16 }}>
             {distRows.length === 0 ? (
-              <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem", color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ padding: "10px 14px", background: "var(--metric-bg-amber)", borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem", color: "var(--metric-value-amber)", display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 No hay unidades con inquilino activo para distribuir.
               </div>

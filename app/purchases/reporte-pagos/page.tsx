@@ -139,7 +139,7 @@ const reporteSchema = z.object({
 type ReporteFormValues = z.infer<typeof reporteSchema>;
 
 const reporteErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -790,7 +790,7 @@ export default function ReportePagosPage() {
           <>
             {overdueOCs.length > 0 && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0, marginTop: 5 }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-bg-red)", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)", marginBottom: 4 }}>
                     {overdueOCs.length} OC{overdueOCs.length !== 1 ? "s" : ""} facturada{overdueOCs.length !== 1 ? "s" : ""} sin reportar — más de 7 días
@@ -810,7 +810,7 @@ export default function ReportePagosPage() {
             )}
             {recentOCs.length > 0 && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0, marginTop: 5 }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-bg-amber)", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                     {recentOCs.length} OC{recentOCs.length !== 1 ? "s" : ""} facturada{recentOCs.length !== 1 ? "s" : ""} pendiente{recentOCs.length !== 1 ? "s" : ""} de reportar
@@ -1210,7 +1210,7 @@ export default function ReportePagosPage() {
               padding: "10px 12px", borderRadius: "var(--border-radius-md)", marginBottom: 4,
               background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
             }}>
-              <AlertTriangle size={15} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
+              <AlertTriangle size={15} style={{ color: "var(--metric-value-amber)", flexShrink: 0, marginTop: 1 }} />
               <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-primary)", lineHeight: 1.5 }}>
                 Ya existe el reporte <strong>{duplicateWarning.folio}</strong> para la semana {duplicateWarning.week} de {duplicateWarning.year}. Si continúas, se creará un reporte duplicado.
               </p>

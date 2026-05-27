@@ -80,7 +80,7 @@ const TEMPLATE_ASSET_DEFAULTS: TemplateAssetFormValues = {
 };
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -281,7 +281,7 @@ export default function UnitTypeAssetsPage() {
           minHeight: "100vh",
           padding: "40px",
           background: "var(--bg-card)",
-          color: "black",
+          color: "var(--text-primary)",
         }}
       >
         Cargando usuario...
@@ -298,7 +298,7 @@ export default function UnitTypeAssetsPage() {
           minHeight: "100vh",
           padding: "40px",
           background: "var(--bg-card)",
-          color: "black",
+          color: "var(--text-primary)",
         }}
       >
         Cargando equipamiento base...
@@ -313,7 +313,7 @@ export default function UnitTypeAssetsPage() {
           minHeight: "100vh",
           padding: "40px",
           background: "var(--bg-card)",
-          color: "black",
+          color: "var(--text-primary)",
         }}
       >
         <p>{msg || "No se encontró la tipología."}</p>
@@ -322,7 +322,7 @@ export default function UnitTypeAssetsPage() {
           style={{
             display: "inline-block",
             marginTop: "16px",
-            color: "black",
+            color: "var(--text-primary)",
           }}
         >
           Volver a tipologías

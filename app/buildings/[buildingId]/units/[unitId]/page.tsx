@@ -1307,7 +1307,7 @@ export default function UnitDetailPage() {
           border: "1px solid rgba(245,158,11,0.3)",
           marginBottom: 16,
         }}>
-          <AlertCircle size={18} style={{ color: "#F59E0B", flexShrink: 0 }} />
+          <AlertCircle size={18} style={{ color: "var(--metric-value-amber)", flexShrink: 0 }} />
           <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>
             Esta unidad fue creada por duplicación — revisa que todos los datos sean correctos
           </span>
@@ -1675,12 +1675,12 @@ export default function UnitDetailPage() {
                     <span style={{
                       padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700,
                       background: days < 30 ? "rgba(220,38,38,0.1)" : days < 90 ? "rgba(245,158,11,0.1)" : "var(--bg-page)",
-                      color:      days < 30 ? "#DC2626" : days < 90 ? "#F59E0B" : "var(--text-muted)",
+                      color:      days < 30 ? "var(--metric-value-red)" : days < 90 ? "var(--metric-value-amber)" : "var(--text-muted)",
                     }}>
                       {days === 0 ? "Vence hoy" : `${days}d para vencer`}
                     </span>
                   ) : days != null && days < 0 ? (
-                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "var(--metric-value-red)" }}>
                       Vencido hace {Math.abs(days)}d
                     </span>
                   ) : null;

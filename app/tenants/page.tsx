@@ -196,7 +196,7 @@ const labelStyle: CSSProperties = {
 };
 
 const errorTextStyle: CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -1157,11 +1157,11 @@ export default function TenantsPage() {
                               {formatCurrency(currentRent)}
                             </div>
                             {direction === "up" ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "#16a34a" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "var(--metric-value-green)" }}>
                                 <TrendingUp size={12} /> subió
                               </div>
                             ) : direction === "down" ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "#DC2626" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "var(--metric-value-red)" }}>
                                 <TrendingDown size={12} /> bajó
                               </div>
                             ) : null}
@@ -1191,12 +1191,12 @@ export default function TenantsPage() {
                                     {lease.end_date ? ` → ${formatDate(lease.end_date)}` : ""}
                                   </span>
                                   {isActive ? (
-                                    <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
+                                    <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--metric-value-green)", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
                                   ) : null}
                                   {diff != null && diff !== 0 ? (
                                     <span style={{
                                       fontSize: "0.625rem", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--border-radius-md)",
-                                      color: diff > 0 ? "#10B981" : "#DC2626",
+                                      color: diff > 0 ? "var(--metric-value-green)" : "var(--metric-value-red)",
                                       background: diff > 0 ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
                                     }}>
                                       {diff > 0 ? "+" : ""}{formatCurrency(diff)}
@@ -1365,7 +1365,7 @@ export default function TenantsPage() {
               padding: "14px 16px",
               borderRadius: "var(--border-radius-lg)",
               background: "var(--metric-bg-amber)",
-              border: "1px solid #FED7AA",
+              border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
               fontSize: "0.875rem",
               fontWeight: 600,

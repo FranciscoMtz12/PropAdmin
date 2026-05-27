@@ -46,11 +46,11 @@ type Metrics = {
 };
 
 const ROADMAP_PENDING = [
-  { id: "S1", label: "Enmascaramiento de datos sensibles", color: "#EF4444" },
-  { id: "S2", label: "Auditar endpoints API sin autenticación", color: "#EF4444" },
-  { id: "M15", label: "Analytics Grupo MATZ", color: "#F59E0B" },
-  { id: "M9",  label: "Migrar Storage a privados", color: "#F59E0B" },
-  { id: "P1",  label: "Demo interactivo", color: "#22C55E" },
+  { id: "S1", label: "Enmascaramiento de datos sensibles", color: "var(--metric-value-red)" },
+  { id: "S2", label: "Auditar endpoints API sin autenticación", color: "var(--metric-value-red)" },
+  { id: "M15", label: "Analytics Grupo MATZ", color: "var(--metric-value-amber)" },
+  { id: "M9",  label: "Migrar Storage a privados", color: "var(--metric-value-amber)" },
+  { id: "P1",  label: "Demo interactivo", color: "var(--metric-value-green)" },
 ];
 
 function relativeTime(iso: string): string {
@@ -117,9 +117,9 @@ export default function SaproaOverviewPage() {
 
   const metricCards = [
     { label: "Empresas activas",    value: metrics.companies,       icon: <Building2 size={18} color={SAPROA_ACCENT} />,    bg: "rgba(99,102,241,0.10)" },
-    { label: "Usuarios totales",    value: metrics.users,           icon: <Users     size={18} color="#0EA5E9" />,           bg: "rgba(14,165,233,0.10)"  },
-    { label: "Propiedades",         value: metrics.buildings,       icon: <Building2 size={18} color="#10B981" />,           bg: "rgba(16,185,129,0.10)"  },
-    { label: "Feedback pendiente",  value: metrics.feedbackPending, icon: <MessageSquare size={18} color="#F59E0B" />,       bg: "rgba(245,158,11,0.10)"  },
+    { label: "Usuarios totales",    value: metrics.users,           icon: <Users     size={18} color="var(--metric-value-blue)" />,           bg: "rgba(14,165,233,0.10)"  },
+    { label: "Propiedades",         value: metrics.buildings,       icon: <Building2 size={18} color="var(--metric-value-green)" />,           bg: "rgba(16,185,129,0.10)"  },
+    { label: "Feedback pendiente",  value: metrics.feedbackPending, icon: <MessageSquare size={18} color="var(--metric-value-amber)" />,       bg: "rgba(245,158,11,0.10)"  },
   ];
 
   return (

@@ -238,11 +238,11 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
               onClick={() => setType("exchange")}
               style={{
                 padding: 12, borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "left",
-                border: type === "exchange" ? "2px solid #2563eb" : "1px solid var(--border-default)",
-                background: type === "exchange" ? "#eff6ff" : "var(--bg-input)",
+                border: type === "exchange" ? "2px solid var(--metric-value-blue)" : "1px solid var(--border-default)",
+                background: type === "exchange" ? "var(--metric-bg-blue)" : "var(--bg-input)",
               }}
             >
-              <div style={{ fontWeight: 600, marginBottom: 4, color: type === "exchange" ? "#1d4ed8" : "var(--text-primary)" }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: type === "exchange" ? "var(--metric-value-blue)" : "var(--text-primary)" }}>
                 🔄 Cambio
               </div>
               <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
@@ -342,8 +342,8 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
         {type === "exchange" ? (
           <div style={{
             padding: "10px 14px", borderRadius: "var(--border-radius-md)",
-            background: "#eff6ff", border: "1px solid #93c5fd",
-            fontSize: "0.8125rem", color: "#1d4ed8",
+            background: "var(--metric-bg-blue)", border: "1px solid #93c5fd",
+            fontSize: "0.8125rem", color: "var(--metric-value-blue)",
           }}>
             Se creará automáticamente una OC de cambio ya enviada a campo. El responsable verá un aviso indicando que debe entregar el material al proveedor al recoger el reemplazo.
           </div>
@@ -361,8 +361,8 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
               padding: "11px 16px", borderRadius: "var(--border-radius-lg)",
-              border:      type === "exchange" ? "1px solid #2563eb" : "1px solid #c2410c",
-              background:  type === "exchange" ? "#2563eb"           : "#c2410c",
+              border:      type === "exchange" ? "1px solid var(--metric-value-blue)" : "1px solid #c2410c",
+              background:  type === "exchange" ? "var(--metric-value-blue)"          : "#c2410c",
               color: "#fff",
               fontSize: "0.875rem", fontWeight: 700,
               cursor:  isSubmitting ? "wait"    : "pointer",

@@ -99,7 +99,7 @@ const dropdownDeleteItemStyle: React.CSSProperties = {
 };
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -480,7 +480,7 @@ export default function BuildingUnitTypesPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "var(--text-primary)" }}>
         Cargando usuario...
       </div>
     );
@@ -490,7 +490,7 @@ export default function BuildingUnitTypesPage() {
 
   if (loadingData) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "var(--text-primary)" }}>
         Cargando tipologías...
       </div>
     );
@@ -498,9 +498,9 @@ export default function BuildingUnitTypesPage() {
 
   if (!building) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "var(--text-primary)" }}>
         <p>{msg || "No se encontró el edificio."}</p>
-        <a href="/buildings" style={{ display: "inline-block", marginTop: "16px", color: "black" }}>
+        <a href="/buildings" style={{ display: "inline-block", marginTop: "16px", color: "var(--text-primary)" }}>
           Volver a edificios
         </a>
       </div>
@@ -524,7 +524,7 @@ export default function BuildingUnitTypesPage() {
         }
       />
 
-      {msg ? <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: "16px" }}>{msg}</p> : null}
+      {msg ? <p style={{ color: msg.includes("correctamente") ? "var(--metric-value-green)" : "var(--metric-value-red)", marginBottom: "16px" }}>{msg}</p> : null}
 
       <SectionCard title="Tipologías del edificio" subtitle="Cada tipología puede tener sus datos base y su equipamiento plantilla." icon={<LayoutPanelTop size={18} />}>
         {unitTypes.length === 0 ? (

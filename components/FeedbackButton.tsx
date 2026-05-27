@@ -182,7 +182,7 @@ export default function FeedbackButton() {
                   }}
                 />
                 {formState.errors.title && (
-                  <div style={{ fontSize: "0.6875rem", color: "#ef4444", marginTop: 4 }}>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--metric-value-red)", marginTop: 4 }}>
                     {formState.errors.title.message}
                   </div>
                 )}

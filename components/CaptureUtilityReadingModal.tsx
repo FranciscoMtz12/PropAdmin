@@ -164,7 +164,7 @@ export default function CaptureUtilityReadingModal({
             autoFocus
           />
           {current > 0 && hasConsumption && (
-            <p style={{ margin: "4px 0 0", fontSize: "0.8125rem", color: consumption >= 0 ? "#15803d" : "#dc2626", fontWeight: 600 }}>
+            <p style={{ margin: "4px 0 0", fontSize: "0.8125rem", color: consumption >= 0 ? "var(--metric-value-green)" : "var(--metric-value-red)", fontWeight: 600 }}>
               Consumo: {consumption.toFixed(2)} {consumptionUnit}
             </p>
           )}
@@ -188,7 +188,7 @@ export default function CaptureUtilityReadingModal({
             }}
           >
             {photoFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: "0.875rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-green)", fontWeight: 600, fontSize: "0.875rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Camera size={14} />{photoFile.name}
               </p>
             ) : (

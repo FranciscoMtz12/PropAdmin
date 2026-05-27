@@ -139,13 +139,13 @@ export default function SaproaFeedbackPage() {
 
       <AppGrid minWidth={220}>
         <MetricCard label="Total" value={String(total)} helper="Todos los registros"
-          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><MessageSquare size={18} color="#2563EB" /></div>}
+          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><MessageSquare size={18} color="var(--metric-value-blue)" /></div>}
         />
         <MetricCard label="Pendientes" value={String(pending)} helper="Sin revisar"
-          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-red)", display: "grid", placeItems: "center" }}><Clock3 size={18} color="#DC2626" /></div>}
+          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-red)", display: "grid", placeItems: "center" }}><Clock3 size={18} color="var(--metric-value-red)" /></div>}
         />
         <MetricCard label="Resueltos" value={String(resolved)} helper="Ya cerrados"
-          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><CheckCircle2 size={18} color="#16A34A" /></div>}
+          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><CheckCircle2 size={18} color="var(--metric-value-green)" /></div>}
         />
       </AppGrid>
 

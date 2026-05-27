@@ -161,7 +161,7 @@ export default function BuildingUtilitySubMetersModal({
               key={unit.id}
               style={{
                 borderRadius: "var(--border-radius-lg)",
-                border: checked ? "1px solid #8B2252" : "1px solid var(--border-default)",
+                border: checked ? "1px solid var(--accent)" : "1px solid var(--border-default)",
                 background: checked ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
                 padding: "12px 14px",
                 transition: "border-color 0.15s, background 0.15s",
@@ -183,7 +183,7 @@ export default function BuildingUtilitySubMetersModal({
                   type="checkbox"
                   checked={checked}
                   onChange={e => updateUnit(unit.id, { checked: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#8B2252" }}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }}
                 />
                 {unit.unit_number}
               </label>

@@ -321,7 +321,7 @@ export default function DashboardAdministracionPage() {
                       style={{
                         height: "100%",
                         width: `${Math.min(b.pct, 100)}%`,
-                        background: b.pct >= 90 ? "#22c55e" : b.pct >= 70 ? "#f59e0b" : "#ef4444",
+                        background: b.pct >= 90 ? "var(--metric-bg-green)" : b.pct >= 70 ? "var(--metric-bg-amber)" : "var(--metric-bg-red)",
                         borderRadius: 99,
                         transition: "width 0.4s ease",
                       }}

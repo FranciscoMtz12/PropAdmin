@@ -217,21 +217,21 @@ const MONTH_LABELS = [
 ];
 
 const CLEANING_COLORS = {
-  background: "#ECFDF5",
-  border: "#A7F3D0",
-  text: "#166534",
+  background: "var(--metric-bg-green)",
+  border: "var(--metric-border-green)",
+  text: "var(--metric-value-green)",
 };
 
 const MAINTENANCE_COLORS = {
-  background: "#FFF7ED",
-  border: "#FDBA74",
-  text: "#9A3412",
+  background: "var(--metric-bg-amber)",
+  border: "var(--metric-border-amber)",
+  text: "var(--metric-value-amber)",
 };
 
 const PAYMENTS_COLORS = {
-  background: "#EFF6FF",
-  border: "#93C5FD",
-  text: "#1D4ED8",
+  background: "var(--metric-bg-blue)",
+  border: "var(--metric-border-blue)",
+  text: "var(--metric-value-blue)",
 };
 
 const COLLECTIONS_COLORS = {
@@ -467,10 +467,10 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
   if (module === "payments") {
     if (label === "Estado") {
       if (value === "Pagado") {
-        return { background: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "#10B981" };
+        return { background: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "var(--metric-value-green)" };
       }
       if (value === "Vencido") {
-        return { background: "var(--badge-bg-red)", border: "rgba(220,38,38,0.3)", text: "#DC2626" };
+        return { background: "var(--badge-bg-red)", border: "rgba(220,38,38,0.3)", text: "var(--metric-value-red)" };
       }
       return { background: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", text: "var(--text-primary)" };
     }
@@ -482,12 +482,12 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
 
   if (module === "collections" && label === "Estado") {
     if (value === "Cobrado") {
-      return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
+      return { background: "var(--metric-bg-green)", border: "var(--metric-border-green)", text: "var(--metric-value-green)" };
     }
     if (value === "Vencido") {
-      return { background: "var(--badge-bg-red)", border: "#FECACA", text: "#B91C1C" };
+      return { background: "var(--badge-bg-red)", border: "#FECACA", text: "var(--metric-value-red)" };
     }
-    return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
+    return { background: "var(--metric-bg-amber)", border: "var(--metric-border-amber)", text: "var(--metric-value-amber)" };
   }
 
   return null;
@@ -1568,7 +1568,7 @@ export default function CalendarPage() {
                               borderRadius: "var(--border-radius-lg)",
                               padding: "10px 10px",
                               background: "var(--bg-card-hover)",
-                              border: "1px dashed #D1D5DB",
+                              border: "var(--border-dashed)",
                               fontSize: "0.75rem",
                               color: "var(--text-muted)",
                               fontWeight: 600,
@@ -1681,7 +1681,7 @@ export default function CalendarPage() {
                         borderRadius: 0,
                         padding: "6px 8px",
                         background: isToday ? "var(--metric-bg-neutral)" : "var(--bg-card)",
-                        outline: isToday ? "2px solid #2563EB" : undefined,
+                        outline: isToday ? `2px solid var(--metric-value-blue)` : undefined,
                         outlineOffset: isToday ? "-2px" : undefined,
                         display: "flex",
                         flexDirection: "column",
@@ -1702,7 +1702,7 @@ export default function CalendarPage() {
                           style={{
                             fontSize: "0.8125rem",
                             fontWeight: 800,
-                            color: isToday ? "#1D4ED8" : "#111827",
+                            color: isToday ? "var(--metric-value-blue)" : "var(--text-primary)",
                           }}
                         >
                           {day.dayNumber}
@@ -1717,8 +1717,8 @@ export default function CalendarPage() {
                               padding: "4px 8px",
                               borderRadius: 999,
                               background: "var(--icon-bg-blue)",
-                              border: "1px solid #93C5FD",
-                              color: "#1D4ED8",
+                              border: `1px solid var(--metric-border-blue)`,
+                              color: "var(--metric-value-blue)",
                               fontSize: "0.625rem",
                               fontWeight: 800,
                               whiteSpace: "nowrap",
@@ -2212,7 +2212,7 @@ export default function CalendarPage() {
                       gridTemplateColumns: "170px 1fr",
                       gap: 12,
                       padding: "12px 14px",
-                      borderTop: index === 0 ? "none" : "1px solid #F3F4F6",
+                      borderTop: index === 0 ? "none" : "1px solid var(--divider)",
                     }}
                   >
                     <div

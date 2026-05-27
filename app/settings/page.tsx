@@ -139,7 +139,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
     <div>
       <label style={LS}>{label}</label>
       {children}
-      {error && <span style={{ fontSize: "0.6875rem", color: "#ef4444", marginTop: 3, display: "block" }}>{error}</span>}
+      {error && <span style={{ fontSize: "0.6875rem", color: "var(--metric-value-red)", marginTop: 3, display: "block" }}>{error}</span>}
     </div>
   );
 }
@@ -850,7 +850,7 @@ export default function SettingsPage() {
                               if (dark) { setLogoDarkFile(null); setLogoDarkPreview(""); setMLogoDarkUrl(""); }
                               else      { setLogoFile(null);     setLogoPreview("");     setMLogoUrl(""); }
                             }}
-                            style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "#E24B4A", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
+                            style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "var(--metric-bg-red)", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
                           >
                             <X size={12} />
                           </button>
@@ -881,16 +881,16 @@ export default function SettingsPage() {
             {/* Métricas */}
             <AppGrid minWidth={200}>
               <MetricCard label="Total" value={String(totalUsers)} helper="Todos los activos"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="#2563EB" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="var(--metric-value-blue)" /></div>}
               />
               <MetricCard label="Admins" value={String(totalAdmins)} helper="Roles administrativos"
                 icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-purple)", display: "grid", placeItems: "center" }}><Shield size={18} color="#7C3AED" /></div>}
               />
               <MetricCard label="Campo" value={String(totalField)} helper="Equipo operativo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="#16A34A" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="var(--metric-value-green)" /></div>}
               />
               <MetricCard label="Inquilinos" value={String(totalTenants)} helper="Portal activo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="#D97706" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="var(--metric-value-amber)" /></div>}
               />
             </AppGrid>
 
@@ -942,7 +942,7 @@ export default function SettingsPage() {
                               onClick={() => toast("Función no disponible aún")}
                               disabled={row.id === user!.id}
                               title={row.id === user!.id ? "No puedes desactivarte" : "Desactivar usuario"}
-                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "#DC2626", display: "inline-flex", alignItems: "center" }}
+                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "var(--metric-value-red)", display: "inline-flex", alignItems: "center" }}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -1010,7 +1010,7 @@ export default function SettingsPage() {
                               Vence: {formatDate(inv.expires_at)} · Creada: {formatDate(inv.created_at)}
                             </div>
                           </div>
-                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 700, background: active ? "rgba(29,158,117,.15)" : "rgba(0,0,0,.1)", color: active ? "#1D9E75" : used ? "#888" : "#E24B4A" }}>
+                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 700, background: active ? "rgba(29,158,117,.15)" : "rgba(0,0,0,.1)", color: active ? "#1D9E75" : used ? "#888" : "var(--metric-value-red)" }}>
                             {active ? "Activa" : used ? "Usada" : "Expirada"}
                           </span>
                           {active && (
@@ -1018,7 +1018,7 @@ export default function SettingsPage() {
                               <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)", color: "var(--text-secondary)", fontSize: "0.75rem", cursor: "pointer" }}>
                                 Copiar
                               </button>
-                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: "var(--border-radius-sm)", color: "#E24B4A", fontSize: "0.75rem", cursor: "pointer" }}>
+                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: "var(--border-radius-sm)", color: "var(--metric-value-red)", fontSize: "0.75rem", cursor: "pointer" }}>
                                 <Trash2 size={12} /> Revocar
                               </button>
                             </>
@@ -1481,7 +1481,7 @@ export default function SettingsPage() {
 
             <SectionCard title="Zona de peligro" style={{ border: "1.5px solid rgba(226,75,74,.4)", background: "rgba(226,75,74,.02)" }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(226,75,74,.07)", border: "1px solid rgba(226,75,74,.18)", marginBottom: 18 }}>
-                <AlertTriangle size={16} color="#E24B4A" style={{ flexShrink: 0, marginTop: 1 }} />
+                <AlertTriangle size={16} color="var(--metric-value-red)" style={{ flexShrink: 0, marginTop: 1 }} />
                 <p style={{ fontSize: "0.8125rem", color: "var(--text-primary)", margin: 0, lineHeight: 1.55 }}>
                   Las acciones en esta sección pueden tener consecuencias irreversibles. Procede con precaución.
                 </p>
@@ -1489,7 +1489,7 @@ export default function SettingsPage() {
               <button
                 type="button"
                 onClick={() => toast("Función de exportación próximamente disponible")}
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid #E24B4A", borderRadius: "var(--border-radius-md)", color: "#E24B4A", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid var(--metric-value-red)", borderRadius: "var(--border-radius-md)", color: "var(--metric-value-red)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
               >
                 <Download size={15} /> Exportar todos los datos
               </button>

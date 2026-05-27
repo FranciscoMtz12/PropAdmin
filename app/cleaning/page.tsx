@@ -937,7 +937,7 @@ export default function CleaningPage() {
           <>
             {overdueLogs.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
                 <div style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   {overdueLogs.length} limpieza{overdueLogs.length !== 1 ? "s" : ""} de días anteriores sin completar
                 </div>
@@ -945,7 +945,7 @@ export default function CleaningPage() {
             )}
             {todayLogs.length > 0 && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
                 <div style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   {todayLogs.length} limpieza{todayLogs.length !== 1 ? "s" : ""} de hoy pendiente{todayLogs.length !== 1 ? "s" : ""}
                 </div>
@@ -1032,7 +1032,7 @@ export default function CleaningPage() {
         {selectedTask && selectedTaskLog?.status === "completed" ? (
           <>
             <div style={{ padding: 16, background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", borderRadius: "var(--border-radius-lg)", display: "flex", gap: 10, alignItems: "center" }}>
-              <CheckCircle2 size={24} color="#16A34A" />
+              <CheckCircle2 size={24} color="var(--metric-value-green)" />
               <div>
                 <div style={{ fontWeight: 700, color: "var(--metric-value-green)" }}>Completada</div>
                 <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
@@ -1095,7 +1095,7 @@ export default function CleaningPage() {
                           checked={isChecked}
                           disabled={!canEdit}
                           onChange={() => { if (canEdit) void toggleChecklistItem(item.id); }}
-                          style={{ width: 14, height: 14, cursor: canEdit ? "pointer" : "not-allowed", accentColor: "#16A34A" }}
+                          style={{ width: 14, height: 14, cursor: canEdit ? "pointer" : "not-allowed", accentColor: "var(--metric-value-green)" }}
                         />
                         {item.label}
                       </label>
@@ -1293,11 +1293,11 @@ export default function CleaningPage() {
               label: "Cumplimiento semanal",
               value: `${weekStats.compliance.toFixed(0)}%`,
               sub: "esta semana",
-              color: weekStats.compliance >= 80 ? "#10B981" : weekStats.compliance >= 60 ? "#F59E0B" : "#EF4444",
+              color: weekStats.compliance >= 80 ? "var(--metric-value-green)" : weekStats.compliance >= 60 ? "var(--metric-value-amber)" : "var(--metric-value-red)",
             },
             { label: "Tareas hoy", value: weekStats.todayTotal, sub: "programadas" },
-            { label: "Completadas hoy", value: weekStats.todayCompleted, sub: "terminadas", color: "#10B981" },
-            { label: "Pendientes hoy", value: weekStats.todayPending, sub: "por hacer", color: weekStats.todayPending > 0 ? "#F59E0B" : undefined },
+            { label: "Completadas hoy", value: weekStats.todayCompleted, sub: "terminadas", color: "var(--metric-value-green)" },
+            { label: "Pendientes hoy", value: weekStats.todayPending, sub: "por hacer", color: weekStats.todayPending > 0 ? "var(--metric-value-amber)" : undefined },
             { label: "Edificios activos", value: weekStats.activeBuildings, sub: "con horario" },
             { label: "Servicio premium", value: weekStats.premiumUnits, sub: "unidades", color: "#A855F7" },
           ].map((s, i, arr) => (
@@ -1433,10 +1433,10 @@ export default function CleaningPage() {
                           const progress = total > 0 ? checked / total : 0;
 
                           if (isCompleted) {
-                            return <CheckCircle2 size={20} style={{ color: "#22c55e", flexShrink: 0 }} />;
+                            return <CheckCircle2 size={20} style={{ color: "var(--metric-value-green)", flexShrink: 0 }} />;
                           }
                           if (isOverdue) {
-                            return <XCircle size={20} style={{ color: "#ef4444", flexShrink: 0 }} />;
+                            return <XCircle size={20} style={{ color: "var(--metric-value-red)", flexShrink: 0 }} />;
                           }
                           if (progress > 0 && total > 0) {
                             const radius = 9;
@@ -1481,7 +1481,7 @@ export default function CleaningPage() {
               <div>
                 {byBuildingStats.map((b) => {
                   const pct = Math.round(b.rate);
-                  const color = pct >= 80 ? "#22c55e" : pct >= 60 ? "#f59e0b" : "#ef4444";
+                  const color = pct >= 80 ? "var(--metric-value-green)" : pct >= 60 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
                   return (
                     <div key={b.id} style={{ marginBottom: 16 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -1514,7 +1514,7 @@ export default function CleaningPage() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(17.5rem, 1fr))", gap: 12 }}>
             {byBuildingStats.map((b) => {
-              const color = b.rate >= 80 ? "#10B981" : b.rate >= 60 ? "#F59E0B" : "#EF4444";
+              const color = b.rate >= 80 ? "var(--metric-value-green)" : b.rate >= 60 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
               const buildingData = buildingById.get(b.id);
               const company = isGroupMode ? groupCompanies.find(c => c.id === buildingData?.company_id) : undefined;
               return (
@@ -1656,7 +1656,7 @@ export default function CleaningPage() {
                           <button type="button" title="Editar" onClick={() => openEditSchedule(s, "building")} style={iconBtnStyle}>
                             <Edit3 size={13} />
                           </button>
-                          <button type="button" title="Eliminar" onClick={() => void deleteSchedule(s.id, "building")} style={{ ...iconBtnStyle, color: "#ef4444" }}>
+                          <button type="button" title="Eliminar" onClick={() => void deleteSchedule(s.id, "building")} style={{ ...iconBtnStyle, color: "var(--metric-value-red)" }}>
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -1679,7 +1679,7 @@ export default function CleaningPage() {
                           <button type="button" title="Editar" onClick={() => openEditSchedule(s, "unit")} style={iconBtnStyle}>
                             <Edit3 size={13} />
                           </button>
-                          <button type="button" title="Eliminar" onClick={() => void deleteSchedule(s.id, "unit")} style={{ ...iconBtnStyle, color: "#ef4444" }}>
+                          <button type="button" title="Eliminar" onClick={() => void deleteSchedule(s.id, "unit")} style={{ ...iconBtnStyle, color: "var(--metric-value-red)" }}>
                             <Trash2 size={13} />
                           </button>
                         </div>
@@ -1786,7 +1786,7 @@ function Field({
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>{label}</label>
       {children}
-      {error && <span style={{ fontSize: "0.6875rem", color: "#ef4444" }}>{error}</span>}
+      {error && <span style={{ fontSize: "0.6875rem", color: "var(--metric-value-red)" }}>{error}</span>}
     </div>
   );
 }

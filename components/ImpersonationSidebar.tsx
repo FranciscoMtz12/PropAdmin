@@ -6,9 +6,9 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ChevronRight, Eye, RotateCcw, Shield, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useImpersonation, type ImpersonationParams, type GroupCompany } from "@/contexts/ImpersonationContext";
-import { useTheme, initials } from "@/contexts/ThemeContext";
+import { initials } from "@/contexts/ThemeContext";
 
-const SAPROA_COLOR = "#8B2252";
+const SAPROA_COLOR = "var(--accent)";
 const UNGROUPED_ID = "__ungrouped__";
 
 const ROLE_LABEL: Record<string, string> = {
@@ -251,7 +251,6 @@ export default function ImpersonationSidebar() {
     startGroupImpersonation,
     stopImpersonation,
   } = useImpersonation();
-  const { isDark } = useTheme();
   const router = useRouter();
 
   const [groups,                setGroups]                = useState<Group[]>([]);
@@ -383,7 +382,7 @@ export default function ImpersonationSidebar() {
 
   if (!isRealSuperAdmin) return null;
 
-  const sidebarBg = isDark ? "#0f1623" : "#1e2a3a";
+  const sidebarBg = "var(--bg-sidebar)";
   const ungrouped = companies.filter(c => !c.group_id);
   const virtualUngrouped: Group = {
     id: UNGROUPED_ID, name: "Sin grupo", short_name: null, brand_color: "#6b7280",

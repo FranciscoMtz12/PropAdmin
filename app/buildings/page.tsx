@@ -197,7 +197,7 @@ function OccupancyDonut({
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size}>
-        <circle cx={half} cy={half} r={r} fill="none" stroke="#E5E7EB" strokeWidth={sw} />
+        <circle cx={half} cy={half} r={r} fill="none" stroke="var(--border-default)" strokeWidth={sw} />
         <circle
           cx={half} cy={half} r={r}
           fill="none"
@@ -232,7 +232,7 @@ function OccupancyDonut({
 }
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -1050,7 +1050,7 @@ export default function BuildingsPage() {
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ display: "flex", gap: 20 }}>
                                     <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{totalUnits}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Total</p></div>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "#10B981", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--metric-value-green)", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
                                     <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>{freeUnits}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Libres</p></div>
                                   </div>
                                   {isHovered && <span style={{ fontSize: "0.75rem", color: compColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Ver detalle →</span>}
@@ -1345,7 +1345,7 @@ export default function BuildingsPage() {
                           <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Total</p>
                         </div>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "#10B981", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--metric-value-green)", lineHeight: 1 }}>
                             {activeLeases}
                           </p>
                           <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p>
@@ -1851,19 +1851,19 @@ export default function BuildingsPage() {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                   <div style={{
                     width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                    background: createStep >= n ? "#8B2252" : "var(--border-default)",
+                    background: createStep >= n ? "var(--accent)" : "var(--border-default)",
                     color: createStep >= n ? "#fff" : "var(--text-muted)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "0.6875rem", fontWeight: 700,
                   }}>
                     {n}
                   </div>
-                  <span style={{ fontSize: "0.5625rem", color: createStep >= n ? "#8B2252" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
+                  <span style={{ fontSize: "0.5625rem", color: createStep >= n ? "var(--accent)" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
                     {label}
                   </span>
                 </div>
                 {i < 3 && (
-                  <div style={{ flex: 1, height: 2, background: createStep > n ? "#8B2252" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
+                  <div style={{ flex: 1, height: 2, background: createStep > n ? "var(--accent)" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
                 )}
               </div>
             ))}

@@ -468,7 +468,7 @@ const EMPTY_CREATE_FORM: CreateTicketFormValues = {
 };
 
 const maintenanceErrorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -1477,7 +1477,7 @@ export default function MaintenancePage() {
       {urgentTicketsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {urgentTicketsBanner.length} ticket{urgentTicketsBanner.length !== 1 ? "s" : ""} urgente{urgentTicketsBanner.length !== 1 ? "s" : ""} sin resolver
             </span>
@@ -1497,7 +1497,7 @@ export default function MaintenancePage() {
       {preventiveBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
             <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {preventiveBanner.length} mantenimiento{preventiveBanner.length !== 1 ? "s" : ""} preventivo{preventiveBanner.length !== 1 ? "s" : ""} programado{preventiveBanner.length !== 1 ? "s" : ""} en los próximos 15 días
             </span>
@@ -2724,7 +2724,7 @@ function TicketCard({
                           background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
                         }}>
                           <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>Total gastado (recibidas)</span>
-                          <span style={{ fontSize: "0.9375rem", fontWeight: 800, color: "#10B981", fontFamily: "monospace" }}>
+                          <span style={{ fontSize: "0.9375rem", fontWeight: 800, color: "var(--metric-value-green)", fontFamily: "monospace" }}>
                             ${totalGastado.toFixed(2)}
                           </span>
                         </div>
@@ -2746,7 +2746,7 @@ function TicketCard({
                                 <span style={{ flex: 1, minWidth: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {it.description}
                                 </span>
-                                <span style={{ color: "#F59E0B", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                <span style={{ color: "var(--metric-value-amber)", fontWeight: 700, whiteSpace: "nowrap" }}>
                                   {pend} {it.unit} pendiente{pend !== 1 ? "s" : ""}
                                 </span>
                                 <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontFamily: "monospace", whiteSpace: "nowrap" }}>

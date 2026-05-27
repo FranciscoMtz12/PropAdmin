@@ -127,7 +127,7 @@ function computeBathroomsHalf(s2: Step2, eq: Equipment): number {
 
 /* ─── Sub-components ─────────────────────────────────────────────────── */
 
-const ACCENT = "#8B2252";
+const ACCENT = "var(--accent)";
 
 function ps(active: boolean): React.CSSProperties {
   return {
@@ -1132,7 +1132,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               placeholder="Ej. Tipo A — 2 recámaras"
               style={STEP_INPUT}
             />
-            {s1Error && <p style={{ margin: "4px 0 0", color: "#ef4444", fontSize: "0.75rem" }}>{s1Error}</p>}
+            {s1Error && <p style={{ margin: "4px 0 0", color: "var(--metric-value-red)", fontSize: "0.75rem" }}>{s1Error}</p>}
           </AppFormField>
           <AppFormField label="Superficie m²">
             <input value={s1.sqm} onChange={(e) => setS1((p) => ({ ...p, sqm: e.target.value }))} type="number" min={0} placeholder="Ej. 60" style={STEP_INPUT} />

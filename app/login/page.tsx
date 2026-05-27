@@ -279,7 +279,7 @@ export default function LoginPage() {
             style={{
               marginTop: ".5rem",
               padding: ".75rem",
-              background: isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              background: isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
               border: "none",
               borderRadius: "var(--border-radius-md)",
               color: "#fff",
@@ -294,7 +294,7 @@ export default function LoginPage() {
 
           <p style={{ textAlign: "center", marginTop: "12px", fontSize: "0.875rem", color: "rgba(255,255,255,.55)" }}>
             ¿No tienes cuenta?{" "}
-            <a href="/register" style={{ color: "#8B2252", fontWeight: 600, display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 4px" }}>
+            <a href="/register" style={{ color: "var(--accent)", fontWeight: 600, display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 4px" }}>
               Regístrate →
             </a>
           </p>

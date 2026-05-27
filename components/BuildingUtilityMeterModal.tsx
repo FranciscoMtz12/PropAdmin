@@ -192,7 +192,7 @@ export default function BuildingUtilityMeterModal({
                 padding: "14px 16px",
                 borderRadius: "var(--border-radius-lg)",
                 cursor: "pointer",
-                border: `2px solid ${meterType === "dedicated" ? "#8B2252" : "var(--border-default)"}`,
+                border: `2px solid ${meterType === "dedicated" ? "var(--accent)" : "var(--border-default)"}`,
                 background: meterType === "dedicated" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
               }}
             >
@@ -202,7 +202,7 @@ export default function BuildingUtilityMeterModal({
                   value="dedicated"
                   checked={meterType === "dedicated"}
                   onChange={() => setMeterType("dedicated")}
-                  style={{ accentColor: "#8B2252" }}
+                  style={{ accentColor: "var(--accent)" }}
                 />
                 <strong style={{ fontSize: "0.875rem" }}>Dedicado</strong>
               </div>
@@ -219,7 +219,7 @@ export default function BuildingUtilityMeterModal({
                 padding: "14px 16px",
                 borderRadius: "var(--border-radius-lg)",
                 cursor: "pointer",
-                border: `2px solid ${meterType === "shared" ? "#8B2252" : "var(--border-default)"}`,
+                border: `2px solid ${meterType === "shared" ? "var(--accent)" : "var(--border-default)"}`,
                 background: meterType === "shared" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
               }}
             >
@@ -229,7 +229,7 @@ export default function BuildingUtilityMeterModal({
                   value="shared"
                   checked={meterType === "shared"}
                   onChange={() => setMeterType("shared")}
-                  style={{ accentColor: "#8B2252" }}
+                  style={{ accentColor: "var(--accent)" }}
                 />
                 <strong style={{ fontSize: "0.875rem" }}>Compartido</strong>
               </div>
@@ -248,7 +248,7 @@ export default function BuildingUtilityMeterModal({
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
-                    border: `2px solid ${contractHolder === "company" ? "#8B2252" : "var(--border-default)"}`,
+                    border: `2px solid ${contractHolder === "company" ? "var(--accent)" : "var(--border-default)"}`,
                     background: contractHolder === "company" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
                 >
@@ -258,7 +258,7 @@ export default function BuildingUtilityMeterModal({
                       value="company"
                       checked={contractHolder === "company"}
                       onChange={() => setContractHolder("company")}
-                      style={{ accentColor: "#8B2252" }}
+                      style={{ accentColor: "var(--accent)" }}
                     />
                     <Building2 size={14} />
                     <strong style={{ fontSize: "0.875rem" }}>La empresa paga y cobra</strong>
@@ -272,7 +272,7 @@ export default function BuildingUtilityMeterModal({
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
-                    border: `2px solid ${contractHolder === "tenant" ? "#8B2252" : "var(--border-default)"}`,
+                    border: `2px solid ${contractHolder === "tenant" ? "var(--accent)" : "var(--border-default)"}`,
                     background: contractHolder === "tenant" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
                 >
@@ -282,7 +282,7 @@ export default function BuildingUtilityMeterModal({
                       value="tenant"
                       checked={contractHolder === "tenant"}
                       onChange={() => setContractHolder("tenant")}
-                      style={{ accentColor: "#8B2252" }}
+                      style={{ accentColor: "var(--accent)" }}
                     />
                     <User size={14} />
                     <strong style={{ fontSize: "0.875rem" }}>El inquilino paga directo</strong>
@@ -317,7 +317,7 @@ export default function BuildingUtilityMeterModal({
                     padding: "14px 16px",
                     borderRadius: "var(--border-radius-lg)",
                     cursor: "pointer",
-                    border: `2px solid ${billingMode === "charged" ? "#8B2252" : "var(--border-default)"}`,
+                    border: `2px solid ${billingMode === "charged" ? "var(--accent)" : "var(--border-default)"}`,
                     background: billingMode === "charged" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
                 >
@@ -327,7 +327,7 @@ export default function BuildingUtilityMeterModal({
                       value="charged"
                       checked={billingMode === "charged"}
                       onChange={() => setBillingMode("charged")}
-                      style={{ accentColor: "#8B2252" }}
+                      style={{ accentColor: "var(--accent)" }}
                     />
                     <strong style={{ fontSize: "0.875rem" }}>Se cobra al inquilino</strong>
                   </div>
@@ -344,7 +344,7 @@ export default function BuildingUtilityMeterModal({
                     padding: "14px 16px",
                     borderRadius: "var(--border-radius-lg)",
                     cursor: "pointer",
-                    border: `2px solid ${billingMode === "included" ? "#8B2252" : "var(--border-default)"}`,
+                    border: `2px solid ${billingMode === "included" ? "var(--accent)" : "var(--border-default)"}`,
                     background: billingMode === "included" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
                 >
@@ -354,7 +354,7 @@ export default function BuildingUtilityMeterModal({
                       value="included"
                       checked={billingMode === "included"}
                       onChange={() => setBillingMode("included")}
-                      style={{ accentColor: "#8B2252" }}
+                      style={{ accentColor: "var(--accent)" }}
                     />
                     <strong style={{ fontSize: "0.875rem" }}>Incluido en renta</strong>
                   </div>
@@ -369,11 +369,11 @@ export default function BuildingUtilityMeterModal({
               <div
                 style={{
                   padding: "12px 16px",
-                  background: "#eff6ff",
+                  background: "var(--metric-bg-blue)",
                   borderRadius: "var(--border-radius-md)",
                   marginBottom: 16,
                   fontSize: "0.8125rem",
-                  color: "#1d4ed8",
+                  color: "var(--metric-value-blue)",
                   display: "flex",
                   alignItems: "flex-start",
                   gap: 8,
@@ -414,7 +414,7 @@ export default function BuildingUtilityMeterModal({
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
-                    border: `2px solid ${billingFrequency === "monthly" ? "#8B2252" : "var(--border-default)"}`,
+                    border: `2px solid ${billingFrequency === "monthly" ? "var(--accent)" : "var(--border-default)"}`,
                     background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
                 >
@@ -424,7 +424,7 @@ export default function BuildingUtilityMeterModal({
                       value="monthly"
                       checked={billingFrequency === "monthly"}
                       onChange={() => setBillingFrequency("monthly")}
-                      style={{ accentColor: "#8B2252" }}
+                      style={{ accentColor: "var(--accent)" }}
                     />
                     <CalendarDays size={14} />
                     <strong style={{ fontSize: "0.875rem" }}>Mensual</strong>
@@ -438,7 +438,7 @@ export default function BuildingUtilityMeterModal({
                   style={{
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
-                    border: `2px solid ${billingFrequency === "bimonthly" ? "#8B2252" : "var(--border-default)"}`,
+                    border: `2px solid ${billingFrequency === "bimonthly" ? "var(--accent)" : "var(--border-default)"}`,
                     background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
                   }}
                 >
@@ -448,7 +448,7 @@ export default function BuildingUtilityMeterModal({
                       value="bimonthly"
                       checked={billingFrequency === "bimonthly"}
                       onChange={() => setBillingFrequency("bimonthly")}
-                      style={{ accentColor: "#8B2252" }}
+                      style={{ accentColor: "var(--accent)" }}
                     />
                     <Calendar size={14} />
                     <strong style={{ fontSize: "0.875rem" }}>Bimestral</strong>
@@ -487,11 +487,11 @@ export default function BuildingUtilityMeterModal({
                 <div
                   style={{
                     padding: "12px 16px",
-                    background: "#eff6ff",
+                    background: "var(--metric-bg-blue)",
                     borderRadius: "var(--border-radius-md)",
                     marginBottom: 16,
                     fontSize: "0.8125rem",
-                    color: "#1d4ed8",
+                    color: "var(--metric-value-blue)",
                     display: "flex",
                     alignItems: "flex-start",
                     gap: 8,

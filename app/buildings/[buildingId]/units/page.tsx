@@ -197,7 +197,7 @@ function StatusCircle({ status }: { status: string }) {
 }
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -1007,7 +1007,7 @@ export default function BuildingUnitsPage() {
                         width: 18,
                         height: 18,
                         borderRadius: "50%",
-                        background: "#EF9F27",
+                        background: "var(--metric-bg-amber)",
                         zIndex: 10,
                         pointerEvents: "none",
                       }}

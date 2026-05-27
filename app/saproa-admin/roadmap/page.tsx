@@ -38,9 +38,9 @@ const ROADMAP: RoadmapItem[] = [
 ];
 
 const PRIORITY_CONFIG = {
-  alta:  { label: "Alta prioridad",  color: "#EF4444", bg: "rgba(239,68,68,0.08)",  badgeVariant: "red"   as const },
-  media: { label: "Media prioridad", color: "#F59E0B", bg: "rgba(245,158,11,0.08)", badgeVariant: "amber" as const },
-  baja:  { label: "Baja prioridad",  color: "#22C55E", bg: "rgba(34,197,94,0.08)",  badgeVariant: "green" as const },
+  alta:  { label: "Alta prioridad",  color: "var(--metric-value-red)",   bg: "rgba(239,68,68,0.08)",  badgeVariant: "red"   as const },
+  media: { label: "Media prioridad", color: "var(--metric-value-amber)", bg: "rgba(245,158,11,0.08)", badgeVariant: "amber" as const },
+  baja:  { label: "Baja prioridad",  color: "var(--metric-value-green)", bg: "rgba(34,197,94,0.08)",  badgeVariant: "green" as const },
 };
 
 const PRIORITIES: Array<"alta" | "media" | "baja"> = ["alta", "media", "baja"];

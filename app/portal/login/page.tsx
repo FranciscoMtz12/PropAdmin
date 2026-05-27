@@ -211,7 +211,7 @@ export default function PortalLoginPage() {
             )}
             <button type="submit" disabled={loginForm.formState.isSubmitting} style={{
               marginTop:".25rem", padding:".75rem",
-              background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
               border:"none", borderRadius: "var(--border-radius-md)", color:"#fff",
               fontSize: "0.875rem", fontWeight:500, cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
             }}>
@@ -250,7 +250,7 @@ export default function PortalLoginPage() {
             )}
             <button type="submit" disabled={activateForm.formState.isSubmitting} style={{
               marginTop:".25rem", padding:".75rem",
-              background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
               border:"none", borderRadius: "var(--border-radius-md)", color:"#fff",
               fontSize: "0.875rem", fontWeight:500, cursor: activateForm.formState.isSubmitting ? "not-allowed" : "pointer",
             }}>

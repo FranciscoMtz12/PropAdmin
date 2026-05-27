@@ -198,8 +198,8 @@ export default function CampoMedidoresPage() {
       {/* Header compacto */}
       <div style={{ padding: "16px 16px 0", background: "var(--bg-card)", borderBottom: "1px solid var(--border-default)", marginBottom: 16 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-          <Zap size={20} color="#8B2252" />
-          <h1 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 800, color: "#8B2252" }}>Lecturas de medidores</h1>
+          <Zap size={20} color="var(--accent)" />
+          <h1 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 800, color: "var(--accent)" }}>Lecturas de medidores</h1>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
           <button type="button" onClick={() => navMonth(-1)} style={{ padding: "6px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", color: "var(--text-primary)" }}>
@@ -224,8 +224,8 @@ export default function CampoMedidoresPage() {
               onClick={() => setFilter(key)}
               style={{
                 padding: "6px 12px", borderRadius: 999, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
-                border: `1px solid ${filter === key ? "#8B2252" : "var(--border-default)"}`,
-                background: filter === key ? "#8B2252" : "var(--bg-card)",
+                border: `1px solid ${filter === key ? "var(--accent)" : "var(--border-default)"}`,
+                background: filter === key ? "var(--accent)" : "var(--bg-card)",
                 color: filter === key ? "#fff" : "var(--text-primary)",
               }}
             >
@@ -259,7 +259,7 @@ export default function CampoMedidoresPage() {
             return (
               <div key={group.meter.id} style={{ marginBottom: 24 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "#8B2252", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--accent)", display: "inline-flex", alignItems: "center", gap: 5 }}>
                     <MapPin size={14} />{group.building_name}
                   </span>
                   <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
@@ -281,8 +281,8 @@ export default function CampoMedidoresPage() {
                         style={{
                           padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                           background: "var(--bg-card)",
-                          border: `1px solid ${isCaptured ? "#15803d" : "var(--border-default)"}`,
-                          borderLeft: `4px solid ${isCaptured ? "#15803d" : "#c2410c"}`,
+                          border: `1px solid ${isCaptured ? "var(--metric-border-green)" : "var(--border-default)"}`,
+                          borderLeft: `4px solid ${isCaptured ? "var(--metric-border-green)" : "#c2410c"}`,
                         }}
                       >
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
@@ -298,7 +298,7 @@ export default function CampoMedidoresPage() {
                           <span style={{
                             padding: "4px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 700,
                             background: isCaptured ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.08)",
-                            color: isCaptured ? "#10B981" : "#DC2626",
+                            color: isCaptured ? "var(--metric-value-green)" : "var(--metric-value-red)",
                           }}>
                             {isCaptured ? "Capturado" : "Pendiente"}
                           </span>

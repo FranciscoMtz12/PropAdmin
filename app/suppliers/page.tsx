@@ -135,7 +135,7 @@ const EMPTY_FORM: SupplierFormValues = {
 };
 
 const errorTextStyle: CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -946,7 +946,7 @@ export default function SuppliersPage() {
               <span style={{
                 position: "absolute", cursor: "pointer",
                 top: 0, left: 0, right: 0, bottom: 0,
-                background: formTieneCredito ? "#16a34a" : "var(--border-default)",
+                background: formTieneCredito ? "var(--metric-value-green)" : "var(--border-default)",
                 borderRadius: "var(--border-radius-lg)", transition: "0.2s",
               }} />
               <span style={{

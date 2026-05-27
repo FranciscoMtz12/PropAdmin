@@ -78,7 +78,7 @@ function getStatusStyles(status: MaintenanceItem["status"]): CSSProperties {
       return {
         background: "var(--icon-bg-amber)",
         color: "var(--badge-text-amber)",
-        border: "1px solid #FDE68A",
+        border: "1px solid var(--metric-border-amber)",
       };
     case "IN_PROGRESS":
       return {
@@ -90,7 +90,7 @@ function getStatusStyles(status: MaintenanceItem["status"]): CSSProperties {
       return {
         background: "var(--icon-bg-green)",
         color: "var(--badge-text-green)",
-        border: "1px solid #BBF7D0",
+        border: "1px solid var(--metric-border-green)",
       };
     default:
       return {
@@ -288,7 +288,7 @@ export default function AssetMaintenancePage() {
         {logs.length === 0 ? (
           <div
             style={{
-              border: "1px dashed #D0D5DD",
+              border: "1px dashed var(--border-dashed)",
               borderRadius: "var(--border-radius-xl)",
               padding: 24,
               textAlign: "center",

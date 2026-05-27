@@ -827,18 +827,10 @@ export default function DashboardPage() {
      el mismo set de colores y no haya valores hardcodeados dispersos.
   ─────────────────────────────────────────────────────────────────── */
   const c = {
-    /* Textos */
-    textPrimary:   isDark ? "#F1F5F9" : "#101828",
-    textSecondary: isDark ? "#CBD5E1" : "#374151",
-    textMuted:     isDark ? "#94A3B8" : "#667085",
-    textSubtle:    isDark ? "#64748B" : "#94A3B8",
-    textLabel:     isDark ? "#64748B" : "#9CA3AF",   /* labels uppercase */
-    /* Divisores y bordes internos de card */
-    divider:       isDark ? "#2D3748" : "#F3F4F6",
-    /* Recharts */
+    /* Recharts — kept as raw hex because they go to chart props (stroke/fill/tick.fill) */
     chartAxis:     isDark ? "#64748B" : "#667085",
     chartGrid:     isDark ? "#2D3748" : "#F2F4F7",
-    /* Segmento neutro de las donas (vacío/sin datos) */
+    /* Segmento neutro de las donas (vacío/sin datos) — used in Recharts Cell fill */
     donutEmpty:    isDark ? "#374151" : "#e5e7eb",
   };
 
@@ -881,7 +873,7 @@ export default function DashboardPage() {
             style={{
               fontSize: "0.6875rem",
               fontWeight: 700,
-              color: c.textLabel,
+              color: "var(--text-muted)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: "0 0 4px",
@@ -897,7 +889,7 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
+                color: "var(--text-muted)",
                 fontSize: "0.875rem",
               }}
             >
@@ -948,33 +940,33 @@ export default function DashboardPage() {
                     style={{
                       fontSize: "1.875rem",
                       fontWeight: 800,
-                      color: c.textPrimary,
+                      color: "var(--text-primary)",
                       display: "block",
                       lineHeight: 1,
                     }}
                   >
                     {occupancyStats.rate}%
                   </strong>
-                  <span style={{ fontSize: "0.6875rem", color: c.textMuted, fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600 }}>
                     ocupación
                   </span>
                 </div>
               </div>
               <div
                 style={{
-                  borderTop: `1px solid ${c.divider}`,
+                  borderTop: "1px solid var(--divider)",
                   paddingTop: 14,
                   marginTop: 6,
                   textAlign: "center",
                 }}
               >
-                <p style={{ margin: 0, fontSize: "0.8125rem", color: c.textSecondary }}>
-                  <strong style={{ color: "#22c55e" }}>{occupancyStats.occupied}</strong>{" "}
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
+                  <strong style={{ color: "var(--metric-value-green)" }}>{occupancyStats.occupied}</strong>{" "}
                   ocupadas de{" "}
-                  <strong style={{ color: c.textPrimary }}>{occupancyStats.total}</strong> totales
+                  <strong style={{ color: "var(--text-primary)" }}>{occupancyStats.total}</strong> totales
                 </p>
                 {occupancyStats.vacant > 0 && (
-                  <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: c.textMuted }}>
+                  <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     {occupancyStats.vacant}{" "}
                     {occupancyStats.vacant === 1 ? "disponible" : "disponibles"}
                   </p>
@@ -990,7 +982,7 @@ export default function DashboardPage() {
             style={{
               fontSize: "0.6875rem",
               fontWeight: 700,
-              color: c.textLabel,
+              color: "var(--text-muted)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: "0 0 4px",
@@ -1006,7 +998,7 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
+                color: "var(--text-muted)",
                 fontSize: "0.875rem",
               }}
             >
@@ -1051,7 +1043,7 @@ export default function DashboardPage() {
                     style={{
                       fontSize: collectionDonutIsEmpty ? "1.125rem" : "1rem",
                       fontWeight: 800,
-                      color: collectionDonutIsEmpty ? c.textSubtle : c.textPrimary,
+                      color: collectionDonutIsEmpty ? "var(--text-muted)" : "var(--text-primary)",
                       display: "block",
                       lineHeight: 1.2,
                     }}
@@ -1060,7 +1052,7 @@ export default function DashboardPage() {
                       ? "$0.00"
                       : formatMXNCompact(collectionMonthStats.monthTotal)}
                   </strong>
-                  <span style={{ fontSize: "0.625rem", color: c.textSubtle, fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", fontWeight: 600 }}>
                     total mes
                   </span>
                 </div>
@@ -1069,7 +1061,7 @@ export default function DashboardPage() {
               {/* Pie: desglose o mensaje vacío */}
               <div
                 style={{
-                  borderTop: `1px solid ${c.divider}`,
+                  borderTop: "1px solid var(--divider)",
                   paddingTop: 14,
                   marginTop: 6,
                 }}
@@ -1079,7 +1071,7 @@ export default function DashboardPage() {
                     style={{
                       margin: 0,
                       fontSize: "0.75rem",
-                      color: c.textSubtle,
+                      color: "var(--text-muted)",
                       textAlign: "center",
                     }}
                   >
@@ -1108,7 +1100,7 @@ export default function DashboardPage() {
                               alignItems: "center",
                               gap: 6,
                               fontSize: "0.75rem",
-                              color: c.textMuted,
+                              color: "var(--text-muted)",
                             }}
                           >
                             <span
@@ -1141,7 +1133,7 @@ export default function DashboardPage() {
             style={{
               fontSize: "0.6875rem",
               fontWeight: 700,
-              color: c.textLabel,
+              color: "var(--text-muted)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: "0 0 4px",
@@ -1157,7 +1149,7 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
+                color: "var(--text-muted)",
                 fontSize: "0.875rem",
               }}
             >
@@ -1206,30 +1198,30 @@ export default function DashboardPage() {
                     style={{
                       fontSize: "1.875rem",
                       fontWeight: 800,
-                      color: c.textPrimary,
+                      color: "var(--text-primary)",
                       display: "block",
                       lineHeight: 1,
                     }}
                   >
                     {buildingStats.total}
                   </strong>
-                  <span style={{ fontSize: "0.6875rem", color: c.textMuted, fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600 }}>
                     edificios
                   </span>
                 </div>
               </div>
               <div
                 style={{
-                  borderTop: `1px solid ${c.divider}`,
+                  borderTop: "1px solid var(--divider)",
                   paddingTop: 14,
                   marginTop: 6,
                   textAlign: "center",
                 }}
               >
-                <p style={{ margin: 0, fontSize: "0.8125rem", color: c.textSecondary }}>
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                   <strong style={{ color: "#6366f1" }}>{buildingStats.withTenants}</strong>{" "}
                   con inquilinos ·{" "}
-                  <strong style={{ color: c.textSecondary }}>{buildingStats.empty}</strong>{" "}
+                  <strong style={{ color: "var(--text-secondary)" }}>{buildingStats.empty}</strong>{" "}
                   {buildingStats.empty === 1 ? "vacío" : "vacíos"}
                 </p>
               </div>
@@ -1255,7 +1247,7 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
+                color: "var(--text-muted)",
                 fontSize: "0.875rem",
               }}
             >
@@ -1270,7 +1262,7 @@ export default function DashboardPage() {
             <div className="dashboard-chart-wrap">
               <div className="dashboard-chart-legend">
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.8125rem" }}>
-                  <span style={{ color: "#22c55e" }}>●</span> Cobrado
+                  <span style={{ color: "var(--metric-value-green)" }}>●</span> Cobrado
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.8125rem" }}>
                   <span style={{ color: "#f97316" }}>●</span> Pendiente
@@ -1329,7 +1321,7 @@ export default function DashboardPage() {
           icon={<Calendar size={18} />}
         >
           {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : !agendaHoy.hasActivity ? (
             <AppEmptyState
               title="Día sin actividades programadas ✓"
@@ -1434,7 +1426,7 @@ export default function DashboardPage() {
           icon={<DoorOpen size={18} />}
         >
           {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : availableUnitRows.length === 0 ? (
             <AppEmptyState
               title="Sin unidades disponibles"
@@ -1455,12 +1447,12 @@ export default function DashboardPage() {
                           fontWeight: 600,
                           fontSize: "0.8125rem",
                           display: "block",
-                          color: c.textPrimary,
+                          color: "var(--text-primary)",
                         }}
                       >
                         {row.unitLabel}
                       </span>
-                      <span style={{ fontSize: "0.6875rem", color: c.textMuted }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {row.buildingName}
                       </span>
                     </div>
@@ -1470,7 +1462,7 @@ export default function DashboardPage() {
                   key: "type",
                   header: "Recámaras",
                   render: (row) => (
-                    <span style={{ fontSize: "0.8125rem", color: c.textSecondary }}>
+                    <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                       {row.bedroomsLabel}
                     </span>
                   ),
@@ -1507,7 +1499,7 @@ export default function DashboardPage() {
           icon={<AlertTriangle size={18} />}
         >
           {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : overdueRows.length === 0 ? (
             <AppEmptyState
               title="Sin cobros vencidos ✓"
@@ -1529,7 +1521,7 @@ export default function DashboardPage() {
                           fontWeight: 600,
                           fontSize: "0.8125rem",
                           display: "block",
-                          color: c.textPrimary,
+                          color: "var(--text-primary)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -1540,7 +1532,7 @@ export default function DashboardPage() {
                       <span
                         style={{
                           fontSize: "0.6875rem",
-                          color: c.textMuted,
+                          color: "var(--text-muted)",
                           display: "block",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -1593,7 +1585,7 @@ export default function DashboardPage() {
             icon={<CalendarClock size={18} />}
           >
             {loadingData ? (
-              <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Cargando...</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
             ) : expiringLeaseRows.length === 0 ? (
               <AppEmptyState
                 title="Sin contratos por vencer"
@@ -1616,7 +1608,7 @@ export default function DashboardPage() {
                             fontWeight: 600,
                             fontSize: "0.8125rem",
                             display: "block",
-                            color: c.textPrimary,
+                            color: "var(--text-primary)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -1629,7 +1621,7 @@ export default function DashboardPage() {
                         <span
                           style={{
                             fontSize: "0.6875rem",
-                            color: c.textMuted,
+                            color: "var(--text-muted)",
                             display: "block",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -1655,7 +1647,7 @@ export default function DashboardPage() {
                           <span
                             style={{
                               fontSize: "0.6875rem",
-                              color: c.textMuted,
+                              color: "var(--text-muted)",
                               display: "block",
                               whiteSpace: "nowrap",
                             }}
@@ -1787,12 +1779,12 @@ export default function DashboardPage() {
               icon={<ClipboardList size={18} />}
             >
               {checklistLoading ? (
-                <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Calculando...</p>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Calculando...</p>
               ) : allDone ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
-                  <CheckCircle2 size={36} color="#22C55E" />
-                  <p style={{ margin: 0, fontWeight: 700, color: "#22C55E", fontSize: "0.9375rem" }}>Mes al día</p>
-                  <p style={{ margin: 0, fontSize: "0.75rem", color: c.textMuted, textAlign: "center" }}>
+                  <CheckCircle2 size={36} color="var(--metric-value-green)" />
+                  <p style={{ margin: 0, fontWeight: 700, color: "var(--metric-value-green)", fontSize: "0.9375rem" }}>Mes al día</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>
                     Todas las tareas del mes están completadas.
                   </p>
                 </div>

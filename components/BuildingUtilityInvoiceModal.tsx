@@ -549,11 +549,11 @@ export default function BuildingUtilityInvoiceModal({
             }}
           >
             {pdfFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-green)", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{pdfFile.name}
               </p>
             ) : existingInvoice?.pdf_path ? (
-              <p style={{ margin: 0, color: "#1d4ed8", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-blue)", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />PDF existente — toca para reemplazar
               </p>
             ) : (
@@ -587,11 +587,11 @@ export default function BuildingUtilityInvoiceModal({
         {!isShared && !isTenantContract && amountValid && (
           <div style={{
             padding: "12px 14px",
-            background: "#eff6ff",
+            background: "var(--metric-bg-blue)",
             borderRadius: "var(--border-radius-md)",
             marginBottom: 16,
             fontSize: "0.8125rem",
-            color: "#1d4ed8",
+            color: "var(--metric-value-blue)",
             display: "flex",
             alignItems: "flex-start",
             gap: 8,

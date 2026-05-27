@@ -87,7 +87,7 @@ const portalReportSchema = z.object({
 type PortalReportFormValues = z.infer<typeof portalReportSchema>;
 
 const portalReportErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
+  color: "var(--metric-value-red)",
   fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
@@ -1201,7 +1201,7 @@ export default function PortalReportPaymentPage() {
                       gap: 8,
                       padding: "10px 12px",
                       borderRadius: "var(--border-radius-lg)",
-                      border: amountMode === "full" ? "1px solid #86EFAC" : "1px solid #D1D5DB",
+                      border: amountMode === "full" ? "1px solid var(--metric-border-green)" : "1px solid var(--border-strong)",
                       background: amountMode === "full" ? "var(--metric-bg-green)" : "var(--bg-card)",
                       color: "var(--text-primary)",
                       fontSize: "0.875rem",
@@ -1223,7 +1223,7 @@ export default function PortalReportPaymentPage() {
                       gap: 8,
                       padding: "10px 12px",
                       borderRadius: "var(--border-radius-lg)",
-                      border: amountMode === "other" ? "1px solid #93C5FD" : "1px solid #D1D5DB",
+                      border: amountMode === "other" ? "1px solid #93C5FD" : "1px solid var(--border-strong)",
                       background: amountMode === "other" ? "var(--metric-bg-neutral)" : "var(--bg-card)",
                       color: "var(--text-primary)",
                       fontSize: "0.875rem",
@@ -1441,7 +1441,7 @@ export default function PortalReportPaymentPage() {
                 style={{
                   padding: 14,
                   borderRadius: "var(--border-radius-lg)",
-                  border: "1px dashed #D1D5DB",
+                  border: "1px dashed var(--border-strong)",
                   background: "var(--bg-card-hover)",
                   color: "var(--text-muted)",
                   fontSize: "0.875rem",
@@ -1618,7 +1618,7 @@ export default function PortalReportPaymentPage() {
                               gap: 8,
                               padding: "10px 12px",
                               borderRadius: "var(--border-radius-lg)",
-                              border: "1px dashed #D1D5DB",
+                              border: "1px dashed var(--border-strong)",
                               color: "var(--text-muted)",
                               fontSize: "0.8125rem",
                               fontWeight: 700,

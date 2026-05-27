@@ -605,12 +605,12 @@ function formatFileSize(bytes: number | null) {
 }
 
 const DOC_CATEGORIES: Array<{ key: string; label: string; color: string; bg: string; border: string }> = [
-  { key: "contratos",          label: "Contratos",            color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
-  { key: "facturas",           label: "Facturas",             color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
+  { key: "contratos",          label: "Contratos",            color: "var(--metric-value-blue)",  bg: "var(--metric-bg-blue)",    border: "var(--metric-border-blue)"  },
+  { key: "facturas",           label: "Facturas",             color: "var(--metric-value-amber)", bg: "var(--metric-bg-amber)",   border: "var(--metric-border-amber)" },
   { key: "fotos",              label: "Fotos",                color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
-  { key: "permisos_licencias", label: "Permisos y licencias", color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
+  { key: "permisos_licencias", label: "Permisos y licencias", color: "var(--metric-value-green)", bg: "var(--metric-bg-green)",   border: "var(--metric-border-green)" },
   { key: "planos",             label: "Planos",               color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
-  { key: "otros",              label: "Otros",                color: "#6b7280", bg: "#f9fafb", border: "#d1d5db" },
+  { key: "otros",              label: "Otros",                color: "var(--text-muted)",         bg: "var(--bg-page)",           border: "var(--border-strong)"       },
 ];
 
 function getFileCategoryLabel(cat: string) {
@@ -626,7 +626,7 @@ function getFileCategoryLabel(cat: string) {
 }
 
 function getDocCategoryMeta(cat: string) {
-  return DOC_CATEGORIES.find((c) => c.key === cat) ?? { key: cat, label: cat || "Otro", color: "#6b7280", bg: "#f9fafb", border: "#d1d5db" };
+  return DOC_CATEGORIES.find((c) => c.key === cat) ?? { key: cat, label: cat || "Otro", color: "var(--text-muted)", bg: "var(--bg-page)", border: "var(--border-strong)" };
 }
 
 function getDocFileIcon(mimeType: string | null, fileName: string): { color: string; bg: string } {
@@ -635,12 +635,12 @@ function getDocFileIcon(mimeType: string | null, fileName: string): { color: str
   if (mime.startsWith("image/") || ["jpg","jpeg","png","gif","webp","svg","avif"].includes(ext))
     return { color: "#7c3aed", bg: "#f5f3ff" };
   if (mime === "application/pdf" || ext === "pdf")
-    return { color: "#dc2626", bg: "#fef2f2" };
+    return { color: "var(--metric-value-red)", bg: "var(--metric-bg-red)" };
   if (mime.includes("word") || ["doc","docx"].includes(ext))
-    return { color: "#2563eb", bg: "#eff6ff" };
+    return { color: "var(--metric-value-blue)", bg: "var(--metric-bg-blue)" };
   if (mime.includes("excel") || mime.includes("spreadsheet") || ["xls","xlsx","csv"].includes(ext))
-    return { color: "#16a34a", bg: "#f0fdf4" };
-  return { color: "#6b7280", bg: "#f9fafb" };
+    return { color: "var(--metric-value-green)", bg: "var(--metric-bg-green)" };
+  return { color: "var(--text-muted)", bg: "var(--bg-page)" };
 }
 
 const SECTION_SUGGESTIONS: Record<string, string[]> = {
@@ -710,10 +710,10 @@ function computeOccupancyTrend(
  */
 function OccupancyDonutCard({ occupied, total }: { occupied: number; total: number }) {
   const pct   = total > 0 ? Math.round((occupied / total) * 100) : 0;
-  const color = total === 0 ? "#E5E7EB"
-    : pct >= 75 ? "#10B981"
-    : pct >= 40 ? "#F59E0B"
-    : "#EF4444";
+  const color = total === 0 ? "var(--border-default)"
+    : pct >= 75 ? "var(--metric-value-green)"
+    : pct >= 40 ? "var(--metric-value-amber)"
+    : "var(--metric-value-red)";
 
   const r    = 44;
   const circ = 2 * Math.PI * r;
@@ -725,7 +725,7 @@ function OccupancyDonutCard({ occupied, total }: { occupied: number; total: numb
         {/* SVG donut */}
         <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
           <svg width="100" height="100">
-            <circle cx="50" cy="50" r={r} fill="none" stroke="#E5E7EB" strokeWidth="10" />
+            <circle cx="50" cy="50" r={r} fill="none" stroke="var(--border-default)" strokeWidth="10" />
             <circle
               cx="50" cy="50" r={r}
               fill="none"
@@ -841,7 +841,7 @@ function OccupancyTooltip({ active, payload, label }: { active?: boolean; payloa
     <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: "0.8125rem" }}>
       <p style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>{label}</p>
       <p style={{ margin: "2px 0", color: "var(--text-primary)" }}>Total: <strong>{totalVal}</strong></p>
-      <p style={{ margin: "2px 0", color: "#10B981" }}>Ocupadas: <strong>{occupiedVal}</strong></p>
+      <p style={{ margin: "2px 0", color: "var(--metric-value-green)" }}>Ocupadas: <strong>{occupiedVal}</strong></p>
       <p style={{ margin: "2px 0", color: "var(--text-muted)" }}>Ocupación: <strong>{pct}%</strong></p>
     </div>
   );
@@ -3110,8 +3110,8 @@ export default function BuildingDetailPage() {
             style={{
               display: "flex", alignItems: "center",
               gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-              border: "1px solid #dc2626", background: "transparent",
-              color: "#dc2626", cursor: "pointer",
+              border: "1px solid var(--metric-value-red)", background: "transparent",
+              color: "var(--metric-value-red)", cursor: "pointer",
               fontSize: "0.75rem", fontWeight: 600,
             }}
           >
@@ -3135,7 +3135,7 @@ export default function BuildingDetailPage() {
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} />, pendingDot: tabsWithPendingTasks.has('overview') },
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length, pendingDot: tabsWithPendingTasks.has('leases') }] : []),
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
-          ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: '#EF9F27' } : undefined }] : []),
+          ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: 'var(--metric-value-amber)' } : undefined }] : []),
           ...(hasSuperficiesTab ? [{ key: "superficies", label: "Superficies", icon: <Ruler size={16} />, count: buildingAreas.length }] : []),
           ...(hasTypologiesTab ? [{ key: "typologies", label: "Tipologías", icon: <LayoutPanelTop size={16} />, count: unitTypeCount }] : []),
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Equipamiento", icon: <Package size={16} />,      count: tabCounts.assets,    pendingDot: tabsWithPendingTasks.has('assets')       }] : []),
@@ -3299,8 +3299,8 @@ export default function BuildingDetailPage() {
                       <div>
                         <span style={{
                           padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
-                          background: rentalMode === "whole" ? "#0369a11a" : "#8B22521a",
-                          color:      rentalMode === "whole" ? "#0369a1"   : "#8B2252",
+                          background: rentalMode === "whole" ? "#0369a11a" : "rgba(139,34,82,0.1)",
+                          color:      rentalMode === "whole" ? "#0369a1"   : "var(--accent)",
                         }}>
                           {rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
                         </span>
@@ -3322,7 +3322,7 @@ export default function BuildingDetailPage() {
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                 {sorted.map(notif => {
-                  const col = notif.severity === 'brand' ? { bg: '#FDF4FF', border: '#8B2252', text: '#6B1240', dot: '#8B2252' } : SEVERITY_COLORS[notif.severity]
+                  const col = notif.severity === 'brand' ? { bg: '#FDF4FF', border: 'var(--accent)', text: '#6B1240', dot: 'var(--accent)' } : SEVERITY_COLORS[notif.severity]
                   return (
                     <div key={notif.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: col.bg, borderLeft: `4px solid ${col.border}` }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: col.dot, flexShrink: 0, marginTop: 4 }} />
@@ -3370,7 +3370,7 @@ export default function BuildingDetailPage() {
                         {steps.map((step, i) => (
                           <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
                             {step.done
-                              ? <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0 }} />
+                              ? <CheckCircle2 size={18} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
                               : <div style={{ width: 18, height: 18, borderRadius: 999, border: "2px solid var(--border-default)", flexShrink: 0 }} />
                             }
                             <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
@@ -3423,13 +3423,13 @@ export default function BuildingDetailPage() {
                 borderRadius: "var(--border-radius-lg)",
                 background: "rgba(139,34,82,0.04)",
                 border: "1px solid rgba(139,34,82,0.2)",
-                borderLeft: "4px solid #8B2252",
+                borderLeft: "4px solid var(--accent)",
                 padding: 20,
               }}>
                 {/* Header */}
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: allDone ? 16 : 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <CheckSquare size={18} color="#8B2252" />
+                    <CheckSquare size={18} color="var(--accent)" />
                     <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                       Configuración pendiente
                     </span>
@@ -3440,7 +3440,7 @@ export default function BuildingDetailPage() {
                       <circle
                         cx="16" cy="16" r="12"
                         fill="none"
-                        stroke="#1D9E75"
+                        stroke="var(--metric-value-green)"
                         strokeWidth="3"
                         strokeLinecap="round"
                         strokeDasharray={circ}
@@ -3461,7 +3461,7 @@ export default function BuildingDetailPage() {
                     {/* Badge de pendientes */}
                     {pendingTasks.length > 0 && (
                       <span style={{
-                        background: "#8B2252", color: "#fff",
+                        background: "var(--accent)", color: "#fff",
                         borderRadius: 999, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700,
                       }}>
                         {pendingTasks.length}
@@ -3481,7 +3481,7 @@ export default function BuildingDetailPage() {
                 {/* Estado: todo completado */}
                 {allDone ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
-                    <CheckCircle2 size={32} color="#1D9E75" />
+                    <CheckCircle2 size={32} color="var(--metric-value-green)" />
                     <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>
                       ¡Propiedad configurada!
                     </p>
@@ -3503,7 +3503,7 @@ export default function BuildingDetailPage() {
                             type="checkbox"
                             checked={false}
                             onChange={() => void handleCompleteTask(task.id)}
-                            style={{ marginTop: 3, cursor: "pointer", accentColor: "#8B2252", flexShrink: 0 }}
+                            style={{ marginTop: 3, cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
                           />
                           <div style={{ flex: 1, minWidth: 0 }}>
                             {resolvedRoute ? (
@@ -3524,7 +3524,7 @@ export default function BuildingDetailPage() {
                                   background: "none", border: "none", padding: 0,
                                   display: "inline-flex", alignItems: "center", gap: 3,
                                   cursor: "pointer",
-                                  fontSize: "0.8125rem", fontWeight: 600, color: "#8B2252",
+                                  fontSize: "0.8125rem", fontWeight: 600, color: "var(--accent)",
                                 }}
                               >
                                 {taskDef?.label ?? task.task_key}
@@ -3550,7 +3550,7 @@ export default function BuildingDetailPage() {
                       <>
                         <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                           <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
-                          <span style={{ fontSize: "0.6875rem", fontWeight: 500, color: "#1D9E75", whiteSpace: "nowrap" }}>Completadas</span>
+                          <span style={{ fontSize: "0.6875rem", fontWeight: 500, color: "var(--metric-value-green)", whiteSpace: "nowrap" }}>Completadas</span>
                           <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
                         </div>
                         {completedTasks.map((task) => {
@@ -3559,9 +3559,9 @@ export default function BuildingDetailPage() {
                           if (!taskDef) return null;
                           return (
                             <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: "var(--border-radius-md)", background: "rgba(16,185,129,0.06)" }}>
-                              <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
+                              <CheckCircle2 size={18} color="var(--metric-value-green)" style={{ flexShrink: 0, marginTop: 2 }} />
                               <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "#1D9E75" }}>
+                                <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--metric-value-green)" }}>
                                   {taskDef?.label ?? task.task_key}
                                 </span>
                                 {taskDef?.description && (
@@ -4705,7 +4705,7 @@ export default function BuildingDetailPage() {
                                 position: "relative", aspectRatio: "1", borderRadius: "var(--border-radius-md)", overflow: "hidden",
                                 cursor: "grab", background: "var(--bg-page)",
                                 opacity: isDragging ? 0.4 : 1,
-                                outline: isDropTarget ? "2px solid #8B2252" : "none",
+                                outline: isDropTarget ? "2px solid var(--accent)" : "none",
                                 transition: "opacity 0.15s, outline 0.1s",
                               }}
                               onClick={() => { if (!dragItem) setLightboxIndex(globalIdx >= 0 ? globalIdx : 0); }}
@@ -4738,13 +4738,13 @@ export default function BuildingDetailPage() {
                             style={{
                               aspectRatio: "1", borderRadius: "var(--border-radius-md)",
                               background: "var(--bg-page)",
-                              border: isAddTarget ? "2px solid #8B2252" : "1.5px dashed var(--border-default)",
+                              border: isAddTarget ? "2px solid var(--accent)" : "1.5px dashed var(--border-default)",
                               display: "flex", alignItems: "center", justifyContent: "center",
                               cursor: "pointer",
                               transition: "border 0.1s",
                             }}
                           >
-                            <Plus size={20} color="#8B2252" />
+                            <Plus size={20} color="var(--accent)" />
                           </div>
                         );
                       })()}
@@ -5037,7 +5037,7 @@ export default function BuildingDetailPage() {
               {/* Tickets abiertos */}
               {openTickets.length === 0 ? (
                 <div style={{ padding: "14px 18px" }}>
-                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "#10B981", fontWeight: 600 }}>
+                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--metric-value-green)", fontWeight: 600 }}>
                     Sin tickets pendientes
                   </p>
                 </div>
@@ -5108,7 +5108,7 @@ export default function BuildingDetailPage() {
                     </button>
                   ))}
                 </div>
-                {addScheduleDays.length === 0 && <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "#EF4444" }}>Selecciona al menos un día.</p>}
+                {addScheduleDays.length === 0 && <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "var(--metric-value-red)" }}>Selecciona al menos un día.</p>}
               </div>
               <div>
                 <p style={{ margin: "0 0 10px", fontSize: "0.8125rem", fontWeight: 600 }}>Turno</p>
@@ -5194,7 +5194,7 @@ export default function BuildingDetailPage() {
                     Ocupación del terreno
                   </p>
                   <div style={{ background: "var(--border-default)", borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 8 }}>
-                    <div style={{ width: `${pctRented}%`, height: "100%", background: "#10B981", borderRadius: 999, transition: "width 0.4s ease" }} />
+                    <div style={{ width: `${pctRented}%`, height: "100%", background: "var(--metric-bg-green)", borderRadius: 999, transition: "width 0.4s ease" }} />
                   </div>
                   <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
                     {totalLeasedSqm.toLocaleString("es-MX")} m² rentados
@@ -5203,7 +5203,7 @@ export default function BuildingDetailPage() {
                     {" · "}
                     {totalLandSqm.toLocaleString("es-MX")} m² totales
                     {" · "}
-                    <strong style={{ color: "#10B981" }}>{pctRented}%</strong>
+                    <strong style={{ color: "var(--metric-value-green)" }}>{pctRented}%</strong>
                   </p>
                 </div>
               )}
@@ -5244,7 +5244,7 @@ export default function BuildingDetailPage() {
                           <span style={{
                             padding: "3px 10px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600,
                             background: lease.status === "ACTIVE" ? "rgba(16,185,129,0.1)" : "var(--bg-page)",
-                            color: lease.status === "ACTIVE" ? "#10B981" : "var(--text-muted)",
+                            color: lease.status === "ACTIVE" ? "var(--metric-value-green)" : "var(--text-muted)",
                           }}>
                             {lease.status === "ACTIVE" ? "Activo" : lease.status}
                           </span>
@@ -5471,7 +5471,7 @@ export default function BuildingDetailPage() {
                           style={{
                             position: "absolute", top: -6, right: -6,
                             width: 18, height: 18, borderRadius: "50%",
-                            background: "#EF9F27",
+                            background: "var(--metric-value-amber)",
                             zIndex: 2, pointerEvents: "none",
                           }}
                         />
@@ -5887,7 +5887,7 @@ export default function BuildingDetailPage() {
                       Casa completa
                     </label>
                     <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
-                      <input type="radio" checked={hf.rental_mode === "by_room"} onChange={() => setHF("rental_mode", "by_room")} style={{ accentColor: "#8B2252" }} />
+                      <input type="radio" checked={hf.rental_mode === "by_room"} onChange={() => setHF("rental_mode", "by_room")} style={{ accentColor: "var(--accent)" }} />
                       Por cuartos
                     </label>
                   </div>
@@ -6477,13 +6477,13 @@ export default function BuildingDetailPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {isActive && status === "ok" && (
                       <span title="Configurado" style={{ lineHeight: 0 }}>
-                        <CheckCircle2 size={14} color="#1D9E75" />
+                        <CheckCircle2 size={14} color="var(--metric-value-green)" />
                       </span>
                     )}
                     {isActive && status === "pending" && (
                       <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                        <AlertCircle size={14} color="#EF9F27" />
-                        <span style={{ fontSize: "0.625rem", color: "#EF9F27", fontWeight: 600 }}>Pendiente</span>
+                        <AlertCircle size={14} color="var(--metric-value-amber)" />
+                        <span style={{ fontSize: "0.625rem", color: "var(--metric-value-amber)", fontWeight: 600 }}>Pendiente</span>
                       </span>
                     )}
                     <button
@@ -6507,7 +6507,7 @@ export default function BuildingDetailPage() {
                   </div>
                 </div>
                 {isActive && status === "pending" && hint && (
-                  <p style={{ margin: 0, fontSize: "0.6875rem", color: "#EF9F27", paddingLeft: 23 }}>
+                  <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--metric-value-amber)", paddingLeft: 23 }}>
                     {hint.text.split("→")[0].trim()}{" → "}
                     <button
                       type="button"
@@ -6520,7 +6520,7 @@ export default function BuildingDetailPage() {
                           router.push(hint.path);
                         }
                       }}
-                      style={{ background: "none", border: "none", color: "#EF9F27", fontWeight: 700, fontSize: "0.6875rem", cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                      style={{ background: "none", border: "none", color: "var(--metric-value-amber)", fontWeight: 700, fontSize: "0.6875rem", cursor: "pointer", padding: 0, textDecoration: "underline" }}
                     >
                       {hint.text.split("→")[1]?.trim()}
                     </button>
@@ -6569,8 +6569,8 @@ export default function BuildingDetailPage() {
               {featureWarnToast && (
                 <div style={{
                   marginTop: 16, padding: "10px 14px", borderRadius: "var(--border-radius-md)",
-                  background: "#fff7ed", border: "1px solid #fed7aa",
-                  color: "#c2410c", fontSize: "0.8125rem", fontWeight: 500,
+                  background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)",
+                  color: "var(--metric-value-amber)", fontSize: "0.8125rem", fontWeight: 500,
                 }}>
                   {featureWarnToast}
                 </div>
@@ -6580,7 +6580,7 @@ export default function BuildingDetailPage() {
                 <div style={{
                   marginTop: 16, padding: "10px 14px", borderRadius: "var(--border-radius-md)",
                   background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
-                  color: "#10B981", fontSize: "0.8125rem", fontWeight: 500,
+                  color: "var(--metric-value-green)", fontSize: "0.8125rem", fontWeight: 500,
                 }}>
                   {featureToast}
                 </div>

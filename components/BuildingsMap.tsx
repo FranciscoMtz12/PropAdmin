@@ -105,9 +105,9 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
                 padding: "6px 12px",
                 borderRadius: "var(--border-radius-md)",
                 border: isActive
-                  ? "1px solid #8B2252"
+                  ? "1px solid var(--accent)"
                   : "1px solid var(--border-default)",
-                background: isActive ? "#8B2252" : "transparent",
+                background: isActive ? "var(--accent)" : "transparent",
                 color: isActive ? "#FFFFFF" : "var(--text-primary)",
                 fontSize: "0.75rem",
                 fontWeight: 600,
@@ -133,9 +133,9 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
               padding: "6px 12px",
               borderRadius: "var(--border-radius-md)",
               border: editMode
-                ? "1px solid #10B981"
+                ? "1px solid var(--metric-value-green)"
                 : "1px solid var(--border-default)",
-              background: editMode ? "#10B981" : "transparent",
+              background: editMode ? "var(--metric-value-green)" : "transparent",
               color: editMode ? "#FFFFFF" : "var(--text-primary)",
               fontSize: "0.75rem",
               fontWeight: 600,
@@ -204,7 +204,7 @@ export default function BuildingsMap({ buildings, onUpdateLocation }: BuildingsM
                 {b.name}
               </div>
               {b.address ? (
-                <div style={{ fontSize: "0.75rem", color: "#6B7280", marginBottom: 8 }}>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: 8 }}>
                   {b.address}
                 </div>
               ) : null}

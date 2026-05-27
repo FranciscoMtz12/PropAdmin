@@ -101,9 +101,9 @@ function getPillStatus(due_date: string | null, payment_status: string, todayStr
 
 const PILL_CONFIG: Record<PillStatus, { bg: string; text: string; border: string; label: string; Icon: React.ElementType }> = {
   paid:    { bg: "var(--badge-bg-green)", text: "var(--badge-text-green)", border: "var(--metric-border-green)", label: "Pagado",    Icon: CheckCircle2 },
-  overdue: { bg: "var(--badge-bg-red)",   text: "var(--badge-text-red)",   border: "#FECACA",                   label: "Vencido",   Icon: AlertCircle  },
-  today:   { bg: "#FFF7ED",               text: "#EA580C",                  border: "#FED7AA",                   label: "Vence hoy", Icon: Clock        },
-  pending: { bg: "#FEFCE8",               text: "#A16207",                  border: "#FDE68A",                   label: "Pendiente", Icon: Clock        },
+  overdue: { bg: "var(--badge-bg-red)",   text: "var(--badge-text-red)",   border: "var(--metric-border-red)",  label: "Vencido",   Icon: AlertCircle  },
+  today:   { bg: "var(--metric-bg-amber)", text: "var(--metric-value-amber)", border: "var(--metric-border-amber)", label: "Vence hoy", Icon: Clock        },
+  pending: { bg: "var(--metric-bg-amber)", text: "var(--metric-value-amber)", border: "var(--metric-border-amber)", label: "Pendiente", Icon: Clock        },
 }
 
 function statusBarColor(due_date: string | null, payment_status: string, todayStr: string): string {
@@ -112,25 +112,25 @@ function statusBarColor(due_date: string | null, payment_status: string, todaySt
 
 function dueDateColor(due_date: string | null, payment_status: string, todayStr: string): string {
   if (payment_status === "paid" || !due_date) return "var(--text-muted)"
-  if (due_date < todayStr) return "#dc2626"
-  if (due_date === todayStr) return "#EA580C"
+  if (due_date < todayStr) return "var(--metric-value-red)"
+  if (due_date === todayStr) return "var(--metric-value-amber)"
   return "var(--text-muted)"
 }
 
 /* ─── Concept icon ───────────────────────────────────────────────── */
 
 const CONCEPT_COLORS: Record<string, string> = {
-  electricity: "#f59e0b",
+  electricity: "var(--metric-value-amber)",
   gas:         "#f97316",
-  water:       "#3b82f6",
+  water:       "var(--metric-value-blue)",
   internet:    "#0ea5e9",
-  other:       "#9ca3af",
-  manual:      "#9ca3af",
-  report:      "#8B2252",
+  other:       "var(--text-muted)",
+  manual:      "var(--text-muted)",
+  report:      "var(--accent)",
 }
 
 function ConceptIcon({ type }: { type: string }) {
-  const color = CONCEPT_COLORS[type] ?? "#9ca3af"
+  const color = CONCEPT_COLORS[type] ?? "var(--text-muted)"
   const El = (() => {
     switch (type) {
       case "gas":      return <Flame size={15} />
@@ -172,7 +172,7 @@ function StatusPill({ due_date, payment_status, todayStr }: {
 const ACT_PRIMARY: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 14px", borderRadius: "var(--border-radius-md)", border: "none",
-  background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 600,
+  background: "var(--accent)", color: "#fff", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 600,
 }
 
 const ACT_GHOST: React.CSSProperties = {
@@ -185,8 +185,8 @@ const ACT_GHOST: React.CSSProperties = {
 const ACT_DANGER: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6,
   padding: "6px 14px", borderRadius: "var(--border-radius-md)",
-  border: "1px solid #dc2626", background: "transparent",
-  cursor: "pointer", fontSize: "0.8125rem", color: "#dc2626",
+  border: "1px solid var(--metric-value-red)", background: "transparent",
+  cursor: "pointer", fontSize: "0.8125rem", color: "var(--metric-value-red)",
 }
 
 /* ─── Shared card wrapper style ──────────────────────────────────── */
@@ -977,7 +977,7 @@ export default function PaymentsPage() {
                             <button
                               type="button"
                               onClick={() => void markAllReportPaid(report)}
-                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "none", background: "#8B2252", color: "#fff", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}
+                              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "none", background: "var(--accent)", color: "#fff", cursor: "pointer", fontSize: "0.75rem", fontWeight: 600 }}
                             >
                               <CheckCircle2 size={13} /> Marcar todo pagado
                             </button>
@@ -1057,7 +1057,7 @@ export default function PaymentsPage() {
                                         <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                           <ClipboardList size={12} />
                                           OC{" "}
-                                          <a href={`/purchases/${po.id}`} style={{ color: "#8B2252", textDecoration: "none", fontWeight: 600 }}>
+                                          <a href={`/purchases/${po.id}`} style={{ color: "var(--accent)", textDecoration: "none", fontWeight: 600 }}>
                                             {po.folio ?? item.purchase_order_id!.slice(0, 8)}
                                           </a>
                                           {" — "}
@@ -1280,7 +1280,7 @@ export default function PaymentsPage() {
                     type="button"
                     onClick={() => setNewReportItems(prev => prev.filter((_, i) => i !== idx))}
                     disabled={newReportItems.length === 1}
-                    style={{ width: 32, height: 32, borderRadius: "var(--border-radius-sm)", border: "1px solid #dc2626", background: "transparent", color: "#dc2626", cursor: newReportItems.length === 1 ? "default" : "pointer", opacity: newReportItems.length === 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                    style={{ width: 32, height: 32, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--metric-value-red)", background: "transparent", color: "var(--metric-value-red)", cursor: newReportItems.length === 1 ? "default" : "pointer", opacity: newReportItems.length === 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}
                   >
                     <Trash2 size={12} />
                   </button>
@@ -1302,7 +1302,7 @@ export default function PaymentsPage() {
               onClick={() => reportPdfRef.current?.click()}
               style={{ padding: "14px", borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "center", border: `2px dashed ${reportPdfFile ? "rgba(16,185,129,0.5)" : "var(--border-default)"}`, background: reportPdfFile ? "rgba(16,185,129,0.08)" : "var(--bg-card)" }}
             >
-              <span style={{ fontSize: "0.8125rem", color: reportPdfFile ? "#10B981" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: "0.8125rem", color: reportPdfFile ? "var(--metric-value-green)" : "var(--text-muted)", fontWeight: reportPdfFile ? 600 : 400, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{reportPdfFile ? reportPdfFile.name : "Toca para adjuntar PDF"}
               </span>
             </div>

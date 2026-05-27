@@ -1368,7 +1368,7 @@ export default function CampoTicketsPage() {
       >
         {webcamError ? (
           <div style={{ textAlign: "center", padding: 24 }}>
-            <p style={{ color: "#EF4444", marginBottom: 12, fontWeight: 600 }}>
+            <p style={{ color: "var(--metric-value-red)", marginBottom: 12, fontWeight: 600 }}>
               {webcamError}
             </p>
             <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
@@ -1397,7 +1397,7 @@ export default function CampoTicketsPage() {
               type="button"
               onClick={handleCapturePhoto}
               style={{
-                background: "#8B2252",
+                background: "var(--accent)",
                 color: "white",
                 border: "none",
                 borderRadius: "var(--border-radius-md)",

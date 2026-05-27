@@ -396,8 +396,8 @@ export default function CobranzaMedidoresPage() {
                                     style={{
                                       padding: "10px 12px", borderRadius: "var(--border-radius-lg)", cursor: isGroupMode ? "default" : "pointer",
                                       background: "var(--bg-page)",
-                                      border: `1px solid ${isCaptured ? "#15803d" : "var(--border-default)"}`,
-                                      borderLeft: `4px solid ${isCaptured ? "#15803d" : "#c2410c"}`,
+                                      border: `1px solid ${isCaptured ? "var(--metric-border-green)" : "var(--border-default)"}`,
+                                      borderLeft: `4px solid ${isCaptured ? "var(--metric-border-green)" : "#c2410c"}`,
                                     }}
                                   >
                                     <strong style={{ fontSize: "0.8125rem" }}>Depa {sm.unit_number}</strong>
@@ -408,7 +408,7 @@ export default function CobranzaMedidoresPage() {
                                       {sm.active_lease ? sm.active_lease.tenant_name : "Vacante"}
                                     </p>
                                     {isCaptured ? (
-                                      <p style={{ margin: "4px 0 0", fontSize: "0.6875rem", color: "#15803d", fontWeight: 600 }}>
+                                      <p style={{ margin: "4px 0 0", fontSize: "0.6875rem", color: "var(--metric-value-green)", fontWeight: 600 }}>
                                         {reading.current_reading}
                                         {reading.consumption != null ? ` · ${reading.consumption} ${SERVICE_TYPE_UNIT[meter.service_type] ?? ""}` : ""}
                                       </p>

@@ -31,9 +31,9 @@ const SERVICE_TYPE_TO_CONCEPT: Partial<Record<UtilityServiceType, string>> = {
 }
 
 const SERVICE_TYPE_COLOR: Partial<Record<UtilityServiceType, string>> = {
-  electricity: "#F59E0B",
-  gas:         "#EF4444",
-  water:       "#3B82F6",
+  electricity: "var(--metric-value-amber)",
+  gas:         "var(--metric-value-red)",
+  water:       "var(--metric-value-blue)",
   internet:    "#8B5CF6",
 }
 
@@ -51,7 +51,7 @@ function Badge({ variant, children }: { variant: "gray" | "green" | "blue" | "in
   const styles: Record<string, React.CSSProperties> = {
     gray:   { background: "var(--divider, #f1f5f9)", color: "var(--text-secondary)" },
     green:  { background: "#d1fae5", color: "#065f46" },
-    blue:   { background: "#dbeafe", color: "#1d4ed8" },
+    blue:   { background: "#dbeafe", color: "var(--metric-value-blue)" },
     indigo: { background: "#ede9fe", color: "#5b21b6" },
   }
   return (
@@ -149,7 +149,7 @@ function MeterRow({
             </button>
           )}
           <button type="button" onClick={onEdit} style={ghostBtn()}>Editar</button>
-          <button type="button" onClick={onDelete} style={{ ...ghostBtn(), color: "#dc2626", borderColor: "#fca5a5" }}>
+          <button type="button" onClick={onDelete} style={{ ...ghostBtn(), color: "var(--metric-value-red)", borderColor: "#fca5a5" }}>
             <Trash2 size={11} />
           </button>
         </div>
@@ -328,7 +328,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
       {placeholders.map((ph) => (
         <div key={ph.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))", background: "rgba(245,158,11,0.08)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ color: "#F59E0B" }}><ServiceIcon type={ph.service_type as UtilityServiceType} size={14} /></span>
+            <span style={{ color: "var(--metric-value-amber)" }}><ServiceIcon type={ph.service_type as UtilityServiceType} size={14} /></span>
             <div>
               <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-primary)", background: "rgba(245,158,11,0.15)", padding: "1px 7px", borderRadius: 999, display: "inline-block", marginBottom: 2 }}>
                 Pendiente de configurar
@@ -341,7 +341,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
           <button
             type="button"
             onClick={() => { setEditingMeter(ph); setMeterModalOpen(true) }}
-            style={{ fontSize: "0.75rem", padding: "4px 12px", borderRadius: "var(--border-radius-sm)", border: "1px dashed #D97706", background: "transparent", color: "#D97706", cursor: "pointer", fontWeight: 600 }}
+            style={{ fontSize: "0.75rem", padding: "4px 12px", borderRadius: "var(--border-radius-sm)", border: "1px dashed var(--metric-value-amber)", background: "transparent", color: "var(--metric-value-amber)", cursor: "pointer", fontWeight: 600 }}
           >
             Configurar ahora →
           </button>

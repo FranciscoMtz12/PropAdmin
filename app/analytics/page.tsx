@@ -534,11 +534,11 @@ export default function AnalyticsPage() {
       ]} />
       <div className="analytics-stat-bar metric-grid-desktop-only" style={{ display:"flex", background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow:"hidden", marginBottom:"1rem" }}>
         {[
-          { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"#10B981" },
-          { label:"Personas", value:estimatedPeople, sub:"estimadas", color:"#3B82F6" },
+          { label:"Ocupación", value:`${occupancyRate.toFixed(0)}%`, sub:"global", color:"var(--metric-value-green)" },
+          { label:"Personas", value:estimatedPeople, sub:"estimadas", color:"var(--metric-value-blue)" },
           { label:"Contratos", value:activeLeases.length, sub:"activos" },
-          { label:"Vencen 30d", value:leasesExpiring30.length, sub:"contratos", color:"#F59E0B" },
-          { label:"Vacantes", value:vacantUnits, sub:"unidades", color:"#EF4444" },
+          { label:"Vencen 30d", value:leasesExpiring30.length, sub:"contratos", color:"var(--metric-value-amber)" },
+          { label:"Vacantes", value:vacantUnits, sub:"unidades", color:"var(--metric-value-red)" },
           { label:"Edificios", value:buildings.length, sub:"activos" },
         ].map((s, i, arr) => (
           <div key={i} className="mod-stat-cell" style={{ flex:1, padding:".6rem .75rem", borderRight: i < arr.length-1 ? "1px solid var(--border-default)" : "none", textAlign:"center" }}>
@@ -557,7 +557,7 @@ export default function AnalyticsPage() {
           ) : (
             <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
               {occupancyByBuilding.map((b) => {
-                const color = b.rate >= 80 ? "#10B981" : b.rate >= 50 ? "#F59E0B" : "#EF4444";
+                const color = b.rate >= 80 ? "var(--metric-value-green)" : b.rate >= 50 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
                 return (
                   <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
                     <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
@@ -748,7 +748,7 @@ export default function AnalyticsPage() {
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
             {collectionEfficiency.map((b) => {
-              const color = b.rate >= 90 ? "#10B981" : b.rate >= 70 ? "#F59E0B" : "#EF4444";
+              const color = b.rate >= 90 ? "var(--metric-value-green)" : b.rate >= 70 ? "var(--metric-value-amber)" : "var(--metric-value-red)";
               return (
                 <div key={b.id} style={{ display:"flex", alignItems:"center", gap:10 }}>
                   <div style={{ fontSize: "0.75rem", color:"var(--text-secondary)", minWidth:120, whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
@@ -762,7 +762,7 @@ export default function AnalyticsPage() {
                       {b.rate.toFixed(0)}%
                     </span>
                     {b.missing > 0 && (
-                      <span style={{ fontSize: "0.625rem", color:"#EF4444" }}>
+                      <span style={{ fontSize: "0.625rem", color:"var(--metric-value-red)" }}>
                         {formatCurrency(b.missing)} pendiente
                       </span>
                     )}
@@ -845,7 +845,7 @@ export default function AnalyticsPage() {
               <tbody>
                 {rentHistory.slice(0, 15).map((r) => {
                   const trendIcon = r.trend === "up" ? "↑" : r.trend === "down" ? "↓" : "→";
-                  const trendColor = r.trend === "up" ? "#10B981" : r.trend === "down" ? "#EF4444" : "var(--text-muted)";
+                  const trendColor = r.trend === "up" ? "var(--metric-value-green)" : r.trend === "down" ? "var(--metric-value-red)" : "var(--text-muted)";
                   return (
                     <tr key={r.unitId} style={{ borderBottom:"1px solid var(--border-subtle)" }}>
                       <td style={tdStyle}><strong>{r.unitLabel}</strong></td>

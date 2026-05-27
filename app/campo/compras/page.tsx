@@ -619,7 +619,7 @@ export default function CampoComprasPage() {
                       display: "inline-flex", alignItems: "center",
                       justifyContent: "center", gap: 6,
                       padding: "12px 16px", borderRadius: "var(--border-radius-md)", minHeight: 44,
-                      border: "1px solid #10B981", background: "#10B981", color: "#fff",
+                      border: "1px solid var(--metric-border-green)", background: "var(--metric-bg-green)", color: "#fff",
                       fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                       flex: "2 1 auto",
                     }}
@@ -725,7 +725,7 @@ export default function CampoComprasPage() {
                         placeholder={`Máx. ${item.quantity}`}
                         style={{
                           width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)",
-                          border: "1px solid #F59E0B",
+                          border: "1px solid var(--metric-border-amber)",
                           background: "#fff7ed", color: "#92400e",
                           fontSize: "0.875rem", fontWeight: 600,
                           outline: "none", boxSizing: "border-box",
@@ -744,7 +744,7 @@ export default function CampoComprasPage() {
                 padding: "10px 12px", borderRadius: "var(--border-radius-md)",
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
               }}>
-                <AlertCircle size={16} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
+                <AlertCircle size={16} style={{ color: "var(--metric-value-amber)", flexShrink: 0, marginTop: 1 }} />
                 <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-primary)", lineHeight: 1.5 }}>
                   Se creará un borrador de OC en Compras con los materiales faltantes para que el equipo de compras la complete.
                 </p>
@@ -769,7 +769,7 @@ export default function CampoComprasPage() {
                   display: "inline-flex", alignItems: "center",
                   justifyContent: "center", gap: 8,
                   padding: "11px 20px", borderRadius: "var(--border-radius-lg)", minHeight: 44,
-                  border: "1px solid #10B981", background: "#10B981", color: "#fff",
+                  border: "1px solid var(--metric-border-green)", background: "var(--metric-bg-green)", color: "#fff",
                   fontSize: "0.875rem", fontWeight: 700,
                   cursor: savingReception ? "wait" : "pointer",
                   opacity: savingReception ? 0.7 : 1,

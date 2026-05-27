@@ -35,12 +35,12 @@ function getAssetColors(assetType: string): { bg: string; color: string } {
     case "MINISPLIT":
     case "CENTRAL_AC":
     case "COMMON_AREA_AC":
-      return { bg: "rgba(37,99,235,0.1)", color: "#2563EB" };
+      return { bg: "rgba(37,99,235,0.1)", color: "var(--metric-value-blue)" };
 
     /* ── Calor / gas ──────────────────────────────────────────── */
     case "BOILER":
     case "STOVE":
-      return { bg: "rgba(217,119,6,0.1)", color: "#D97706" };
+      return { bg: "rgba(217,119,6,0.1)", color: "var(--metric-value-amber)" };
 
     /* ── Agua ─────────────────────────────────────────────────── */
     case "WASHER":
@@ -56,7 +56,7 @@ function getAssetColors(assetType: string): { bg: string; color: string } {
 
     /* ── Verde / ventilación ──────────────────────────────────── */
     case "FAN":
-      return { bg: "rgba(22,163,74,0.1)", color: "#16A34A" };
+      return { bg: "rgba(22,163,74,0.1)", color: "var(--metric-value-green)" };
 
     /* ── Acceso / seguridad ───────────────────────────────────── */
     case "ELEVATOR":
@@ -66,11 +66,11 @@ function getAssetColors(assetType: string): { bg: string; color: string } {
     case "SECURITY_CAMERA":
       return { bg: "rgba(190,18,60,0.1)", color: "#BE123C" };
     case "INTERCOM":
-      return { bg: "rgba(21,128,61,0.1)", color: "#15803D" };
+      return { bg: "rgba(21,128,61,0.1)", color: "var(--metric-value-green)" };
 
     /* ── Refrigeración ────────────────────────────────────────── */
     case "FRIDGE":
-      return { bg: "rgba(37,99,235,0.1)", color: "#2563EB" };
+      return { bg: "rgba(37,99,235,0.1)", color: "var(--metric-value-blue)" };
 
     /* ── Genérico ─────────────────────────────────────────────── */
     case "OTHER":

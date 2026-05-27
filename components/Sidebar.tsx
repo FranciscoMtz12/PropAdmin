@@ -396,7 +396,7 @@ export default function Sidebar() {
   }, [isMobile, mobileOpen]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
-  const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
+  const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName } = useTheme();
   const { impersonationMode, isRealSuperAdmin, isImpersonating } = useImpersonation();
   const footerIconSz = useIconSize(15);
   const shieldIconSz = useIconSize(18);
@@ -462,7 +462,7 @@ export default function Sidebar() {
   const sessionName = user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
   const sessionEmail = user?.email || "No autenticado";
 
-  const sidebarBg = isDark ? "#0f1623" : "#1e2a3a";
+  const sidebarBg = "var(--bg-sidebar)";
   const activeLogo = logoDarkUrl ?? logoUrl;
   /* Superadmin sin company_id usa el nombre de la plataforma SAPROA */
   const displayName = (isSuperAdmin && !user?.company_id) ? platformName : shortName;

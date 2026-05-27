@@ -22,8 +22,8 @@ const ACCESO_OPTIONS = [
   { value: "multiple", label: "Múltiple",           desc: "Combinación de accesos" },
 ] as const;
 
-const errorStyle: React.CSSProperties = { color: "#EF4444", fontSize: "0.75rem", marginTop: 4 };
-const amber = "#b45309";
+const errorStyle: React.CSSProperties = { color: "var(--metric-value-red)", fontSize: "0.75rem", marginTop: 4 };
+const amber = "var(--metric-value-amber)";
 
 export default function IndustrialTypologyModal({ open, buildingId, companyId, onClose, onCreated }: Props) {
   const [step, setStep] = useState<1 | 2>(1);
@@ -95,7 +95,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                background: step > i + 1 ? "#1D9E75" : step === i + 1 ? amber : "var(--border-default)",
+                background: step > i + 1 ? "var(--metric-value-green)" : step === i + 1 ? amber : "var(--border-default)",
                 color: step >= i + 1 ? "#fff" : "var(--text-muted)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "0.6875rem", fontWeight: 700,
@@ -107,7 +107,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
               </span>
             </div>
             {i < 1 && (
-              <div style={{ flex: 1, height: 2, background: step > i + 1 ? "#1D9E75" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
+              <div style={{ flex: 1, height: 2, background: step > i + 1 ? "var(--metric-value-green)" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
             )}
           </div>
         ))}
