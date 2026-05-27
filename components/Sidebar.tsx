@@ -11,7 +11,7 @@
   - Fondo: #0f1623 en dark mode, #1e2a3a en light mode
 */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -357,32 +357,27 @@ export default function Sidebar() {
   const router = useRouter();
   useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  const touchStartX = useRef(0);
-  const touchStartY = useRef(0);
+  const swipeStartX = useRef(0);
+  const swipeStartY = useRef(0);
 
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }, []);
+  function onSwipeStart(e: React.TouchEvent) {
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+  }
 
-  const handleTouchEnd = useCallback((e: TouchEvent) => {
-    if (window.innerWidth > 768) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-    if (Math.abs(deltaX) < Math.abs(deltaY)) return;
-    if (Math.abs(deltaX) < 40) return;
-    if (deltaX > 0 && touchStartX.current <= 50) setMobileOpen(true);
-    if (deltaX < 0) setMobileOpen(false);
-  }, []);
+  function onSwipeEndOpen(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    if (dx > 40) setMobileOpen(true);
+  }
 
-  useEffect(() => {
-    document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchend', handleTouchEnd, { passive: true });
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStart);
-      document.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [handleTouchStart, handleTouchEnd]);
+  function onSwipeEndClose(e: React.TouchEvent) {
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    if (Math.abs(dx) < Math.abs(dy)) return;
+    if (dx < -40) setMobileOpen(false);
+  }
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
@@ -460,10 +455,27 @@ export default function Sidebar() {
 
   return (
     <>
-    {/* Overlay móvil */}
+    {/* Zona de swipe para abrir sidebar — borde izquierdo 20px, solo cuando sidebar cerrado */}
+    {!mobileOpen && (
+      <div
+        onTouchStart={onSwipeStart}
+        onTouchEnd={onSwipeEndOpen}
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: 20,
+          height: "100%",
+          zIndex: 48,
+        }}
+      />
+    )}
+    {/* Overlay móvil — también captura swipe izquierda para cerrar */}
     {mobileOpen && (
       <div
         onClick={() => setMobileOpen(false)}
+        onTouchStart={onSwipeStart}
+        onTouchEnd={onSwipeEndClose}
         style={{
           position: "fixed",
           inset: 0,
