@@ -367,21 +367,33 @@ export default function Sidebar() {
 
   const swipeOpenHandlers = useSwipeable({
     onSwipedRight: () => setMobileOpen(true),
-    delta: 40,
+    delta: 30,
     trackTouch: true,
     trackMouse: false,
-    preventScrollOnSwipe: true,
-    swipeDuration: 500,
+    preventScrollOnSwipe: false,
+    swipeDuration: 300,
   });
 
   const swipeCloseHandlers = useSwipeable({
     onSwipedLeft: () => setMobileOpen(false),
-    delta: 40,
+    delta: 30,
     trackTouch: true,
     trackMouse: false,
-    preventScrollOnSwipe: true,
-    swipeDuration: 500,
+    preventScrollOnSwipe: false,
+    swipeDuration: 300,
   });
+
+  // Attach swipe-open listener to document.body (no covering div → no tap blocking)
+  const { ref: attachSwipeOpen } = swipeOpenHandlers;
+  useEffect(() => {
+    if (!isMobile || mobileOpen) {
+      attachSwipeOpen(null);
+      return;
+    }
+    attachSwipeOpen(document.body);
+    return () => attachSwipeOpen(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, mobileOpen]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
@@ -459,21 +471,7 @@ export default function Sidebar() {
 
   return (
     <>
-    {/* Zona de swipe para abrir sidebar — debajo del hamburger, solo en mobile cuando sidebar cerrado */}
-    {isMobile && !mobileOpen && (
-      <div
-        {...swipeOpenHandlers}
-        style={{
-          position: "fixed",
-          top: 60,
-          left: 0,
-          width: 20,
-          height: "calc(100% - 60px)",
-          zIndex: 9999,
-        }}
-      />
-    )}
-    {/* Overlay móvil — también captura swipe izquierda para cerrar */}
+    {/* Overlay móvil — captura swipe izquierda para cerrar */}
     {mobileOpen && (
       <div
         {...swipeCloseHandlers}
