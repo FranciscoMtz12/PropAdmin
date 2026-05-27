@@ -67,7 +67,7 @@ type Invitation = {
 };
 
 type UserRole =
-  | "superadmin" | "titular" | "administracion" | "directivo"
+  | "superadmin" | "titular" | "group_admin" | "administracion" | "directivo"
   | "compras" | "mantenimiento" | "field" | "tenant";
 
 type UserRow = {
@@ -86,12 +86,12 @@ type CompanyRow = { id: string; name: string };
 // ─── Constants ───────────────────────────────────────────────────────
 
 const ROLE_ORDER: UserRole[] = [
-  "superadmin", "titular", "administracion", "directivo",
+  "superadmin", "titular", "group_admin", "administracion", "directivo",
   "compras", "mantenimiento", "field",
 ];
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  superadmin: "Superadmin", titular: "Titular",
+  superadmin: "Superadmin", titular: "Titular", group_admin: "Admin de Grupo",
   administracion: "Administración", directivo: "Directivo",
   compras: "Compras", mantenimiento: "Mantenimiento",
   field: "Campo", tenant: "Inquilino",
@@ -100,6 +100,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 const ROLE_STYLE: Record<UserRole, { bg: string; fg: string }> = {
   superadmin:     { bg: "#F3E8FF", fg: "#7C3AED" },
   titular:        { bg: "#FEF3C7", fg: "#92400E" },
+  group_admin:    { bg: "#FEF3C7", fg: "#92400E" },
   administracion: { bg: "var(--badge-bg-blue)",  fg: "var(--badge-text-blue)" },
   directivo:      { bg: "var(--badge-bg-gray)",  fg: "var(--badge-text-gray)" },
   compras:        { bg: "#FFEDD5", fg: "#EA580C" },
@@ -112,7 +113,7 @@ const createSchema = z.object({
   full_name: z.string().min(1, "Nombre obligatorio"),
   email: z.string().min(1, "Email obligatorio").email("Email inválido"),
   password: z.string().min(8, "Mínimo 8 caracteres"),
-  role: z.enum(["superadmin", "titular", "administracion", "directivo", "compras", "mantenimiento", "field"]),
+  role: z.enum(["superadmin", "titular", "group_admin", "administracion", "directivo", "compras", "mantenimiento", "field"]),
   company_id: z.string().min(1, "Selecciona una empresa"),
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -212,7 +213,8 @@ export default function SettingsPage() {
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
 
   const isSuperadmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
-  const isTitular = user?.role === "titular";
+  const isTitular = user?.role === "titular" || user?.role === "group_admin";
+  const isStrictTitular = user?.role === "titular" && Boolean(user?.company_id);
   const canFullAccess = isSuperadmin || isTitular;
 
   const [activeTab, setActiveTab] = useState<TabKey>("empresa");
@@ -316,7 +318,7 @@ export default function SettingsPage() {
     if (!user?.company_id) return;
     void loadCompany();
     void loadInvitations();
-    if (isTitular) createForm.setValue("company_id", user.company_id);
+    if (isStrictTitular) createForm.setValue("company_id", user.company_id!);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.company_id]);
 
@@ -390,10 +392,10 @@ export default function SettingsPage() {
       .from("app_users")
       .select("id,full_name,email,role,is_superadmin,company_id,created_at")
       .order("created_at", { ascending: false });
-    if (isTitular && user?.company_id) usersQ.eq("company_id", user.company_id);
+    if (isStrictTitular) usersQ.eq("company_id", user!.company_id!);
 
-    const companiesQ = isTitular
-      ? supabase.from("companies").select("id,name").eq("id", user!.company_id)
+    const companiesQ = isStrictTitular
+      ? supabase.from("companies").select("id,name").eq("id", user!.company_id!)
       : supabase.from("companies").select("id,name").is("deleted_at", null).order("name");
 
     const [uRes, cRes] = await Promise.all([usersQ, companiesQ]);
@@ -913,7 +915,7 @@ export default function SettingsPage() {
                         key: "email", header: "Email",
                         render: (row) => <span style={{ fontSize: "0.8125rem" }}>{row.email}</span>,
                       },
-                      ...(!isTitular ? [{
+                      ...(!isStrictTitular ? [{
                         key: "company", header: "Empresa",
                         render: (row: UserRow) => <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{row.company_name}</span>,
                       }] : []),
@@ -1522,7 +1524,7 @@ export default function SettingsPage() {
               {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </AppSelect>
           </Field>
-          {!isTitular && (
+          {!isStrictTitular && (
             <Field label="Empresa" error={createForm.formState.errors.company_id?.message}>
               <AppSelect {...createForm.register("company_id")}>
                 <option value="">Selecciona una empresa</option>
