@@ -881,6 +881,29 @@ const TASK_TAB_MAP: Record<string, string> = {
   setup_loading_dock:     'assets',
 }
 
+/* ─── Mapa task_key → categoría del checklist ────────────────────────── */
+
+const TASK_CATEGORY_MAP: Record<string, 'estructura' | 'servicios' | 'operacion' | 'documentos'> = {
+  add_unit_types:          'estructura',
+  add_first_unit:          'estructura',
+  add_electricity_meter:   'servicios',
+  add_water_meter:         'servicios',
+  add_gas_meter:           'servicios',
+  setup_internet:          'servicios',
+  setup_security_service:  'servicios',
+  setup_cleaning_schedule: 'servicios',
+  add_first_lease:         'operacion',
+  add_parking_spots:       'operacion',
+  setup_security_booth:    'operacion',
+  setup_admin_office:      'operacion',
+  setup_loading_dock:      'operacion',
+  upload_documents:        'documentos',
+  add_photos:              'documentos',
+  add_first_asset:         'documentos',
+  setup_common_areas:      'documentos',
+  setup_service_storage:   'documentos',
+}
+
 /* ─── Mapa task_key → label y ruta (derivado de PROPERTY_FEATURES) ─────── */
 
 const TASK_META: Record<string, { label: string; route?: string }> = {}
@@ -1049,6 +1072,7 @@ export default function BuildingDetailPage() {
   const [savingBillingConcept, setSavingBillingConcept] =
     useState<BuildingBillingConceptCode | null>(null);
   const [openActionsAssetId, setOpenActionsAssetId] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   /* Estado de modales */
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
@@ -3340,83 +3364,184 @@ export default function BuildingDetailPage() {
             )
           })()}
 
-          {/* ── Onboarding: 5 pasos de configuración básica ── */}
+          {/* ── Guía de onboarding — 4 pasos secuenciales ── */}
           {(() => {
-            const steps: Array<{ label: string; done: boolean; ctaLabel: string | null; ctaTab: string | null; ctaHref: string | null }> = [
-              { label: "Propiedad registrada", done: true, ctaLabel: null, ctaTab: null, ctaHref: null },
-              { label: "Al menos 1 tipología", done: unitTypeCount > 0, ctaLabel: "Crear tipología", ctaTab: hasTypologiesTab ? "typologies" : null, ctaHref: null },
-              { label: "Al menos 1 unidad", done: buildingUnits.length > 0, ctaLabel: "Agregar unidades", ctaTab: hasTypologiesTab ? "typologies" : null, ctaHref: null },
-              { label: "Al menos 1 servicio", done: utilityMeters.length > 0, ctaLabel: "Configurar servicios", ctaTab: hasServicesTab ? "services" : null, ctaHref: null },
-              { label: "Inquilino / contrato activo", done: activeLeasesCount > 0, ctaLabel: "Agregar inquilino", ctaTab: null, ctaHref: "/tenants" },
+            const ob1Done = unitTypeCount > 0;
+            const ob2Done = buildingUnits.length > 0;
+            const ob3Done = utilityMeters.length > 0;
+            const ob4Done = activeLeasesCount > 0;
+            const obDone  = [ob1Done, ob2Done, ob3Done, ob4Done].filter(Boolean).length;
+            if (obDone === 4 || isLand || isIndustrialPark || isPlazaComercial) return null;
+            const isEmpty = obDone === 0;
+            const circ    = 2 * Math.PI * 14;
+            const dashOff = circ * (1 - obDone / 4);
+            const steps = [
+              { n: 1, label: "Crear tipología",         desc: "Define los tipos de unidad disponibles",       done: ob1Done, enabled: true,    action: () => { handleTabChange(hasTypologiesTab ? "typologies" : "overview"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 2, label: "Agregar unidades",         desc: "Registra las unidades o espacios rentables",  done: ob2Done, enabled: ob1Done, action: () => { handleTabChange(hasTypologiesTab ? "typologies" : "overview"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 3, label: "Configurar servicios",     desc: "Da de alta medidores de luz, agua o gas",      done: ob3Done, enabled: ob2Done, action: () => { handleTabChange("services"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 4, label: "Agregar primer inquilino", desc: "Registra el primer contrato de arrendamiento", done: ob4Done, enabled: ob3Done, action: () => router.push("/tenants") },
             ];
-            const allDone = steps.every(s => s.done);
-            const completedCount = steps.filter(s => s.done).length;
             return (
               <AnimatePresence>
-                {!allDone && (
-                  <motion.div
-                    key="onboarding-5steps"
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8, height: 0 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <SectionCard
-                      title="Configuración de la propiedad"
-                      subtitle={`${completedCount} de 5 pasos completados`}
-                      icon={<CheckSquare size={18} />}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {steps.map((step, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            {step.done
-                              ? <CheckCircle2 size={18} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
-                              : <div style={{ width: 18, height: 18, borderRadius: 999, border: "2px solid var(--border-default)", flexShrink: 0 }} />
-                            }
-                            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
-                              <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: step.done ? "var(--text-muted)" : "var(--text-primary)", textDecoration: step.done ? "line-through" : "none" }}>
-                                {step.label}
+                <motion.div
+                  key="onboarding-guide"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div style={{
+                    borderRadius: "var(--border-radius-lg)",
+                    background: isEmpty ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
+                    border: isEmpty ? "1.5px solid rgba(139,34,82,0.25)" : "1px solid var(--border-default)",
+                    borderLeft: "4px solid var(--accent)",
+                    padding: 20,
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isEmpty ? (
+                          <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              <PartyPopper size={18} color="var(--accent)" />
+                              <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                                ¡Tu propiedad está lista! Configúrala paso a paso.
                               </span>
-                              {!step.done && (step.ctaTab ?? step.ctaHref) && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (step.ctaTab) { handleTabChange(step.ctaTab); window.scrollTo({ top: 0, behavior: "smooth" }); }
-                                    else if (step.ctaHref) { router.push(step.ctaHref); }
-                                  }}
-                                  style={{ background: "none", border: "1px solid var(--accent)", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", fontSize: "0.75rem", fontWeight: 600, color: "var(--accent)", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-                                >
-                                  {step.ctaLabel} →
-                                </button>
-                              )}
                             </div>
+                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                              Sigue estos 4 pasos para dejar tu propiedad completamente operativa.
+                            </p>
+                          </>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <CheckSquare size={18} color="var(--accent)" />
+                            <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                              Configuración en progreso — {obDone}/4 completados
+                            </span>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </SectionCard>
-                  </motion.div>
-                )}
+                      {/* Donut X/4 */}
+                      <svg width="36" height="36" style={{ flexShrink: 0 }}>
+                        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-default)" strokeWidth="3.5" />
+                        <circle
+                          cx="18" cy="18" r="14" fill="none"
+                          stroke="var(--accent)" strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeDasharray={circ}
+                          strokeDashoffset={dashOff}
+                          transform="rotate(-90 18 18)"
+                          style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                        />
+                        <text x="18" y="23" textAnchor="middle" fontSize="9" fill="var(--text-primary)" fontWeight="700">{obDone}/4</text>
+                      </svg>
+                    </div>
+
+                    {/* Pasos */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {steps.map((step) => (
+                        <div
+                          key={step.n}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "10px 14px",
+                            borderRadius: "var(--border-radius-md)",
+                            background: step.done ? "rgba(16,185,129,0.06)" : step.enabled ? "var(--bg-page)" : "transparent",
+                            border: step.done ? "1px solid rgba(16,185,129,0.2)" : step.enabled ? "1px solid var(--border-default)" : "1px solid transparent",
+                            opacity: (!step.done && !step.enabled) ? 0.45 : 1,
+                            transition: "opacity 0.2s",
+                          }}
+                        >
+                          {step.done ? (
+                            <CheckCircle2 size={22} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
+                          ) : (
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+                              background: step.enabled ? "var(--accent)" : "var(--border-default)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "0.6875rem", fontWeight: 800,
+                              color: step.enabled ? "#fff" : "var(--text-muted)",
+                            }}>
+                              {step.n}
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: "0.8125rem", fontWeight: 600,
+                              color: step.done ? "var(--metric-value-green)" : step.enabled ? "var(--text-primary)" : "var(--text-muted)",
+                              textDecoration: step.done ? "line-through" : "none",
+                            }}>
+                              {step.label}
+                            </div>
+                            {!step.done && (
+                              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 1 }}>
+                                {step.enabled ? step.desc : `Completa el paso ${step.n - 1} primero`}
+                              </div>
+                            )}
+                          </div>
+                          {!step.done && step.enabled && (
+                            <button
+                              type="button"
+                              onClick={step.action}
+                              style={{
+                                background: "var(--accent)", color: "#fff",
+                                border: "none", padding: "6px 14px",
+                                borderRadius: "var(--border-radius-sm)",
+                                fontSize: "0.75rem", fontWeight: 700,
+                                cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                              }}
+                            >
+                              {step.label} →
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Footer: omitir */}
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
+                      <button
+                        type="button"
+                        onClick={() => void handleDismissAllTasks()}
+                        style={{
+                          padding: "6px 14px", borderRadius: "var(--border-radius-sm)",
+                          border: "1px solid var(--border-default)", background: "transparent",
+                          fontSize: "0.75rem", color: "var(--text-muted)", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 6,
+                        }}
+                      >
+                        <SkipForward size={13} />
+                        Ya tengo experiencia, omitir
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
               </AnimatePresence>
             );
           })()}
 
-          {/* ── Setup checklist ── */}
+          {/* ── Setup checklist por categorías ── */}
           {setupTasks.length > 0 && (() => {
             const visibleSetupTasks = setupTasks.filter((t) => {
-              // Always show if feature/task is unknown (safe default)
               const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
               const task = feature?.tasks.find((tk) => tk.key === t.task_key);
               if (!task?.applicableTypes) return true;
               return task.applicableTypes.includes(building.building_category ?? "");
             });
-            const pendingTasks   = visibleSetupTasks.filter((t) => !t.is_completed);
-            const completedTasks = visibleSetupTasks.filter((t) => t.is_completed);
+            const pendingCount   = visibleSetupTasks.filter((t) => !t.is_completed).length;
+            const completedCount = visibleSetupTasks.filter((t) => t.is_completed).length;
             const totalCount     = visibleSetupTasks.length;
-            const completedCount = completedTasks.length;
             if (totalCount === 0) return null;
-            const allDone        = pendingTasks.length === 0;
-            const circ           = 2 * Math.PI * 12;
-            const dashOffset     = circ * (1 - completedCount / totalCount);
+            const allDone    = pendingCount === 0;
+            const circ       = 2 * Math.PI * 12;
+            const dashOffset = circ * (1 - completedCount / totalCount);
+
+            const CATS = [
+              { key: 'estructura' as const, label: 'Estructura', emoji: '🏗️' },
+              { key: 'servicios'  as const, label: 'Servicios',  emoji: '⚡' },
+              { key: 'operacion'  as const, label: 'Operación',  emoji: '🤝' },
+              { key: 'documentos' as const, label: 'Documentos', emoji: '📁' },
+            ];
 
             return (
               <div style={{
@@ -3427,44 +3552,29 @@ export default function BuildingDetailPage() {
                 padding: 20,
               }}>
                 {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: allDone ? 16 : 16 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <CheckSquare size={18} color="var(--accent)" />
                     <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
                       Configuración pendiente
                     </span>
-
-                    {/* Donut de progreso */}
                     <svg width="32" height="32" style={{ flexShrink: 0 }}>
                       <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-default)" strokeWidth="3" />
                       <circle
-                        cx="16" cy="16" r="12"
-                        fill="none"
-                        stroke="var(--metric-value-green)"
-                        strokeWidth="3"
+                        cx="16" cy="16" r="12" fill="none"
+                        stroke="var(--metric-value-green)" strokeWidth="3"
                         strokeLinecap="round"
                         strokeDasharray={circ}
                         strokeDashoffset={dashOffset}
                         transform="rotate(-90 16 16)"
                       />
-                      <text
-                        x="16" y="20"
-                        textAnchor="middle"
-                        fontSize="9"
-                        fill="var(--text-secondary)"
-                        fontWeight="600"
-                      >
+                      <text x="16" y="20" textAnchor="middle" fontSize="9" fill="var(--text-secondary)" fontWeight="600">
                         {Math.round((completedCount / totalCount) * 100)}%
                       </text>
                     </svg>
-
-                    {/* Badge de pendientes */}
-                    {pendingTasks.length > 0 && (
-                      <span style={{
-                        background: "var(--accent)", color: "#fff",
-                        borderRadius: 999, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700,
-                      }}>
-                        {pendingTasks.length}
+                    {pendingCount > 0 && (
+                      <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 999, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700 }}>
+                        {pendingCount}
                       </span>
                     )}
                   </div>
@@ -3478,107 +3588,122 @@ export default function BuildingDetailPage() {
                   </button>
                 </div>
 
-                {/* Estado: todo completado */}
                 {allDone ? (
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
                     <CheckCircle2 size={32} color="var(--metric-value-green)" />
-                    <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>
-                      ¡Propiedad configurada!
-                    </p>
-                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                      Todos los pasos de configuración están completos.
-                    </p>
+                    <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>¡Propiedad configurada!</p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Todos los pasos de configuración están completos.</p>
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {/* Tareas pendientes */}
-                    {pendingTasks.map((task) => {
-                      const feat    = getFeatureByKey(task.feature_key);
-                      const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
-                      if (!taskDef) return null;
-                      const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
+                    {CATS.map((cat) => {
+                      const catTasks     = visibleSetupTasks.filter((t) => (TASK_CATEGORY_MAP[t.task_key] ?? 'documentos') === cat.key);
+                      if (catTasks.length === 0) return null;
+                      const catPending   = catTasks.filter((t) => !t.is_completed).length;
+                      const catCompleted = catTasks.filter((t) => t.is_completed).length;
+                      const catTotal     = catTasks.length;
+                      const catDone      = catPending === 0;
+                      const isCollapsed  = collapsedCategories.has(cat.key);
+                      const catCirc      = 2 * Math.PI * 8;
+                      const catDash      = catCirc * (1 - catCompleted / catTotal);
                       return (
-                        <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            onChange={() => void handleCompleteTask(task.id)}
-                            style={{ marginTop: 3, cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
-                          />
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            {resolvedRoute ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
-                                    const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
-                                    if (tabValue) {
-                                      handleTabChange(tabValue);
-                                      window.scrollTo({ top: 0, behavior: "smooth" });
-                                      return;
-                                    }
-                                  }
-                                  router.push(resolvedRoute);
-                                }}
-                                style={{
-                                  background: "none", border: "none", padding: 0,
-                                  display: "inline-flex", alignItems: "center", gap: 3,
-                                  cursor: "pointer",
-                                  fontSize: "0.8125rem", fontWeight: 600, color: "var(--accent)",
-                                }}
-                              >
-                                {taskDef?.label ?? task.task_key}
-                                <ChevronRight size={14} color="var(--text-muted)" />
-                              </button>
-                            ) : (
-                              <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
-                                {taskDef?.label ?? task.task_key}
-                              </span>
-                            )}
-                            {taskDef?.description && (
-                              <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
-                                {taskDef.description}
-                              </p>
-                            )}
-                          </div>
+                        <div key={cat.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)", overflow: "hidden" }}>
+                          <button
+                            type="button"
+                            onClick={() => setCollapsedCategories((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(cat.key)) next.delete(cat.key); else next.add(cat.key);
+                              return next;
+                            })}
+                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                          >
+                            <span style={{ fontSize: "1rem", lineHeight: 1 }}>{cat.emoji}</span>
+                            <span style={{ fontWeight: 600, fontSize: "0.8125rem", flex: 1, color: catDone ? "var(--metric-value-green)" : "var(--text-primary)" }}>
+                              {cat.label}
+                            </span>
+                            <svg width="20" height="20" style={{ flexShrink: 0 }}>
+                              <circle cx="10" cy="10" r="8" fill="none" stroke="var(--border-default)" strokeWidth="2.5" />
+                              <circle cx="10" cy="10" r="8" fill="none" stroke={catDone ? "var(--metric-value-green)" : "var(--accent)"} strokeWidth="2.5" strokeLinecap="round" strokeDasharray={catCirc} strokeDashoffset={catDash} transform="rotate(-90 10 10)" />
+                            </svg>
+                            <span style={{ fontSize: "0.6875rem", color: catDone ? "var(--metric-value-green)" : "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>
+                              {catCompleted}/{catTotal}
+                            </span>
+                            <ChevronRight
+                              size={14} color="var(--text-muted)"
+                              style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)", transition: "transform 0.2s", flexShrink: 0 }}
+                            />
+                          </button>
+                          {!isCollapsed && (
+                            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                              {catTasks.map((task, taskIdx) => {
+                                const feat    = getFeatureByKey(task.feature_key);
+                                const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                                if (!taskDef) return null;
+                                const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
+                                return (
+                                  <div
+                                    key={task.id}
+                                    style={{
+                                      display: "flex", alignItems: "center", gap: 12, padding: "9px 14px",
+                                      borderBottom: taskIdx < catTasks.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                                      background: task.is_completed ? "rgba(16,185,129,0.04)" : "transparent",
+                                    }}
+                                  >
+                                    {task.is_completed ? (
+                                      <CheckCircle2 size={16} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
+                                    ) : (
+                                      <input
+                                        type="checkbox"
+                                        checked={false}
+                                        onChange={() => void handleCompleteTask(task.id)}
+                                        style={{ marginTop: 0, cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
+                                      />
+                                    )}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{
+                                        fontSize: "0.8125rem", fontWeight: 600,
+                                        color: task.is_completed ? "var(--metric-value-green)" : "var(--text-primary)",
+                                        textDecoration: task.is_completed ? "line-through" : "none",
+                                      }}>
+                                        {taskDef?.label ?? task.task_key}
+                                      </div>
+                                      {taskDef?.description && !task.is_completed && (
+                                        <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                                          {taskDef.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {!task.is_completed && resolvedRoute && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
+                                            const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
+                                            if (tabValue) { handleTabChange(tabValue); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+                                          }
+                                          router.push(resolvedRoute);
+                                        }}
+                                        style={{
+                                          background: "none", border: "1px solid var(--border-default)",
+                                          padding: "3px 10px", borderRadius: "var(--border-radius-sm)",
+                                          fontSize: "0.75rem", fontWeight: 600, color: "var(--accent)",
+                                          cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                                        }}
+                                      >
+                                        Ir →
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                       );
                     })}
-
-                    {/* Separador + tareas completadas */}
-                    {completedTasks.length > 0 && (
-                      <>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                          <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
-                          <span style={{ fontSize: "0.6875rem", fontWeight: 500, color: "var(--metric-value-green)", whiteSpace: "nowrap" }}>Completadas</span>
-                          <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
-                        </div>
-                        {completedTasks.map((task) => {
-                          const feat    = getFeatureByKey(task.feature_key);
-                          const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
-                          if (!taskDef) return null;
-                          return (
-                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: "var(--border-radius-md)", background: "rgba(16,185,129,0.06)" }}>
-                              <CheckCircle2 size={18} color="var(--metric-value-green)" style={{ flexShrink: 0, marginTop: 2 }} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--metric-value-green)" }}>
-                                  {taskDef?.label ?? task.task_key}
-                                </span>
-                                {taskDef?.description && (
-                                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "rgba(21,128,61,0.7)" }}>
-                                    {taskDef.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </>
-                    )}
                   </div>
                 )}
 
-                {/* Footer */}
                 <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
                   <button
                     type="button"

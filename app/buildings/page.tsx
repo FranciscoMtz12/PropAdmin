@@ -398,6 +398,12 @@ export default function BuildingsPage() {
     }
   }
 
+  /* Banner de propiedades sin configurar */
+  const [onboardingBannerDismissed, setOnboardingBannerDismissed] = useState(false);
+  useEffect(() => {
+    setOnboardingBannerDismissed(localStorage.getItem("onboarding-banner-dismissed") === "true");
+  }, []);
+
   /* Hover + dropdown de acciones por card */
   const [hoveredBuildingId, setHoveredBuildingId] = useState<string | null>(null);
   const [openActionsBuildingId, setOpenActionsBuildingId] = useState<string | null>(null);
@@ -610,6 +616,12 @@ export default function BuildingsPage() {
         );
     },
     [buildings, selectedCategory, isGroupMode, groupCompanyIds]
+  );
+
+  /* Propiedades sin unidades (para banner de onboarding) */
+  const unconfiguredCount = useMemo(
+    () => filteredBuildings.filter((b) => (unitCountByBuilding.get(b.id) ?? 0) === 0).length,
+    [filteredBuildings, unitCountByBuilding]
   );
 
   /* Métricas consolidadas para vista de grupo */
@@ -955,6 +967,51 @@ export default function BuildingsPage() {
             />
           </div>
         </>
+      )}
+
+      {/* ── Banner: propiedades sin configurar ── */}
+      {!onboardingBannerDismissed && unconfiguredCount > 0 && !loadingBuildings && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "12px 16px",
+          borderRadius: "var(--border-radius-md)",
+          background: "var(--metric-bg-amber)",
+          border: "1px solid var(--metric-border-amber)",
+          flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>⚠️</span>
+          <span style={{ flex: 1, fontSize: "0.875rem", color: "var(--metric-value-amber)", fontWeight: 500, minWidth: 200 }}>
+            {unconfiguredCount === 1
+              ? "Tienes 1 propiedad sin configurar."
+              : `Tienes ${unconfiguredCount} propiedades sin configurar.`}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const first = filteredBuildings.find((b) => (unitCountByBuilding.get(b.id) ?? 0) === 0);
+              if (first) router.push(`/buildings/${first.id}`);
+            }}
+            style={{
+              background: "var(--metric-value-amber)", color: "#fff",
+              border: "none", padding: "6px 14px",
+              borderRadius: "var(--border-radius-sm)",
+              fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            Configurar ahora →
+          </button>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onClick={() => {
+              localStorage.setItem("onboarding-banner-dismissed", "true");
+              setOnboardingBannerDismissed(true);
+            }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--metric-value-amber)", padding: 4, fontSize: "1rem", lineHeight: 1 }}
+          >
+            ✕
+          </button>
+        </div>
       )}
 
       {/* ── Lista de edificios ── */}
