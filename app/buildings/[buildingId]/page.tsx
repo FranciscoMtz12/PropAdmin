@@ -3168,6 +3168,7 @@ export default function BuildingDetailPage() {
           ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services, pendingDot: tabsWithPendingTasks.has('services')     }] : []),
           ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking,  pendingDot: tabsWithPendingTasks.has('parking')      }] : []),
           ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes / Amenidades", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
+          ...(pendingSetupCount > 0 ? [{ key: "setup", label: "Configuración pendiente", icon: <CheckSquare size={16} />, count: pendingSetupCount }] : []),
         ]}
       />
 
@@ -3517,209 +3518,6 @@ export default function BuildingDetailPage() {
                   </div>
                 </motion.div>
               </AnimatePresence>
-            );
-          })()}
-
-          {/* ── Setup checklist por categorías ── */}
-          {setupTasks.length > 0 && (() => {
-            const visibleSetupTasks = setupTasks.filter((t) => {
-              const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
-              const task = feature?.tasks.find((tk) => tk.key === t.task_key);
-              if (!task?.applicableTypes) return true;
-              return task.applicableTypes.includes(building.building_category ?? "");
-            });
-            const pendingCount   = visibleSetupTasks.filter((t) => !t.is_completed).length;
-            const completedCount = visibleSetupTasks.filter((t) => t.is_completed).length;
-            const totalCount     = visibleSetupTasks.length;
-            if (totalCount === 0) return null;
-            const allDone    = pendingCount === 0;
-            const circ       = 2 * Math.PI * 12;
-            const dashOffset = circ * (1 - completedCount / totalCount);
-
-            const CATS = [
-              { key: 'estructura' as const, label: 'Estructura', emoji: '🏗️' },
-              { key: 'servicios'  as const, label: 'Servicios',  emoji: '⚡' },
-              { key: 'operacion'  as const, label: 'Operación',  emoji: '🤝' },
-              { key: 'documentos' as const, label: 'Documentos', emoji: '📁' },
-            ];
-
-            return (
-              <div style={{
-                borderRadius: "var(--border-radius-lg)",
-                background: "rgba(139,34,82,0.04)",
-                border: "1px solid rgba(139,34,82,0.2)",
-                borderLeft: "4px solid var(--accent)",
-                padding: 20,
-              }}>
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <CheckSquare size={18} color="var(--accent)" />
-                    <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
-                      Configuración pendiente
-                    </span>
-                    <svg width="32" height="32" style={{ flexShrink: 0 }}>
-                      <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-default)" strokeWidth="3" />
-                      <circle
-                        cx="16" cy="16" r="12" fill="none"
-                        stroke="var(--metric-value-green)" strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeDasharray={circ}
-                        strokeDashoffset={dashOffset}
-                        transform="rotate(-90 16 16)"
-                      />
-                      <text x="16" y="20" textAnchor="middle" fontSize="9" fill="var(--text-secondary)" fontWeight="600">
-                        {Math.round((completedCount / totalCount) * 100)}%
-                      </text>
-                    </svg>
-                    {pendingCount > 0 && (
-                      <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 999, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700 }}>
-                        {pendingCount}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleDismissAllTasks()}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem", padding: "4px 8px", borderRadius: "var(--border-radius-sm)" }}
-                    title="Descartar todo"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {allDone ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
-                    <CheckCircle2 size={32} color="var(--metric-value-green)" />
-                    <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>¡Propiedad configurada!</p>
-                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Todos los pasos de configuración están completos.</p>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {CATS.map((cat) => {
-                      const catTasks     = visibleSetupTasks.filter((t) => (TASK_CATEGORY_MAP[t.task_key] ?? 'documentos') === cat.key);
-                      if (catTasks.length === 0) return null;
-                      const catPending   = catTasks.filter((t) => !t.is_completed).length;
-                      const catCompleted = catTasks.filter((t) => t.is_completed).length;
-                      const catTotal     = catTasks.length;
-                      const catDone      = catPending === 0;
-                      const isCollapsed  = collapsedCategories.has(cat.key);
-                      const catCirc      = 2 * Math.PI * 8;
-                      const catDash      = catCirc * (1 - catCompleted / catTotal);
-                      return (
-                        <div key={cat.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)", overflow: "hidden" }}>
-                          <button
-                            type="button"
-                            onClick={() => setCollapsedCategories((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(cat.key)) next.delete(cat.key); else next.add(cat.key);
-                              return next;
-                            })}
-                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
-                          >
-                            <span style={{ fontSize: "1rem", lineHeight: 1 }}>{cat.emoji}</span>
-                            <span style={{ fontWeight: 600, fontSize: "0.8125rem", flex: 1, color: catDone ? "var(--metric-value-green)" : "var(--text-primary)" }}>
-                              {cat.label}
-                            </span>
-                            <svg width="20" height="20" style={{ flexShrink: 0 }}>
-                              <circle cx="10" cy="10" r="8" fill="none" stroke="var(--border-default)" strokeWidth="2.5" />
-                              <circle cx="10" cy="10" r="8" fill="none" stroke={catDone ? "var(--metric-value-green)" : "var(--accent)"} strokeWidth="2.5" strokeLinecap="round" strokeDasharray={catCirc} strokeDashoffset={catDash} transform="rotate(-90 10 10)" />
-                            </svg>
-                            <span style={{ fontSize: "0.6875rem", color: catDone ? "var(--metric-value-green)" : "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>
-                              {catCompleted}/{catTotal}
-                            </span>
-                            <ChevronRight
-                              size={14} color="var(--text-muted)"
-                              style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)", transition: "transform 0.2s", flexShrink: 0 }}
-                            />
-                          </button>
-                          {!isCollapsed && (
-                            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
-                              {catTasks.map((task, taskIdx) => {
-                                const feat    = getFeatureByKey(task.feature_key);
-                                const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
-                                if (!taskDef) return null;
-                                const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
-                                return (
-                                  <div
-                                    key={task.id}
-                                    style={{
-                                      display: "flex", alignItems: "center", gap: 12, padding: "9px 14px",
-                                      borderBottom: taskIdx < catTasks.length - 1 ? "1px solid var(--border-subtle)" : "none",
-                                      background: task.is_completed ? "rgba(16,185,129,0.04)" : "transparent",
-                                    }}
-                                  >
-                                    {task.is_completed ? (
-                                      <CheckCircle2 size={16} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
-                                    ) : (
-                                      <input
-                                        type="checkbox"
-                                        checked={false}
-                                        onChange={() => void handleCompleteTask(task.id)}
-                                        style={{ marginTop: 0, cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
-                                      />
-                                    )}
-                                    <div style={{ flex: 1, minWidth: 0 }}>
-                                      <div style={{
-                                        fontSize: "0.8125rem", fontWeight: 600,
-                                        color: task.is_completed ? "var(--metric-value-green)" : "var(--text-primary)",
-                                        textDecoration: task.is_completed ? "line-through" : "none",
-                                      }}>
-                                        {taskDef?.label ?? task.task_key}
-                                      </div>
-                                      {taskDef?.description && !task.is_completed && (
-                                        <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
-                                          {taskDef.description}
-                                        </p>
-                                      )}
-                                    </div>
-                                    {!task.is_completed && resolvedRoute && (
-                                      <button
-                                        type="button"
-                                        onClick={() => {
-                                          if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
-                                            const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
-                                            if (tabValue) { handleTabChange(tabValue); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
-                                          }
-                                          router.push(resolvedRoute);
-                                        }}
-                                        style={{
-                                          background: "none", border: "1px solid var(--border-default)",
-                                          padding: "3px 10px", borderRadius: "var(--border-radius-sm)",
-                                          fontSize: "0.75rem", fontWeight: 600, color: "var(--accent)",
-                                          cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
-                                        }}
-                                      >
-                                        Ir →
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
-                  <button
-                    type="button"
-                    onClick={() => void handleDismissAllTasks()}
-                    style={{
-                      padding: "8px 16px", borderRadius: "var(--border-radius-md)",
-                      border: "1px solid var(--border-default)", background: "transparent",
-                      fontSize: "0.8125rem", color: "var(--text-secondary)", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 6,
-                    }}
-                  >
-                    <SkipForward size={14} />
-                    Ya tengo experiencia, omitir configuración
-                  </button>
-                </div>
-              </div>
             );
           })()}
 
@@ -6426,6 +6224,215 @@ export default function BuildingDetailPage() {
           )}
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: CONFIGURACIÓN PENDIENTE
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "setup" ? (
+        <div style={{ display: "grid", gap: 24 }}>
+          {setupTasks.length > 0 && (() => {
+            const visibleSetupTasks = setupTasks.filter((t) => {
+              const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
+              const task = feature?.tasks.find((tk) => tk.key === t.task_key);
+              if (!task?.applicableTypes) return true;
+              return task.applicableTypes.includes(building.building_category ?? "");
+            });
+            const pendingCount   = visibleSetupTasks.filter((t) => !t.is_completed).length;
+            const completedCount = visibleSetupTasks.filter((t) => t.is_completed).length;
+            const totalCount     = visibleSetupTasks.length;
+            if (totalCount === 0) return null;
+            const allDone    = pendingCount === 0;
+            const circ       = 2 * Math.PI * 12;
+            const dashOffset = circ * (1 - completedCount / totalCount);
+
+            const CATS = [
+              { key: 'estructura' as const, label: 'Estructura', emoji: '🏗️' },
+              { key: 'servicios'  as const, label: 'Servicios',  emoji: '⚡' },
+              { key: 'operacion'  as const, label: 'Operación',  emoji: '🤝' },
+              { key: 'documentos' as const, label: 'Documentos', emoji: '📁' },
+            ];
+
+            return (
+              <div style={{
+                borderRadius: "var(--border-radius-lg)",
+                background: "rgba(139,34,82,0.04)",
+                border: "1px solid rgba(139,34,82,0.2)",
+                borderLeft: "4px solid var(--accent)",
+                padding: 20,
+              }}>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <CheckSquare size={18} color="var(--accent)" />
+                    <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                      Configuración pendiente
+                    </span>
+                    <svg width="32" height="32" style={{ flexShrink: 0 }}>
+                      <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-default)" strokeWidth="3" />
+                      <circle
+                        cx="16" cy="16" r="12" fill="none"
+                        stroke="var(--metric-value-green)" strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={dashOffset}
+                        transform="rotate(-90 16 16)"
+                      />
+                      <text x="16" y="20" textAnchor="middle" fontSize="9" fill="var(--text-secondary)" fontWeight="600">
+                        {Math.round((completedCount / totalCount) * 100)}%
+                      </text>
+                    </svg>
+                    {pendingCount > 0 && (
+                      <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 999, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700 }}>
+                        {pendingCount}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDismissAllTasks()}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem", padding: "4px 8px", borderRadius: "var(--border-radius-sm)" }}
+                    title="Descartar todo"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {allDone ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
+                    <CheckCircle2 size={32} color="var(--metric-value-green)" />
+                    <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>¡Propiedad configurada!</p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Todos los pasos de configuración están completos.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {CATS.map((cat) => {
+                      const catTasks     = visibleSetupTasks.filter((t) => (TASK_CATEGORY_MAP[t.task_key] ?? 'documentos') === cat.key);
+                      if (catTasks.length === 0) return null;
+                      const catPending   = catTasks.filter((t) => !t.is_completed).length;
+                      const catCompleted = catTasks.filter((t) => t.is_completed).length;
+                      const catTotal     = catTasks.length;
+                      const catDone      = catPending === 0;
+                      const isCollapsed  = collapsedCategories.has(cat.key);
+                      const catCirc      = 2 * Math.PI * 8;
+                      const catDash      = catCirc * (1 - catCompleted / catTotal);
+                      return (
+                        <div key={cat.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)", overflow: "hidden" }}>
+                          <button
+                            type="button"
+                            onClick={() => setCollapsedCategories((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(cat.key)) next.delete(cat.key); else next.add(cat.key);
+                              return next;
+                            })}
+                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                          >
+                            <span style={{ fontSize: "1rem", lineHeight: 1 }}>{cat.emoji}</span>
+                            <span style={{ fontWeight: 600, fontSize: "0.8125rem", flex: 1, color: catDone ? "var(--metric-value-green)" : "var(--text-primary)" }}>
+                              {cat.label}
+                            </span>
+                            <svg width="20" height="20" style={{ flexShrink: 0 }}>
+                              <circle cx="10" cy="10" r="8" fill="none" stroke="var(--border-default)" strokeWidth="2.5" />
+                              <circle cx="10" cy="10" r="8" fill="none" stroke={catDone ? "var(--metric-value-green)" : "var(--accent)"} strokeWidth="2.5" strokeLinecap="round" strokeDasharray={catCirc} strokeDashoffset={catDash} transform="rotate(-90 10 10)" />
+                            </svg>
+                            <span style={{ fontSize: "0.6875rem", color: catDone ? "var(--metric-value-green)" : "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>
+                              {catCompleted}/{catTotal}
+                            </span>
+                            <ChevronRight
+                              size={14} color="var(--text-muted)"
+                              style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)", transition: "transform 0.2s", flexShrink: 0 }}
+                            />
+                          </button>
+                          {!isCollapsed && (
+                            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                              {catTasks.map((task, taskIdx) => {
+                                const feat    = getFeatureByKey(task.feature_key);
+                                const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                                if (!taskDef) return null;
+                                const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
+                                return (
+                                  <div
+                                    key={task.id}
+                                    style={{
+                                      display: "flex", alignItems: "center", gap: 12, padding: "9px 14px",
+                                      borderBottom: taskIdx < catTasks.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                                      background: task.is_completed ? "rgba(16,185,129,0.04)" : "transparent",
+                                    }}
+                                  >
+                                    {task.is_completed ? (
+                                      <CheckCircle2 size={16} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
+                                    ) : (
+                                      <input
+                                        type="checkbox"
+                                        checked={false}
+                                        onChange={() => void handleCompleteTask(task.id)}
+                                        style={{ marginTop: 0, cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
+                                      />
+                                    )}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{
+                                        fontSize: "0.8125rem", fontWeight: 600,
+                                        color: task.is_completed ? "var(--metric-value-green)" : "var(--text-primary)",
+                                        textDecoration: task.is_completed ? "line-through" : "none",
+                                      }}>
+                                        {taskDef?.label ?? task.task_key}
+                                      </div>
+                                      {taskDef?.description && !task.is_completed && (
+                                        <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                                          {taskDef.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {!task.is_completed && resolvedRoute && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
+                                            const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
+                                            if (tabValue) { handleTabChange(tabValue); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+                                          }
+                                          router.push(resolvedRoute);
+                                        }}
+                                        style={{
+                                          background: "none", border: "1px solid var(--border-default)",
+                                          padding: "3px 10px", borderRadius: "var(--border-radius-sm)",
+                                          fontSize: "0.75rem", fontWeight: 600, color: "var(--accent)",
+                                          cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                                        }}
+                                      >
+                                        Ir →
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleDismissAllTasks()}
+                    style={{
+                      padding: "8px 16px", borderRadius: "var(--border-radius-md)",
+                      border: "1px solid var(--border-default)", background: "transparent",
+                      fontSize: "0.8125rem", color: "var(--text-secondary)", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}
+                  >
+                    <SkipForward size={14} />
+                    Ya tengo experiencia, omitir configuración
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      ) : null}
 
       {/* ── Modal: agregar área / amenidad ── */}
       {(() => {
