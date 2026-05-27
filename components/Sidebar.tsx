@@ -417,8 +417,8 @@ export default function Sidebar() {
   const activeSections: NavSection[] = (() => {
     if (isSaproaMode) return SAPROA_SECTIONS;
     if (isSuperAdmin) return ALL_ADMIN_SECTIONS;
-    // titular: todo excepto /users y /feedback (panel superadmin)
-    if (user?.role === "titular") {
+    // titular / group_admin: todo excepto /feedback (panel superadmin)
+    if (user?.role === "titular" || user?.role === "group_admin") {
       const TITULAR_DENIED = ["/feedback"];
       return ALL_ADMIN_SECTIONS
         .map(section => ({
@@ -625,7 +625,7 @@ export default function Sidebar() {
             <div style={{ display: "flex", flexDirection: "column" }}>
               {activeSections.map((section, idx) => (
                 <div key={idx}>
-                  {section.label && (isSuperAdmin || isSaproaMode) && (
+                  {section.label && (isSuperAdmin || isSaproaMode || user?.role === "group_admin") && (
                     <div style={{ padding: "12px 4px 4px" }}>
                       <span
                         style={{

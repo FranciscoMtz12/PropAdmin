@@ -4147,7 +4147,7 @@ export default function BuildingDetailPage() {
           return true;
         });
 
-        const canDelete = user?.role === "superadmin" || user?.is_superadmin || user?.role === "titular";
+        const canDelete = user?.role === "superadmin" || user?.is_superadmin || user?.role === "titular" || user?.role === "group_admin";
 
         return (
           <>

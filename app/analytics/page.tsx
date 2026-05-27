@@ -148,7 +148,7 @@ export default function AnalyticsPage() {
     router.replace(`?tab=${key}`, { scroll: false });
   }
 
-  const allowedRoles = ["superadmin", "administracion", "directivo", "titular"];
+  const allowedRoles = ["superadmin", "administracion", "directivo", "titular", "group_admin"];
   const hasAccess =
     !!user &&
     (allowedRoles.includes(user.role) || Boolean(user.is_superadmin) || isRealSuperAdmin);

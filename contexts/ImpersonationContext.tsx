@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from "react";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { supabase } from "@/lib/supabaseClient";
 
 /* ─── Tipos públicos ─────────────────────────────────────────────── */
 
@@ -80,6 +81,7 @@ const ImpersonationContext = createContext<ImpersonationContextType>({
 export function ImpersonationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
   const isRealSuperAdmin = Boolean(user?.is_superadmin);
+  const isGroupAdmin = user?.role === 'group_admin';
 
   const [impersonationMode,      setImpersonationMode]      = useState<'user' | 'company' | 'group'>('company');
   const [impersonatedCompanyId,  setImpersonatedCompanyId]  = useState<string | null>(null);
@@ -95,9 +97,55 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
 
   /* Limpiar impersonación si el usuario pierde privilegios (p.ej. cierra sesión) */
   useEffect(() => {
-    if (!isRealSuperAdmin) stopImpersonation();
+    /* group_admin gestiona su propio modo grupo automáticamente */
+    if (!isRealSuperAdmin && !isGroupAdmin) stopImpersonation();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRealSuperAdmin]);
+  }, [isRealSuperAdmin, isGroupAdmin]);
+
+  /* Auto-activar modo grupo cuando entra un group_admin */
+  useEffect(() => {
+    const groupId = user && 'group_id' in user ? user.group_id : null;
+    if (!isGroupAdmin || !groupId) return;
+    if (impersonatedGroupId === groupId) return; // ya activo para este grupo
+
+    let cancelled = false;
+
+    async function activateGroupMode() {
+      const [{ data: groupData }, { data: companiesData }] = await Promise.all([
+        supabase
+          .from("company_groups")
+          .select("id, name, short_name, brand_color, logo_url")
+          .eq("id", groupId!)
+          .maybeSingle(),
+        supabase
+          .from("companies")
+          .select("id, name, short_name, brand_color, logo_url")
+          .eq("group_id", groupId!)
+          .is("deleted_at", null),
+      ]);
+
+      if (cancelled || !groupData) return;
+
+      const rawName = (groupData as any).short_name || groupData.name;
+      const groupName = rawName.startsWith("Grupo") ? rawName : `Grupo ${rawName}`;
+
+      setImpersonationMode('group');
+      setImpersonatedGroupId(groupData.id);
+      setImpersonatedGroupName(groupName);
+      setGroupCompanies((companiesData as GroupCompany[]) || []);
+      setGroupCompanyIds(((companiesData || []) as GroupCompany[]).map(c => c.id));
+      setImpersonatedCompanyId(null);
+      setImpersonatedCompanyName(null);
+      setImpersonatedUserId(null);
+      setImpersonatedUserEmail(null);
+      setImpersonatedUserFullName(null);
+      setImpersonatedRole(null);
+    }
+
+    void activateGroupMode();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGroupAdmin, user && 'group_id' in user ? user.group_id : null, impersonatedGroupId]);
 
   function startImpersonation(params: ImpersonationParams) {
     setImpersonationMode(params.userId !== null ? 'user' : 'company');

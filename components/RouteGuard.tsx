@@ -107,7 +107,7 @@ export default function RouteGuard() {
     const skipGranular = user.role === "superadmin" || user.is_superadmin;
 
     if (!skipGranular) {
-      if (user.role === "titular") {
+      if (user.role === "titular" || user.role === "group_admin") {
         if (pathname.startsWith("/feedback")) { router.replace("/dashboard"); return; }
         return;
       }
