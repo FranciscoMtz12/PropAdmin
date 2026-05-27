@@ -11,7 +11,8 @@
   - Fondo: #0f1623 en dark mode, #1e2a3a en light mode
 */
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
+import { useSwipeable } from "react-swipeable";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -364,27 +365,23 @@ export default function Sidebar() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
-  const swipeStartX = useRef(0);
-  const swipeStartY = useRef(0);
+  const swipeOpenHandlers = useSwipeable({
+    onSwipedRight: () => setMobileOpen(true),
+    delta: 40,
+    trackTouch: true,
+    trackMouse: false,
+    preventScrollOnSwipe: true,
+    swipeDuration: 500,
+  });
 
-  function onSwipeStart(e: React.TouchEvent) {
-    swipeStartX.current = e.touches[0].clientX;
-    swipeStartY.current = e.touches[0].clientY;
-  }
-
-  function onSwipeEndOpen(e: React.TouchEvent) {
-    const dx = e.changedTouches[0].clientX - swipeStartX.current;
-    const dy = e.changedTouches[0].clientY - swipeStartY.current;
-    if (Math.abs(dx) < Math.abs(dy)) return;
-    if (dx > 40) setMobileOpen(true);
-  }
-
-  function onSwipeEndClose(e: React.TouchEvent) {
-    const dx = e.changedTouches[0].clientX - swipeStartX.current;
-    const dy = e.changedTouches[0].clientY - swipeStartY.current;
-    if (Math.abs(dx) < Math.abs(dy)) return;
-    if (dx < -40) setMobileOpen(false);
-  }
+  const swipeCloseHandlers = useSwipeable({
+    onSwipedLeft: () => setMobileOpen(false),
+    delta: 40,
+    trackTouch: true,
+    trackMouse: false,
+    preventScrollOnSwipe: true,
+    swipeDuration: 500,
+  });
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
   const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
@@ -465,8 +462,7 @@ export default function Sidebar() {
     {/* Zona de swipe para abrir sidebar — debajo del hamburger, solo en mobile cuando sidebar cerrado */}
     {isMobile && !mobileOpen && (
       <div
-        onTouchStart={onSwipeStart}
-        onTouchEnd={onSwipeEndOpen}
+        {...swipeOpenHandlers}
         style={{
           position: "fixed",
           top: 60,
@@ -480,9 +476,8 @@ export default function Sidebar() {
     {/* Overlay móvil — también captura swipe izquierda para cerrar */}
     {mobileOpen && (
       <div
+        {...swipeCloseHandlers}
         onClick={() => setMobileOpen(false)}
-        onTouchStart={onSwipeStart}
-        onTouchEnd={onSwipeEndClose}
         style={{
           position: "fixed",
           inset: 0,
