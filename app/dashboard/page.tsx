@@ -1697,12 +1697,12 @@ export default function DashboardPage() {
           icon={<Bell size={18} />}
         >
           {notifLoading ? (
-            <p style={{ color: c.textMuted, fontSize: "0.875rem" }}>Calculando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Calculando...</p>
           ) : notifications.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
               <CheckCircle2 size={36} color="var(--metric-value-green)" />
               <p style={{ margin: 0, fontWeight: 700, color: "var(--metric-value-green)", fontSize: "0.9375rem" }}>Todo al día</p>
-              <p style={{ margin: 0, fontSize: "0.75rem", color: c.textMuted, textAlign: "center" }}>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>
                 No hay alertas operativas pendientes.
               </p>
             </div>
