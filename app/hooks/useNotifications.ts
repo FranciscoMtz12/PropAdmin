@@ -34,17 +34,16 @@ function leasesToBuildingRows(leases: LeaseRow[]): RowWithBuilding[] {
   }))
 }
 
-async function calculateNotifications(companyId: string): Promise<Notification[]> {
+async function calculateNotifications(companyId: string | null): Promise<Notification[]> {
   const notifs: Notification[] = []
   const now = new Date()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const withCo = (q: any) => companyId ? q.eq('company_id', companyId) : q
 
   // 1. Unidades pendientes de revisión — una notificación por edificio
-  const { data: rawUnits } = await supabase
-    .from('units')
-    .select('id, building_id, buildings(name)')
-    .eq('company_id', companyId)
-    .eq('needs_review', true)
-    .is('deleted_at', null)
+  const { data: rawUnits } = await withCo(
+    supabase.from('units').select('id, building_id, buildings(name)').eq('needs_review', true).is('deleted_at', null)
+  )
 
   if (rawUnits && rawUnits.length > 0) {
     const byBuilding = groupByBuilding(rawUnits as unknown as RowWithBuilding[])
@@ -71,31 +70,9 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
 
   const [{ data: rawExpiring }, { data: rawExpired }, { data: rawMeters }] =
     await Promise.all([
-      supabase
-        .from('leases')
-        .select('id, unit_id, units(building_id, buildings(name))')
-        .eq('company_id', companyId)
-        .eq('status', 'ACTIVE')
-        .not('end_date', 'is', null)
-        .lte('end_date', thirtyStr)
-        .gte('end_date', todayStr)
-        .is('deleted_at', null),
-
-      supabase
-        .from('leases')
-        .select('id, unit_id, units(building_id, buildings(name))')
-        .eq('company_id', companyId)
-        .eq('status', 'ACTIVE')
-        .not('end_date', 'is', null)
-        .lt('end_date', todayStr)
-        .is('deleted_at', null),
-
-      supabase
-        .from('building_utility_meters')
-        .select('id, building_id, buildings(name)')
-        .eq('company_id', companyId)
-        .eq('active', false)
-        .is('deleted_at', null),
+      withCo(supabase.from('leases').select('id, unit_id, units(building_id, buildings(name))')).eq('status', 'ACTIVE').not('end_date', 'is', null).lte('end_date', thirtyStr).gte('end_date', todayStr).is('deleted_at', null),
+      withCo(supabase.from('leases').select('id, unit_id, units(building_id, buildings(name))')).eq('status', 'ACTIVE').not('end_date', 'is', null).lt('end_date', todayStr).is('deleted_at', null),
+      withCo(supabase.from('building_utility_meters').select('id, building_id, buildings(name)')).eq('active', false).is('deleted_at', null),
     ])
 
   if (rawExpiring && rawExpiring.length > 0) {
@@ -167,15 +144,15 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
     { data: rawPreventiveTickets },
     { data: rawActiveSharedMeters },
   ] = await Promise.all([
-    supabase.from('purchase_orders').select('id').eq('company_id', companyId).eq('status', 'pending').lt('created_at', oneDayAgo).is('deleted_at', null),
-    supabase.from('purchase_orders').select('id').eq('company_id', companyId).eq('status', 'partial').is('deleted_at', null),
-    supabase.from('purchase_orders').select('id').eq('company_id', companyId).or('version_type.not.is.null,parent_order_id.not.is.null').gte('created_at', oneHourAgo).is('deleted_at', null),
-    supabase.from('collection_records').select('id').eq('company_id', companyId).eq('status', 'overdue').is('deleted_at', null),
-    supabase.from('collection_records').select('id').eq('company_id', companyId).eq('status', 'pending').gte('due_date', b2TodayStr).lte('due_date', b2FiveDaysLater).is('deleted_at', null),
-    supabase.from('maintenance_logs').select('id').eq('company_id', companyId).eq('priority', 'urgent').neq('status', 'resolved').is('deleted_at', null),
-    supabase.from('maintenance_logs').select('id').eq('company_id', companyId).eq('status', 'open').gte('created_at', oneDayAgo).is('deleted_at', null),
-    supabase.from('maintenance_logs').select('id').eq('company_id', companyId).eq('log_type', 'preventive').not('next_due_at', 'is', null).gte('next_due_at', b2TodayStr).lte('next_due_at', b2FifteenDaysLater).is('deleted_at', null),
-    supabase.from('building_utility_meters').select('id').eq('company_id', companyId).eq('active', true).eq('meter_type', 'shared').is('deleted_at', null),
+    withCo(supabase.from('purchase_orders').select('id')).eq('status', 'pending').lt('created_at', oneDayAgo).is('deleted_at', null),
+    withCo(supabase.from('purchase_orders').select('id')).eq('status', 'partial').is('deleted_at', null),
+    withCo(supabase.from('purchase_orders').select('id')).or('version_type.not.is.null,parent_order_id.not.is.null').gte('created_at', oneHourAgo).is('deleted_at', null),
+    withCo(supabase.from('collection_records').select('id')).eq('status', 'overdue').is('deleted_at', null),
+    withCo(supabase.from('collection_records').select('id')).eq('status', 'pending').gte('due_date', b2TodayStr).lte('due_date', b2FiveDaysLater).is('deleted_at', null),
+    withCo(supabase.from('maintenance_logs').select('id')).eq('priority', 'urgent').neq('status', 'resolved').is('deleted_at', null),
+    withCo(supabase.from('maintenance_logs').select('id')).eq('status', 'open').gte('created_at', oneDayAgo).is('deleted_at', null),
+    withCo(supabase.from('maintenance_logs').select('id')).eq('log_type', 'preventive').not('next_due_at', 'is', null).gte('next_due_at', b2TodayStr).lte('next_due_at', b2FifteenDaysLater).is('deleted_at', null),
+    withCo(supabase.from('building_utility_meters').select('id')).eq('active', true).eq('meter_type', 'shared').is('deleted_at', null),
   ])
 
   // Utility readings check for cobranza
@@ -242,9 +219,11 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
   const sevenDaysAgo = new Date(now.getTime() - 7 * 86400000)
 
   const [{ data: rawInvoicedOCs }, { data: rawPRIds }, { data: rawCompany }] = await Promise.all([
-    supabase.from('purchase_orders').select('id, sent_at').eq('company_id', companyId).eq('status', 'invoiced').is('deleted_at', null),
-    supabase.from('payment_reports').select('id, status, created_at').eq('company_id', companyId).is('deleted_at', null),
-    supabase.from('companies').select('logo_url, tax_id, legal_name, admin_contact_email, purchases_contact_email, brand_color').eq('id', companyId).single(),
+    withCo(supabase.from('purchase_orders').select('id, sent_at')).eq('status', 'invoiced').is('deleted_at', null),
+    withCo(supabase.from('payment_reports').select('id, status, created_at')).is('deleted_at', null),
+    companyId
+      ? supabase.from('companies').select('logo_url, tax_id, legal_name, admin_contact_email, purchases_contact_email, brand_color').eq('id', companyId).single()
+      : Promise.resolve({ data: null }),
   ])
 
   // Subtract OCs already included in a payment report
@@ -303,12 +282,12 @@ async function calculateNotifications(companyId: string): Promise<Notification[]
   return notifs
 }
 
-export function useNotifications(companyId: string) {
+export function useNotifications(companyId: string | null, enabled = true) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
 
   const refetch = async () => {
-    if (!companyId) return
+    if (!enabled) return
     setLoading(true)
     const notifs = await calculateNotifications(companyId)
     setNotifications(notifs)
@@ -316,12 +295,12 @@ export function useNotifications(companyId: string) {
   }
 
   useEffect(() => {
-    if (!companyId) return
+    if (!enabled) return
     void refetch()
     const interval = setInterval(() => { void refetch() }, 60_000)
     return () => clearInterval(interval)
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [companyId])
+  }, [companyId, enabled])
 
   const byModule = notifications.reduce<Record<string, Notification[]>>((acc, notif) => {
     if (!acc[notif.module]) acc[notif.module] = []

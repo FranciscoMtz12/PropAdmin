@@ -403,7 +403,7 @@ export default function Sidebar() {
 
   /* Modo SAPROA Control Center: superadmin real SIN impersonar ninguna empresa */
   const isSaproaMode = isRealSuperAdmin && !isImpersonating;
-  const { moduleStats } = useNotifications(user?.company_id ?? "");
+  const { moduleStats } = useNotifications(user?.company_id ?? null, !!user && !isSaproaMode);
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
   const isHiddenRoute =

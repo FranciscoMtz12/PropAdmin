@@ -1,11 +1,13 @@
 "use client";
 
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useCurrentUser } from "@/contexts/UserContext";
 import { initials } from "@/contexts/ThemeContext";
 
 const GROUP_COLOR = "#C9A84C";
 
 export default function GroupBanner() {
+  const { user } = useCurrentUser();
   const {
     isImpersonating,
     impersonationMode,
@@ -15,7 +17,8 @@ export default function GroupBanner() {
     toggleGroupCompany,
   } = useImpersonation();
 
-  if (!isImpersonating || impersonationMode !== 'group') return null;
+  const isGroupAdmin = user?.role === 'group_admin';
+  if (!isGroupAdmin && (!isImpersonating || impersonationMode !== 'group')) return null;
 
   return (
     <div
