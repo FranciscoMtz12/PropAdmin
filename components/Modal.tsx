@@ -3,6 +3,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import { X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useIconSize } from "@/lib/useFontScale";
 
 /*
   Modal reutilizable del sistema.
@@ -32,6 +33,9 @@ export default function Modal({
   contentStyle?: CSSProperties;
   overlayStyle?: CSSProperties;
 }) {
+  const closeIconSz = useIconSize(18);
+  const closeBtnSz = useIconSize(40);
+
   return (
     <AnimatePresence>
       {open ? (
@@ -84,7 +88,7 @@ export default function Modal({
           <div>
             <h2
               style={{
-                fontSize: "28px",
+                fontSize: "1.75rem",
                 fontWeight: 700,
                 marginBottom: subtitle ? "6px" : 0,
                 color: "var(--text-primary)",
@@ -105,8 +109,8 @@ export default function Modal({
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
               borderRadius: "var(--border-radius-sm)",
-              width: "40px",
-              height: "40px",
+              width: closeBtnSz,
+              height: closeBtnSz,
               display: "inline-flex",
               alignItems: "center",
               justifyContent: "center",
@@ -114,7 +118,7 @@ export default function Modal({
               flexShrink: 0,
             }}
           >
-            <X size={18} />
+            <X size={closeIconSz} />
           </button>
         </div>
 

@@ -1,11 +1,13 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { Eye } from "lucide-react";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 
-const SAPROA_COLOR = "#8B2252";
+const SAPROA_ACCENT = "#6366F1";
 
 export function ImpersonationBanner() {
+  const router = useRouter();
   const {
     isImpersonating,
     impersonationMode,
@@ -15,20 +17,30 @@ export function ImpersonationBanner() {
     stopImpersonation,
   } = useImpersonation();
 
-  if (!isImpersonating || impersonationMode === 'group') return null;
+  if (!isImpersonating || impersonationMode === "group") return null;
 
   const ROLE_LABEL: Record<string, string> = {
-    titular: "Titular", administracion: "Administración", directivo: "Directivo",
-    compras: "Compras", mantenimiento: "Mantenimiento", field: "Campo",
+    titular: "Titular",
+    administracion: "Administración",
+    directivo: "Directivo",
+    compras: "Compras",
+    mantenimiento: "Mantenimiento",
+    field: "Campo",
   };
 
-  const roleLabel = (impersonatedRole && ROLE_LABEL[impersonatedRole]) || impersonatedRole || "";
+  const roleLabel =
+    (impersonatedRole && ROLE_LABEL[impersonatedRole]) || impersonatedRole || "";
+
+  function handleExit() {
+    stopImpersonation();
+    router.push("/saproa-admin/overview");
+  }
 
   return (
     <div
       style={{
-        background: "rgba(139,34,82,0.07)",
-        border: "1px solid rgba(139,34,82,0.18)",
+        background: "rgba(99,102,241,0.08)",
+        border: "1px solid rgba(99,102,241,0.2)",
         borderRadius: "var(--border-radius-md)",
         padding: "9px 14px",
         marginBottom: 16,
@@ -38,30 +50,51 @@ export function ImpersonationBanner() {
         flexShrink: 0,
       }}
     >
-      <Eye size={14} color={SAPROA_COLOR} style={{ flexShrink: 0 }} />
-      <span style={{ flex: 1, fontSize: 13, color: SAPROA_COLOR, fontWeight: 600, lineHeight: 1.4 }}>
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: "50%",
+          background: SAPROA_ACCENT,
+          flexShrink: 0,
+        }}
+      />
+      <Eye size={14} color={SAPROA_ACCENT} style={{ flexShrink: 0 }} />
+      <span
+        style={{
+          flex: 1,
+          fontSize: "0.8125rem",
+          color: SAPROA_ACCENT,
+          fontWeight: 600,
+          lineHeight: 1.4,
+        }}
+      >
         Vista simulada
         {impersonatedCompanyName ? ` · ${impersonatedCompanyName}` : ""}
-        {impersonationMode === 'company'
+        {impersonationMode === "company"
           ? " · vista completa"
-          : roleLabel ? ` · ${roleLabel}` : ""}
-        {impersonationMode === 'user' && impersonatedUserEmail ? ` (${impersonatedUserEmail})` : ""}
+          : roleLabel
+          ? ` · ${roleLabel}`
+          : ""}
+        {impersonationMode === "user" && impersonatedUserEmail
+          ? ` (${impersonatedUserEmail})`
+          : ""}
       </span>
       <button
-        onClick={stopImpersonation}
+        onClick={handleExit}
         style={{
           padding: "4px 10px",
           borderRadius: "var(--border-radius-sm)",
-          border: `1px solid rgba(139,34,82,0.4)`,
+          border: "1px solid rgba(99,102,241,0.4)",
           background: "transparent",
-          color: SAPROA_COLOR,
-          fontSize: 12,
+          color: SAPROA_ACCENT,
+          fontSize: "0.75rem",
           fontWeight: 700,
           cursor: "pointer",
           whiteSpace: "nowrap",
         }}
       >
-        Salir
+        Salir de vista simulada
       </button>
     </div>
   );

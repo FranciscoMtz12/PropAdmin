@@ -389,7 +389,7 @@ export default function BuildingCleaningPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
@@ -398,7 +398,7 @@ export default function BuildingCleaningPage() {
               >
                 Nombre
               </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {building.name}
               </span>
             </div>
@@ -408,7 +408,7 @@ export default function BuildingCleaningPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
@@ -417,7 +417,7 @@ export default function BuildingCleaningPage() {
               >
                 Dirección
               </span>
-              <span style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: "1rem", fontWeight: 600, color: "var(--text-primary)" }}>
                 {building.address || "Sin dirección registrada"}
               </span>
             </div>
@@ -427,7 +427,7 @@ export default function BuildingCleaningPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
@@ -436,10 +436,10 @@ export default function BuildingCleaningPage() {
               >
                 Programación edificio
               </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {totalBuildingSchedules}
               </span>
-              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                 Exterior + áreas comunes
               </span>
             </div>
@@ -449,7 +449,7 @@ export default function BuildingCleaningPage() {
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   letterSpacing: "0.04em",
                   textTransform: "uppercase",
@@ -458,10 +458,10 @@ export default function BuildingCleaningPage() {
               >
                 Unidades activas
               </span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)" }}>
+              <span style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                 {totalActiveUnitSchedules}
               </span>
-              <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                 Limpieza interior activa
               </span>
             </div>
@@ -515,7 +515,7 @@ export default function BuildingCleaningPage() {
                       <h3
                         style={{
                           margin: 0,
-                          fontSize: 18,
+                          fontSize: "1.125rem",
                           fontWeight: 700,
                           color: "var(--text-primary)",
                         }}
@@ -537,7 +537,7 @@ export default function BuildingCleaningPage() {
                 <p
                   style={{
                     margin: 0,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     lineHeight: 1.6,
                     color: "var(--text-secondary)",
                   }}
@@ -559,7 +559,7 @@ export default function BuildingCleaningPage() {
                 >
                   <span
                     style={{
-                      fontSize: 12,
+                      fontSize: "0.75rem",
                       fontWeight: 700,
                       letterSpacing: "0.04em",
                       textTransform: "uppercase",
@@ -574,7 +574,7 @@ export default function BuildingCleaningPage() {
                       <span
                         key={`${area.key}-${index}`}
                         style={{
-                          fontSize: 14,
+                          fontSize: "0.875rem",
                           fontWeight: index < 2 && area.key === "units" ? 700 : 600,
                           color: "var(--text-primary)",
                           lineHeight: 1.5,
@@ -601,7 +601,7 @@ export default function BuildingCleaningPage() {
                       alignItems: "center",
                       gap: 8,
                       color: area.color,
-                      fontSize: 13,
+                      fontSize: "0.8125rem",
                       fontWeight: 600,
                     }}
                   >

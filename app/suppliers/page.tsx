@@ -44,10 +44,12 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
 import AppBadge from "@/components/AppBadge";
+import SensitiveField from "@/components/SensitiveField";
 
 /* ── Types ─────────────────────────────────────────────────────────── */
 
@@ -134,8 +136,8 @@ const EMPTY_FORM: SupplierFormValues = {
 };
 
 const errorTextStyle: CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -191,9 +193,9 @@ export default function SuppliersPage() {
   /* ── Load ────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadSuppliers(user?.company_id ?? null);
+    if (!userLoading && user && !user.is_superadmin) void loadSuppliers(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user, isGroupMode]);
+  }, [userLoading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadSuppliers(companyId: string | null) {
     setLoading(true);
@@ -223,14 +225,12 @@ export default function SuppliersPage() {
     setLoading(false);
   }
 
-  /* ── Metrics ─────────────────────────────────────────────────────── */
+  /* ── Grupo mode derivados ────────────────────────────────────────── */
 
-  const { total, activeCount, inactiveCount } = useMemo(() => {
-    const base          = isGroupMode ? suppliers.filter((s) => groupCompanyIds.includes(s.company_id)) : suppliers;
-    const total         = base.length;
-    const activeCount   = base.filter((s) => s.active).length;
-    const inactiveCount = total - activeCount;
-    return { total, activeCount, inactiveCount };
+  const displayedSuppliers = useMemo(() => {
+    if (!isGroupMode) return suppliers;
+    if (groupCompanyIds.length === 0) return suppliers;
+    return suppliers.filter((s) => groupCompanyIds.includes(s.company_id));
   }, [suppliers, isGroupMode, groupCompanyIds]);
 
   const suppliersByCompany = useMemo(() => {
@@ -239,10 +239,19 @@ export default function SuppliersPage() {
       .filter((c) => groupCompanyIds.includes(c.id))
       .map((company) => ({
         company,
-        items: suppliers.filter((s) => s.company_id === company.id),
+        compSuppliers: displayedSuppliers.filter((s) => s.company_id === company.id),
       }))
-      .filter(({ items }) => items.length > 0);
-  }, [isGroupMode, groupCompanies, groupCompanyIds, suppliers]);
+      .filter(({ compSuppliers }) => compSuppliers.length > 0);
+  }, [isGroupMode, groupCompanies, groupCompanyIds, displayedSuppliers]);
+
+  /* ── Metrics ─────────────────────────────────────────────────────── */
+
+  const { total, activeCount, inactiveCount } = useMemo(() => {
+    const total         = displayedSuppliers.length;
+    const activeCount   = displayedSuppliers.filter((s) => s.active).length;
+    const inactiveCount = total - activeCount;
+    return { total, activeCount, inactiveCount };
+  }, [displayedSuppliers]);
 
   /* ── Form handlers ───────────────────────────────────────────────── */
 
@@ -475,13 +484,13 @@ export default function SuppliersPage() {
     borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
-    fontSize: 14,
+    fontSize: "0.875rem",
     boxSizing: "border-box",
     outline: "none",
   };
 
   const sectionTitleStyle: CSSProperties = {
-    fontSize: 12, fontWeight: 700, color: "var(--text-muted)",
+    fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)",
     textTransform: "uppercase", letterSpacing: "0.06em",
     marginBottom: 12, marginTop: 8,
     paddingBottom: 6, borderBottom: "1px solid var(--border-default)",
@@ -508,9 +517,11 @@ export default function SuppliersPage() {
         titleIcon={<Truck size={18} />}
         subtitle="Catálogo de proveedores y sus sucursales."
         actions={
-          <UiButton variant="primary" onClick={openCreate} icon={<Plus size={16} />}>
-            Nuevo proveedor
-          </UiButton>
+          !isGroupMode ? (
+            <UiButton variant="primary" onClick={openCreate} icon={<Plus size={16} />}>
+              Nuevo proveedor
+            </UiButton>
+          ) : undefined
         }
       />
 
@@ -525,8 +536,15 @@ export default function SuppliersPage() {
         </AppCard>
       ) : null}
 
-      {/* Métricas */}
-      <AppGrid minWidth={220} style={{ marginBottom: 20 }}>
+      {/* Métricas mobile */}
+      <MetricCircles metrics={[
+        { value: total,         label: "Total",    color: "default" },
+        { value: activeCount,   label: "Activos",  color: "success" },
+        { value: inactiveCount, label: "Inactivos",color: "warning" },
+      ]} />
+
+      {/* Métricas desktop */}
+      <AppGrid minWidth={220} className="metric-grid-desktop-only" style={{ marginBottom: 20 }}>
         <MetricCard label="Total proveedores" value={total}         variant="neutral" icon={<Package size={18} />} />
         <MetricCard label="Activos"           value={activeCount}   variant="green"   />
         <MetricCard label="Inactivos"         value={inactiveCount} variant="amber"   />
@@ -535,10 +553,10 @@ export default function SuppliersPage() {
       {/* Lista */}
       {loading ? (
         <AppCard><p style={{ margin: 0, color: "var(--text-muted)" }}>Cargando proveedores...</p></AppCard>
-      ) : suppliers.length === 0 ? (
+      ) : displayedSuppliers.length === 0 ? (
         <AppCard>
           <p style={{ margin: 0, color: "var(--text-muted)" }}>
-            No hay proveedores. Crea el primero con el botón de arriba.
+            {isGroupMode ? "Las empresas activas no tienen proveedores registrados." : "No hay proveedores. Crea el primero con el botón de arriba."}
           </p>
         </AppCard>
       ) : isGroupMode ? (
@@ -581,8 +599,26 @@ export default function SuppliersPage() {
           })}
         </div>
       ) : (
-        <AppGrid minWidth={320}>
-          {suppliers.map((s, index) => (
+        <div style={{ display: "flex", flexDirection: "column", gap: isGroupMode ? 32 : 0 }}>
+          {(isGroupMode
+            ? suppliersByCompany
+            : [{ company: null, compSuppliers: displayedSuppliers }] as Array<{ company: typeof groupCompanies[0] | null; compSuppliers: Supplier[] }>
+          ).map(({ company, compSuppliers }) => (
+            <div key={company?.id ?? "all"}>
+              {company ? (
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: company.brand_color || "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                    {company.short_name || company.name}
+                  </span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 4 }}>
+                    {compSuppliers.length} {compSuppliers.length === 1 ? "proveedor" : "proveedores"}
+                  </span>
+                  <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
+                </div>
+              ) : null}
+              <AppGrid minWidth={320}>
+                {compSuppliers.map((s, index) => (
             <motion.div
               key={s.id}
               initial={{ opacity: 0, y: 16 }}
@@ -595,12 +631,12 @@ export default function SuppliersPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {s.name}
                     </div>
                     {s.prefix ? (
                       <span style={{
-                        fontSize: 10, fontWeight: 700,
+                        fontSize: "0.625rem", fontWeight: 700,
                         fontFamily: "monospace",
                         padding: "2px 6px", borderRadius: "var(--border-radius-sm)",
                         background: "var(--bg-input)",
@@ -613,12 +649,12 @@ export default function SuppliersPage() {
                     ) : null}
                   </div>
                   {s.tax_id ? (
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2, fontFamily: "monospace" }}>
-                      RFC: {s.tax_id}
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
+                      RFC: <SensitiveField value={s.tax_id} type="rfc" />
                     </div>
                   ) : null}
                   {s.client_number ? (
-                    <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+                    <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
                       Cliente #{s.client_number}
                     </div>
                   ) : null}
@@ -675,10 +711,10 @@ export default function SuppliersPage() {
               </div>
 
               {/* Persona de contacto */}
-              <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: 13, color: "var(--text-secondary)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                 {s.contact_name  ? <div>{s.contact_name}</div> : null}
-                {s.contact_phone ? <div>{s.contact_phone}</div> : null}
-                {s.contact_email ? <div style={{ wordBreak: "break-all" }}>{s.contact_email}</div> : null}
+                {s.contact_phone ? <div><SensitiveField value={s.contact_phone} type="phone" /></div> : null}
+                {s.contact_email ? <div><SensitiveField value={s.contact_email} type="email" /></div> : null}
                 {!s.contact_name && !s.contact_phone && !s.contact_email ? (
                   <div style={{ color: "var(--text-muted)" }}>Sin persona de contacto</div>
                 ) : null}
@@ -687,7 +723,7 @@ export default function SuppliersPage() {
               {/* Sucursales */}
               <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 10, marginTop: 4 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                     Sucursales ({s.branches?.length || 0})
                   </span>
                   <button
@@ -712,14 +748,14 @@ export default function SuppliersPage() {
                 {(s.branches || []).length > 0 ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                     {(s.branches || []).map((b) => (
-                      <div key={b.id} style={{ fontSize: 12, color: "var(--text-secondary)", display: "flex", gap: 6 }}>
+                      <div key={b.id} style={{ fontSize: "0.75rem", color: "var(--text-secondary)", display: "flex", gap: 6 }}>
                         <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{b.name}</span>
                         {b.address ? <span style={{ color: "var(--text-muted)" }}>· {b.address}</span> : null}
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Sin sucursales registradas.</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Sin sucursales registradas.</div>
                 )}
 
                 {/* Quick branch form */}
@@ -738,27 +774,27 @@ export default function SuppliersPage() {
                     display: "flex", flexDirection: "column", gap: 6,
                   }}>
                     <input
-                      style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                      style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                       placeholder="Nombre de la sucursal *"
                       value={quickBranch.name}
                       onChange={(e) => setQuickBranch({ ...quickBranch, name: e.target.value })}
                       autoFocus
                     />
                     <input
-                      style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                      style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                       placeholder="Dirección"
                       value={quickBranch.address}
                       onChange={(e) => setQuickBranch({ ...quickBranch, address: e.target.value })}
                     />
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                       <input
-                        style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                        style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                         placeholder="Email sucursal"
                         value={quickBranch.email}
                         onChange={(e) => setQuickBranch({ ...quickBranch, email: e.target.value })}
                       />
                       <input
-                        style={{ ...INPUT_STYLE, fontSize: 13, padding: "8px 10px" }}
+                        style={{ ...INPUT_STYLE, fontSize: "0.8125rem", padding: "8px 10px" }}
                         placeholder="Teléfono sucursal"
                         value={quickBranch.phone}
                         onChange={(e) => setQuickBranch({ ...quickBranch, phone: e.target.value })}
@@ -788,7 +824,10 @@ export default function SuppliersPage() {
             </AppCard>
             </motion.div>
           ))}
-        </AppGrid>
+              </AppGrid>
+            </div>
+          ))}
+        </div>
       )}
 
       {/* Modal crear/editar */}
@@ -847,10 +886,10 @@ export default function SuppliersPage() {
             marginBottom: 16,
           }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                 Proveedor activo
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
                 Solo los activos aparecen en los selectores de materiales y compras.
               </div>
             </div>
@@ -932,10 +971,10 @@ export default function SuppliersPage() {
             marginBottom: formTieneCredito ? 12 : 16,
           }}>
             <div>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                 ¿Tiene crédito?
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>
                 El proveedor otorga crédito a pagar después de la factura.
               </div>
             </div>
@@ -948,7 +987,7 @@ export default function SuppliersPage() {
               <span style={{
                 position: "absolute", cursor: "pointer",
                 top: 0, left: 0, right: 0, bottom: 0,
-                background: formTieneCredito ? "#16a34a" : "var(--border-default)",
+                background: formTieneCredito ? "var(--metric-value-green)" : "var(--border-default)",
                 borderRadius: "var(--border-radius-lg)", transition: "0.2s",
               }} />
               <span style={{
@@ -981,7 +1020,7 @@ export default function SuppliersPage() {
                     onClick={() => setValue("dias_credito", d)}
                     style={{
                       padding: "5px 12px", borderRadius: "var(--border-radius-md)", cursor: "pointer",
-                      fontSize: 12, fontWeight: 600,
+                      fontSize: "0.75rem", fontWeight: 600,
                       border: "1px solid var(--border-default)",
                       background: formDiasCredito === d ? "var(--accent)" : "var(--bg-card)",
                       color: formDiasCredito === d ? "#fff" : "var(--text-secondary)",
@@ -1001,7 +1040,7 @@ export default function SuppliersPage() {
               <div style={sectionTitleStyle}>Sucursales</div>
 
               {editingBranches.length === 0 ? (
-                <div style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 10 }}>
+                <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: 10 }}>
                   Sin sucursales registradas.
                 </div>
               ) : (
@@ -1076,11 +1115,11 @@ export default function SuppliersPage() {
                         borderRadius: "var(--border-radius-md)", background: "var(--bg-input)",
                       }}>
                         <div style={{ minWidth: 0, flex: 1 }}>
-                          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                          <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
                             {b.name}
                           </div>
                           {b.address ? (
-                            <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{b.address}</div>
+                            <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{b.address}</div>
                           ) : null}
                         </div>
                         <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
@@ -1193,7 +1232,7 @@ export default function SuppliersPage() {
                     padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                     border: "1px dashed var(--border-strong)",
                     background: "transparent", color: "var(--text-secondary)",
-                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                    fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                     marginBottom: 10,
                   }}
                 >
@@ -1206,7 +1245,7 @@ export default function SuppliersPage() {
           {formError ? (
             <div style={{
               color: "var(--badge-text-red)",
-              marginBottom: 12, fontSize: 13, fontWeight: 600,
+              marginBottom: 12, fontSize: "0.8125rem", fontWeight: 600,
             }}>
               {formError}
             </div>
@@ -1234,7 +1273,7 @@ function menuBtnStyle(danger = false): CSSProperties {
     padding: "10px 14px", textAlign: "left",
     background: "transparent", border: "none",
     color: danger ? "var(--badge-text-red)" : "var(--text-primary)",
-    fontSize: 13, cursor: "pointer",
+    fontSize: "0.8125rem", cursor: "pointer",
   };
 }
 
@@ -1244,6 +1283,6 @@ function miniBtnStyle(primary = false): CSSProperties {
     border: primary ? "1px solid var(--accent)" : "1px solid var(--border-default)",
     background: primary ? "var(--accent)" : "var(--bg-card)",
     color: primary ? "#fff" : "var(--text-primary)",
-    fontSize: 12, fontWeight: 600, cursor: "pointer",
+    fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
   };
 }

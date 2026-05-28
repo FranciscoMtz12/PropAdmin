@@ -27,7 +27,7 @@
       created_at, deleted_at
 */
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { CSSProperties } from "react";
 import {
@@ -57,9 +57,11 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrl } from "@/lib/storage";
 import { formatDateLong, formatDateMedium } from "@/lib/dateUtils";
 import { type PurchaseReturn, type PurchaseOrderVersionType, type PurchaseOrderInvoice, RETURN_REASON_LABEL } from "@/lib/types";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
@@ -70,6 +72,7 @@ import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import ReturnModal from "@/components/ReturnModal";
@@ -131,6 +134,7 @@ type PurchaseOrder = {
   id:                   string;
   company_id:           string;
   folio:                string;
+  company_id:           string | null;
   supplier_id:          string;
   supplier_branch_id:   string | null;
   supplier_prefix:      string | null;
@@ -175,14 +179,14 @@ const STATUS_LABEL: Record<Status, string> = {
 };
 
 const STATUS_FILTERS: { value: "ALL" | Status; label: string; color: string; bg: string }[] = [
-  { value: "ALL",       label: "Todos",            color: "#6b7280", bg: "#f3f4f6" },
-  { value: "draft",     label: "Borrador",          color: "#6b7280", bg: "#f3f4f6" },
-  { value: "pending",   label: "Pendiente firma",   color: "#d97706", bg: "#fffbeb" },
-  { value: "sent",      label: "Enviada",           color: "#2563eb", bg: "#eff6ff" },
-  { value: "partial",   label: "Surtido parcial",   color: "#d97706", bg: "#fffbeb" },
-  { value: "received",  label: "Completada",        color: "#16a34a", bg: "#f0fdf4" },
+  { value: "ALL",       label: "Todos",            color: "var(--text-secondary)", bg: "#f3f4f6" },
+  { value: "draft",     label: "Borrador",          color: "var(--text-secondary)", bg: "#f3f4f6" },
+  { value: "pending",   label: "Pendiente firma",   color: "var(--metric-value-amber)", bg: "#fffbeb" },
+  { value: "sent",      label: "Enviada",           color: "var(--metric-value-blue)", bg: "#eff6ff" },
+  { value: "partial",   label: "Surtido parcial",   color: "var(--metric-value-amber)", bg: "#fffbeb" },
+  { value: "received",  label: "Completada",        color: "var(--metric-value-green)", bg: "#f0fdf4" },
   { value: "invoiced",  label: "Facturada",         color: "#7c3aed", bg: "#f5f3ff" },
-  { value: "cancelled", label: "Cancelada",         color: "#dc2626", bg: "#fef2f2" },
+  { value: "cancelled", label: "Cancelada",         color: "var(--metric-value-red)", bg: "#fef2f2" },
 ];
 
 type StatusVariantValue = "amber" | "blue" | "green" | "red" | "gray" | "purple";
@@ -249,8 +253,8 @@ const EMPTY_MANUAL_FORM: ManualFormValues = {
 };
 
 const purchasesErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -364,9 +368,9 @@ export default function PurchasesPage() {
   /* ── Load ──────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadAll(user?.company_id ?? null);
+    if (!userLoading && user && !user.is_superadmin) void loadAll(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user, isGroupMode]);
+  }, [userLoading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadAll(companyId: string | null) {
     setLoading(true);
@@ -449,7 +453,7 @@ export default function PurchasesPage() {
     }
 
     type OCRow = {
-      id: string; company_id: string; folio: string; supplier_id: string;
+      id: string; folio: string; company_id: string | null; supplier_id: string;
       supplier_branch_id: string | null;
       supplier_prefix: string | null;
       maintenance_log_id: string | null; building_id: string | null;
@@ -499,6 +503,7 @@ export default function PurchasesPage() {
         id:                   r.id,
         company_id:           r.company_id,
         folio:                r.folio,
+        company_id:           r.company_id ?? null,
         supplier_id:          r.supplier_id,
         supplier_branch_id:   r.supplier_branch_id,
         supplier_prefix:      r.supplier_prefix,
@@ -583,7 +588,6 @@ export default function PurchasesPage() {
     setSuppliers(suppliersMapped);
     setBuildings((buildingData as BuildingOption[]) || []);
     setSigners((signerData as Signer[]) || []);
-    console.log("fieldUsers raw:", fieldUserData, "error:", fieldUserError);
     setFieldUsers((fieldUserData as FieldUser[]) || []);
 
     if (companyData && "name" in companyData) {
@@ -640,6 +644,7 @@ export default function PurchasesPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
+      if (isGroupMode && groupCompanyIds.length > 0 && o.company_id && !groupCompanyIds.includes(o.company_id)) return false;
       /* Filtro por mes (created_at) */
       const d = new Date(o.created_at);
       if (d.getFullYear() !== selectedYear || d.getMonth() + 1 !== selectedMonth) return false;
@@ -659,8 +664,25 @@ export default function PurchasesPage() {
         if (!hay.includes(q)) return false;
       }
       return true;
+    })
+    .sort((a, b) => {
+      if (!isGroupMode) return 0;
+      const ai = groupCompanyIds.indexOf(a.company_id ?? "");
+      const bi = groupCompanyIds.indexOf(b.company_id ?? "");
+      if (ai !== bi) return ai - bi;
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
     });
-  }, [orders, filterSupplier, filterStatus, search, selectedYear, selectedMonth]);
+  }, [orders, isGroupMode, groupCompanyIds, filterSupplier, filterStatus, search, selectedYear, selectedMonth]);
+
+  const ordersByCompany = useMemo(() => {
+    if (!isGroupMode) return null;
+    const map = new Map<string, { company: typeof groupCompanies[0]; orders: PurchaseOrder[] }>();
+    groupCompanies.forEach(c => map.set(c.id, { company: c, orders: [] }));
+    filtered.forEach(o => {
+      if (o.company_id && map.has(o.company_id)) map.get(o.company_id)!.orders.push(o);
+    });
+    return [...map.values()].filter(g => g.orders.length > 0);
+  }, [isGroupMode, groupCompanies, filtered]);
 
   /* ── Folio generation ──────────────────────────────────────────── */
 
@@ -768,15 +790,10 @@ export default function PurchasesPage() {
       signer_name:          data.signerName?.trim()        || null,
     };
 
-    console.log("[purchases] manualForm snapshot:", data);
-    console.log("[purchases] payload:", payload);
-    console.log("[purchases] editingOrderId:", editingOrderId);
-
     let targetOrderId: string | null = null;
 
     if (editingOrderId) {
       /* EDITAR: UPDATE purchase_orders + DELETE+INSERT items */
-      console.log("[purchases] UPDATE purchase_orders", { id: editingOrderId, payload });
       const updPayload = {
         ...payload,
         updated_at: new Date().toISOString(),
@@ -787,7 +804,6 @@ export default function PurchasesPage() {
         .update(updPayload)
         .eq("id", editingOrderId)
         .select();
-      console.log("[purchases] UPDATE result:", { data: updData, error: updErr });
       if (updErr) {
         setFormError(`No se pudo actualizar: ${updErr.message}`);
         return;
@@ -801,7 +817,6 @@ export default function PurchasesPage() {
         .eq("purchase_order_id", editingOrderId)
         .is("deleted_at", null)
         .select();
-      console.log("[purchases] soft-delete items result:", { data: delData, error: delErr });
     } else {
       /* CREAR: generar folio compuesto + INSERT purchase_orders */
       const folio = await generateNextFolio(
@@ -815,13 +830,11 @@ export default function PurchasesPage() {
         status:     "pending",
         ...payload,
       };
-      console.log("[purchases] INSERT purchase_orders:", insertBody);
       const { data: inserted, error: insertErr } = await supabase
         .from("purchase_orders")
         .insert(insertBody)
         .select("id")
         .single();
-      console.log("[purchases] INSERT result:", { data: inserted, error: insertErr });
       if (insertErr || !inserted) {
         setFormError("No se pudo crear la orden de compra.");
         return;
@@ -837,12 +850,10 @@ export default function PurchasesPage() {
       unit_price:        it.unit_price.trim() ? Number(it.unit_price) : null,
     }));
 
-    console.log("[purchases] INSERT purchase_order_items:", itemsPayload);
     const { data: itemsIns, error: itemsErr } = await supabase
       .from("purchase_order_items")
       .insert(itemsPayload)
       .select();
-    console.log("[purchases] items INSERT result:", { data: itemsIns, error: itemsErr });
 
     /* Si es un firmante nuevo (no estaba en la lista), persistir para futuras OC */
     const trimmedSigner = data.signerName?.trim() || "";
@@ -860,7 +871,6 @@ export default function PurchasesPage() {
             role:       "signer",
           })
           .select();
-        console.log("[purchases] new signer INSERT result:", { data: signerIns, error: signerInsErr });
       }
     }
 
@@ -1402,13 +1412,11 @@ export default function PurchasesPage() {
       return;
     }
 
-    const { data: urlData } = supabase.storage.from("purchase-orders").getPublicUrl(path);
-    const pdfUrl = urlData?.publicUrl ? urlData.publicUrl + "?t=" + Date.now() : null;
     const nowIso = new Date().toISOString();
 
     const { error: updErr } = await supabase
       .from("purchase_orders")
-      .update({ pdf_url: pdfUrl, status: "sent", sent_at: nowIso, updated_at: nowIso })
+      .update({ pdf_url: path, status: "sent", sent_at: nowIso, updated_at: nowIso })
       .eq("id", orderId);
 
     if (updErr) {
@@ -1422,7 +1430,7 @@ export default function PurchasesPage() {
     /* Refrescar en memoria */
     setOrders((prev) => prev.map((o) =>
       o.id === orderId
-        ? { ...o, pdf_url: pdfUrl, status: "sent" as Status, sent_at: nowIso }
+        ? { ...o, pdf_url: path, status: "sent" as Status, sent_at: nowIso }
         : o
     ));
     setUploadingId(null);
@@ -1469,14 +1477,6 @@ export default function PurchasesPage() {
       const logoPrint = printSrc    ? await prepareLogoForPDF(printSrc,    110, 45) : null;
       const logoGroup = logoGroupUrl ? await prepareLogoForPDF(logoGroupUrl, 80, 45) : null;
 
-      console.log("items con precios:", JSON.stringify(
-        items.map((it) => ({
-          desc: it.description,
-          unit_price: it.unit_price,
-          mapped: it.unit_price || 0,
-        })), null, 2
-      ));
-
       /* renderPurchaseOrderPage ahora es async y se auto-descarga vía html2pdf */
       await renderPurchaseOrderPage(null, {
         folio:              order.folio,
@@ -1486,13 +1486,7 @@ export default function PurchasesPage() {
         cfdiUse:            supplier?.cfdi_use || null,
         clientNumber:       supplier?.client_number || null,
         branchName,
-        items:              (() => {
-          console.log("items para PDF:", JSON.stringify(items.map((i) => ({
-            description: i.description,
-            unit_price: i.unit_price,
-          })), null, 2));
-          return items.map((it) => ({ quantity: it.quantity, unit: it.unit, description: it.description, unitPrice: it.unit_price || 0 }));
-        })(),
+        items:              items.map((it) => ({ quantity: it.quantity, unit: it.unit, description: it.description, unitPrice: it.unit_price || 0 })),
         buildingName:       building?.name || "",
         projectDescription: order.project_description || "",
         responsibleName:    order.responsible_name  || "",
@@ -1524,7 +1518,7 @@ export default function PurchasesPage() {
     borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
-    fontSize: 14,
+    fontSize: "0.875rem",
     boxSizing: "border-box",
     outline: "none",
   };
@@ -1572,9 +1566,11 @@ export default function PurchasesPage() {
             >
               Reporte de pagos
             </UiButton>
-            <UiButton variant="primary" onClick={openCreateModal} icon={<Plus size={16} />}>
-              Nueva OC manual
-            </UiButton>
+            {!isGroupMode && (
+              <UiButton variant="primary" onClick={openCreateModal} icon={<Plus size={16} />}>
+                Nueva OC manual
+              </UiButton>
+            )}
           </>
         }
       />
@@ -1583,8 +1579,8 @@ export default function PurchasesPage() {
       {overdueOCsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {overdueOCsBanner.length} orden{overdueOCsBanner.length !== 1 ? "es" : ""} llevan más de 1 día pendiente{overdueOCsBanner.length !== 1 ? "s" : ""} de aprobación
             </span>
           </div>
@@ -1592,7 +1588,7 @@ export default function PurchasesPage() {
             {overdueOCsBanner.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1603,8 +1599,8 @@ export default function PurchasesPage() {
       {partialOCsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {partialOCsBanner.length} orden{partialOCsBanner.length !== 1 ? "es" : ""} surtidas parcialmente requieren seguimiento
             </span>
           </div>
@@ -1612,7 +1608,7 @@ export default function PurchasesPage() {
             {partialOCsBanner.map(o => (
               <button key={o.id} type="button"
                 onClick={() => { setSearch(o.folio); setFilterStatus("ALL"); }}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1624,7 +1620,7 @@ export default function PurchasesPage() {
         <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--accent)" }}>
               {campoOCsBanner.length} orden{campoOCsBanner.length !== 1 ? "es" : ""} nuevas de campo sin revisar
             </span>
           </div>
@@ -1636,7 +1632,7 @@ export default function PurchasesPage() {
                   setSearch(o.folio);
                   setFilterStatus("ALL");
                 }}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {o.folio}
               </button>
             ))}
@@ -1668,22 +1664,34 @@ export default function PurchasesPage() {
         </AppCard>
       ) : null}
 
-      {/* Métricas — stat bar compacta */}
-      <div className="purchases-statbar" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 20, overflow: "hidden" }}>
+      {/* Métricas mobile — MetricCircles */}
+      <MetricCircles metrics={[
+        { value: metrics.total,     label: "Total OC",   color: "default" },
+        { value: metrics.draft,     label: "Borradores", color: "default" },
+        { value: metrics.pending,   label: "Por enviar", color: "warning" },
+        { value: metrics.sent,      label: "Enviadas",   color: "info"    },
+        { value: metrics.partial,   label: "Surtido",    color: "warning" },
+        { value: metrics.received,  label: "Completadas",color: "success" },
+        { value: metrics.invoiced,  label: "Facturadas", color: "info"    },
+        { value: metrics.cancelled, label: "Canceladas", color: "danger"  },
+      ]} />
+
+      {/* Métricas — stat bar compacta (desktop) */}
+      <div className="purchases-statbar metric-grid-desktop-only" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 20, overflow: "hidden" }}>
         {[
           { label: "Total OC",        value: metrics.total,     sub: "todas" },
           { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
-          { label: "Por enviar",      value: metrics.pending,   sub: "aprobadas", color: "#F59E0B" },
-          { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "#3B82F6" },
-          { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "#F59E0B" },
-          { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "#10B981" },
+          { label: "Por enviar",      value: metrics.pending,   sub: "aprobadas", color: "var(--metric-value-amber)" },
+          { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "var(--metric-value-blue)" },
+          { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "var(--metric-value-amber)" },
+          { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "var(--metric-value-green)" },
           { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "#7c3aed" },
-          { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "#EF4444" },
+          { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "var(--metric-value-red)" },
         ].map((s, i, arr) => (
           <div key={i} className="purchases-statbar-cell" style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
-            <div style={{ fontSize: 11, fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
-            <div style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
+            <div style={{ fontSize: "1.375rem", fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
+            <div style={{ fontSize: "0.625rem", color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
           </div>
         ))}
       </div>
@@ -1732,7 +1740,7 @@ export default function PurchasesPage() {
                 style={{
                   padding: "6px 12px",
                   borderRadius: "var(--border-radius-xl)",
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: active ? 600 : 400,
                   cursor: "pointer",
                   border: active
@@ -1765,10 +1773,9 @@ export default function PurchasesPage() {
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {filtered.map((o, index) => {
-            const prevO = isGroupMode ? filtered[index - 1] : null;
-            const showCompanyHeader = isGroupMode && (index === 0 || o.company_id !== prevO?.company_id);
-            const headerCompany = showCompanyHeader ? groupCompanies.find((c) => c.id === o.company_id) : null;
-            const companyCount = showCompanyHeader ? filtered.filter((x) => x.company_id === o.company_id).length : 0;
+            const prevO = index > 0 ? filtered[index - 1] : null;
+            const showHeader = isGroupMode && o.company_id != null && (!prevO || prevO.company_id !== o.company_id);
+            const sectionCo = showHeader ? groupCompanies.find(c => c.id === o.company_id) : undefined;
             const isExpanded = expandedOrderId === o.id;
             const items      = itemsByOrderId[o.id] || [];
             const hasPrices  = items.some((it) => it.unit_price != null && Number(it.unit_price) > 0);
@@ -1780,15 +1787,14 @@ export default function PurchasesPage() {
             const fechaLarga = formatDateLong(o.created_at);
 
             return (
-              <div key={o.id}>
-              {showCompanyHeader && headerCompany && (
-                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, marginTop: index > 0 ? 20 : 4 }}>
-                  <div style={{ width: 10, height: 10, borderRadius: "50%", background: headerCompany.brand_color || "#6b7280", flexShrink: 0 }} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{headerCompany.short_name || headerCompany.name}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {companyCount} OC{companyCount !== 1 ? "s" : ""}</span>
-                  <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 4 }} />
-                </div>
-              )}
+              <Fragment key={o.id}>
+                {showHeader && sectionCo && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: index > 0 ? 8 : 0, marginBottom: 4 }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: sectionCo.brand_color || "var(--accent)", flexShrink: 0 }} />
+                    <span style={{ fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>{sectionCo.short_name || sectionCo.name}</span>
+                    <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
+                  </div>
+                )}
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -1834,8 +1840,8 @@ export default function PurchasesPage() {
                           <span style={{
                             display: "inline-flex", alignItems: "center", gap: 4,
                             padding: "3px 8px", borderRadius: "var(--border-radius-xl)",
-                            background: "#EFF6FF", color: "#1D4ED8",
-                            fontSize: 11, fontWeight: 700,
+                            background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
+                            fontSize: "0.6875rem", fontWeight: 700,
                           }}>
                             <Wrench size={11} />
                             {o.ticket_number ? `MT-${o.ticket_number}` : "Mantenimiento"}
@@ -1856,9 +1862,9 @@ export default function PurchasesPage() {
                         const vNum = vMatch ? vMatch[1] : "?";
                         return (
                           <span style={{
-                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
-                            color: "#2563eb", border: "1px solid #93c5fd",
+                            fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-blue)",
+                            color: "var(--metric-value-blue)", border: "1px solid #93c5fd",
                           }}>
                             V{vNum} activa
                           </span>
@@ -1876,9 +1882,9 @@ export default function PurchasesPage() {
                         if (maxV === 0) return null;
                         return (
                           <span style={{
-                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "rgba(16,185,129,0.1)",
-                            color: "#10B981", border: "1px solid rgba(16,185,129,0.3)",
+                            fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-green)",
+                            color: "var(--metric-value-green)", border: "1px solid var(--metric-border-green)",
                           }}>
                             Cerrada vía V{maxV}
                           </span>
@@ -1888,9 +1894,9 @@ export default function PurchasesPage() {
                       {/* Badge "🔄 Cambio" — en cards que SON una Vn de cambio */}
                       {o.version_type === "exchange" ? (
                         <span style={{
-                          fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                          borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
-                          color: "#1d4ed8", border: "1px solid #93c5fd",
+                          fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
+                          borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-blue)",
+                          color: "var(--metric-value-blue)", border: "1px solid #93c5fd",
                         }}>
                           🔄 Cambio
                         </span>
@@ -1901,9 +1907,9 @@ export default function PurchasesPage() {
                         const count = o.returns!.filter((r) => r.type === "return").length;
                         return (
                           <span style={{
-                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "#fff7ed",
-                            color: "#c2410c", border: "1px solid #fdba74",
+                            fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-amber)",
+                            color: "var(--metric-value-amber)", border: "1px solid #fdba74",
                             display: "inline-flex", alignItems: "center", gap: 4,
                           }}>
                             <RotateCcw size={10} />
@@ -1922,9 +1928,9 @@ export default function PurchasesPage() {
                         if (!replOrder || replOrder.status === "received") return null;
                         return (
                           <span style={{
-                            fontSize: 11, fontWeight: 600, padding: "2px 8px",
-                            borderRadius: "var(--border-radius-xl)", background: "#eff6ff",
-                            color: "#1d4ed8", border: "1px solid #93c5fd",
+                            fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
+                            borderRadius: "var(--border-radius-xl)", background: "var(--metric-bg-blue)",
+                            color: "var(--metric-value-blue)", border: "1px solid #93c5fd",
                           }}>
                             🔄 Cambio pendiente
                           </span>
@@ -1932,19 +1938,19 @@ export default function PurchasesPage() {
                       })()}
                     </div>
 
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
+                    <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 2 }}>
                       {o.supplier_name || "Sin proveedor"}
                       {branch ? (
                         <span style={{ fontWeight: 500, color: "var(--text-secondary)" }}> · {branch.name}</span>
                       ) : null}
                     </div>
                     {o.maintenance_log_id ? (
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4 }}>
                         De mantenimiento · Ticket: {o.ticket_number ? `MT-${o.ticket_number}` : o.maintenance_log_id.slice(0, 8)}
                       </div>
                     ) : null}
 
-                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
+                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                       <span>{fechaCorta}</span>
                       {o.building_name ? <span>· {o.building_name}</span> : null}
                       {(o.item_count ?? 0) > 0 ? <span>· {o.item_count} material{o.item_count !== 1 ? "es" : ""}</span> : null}
@@ -1955,10 +1961,10 @@ export default function PurchasesPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0 }}>
                     {(o.total_estimated ?? 0) > 0 ? (
                       <div style={{ textAlign: "right" }}>
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
+                        <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
                           Total estimado
                         </div>
-                        <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>
+                        <div style={{ fontSize: "1.125rem", fontWeight: 800, color: "var(--text-primary)", marginTop: 2 }}>
                           ${(o.total_estimated || 0).toFixed(2)}
                         </div>
                       </div>
@@ -2000,15 +2006,15 @@ export default function PurchasesPage() {
                           background: "var(--bg-card)", border: "1px solid var(--border-default)",
                         }}>
                           {parentOrder && (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--text-secondary)" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                               <span style={{ fontWeight: 600 }}>{o.version_type === "exchange" ? "Cambio de:" : "Faltantes de:"}</span>
                               <button
                                 onClick={(e) => { e.stopPropagation(); setSearch(parentOrder.folio); setExpandedOrderId(parentOrder.id); }}
                                 style={{
                                   display: "inline-flex", alignItems: "center", gap: 4,
                                   padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                                  background: "#EFF6FF", color: "#1D4ED8",
-                                  fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                                  background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
+                                  fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace",
                                   border: "none", cursor: "pointer",
                                 }}
                               >
@@ -2017,7 +2023,7 @@ export default function PurchasesPage() {
                             </span>
                           )}
                           {childOrders.length > 0 && (
-                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: 13, color: "var(--text-secondary)" }}>
+                            <span style={{ display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                               <span style={{ fontWeight: 600 }}>Versiones:</span>
                               {childOrders.map((child) => (
                                 <button
@@ -2026,8 +2032,8 @@ export default function PurchasesPage() {
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 4,
                                     padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                                    background: "rgba(16,185,129,0.1)", color: "#10B981",
-                                    fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                                    background: "var(--metric-bg-green)", color: "var(--metric-value-green)",
+                                    fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace",
                                     border: "none", cursor: "pointer",
                                   }}
                                 >
@@ -2045,7 +2051,7 @@ export default function PurchasesPage() {
                       const prog = ticketProgress[o.id];
                       const loading = loadingProgressFor[o.id];
                       if (loading) return (
-                        <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando progreso del ticket...</p>
+                        <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>Cargando progreso del ticket...</p>
                       );
                       if (!prog) return null;
                       const pct = prog.itemTotal > 0
@@ -2059,38 +2065,38 @@ export default function PurchasesPage() {
                           background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10,
                         }}>
                           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                            <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                               Progreso del ticket
                             </span>
                             <span style={{
                               display: "inline-flex", alignItems: "center", gap: 4,
                               padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                              background: "#EFF6FF", color: "#1D4ED8",
-                              fontSize: 12, fontWeight: 700,
+                              background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
+                              fontSize: "0.75rem", fontWeight: 700,
                             }}>
                               {o.ticket_number ? `MT-${o.ticket_number}` : "Ticket ligado"}
                             </span>
                           </div>
-                          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: 13 }}>
+                          <div style={{ display: "flex", gap: 16, flexWrap: "wrap", fontSize: "0.8125rem" }}>
                             <span style={{ color: "var(--text-secondary)" }}>
                               <strong style={{ color: "var(--text-primary)" }}>{prog.itemTotal}</strong> piezas pedidas
                             </span>
-                            <span style={{ color: "#15803D" }}>
+                            <span style={{ color: "var(--metric-value-green)" }}>
                               <strong>{prog.itemReceived.toFixed(0)}</strong> surtidos
                             </span>
-                            <span style={{ color: pendientes > 0 ? "#F59E0B" : "var(--text-muted)" }}>
+                            <span style={{ color: pendientes > 0 ? "var(--metric-value-amber)" : "var(--text-muted)" }}>
                               <strong>{pendientes.toFixed(0)}</strong> pendientes
                             </span>
                           </div>
                           <div style={{ height: 8, background: "var(--border-default)", borderRadius: "var(--border-radius-sm)", overflow: "hidden" }}>
                             <div style={{
                               height: "100%", borderRadius: "var(--border-radius-sm)",
-                              background: pct === 100 ? "#16a34a" : "#3B82F6",
+                              background: pct === 100 ? "var(--metric-bg-green)" : "var(--metric-bg-blue)",
                               width: `${pct}%`,
                               transition: "width 0.4s ease",
                             }} />
                           </div>
-                          <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "right" }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "right" }}>
                             {pct}% surtido
                           </div>
                         </div>
@@ -2100,7 +2106,7 @@ export default function PurchasesPage() {
                     {/* ── Sección 1: Datos generales ── */}
                     <div>
                       <SectionLabel>Datos generales</SectionLabel>
-                      <div className="purchases-detail-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                      <div className="purchases-detail-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 12 }}>
                         <DetailRow label="Proveedor" value={o.supplier_name || "—"} />
                         {branch ? <DetailRow label="Sucursal" value={branch.name} /> : null}
                         <DetailRow label="RFC" value={supplier?.tax_id || "—"} />
@@ -2126,16 +2132,16 @@ export default function PurchasesPage() {
                     <div>
                       <SectionLabel>Materiales</SectionLabel>
                       {loadingItemsFor === o.id ? (
-                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Cargando materiales...</p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem" }}>Cargando materiales...</p>
                       ) : items.length === 0 ? (
-                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Sin materiales.</p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem" }}>Sin materiales.</p>
                       ) : (
                         <div className="purchases-table-wrap" style={{
                           border: "1px solid var(--border-default)",
                           borderRadius: "var(--border-radius-md)", overflow: "hidden",
                           background: "var(--bg-card)",
                         }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                             <thead>
                               <tr style={{ background: "var(--bg-input)" }}>
                                 <th style={{ ...thStyle, width: 36 }}>#</th>
@@ -2160,8 +2166,8 @@ export default function PurchasesPage() {
                                       <span style={{
                                         display: "inline-block", marginLeft: 8,
                                         padding: "1px 7px", borderRadius: 999,
-                                        background: "rgba(16,185,129,0.1)", color: "#10B981",
-                                        fontSize: 11, fontWeight: 600,
+                                        background: "var(--metric-bg-green)", color: "var(--metric-value-green)",
+                                        fontSize: "0.6875rem", fontWeight: 600,
                                       }}>
                                         Ya surtido en {o.folio}
                                       </span>
@@ -2190,7 +2196,6 @@ export default function PurchasesPage() {
                     {/* ── Sección 2a: Conceptos facturados del XML ── */}
                     {o.status === "invoiced" ? (() => {
                       const meta = getInvoiceMeta(o);
-                      console.log('invoice meta:', meta);
                       const conceptos = meta && Array.isArray((meta as { conceptos?: unknown[] }).conceptos)
                         ? (meta as { conceptos: { descripcion: string; cantidad: string; valorUnitario: string; importe: string }[] }).conceptos
                         : [];
@@ -2204,7 +2209,7 @@ export default function PurchasesPage() {
                               padding: "2px 8px", borderRadius: 999,
                               background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)",
                               border: "1px solid rgba(168, 85, 247, 0.4)",
-                              fontSize: 10, fontWeight: 700,
+                              fontSize: "0.625rem", fontWeight: 700,
                               letterSpacing: "0.04em",
                               marginTop: -8,
                             }}>
@@ -2216,7 +2221,7 @@ export default function PurchasesPage() {
                             borderRadius: "var(--border-radius-md)", overflow: "hidden",
                             background: "var(--bg-card)",
                           }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                               <thead>
                                 <tr style={{ background: "var(--bg-table-header)" }}>
                                   <th style={{ ...thStyle, width: 36 }}>#</th>
@@ -2246,10 +2251,10 @@ export default function PurchasesPage() {
                                 ))}
                                 {/* Fila total */}
                                 <tr style={{ borderTop: "2px solid rgba(168, 85, 247, 0.4)", background: "var(--bg-table-header)" }}>
-                                  <td colSpan={4} style={{ ...tdStyle, textAlign: "right", fontWeight: 700, color: "var(--icon-color-purple)", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                                  <td colSpan={4} style={{ ...tdStyle, textAlign: "right", fontWeight: 700, color: "var(--icon-color-purple)", fontSize: "0.75rem", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                                     Total
                                   </td>
-                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, color: "var(--icon-color-purple)", fontSize: 14 }}>
+                                  <td style={{ ...tdStyle, textAlign: "right", fontWeight: 800, color: "var(--icon-color-purple)", fontSize: "0.875rem" }}>
                                     ${totalXml.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN
                                   </td>
                                 </tr>
@@ -2274,7 +2279,7 @@ export default function PurchasesPage() {
                             borderRadius: "var(--border-radius-md)", overflow: "hidden",
                             background: "var(--bg-card)",
                           }}>
-                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                               <thead>
                                 <tr style={{ background: "rgba(245, 158, 11, 0.1)" }}>
                                   <th style={{ ...thStyle, textAlign: "left", color: "var(--text-secondary)" }}>Descripción</th>
@@ -2291,7 +2296,7 @@ export default function PurchasesPage() {
                                       <td style={{ ...tdStyle, textAlign: "left", color: "var(--text-primary)" }}>{it.description}</td>
                                       <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{it.quantity} {it.unit}</td>
                                       <td style={{ ...tdStyle, color: "var(--text-primary)" }}>{it.quantity_received ?? 0} {it.unit}</td>
-                                      <td style={{ ...tdStyle, color: "#ef4444", fontWeight: 700 }}>
+                                      <td style={{ ...tdStyle, color: "var(--metric-value-red)", fontWeight: 700 }}>
                                         -{diff} {it.unit}
                                       </td>
                                     </tr>
@@ -2313,7 +2318,7 @@ export default function PurchasesPage() {
                           <SectionLabel>Factura</SectionLabel>
                           <div style={{
                             display: "grid",
-                            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                            gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))",
                             gap: 12,
                             padding: "14px 16px",
                             borderRadius: "var(--border-radius-md)",
@@ -2363,25 +2368,25 @@ export default function PurchasesPage() {
                               }}>
                                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                                   <span style={{
-                                    fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: "var(--border-radius-xl)",
-                                    background: isExchange ? "#eff6ff" : "#fff7ed",
-                                    color:      isExchange ? "#1d4ed8" : "#c2410c",
+                                    fontSize: "0.6875rem", fontWeight: 700, padding: "2px 8px", borderRadius: "var(--border-radius-xl)",
+                                    background: isExchange ? "var(--metric-bg-blue)" : "var(--metric-bg-amber)",
+                                    color:      isExchange ? "var(--metric-value-blue)" : "var(--metric-value-amber)",
                                     border:     isExchange ? "1px solid #93c5fd" : "1px solid #fdba74",
                                   }}>
                                     {isExchange ? "Cambio" : "Devolución"} #{ri + 1}
                                   </span>
-                                  <span style={{ fontSize: 13, fontWeight: 600, color: isExchange ? "var(--accent)" : "#DC2626" }}>
+                                  <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: isExchange ? "var(--accent)" : "var(--metric-value-red)" }}>
                                     {isExchange ? "🔄" : "↩"} {RETURN_REASON_LABEL[ret.reason]}
                                   </span>
-                                  <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: "auto" }}>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: "auto" }}>
                                     {new Date(ret.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
                                   </span>
                                 </div>
                                 {ret.reason_notes ? (
-                                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>{ret.reason_notes}</p>
+                                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{ret.reason_notes}</p>
                                 ) : null}
                                 {ret.items && ret.items.length > 0 ? (
-                                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                                     {ret.items.length} material{ret.items.length !== 1 ? "es" : ""} ·{" "}
                                     {ret.items.map((it) => it.quantity_returned).reduce((a, b) => a + b, 0)} unidades
                                   </p>
@@ -2390,7 +2395,7 @@ export default function PurchasesPage() {
                                   <div style={{
                                     marginTop: 4, paddingTop: 8,
                                     borderTop: "1px solid #bfdbfe",
-                                    fontSize: 13, color: "#1d4ed8",
+                                    fontSize: "0.8125rem", color: "var(--metric-value-blue)",
                                     display: "flex", alignItems: "center", gap: 6,
                                   }}>
                                     <span>→ OC de cambio:</span>
@@ -2400,23 +2405,23 @@ export default function PurchasesPage() {
                                         style={{
                                           display: "inline-flex", alignItems: "center", gap: 4,
                                           padding: "2px 8px", borderRadius: "var(--border-radius-lg)",
-                                          background: "#eff6ff", color: "#1d4ed8",
-                                          fontSize: 12, fontWeight: 700, fontFamily: "monospace",
+                                          background: "var(--metric-bg-blue)", color: "var(--metric-value-blue)",
+                                          fontSize: "0.75rem", fontWeight: 700, fontFamily: "monospace",
                                           border: "none", cursor: "pointer",
                                         }}
                                       >
                                         {replOrder.folio}
                                       </button>
                                     ) : (
-                                      <span style={{ fontFamily: "monospace", fontSize: 12 }}>{ret.replacement_order_id.slice(0, 8)}…</span>
+                                      <span style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>{ret.replacement_order_id.slice(0, 8)}…</span>
                                     )}
                                     {replOrder ? (
                                       <span style={{
-                                        fontSize: 11, fontWeight: 600, padding: "2px 7px",
+                                        fontSize: "0.6875rem", fontWeight: 600, padding: "2px 7px",
                                         borderRadius: "var(--border-radius-xl)",
-                                        background: replOrder.status === "received" ? "rgba(16,185,129,0.1)" : "rgba(37,99,235,0.1)",
-                                        color:      replOrder.status === "received" ? "#10B981" : "var(--accent)",
-                                        border:     replOrder.status === "received" ? "1px solid rgba(16,185,129,0.3)" : "1px solid rgba(37,99,235,0.3)",
+                                        background: replOrder.status === "received" ? "var(--metric-bg-green)" : "var(--metric-bg-blue)",
+                                        color:      replOrder.status === "received" ? "var(--metric-value-green)" : "var(--accent)",
+                                        border:     replOrder.status === "received" ? "1px solid var(--metric-border-green)" : "1px solid rgba(37,99,235,0.3)",
                                       }}>
                                         {STATUS_LABEL[replOrder.status]}
                                       </span>
@@ -2445,7 +2450,7 @@ export default function PurchasesPage() {
                               padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid var(--accent)",
                               background: "var(--accent)", color: "#fff",
-                              fontSize: 13, fontWeight: 700, cursor: "pointer",
+                              fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                             }}
                           >
                             <CheckCircle2 size={14} />
@@ -2463,8 +2468,8 @@ export default function PurchasesPage() {
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                border: "1px solid #10B981", background: "#10B981", color: "#fff",
-                                fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                border: "1px solid var(--metric-border-green)", background: "var(--metric-bg-green)", color: "var(--metric-value-green)",
+                                fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                               }}
                             >
                               <CheckCircle2 size={14} />
@@ -2477,8 +2482,8 @@ export default function PurchasesPage() {
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                border: "1px solid #F59E0B", background: "transparent", color: "#b45309",
-                                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                                border: "1px solid var(--metric-border-amber)", background: "transparent", color: "var(--metric-value-amber)",
+                                fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                               }}
                             >
                               <AlertCircle size={14} />
@@ -2495,7 +2500,7 @@ export default function PurchasesPage() {
                               display: "inline-flex", alignItems: "center", gap: 5,
                               padding: "6px 12px", borderRadius: "var(--border-radius-md)",
                               background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
-                              color: "var(--text-primary)", fontSize: 12, fontWeight: 600,
+                              color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600,
                             }}>
                               <AlertCircle size={13} />
                               Surtido parcial — Cerrada
@@ -2510,8 +2515,8 @@ export default function PurchasesPage() {
                                     style={{
                                       display: "inline-flex", alignItems: "center", gap: 6,
                                       padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                      border: "1px solid #ea580c", background: "#ea580c", color: "#fff",
-                                      fontSize: 13, fontWeight: 700, cursor: "pointer",
+                                      border: "1px solid var(--metric-border-amber)", background: "var(--metric-value-amber)", color: "#fff",
+                                      fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                                     }}
                                   >
                                     <Plus size={14} />
@@ -2528,8 +2533,8 @@ export default function PurchasesPage() {
                                   style={{
                                     display: "inline-flex", alignItems: "center", gap: 6,
                                     padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                                    border: "1px solid #3B82F6", background: "transparent", color: "#2563eb",
-                                    fontSize: 13, fontWeight: 600, cursor: "pointer",
+                                    border: "1px solid var(--metric-border-blue)", background: "transparent", color: "var(--metric-value-blue)",
+                                    fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                                   }}
                                 >
                                   Ver V{vNum} →
@@ -2557,7 +2562,7 @@ export default function PurchasesPage() {
                               display: "inline-flex", alignItems: "center", gap: 6,
                               padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid #7c3aed", background: "#7c3aed", color: "#fff",
-                              fontSize: 13, fontWeight: 700, cursor: "pointer",
+                              fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                             }}
                           >
                             <FileText size={14} />
@@ -2576,7 +2581,7 @@ export default function PurchasesPage() {
                                   padding: "6px 12px", borderRadius: 999,
                                   background: "#f3e8ff", color: "#7c3aed",
                                   border: "1px solid #a855f7",
-                                  fontSize: 12, fontWeight: 600,
+                                  fontSize: "0.75rem", fontWeight: 600,
                                 }}>
                                   <FileText size={12} />
                                   Factura #{meta.number}
@@ -2599,7 +2604,7 @@ export default function PurchasesPage() {
                                   padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                   border: "1px solid #a855f7", background: "transparent",
                                   color: "#7c3aed",
-                                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                                  fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                                 }}
                               >
                                 <Upload size={14} />
@@ -2619,7 +2624,7 @@ export default function PurchasesPage() {
                               padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid #c2410c", background: "transparent",
                               color: "#c2410c",
-                              fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                             }}
                           >
                             <RotateCcw size={14} />
@@ -2636,7 +2641,7 @@ export default function PurchasesPage() {
                             padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
-                            fontSize: 13, fontWeight: 600,
+                            fontSize: "0.8125rem", fontWeight: 600,
                             cursor: generatingPdfId === o.id ? "wait" : "pointer",
                             opacity: generatingPdfId === o.id ? 0.7 : 1,
                           }}
@@ -2653,7 +2658,7 @@ export default function PurchasesPage() {
                             padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
-                            fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                           }}
                         >
                           <Edit3 size={14} />
@@ -2663,24 +2668,26 @@ export default function PurchasesPage() {
                         {/* PDF firmado */}
                         {o.pdf_url ? (
                           <>
-                            <a
-                              href={o.pdf_url + (o.pdf_url.includes("?") ? "" : "?t=" + Date.now())}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                const url = await getSignedUrl("purchase-orders", o.pdf_url);
+                                if (url) window.open(url, "_blank", "noopener,noreferrer");
+                              }}
                               style={{
                                 display: "inline-flex", alignItems: "center", gap: 6,
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                 border: "1px solid var(--metric-border-green)",
                                 background: "var(--metric-bg-green)",
                                 color: "var(--metric-value-green)",
-                                fontSize: 13, fontWeight: 600,
-                                textDecoration: "none",
+                                fontSize: "0.8125rem", fontWeight: 600,
+                                cursor: "pointer",
                               }}
                             >
                               <CheckCircle2 size={14} />
                               Ver PDF firmado
                               <ExternalLink size={12} />
-                            </a>
+                            </button>
                             <button
                               type="button"
                               onClick={() => triggerSignedPdfUpload(o.id)}
@@ -2690,7 +2697,7 @@ export default function PurchasesPage() {
                                 padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                 border: "1px solid var(--border-default)",
                                 background: "var(--bg-card)", color: "var(--text-primary)",
-                                fontSize: 13, fontWeight: 600,
+                                fontSize: "0.8125rem", fontWeight: 600,
                                 cursor: uploadingId === o.id ? "wait" : "pointer",
                                 opacity: uploadingId === o.id ? 0.7 : 1,
                               }}
@@ -2709,7 +2716,7 @@ export default function PurchasesPage() {
                               padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                               border: "1px solid var(--accent)",
                               background: "var(--accent)", color: "#fff",
-                              fontSize: 13, fontWeight: 700,
+                              fontSize: "0.8125rem", fontWeight: 700,
                               cursor: uploadingId === o.id ? "wait" : "pointer",
                               opacity: uploadingId === o.id ? 0.7 : 1,
                             }}
@@ -2730,7 +2737,7 @@ export default function PurchasesPage() {
                               border: "1px solid var(--badge-text-red)",
                               background: "transparent",
                               color: "var(--badge-text-red)",
-                              fontSize: 13, fontWeight: 600, cursor: "pointer",
+                              fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                               marginLeft: "auto",
                             }}
                           >
@@ -2746,7 +2753,7 @@ export default function PurchasesPage() {
                 </AnimatePresence>
               </AppCard>
               </motion.div>
-              </div>
+              </Fragment>
             );
           })}
         </div>
@@ -2805,7 +2812,7 @@ export default function PurchasesPage() {
                       style={{
                         padding: "10px 12px",
                         cursor: "pointer",
-                        fontSize: 14,
+                        fontSize: "0.875rem",
                         color: "var(--text-primary)",
                         borderBottom: "1px solid var(--border-default)",
                         background: manualSupplierId === s.id ? "var(--bg-input)" : "transparent",
@@ -2813,7 +2820,7 @@ export default function PurchasesPage() {
                     >
                       {s.name}
                       {s.prefix ? (
-                        <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>
+                        <span style={{ marginLeft: 8, fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "monospace" }}>
                           [{s.prefix}]
                         </span>
                       ) : null}
@@ -2828,7 +2835,7 @@ export default function PurchasesPage() {
                   background: "var(--bg-card)",
                   border: "1px solid var(--border-default)",
                   borderRadius: "var(--border-radius-md)",
-                  fontSize: 13, color: "var(--text-muted)",
+                  fontSize: "0.8125rem", color: "var(--text-muted)",
                   zIndex: 20,
                 }}>
                   Sin resultados.
@@ -2851,7 +2858,7 @@ export default function PurchasesPage() {
                     border: "1px dashed var(--border-default)",
                     borderRadius: "var(--border-radius-md)",
                     background: "var(--bg-input)",
-                    fontSize: 13, color: "var(--text-muted)",
+                    fontSize: "0.8125rem", color: "var(--text-muted)",
                   }}>
                     Sin sucursales registradas — se usarán los datos generales del proveedor.
                   </div>
@@ -2893,7 +2900,7 @@ export default function PurchasesPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <AppFormField label="Responsable a recoger">
               {fieldUsers.length === 0 ? (
-                <div style={{ ...INPUT_STYLE, color: "var(--text-muted)", fontStyle: "italic", fontSize: 13 }}>
+                <div style={{ ...INPUT_STYLE, color: "var(--text-muted)", fontStyle: "italic", fontSize: "0.8125rem" }}>
                   No hay usuarios de campo registrados
                 </div>
               ) : (
@@ -2966,15 +2973,15 @@ export default function PurchasesPage() {
 
           {/* Renglones de materiales */}
           <div style={{ marginTop: 8, marginBottom: 16 }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>
+            <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>
               Materiales
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "80px 130px 1fr 120px 32px", gap: 8, marginBottom: 6 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textAlign: "center" }}>Cant.</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Unidad</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Descripción</span>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>P. unit. (opc)</span>
+              <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textAlign: "center" }}>Cant.</span>
+              <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Unidad</span>
+              <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Descripción</span>
+              <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>P. unit. (opc)</span>
               <span />
             </div>
 
@@ -3040,7 +3047,7 @@ export default function PurchasesPage() {
                 padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                 border: "1px dashed var(--border-strong)",
                 background: "transparent", color: "var(--text-secondary)",
-                fontSize: 13, fontWeight: 600, cursor: "pointer",
+                fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
               }}
             >
               <Plus size={14} /> Agregar renglón
@@ -3048,7 +3055,7 @@ export default function PurchasesPage() {
           </div>
 
           {formError ? (
-            <div style={{ color: "var(--badge-text-red)", marginBottom: 12, fontSize: 13, fontWeight: 600 }}>
+            <div style={{ color: "var(--badge-text-red)", marginBottom: 12, fontSize: "0.8125rem", fontWeight: 600 }}>
               {formError}
             </div>
           ) : null}
@@ -3096,7 +3103,7 @@ export default function PurchasesPage() {
       >
         {cancelTarget ? (
           <>
-            <p style={{ margin: "0 0 20px", fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+            <p style={{ margin: "0 0 20px", fontSize: "0.875rem", color: "var(--text-secondary)", lineHeight: 1.5 }}>
               La OC <strong style={{ fontFamily: "monospace", color: "var(--text-primary)" }}>{cancelTarget.folio}</strong> será marcada como cancelada. Esta acción no se puede deshacer.
             </p>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
@@ -3118,7 +3125,7 @@ export default function PurchasesPage() {
                   border: "1px solid var(--badge-text-red)",
                   background: "var(--badge-text-red)",
                   color: "#fff",
-                  fontSize: 14, fontWeight: 700,
+                  fontSize: "0.875rem", fontWeight: 700,
                   cursor: cancelling ? "wait" : "pointer",
                   opacity: cancelling ? 0.7 : 1,
                 }}
@@ -3164,10 +3171,10 @@ export default function PurchasesPage() {
             }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                  <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     {xmlUploaded ? "✓ XML procesado" : "Subir XML del SAT"}
                   </p>
-                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
+                  <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     {xmlUploaded
                       ? "Los campos se pre-llenaron automáticamente."
                       : "Opcional — pre-llena los campos desde el comprobante fiscal."}
@@ -3181,8 +3188,8 @@ export default function PurchasesPage() {
                     padding: "8px 14px", borderRadius: "var(--border-radius-md)", flexShrink: 0,
                     border: `1px solid ${xmlUploaded ? "rgba(16,185,129,0.4)" : "var(--border-strong)"}`,
                     background: xmlUploaded ? "rgba(16,185,129,0.08)" : "var(--bg-card)",
-                    color: xmlUploaded ? "#10B981" : "var(--text-secondary)",
-                    fontSize: 12, fontWeight: 700, cursor: "pointer",
+                    color: xmlUploaded ? "var(--metric-value-green)" : "var(--text-secondary)",
+                    fontSize: "0.75rem", fontWeight: 700, cursor: "pointer",
                   }}
                 >
                   <Upload size={13} />
@@ -3202,8 +3209,8 @@ export default function PurchasesPage() {
                     marginTop: 10, padding: "8px 10px", borderRadius: "var(--border-radius-md)",
                     background: rfcMatch ? "rgba(16,185,129,0.08)" : "rgba(245,158,11,0.08)",
                     border: `1px solid ${rfcMatch ? "rgba(16,185,129,0.3)" : "rgba(245,158,11,0.3)"}`,
-                    fontSize: 12,
-                    color: rfcMatch ? "#10B981" : "var(--text-primary)",
+                    fontSize: "0.75rem",
+                    color: rfcMatch ? "var(--metric-value-green)" : "var(--text-primary)",
                   }}>
                     RFC Emisor: <strong>{xmlRfcEmisor}</strong>
                     {xmlNombreEmisor ? ` — ${xmlNombreEmisor}` : ""}
@@ -3217,11 +3224,11 @@ export default function PurchasesPage() {
               {/* Tabla de conceptos */}
               {xmlUploaded && xmlConceptos.length > 0 ? (
                 <div style={{ marginTop: 10 }}>
-                  <p style={{ margin: "0 0 6px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                  <p style={{ margin: "0 0 6px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                     Conceptos del XML ({xmlConceptos.length})
                   </p>
                   <div style={{ border: "1px solid rgba(16,185,129,0.25)", borderRadius: "var(--border-radius-md)", overflow: "hidden" }}>
-                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.75rem" }}>
                       <thead>
                         <tr style={{ background: "rgba(16,185,129,0.08)" }}>
                           <th style={{ padding: "7px 10px", textAlign: "left", fontWeight: 700, color: "var(--text-primary)" }}>Descripción</th>
@@ -3258,14 +3265,14 @@ export default function PurchasesPage() {
             <div style={{ borderTop: "1px solid var(--border-default)", margin: "0 -4px" }} />
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Número de factura *</label>
+              <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Número de factura *</label>
               <input
                 type="text"
                 value={invoiceForm.number}
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, number: e.target.value }))}
                 placeholder="A-1234"
                 style={{
-                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem",
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                 }}
@@ -3273,7 +3280,7 @@ export default function PurchasesPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Monto real *</label>
+              <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Monto real *</label>
               <input
                 type="number"
                 step="0.01"
@@ -3282,7 +3289,7 @@ export default function PurchasesPage() {
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, amount: e.target.value }))}
                 placeholder="0.00"
                 style={{
-                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem",
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                 }}
@@ -3290,13 +3297,13 @@ export default function PurchasesPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Fecha de factura *</label>
+              <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Fecha de factura *</label>
               <input
                 type="date"
                 value={invoiceForm.date}
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, date: e.target.value }))}
                 style={{
-                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem",
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                 }}
@@ -3304,14 +3311,14 @@ export default function PurchasesPage() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-              <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Notas (opcional)</label>
+              <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Notas (opcional)</label>
               <textarea
                 rows={3}
                 value={invoiceForm.notes}
                 onChange={(e) => setInvoiceForm((f) => ({ ...f, notes: e.target.value }))}
                 placeholder="Observaciones, diferencias con la OC, etc."
                 style={{
-                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: 13,
+                  padding: 10, borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem",
                   background: "var(--bg-input)", border: "1px solid var(--border-default)",
                   color: "var(--text-primary)", outline: "none", boxSizing: "border-box",
                   resize: "vertical", fontFamily: "inherit",
@@ -3342,7 +3349,7 @@ export default function PurchasesPage() {
                   border: "1px solid #7c3aed",
                   background: "#7c3aed",
                   color: "#fff",
-                  fontSize: 14, fontWeight: 700,
+                  fontSize: "0.875rem", fontWeight: 700,
                   cursor: savingInvoice ? "wait" : "pointer",
                   opacity: savingInvoice ? 0.7 : 1,
                 }}
@@ -3399,7 +3406,7 @@ export default function PurchasesPage() {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
+      fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)",
       textTransform: "uppercase", letterSpacing: "0.06em",
       marginBottom: 10,
     }}>
@@ -3411,10 +3418,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
         {label}
       </div>
-      <div style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 3 }}>
+      <div style={{ fontSize: "0.875rem", color: "var(--text-primary)", marginTop: 3 }}>
         {value}
       </div>
     </div>
@@ -3423,7 +3430,7 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 const thStyle: CSSProperties = {
   padding: "10px 12px",
-  fontSize: 11,
+  fontSize: "0.6875rem",
   fontWeight: 700,
   color: "var(--text-muted)",
   textAlign: "center",
@@ -3464,7 +3471,7 @@ const monthNavBtnStyle: CSSProperties = {
 };
 
 const monthNavLabelStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 700,
   color: "var(--text-primary)",
   minWidth: 140,

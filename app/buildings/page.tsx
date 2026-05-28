@@ -75,6 +75,7 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppSelect from "@/components/AppSelect";
@@ -196,7 +197,7 @@ function OccupancyDonut({
   return (
     <div style={{ position: "relative", width: size, height: size, flexShrink: 0 }}>
       <svg width={size} height={size}>
-        <circle cx={half} cy={half} r={r} fill="none" stroke="#E5E7EB" strokeWidth={sw} />
+        <circle cx={half} cy={half} r={r} fill="none" stroke="var(--border-default)" strokeWidth={sw} />
         <circle
           cx={half} cy={half} r={r}
           fill="none"
@@ -231,8 +232,8 @@ function OccupancyDonut({
 }
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -285,7 +286,7 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
         alignItems: "center",
         justifyContent: "center",
         color: "var(--text-muted)",
-        fontSize: 13,
+        fontSize: "0.8125rem",
       }}
     >
       Cargando selector de ubicación...
@@ -298,7 +299,7 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
 export default function BuildingsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const { notifications } = useNotifications(user?.company_id ?? "");
+  const { notifications } = useNotifications(user?.company_id ?? null, !!user);
   const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
   const isGroupMode = impersonationMode === 'group';
 
@@ -345,6 +346,8 @@ export default function BuildingsPage() {
   /* Estado del modal de creación en 4 pasos */
   const [createStep, setCreateStep] = useState<1 | 2 | 3 | 4>(1);
   const [selectedFeatureKeys, setSelectedFeatureKeys] = useState<string[]>([]);
+  const [customSpaceOther, setCustomSpaceOther] = useState("");
+  const [customServiceOther, setCustomServiceOther] = useState("");
   const buildingCategory = watch("building_category");
   const buildingTags = watch("building_tags") ?? [];
 
@@ -395,6 +398,12 @@ export default function BuildingsPage() {
     }
   }
 
+  /* Banner de propiedades sin configurar */
+  const [onboardingBannerDismissed, setOnboardingBannerDismissed] = useState(false);
+  useEffect(() => {
+    setOnboardingBannerDismissed(localStorage.getItem("onboarding-banner-dismissed") === "true");
+  }, []);
+
   /* Hover + dropdown de acciones por card */
   const [hoveredBuildingId, setHoveredBuildingId] = useState<string | null>(null);
   const [openActionsBuildingId, setOpenActionsBuildingId] = useState<string | null>(null);
@@ -425,7 +434,7 @@ export default function BuildingsPage() {
   /* ── Carga de datos ─────────────────────────────────────────────── */
 
   const loadBuildings = useCallback(async () => {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setLoadingBuildings(true);
 
     const cid = user?.company_id ?? null;
@@ -522,11 +531,11 @@ export default function BuildingsPage() {
 
     setActiveLeasesCountByBuilding(leaseCounts);
     setLoadingBuildings(false);
-  }, [user, isGroupMode]);
+  }, [user?.id, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadBuildings();
-  }, [loadBuildings, user?.company_id, user?.is_superadmin, isGroupMode]);
+    if (user && !user.is_superadmin) void loadBuildings();
+  }, [loadBuildings]);
 
   /* ── Métricas del portafolio ─────────────────────────────────────── */
 
@@ -597,7 +606,7 @@ export default function BuildingsPage() {
   /* Edificios filtrados por categoría y ordenados alfabéticamente (orden natural) */
   const filteredBuildings = useMemo(
     () => {
-      const base = isGroupMode
+      const base = isGroupMode && groupCompanyIds.length > 0
         ? buildings.filter((b) => groupCompanyIds.includes(b.company_id))
         : buildings;
       return base
@@ -607,6 +616,12 @@ export default function BuildingsPage() {
         );
     },
     [buildings, selectedCategory, isGroupMode, groupCompanyIds]
+  );
+
+  /* Propiedades sin unidades (para banner de onboarding) */
+  const unconfiguredCount = useMemo(
+    () => filteredBuildings.filter((b) => (unitCountByBuilding.get(b.id) ?? 0) === 0).length,
+    [filteredBuildings, unitCountByBuilding]
   );
 
   /* Métricas consolidadas para vista de grupo */
@@ -886,7 +901,7 @@ export default function BuildingsPage() {
               ? "var(--badge-text-green)"
               : "var(--badge-text-red)",
             marginBottom: 16,
-            fontSize: 14,
+            fontSize: "0.875rem",
             fontWeight: 600,
           }}
         >
@@ -896,45 +911,106 @@ export default function BuildingsPage() {
 
       {/* ── Métricas del portafolio ── */}
       {isGroupMode && groupStats ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
-          <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
-          <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
-          <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
-        </div>
+        <>
+          <MetricCircles metrics={[
+            { value: groupStats.total, label: "Propiedades" },
+            { value: groupStats.totalUnits, label: "Unidades" },
+            { value: `${groupStats.occupancyPct}%`, label: "Ocupación" },
+          ]} />
+          <div className="metric-grid-desktop-only" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
+            <MetricCard label="Total propiedades" value={groupStats.total} icon={<Warehouse size={18} />} helper="Portafolio consolidado del grupo" />
+            <MetricCard label="Total de unidades" value={groupStats.totalUnits} icon={<Home size={18} />} helper="Unidades en empresas activas" />
+            <MetricCard label="Ocupación global" value={`${groupStats.occupancyPct}%`} icon={<TrendingUp size={18} />} helper="Promedio consolidado" />
+          </div>
+        </>
       ) : (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-            gap: 16,
-            marginBottom: 24,
-          }}
-        >
-          <MetricCard
-            label="Total de propiedades"
-            value={portfolioStats.total}
-            icon={<Warehouse size={18} />}
-            helper="Portafolio actual"
-          />
-          <MetricCard
-            label="Al 75 %+ de ocupación"
-            value={portfolioStats.highOccupancy}
-            icon={<Building2 size={18} />}
-            helper="Propiedades en alta ocupación"
-            variant="green"
-          />
-          <MetricCard
-            label="Ocupación promedio"
-            value={`${portfolioStats.avgOccupancy}%`}
-            icon={<TrendingUp size={18} />}
-            helper="Promedio del portafolio"
-          />
-          <MetricCard
-            label="Unidades en portafolio"
-            value={portfolioStats.totalPortfolioUnits}
-            icon={<Home size={18} />}
-            helper="Total de departamentos"
-          />
+        <>
+          <MetricCircles metrics={[
+            { value: portfolioStats.total, label: "Propiedades" },
+            { value: portfolioStats.highOccupancy, label: "Alta ocup.", color: "success" },
+            { value: `${portfolioStats.avgOccupancy}%`, label: "Prom. ocup." },
+            { value: portfolioStats.totalPortfolioUnits, label: "Unidades" },
+          ]} />
+          <div
+            className="metric-grid-desktop-only"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))",
+              gap: 16,
+              marginBottom: 24,
+            }}
+          >
+            <MetricCard
+              label="Total de propiedades"
+              value={portfolioStats.total}
+              icon={<Warehouse size={18} />}
+              helper="Portafolio actual"
+            />
+            <MetricCard
+              label="Al 75 %+ de ocupación"
+              value={portfolioStats.highOccupancy}
+              icon={<Building2 size={18} />}
+              helper="Propiedades en alta ocupación"
+              variant="green"
+            />
+            <MetricCard
+              label="Ocupación promedio"
+              value={`${portfolioStats.avgOccupancy}%`}
+              icon={<TrendingUp size={18} />}
+              helper="Promedio del portafolio"
+            />
+            <MetricCard
+              label="Unidades en portafolio"
+              value={portfolioStats.totalPortfolioUnits}
+              icon={<Home size={18} />}
+              helper="Total de departamentos"
+            />
+          </div>
+        </>
+      )}
+
+      {/* ── Banner: propiedades sin configurar ── */}
+      {!onboardingBannerDismissed && unconfiguredCount > 0 && !loadingBuildings && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 12,
+          padding: "12px 16px",
+          borderRadius: "var(--border-radius-md)",
+          background: "var(--metric-bg-amber)",
+          border: "1px solid var(--metric-border-amber)",
+          flexWrap: "wrap",
+        }}>
+          <span style={{ fontSize: "1rem", lineHeight: 1 }}>⚠️</span>
+          <span style={{ flex: 1, fontSize: "0.875rem", color: "var(--metric-value-amber)", fontWeight: 500, minWidth: 200 }}>
+            {unconfiguredCount === 1
+              ? "Tienes 1 propiedad sin configurar."
+              : `Tienes ${unconfiguredCount} propiedades sin configurar.`}
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              const first = filteredBuildings.find((b) => (unitCountByBuilding.get(b.id) ?? 0) === 0);
+              if (first) router.push(`/buildings/${first.id}`);
+            }}
+            style={{
+              background: "var(--metric-value-amber)", color: "#fff",
+              border: "none", padding: "6px 14px",
+              borderRadius: "var(--border-radius-sm)",
+              fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap",
+            }}
+          >
+            Configurar ahora →
+          </button>
+          <button
+            type="button"
+            aria-label="Cerrar"
+            onClick={() => {
+              localStorage.setItem("onboarding-banner-dismissed", "true");
+              setOnboardingBannerDismissed(true);
+            }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--metric-value-amber)", padding: 4, fontSize: "1rem", lineHeight: 1 }}
+          >
+            ✕
+          </button>
         </div>
       )}
 
@@ -963,8 +1039,10 @@ export default function BuildingsPage() {
         {loadingBuildings ? (
           <p style={{ margin: 0 }}>Cargando edificios...</p>
         ) : isGroupMode ? (
-          buildingsByCompany.length === 0 ? (
-            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14 }}>Sin propiedades en las empresas activas.</p>
+          groupCompanies.length === 0 ? (
+            <p style={{ margin: 0 }}>Cargando empresas del grupo…</p>
+          ) : buildingsByCompany.length === 0 ? (
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin propiedades en las empresas activas.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
               {buildingsByCompany.map(({ company, compBuildings }) => {
@@ -974,10 +1052,10 @@ export default function BuildingsPage() {
                     {/* Company section header */}
                     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                         {company.short_name || company.name}
                       </span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 4 }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 4 }}>
                         {compBuildings.length} {compBuildings.length === 1 ? "propiedad" : "propiedades"}
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
@@ -1011,13 +1089,13 @@ export default function BuildingsPage() {
                               >
                                 <div style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: 12, width: "100%", marginBottom: 10, flex: 1 }}>
                                   <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
-                                    <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.name}</p>
-                                    <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.address || "Sin dirección registrada"}</p>
+                                    <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.name}</p>
+                                    <p style={{ fontSize: "0.6875rem", color: "var(--text-secondary)", marginBottom: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{building.address || "Sin dirección registrada"}</p>
                                     {(() => {
                                       const pt = getPropertyType(building.building_category);
                                       const PtIcon = ICON_MAP[pt.icon];
                                       return (
-                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pt.color + "1a", color: pt.color }}>
+                                        <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px", borderRadius: 999, background: pt.color + "1a", color: pt.color }}>
                                           {PtIcon && <PtIcon size={11} />}{pt.label}
                                         </span>
                                       );
@@ -1030,11 +1108,11 @@ export default function BuildingsPage() {
                                 <div style={{ height: "0.5px", background: "var(--border-default)", margin: "10px 0" }} />
                                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
                                   <div style={{ display: "flex", gap: 20 }}>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{totalUnits}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Total</p></div>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "#10B981", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
-                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>{freeUnits}</p><p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{totalUnits}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Total</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--metric-value-green)", lineHeight: 1 }}>{activeLeases}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p></div>
+                                    <div style={{ textAlign: "center" }}><p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>{freeUnits}</p><p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Libres</p></div>
                                   </div>
-                                  {isHovered && <span style={{ fontSize: 12, color: compColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Ver detalle →</span>}
+                                  {isHovered && <span style={{ fontSize: "0.75rem", color: compColor, fontWeight: 600, whiteSpace: "nowrap", flexShrink: 0 }}>Ver detalle →</span>}
                                 </div>
                               </div>
                             </div>
@@ -1056,10 +1134,10 @@ export default function BuildingsPage() {
             >
               <Building2 size={68} style={{ color: "var(--accent)" }} />
             </motion.div>
-            <h2 style={{ fontSize: 24, fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
+            <h2 style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--text-primary)", margin: "0 0 12px" }}>
               Bienvenido a SAPROA
             </h2>
-            <p style={{ fontSize: 15, color: "var(--text-muted)", margin: "0 0 28px", maxWidth: 460, lineHeight: 1.6 }}>
+            <p style={{ fontSize: "0.9375rem", color: "var(--text-muted)", margin: "0 0 28px", maxWidth: 460, lineHeight: 1.6 }}>
               Configura tu primera propiedad en 5 pasos simples y empieza a gestionar todo desde un solo lugar.
             </p>
             <button
@@ -1067,7 +1145,7 @@ export default function BuildingsPage() {
               onClick={() => setIsCreateModalOpen(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
-                padding: "12px 28px", fontSize: 15, fontWeight: 700,
+                padding: "12px 28px", fontSize: "0.9375rem", fontWeight: 700,
                 background: "var(--accent)", color: "#fff",
                 border: "none", borderRadius: "var(--border-radius-md)",
                 cursor: "pointer", marginBottom: 28,
@@ -1078,10 +1156,10 @@ export default function BuildingsPage() {
             </button>
             <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
               {["1. Propiedad", "2. Tipología", "3. Unidades", "4. Servicios", "5. Inquilinos"].flatMap((step, i, arr) => [
-                <span key={step} style={{ padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: 12, fontWeight: 600, color: "var(--text-muted)", background: "var(--bg-card)" }}>
+                <span key={step} style={{ padding: "4px 12px", borderRadius: 999, border: "1px solid var(--border-default)", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", background: "var(--bg-card)" }}>
                   {step}
                 </span>,
-                ...(i < arr.length - 1 ? [<span key={`a${i}`} style={{ color: "var(--text-subtle)", fontSize: 13, lineHeight: 1 }}>→</span>] : []),
+                ...(i < arr.length - 1 ? [<span key={`a${i}`} style={{ color: "var(--text-subtle)", fontSize: "0.8125rem", lineHeight: 1 }}>→</span>] : []),
               ])}
             </div>
           </div>
@@ -1175,7 +1253,7 @@ export default function BuildingsPage() {
                           padding: totalCount > 1 ? "0 5px" : 0,
                           borderRadius: 999,
                           background: SEVERITY_COLORS[worstSeverity].dot,
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 700,
                           color: "#ffffff",
                           lineHeight: 1,
@@ -1202,7 +1280,7 @@ export default function BuildingsPage() {
                       <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
                         <p
                           style={{
-                            fontSize: 15,
+                            fontSize: "0.9375rem",
                             fontWeight: 700,
                             color: "var(--text-primary)",
                             marginBottom: 4,
@@ -1215,7 +1293,7 @@ export default function BuildingsPage() {
                         </p>
                         <p
                           style={{
-                            fontSize: 11,
+                            fontSize: "0.6875rem",
                             color: "var(--text-secondary)",
                             marginBottom: 8,
                             overflow: "hidden",
@@ -1238,7 +1316,7 @@ export default function BuildingsPage() {
                               <div>
                                 <span style={{
                                   display: "inline-flex", alignItems: "center", gap: 4,
-                                  fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                                  fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
                                   borderRadius: 999, background: "#37415115", color: "#374151",
                                 }}>
                                   Uso mixto
@@ -1251,7 +1329,7 @@ export default function BuildingsPage() {
                                     return (
                                       <span key={typeValue} style={{
                                         display: "inline-flex", alignItems: "center", gap: 3,
-                                        fontSize: 10, padding: "1px 6px", borderRadius: 999,
+                                        fontSize: "0.625rem", padding: "1px 6px", borderRadius: 999,
                                         background: typeDef.color + "1a", color: typeDef.color, fontWeight: 500,
                                       }}>
                                         {TypeIcon && <TypeIcon size={10} />}
@@ -1270,14 +1348,14 @@ export default function BuildingsPage() {
                             <div>
                               <span style={{
                                 display: "inline-flex", alignItems: "center", gap: 4,
-                                fontSize: 11, fontWeight: 600, padding: "2px 8px",
+                                fontSize: "0.6875rem", fontWeight: 600, padding: "2px 8px",
                                 borderRadius: 999, background: pt.color + "1a", color: pt.color,
                               }}>
                                 {PtIcon && <PtIcon size={11} />}
                                 {pt.label}
                               </span>
                               {subtypeLabel && (
-                                <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)" }}>
+                                <p style={{ margin: "3px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                                   {subtypeLabel}
                                 </p>
                               )}
@@ -1320,29 +1398,29 @@ export default function BuildingsPage() {
                       {/* Métricas */}
                       <div style={{ display: "flex", gap: 20 }}>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
                             {totalUnits}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Total</p>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Total</p>
                         </div>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: 18, fontWeight: 700, color: "#10B981", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--metric-value-green)", lineHeight: 1 }}>
                             {activeLeases}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Ocupados</p>
                         </div>
                         <div style={{ textAlign: "center" }}>
-                          <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>
+                          <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-muted)", lineHeight: 1 }}>
                             {freeUnits}
                           </p>
-                          <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
+                          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>Libres</p>
                         </div>
                         {building.total_sqm != null && building.building_category !== "residential_multi" && building.building_category !== "residential_single" && (
                           <div style={{ textAlign: "center" }}>
-                            <p style={{ fontSize: 18, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+                            <p style={{ fontSize: "1.125rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
                               {building.total_sqm.toLocaleString("es-MX")}
                             </p>
-                            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 3 }}>m²</p>
+                            <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 3 }}>m²</p>
                           </div>
                         )}
                       </div>
@@ -1355,7 +1433,7 @@ export default function BuildingsPage() {
                         {isHovered && (
                           <span
                             style={{
-                              fontSize: 12,
+                              fontSize: "0.75rem",
                               color: "var(--accent)",
                               fontWeight: 600,
                               whiteSpace: "nowrap",
@@ -1436,12 +1514,12 @@ export default function BuildingsPage() {
             <ResponsiveContainer width="100%" height="100%">
               <LineChart
                 data={portfolioTrend}
-                margin={{ top: 8, right: 48, left: 0, bottom: 4 }}
+                margin={{ top: 8, right: 8, left: 0, bottom: 4 }}
               >
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" />
                 <XAxis
                   dataKey="label"
-                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
                 />
@@ -1449,7 +1527,7 @@ export default function BuildingsPage() {
                 <YAxis
                   yAxisId="count"
                   allowDecimals={false}
-                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
                   width={36}
@@ -1460,17 +1538,17 @@ export default function BuildingsPage() {
                   orientation="right"
                   domain={[0, 100]}
                   tickFormatter={(v) => `${v}%`}
-                  tick={{ fontSize: 11, fill: "var(--chart-axis)" }}
+                  tick={{ fontSize: "0.6875rem", fill: "var(--chart-axis)" }}
                   axisLine={false}
                   tickLine={false}
-                  width={44}
+                  width={35}
                 />
                 <Tooltip
                   contentStyle={{
                     background: "var(--bg-card)",
                     border: "1px solid var(--border-default)",
                     borderRadius: "var(--border-radius-md)",
-                    fontSize: 12,
+                    fontSize: "0.75rem",
                   }}
                   formatter={(value, name) => {
                     if (name === "% Ocupación") return [`${value ?? 0}%`, name];
@@ -1479,7 +1557,7 @@ export default function BuildingsPage() {
                 />
                 <Legend
                   iconType="line"
-                  wrapperStyle={{ fontSize: 12, paddingTop: 12 }}
+                  wrapperStyle={{ fontSize: "0.75rem", paddingTop: 12 }}
                 />
                 <Line
                   yAxisId="count"
@@ -1558,7 +1636,7 @@ export default function BuildingsPage() {
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                       background: selected ? pt.color + "15" : "var(--bg-card)",
                       color: selected ? pt.color : "var(--text-secondary)",
-                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: "0.75rem",
                       transition: "all 0.15s ease",
                     }}
                   >
@@ -1567,7 +1645,7 @@ export default function BuildingsPage() {
                         position: "absolute", top: 4, left: 4,
                         width: 16, height: 16, borderRadius: "50%",
                         background: pt.color, color: "#fff",
-                        fontSize: 10, fontWeight: 700,
+                        fontSize: "0.625rem", fontWeight: 700,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
                         {orderIdx + 1}
@@ -1580,7 +1658,7 @@ export default function BuildingsPage() {
               })}
             </div>
             {selectedTypes.length > 1 && (
-              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                 Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
                   {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
                 </strong>
@@ -1613,8 +1691,8 @@ export default function BuildingsPage() {
                         }}
                       >
                         {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
-                        <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                        <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                        <p style={{ margin: 0, fontSize: "0.625rem", color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
                       </button>
                     );
                   })}
@@ -1624,7 +1702,7 @@ export default function BuildingsPage() {
           })()}
 
           <div style={{ marginBottom: 4 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
               Superficie
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1663,7 +1741,7 @@ export default function BuildingsPage() {
               setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
             return (
               <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                   Características de la casa
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -1685,7 +1763,7 @@ export default function BuildingsPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   {HOUSE_AMENITIES.map((a) => (
-                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                       <input type="checkbox" checked={!!(hf[a.key])}
                         onChange={(e) => setHF(a.key, e.target.checked || undefined)}
                         style={{ width: 15, height: 15, accentColor: "#0369a1", cursor: "pointer" }} />
@@ -1694,7 +1772,7 @@ export default function BuildingsPage() {
                   ))}
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                     <input type="checkbox" checked={!!(hf.has_other)}
                       onChange={(e) => {
                         setHF("has_other", e.target.checked || undefined);
@@ -1705,13 +1783,13 @@ export default function BuildingsPage() {
                   </label>
                   {Boolean(hf.has_other) && (
                     <div style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
                       <textarea
                         value={(hf.other_notes as string) ?? ""}
                         onChange={(e) => setHF("other_notes", e.target.value || undefined)}
                         placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
                         rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
                       />
                     </div>
                   )}
@@ -1722,7 +1800,7 @@ export default function BuildingsPage() {
                       { value: "complete", label: "Casa completa" },
                       { value: "by_room", label: "Por cuarto" },
                     ].map((opt) => (
-                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                         <input type="radio" name="edit_rental_mode" value={opt.value}
                           checked={(hf.rental_mode as string | undefined) === opt.value}
                           onChange={() => setHF("rental_mode", opt.value)}
@@ -1832,19 +1910,19 @@ export default function BuildingsPage() {
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                   <div style={{
                     width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                    background: createStep >= n ? "#8B2252" : "var(--border-default)",
+                    background: createStep >= n ? "var(--accent)" : "var(--border-default)",
                     color: createStep >= n ? "#fff" : "var(--text-muted)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 11, fontWeight: 700,
+                    fontSize: "0.6875rem", fontWeight: 700,
                   }}>
                     {n}
                   </div>
-                  <span style={{ fontSize: 9, color: createStep >= n ? "#8B2252" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
+                  <span style={{ fontSize: "0.5625rem", color: createStep >= n ? "var(--accent)" : "var(--text-muted)", fontWeight: createStep === n ? 700 : 400 }}>
                     {label}
                   </span>
                 </div>
                 {i < 3 && (
-                  <div style={{ flex: 1, height: 2, background: createStep > n ? "#8B2252" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
+                  <div style={{ flex: 1, height: 2, background: createStep > n ? "var(--accent)" : "var(--border-default)", margin: "0 4px", marginBottom: 14 }} />
                 )}
               </div>
             ))}
@@ -1871,7 +1949,7 @@ export default function BuildingsPage() {
                           border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                           background: selected ? pt.color + "15" : "var(--bg-card)",
                           color: selected ? pt.color : "var(--text-secondary)",
-                          cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                          cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: "0.75rem",
                           transition: "all 0.15s ease",
                         }}
                       >
@@ -1880,7 +1958,7 @@ export default function BuildingsPage() {
                             position: "absolute", top: 6, left: 6,
                             width: 18, height: 18, borderRadius: "50%",
                             background: pt.color, color: "#fff",
-                            fontSize: 10, fontWeight: 700,
+                            fontSize: "0.625rem", fontWeight: 700,
                             display: "flex", alignItems: "center", justifyContent: "center",
                           }}>
                             {orderIdx + 1}
@@ -1893,7 +1971,7 @@ export default function BuildingsPage() {
                   })}
                 </div>
                 {selectedTypes.length > 1 && (
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                     Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
                       {PROPERTY_TYPES.find((pt) => pt.value === selectedTypes[0])?.label}
                     </strong>
@@ -1926,8 +2004,8 @@ export default function BuildingsPage() {
                             }}
                           >
                             {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
-                            <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
-                            <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                            <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                            <p style={{ margin: 0, fontSize: "0.625rem", color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
                           </button>
                         );
                       })}
@@ -1936,12 +2014,12 @@ export default function BuildingsPage() {
                 );
               })()}
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 8 }}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between", marginTop: 8 }}>
+                <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
+                  Cancelar
+                </UiButton>
                 <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
                   Siguiente →
-                </UiButton>
-                <UiButton type="button" onClick={closeCreateModal}>
-                  Cancelar
                 </UiButton>
               </div>
             </>
@@ -1968,7 +2046,7 @@ export default function BuildingsPage() {
               </AppFormField>
 
               <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
                   Superficie
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -1979,11 +2057,6 @@ export default function BuildingsPage() {
                     <input {...register("construction_sqm")} type="number" placeholder="Ej: 350" style={INPUT_STYLE} />
                   </AppFormField>
                 </div>
-                {buildingCategory !== "land" && buildingCategory !== "residential_single" && (
-                  <AppFormField label="M² por unidad (referencia)">
-                    <input {...register("default_unit_sqm")} type="number" placeholder="Ej: 65" style={INPUT_STYLE} />
-                  </AppFormField>
-                )}
               </div>
 
               <AppFormField label="Dirección">
@@ -1998,16 +2071,18 @@ export default function BuildingsPage() {
                 />
               </AppFormField>
 
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
-                  Siguiente →
-                </UiButton>
-                <UiButton type="button" onClick={() => setCreateStep(1)}>
-                  ← Atrás
-                </UiButton>
-                <UiButton type="button" onClick={closeCreateModal}>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
+                <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
                   Cancelar
                 </UiButton>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <UiButton type="button" onClick={() => setCreateStep(1)}>
+                    ← Atrás
+                  </UiButton>
+                  <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                    Siguiente →
+                  </UiButton>
+                </div>
               </div>
             </>
           )}
@@ -2036,10 +2111,10 @@ export default function BuildingsPage() {
                 >
                   {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={16} color={selected ? feat.color : "var(--text-muted)"} /></span>}
                   <div>
-                    <p style={{ margin: 0, fontSize: 13, fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
+                    <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: selected ? 700 : 500, color: selected ? feat.color : "var(--text-primary)", lineHeight: 1.2 }}>
                       {feat.label}
                     </p>
-                    <p style={{ margin: "3px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>
+                    <p style={{ margin: "3px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)", lineHeight: 1.3 }}>
                       {feat.description}
                     </p>
                   </div>
@@ -2049,7 +2124,7 @@ export default function BuildingsPage() {
 
             return (
               <>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
                   Selecciona los espacios y servicios disponibles. Puedes cambiar esto después.
                 </p>
 
@@ -2059,13 +2134,49 @@ export default function BuildingsPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <Building2 size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                         <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
-                          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
+                          <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
+                          <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {spaceFeatures.map((feat) => <FeatureCard key={feat.key} feat={feat} />)}
+                        <button
+                          type="button"
+                          onClick={() => setCustomSpaceOther(customSpaceOther === "__open__" ? "" : "__open__")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 12px", borderRadius: "var(--border-radius-md)", width: "100%", textAlign: "left",
+                            border: customSpaceOther && customSpaceOther !== "__open__" ? "2px solid var(--accent)" : "2px dashed var(--border-strong)",
+                            background: customSpaceOther && customSpaceOther !== "__open__" ? "var(--accent)12" : "var(--bg-card)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: customSpaceOther && customSpaceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
+                        </button>
                       </div>
+                      {customSpaceOther === "__open__" && (
+                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                          <input
+                            type="text"
+                            placeholder="Ej: Azotea, Sótano..."
+                            autoFocus
+                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", background: "var(--bg-card)", color: "var(--text-primary)" }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) setCustomSpaceOther(val);
+                              }
+                              if (e.key === "Escape") setCustomSpaceOther("");
+                            }}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) setCustomSpaceOther(val); else setCustomSpaceOther("");
+                            }}
+                          />
+                          <button type="button" onClick={() => setCustomSpaceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem" }}>Quitar</button>
+                        </div>
+                      )}
                     </div>
                   )}
 
@@ -2074,27 +2185,65 @@ export default function BuildingsPage() {
                       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
                         <Zap size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                         <div>
-                          <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
-                          <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
+                          <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
+                          <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
                         </div>
                       </div>
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         {serviceFeatures.map((feat) => <FeatureCard key={feat.key} feat={feat} />)}
+                        <button
+                          type="button"
+                          onClick={() => setCustomServiceOther(customServiceOther === "__open__" ? "" : "__open__")}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 8,
+                            padding: "10px 12px", borderRadius: "var(--border-radius-md)", width: "100%", textAlign: "left",
+                            border: customServiceOther && customServiceOther !== "__open__" ? "2px solid var(--accent)" : "2px dashed var(--border-strong)",
+                            background: customServiceOther && customServiceOther !== "__open__" ? "var(--accent)12" : "var(--bg-card)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: customServiceOther && customServiceOther !== "__open__" ? "var(--accent)" : "var(--text-muted)" }}>+ Otro</span>
+                        </button>
                       </div>
+                      {customServiceOther === "__open__" && (
+                        <div style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                          <input
+                            type="text"
+                            placeholder="Ej: Gas natural, Fibra óptica..."
+                            autoFocus
+                            style={{ flex: 1, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", background: "var(--bg-card)", color: "var(--text-primary)" }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                const val = (e.target as HTMLInputElement).value.trim();
+                                if (val) setCustomServiceOther(val);
+                              }
+                              if (e.key === "Escape") setCustomServiceOther("");
+                            }}
+                            onBlur={(e) => {
+                              const val = e.target.value.trim();
+                              if (val) setCustomServiceOther(val); else setCustomServiceOther("");
+                            }}
+                          />
+                          <button type="button" onClick={() => setCustomServiceOther("")} style={{ padding: "8px 12px", border: "none", background: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem" }}>Quitar</button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
-                  <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
-                    Siguiente →
-                  </UiButton>
-                  <UiButton type="button" onClick={() => setCreateStep(2)}>
-                    ← Atrás
-                  </UiButton>
-                  <UiButton type="button" onClick={closeCreateModal}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between", marginTop: 20 }}>
+                  <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
                     Cancelar
                   </UiButton>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <UiButton type="button" onClick={() => setCreateStep(2)}>
+                      ← Atrás
+                    </UiButton>
+                    <UiButton type="button" variant="primary" onClick={() => void handleNextStep()}>
+                      Siguiente →
+                    </UiButton>
+                  </div>
                 </div>
               </>
             );
@@ -2112,19 +2261,21 @@ export default function BuildingsPage() {
             const landVal    = getValues("land_sqm");
             const constVal   = getValues("construction_sqm");
             const unitVal    = getValues("default_unit_sqm");
-            const visibleFeatures = getDefaultFeatures(selectedTypes[0] ?? "")
+            const allSelectedFeatures = getDefaultFeatures(selectedTypes[0] ?? "")
               .filter((f) => f.key !== "general_setup" && selectedFeatureKeys.includes(f.key));
+            const selectedSpaceFeatures = allSelectedFeatures.filter((f) => f.category === "space");
+            const selectedServiceFeatures = allSelectedFeatures.filter((f) => f.category === "service");
 
             const row = (label: string, content: ReactNode) => (
               <div style={{ display: "grid", gridTemplateColumns: "110px 1fr", gap: 8, alignItems: "flex-start" }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, paddingTop: 2 }}>{label}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, paddingTop: 2 }}>{label}</span>
                 <span>{content}</span>
               </div>
             );
 
             return (
               <>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
                   Revisa los datos antes de crear la propiedad.
                 </p>
 
@@ -2132,48 +2283,68 @@ export default function BuildingsPage() {
                   {row("Tipo", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
                       {primaryType && (
-                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: primaryType.color + "18", color: primaryType.color }}>
+                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: primaryType.color + "18", color: primaryType.color }}>
                           {primaryType.label}
                         </span>
                       )}
                       {subtypeLabel && (
-                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                        <span style={{ padding: "3px 10px", borderRadius: 999, fontSize: "0.75rem", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
                           {subtypeLabel}
                         </span>
                       )}
                     </div>
                   ))}
-                  {row("Nombre", <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{nameVal || "—"}</span>)}
-                  {codeVal ? row("Código", <span style={{ fontSize: 13, color: "var(--text-primary)" }}>{codeVal}</span>) : null}
-                  {(landVal || constVal || unitVal) ? row("Superficie", (
+                  {row("Nombre", <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>{nameVal || "—"}</span>)}
+                  {codeVal ? row("Código", <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>{codeVal}</span>) : null}
+                  {(landVal || constVal) ? row("Superficie", (
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      {landVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{landVal} m² terreno</span>}
-                      {constVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{constVal} m² const.</span>}
-                      {unitVal && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{unitVal} m² por unidad</span>}
+                      {landVal && <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{landVal} m² terreno</span>}
+                      {constVal && <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{constVal} m² const.</span>}
                     </div>
                   )) : null}
-                  {addressVal ? row("Dirección", <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{addressVal}</span>) : null}
-                  {visibleFeatures.length > 0 ? row("Características", (
+                  {addressVal ? row("Dirección", <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{addressVal}</span>) : null}
+                  {(selectedSpaceFeatures.length > 0 || (customSpaceOther && customSpaceOther !== "__open__")) ? row("Espacios", (
                     <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                      {visibleFeatures.map((f) => (
-                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: 11, background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                      {selectedSpaceFeatures.map((f) => (
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: f.color + "15", color: f.color, fontWeight: 600 }}>
                           {f.label}
                         </span>
                       ))}
+                      {customSpaceOther && customSpaceOther !== "__open__" && (
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
+                          {customSpaceOther}
+                        </span>
+                      )}
+                    </div>
+                  )) : null}
+                  {(selectedServiceFeatures.length > 0 || (customServiceOther && customServiceOther !== "__open__")) ? row("Servicios", (
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                      {selectedServiceFeatures.map((f) => (
+                        <span key={f.key} style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: f.color + "15", color: f.color, fontWeight: 600 }}>
+                          {f.label}
+                        </span>
+                      ))}
+                      {customServiceOther && customServiceOther !== "__open__" && (
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", background: "var(--bg-card)", color: "var(--text-secondary)", border: "1px solid var(--border-default)", fontWeight: 600 }}>
+                          {customServiceOther}
+                        </span>
+                      )}
                     </div>
                   )) : null}
                 </div>
 
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <UiButton type="submit" variant="primary" disabled={isSubmitting}>
-                    {isSubmitting ? "Creando..." : "Crear propiedad"}
-                  </UiButton>
-                  <UiButton type="button" onClick={() => setCreateStep(3)}>
-                    ← Atrás
-                  </UiButton>
-                  <UiButton type="button" onClick={closeCreateModal}>
+                <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
+                  <UiButton type="button" variant="ghost" onClick={closeCreateModal}>
                     Cancelar
                   </UiButton>
+                  <div style={{ display: "flex", gap: 10 }}>
+                    <UiButton type="button" onClick={() => setCreateStep(3)}>
+                      ← Atrás
+                    </UiButton>
+                    <UiButton type="submit" variant="primary" disabled={isSubmitting}>
+                      {isSubmitting ? "Creando..." : "Crear propiedad"}
+                    </UiButton>
+                  </div>
                 </div>
               </>
             );

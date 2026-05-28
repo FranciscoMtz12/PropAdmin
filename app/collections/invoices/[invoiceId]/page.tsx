@@ -224,7 +224,7 @@ export default function InvoiceDetailPage() {
             </AppCard>
 
             <div style={{ marginTop: 18 }}>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 8 }}>
                 Descripción
               </div>
               <div style={{ color: "var(--text-secondary)", lineHeight: 1.7 }}>{invoice.description}</div>
@@ -266,7 +266,7 @@ export default function InvoiceDetailPage() {
                     </UiButton>
                   </div>
                 ) : (
-                  <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>No hay PDF disponible.</div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>No hay PDF disponible.</div>
                 )}
               </AppCard>
 
@@ -286,7 +286,7 @@ export default function InvoiceDetailPage() {
                     </UiButton>
                   </div>
                 ) : (
-                  <div style={{ color: "var(--text-secondary)", fontSize: 14 }}>No hay XML disponible.</div>
+                  <div style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>No hay XML disponible.</div>
                 )}
               </AppCard>
             </AppGrid>
@@ -318,7 +318,7 @@ function InfoGrid({ children }: { children: ReactNode }) {
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))",
         gap: 14,
       }}
     >
@@ -330,8 +330,8 @@ function InfoGrid({ children }: { children: ReactNode }) {
 function InfoItem({ label, value }: { label: string; value: string }) {
   return (
     <AppCard style={{ background: "var(--bg-card-hover)" }}>
-      <div style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 15, color: "var(--text-primary)", fontWeight: 700, lineHeight: 1.5 }}>
+      <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</div>
+      <div style={{ fontSize: "0.9375rem", color: "var(--text-primary)", fontWeight: 700, lineHeight: 1.5 }}>
         {value || "—"}
       </div>
     </AppCard>
@@ -341,8 +341,8 @@ function InfoItem({ label, value }: { label: string; value: string }) {
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div style={{ display: "flex", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
-      <span style={{ color: "var(--text-secondary)", fontSize: 14 }}>{label}</span>
-      <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 700 }}>{value || "—"}</span>
+      <span style={{ color: "var(--text-secondary)", fontSize: "0.875rem" }}>{label}</span>
+      <span style={{ color: "var(--text-primary)", fontSize: "0.875rem", fontWeight: 700 }}>{value || "—"}</span>
     </div>
   );
 }

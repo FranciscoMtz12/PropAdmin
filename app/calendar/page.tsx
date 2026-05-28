@@ -34,6 +34,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   CalendarDays,
   ChevronLeft,
@@ -216,21 +217,21 @@ const MONTH_LABELS = [
 ];
 
 const CLEANING_COLORS = {
-  background: "#ECFDF5",
-  border: "#A7F3D0",
-  text: "#166534",
+  background: "var(--metric-bg-green)",
+  border: "var(--metric-border-green)",
+  text: "var(--metric-value-green)",
 };
 
 const MAINTENANCE_COLORS = {
-  background: "#FFF7ED",
-  border: "#FDBA74",
-  text: "#9A3412",
+  background: "var(--metric-bg-amber)",
+  border: "var(--metric-border-amber)",
+  text: "var(--metric-value-amber)",
 };
 
 const PAYMENTS_COLORS = {
-  background: "#EFF6FF",
-  border: "#93C5FD",
-  text: "#1D4ED8",
+  background: "var(--metric-bg-blue)",
+  border: "var(--metric-border-blue)",
+  text: "var(--metric-value-blue)",
 };
 
 const COLLECTIONS_COLORS = {
@@ -279,6 +280,13 @@ function formatWeekRange(start: Date) {
   }
 
   return `${start.getDate()} ${MONTH_LABELS[start.getMonth()]} ${start.getFullYear()} - ${end.getDate()} ${MONTH_LABELS[end.getMonth()]} ${end.getFullYear()}`;
+}
+
+function formatWeekRangeMobile(start: Date) {
+  const end = addDays(start, 5);
+  const startStr = `${start.getDate()} ${MONTH_LABELS[start.getMonth()].slice(0, 3)}`;
+  const endStr = `${end.getDate()} ${MONTH_LABELS[end.getMonth()].slice(0, 3)}`;
+  return `${startStr} – ${endStr}`;
 }
 
 function formatMonthLabel(date: Date) {
@@ -459,10 +467,10 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
   if (module === "payments") {
     if (label === "Estado") {
       if (value === "Pagado") {
-        return { background: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "#10B981" };
+        return { background: "rgba(16,185,129,0.1)", border: "rgba(16,185,129,0.3)", text: "var(--metric-value-green)" };
       }
       if (value === "Vencido") {
-        return { background: "var(--badge-bg-red)", border: "rgba(220,38,38,0.3)", text: "#DC2626" };
+        return { background: "var(--badge-bg-red)", border: "rgba(220,38,38,0.3)", text: "var(--metric-value-red)" };
       }
       return { background: "rgba(245,158,11,0.1)", border: "rgba(245,158,11,0.3)", text: "var(--text-primary)" };
     }
@@ -474,12 +482,12 @@ function getStatusBadgeColors(module: CalendarEvent["module"], label: string, va
 
   if (module === "collections" && label === "Estado") {
     if (value === "Cobrado") {
-      return { background: "#ECFDF5", border: "#A7F3D0", text: "#166534" };
+      return { background: "var(--metric-bg-green)", border: "var(--metric-border-green)", text: "var(--metric-value-green)" };
     }
     if (value === "Vencido") {
-      return { background: "var(--badge-bg-red)", border: "#FECACA", text: "#B91C1C" };
+      return { background: "var(--badge-bg-red)", border: "#FECACA", text: "var(--metric-value-red)" };
     }
-    return { background: "#FEFCE8", border: "#FDE68A", text: "#A16207" };
+    return { background: "var(--metric-bg-amber)", border: "var(--metric-border-amber)", text: "var(--metric-value-amber)" };
   }
 
   return null;
@@ -500,7 +508,7 @@ function renderViewTab(
         padding: "6px 12px",
         background: active ? "var(--icon-bg-purple)" : "var(--bg-card-hover)",
         color: active ? "var(--icon-color-purple)" : "var(--text-secondary)",
-        fontSize: 13,
+        fontSize: "0.8125rem",
         fontWeight: 700,
         cursor: "pointer",
       }}
@@ -514,7 +522,8 @@ function renderModuleToggle(
   label: string,
   active: boolean,
   onClick: () => void,
-  moduleKey: string
+  moduleKey: string,
+  compact = false
 ) {
   const palette = MODULE_COLORS[moduleKey];
   return (
@@ -526,22 +535,22 @@ function renderModuleToggle(
           ? `1.5px solid ${palette?.border ?? "var(--border-default)"}`
           : "1.5px solid var(--border-default)",
         borderRadius: 999,
-        padding: "8px 12px",
+        padding: compact ? "4px 8px" : "8px 12px",
         background: active ? (palette?.bg ?? "var(--bg-card)") : "var(--bg-card)",
         color: active ? (palette?.text ?? "var(--text-primary)") : "var(--text-muted)",
         opacity: active ? 1 : 0.6,
-        fontSize: 13,
+        fontSize: compact ? "0.625rem" : "0.8125rem",
         fontWeight: 700,
         cursor: "pointer",
         display: "inline-flex",
         alignItems: "center",
-        gap: 8,
+        gap: compact ? 4 : 8,
       }}
     >
       <span
         style={{
-          width: 10,
-          height: 10,
+          width: compact ? 7 : 10,
+          height: compact ? 7 : 10,
           borderRadius: 999,
           background: palette?.border ?? "var(--border-default)",
           display: "inline-block",
@@ -585,6 +594,7 @@ export default function CalendarPage() {
   const [dayEventsModal, setDayEventsModal] = useState<DayEventsModalState | null>(null);
 
   const [isMobile, setIsMobile] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 768);
     check();
@@ -594,12 +604,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     void loadCalendarData();
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadCalendarData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
 
     setLoadingPage(true);
     setMsg("");
@@ -1196,8 +1206,31 @@ export default function CalendarPage() {
     <PageContainer>
       <PageHeader
         title="Calendario"
-        subtitle="Vista general del sistema para organizar limpieza, mantenimiento, pagos y cobranza."
+        subtitle={<span className="calendar-subtitle-desktop">Vista general del sistema para organizar limpieza, mantenimiento, pagos y cobranza.</span>}
         titleIcon={<CalendarDays size={18} />}
+        actions={
+          isMobile ? (
+            <button
+              type="button"
+              onClick={() => setFiltersOpen((p) => !p)}
+              aria-label="Filtros"
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                minWidth: 44,
+                minHeight: 44,
+                borderRadius: "var(--border-radius-md)",
+                border: "1px solid var(--border-default)",
+                background: filtersOpen ? "var(--accent)" : "var(--bg-card)",
+                color: filtersOpen ? "#fff" : "var(--text-primary)",
+                cursor: "pointer",
+              }}
+            >
+              <Filter size={18} />
+            </button>
+          ) : undefined
+        }
       />
 
       {msg ? (
@@ -1208,7 +1241,7 @@ export default function CalendarPage() {
             borderRadius: "var(--border-radius-lg)",
             background: "var(--badge-bg-red)",
             color: "var(--badge-text-red)",
-            fontSize: 14,
+            fontSize: "0.875rem",
             fontWeight: 600,
           }}
         >
@@ -1218,130 +1251,163 @@ export default function CalendarPage() {
 
 
       <SectionCard
-        title="Calendario general"
-        subtitle="Vista general de limpieza, mantenimiento, pagos y cobranza con seguimiento semanal, mensual y anual."
-        icon={<CalendarDays size={18} />}
+        title={isMobile ? undefined : "Calendario general"}
+        subtitle={isMobile ? undefined : "Vista general de limpieza, mantenimiento, pagos y cobranza con seguimiento semanal, mensual y anual."}
+        icon={isMobile ? undefined : <CalendarDays size={18} />}
       >
         <AppCard>
-          <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 10 : 24 }}>
+            {/* View tabs + desktop nav */}
             <div
               className="cal-controls-outer"
               style={{
                 display: "flex",
                 flexWrap: "wrap",
-                gap: 12,
+                gap: isMobile ? 8 : 12,
                 justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 6 : 10 }}>
                 {renderViewTab("Semana", viewMode === "week", () => setViewMode("week"))}
                 {renderViewTab("Mes", viewMode === "month", () => setViewMode("month"))}
                 {renderViewTab("Año", viewMode === "year", () => setViewMode("year"))}
               </div>
 
-              <div
-                className="cal-nav-btns"
-                style={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: 10,
-                  alignItems: "center",
-                }}
-              >
-                <UiButton onClick={goPrevious} icon={<ChevronLeft size={16} />}>
-                  {viewMode === "week"
-                    ? "Semana anterior"
-                    : viewMode === "month"
-                    ? "Mes anterior"
-                    : "Año anterior"}
-                </UiButton>
+              {!isMobile && (
+                <div
+                  className="cal-nav-btns"
+                  style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}
+                >
+                  <UiButton onClick={goPrevious} icon={<ChevronLeft size={16} />}>
+                    {viewMode === "week" ? "Semana anterior" : viewMode === "month" ? "Mes anterior" : "Año anterior"}
+                  </UiButton>
+                  <button
+                    onClick={() => setReferenceDate(new Date())}
+                    style={{
+                      padding: ".35rem .85rem",
+                      borderRadius: "var(--border-radius-md)",
+                      border: "1px solid var(--border-default)",
+                      background: "var(--bg-card)",
+                      color: "var(--text-primary)",
+                      fontSize: "0.75rem",
+                      fontWeight: 500,
+                      cursor: "pointer",
+                    }}
+                  >
+                    Hoy
+                  </button>
+                  <UiButton onClick={goNext} icon={<ChevronRight size={16} />}>
+                    {viewMode === "week" ? "Semana siguiente" : viewMode === "month" ? "Mes siguiente" : "Año siguiente"}
+                  </UiButton>
+                </div>
+              )}
+            </div>
 
+            {/* Mobile compact nav: ← range → Hoy */}
+            {isMobile && (
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                 <button
+                  type="button"
+                  onClick={goPrevious}
+                  style={{
+                    minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center",
+                    justifyContent: "center", borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    color: "var(--text-primary)", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <span style={{
+                  flex: 1, textAlign: "center", fontSize: "0.8125rem", fontWeight: 700,
+                  color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                }}>
+                  {viewMode === "week" ? formatWeekRangeMobile(weekStart) : currentLabel}
+                </span>
+                <button
+                  type="button"
+                  onClick={goNext}
+                  style={{
+                    minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center",
+                    justifyContent: "center", borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    color: "var(--text-primary)", cursor: "pointer", flexShrink: 0,
+                  }}
+                >
+                  <ChevronRight size={16} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => setReferenceDate(new Date())}
                   style={{
-                    padding: ".35rem .85rem",
-                    borderRadius: "var(--border-radius-md)",
-                    border: "1px solid var(--border-default)",
-                    background: "var(--bg-card)",
-                    color: "var(--text-primary)",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    cursor: "pointer",
+                    minHeight: 44, padding: "0 10px", borderRadius: "var(--border-radius-md)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600,
+                    cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
                   }}
                 >
                   Hoy
                 </button>
-
-                <UiButton onClick={goNext} icon={<ChevronRight size={16} />}>
-                  {viewMode === "week"
-                    ? "Semana siguiente"
-                    : viewMode === "month"
-                    ? "Mes siguiente"
-                    : "Año siguiente"}
-                </UiButton>
               </div>
-            </div>
+            )}
 
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 12,
-                alignItems: "center",
-              }}
-            >
-              <div
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 8,
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: "var(--text-muted)",
-                  textTransform: "uppercase",
-                  letterSpacing: "0.04em",
-                }}
-              >
-                <Filter size={14} />
-                Edificio
-              </div>
-
-              <select
-                value={selectedBuildingId}
-                onChange={(e) => setSelectedBuildingId(e.target.value)}
-                className="cal-building-select"
-                style={{
-                  minWidth: 240,
-                  padding: "10px 12px",
-                  borderRadius: "var(--border-radius-lg)",
-                  border: "1px solid var(--border-default)",
-                  background: "var(--bg-card)",
-                  color: "var(--text-primary)",
-                  fontSize: 14,
-                }}
-              >
-                <option value="all">Todos los edificios</option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div
-              style={{
-                display: "flex",
-                flexWrap: "wrap",
-                gap: 10,
-                alignItems: "center",
-              }}
-            >
-              {renderModuleToggle("Limpieza", showCleaning, () => setShowCleaning((prev) => !prev), "cleaning")}
-              {renderModuleToggle("Mantenimiento", showMaintenance, () => setShowMaintenance((prev) => !prev), "maintenance")}
-              {renderModuleToggle("Cobranza", showCollections, () => setShowCollections((prev) => !prev), "collections")}
-            </div>
+            {/* Filters: collapsible on mobile, always visible on desktop */}
+            <AnimatePresence initial={false}>
+              {(!isMobile || filtersOpen) && (
+                <motion.div
+                  key="cal-filters"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  style={{ overflow: "hidden" }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <div style={{ display: "flex", flexDirection: "column", gap: isMobile ? 8 : 12 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
+                      {!isMobile && (
+                        <div
+                          style={{
+                            display: "inline-flex", alignItems: "center", gap: 8,
+                            fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)",
+                            textTransform: "uppercase", letterSpacing: "0.04em",
+                          }}
+                        >
+                          <Filter size={14} />
+                          Edificio
+                        </div>
+                      )}
+                      <select
+                        value={selectedBuildingId}
+                        onChange={(e) => setSelectedBuildingId(e.target.value)}
+                        className="cal-building-select"
+                        style={{
+                          minWidth: isMobile ? "100%" : 240,
+                          padding: isMobile ? "8px 10px" : "10px 12px",
+                          borderRadius: "var(--border-radius-lg)",
+                          border: "1px solid var(--border-default)",
+                          background: "var(--bg-card)",
+                          color: "var(--text-primary)",
+                          fontSize: "0.875rem",
+                        }}
+                      >
+                        <option value="all">Todos los edificios</option>
+                        {buildings.map((building) => (
+                          <option key={building.id} value={building.id}>
+                            {building.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: isMobile ? 6 : 10, alignItems: "center" }}>
+                      {renderModuleToggle("Limpieza", showCleaning, () => setShowCleaning((prev) => !prev), "cleaning", isMobile)}
+                      {renderModuleToggle("Mantenimiento", showMaintenance, () => setShowMaintenance((prev) => !prev), "maintenance", isMobile)}
+                      {renderModuleToggle("Cobranza", showCollections, () => setShowCollections((prev) => !prev), "collections", isMobile)}
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {viewMode === "week" ? (
               isMobile ? (
@@ -1373,7 +1439,7 @@ export default function CalendarPage() {
                           <span
                             style={{
                               fontWeight: 700,
-                              fontSize: 13,
+                              fontSize: "0.8125rem",
                               color: isToday ? "#fff" : "var(--text-primary)",
                             }}
                           >
@@ -1381,7 +1447,7 @@ export default function CalendarPage() {
                           </span>
                           <span
                             style={{
-                              fontSize: 12,
+                              fontSize: "0.75rem",
                               color: isToday ? "rgba(255,255,255,0.75)" : "var(--text-muted)",
                             }}
                           >
@@ -1393,7 +1459,7 @@ export default function CalendarPage() {
                           <div
                             style={{
                               padding: "8px 12px",
-                              fontSize: 12,
+                              fontSize: "0.75rem",
                               color: "var(--text-muted)",
                             }}
                           >
@@ -1441,7 +1507,7 @@ export default function CalendarPage() {
                                 </span>
                                 <span
                                   style={{
-                                    fontSize: 12,
+                                    fontSize: "0.75rem",
                                     fontWeight: 700,
                                     color: event.colorText,
                                     overflow: "hidden",
@@ -1488,10 +1554,10 @@ export default function CalendarPage() {
                         }}
                       >
                         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>
+                          <div style={{ fontSize: "0.875rem", fontWeight: 800, color: "var(--text-primary)" }}>
                             {day.label}
                           </div>
-                          <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>
+                          <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>
                             {day.shortDate}
                           </div>
                         </div>
@@ -1502,8 +1568,8 @@ export default function CalendarPage() {
                               borderRadius: "var(--border-radius-lg)",
                               padding: "10px 10px",
                               background: "var(--bg-card-hover)",
-                              border: "1px dashed #D1D5DB",
-                              fontSize: 12,
+                              border: "var(--border-dashed)",
+                              fontSize: "0.75rem",
                               color: "var(--text-muted)",
                               fontWeight: 600,
                             }}
@@ -1549,7 +1615,7 @@ export default function CalendarPage() {
                                 </span>
                                 <span
                                   style={{
-                                    fontSize: 11,
+                                    fontSize: "0.6875rem",
                                     fontWeight: 800,
                                     color: event.colorText,
                                     overflow: "hidden",
@@ -1575,7 +1641,7 @@ export default function CalendarPage() {
               <div className="cal-month-wrap">
               <div className="cal-month-header" style={{ display:"grid", gridTemplateColumns: "repeat(7, 1fr)", borderBottom:"1px solid var(--border-default)", marginBottom:4 }}>
                 {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
-                  <div key={d} style={{ fontSize:11, fontWeight:600, color:"var(--text-muted)", letterSpacing:"0.5px", textAlign:"center", padding:".5rem 0", textTransform:"uppercase" }}>{d}</div>
+                  <div key={d} style={{ fontSize: "0.6875rem", fontWeight:600, color:"var(--text-muted)", letterSpacing:"0.5px", textAlign:"center", padding:".5rem 0", textTransform:"uppercase" }}>{d}</div>
                 ))}
               </div>
               <div
@@ -1615,7 +1681,7 @@ export default function CalendarPage() {
                         borderRadius: 0,
                         padding: "6px 8px",
                         background: isToday ? "var(--metric-bg-neutral)" : "var(--bg-card)",
-                        outline: isToday ? "2px solid #2563EB" : undefined,
+                        outline: isToday ? `2px solid var(--metric-value-blue)` : undefined,
                         outlineOffset: isToday ? "-2px" : undefined,
                         display: "flex",
                         flexDirection: "column",
@@ -1634,9 +1700,9 @@ export default function CalendarPage() {
                       >
                         <div
                           style={{
-                            fontSize: 13,
+                            fontSize: "0.8125rem",
                             fontWeight: 800,
-                            color: isToday ? "#1D4ED8" : "#111827",
+                            color: isToday ? "var(--metric-value-blue)" : "var(--text-primary)",
                           }}
                         >
                           {day.dayNumber}
@@ -1651,9 +1717,9 @@ export default function CalendarPage() {
                               padding: "4px 8px",
                               borderRadius: 999,
                               background: "var(--icon-bg-blue)",
-                              border: "1px solid #93C5FD",
-                              color: "#1D4ED8",
-                              fontSize: 10,
+                              border: `1px solid var(--metric-border-blue)`,
+                              color: "var(--metric-value-blue)",
+                              fontSize: "0.625rem",
                               fontWeight: 800,
                               whiteSpace: "nowrap",
                             }}
@@ -1680,7 +1746,7 @@ export default function CalendarPage() {
                               style={{
                                 borderRadius: "var(--border-radius-sm)",
                                 padding: "2px 6px",
-                                fontSize: 10,
+                                fontSize: "0.625rem",
                                 fontWeight: 500,
                                 background: event.colorBackground,
                                 color: event.colorText,
@@ -1781,7 +1847,7 @@ export default function CalendarPage() {
                   >
                     <div
                       style={{
-                        fontSize: 14,
+                        fontSize: "0.875rem",
                         fontWeight: 800,
                         color: "var(--text-primary)",
                       }}
@@ -1802,7 +1868,7 @@ export default function CalendarPage() {
                     >
                       <div
                         style={{
-                          fontSize: 12,
+                          fontSize: "0.75rem",
                           fontWeight: 700,
                           color: "var(--text-primary)",
                         }}
@@ -1812,7 +1878,7 @@ export default function CalendarPage() {
 
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 700,
                           color: CLEANING_COLORS.text,
                         }}
@@ -1822,7 +1888,7 @@ export default function CalendarPage() {
 
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 700,
                           color: MAINTENANCE_COLORS.text,
                         }}
@@ -1832,7 +1898,7 @@ export default function CalendarPage() {
 
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 700,
                           color: PAYMENTS_COLORS.text,
                         }}
@@ -1842,7 +1908,7 @@ export default function CalendarPage() {
 
                       <div
                         style={{
-                          fontSize: 11,
+                          fontSize: "0.6875rem",
                           fontWeight: 700,
                           color: COLLECTIONS_COLORS.text,
                         }}
@@ -1876,7 +1942,7 @@ export default function CalendarPage() {
         >
           <div
             style={{
-              fontSize: 12,
+              fontSize: "0.75rem",
               fontWeight: 800,
               color: hoveredEvent.event.colorText,
               marginBottom: 6,
@@ -1887,7 +1953,7 @@ export default function CalendarPage() {
 
           <div
             style={{
-              fontSize: 11,
+              fontSize: "0.6875rem",
               fontWeight: 700,
               color: "var(--text-muted)",
               marginBottom: 8,
@@ -1909,7 +1975,7 @@ export default function CalendarPage() {
               >
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: "0.6875rem",
                     fontWeight: 700,
                     color: "var(--text-muted)",
                   }}
@@ -1918,7 +1984,7 @@ export default function CalendarPage() {
                 </span>
                 <span
                   style={{
-                    fontSize: 11,
+                    fontSize: "0.6875rem",
                     fontWeight: 700,
                     color: "var(--text-primary)",
                   }}
@@ -1954,7 +2020,7 @@ export default function CalendarPage() {
             >
               <div
                 style={{
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 800,
                   color: "var(--text-primary)",
                 }}
@@ -1964,7 +2030,7 @@ export default function CalendarPage() {
 
               <div
                 style={{
-                  fontSize: 12,
+                  fontSize: "0.75rem",
                   fontWeight: 700,
                   color: "var(--text-muted)",
                 }}
@@ -2023,7 +2089,7 @@ export default function CalendarPage() {
                   <div style={{ display: "grid", gap: 4, minWidth: 0 }}>
                     <div
                       style={{
-                        fontSize: 13,
+                        fontSize: "0.8125rem",
                         fontWeight: 800,
                         color: event.colorText,
                         lineHeight: 1.35,
@@ -2034,7 +2100,7 @@ export default function CalendarPage() {
 
                     <div
                       style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         color: event.colorText,
                         opacity: 0.9,
@@ -2046,7 +2112,7 @@ export default function CalendarPage() {
 
                     <div
                       style={{
-                        fontSize: 11,
+                        fontSize: "0.6875rem",
                         fontWeight: 700,
                         color: "var(--text-muted)",
                         marginTop: 2,
@@ -2103,7 +2169,7 @@ export default function CalendarPage() {
               <div style={{ display: "grid", gap: 2 }}>
                 <div
                   style={{
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 800,
                     color: selectedEvent.colorText,
                   }}
@@ -2112,7 +2178,7 @@ export default function CalendarPage() {
                 </div>
                 <div
                   style={{
-                    fontSize: 12,
+                    fontSize: "0.75rem",
                     fontWeight: 700,
                     color: selectedEvent.colorText,
                     opacity: 0.9,
@@ -2146,12 +2212,12 @@ export default function CalendarPage() {
                       gridTemplateColumns: "170px 1fr",
                       gap: 12,
                       padding: "12px 14px",
-                      borderTop: index === 0 ? "none" : "1px solid #F3F4F6",
+                      borderTop: index === 0 ? "none" : "1px solid var(--divider)",
                     }}
                   >
                     <div
                       style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 700,
                         color: "var(--text-muted)",
                         textTransform: "uppercase",
@@ -2163,7 +2229,7 @@ export default function CalendarPage() {
 
                     <div
                       style={{
-                        fontSize: 14,
+                        fontSize: "0.875rem",
                         fontWeight: 700,
                         color: "var(--text-primary)",
                       }}
@@ -2179,7 +2245,7 @@ export default function CalendarPage() {
                             background: badgeColors.background,
                             border: `1px solid ${badgeColors.border}`,
                             color: badgeColors.text,
-                            fontSize: 12,
+                            fontSize: "0.75rem",
                             fontWeight: 800,
                             whiteSpace: "nowrap",
                           }}

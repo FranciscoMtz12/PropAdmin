@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,18 @@ type FormValues = z.infer<typeof schema>;
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
+
+  /* Garantizar colores SAPROA en cuanto la página monta, sin esperar ThemeContext */
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--accent",           "#6366F1");
+    root.setProperty("--accent-gradient",  "linear-gradient(135deg,#818cf8 0%,#6366F1 45%,#4f46e5 100%)");
+    root.setProperty("--color-accent",     "#6366F1");
+    root.setProperty("--color-primary",    "#6366F1");
+    root.setProperty("--group-accent",     "#6366F1");
+    root.setProperty("--color-accent-rgb", "99, 102, 241");
+    root.setProperty("--font-scale",       "1");
+  }, []);
   const {
     register,
     handleSubmit,
@@ -27,7 +39,7 @@ export default function LoginPage() {
 
   async function onSubmit(data: FormValues) {
     setError("");
-    const { error: err } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: err } = await supabase.auth.signInWithPassword({
       email: data.email.toLowerCase().trim(),
       password: data.password,
     });
@@ -35,8 +47,29 @@ export default function LoginPage() {
       setError("Credenciales incorrectas");
       return;
     }
-    sessionStorage.setItem("show_splash", "1");
-    router.push("/dashboard");
+
+    const uid = authData.session?.user.id;
+    let role: string | null = null;
+    if (uid) {
+      const { data: profile } = await supabase
+        .from("app_users")
+        .select("id, full_name, email, role, is_superadmin, company_id")
+        .eq("id", uid)
+        .maybeSingle();
+      role = profile?.role ?? null;
+    }
+
+    if (role === "superadmin") {
+      router.push("/saproa-admin/overview");
+    } else if (role === "group_admin") {
+      router.push("/home");
+    } else if (role === "titular") {
+      router.push("/home");
+    } else if (role === "field") {
+      router.push("/campo/dashboard");
+    } else {
+      router.push("/home");
+    }
   }
 
   return (
@@ -143,10 +176,13 @@ export default function LoginPage() {
           border: "1px solid rgba(255,255,255,.2)",
           color: "rgba(255,255,255,.7)",
           borderRadius: "var(--border-radius-xl)",
-          padding: ".4rem 1rem",
-          fontSize: 12,
+          padding: ".5rem 1rem",
+          fontSize: "0.75rem",
           cursor: "pointer",
           zIndex: 2,
+          minHeight: 44,
+          display: "inline-flex",
+          alignItems: "center",
         }}
       >
         ← Volver
@@ -178,7 +214,7 @@ export default function LoginPage() {
               style={{ objectFit: "contain" }}
             />
           </div>
-          <div style={{ fontSize: 20, fontWeight: 500, color: "#fff" }}>
+          <div style={{ fontSize: "1.25rem", fontWeight: 500, color: "#fff" }}>
             Iniciar sesión
           </div>
         </div>
@@ -191,7 +227,7 @@ export default function LoginPage() {
           <div>
             <label
               style={{
-                fontSize: 12,
+                fontSize: "0.75rem",
                 color: "rgba(255,255,255,.5)",
                 display: "block",
                 marginBottom: 6,
@@ -211,12 +247,12 @@ export default function LoginPage() {
                 border: "1px solid rgba(255,255,255,.15)",
                 borderRadius: "var(--border-radius-md)",
                 color: "#fff",
-                fontSize: 14,
+                fontSize: "0.875rem",
                 outline: "none",
               }}
             />
             {errors.email && (
-              <p style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>
+              <p style={{ fontSize: "0.6875rem", color: "#f87171", marginTop: 4 }}>
                 {errors.email.message}
               </p>
             )}
@@ -225,7 +261,7 @@ export default function LoginPage() {
           <div>
             <label
               style={{
-                fontSize: 12,
+                fontSize: "0.75rem",
                 color: "rgba(255,255,255,.5)",
                 display: "block",
                 marginBottom: 6,
@@ -245,12 +281,12 @@ export default function LoginPage() {
                 border: "1px solid rgba(255,255,255,.15)",
                 borderRadius: "var(--border-radius-md)",
                 color: "#fff",
-                fontSize: 14,
+                fontSize: "0.875rem",
                 outline: "none",
               }}
             />
             {errors.password && (
-              <p style={{ fontSize: 11, color: "#f87171", marginTop: 4 }}>
+              <p style={{ fontSize: "0.6875rem", color: "#f87171", marginTop: 4 }}>
                 {errors.password.message}
               </p>
             )}
@@ -263,7 +299,7 @@ export default function LoginPage() {
                 border: "1px solid rgba(239,68,68,.3)",
                 borderRadius: "var(--border-radius-md)",
                 padding: ".6rem .9rem",
-                fontSize: 13,
+                fontSize: "0.8125rem",
                 color: "#fca5a5",
               }}
             >
@@ -277,11 +313,11 @@ export default function LoginPage() {
             style={{
               marginTop: ".5rem",
               padding: ".75rem",
-              background: isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              background: isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
               border: "none",
               borderRadius: "var(--border-radius-md)",
               color: "#fff",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 500,
               cursor: isSubmitting ? "not-allowed" : "pointer",
               transition: "background .2s",
@@ -290,10 +326,20 @@ export default function LoginPage() {
             {isSubmitting ? "Iniciando sesión..." : "Entrar"}
           </button>
 
-          <p style={{ textAlign: "center", marginTop: "12px", fontSize: "14px", color: "rgba(255,255,255,.55)" }}>
+          <p style={{ textAlign: "center", marginTop: "12px", fontSize: "0.875rem", color: "rgba(255,255,255,.55)" }}>
             ¿No tienes cuenta?{" "}
-            <a href="/register" style={{ color: "#8B2252", fontWeight: 600 }}>
+            <a href="/register" style={{ color: "var(--accent)", fontWeight: 600, display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 4px" }}>
               Regístrate →
+            </a>
+          </p>
+
+          <p style={{ textAlign: "center", marginTop: "8px", fontSize: "0.6875rem", color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
+            Al iniciar sesión aceptas nuestros{" "}
+            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>
+              Términos y condiciones
+            </a>{" "}y{" "}
+            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>
+              Aviso de privacidad
             </a>
           </p>
         </form>
@@ -305,12 +351,20 @@ export default function LoginPage() {
           position: "relative",
           zIndex: 2,
           marginTop: "1.5rem",
-          fontSize: 11,
+          fontSize: "0.6875rem",
           color: "rgba(255,255,255,.25)",
           letterSpacing: 1,
+          display: "flex",
+          gap: "0.75rem",
+          flexWrap: "wrap",
+          justifyContent: "center",
         }}
       >
-        SAPROA © {new Date().getFullYear()}
+        <span>© {new Date().getFullYear()} SAPROA</span>
+        <span>·</span>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Aviso de privacidad</a>
+        <span>·</span>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Términos y condiciones</a>
       </div>
     </div>
   );

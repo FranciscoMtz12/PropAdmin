@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertTriangle, Building2, CreditCard, Download, Info,
+  AlertTriangle, Building2, ChevronDown, ChevronUp, CreditCard, Download, Home, Info,
   Lock, Monitor, Send, Settings2, Shield,
   Trash2, Upload, User, UserPlus, Users, X,
 } from "lucide-react";
@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
+import { type QuickLink, getAllowedModules, getDefaultQuickLinks, ICON_MAP } from "@/lib/quick-links";
 
 import AppBadge from "@/components/AppBadge";
 import AppGrid from "@/components/AppGrid";
@@ -66,7 +67,7 @@ type Invitation = {
 };
 
 type UserRole =
-  | "superadmin" | "titular" | "administracion" | "directivo"
+  | "superadmin" | "titular" | "group_admin" | "administracion" | "directivo"
   | "compras" | "mantenimiento" | "field" | "tenant";
 
 type UserRow = {
@@ -85,12 +86,12 @@ type CompanyRow = { id: string; name: string };
 // ─── Constants ───────────────────────────────────────────────────────
 
 const ROLE_ORDER: UserRole[] = [
-  "superadmin", "titular", "administracion", "directivo",
+  "superadmin", "titular", "group_admin", "administracion", "directivo",
   "compras", "mantenimiento", "field",
 ];
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  superadmin: "Superadmin", titular: "Titular",
+  superadmin: "Superadmin", titular: "Titular", group_admin: "Admin de Grupo",
   administracion: "Administración", directivo: "Directivo",
   compras: "Compras", mantenimiento: "Mantenimiento",
   field: "Campo", tenant: "Inquilino",
@@ -99,6 +100,7 @@ const ROLE_LABEL: Record<UserRole, string> = {
 const ROLE_STYLE: Record<UserRole, { bg: string; fg: string }> = {
   superadmin:     { bg: "#F3E8FF", fg: "#7C3AED" },
   titular:        { bg: "#FEF3C7", fg: "#92400E" },
+  group_admin:    { bg: "#FEF3C7", fg: "#92400E" },
   administracion: { bg: "var(--badge-bg-blue)",  fg: "var(--badge-text-blue)" },
   directivo:      { bg: "var(--badge-bg-gray)",  fg: "var(--badge-text-gray)" },
   compras:        { bg: "#FFEDD5", fg: "#EA580C" },
@@ -111,7 +113,7 @@ const createSchema = z.object({
   full_name: z.string().min(1, "Nombre obligatorio"),
   email: z.string().min(1, "Email obligatorio").email("Email inválido"),
   password: z.string().min(8, "Mínimo 8 caracteres"),
-  role: z.enum(["superadmin", "titular", "administracion", "directivo", "compras", "mantenimiento", "field"]),
+  role: z.enum(["superadmin", "titular", "group_admin", "administracion", "directivo", "compras", "mantenimiento", "field"]),
   company_id: z.string().min(1, "Selecciona una empresa"),
 });
 type CreateValues = z.infer<typeof createSchema>;
@@ -123,11 +125,11 @@ const IS: React.CSSProperties = {
   background: "var(--bg-input, var(--bg-card))",
   border: "1px solid var(--border-default)",
   borderRadius: "var(--border-radius-md)", color: "var(--text-primary)",
-  fontSize: 14, outline: "none", boxSizing: "border-box",
+  fontSize: "0.875rem", outline: "none", boxSizing: "border-box",
 };
 
 const LS: React.CSSProperties = {
-  fontSize: 12, color: "var(--text-secondary)",
+  fontSize: "0.75rem", color: "var(--text-secondary)",
   display: "block", marginBottom: 5, fontWeight: 500,
 };
 
@@ -138,7 +140,7 @@ function Field({ label, error, children }: { label: string; error?: string; chil
     <div>
       <label style={LS}>{label}</label>
       {children}
-      {error && <span style={{ fontSize: 11, color: "#ef4444", marginTop: 3, display: "block" }}>{error}</span>}
+      {error && <span style={{ fontSize: "0.6875rem", color: "var(--metric-value-red)", marginTop: 3, display: "block" }}>{error}</span>}
     </div>
   );
 }
@@ -153,7 +155,7 @@ function SaveBtn({ saving, onClick, label = "Guardar" }: { saving: boolean; onCl
         padding: ".55rem 1.25rem",
         background: saving ? "var(--accent-muted, #6B1A3F)" : "var(--accent, #8B2252)",
         border: "none", borderRadius: "var(--border-radius-sm)", color: "#fff",
-        fontSize: 13, fontWeight: 600,
+        fontSize: "0.8125rem", fontWeight: 600,
         cursor: saving ? "not-allowed" : "pointer",
         opacity: saving ? 0.7 : 1, transition: "opacity .15s",
       }}
@@ -187,7 +189,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
 function SubSectionTitle({ title }: { title: string }) {
   return (
     <p style={{
-      fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
+      fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)",
       textTransform: "uppercase", letterSpacing: "0.06em",
       marginBottom: 12, marginTop: 0,
     }}>
@@ -204,14 +206,15 @@ function formatDate(iso: string) {
 
 export default function SettingsPage() {
   const { user } = useCurrentUser();
-  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle, setPropertyAccent } = useTheme();
+  const { uiTheme, setUiTheme, isDark, toggleDark, showDescriptions, setShowDescriptions, accentStyle, setAccentStyle, setPropertyAccent, fontScale, setFontScale } = useTheme();
   const router = useRouter();
   const searchParams = useSearchParams();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
 
   const isSuperadmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
-  const isTitular = user?.role === "titular";
+  const isTitular = user?.role === "titular" || user?.role === "group_admin";
+  const isStrictTitular = user?.role === "titular" && Boolean(user?.company_id);
   const canFullAccess = isSuperadmin || isTitular;
 
   const [activeTab, setActiveTab] = useState<TabKey>("empresa");
@@ -273,6 +276,11 @@ export default function SettingsPage() {
   const [pwConfirm, setPwConfirm] = useState("");
   const [savingPw, setSavingPw] = useState(false);
 
+  // ── Tab: Mi cuenta — Pantalla de inicio
+  const [quickLinks, setQuickLinks] = useState<QuickLink[]>([]);
+  const [savingLinks, setSavingLinks] = useState(false);
+  const [quickLinksLoaded, setQuickLinksLoaded] = useState(false);
+
   // ── Tab: Sistema — Configuración SAPROA
   const [sapConfigId, setSapConfigId] = useState<string | null>(null);
   const [sapPlatformName, setSapPlatformName] = useState("SAPROA");
@@ -310,7 +318,7 @@ export default function SettingsPage() {
     if (!user?.company_id) return;
     void loadCompany();
     void loadInvitations();
-    if (isTitular) createForm.setValue("company_id", user.company_id);
+    if (isStrictTitular) createForm.setValue("company_id", user.company_id!);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.company_id]);
 
@@ -330,6 +338,12 @@ export default function SettingsPage() {
     if (activeTab === "usuarios" && !usersLoaded) void loadUsers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // ─── Load quick links when "cuenta" tab is active ────────────────
+  useEffect(() => {
+    if (activeTab === "cuenta" && !quickLinksLoaded && user?.id) void loadQuickLinks();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, user?.id, quickLinksLoaded]);
 
   // ─── Data loaders ────────────────────────────────────────────────
   async function loadCompany() {
@@ -378,10 +392,10 @@ export default function SettingsPage() {
       .from("app_users")
       .select("id,full_name,email,role,is_superadmin,company_id,created_at")
       .order("created_at", { ascending: false });
-    if (isTitular && user?.company_id) usersQ.eq("company_id", user.company_id);
+    if (isStrictTitular) usersQ.eq("company_id", user!.company_id!);
 
-    const companiesQ = isTitular
-      ? supabase.from("companies").select("id,name").eq("id", user!.company_id)
+    const companiesQ = isStrictTitular
+      ? supabase.from("companies").select("id,name").eq("id", user!.company_id!)
       : supabase.from("companies").select("id,name").is("deleted_at", null).order("name");
 
     const [uRes, cRes] = await Promise.all([usersQ, companiesQ]);
@@ -606,6 +620,58 @@ export default function SettingsPage() {
     toast.success("Contraseña actualizada");
   }
 
+  async function loadQuickLinks() {
+    if (!user?.id) return;
+    const { data } = await supabase
+      .from("user_preferences")
+      .select("quick_links")
+      .eq("user_id", user.id)
+      .maybeSingle();
+    const stored = data?.quick_links;
+    setQuickLinks(
+      stored && Array.isArray(stored) && (stored as unknown[]).length > 0
+        ? (stored as QuickLink[])
+        : getDefaultQuickLinks((user as { role?: string }).role ?? ""),
+    );
+    setQuickLinksLoaded(true);
+  }
+
+  async function saveQuickLinks() {
+    if (!user?.id) return;
+    setSavingLinks(true);
+    const { error } = await supabase
+      .from("user_preferences")
+      .upsert({ user_id: user.id, quick_links: quickLinks }, { onConflict: "user_id" });
+    setSavingLinks(false);
+    if (error) { toast.error("Error al guardar la pantalla de inicio"); return; }
+    toast.success("Pantalla de inicio guardada");
+  }
+
+  function toggleQuickLink(mod: QuickLink) {
+    setQuickLinks(prev => {
+      const idx = prev.findIndex(l => l.path === mod.path);
+      if (idx !== -1) return prev.filter(l => l.path !== mod.path);
+      if (prev.length >= 7) return prev;
+      return [...prev, mod];
+    });
+  }
+
+  function moveQuickLink(from: number, to: number) {
+    if (to < 0 || to >= quickLinks.length) return;
+    setQuickLinks(prev => {
+      const next = [...prev];
+      const [item] = next.splice(from, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+  }
+
+  function updateQuickLinkCustomPath(path: string, customPath: string) {
+    setQuickLinks(prev => prev.map(l =>
+      l.path === path ? { ...l, customPath: customPath.trim() || undefined } : l
+    ));
+  }
+
   // ─── Tab navigation ──────────────────────────────────────────────
   function handleTabChange(key: string) {
     setActiveTab(key as TabKey);
@@ -637,7 +703,7 @@ export default function SettingsPage() {
   if (loading && canFullAccess && !tabReady) {
     return (
       <PageContainer>
-        <div style={{ padding: "2rem", color: "var(--text-secondary)", fontSize: 14 }}>Cargando configuración...</div>
+        <div style={{ padding: "2rem", color: "var(--text-secondary)", fontSize: "0.875rem" }}>Cargando configuración...</div>
       </PageContainer>
     );
   }
@@ -667,7 +733,7 @@ export default function SettingsPage() {
 
             {/* Datos generales */}
             <SectionCard title="Datos generales">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
                 <Field label="Nombre de la empresa">
                   <input style={IS} value={gName} onChange={(e) => setGName(e.target.value)} placeholder="Inmobiliaria XYZ S.A. de C.V." />
                 </Field>
@@ -697,10 +763,10 @@ export default function SettingsPage() {
               {pendingFiscal && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: "var(--accent, #8B2252)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--accent, #8B2252)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
                 </div>
               )}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
                 <Field label="Razón social">
                   <input style={IS} value={fLegal} onChange={(e) => setFLegal(e.target.value)} placeholder="INMOBILIARIA XYZ S.A. DE C.V." />
                 </Field>
@@ -722,7 +788,7 @@ export default function SettingsPage() {
             {/* Contactos */}
             <SectionCard title="Contactos">
               <SubSectionTitle title="Administración" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem", marginBottom: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem", marginBottom: 20 }}>
                 <Field label="Email">
                   <input style={IS} type="email" value={cAdminEmail} onChange={(e) => setCAdminEmail(e.target.value)} placeholder="admin@empresa.com" />
                 </Field>
@@ -731,7 +797,7 @@ export default function SettingsPage() {
                 </Field>
               </div>
               <SubSectionTitle title="Compras" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
                 <Field label="Email">
                   <input style={IS} type="email" value={cPurchEmail} onChange={(e) => setCPurchEmail(e.target.value)} placeholder="compras@empresa.com" />
                 </Field>
@@ -749,7 +815,7 @@ export default function SettingsPage() {
               {pendingMarca && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 12, color: "var(--accent, #8B2252)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--accent, #8B2252)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
                 </div>
               )}
               <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
@@ -763,7 +829,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 {/* Logos */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "1.25rem" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(15rem, 1fr))", gap: "1.25rem" }}>
                   {([
                     { label: "Logo principal (fondo claro)", preview: logoPreview || mLogoUrl, dark: false, ref: logoInputRef },
                     { label: "Logo modo oscuro",             preview: logoDarkPreview || mLogoDarkUrl, dark: true,  ref: logoDarkInputRef },
@@ -786,7 +852,7 @@ export default function SettingsPage() {
                               if (dark) { setLogoDarkFile(null); setLogoDarkPreview(""); setMLogoDarkUrl(""); }
                               else      { setLogoFile(null);     setLogoPreview("");     setMLogoUrl(""); }
                             }}
-                            style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "#E24B4A", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
+                            style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "var(--metric-bg-red)", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
                           >
                             <X size={12} />
                           </button>
@@ -795,7 +861,7 @@ export default function SettingsPage() {
                         <button
                           type="button"
                           onClick={() => (ref as React.RefObject<HTMLInputElement>).current?.click()}
-                          style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}
+                          style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)", color: "var(--text-secondary)", fontSize: "0.8125rem", cursor: "pointer" }}
                         >
                           <Upload size={14} /> Subir logo
                         </button>
@@ -817,23 +883,23 @@ export default function SettingsPage() {
             {/* Métricas */}
             <AppGrid minWidth={200}>
               <MetricCard label="Total" value={String(totalUsers)} helper="Todos los activos"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="#2563EB" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="var(--metric-value-blue)" /></div>}
               />
               <MetricCard label="Admins" value={String(totalAdmins)} helper="Roles administrativos"
                 icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-purple)", display: "grid", placeItems: "center" }}><Shield size={18} color="#7C3AED" /></div>}
               />
               <MetricCard label="Campo" value={String(totalField)} helper="Equipo operativo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="#16A34A" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="var(--metric-value-green)" /></div>}
               />
               <MetricCard label="Inquilinos" value={String(totalTenants)} helper="Portal activo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="#D97706" /></div>}
+                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="var(--metric-value-amber)" /></div>}
               />
             </AppGrid>
 
             {/* Lista de usuarios */}
             <SectionCard title="Usuarios de la empresa" icon={<Users size={18} />}>
               {loadingUsers ? (
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", padding: "20px 0" }}>Cargando usuarios...</div>
+                <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", padding: "20px 0" }}>Cargando usuarios...</div>
               ) : (
                 <div className="mod-table-wrap">
                   <AppTable<UserRow>
@@ -847,11 +913,11 @@ export default function SettingsPage() {
                       },
                       {
                         key: "email", header: "Email",
-                        render: (row) => <span style={{ fontSize: 13 }}>{row.email}</span>,
+                        render: (row) => <span style={{ fontSize: "0.8125rem" }}>{row.email}</span>,
                       },
-                      ...(!isTitular ? [{
+                      ...(!isStrictTitular ? [{
                         key: "company", header: "Empresa",
-                        render: (row: UserRow) => <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{row.company_name}</span>,
+                        render: (row: UserRow) => <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{row.company_name}</span>,
                       }] : []),
                       {
                         key: "role", header: "Rol",
@@ -868,7 +934,7 @@ export default function SettingsPage() {
                               value={row.role}
                               disabled={roleUpdatingId === row.id || row.id === user!.id}
                               onChange={(e) => void changeRole(row, e.target.value as UserRole)}
-                              style={{ padding: "6px 8px", fontSize: 12, minWidth: 140 }}
+                              style={{ padding: "6px 8px", fontSize: "0.75rem", minWidth: 140 }}
                             >
                               {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
                               {row.role === "tenant" && <option value="tenant">Inquilino</option>}
@@ -878,7 +944,7 @@ export default function SettingsPage() {
                               onClick={() => toast("Función no disponible aún")}
                               disabled={row.id === user!.id}
                               title={row.id === user!.id ? "No puedes desactivarte" : "Desactivar usuario"}
-                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "#DC2626", display: "inline-flex", alignItems: "center" }}
+                              style={{ background: "transparent", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "6px 8px", cursor: row.id === user!.id ? "not-allowed" : "pointer", color: row.id === user!.id ? "var(--text-muted)" : "var(--metric-value-red)", display: "inline-flex", alignItems: "center" }}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -906,17 +972,17 @@ export default function SettingsPage() {
                 type="button"
                 onClick={createInvitation}
                 disabled={sendingInv}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: 13, fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.8125rem", fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
               >
                 <Send size={14} /> {sendingInv ? "Generando..." : "Generar invitación"}
               </button>
               {invLink && (
                 <div style={{ marginTop: 12, background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "0.75rem 1rem", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)", flex: 1, wordBreak: "break-all" }}>{invLink}</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", flex: 1, wordBreak: "break-all" }}>{invLink}</span>
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(invLink).then(() => toast.success("Copiado"))}
-                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, rgba(139,34,82,.15))", border: "1px solid var(--accent, #8B2252)", borderRadius: "var(--border-radius-sm)", color: "var(--accent, #8B2252)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, rgba(139,34,82,.15))", border: "1px solid var(--accent, #8B2252)", borderRadius: "var(--border-radius-sm)", color: "var(--accent, #8B2252)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     Copiar enlace
                   </button>
@@ -929,7 +995,7 @@ export default function SettingsPage() {
               <div style={{ marginTop: 24 }}>
                 <SubSectionTitle title="Invitaciones enviadas" />
                 {invitations.length === 0 ? (
-                  <p style={{ fontSize: 14, color: "var(--text-secondary)" }}>No hay invitaciones.</p>
+                  <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)" }}>No hay invitaciones.</p>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                     {invitations.map((inv) => {
@@ -939,22 +1005,22 @@ export default function SettingsPage() {
                       return (
                         <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "0.75rem 1rem", background: "var(--bg-page)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", flexWrap: "wrap" }}>
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>
+                            <div style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>
                               {inv.email ?? <span style={{ color: "var(--text-secondary)" }}>Sin email</span>}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                            <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
                               Vence: {formatDate(inv.expires_at)} · Creada: {formatDate(inv.created_at)}
                             </div>
                           </div>
-                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: 11, fontWeight: 700, background: active ? "rgba(29,158,117,.15)" : "rgba(0,0,0,.1)", color: active ? "#1D9E75" : used ? "#888" : "#E24B4A" }}>
+                          <span style={{ padding: "2px 10px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 700, background: active ? "rgba(29,158,117,.15)" : "rgba(0,0,0,.1)", color: active ? "#1D9E75" : used ? "#888" : "var(--metric-value-red)" }}>
                             {active ? "Activa" : used ? "Usada" : "Expirada"}
                           </span>
                           {active && (
                             <>
-                              <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer" }}>
+                              <button type="button" onClick={() => copyLink(inv.token)} style={{ padding: ".35rem .75rem", background: "none", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)", color: "var(--text-secondary)", fontSize: "0.75rem", cursor: "pointer" }}>
                                 Copiar
                               </button>
-                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: "var(--border-radius-sm)", color: "#E24B4A", fontSize: 12, cursor: "pointer" }}>
+                              <button type="button" onClick={() => revokeInvitation(inv.id)} disabled={revokingId === inv.id} style={{ display: "flex", alignItems: "center", gap: 4, padding: ".35rem .75rem", background: "rgba(226,75,74,.1)", border: "1px solid rgba(226,75,74,.3)", borderRadius: "var(--border-radius-sm)", color: "var(--metric-value-red)", fontSize: "0.75rem", cursor: "pointer" }}>
                                 <Trash2 size={12} /> Revocar
                               </button>
                             </>
@@ -1002,10 +1068,10 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                          {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                          <span style={{ fontSize: "0.875rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
+                          {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                         </div>
-                        <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                       </div>
                     </button>
                   );
@@ -1045,10 +1111,50 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                          <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                          {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                          <span style={{ fontSize: "0.875rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
+                          {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                         </div>
-                        <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                        <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Tamaño de texto" subtitle="Ajusta el tamaño base de toda la interfaz. Se aplica de inmediato.">
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                {([
+                  { scale: 0.80, abbr: "S",  label: "Pequeño"      },
+                  { scale: 1,    abbr: "M",  label: "Normal"       },
+                  { scale: 1.20, abbr: "L",  label: "Grande"       },
+                  { scale: 1.40, abbr: "XL", label: "Extra grande" },
+                ] as { scale: number; abbr: string; label: string }[]).map(({ scale, abbr, label }) => {
+                  const active = fontScale === scale;
+                  return (
+                    <button
+                      key={scale}
+                      type="button"
+                      onClick={() => setFontScale(scale)}
+                      style={{
+                        display: "flex", flexDirection: "column", alignItems: "center", gap: 10,
+                        padding: "16px 20px",
+                        borderRadius: "var(--border-radius-lg)",
+                        border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                        background: "var(--bg-card)", cursor: "pointer",
+                        flex: "1 1 100px", maxWidth: 160, outline: "none",
+                        transition: "border-color 0.15s",
+                      }}
+                    >
+                      <span style={{ fontSize: scale * 22, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)", lineHeight: 1 }}>
+                        Aa
+                      </span>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, justifyContent: "center" }}>
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{abbr}</span>
+                          {active && <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 6px" }}>Activo</span>}
+                        </div>
+                        <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>{label}</div>
                       </div>
                     </button>
                   );
@@ -1105,10 +1211,10 @@ export default function SettingsPage() {
                     {/* Label */}
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                        <span style={{ fontSize: 14, fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                        {active && <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
+                        {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                       </div>
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                     </div>
                   </button>
                 ))}
@@ -1121,7 +1227,7 @@ export default function SettingsPage() {
         {activeTab === "cuenta" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <SectionCard title="Información personal" icon={<User size={18} />}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "1.25rem" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
                 <Field label="Nombre completo">
                   <input style={IS} value={acName} onChange={(e) => setAcName(e.target.value)} placeholder="Tu nombre" />
                 </Field>
@@ -1151,8 +1257,8 @@ export default function SettingsPage() {
             <SectionCard title="Preferencias">
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "4px 0" }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Mostrar descripciones</div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>Subtítulos descriptivos en la barra lateral y encabezados</div>
+                  <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: 2 }}>Mostrar descripciones</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>Subtítulos descriptivos en la barra lateral y encabezados</div>
                 </div>
                 <Toggle
                   on={showDescriptions}
@@ -1165,6 +1271,107 @@ export default function SettingsPage() {
                     }
                   }}
                 />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Pantalla de inicio" icon={<Home size={18} />}>
+              <p style={{ margin: "0 0 16px", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
+                Los primeros 4 accesos aparecen arriba y los siguientes 3 abajo. Máximo 7.
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                {getAllowedModules(user?.role ?? "").map(mod => {
+                  const selIdx = quickLinks.findIndex(l => l.path === mod.path);
+                  const isSelected = selIdx !== -1;
+                  const atMax = quickLinks.length >= 7 && !isSelected;
+                  const Icon = ICON_MAP[mod.icon];
+                  const selectedLink = isSelected ? quickLinks[selIdx] : null;
+                  return (
+                    <div
+                      key={mod.path}
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        padding: "9px 12px",
+                        borderRadius: "var(--border-radius-md)",
+                        background: isSelected ? "var(--bg-subtle)" : "transparent",
+                        border: isSelected ? "1px solid var(--border-default)" : "1px solid transparent",
+                        opacity: atMax ? 0.45 : 1,
+                        gap: isSelected ? 6 : 0,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        {Icon && (
+                          <span style={{ color: "var(--text-secondary)", display: "flex", flexShrink: 0 }}>
+                            <Icon size={15} />
+                          </span>
+                        )}
+                        <span style={{ flex: 1, fontSize: "0.8125rem", fontWeight: 500, color: "var(--text-primary)" }}>
+                          {mod.label}
+                        </span>
+                        {isSelected && (
+                          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", minWidth: 20, textAlign: "center" }}>
+                            {selIdx + 1}
+                          </span>
+                        )}
+                        {isSelected && (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                            <button
+                              type="button"
+                              disabled={selIdx === 0}
+                              onClick={() => moveQuickLink(selIdx, selIdx - 1)}
+                              style={{
+                                background: "none", border: "none", padding: "1px 3px", cursor: selIdx === 0 ? "not-allowed" : "pointer",
+                                color: selIdx === 0 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
+                              }}
+                              title="Subir"
+                            >
+                              <ChevronUp size={13} />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={selIdx === quickLinks.length - 1}
+                              onClick={() => moveQuickLink(selIdx, selIdx + 1)}
+                              style={{
+                                background: "none", border: "none", padding: "1px 3px",
+                                cursor: selIdx === quickLinks.length - 1 ? "not-allowed" : "pointer",
+                                color: selIdx === quickLinks.length - 1 ? "var(--text-muted)" : "var(--text-secondary)", display: "flex",
+                              }}
+                              title="Bajar"
+                            >
+                              <ChevronDown size={13} />
+                            </button>
+                          </div>
+                        )}
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          disabled={atMax}
+                          onChange={() => toggleQuickLink(mod)}
+                          style={{ width: 16, height: 16, accentColor: "var(--accent)", cursor: atMax ? "not-allowed" : "pointer", flexShrink: 0 }}
+                        />
+                      </div>
+                      {isSelected && (
+                        <input
+                          type="text"
+                          placeholder={`URL personalizada (opcional, default: ${mod.path})`}
+                          value={selectedLink?.customPath ?? ""}
+                          onChange={e => updateQuickLinkCustomPath(mod.path, e.target.value)}
+                          style={{
+                            fontSize: "0.6875rem", padding: "4px 8px",
+                            border: "1px solid var(--border-default)",
+                            borderRadius: "var(--border-radius-sm)",
+                            background: "var(--bg-input)",
+                            color: "var(--text-secondary)",
+                            outline: "none", width: "100%", boxSizing: "border-box",
+                          }}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                <SaveBtn saving={savingLinks} onClick={saveQuickLinks} label="Guardar pantalla de inicio" />
               </div>
             </SectionCard>
           </div>
@@ -1223,7 +1430,7 @@ export default function SettingsPage() {
                           style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--border-radius-lg)", border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 140px", maxWidth: 200, outline: "none" }}
                         >
                           <div style={{ height: 28, borderRadius: "var(--border-radius-sm)", background: bg }} />
-                          <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text-primary)" }}>
+                          <span style={{ fontSize: "0.8125rem", fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text-primary)" }}>
                             {style === 'solid' ? 'Sólido' : 'Metálico'}
                           </span>
                         </button>
@@ -1240,20 +1447,20 @@ export default function SettingsPage() {
 
             <SectionCard title="Plan actual" icon={<CreditCard size={18} />}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <span style={{ padding: "4px 14px", borderRadius: 999, background: "rgba(139,34,82,.12)", color: "var(--accent, #8B2252)", fontSize: 13, fontWeight: 700, border: "1px solid rgba(139,34,82,.2)" }}>
+                <span style={{ padding: "4px 14px", borderRadius: 999, background: "rgba(139,34,82,.12)", color: "var(--accent, #8B2252)", fontSize: "0.8125rem", fontWeight: 700, border: "1px solid rgba(139,34,82,.2)" }}>
                   Plan Básico
                 </span>
-                <span style={{ fontSize: 13, color: "#1D9E75", fontWeight: 600 }}>● Activo</span>
+                <span style={{ fontSize: "0.8125rem", color: "#1D9E75", fontWeight: 600 }}>● Activo</span>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12 }}>
                 {[
                   { label: "Propiedades", value: "Ilimitadas" },
                   { label: "Usuarios",    value: "Ilimitados" },
                   { label: "Unidades",    value: "Ilimitadas" },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ padding: "14px 16px", borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
-                    <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
+                    <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>{label}</div>
+                    <div style={{ fontSize: "1rem", fontWeight: 700, color: "var(--text-primary)" }}>{value}</div>
                   </div>
                 ))}
               </div>
@@ -1267,8 +1474,8 @@ export default function SettingsPage() {
                   { label: "Fecha de creación",   value: company?.created_at ? formatDate(company.created_at) : "—" },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
-                    <span style={{ fontSize: 12, color: "var(--text-secondary)", minWidth: 160, fontWeight: 500 }}>{label}</span>
-                    <span style={{ fontSize: 13, color: "var(--text-primary)", fontFamily: "monospace", wordBreak: "break-all" }}>{value}</span>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", minWidth: 160, fontWeight: 500 }}>{label}</span>
+                    <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontFamily: "monospace", wordBreak: "break-all" }}>{value}</span>
                   </div>
                 ))}
               </div>
@@ -1276,15 +1483,15 @@ export default function SettingsPage() {
 
             <SectionCard title="Zona de peligro" style={{ border: "1.5px solid rgba(226,75,74,.4)", background: "rgba(226,75,74,.02)" }}>
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(226,75,74,.07)", border: "1px solid rgba(226,75,74,.18)", marginBottom: 18 }}>
-                <AlertTriangle size={16} color="#E24B4A" style={{ flexShrink: 0, marginTop: 1 }} />
-                <p style={{ fontSize: 13, color: "var(--text-primary)", margin: 0, lineHeight: 1.55 }}>
+                <AlertTriangle size={16} color="var(--metric-value-red)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-primary)", margin: 0, lineHeight: 1.55 }}>
                   Las acciones en esta sección pueden tener consecuencias irreversibles. Procede con precaución.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => toast("Función de exportación próximamente disponible")}
-                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid #E24B4A", borderRadius: "var(--border-radius-md)", color: "#E24B4A", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: ".6rem 1.2rem", background: "transparent", border: "1.5px solid var(--metric-value-red)", borderRadius: "var(--border-radius-md)", color: "var(--metric-value-red)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
               >
                 <Download size={15} /> Exportar todos los datos
               </button>
@@ -1317,7 +1524,7 @@ export default function SettingsPage() {
               {ROLE_ORDER.map((r) => <option key={r} value={r}>{ROLE_LABEL[r]}</option>)}
             </AppSelect>
           </Field>
-          {!isTitular && (
+          {!isStrictTitular && (
             <Field label="Empresa" error={createForm.formState.errors.company_id?.message}>
               <AppSelect {...createForm.register("company_id")}>
                 <option value="">Selecciona una empresa</option>

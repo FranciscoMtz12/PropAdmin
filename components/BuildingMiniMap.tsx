@@ -62,11 +62,11 @@ export default function BuildingMiniMap({
         <Marker position={[latitude, longitude]}>
           <Popup>
             <div style={{ minWidth: 160 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>
+              <div style={{ fontSize: "0.8125rem", fontWeight: 700, marginBottom: 4 }}>
                 {name}
               </div>
               {address ? (
-                <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{address}</div>
+                <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{address}</div>
               ) : null}
             </div>
           </Popup>

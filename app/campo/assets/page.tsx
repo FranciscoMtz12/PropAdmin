@@ -198,7 +198,7 @@ export default function CampoAssetsPage() {
     border: "1px solid var(--border-default)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
-    fontSize: 15,
+    fontSize: "0.9375rem",
     boxSizing: "border-box",
   };
 
@@ -209,7 +209,7 @@ export default function CampoAssetsPage() {
     border: "1px solid var(--border-default)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
-    fontSize: 15,
+    fontSize: "0.9375rem",
     boxSizing: "border-box",
     appearance: "none",
   };
@@ -218,7 +218,7 @@ export default function CampoAssetsPage() {
     <div style={containerStyle}>
 
       {/* ── Título ───────────────────────────────────────────────── */}
-      <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
+      <h2 style={{ margin: "0 0 16px", fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)" }}>
         Equipamiento
       </h2>
 
@@ -249,9 +249,9 @@ export default function CampoAssetsPage() {
 
       {/* ── Lista ───────────────────────────────────────────────── */}
       {loadingData ? (
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
       ) : filtered.length === 0 ? (
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Sin activos.</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin activos.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {filtered.map(asset => {
@@ -273,21 +273,21 @@ export default function CampoAssetsPage() {
                 </div>
 
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {asset.name}
                   </p>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 3 }}>
                     {asset.buildingName && (
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                         {asset.buildingName}{asset.unitCode ? ` · ${asset.unitCode}` : ""}
                       </span>
                     )}
                     {asset.asset_type && (
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {asset.asset_type}
                       </span>
                     )}
-                    <span style={{ padding: "2px 7px", borderRadius: "var(--border-radius-md)", fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.text }}>
+                    <span style={{ padding: "2px 7px", borderRadius: "var(--border-radius-md)", fontSize: "0.6875rem", fontWeight: 700, background: badge.bg, color: badge.text }}>
                       {badge.label}
                     </span>
                   </div>
@@ -304,7 +304,7 @@ export default function CampoAssetsPage() {
                     border: "1px solid var(--border-default)",
                     background: "var(--bg-page)",
                     color: "var(--badge-text-amber)",
-                    fontSize: 12,
+                    fontSize: "0.75rem",
                     fontWeight: 700,
                     cursor: "pointer",
                     display: "flex",
@@ -329,10 +329,10 @@ export default function CampoAssetsPage() {
 
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: 17, fontWeight: 800, color: "var(--text-primary)" }}>
+                <h3 style={{ margin: 0, fontSize: "1.0625rem", fontWeight: 800, color: "var(--text-primary)" }}>
                   Reportar incidencia
                 </h3>
-                <p style={{ margin: "3px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+                <p style={{ margin: "3px 0 0", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                   {reportAsset.name}
                 </p>
               </div>
@@ -347,7 +347,7 @@ export default function CampoAssetsPage() {
 
             {reportOk ? (
               <div style={{ textAlign: "center", padding: "24px 0" }}>
-                <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--badge-text-green)" }}>
+                <p style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "var(--badge-text-green)" }}>
                   Ticket creado
                 </p>
               </div>
@@ -355,7 +355,7 @@ export default function CampoAssetsPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
 
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
                     Descripción de la incidencia *
                   </label>
                   <textarea
@@ -368,7 +368,7 @@ export default function CampoAssetsPage() {
                 </div>
 
                 <div>
-                  <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+                  <label style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
                     Prioridad
                   </label>
                   <select value={rPriority} onChange={e => setRPriority(e.target.value)} style={inputStyle}>
@@ -380,7 +380,7 @@ export default function CampoAssetsPage() {
                 </div>
 
                 {reportError && (
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--badge-text-red)" }}>{reportError}</p>
+                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--badge-text-red)" }}>{reportError}</p>
                 )}
 
                 <button
@@ -394,7 +394,7 @@ export default function CampoAssetsPage() {
                     border: "none",
                     background: "var(--accent)",
                     color: "#fff",
-                    fontSize: 15,
+                    fontSize: "0.9375rem",
                     fontWeight: 700,
                     cursor: saving ? "wait" : "pointer",
                     opacity: saving ? 0.7 : 1,

@@ -190,7 +190,7 @@ export default function CampoLimpiezaPage() {
     <div style={containerStyle}>
 
       {/* ── Título ───────────────────────────────────────────────── */}
-      <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
+      <h2 style={{ margin: "0 0 16px", fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)" }}>
         Limpieza
       </h2>
 
@@ -212,22 +212,22 @@ export default function CampoLimpiezaPage() {
             style={dayTabStyle(day)}
             onClick={() => setSelectedDay(day)}
           >
-            <span style={{ fontSize: 11 }}>{DAY_SHORT[day]}</span>
+            <span style={{ fontSize: "0.6875rem" }}>{DAY_SHORT[day]}</span>
             {day === todayKey && (
-              <span style={{ fontSize: 9, fontWeight: 700, letterSpacing: "0.02em" }}>HOY</span>
+              <span style={{ fontSize: "0.5625rem", fontWeight: 700, letterSpacing: "0.02em" }}>HOY</span>
             )}
           </button>
         ))}
       </div>
 
       {loadingData ? (
-        <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+        <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
       ) : (
         <>
           {/* ── Limpiezas de edificio ─────────────────────────── */}
           {filteredBS.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              <p style={{ margin: "0 0 10px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 Edificio
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -243,10 +243,10 @@ export default function CampoLimpiezaPage() {
                       }
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                      <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         {s.buildingName}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-secondary)" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                         {s.cleaning_type === "exterior" ? "Exterior" : "Áreas comunes"}
                         {s.time_block ? ` · ${TIME_BLOCK_LABELS[s.time_block] || s.time_block}` : ""}
                       </p>
@@ -261,7 +261,7 @@ export default function CampoLimpiezaPage() {
           {/* ── Limpiezas de unidad ───────────────────────────── */}
           {filteredUS.length > 0 && (
             <div style={{ marginBottom: 20 }}>
-              <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
+              <p style={{ margin: "0 0 10px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em" }}>
                 Unidades
               </p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -271,10 +271,10 @@ export default function CampoLimpiezaPage() {
                       <Home size={18} />
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                      <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         {s.unitCode}
                       </p>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-secondary)" }}>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                         {s.buildingName}
                         {s.start_time ? ` · ${s.start_time.slice(0,5)}` : ""}
                         {s.duration_hours ? ` · ${s.duration_hours}h` : ""}
@@ -290,7 +290,7 @@ export default function CampoLimpiezaPage() {
           {filteredBS.length === 0 && filteredUS.length === 0 && (
             <div style={{ textAlign: "center", padding: "40px 16px" }}>
               <Sparkles size={32} style={{ color: "var(--text-muted)", marginBottom: 12 }} />
-              <p style={{ margin: 0, fontSize: 15, color: "var(--text-muted)", fontWeight: 500 }}>
+              <p style={{ margin: 0, fontSize: "0.9375rem", color: "var(--text-muted)", fontWeight: 500 }}>
                 Sin limpiezas programadas para el {DAY_LABELS[selectedDay]}
               </p>
             </div>

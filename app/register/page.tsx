@@ -26,20 +26,20 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,.15)",
   borderRadius: "var(--border-radius-md)",
   color: "#fff",
-  fontSize: 14,
+  fontSize: "0.875rem",
   outline: "none",
   boxSizing: "border-box",
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: "rgba(255,255,255,.5)",
   display: "block",
   marginBottom: 6,
 };
 
 const errStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: "0.6875rem",
   color: "#f87171",
   marginTop: 4,
 };
@@ -420,7 +420,7 @@ export default function RegisterPage() {
                 style={{
                   ...cardBase,
                   background: active ? "rgba(139,34,82,.3)" : "rgba(255,255,255,.04)",
-                  border: active ? "1px solid #8B2252" : "1px solid rgba(255,255,255,.15)",
+                  border: active ? "1px solid var(--accent)" : "1px solid rgba(255,255,255,.15)",
                   color: "#fff",
                   textAlign: "left",
                 }}
@@ -428,10 +428,10 @@ export default function RegisterPage() {
                 <span style={{ display: "flex", alignItems: "center", color: active ? "#fff" : "rgba(255,255,255,.6)" }}>
                   {t === "empresa" ? <Building2 size={40} /> : <User size={40} />}
                 </span>
-                <span style={{ fontWeight: 600, fontSize: 15 }}>
+                <span style={{ fontWeight: 600, fontSize: "0.9375rem" }}>
                   {t === "empresa" ? "Empresa" : "Personal"}
                 </span>
-                <span style={{ fontSize: 12, color: "rgba(255,255,255,.5)", lineHeight: 1.4 }}>
+                <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,.5)", lineHeight: 1.4 }}>
                   {t === "empresa"
                     ? "Persona moral, administra múltiples propiedades"
                     : "Persona física, propiedades propias"}
@@ -441,7 +441,7 @@ export default function RegisterPage() {
           })}
         </div>
         {step2Err && (
-          <p style={{ fontSize: 12, color: "#f87171", marginTop: 10 }}>{step2Err}</p>
+          <p style={{ fontSize: "0.75rem", color: "#f87171", marginTop: 10 }}>{step2Err}</p>
         )}
       </>
     );
@@ -497,7 +497,7 @@ export default function RegisterPage() {
           />
           {step4Err.shortName
             ? <p style={errStyle}>{step4Err.shortName}</p>
-            : <p style={{ fontSize: 11, color: "rgba(255,255,255,.3)", marginTop: 4 }}>Como aparecerá en la plataforma</p>
+            : <p style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,.3)", marginTop: 4 }}>Como aparecerá en la plataforma</p>
           }
         </div>
 
@@ -545,7 +545,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={() => logoInputRef.current?.click()}
-              style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "rgba(255,255,255,.06)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: "var(--border-radius-md)", color: "rgba(255,255,255,.5)", fontSize: 13, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "rgba(255,255,255,.06)", border: "1px dashed rgba(255,255,255,.2)", borderRadius: "var(--border-radius-md)", color: "rgba(255,255,255,.5)", fontSize: "0.8125rem", cursor: "pointer" }}
             >
               <Upload size={14} />
               Subir logo
@@ -570,7 +570,7 @@ export default function RegisterPage() {
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: 28,
+            fontSize: "1.75rem",
           }}
         >
           {logoPreview
@@ -580,8 +580,8 @@ export default function RegisterPage() {
         </div>
 
         <div>
-          <div style={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>{shortName || compName}</div>
-          <div style={{ fontSize: 13, color: "rgba(255,255,255,.4)", marginTop: 4 }}>{email}</div>
+          <div style={{ fontSize: "1.25rem", fontWeight: 700, color: "#fff" }}>{shortName || compName}</div>
+          <div style={{ fontSize: "0.8125rem", color: "rgba(255,255,255,.4)", marginTop: 4 }}>{email}</div>
         </div>
 
         <div style={{ width: "100%", background: "rgba(255,255,255,.05)", borderRadius: "var(--border-radius-md)", padding: "1rem", display: "flex", flexDirection: "column", gap: 8, textAlign: "left" }}>
@@ -592,14 +592,14 @@ export default function RegisterPage() {
             phone ? { label: "Teléfono", value: phone } : null,
             { label: "Color", value: brandColor },
           ].filter(Boolean).map((row) => row && (
-            <div key={row.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
+            <div key={row.label} style={{ display: "flex", justifyContent: "space-between", fontSize: "0.8125rem" }}>
               <span style={{ color: "rgba(255,255,255,.4)" }}>{row.label}</span>
               <span style={{ color: "#fff", fontWeight: 500 }}>{row.value}</span>
             </div>
           ))}
         </div>
 
-        <p style={{ fontSize: 12, color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
+        <p style={{ fontSize: "0.75rem", color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
           Al crear tu cuenta aceptas los términos de uso de SAPROA.
         </p>
       </div>
@@ -633,7 +633,7 @@ export default function RegisterPage() {
       <button
         type="button"
         onClick={() => router.push("/login")}
-        style={{ position: "fixed", top: "1.5rem", left: "1.5rem", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", color: "rgba(255,255,255,.7)", borderRadius: "var(--border-radius-xl)", padding: ".4rem 1rem", fontSize: 12, cursor: "pointer", zIndex: 10 }}
+        style={{ position: "fixed", top: "1.5rem", left: "1.5rem", background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)", color: "rgba(255,255,255,.7)", borderRadius: "var(--border-radius-xl)", padding: ".4rem 1rem", fontSize: "0.75rem", cursor: "pointer", zIndex: 10 }}
       >
         ← Iniciar sesión
       </button>
@@ -659,7 +659,7 @@ export default function RegisterPage() {
           <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
             <Image src="/brands/saproa/saproa-stacked-dark.png" alt="SAPROA" width={100} height={100} style={{ objectFit: "contain" }} />
           </div>
-          <div style={{ fontSize: 18, fontWeight: 600, color: "#fff" }}>Crear cuenta</div>
+          <div style={{ fontSize: "1.125rem", fontWeight: 600, color: "#fff" }}>Crear cuenta</div>
         </div>
 
         {/* Step indicator */}
@@ -674,7 +674,7 @@ export default function RegisterPage() {
                   width: active ? 28 : 8,
                   height: 8,
                   borderRadius: 999,
-                  background: done ? "#8B2252" : active ? "#8B2252" : "rgba(255,255,255,.2)",
+                  background: done ? "var(--accent)" : active ? "var(--accent)" : "rgba(255,255,255,.2)",
                   opacity: active ? 1 : done ? 0.7 : 0.4,
                   transition: "all .2s",
                 }}
@@ -684,8 +684,8 @@ export default function RegisterPage() {
         </div>
 
         {/* Step label */}
-        <div style={{ fontSize: 13, fontWeight: 600, color: "rgba(255,255,255,.6)", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: 6 }}>
-          <span style={{ color: "#8B2252" }}>Paso {step + 1} de {STEPS.length}</span>
+        <div style={{ fontSize: "0.8125rem", fontWeight: 600, color: "rgba(255,255,255,.6)", marginBottom: "1.25rem", display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ color: "var(--accent)" }}>Paso {step + 1} de {STEPS.length}</span>
           <span style={{ color: "rgba(255,255,255,.2)" }}>—</span>
           <span>{STEPS[step].label}</span>
         </div>
@@ -695,7 +695,7 @@ export default function RegisterPage() {
 
         {/* Global error */}
         {globalError && (
-          <div style={{ marginTop: "1rem", background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding: ".6rem .9rem", fontSize: 13, color: "#fca5a5" }}>
+          <div style={{ marginTop: "1rem", background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding: ".6rem .9rem", fontSize: "0.8125rem", color: "#fca5a5" }}>
             {globalError}
           </div>
         )}
@@ -706,7 +706,7 @@ export default function RegisterPage() {
             <button
               type="button"
               onClick={prevStep}
-              style={{ display: "flex", alignItems: "center", gap: 6, padding: ".65rem 1.1rem", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: "var(--border-radius-md)", color: "rgba(255,255,255,.7)", fontSize: 14, cursor: "pointer" }}
+              style={{ display: "flex", alignItems: "center", gap: 6, padding: ".65rem 1.1rem", background: "rgba(255,255,255,.08)", border: "1px solid rgba(255,255,255,.15)", borderRadius: "var(--border-radius-md)", color: "rgba(255,255,255,.7)", fontSize: "0.875rem", cursor: "pointer" }}
             >
               <ArrowLeft size={15} /> Atrás
             </button>
@@ -717,7 +717,7 @@ export default function RegisterPage() {
               type="button"
               onClick={handleSubmit}
               disabled={submitting}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: submitting ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: submitting ? "rgba(139,34,82,.5)" : "var(--accent)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.875rem", fontWeight: 600, cursor: submitting ? "not-allowed" : "pointer" }}
             >
               {submitting ? "Creando cuenta..." : (
                 <><CheckCircle size={15} /> Crear cuenta</>
@@ -728,7 +728,7 @@ export default function RegisterPage() {
               type="button"
               onClick={nextStep}
               disabled={validatingToken}
-              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "#8B2252", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: 14, fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
+              style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, padding: ".75rem", background: validatingToken ? "rgba(139,34,82,.5)" : "var(--accent)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.875rem", fontWeight: 600, cursor: validatingToken ? "not-allowed" : "pointer" }}
             >
               {validatingToken ? "Verificando..." : <>{" "}Continuar <ArrowRight size={15} /></>}
             </button>
@@ -736,8 +736,12 @@ export default function RegisterPage() {
         </div>
       </div>
 
-      <div style={{ position: "relative", zIndex: 2, marginTop: "1.5rem", fontSize: 11, color: "rgba(255,255,255,.25)", letterSpacing: 1 }}>
-        SAPROA © {new Date().getFullYear()}
+      <div style={{ position: "relative", zIndex: 2, marginTop: "1.5rem", fontSize: "0.6875rem", color: "rgba(255,255,255,.25)", letterSpacing: 1, display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center" }}>
+        <span>© {new Date().getFullYear()} SAPROA</span>
+        <span>·</span>
+        <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Aviso de privacidad</a>
+        <span>·</span>
+        <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.35)", textDecoration: "none" }}>Términos y condiciones</a>
       </div>
     </div>
   );

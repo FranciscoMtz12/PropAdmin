@@ -445,7 +445,7 @@ export default function AssetDetailPage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))",
           gap: 16,
           marginBottom: 20,
         }}
@@ -456,7 +456,7 @@ export default function AssetDetailPage() {
               <AssetTypeIcon assetType={asset.asset_type || "OTHER"} size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Tipo</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Tipo</p>
               <strong style={{ color: "var(--text-primary)" }}>{asset.asset_type || "No definido"}</strong>
             </div>
           </div>
@@ -468,7 +468,7 @@ export default function AssetDetailPage() {
               <Hash size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Departamento</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Departamento</p>
               <strong style={{ color: "var(--text-primary)" }}>{unitLabel}</strong>
             </div>
           </div>
@@ -480,7 +480,7 @@ export default function AssetDetailPage() {
               <CalendarDays size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Fecha de alta</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Fecha de alta</p>
               <strong style={{ color: "var(--text-primary)" }}>{formatDate(asset.created_at)}</strong>
             </div>
           </div>
@@ -492,13 +492,13 @@ export default function AssetDetailPage() {
               <ShieldCheck size={18} />
             </AppIconBox>
             <div style={{ minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Estatus</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Estatus</p>
               <div style={{ marginTop: 6 }}>
                 <AppBadge
                   backgroundColor={statusBadge.background}
                   textColor={statusBadge.color}
                   borderColor={statusBadge.border}
-                  style={{ fontSize: 12, fontWeight: 700 }}
+                  style={{ fontSize: "0.75rem", fontWeight: 700 }}
                 >
                   {getAssetStatusLabel(asset.status)}
                 </AppBadge>
@@ -523,7 +523,7 @@ export default function AssetDetailPage() {
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fit, minmax(20rem, 1fr))",
               gap: 16,
             }}
           >
@@ -534,19 +534,19 @@ export default function AssetDetailPage() {
             >
               <div style={{ display: "grid", gap: 14 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Nombre</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Nombre</p>
                   <strong style={{ color: "var(--text-primary)" }}>{asset.name || "No registrado"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Tipo</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Tipo</p>
                   <strong style={{ color: "var(--text-primary)" }}>{asset.asset_type || "No definido"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Icono sugerido</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Icono sugerido</p>
                   <strong style={{ color: "var(--text-primary)" }}>{asset.icon_name || "No registrado"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Fecha de creación</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Fecha de creación</p>
                   <strong style={{ color: "var(--text-primary)" }}>{formatDate(asset.created_at)}</strong>
                 </div>
               </div>
@@ -559,25 +559,25 @@ export default function AssetDetailPage() {
             >
               <div style={{ display: "grid", gap: 14 }}>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Edificio</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Edificio</p>
                   <strong style={{ color: "var(--text-primary)" }}>{building.name}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Departamento</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Departamento</p>
                   <strong style={{ color: "var(--text-primary)" }}>{unitLabel}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Piso</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Piso</p>
                   <strong style={{ color: "var(--text-primary)" }}>{unit.floor ?? "No registrado"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     Estatus del departamento
                   </p>
                   <strong style={{ color: "var(--text-primary)" }}>{unit.status || "No definido"}</strong>
                 </div>
                 <div>
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Notas</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Notas</p>
                   <p style={{ marginTop: 6, color: "var(--text-secondary)" }}>
                     {asset.notes || "Todavía no hay notas registradas para este equipo."}
                   </p>

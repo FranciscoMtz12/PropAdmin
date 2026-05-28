@@ -54,7 +54,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrls } from "@/lib/storage";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { generateOCPdf, generateOMPdf } from "@/lib/pdfTemplates";
@@ -65,6 +67,7 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppTabs from "@/components/AppTabs";
@@ -157,7 +160,7 @@ type BuildingOption = {
   name: string;
   code: string | null;
   address: string | null;
-  company_id: string | null;
+  company_id?: string | null;
 };
 
 type UnitOption = {
@@ -396,7 +399,7 @@ function renderViewTab(label: string, active: boolean, onClick: () => void) {
         borderColor: active ? "var(--accent)" : "var(--border-default)",
         background: active ? "var(--accent)" : "var(--bg-card)",
         color: active ? "#fff" : "var(--text-secondary)",
-        fontSize: 13,
+        fontSize: "0.8125rem",
         fontWeight: 700,
         cursor: "pointer",
       }}
@@ -416,7 +419,7 @@ function Badge({ label, style }: { label: string; style?: CSSProperties }) {
         alignItems: "center",
         padding: "3px 10px",
         borderRadius: "var(--border-radius-xl)",
-        fontSize: 11,
+        fontSize: "0.6875rem",
         fontWeight: 700,
         whiteSpace: "nowrap",
         ...style,
@@ -467,8 +470,8 @@ const EMPTY_CREATE_FORM: CreateTicketFormValues = {
 };
 
 const maintenanceErrorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -610,6 +613,7 @@ export default function MaintenancePage() {
   /* ── Tickets ────────────────────────────────────────────────────── */
   const [tickets, setTickets]         = useState<Ticket[]>([]);
   const [expandedId, setExpandedId]   = useState<string | null>(null);
+  const [signedPhotoUrls, setSignedPhotoUrls] = useState<Record<string, string>>({});
   const [openActionsId, setOpenActionsId] = useState<string | null>(null);
 
   const [materialsByTicket, setMaterialsByTicket] =
@@ -671,9 +675,9 @@ export default function MaintenancePage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadPageData();
+    if (user && !user.is_superadmin) void loadPageData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isGroupMode]);
+  }, [user?.id, user?.company_id, user?.is_superadmin]);
 
   /* Auto-expand por URL ?expand=<id> (entrada desde Compras) */
   useEffect(() => {
@@ -687,10 +691,21 @@ export default function MaintenancePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, tickets]);
 
+  /* Cargar signed URLs cuando se expande un ticket con fotos */
+  useEffect(() => {
+    if (!expandedId) return;
+    const ticket = tickets.find(t => t.id === expandedId);
+    const photos = ticket?.photos?.filter(Boolean) ?? [];
+    if (photos.length === 0) return;
+    void getSignedUrls("maintenance-photos", photos).then(signed =>
+      setSignedPhotoUrls(prev => ({ ...prev, ...signed }))
+    );
+  }, [expandedId, tickets]);
+
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   async function loadPageData() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setLoadingData(true);
     setMsg("");
 
@@ -1032,11 +1047,7 @@ export default function MaintenancePage() {
       return;
     }
 
-    const { data: urlData } = supabase.storage
-      .from("maintenance-photos")
-      .getPublicUrl(uploadData.path);
-
-    const newPhotos = [...(ticket.photos || []), urlData.publicUrl];
+    const newPhotos = [...(ticket.photos || []), uploadData.path];
 
     const { error: updateError } = await supabase
       .from("maintenance_logs")
@@ -1068,9 +1079,13 @@ export default function MaintenancePage() {
 
     /* Best-effort: eliminar del bucket también */
     try {
-      const parts = photoUrl.split("/storage/v1/object/public/maintenance-photos/");
-      if (parts.length === 2) {
-        await supabase.storage.from("maintenance-photos").remove([parts[1]]);
+      // Backward-compat: handle both old full public URLs and new paths
+      const marker = "/storage/v1/object/public/maintenance-photos/";
+      const storagePath = photoUrl.includes(marker)
+        ? photoUrl.split(marker)[1]?.split("?")[0]
+        : photoUrl;
+      if (storagePath) {
+        await supabase.storage.from("maintenance-photos").remove([storagePath]);
       }
     } catch {
       /* no es crítico */
@@ -1368,13 +1383,24 @@ export default function MaintenancePage() {
 
   const [searchQuery, setSearchQuery] = useState("");
 
-  const buildingCompanyMap = useMemo(() => new Map(buildings.map((b) => [b.id, b.company_id])), [buildings]);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const buildingCompanyMap = useMemo(
+    () => new Map(buildings.map(b => [b.id, b.company_id ?? null])),
+    [buildings],
+  );
 
   const filteredTickets = useMemo(() => {
     const q = searchQuery.trim() ? normalizeText(searchQuery.trim()) : "";
     return tickets.filter((t) => {
-      if (isGroupMode) {
-        const cid = t.building_id ? buildingCompanyMap.get(t.building_id) : null;
+      if (isGroupMode && groupCompanyIds.length > 0 && t.building_id) {
+        const cid = buildingCompanyMap.get(t.building_id);
         if (!cid || !groupCompanyIds.includes(cid)) return false;
       }
       if (filterBuilding  !== "ALL" && t.building_id !== filterBuilding) return false;
@@ -1390,7 +1416,7 @@ export default function MaintenancePage() {
       }
       return true;
     });
-  }, [tickets, filterBuilding, filterPriority, filterStatus, filterCategory, searchQuery, isGroupMode, groupCompanyIds, buildingCompanyMap]);
+  }, [tickets, isGroupMode, buildingCompanyMap, groupCompanyIds, filterBuilding, filterPriority, filterStatus, filterCategory, searchQuery]);
 
   const ticketTotals = useMemo(() => {
     const now = new Date();
@@ -1446,7 +1472,7 @@ export default function MaintenancePage() {
         subtitle="Gestión de tickets, seguimiento de trabajos y calendario operativo."
         titleIcon={<Wrench size={18} />}
         actions={
-          activeMainTab === "tickets" ? (
+          activeMainTab === "tickets" && !isGroupMode ? (
             <UiButton
               icon={<Plus size={16} />}
               onClick={() => { setCreateError(""); setShowCreateModal(true); }}
@@ -1465,8 +1491,8 @@ export default function MaintenancePage() {
       {urgentTicketsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {urgentTicketsBanner.length} ticket{urgentTicketsBanner.length !== 1 ? "s" : ""} urgente{urgentTicketsBanner.length !== 1 ? "s" : ""} sin resolver
             </span>
           </div>
@@ -1474,7 +1500,7 @@ export default function MaintenancePage() {
             {urgentTicketsBanner.map(t => (
               <button key={t.id} type="button"
                 onClick={() => { setFilterPriority("urgent"); setActiveMainTab("tickets"); }}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {getTicketNumber(t)}
               </button>
             ))}
@@ -1485,12 +1511,12 @@ export default function MaintenancePage() {
       {preventiveBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {preventiveBanner.length} mantenimiento{preventiveBanner.length !== 1 ? "s" : ""} preventivo{preventiveBanner.length !== 1 ? "s" : ""} programado{preventiveBanner.length !== 1 ? "s" : ""} en los próximos 15 días
             </span>
             <button type="button" onClick={() => setActiveMainTab("calendar")}
-              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
               Ver calendario
             </button>
           </div>
@@ -1501,7 +1527,7 @@ export default function MaintenancePage() {
         <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1px solid var(--accent)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--accent)" }}>
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--accent)" }}>
               {newTicketsBanner.length} ticket{newTicketsBanner.length !== 1 ? "s" : ""} nuevo{newTicketsBanner.length !== 1 ? "s" : ""} sin revisar (últimas 24h)
             </span>
           </div>
@@ -1513,7 +1539,7 @@ export default function MaintenancePage() {
                   setSearchQuery(getTicketNumber(t));
                   setActiveMainTab("tickets");
                 }}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-page)", border: "1px solid var(--accent)", color: "var(--accent)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {getTicketNumber(t)}
               </button>
             ))}
@@ -1538,7 +1564,13 @@ export default function MaintenancePage() {
           <div style={{ display: "grid", gap: 18 }}>
 
             {/* Métricas */}
-            <AppGrid minWidth={220}>
+            <MetricCircles metrics={[
+              { value: ticketTotals.total, label: "Total" },
+              { value: ticketTotals.open, label: "Abiertos", color: "danger" },
+              { value: ticketTotals.inProg, label: "En proceso", color: "warning" },
+              { value: ticketTotals.resolved, label: "Resueltos", color: "success" },
+            ]} />
+            <AppGrid minWidth={220} className="metric-grid-desktop-only">
               <MetricCard
                 label="Total tickets"
                 value={ticketTotals.total}
@@ -1571,103 +1603,186 @@ export default function MaintenancePage() {
 
             {/* Filtros */}
             <AppCard>
-              <div className="mod-filters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
-                <div
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: 6,
-                    fontSize: 13, fontWeight: 700, color: "var(--text-muted)",
-                    textTransform: "uppercase", letterSpacing: "0.04em",
-                  }}
-                >
-                  <Filter size={14} /> Filtros
-                </div>
-
-                {/* Buscador de texto libre */}
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
-                  <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                  <input
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar ticket o descripción..."
-                    style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: "var(--text-primary)" }}
-                  />
-                  {searchQuery ? (
-                    <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
-                      <X size={14} />
+              {isMobile ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
+                    <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar ticket o descripción..."
+                      style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.875rem", color: "var(--text-primary)" }}
+                    />
+                    {searchQuery ? (
+                      <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
+                        <X size={14} />
+                      </button>
+                    ) : null}
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      type="button"
+                      onClick={() => setFilterPriority("ALL")}
+                      style={{ padding: "4px 10px", fontSize: "0.75rem", minHeight: 32, borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === "ALL" ? "var(--accent)" : "var(--bg-input)", color: filterPriority === "ALL" ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                    >
+                      Todas
+                    </button>
+                    {PRIORITIES.map((p) => (
+                      <button
+                        key={p.value}
+                        type="button"
+                        onClick={() => setFilterPriority(p.value)}
+                        style={{ padding: "4px 10px", fontSize: "0.75rem", minHeight: 32, borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)", background: filterPriority === p.value ? "var(--accent)" : "var(--bg-input)", color: filterPriority === p.value ? "#fff" : "var(--text-secondary)", cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap" }}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <select
+                      value={filterStatus}
+                      onChange={(e) => setFilterStatus(e.target.value)}
+                      style={{ width: "100%", padding: "6px 8px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                    >
+                      <option value="ALL">Todos los estados</option>
+                      {TICKET_STATUSES.map((s) => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                    <select
+                      value={filterBuilding}
+                      onChange={(e) => setFilterBuilding(e.target.value)}
+                      style={{ width: "100%", padding: "6px 8px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                    >
+                      <option value="ALL">Todos los edificios</option>
+                      {buildings.map((b) => (
+                        <option key={b.id} value={b.id}>{b.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    style={{ width: "100%", padding: "6px 10px", height: 32, fontSize: "0.8125rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+                  >
+                    <option value="ALL">Todas las categorías</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+                  {hasFilters ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterBuilding("ALL");
+                        setFilterPriority("ALL");
+                        setFilterStatus("ALL");
+                        setFilterCategory("ALL");
+                      }}
+                      style={{ padding: "6px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-muted)", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
+                    >
+                      Limpiar filtros
                     </button>
                   ) : null}
                 </div>
-
-                <select
-                  value={filterBuilding}
-                  onChange={(e) => setFilterBuilding(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todos los edificios</option>
-                  {buildings.map((b) => (
-                    <option key={b.id} value={b.id}>{b.name}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterPriority}
-                  onChange={(e) => setFilterPriority(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 180, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todas las prioridades</option>
-                  {PRIORITIES.map((p) => (
-                    <option key={p.value} value={p.value}>{p.label}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterStatus}
-                  onChange={(e) => setFilterStatus(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 170, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todos los estados</option>
-                  {TICKET_STATUSES.map((s) => (
-                    <option key={s.value} value={s.value}>{s.label}</option>
-                  ))}
-                </select>
-
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
-                >
-                  <option value="ALL">Todas las categorías</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.name}>{c.name}</option>
-                  ))}
-                </select>
-
-                {hasFilters ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setFilterBuilding("ALL");
-                      setFilterPriority("ALL");
-                      setFilterStatus("ALL");
-                      setFilterCategory("ALL");
-                    }}
+              ) : (
+                <div className="mod-filters" style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center" }}>
+                  <div
                     style={{
-                      padding: "9px 12px", borderRadius: "var(--border-radius-md)",
-                      border: "1px solid var(--border-default)",
-                      background: "transparent", color: "var(--text-muted)",
-                      fontSize: 13, fontWeight: 600, cursor: "pointer",
+                      display: "inline-flex", alignItems: "center", gap: 6,
+                      fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)",
+                      textTransform: "uppercase", letterSpacing: "0.04em",
                     }}
                   >
-                    Limpiar filtros
-                  </button>
-                ) : null}
-              </div>
+                    <Filter size={14} /> Filtros
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "9px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", minWidth: 240, flex: "1 1 240px", maxWidth: 360 }}>
+                    <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                    <input
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar ticket o descripción..."
+                      style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.8125rem", color: "var(--text-primary)" }}
+                    />
+                    {searchQuery ? (
+                      <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
+                        <X size={14} />
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <select
+                    value={filterBuilding}
+                    onChange={(e) => setFilterBuilding(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todos los edificios</option>
+                    {buildings.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterPriority}
+                    onChange={(e) => setFilterPriority(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 180, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todas las prioridades</option>
+                    {PRIORITIES.map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterStatus}
+                    onChange={(e) => setFilterStatus(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 170, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todos los estados</option>
+                    {TICKET_STATUSES.map((s) => (
+                      <option key={s.value} value={s.value}>{s.label}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    value={filterCategory}
+                    onChange={(e) => setFilterCategory(e.target.value)}
+                    style={{ ...INPUT_STYLE, width: "auto", minWidth: 190, padding: "9px 12px" }}
+                  >
+                    <option value="ALL">Todas las categorías</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
+
+                  {hasFilters ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setFilterBuilding("ALL");
+                        setFilterPriority("ALL");
+                        setFilterStatus("ALL");
+                        setFilterCategory("ALL");
+                      }}
+                      style={{
+                        padding: "9px 12px", borderRadius: "var(--border-radius-md)",
+                        border: "1px solid var(--border-default)",
+                        background: "transparent", color: "var(--text-muted)",
+                        fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
+                      }}
+                    >
+                      Limpiar filtros
+                    </button>
+                  ) : null}
+                </div>
+              )}
             </AppCard>
 
             {/* Lista de tickets */}
             {filteredTickets.length === 0 ? (
               <AppCard>
-                <div style={{ padding: "32px 0", textAlign: "center", color: "var(--text-muted)", fontSize: 14 }}>
+                <div style={{ padding: "32px 0", textAlign: "center", color: "var(--text-muted)", fontSize: "0.875rem" }}>
                   {tickets.length === 0
                     ? "No hay tickets. Crea el primero con el botón de arriba."
                     : "No hay tickets con los filtros seleccionados."}
@@ -1676,8 +1791,9 @@ export default function MaintenancePage() {
             ) : (
               <div style={{ display: "grid", gap: 10, gridTemplateColumns: "minmax(0, 1fr)" }}>
                 {filteredTickets.map((ticket, index) => {
-                  const ticketCompanyId = ticket.building_id ? buildingCompanyMap.get(ticket.building_id) : null;
-                  const ticketCompany = isGroupMode && ticketCompanyId ? groupCompanies.find((c) => c.id === ticketCompanyId) : null;
+                  const ticketCompany = isGroupMode && ticket.building_id
+                    ? groupCompanies.find(c => c.id === buildingCompanyMap.get(ticket.building_id!))
+                    : undefined;
                   return (
                   <motion.div
                     key={ticket.id}
@@ -1685,12 +1801,12 @@ export default function MaintenancePage() {
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
-                  {ticketCompany && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, fontSize: 11, fontWeight: 600, color: "var(--text-muted)" }}>
-                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: ticketCompany.brand_color || "#6b7280", flexShrink: 0 }} />
-                      <span>{ticketCompany.short_name || ticketCompany.name}</span>
-                    </div>
-                  )}
+                    {ticketCompany && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4, paddingLeft: 2 }}>
+                        <span style={{ width: 7, height: 7, borderRadius: "50%", background: ticketCompany.brand_color || "var(--accent)", flexShrink: 0 }} />
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{ticketCompany.short_name || ticketCompany.name}</span>
+                      </div>
+                    )}
                   <TicketCard
                     ticket={ticket}
                     isExpanded={expandedId === ticket.id}
@@ -1717,12 +1833,13 @@ export default function MaintenancePage() {
                     purchaseOrders={purchaseOrdersByTicket[ticket.id] || []}
                     ocItems={ocItemsByTicket[ticket.id] || []}
                     onOpenPurchaseOrder={(oc) => router.push(`/purchases?folio=${encodeURIComponent(oc.folio)}`)}
+                    signedPhotoUrls={signedPhotoUrls}
                   />
                   </motion.div>
                   );
                 })}
                 {tickets.length === 200 ? (
-                  <p style={{ margin: 0, textAlign: "center", fontSize: 13, color: "var(--text-muted)", padding: "8px 0" }}>
+                  <p style={{ margin: 0, textAlign: "center", fontSize: "0.8125rem", color: "var(--text-muted)", padding: "8px 0" }}>
                     Mostrando los 200 tickets más recientes
                   </p>
                 ) : null}
@@ -1736,7 +1853,7 @@ export default function MaintenancePage() {
         {activeMainTab === "calendar" ? (
           <div style={{ display: "grid", gap: 18 }}>
 
-            <AppGrid minWidth={220}>
+            <AppGrid minWidth={220} className="metric-grid-desktop-only">
               <MetricCard
                 label="Vista activa"
                 value={viewMode === "week" ? "Semana" : viewMode === "month" ? "Mes" : "Año"}
@@ -1793,13 +1910,13 @@ export default function MaintenancePage() {
 
                   {/* Filtro por edificio */}
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 12, alignItems: "center" }}>
-                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                    <div style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
                       <Filter size={14} /> Edificio
                     </div>
                     <select
                       value={selectedBuildingId}
                       onChange={(e) => setSelectedBuildingId(e.target.value)}
-                      style={{ minWidth: 240, padding: "10px 12px", borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14 }}
+                      style={{ minWidth: 240, padding: "10px 12px", borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.875rem" }}
                     >
                       <option value="ALL">Todos los edificios</option>
                       {calendarBuildings.map((b) => (
@@ -1818,16 +1935,16 @@ export default function MaintenancePage() {
                         return (
                           <div key={day.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 14, minHeight: 280 }}>
                             <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                              <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{day.label}</div>
-                              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>{day.shortDate}</div>
+                              <div style={{ fontSize: "0.875rem", fontWeight: 800, color: "var(--text-primary)" }}>{day.label}</div>
+                              <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>{day.shortDate}</div>
                             </div>
                             {dayEvents.length === 0 ? (
-                              <div style={{ borderRadius: "var(--border-radius-lg)", padding: "10px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
+                              <div style={{ borderRadius: "var(--border-radius-lg)", padding: "10px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: "0.75rem", color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
                             ) : (
                               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                                 {dayEvents.map((event) => (
                                   <div key={event.id} style={{ borderRadius: "var(--border-radius-lg)", padding: "10px", background: event.colorBackground, border: `1px solid ${event.colorBorder}`, display: "flex", flexDirection: "column", gap: 4 }}>
-                                    <span style={{ fontSize: 11, fontWeight: 800, color: event.colorText, lineHeight: 1.35 }}>{event.title}</span>
+                                    <span style={{ fontSize: "0.6875rem", fontWeight: 800, color: event.colorText, lineHeight: 1.35 }}>{event.title}</span>
                                     <span style={{ fontSize: 10.5, fontWeight: 700, color: event.colorText, opacity: 0.9, lineHeight: 1.35 }}>{event.subtitle}</span>
                                   </div>
                                 ))}
@@ -1847,15 +1964,15 @@ export default function MaintenancePage() {
                         const visibleEvents = dayEvents.slice(0, 3);
                         return (
                           <div key={day.isoDate} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 12, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 170 }}>
-                            <div style={{ fontSize: 13, fontWeight: 800, color: "var(--text-primary)" }}>{day.dayNumber} · {day.label}</div>
+                            <div style={{ fontSize: "0.8125rem", fontWeight: 800, color: "var(--text-primary)" }}>{day.dayNumber} · {day.label}</div>
                             {dayEvents.length === 0 ? (
-                              <div style={{ borderRadius: "var(--border-radius-md)", padding: "8px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: 11, color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
+                              <div style={{ borderRadius: "var(--border-radius-md)", padding: "8px", background: "var(--bg-page)", border: "1px dashed var(--border-strong)", fontSize: "0.6875rem", color: "var(--text-secondary)", fontWeight: 600 }}>Sin eventos</div>
                             ) : (
                               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                                 {visibleEvents.map((event) => (
                                   <div key={event.id} style={{ borderRadius: "var(--border-radius-md)", padding: "8px", background: event.colorBackground, border: `1px solid ${event.colorBorder}`, display: "flex", flexDirection: "column", gap: 3 }}>
                                     <span style={{ fontSize: 10.5, fontWeight: 800, color: event.colorText, lineHeight: 1.3 }}>{event.title}</span>
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: event.colorText, opacity: 0.9, lineHeight: 1.3 }}>{event.subtitle}</span>
+                                    <span style={{ fontSize: "0.625rem", fontWeight: 700, color: event.colorText, opacity: 0.9, lineHeight: 1.3 }}>{event.subtitle}</span>
                                   </div>
                                 ))}
                                 {dayEvents.length > 3 ? (
@@ -1874,11 +1991,11 @@ export default function MaintenancePage() {
                     <div className="maint-cal-year" style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 16 }}>
                       {yearSummary.map((month) => (
                         <div key={month.monthLabel} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 14, background: "var(--bg-card)", display: "flex", flexDirection: "column", gap: 10, minHeight: 150 }}>
-                          <div style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{month.monthLabel}</div>
+                          <div style={{ fontSize: "0.875rem", fontWeight: 800, color: "var(--text-primary)" }}>{month.monthLabel}</div>
                           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                            <div style={{ borderRadius: "var(--border-radius-md)", padding: "10px", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: 12, fontWeight: 700, color: "var(--metric-value-amber)" }}>Realizados: {month.done}</div>
-                            <div style={{ borderRadius: "var(--border-radius-md)", padding: "10px", background: "var(--badge-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: 12, fontWeight: 700, color: "var(--badge-text-amber)" }}>Próximos: {month.upcoming}</div>
-                            <div style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)" }}>Total: {month.total}</div>
+                            <div style={{ borderRadius: "var(--border-radius-md)", padding: "10px", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: "0.75rem", fontWeight: 700, color: "var(--metric-value-amber)" }}>Realizados: {month.done}</div>
+                            <div style={{ borderRadius: "var(--border-radius-md)", padding: "10px", background: "var(--badge-bg-amber)", border: "1px solid var(--metric-border-amber)", fontSize: "0.75rem", fontWeight: 700, color: "var(--badge-text-amber)" }}>Próximos: {month.upcoming}</div>
+                            <div style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)" }}>Total: {month.total}</div>
                           </div>
                         </div>
                       ))}
@@ -1890,17 +2007,17 @@ export default function MaintenancePage() {
             </SectionCard>
 
             {/* Leyenda */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: 16 }}>
               <AppCard>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 14, height: 14, borderRadius: 999, background: "var(--icon-color-amber)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Realizado</span>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Realizado</span>
                 </div>
               </AppCard>
               <AppCard>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ width: 14, height: 14, borderRadius: 999, background: "var(--badge-text-amber)", flexShrink: 0 }} />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Próximo / programado</span>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Próximo / programado</span>
                 </div>
               </AppCard>
             </div>
@@ -2049,7 +2166,7 @@ export default function MaintenancePage() {
       >
         {statusTarget ? (
           <form onSubmit={handleChangeStatus} style={{ display: "grid", gap: 16 }}>
-            <div style={{ fontSize: 14, color: "var(--text-muted)" }}>
+            <div style={{ fontSize: "0.875rem", color: "var(--text-muted)" }}>
               Ticket:{" "}
               <strong style={{ color: "var(--text-primary)" }}>
                 {getTicketNumber(statusTarget)}
@@ -2122,6 +2239,7 @@ function TicketCard({
   purchaseOrders,
   ocItems,
   onOpenPurchaseOrder,
+  signedPhotoUrls = {},
 }: {
   ticket: Ticket;
   isExpanded: boolean;
@@ -2132,6 +2250,7 @@ function TicketCard({
   onOpenStatusModal: (t: Ticket) => void;
   onArchive: (id: string) => void;
   editingMaterials: MaterialDraft[];
+  signedPhotoUrls?: Record<string, string>;
   onMaterialsChange: (drafts: MaterialDraft[]) => void;
   onSaveMaterials: () => Promise<void>;
   savingMaterials: boolean;
@@ -2179,14 +2298,14 @@ function TicketCard({
                 color: "var(--text-secondary)",
                 border: "1px solid var(--border-default)",
                 fontFamily: "monospace",
-                fontSize: 11,
+                fontSize: "0.6875rem",
               }}
             />
-            <span style={{ fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
+            <span style={{ fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>
               {ticket.title}
             </span>
           </div>
-          <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
             {ticket.buildings?.name || "Sin edificio"}
             {ticket.units
               ? ` · Depto. ${ticket.units.display_code || ticket.units.unit_number}`
@@ -2209,12 +2328,12 @@ function TicketCard({
         <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
           <Badge label={getStatusLabel(ticket.status)} style={statusStyle} />
           {photos.length > 0 ? (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
               <Camera size={13} />
               {photos.length}
             </span>
           ) : null}
-          <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+          <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
             {formatDate(ticket.created_at)}
           </span>
 
@@ -2281,17 +2400,17 @@ function TicketCard({
 
           {/* Sección 1 — Detalles */}
           <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Detalles
             </div>
 
             {ticket.description ? (
-              <p style={{ margin: 0, fontSize: 14, color: "var(--text-primary)", lineHeight: 1.6 }}>
+              <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-primary)", lineHeight: 1.6 }}>
                 {ticket.description}
               </p>
             ) : null}
 
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))", gap: 10 }}>
               {ticket.reported_by ? (
                 <InfoTile label="Reportado por" value={ticket.reported_by} />
               ) : null}
@@ -2318,7 +2437,7 @@ function TicketCard({
           {/* Sección 2 — Fotos */}
           <div style={{ display: "grid", gap: 12 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-              <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                 Fotos ({photos.length})
               </div>
               <button
@@ -2330,7 +2449,7 @@ function TicketCard({
                   padding: "7px 12px", borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)",
-                  fontSize: 12, fontWeight: 600,
+                  fontSize: "0.75rem", fontWeight: 600,
                   cursor: uploadingPhoto ? "wait" : "pointer",
                   opacity: uploadingPhoto ? 0.7 : 1,
                 }}
@@ -2351,26 +2470,28 @@ function TicketCard({
             </div>
 
             {photos.length === 0 ? (
-              <div style={{ padding: 18, borderRadius: "var(--border-radius-lg)", border: "1px dashed var(--border-strong)", textAlign: "center", fontSize: 13, color: "var(--text-muted)" }}>
+              <div style={{ padding: 18, borderRadius: "var(--border-radius-lg)", border: "1px dashed var(--border-strong)", textAlign: "center", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                 Sin fotos adjuntas
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 10 }}>
-                {photos.slice(0, 6).map((url, idx) => (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(6.875rem, 1fr))", gap: 10 }}>
+                {photos.slice(0, 6).map((urlOrPath, idx) => {
+                  const src = signedPhotoUrls[urlOrPath] || urlOrPath;
+                  return (
                   <div
-                    key={url}
+                    key={urlOrPath}
                     style={{ position: "relative", borderRadius: "var(--border-radius-md)", overflow: "hidden", border: "1px solid var(--border-default)", aspectRatio: "1" }}
                   >
-                    <a href={url} target="_blank" rel="noopener noreferrer">
+                    <a href={src} target="_blank" rel="noopener noreferrer">
                       <img
-                        src={url}
+                        src={src}
                         alt={`Foto ${idx + 1}`}
                         style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                       />
                     </a>
                     <button
                       type="button"
-                      onClick={() => onDeletePhoto(url)}
+                      onClick={() => onDeletePhoto(urlOrPath)}
                       style={{
                         position: "absolute", top: 4, right: 4,
                         width: 22, height: 22, borderRadius: "50%",
@@ -2381,9 +2502,10 @@ function TicketCard({
                       <X size={12} />
                     </button>
                   </div>
-                ))}
+                  );
+                })}
                 {photos.length > 6 ? (
-                  <div style={{ borderRadius: "var(--border-radius-md)", border: "1px dashed var(--border-default)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "var(--text-muted)", fontWeight: 600, aspectRatio: "1" }}>
+                  <div style={{ borderRadius: "var(--border-radius-md)", border: "1px dashed var(--border-default)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, aspectRatio: "1" }}>
                     +{photos.length - 6} más
                   </div>
                 ) : null}
@@ -2395,12 +2517,12 @@ function TicketCard({
 
           {/* Sección 3 — Materiales */}
           <div style={{ display: "grid", gap: 12 }}>
-            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Materiales
             </div>
 
             {editingMaterials.length === 0 ? (
-              <div style={{ fontSize: 13, color: "var(--text-muted)" }}>
+              <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                 Sin materiales. Agrega renglones con el botón +.
               </div>
             ) : (
@@ -2408,10 +2530,10 @@ function TicketCard({
               <div style={{ display: "grid", gap: 8, minWidth: 420 }}>
                 {/* Encabezado */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 80px 130px 160px 32px", gap: 8 }}>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Descripción</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textAlign: "center" }}>Cant.</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Unidad</span>
-                  <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Proveedor</span>
+                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Descripción</span>
+                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textAlign: "center" }}>Cant.</span>
+                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Unidad</span>
+                  <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", paddingLeft: 4 }}>Proveedor</span>
                   <span />
                 </div>
 
@@ -2503,7 +2625,7 @@ function TicketCard({
                   padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                   border: "1px dashed var(--border-strong)",
                   background: "transparent", color: "var(--text-secondary)",
-                  fontSize: 13, fontWeight: 600, cursor: "pointer",
+                  fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                 }}
               >
                 <Plus size={14} /> Agregar renglón
@@ -2518,7 +2640,7 @@ function TicketCard({
                   padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)",
-                  fontSize: 13, fontWeight: 600,
+                  fontSize: "0.8125rem", fontWeight: 600,
                   cursor: savingMaterials ? "wait" : "pointer",
                   opacity: savingMaterials ? 0.7 : 1,
                 }}
@@ -2535,7 +2657,7 @@ function TicketCard({
                   padding: "8px 14px", borderRadius: "var(--border-radius-md)",
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)", color: "var(--text-primary)",
-                  fontSize: 13, fontWeight: 600,
+                  fontSize: "0.8125rem", fontWeight: 600,
                   cursor: generatingPdf ? "wait" : "pointer",
                   opacity: generatingPdf ? 0.7 : 1,
                 }}
@@ -2548,7 +2670,7 @@ function TicketCard({
 
             {purchaseOrders.length > 0 ? (
               <div style={{ marginTop: 14 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
+                <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: 8 }}>
                   Órdenes de compra generadas
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -2574,15 +2696,15 @@ function TicketCard({
                           background: "var(--bg-input)",
                         }}
                       >
-                        <span style={{ fontFamily: "monospace", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                        <span style={{ fontFamily: "monospace", fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                           {oc.folio}
                         </span>
-                        <span style={{ fontSize: 13, color: "var(--text-secondary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           · {oc.supplier_name || "Sin proveedor"}
                         </span>
                         <span style={{
                           padding: "3px 8px", borderRadius: "var(--border-radius-xl)",
-                          fontSize: 11, fontWeight: 700, whiteSpace: "nowrap",
+                          fontSize: "0.6875rem", fontWeight: 700, whiteSpace: "nowrap",
                           ...statusStyle,
                         }}>
                           {statusLabel}
@@ -2594,7 +2716,7 @@ function TicketCard({
                             padding: "6px 10px", borderRadius: "var(--border-radius-sm)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
-                            fontSize: 12, fontWeight: 600, cursor: "pointer",
+                            fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
                           }}
                         >
                           Ver en Compras
@@ -2621,15 +2743,15 @@ function TicketCard({
                           padding: "8px 12px", borderRadius: "var(--border-radius-md)",
                           background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
                         }}>
-                          <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>Total gastado (recibidas)</span>
-                          <span style={{ fontSize: 15, fontWeight: 800, color: "#10B981", fontFamily: "monospace" }}>
+                          <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>Total gastado (recibidas)</span>
+                          <span style={{ fontSize: "0.9375rem", fontWeight: 800, color: "var(--metric-value-green)", fontFamily: "monospace" }}>
                             ${totalGastado.toFixed(2)}
                           </span>
                         </div>
                       ) : null}
                       {pendingItems.length > 0 ? (
                         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                          <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
                             Materiales pendientes de surtir
                           </div>
                           {pendingItems.map((it) => {
@@ -2639,15 +2761,15 @@ function TicketCard({
                                 display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap",
                                 padding: "6px 10px", borderRadius: "var(--border-radius-sm)",
                                 background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
-                                fontSize: 13,
+                                fontSize: "0.8125rem",
                               }}>
                                 <span style={{ flex: 1, minWidth: 0, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                                   {it.description}
                                 </span>
-                                <span style={{ color: "#F59E0B", fontWeight: 700, whiteSpace: "nowrap" }}>
+                                <span style={{ color: "var(--metric-value-amber)", fontWeight: 700, whiteSpace: "nowrap" }}>
                                   {pend} {it.unit} pendiente{pend !== 1 ? "s" : ""}
                                 </span>
-                                <span style={{ color: "var(--text-muted)", fontSize: 11, fontFamily: "monospace", whiteSpace: "nowrap" }}>
+                                <span style={{ color: "var(--text-muted)", fontSize: "0.6875rem", fontFamily: "monospace", whiteSpace: "nowrap" }}>
                                   {it.oc_folio}
                                 </span>
                               </div>
@@ -2689,14 +2811,14 @@ function InfoTile({
         border: "1px solid var(--border-default)",
       }}
     >
-      <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600, marginBottom: 2 }}>
+      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600, marginBottom: 2 }}>
         {label}
       </div>
-      <div style={{ fontSize: 14, color: "var(--text-primary)", fontWeight: 500 }}>
+      <div style={{ fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 500 }}>
         {value}
       </div>
       {sub ? (
-        <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{sub}</div>
+        <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 2 }}>{sub}</div>
       ) : null}
     </div>
   );

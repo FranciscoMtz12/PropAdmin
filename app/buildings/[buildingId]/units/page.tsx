@@ -197,8 +197,8 @@ function StatusCircle({ status }: { status: string }) {
 }
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -914,7 +914,7 @@ export default function BuildingUnitsPage() {
     <PageContainer>
       {/* Breadcrumb */}
       <div style={{ padding: "18px 0 0 0", marginBottom: 4 }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 13, color: "var(--text-secondary)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
           <a href="/dashboard" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Inicio</a>
           <span style={{ color: "var(--text-muted)" }}>{">"}</span>
           <a href="/buildings" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Propiedades</a>
@@ -943,7 +943,7 @@ export default function BuildingUnitsPage() {
       {msg ? (
         <p style={{
           color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)",
-          marginBottom: 16, fontSize: 14, fontWeight: 600,
+          marginBottom: 16, fontSize: "0.875rem", fontWeight: 600,
         }}>
           {msg}
         </p>
@@ -974,7 +974,7 @@ export default function BuildingUnitsPage() {
             onAction={openCreateModal}
           />
         ) : (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(340px, 1fr))", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(21.25rem, 1fr))", gap: 12 }}>
             {units.map((unit) => {
               const unitBadge     = getUnitStatusBadge(unit.status);
               const tenantName    = tenantsByUnitId.get(unit.id);
@@ -1007,7 +1007,7 @@ export default function BuildingUnitsPage() {
                         width: 18,
                         height: 18,
                         borderRadius: "50%",
-                        background: "#EF9F27",
+                        background: "var(--metric-bg-amber)",
                         zIndex: 10,
                         pointerEvents: "none",
                       }}
@@ -1067,7 +1067,7 @@ export default function BuildingUnitsPage() {
                     {isResidentialMulti && (unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null || tenantName) && (
                       <>
                         {(unit.floor != null || typeInfo?.bedrooms != null || typeInfo?.bathrooms != null) && (
-                          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: 12, marginBottom: tenantName ? 6 : 0 }}>
+                          <div style={{ display: "flex", flexWrap: "wrap", gap: 10, color: "var(--text-secondary)", fontSize: "0.75rem", marginBottom: tenantName ? 6 : 0 }}>
                             {unit.floor != null && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Hash size={11} />Piso {unit.floor}</span>}
                             {typeInfo?.bedrooms != null && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><BedDouble size={11} />{typeInfo.bedrooms} rec.</span>}
                             {typeInfo?.bathrooms != null && <span style={{ display: "flex", alignItems: "center", gap: 4 }}><Bath size={11} />{typeInfo.bathrooms} baño{typeInfo.bathrooms !== 1 ? "s" : ""}</span>}
@@ -1078,7 +1078,7 @@ export default function BuildingUnitsPage() {
 
                     {/* Detalles commercial: m² + chips desde unit_amenities */}
                     {isCommercial && (unit.sqm != null || (unitAmenitiesMap[unit.id]?.size ?? 0) > 0) && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: 12, color: "var(--text-secondary)", alignItems: "center" }}>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6, fontSize: "0.75rem", color: "var(--text-secondary)", alignItems: "center" }}>
                         {unit.sqm ? <span style={{ fontWeight: 600 }}>{unit.sqm} m²</span> : null}
                         {unitAmenitiesMap[unit.id]?.has("has_storage")            && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Bodega</AppBadge>}
                         {unitAmenitiesMap[unit.id]?.has("has_bathroom")           && <AppBadge backgroundColor="var(--bg-page)" textColor="var(--text-secondary)" borderColor="var(--border-default)">Baños</AppBadge>}
@@ -1089,7 +1089,7 @@ export default function BuildingUnitsPage() {
 
                     {/* Detalles industrial: total + desglose */}
                     {isIndustrial && indTotal > 0 && (
-                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                         <span style={{ fontWeight: 600, marginRight: 6 }}>{indTotal.toLocaleString("es-MX")} m² total</span>
                         {indParts.length > 0 && <span style={{ color: "var(--text-muted)" }}>{indParts.join(" · ")}</span>}
                       </div>
@@ -1099,7 +1099,7 @@ export default function BuildingUnitsPage() {
                     {tenantName && (
                       <div style={{ display: "flex", alignItems: "center", gap: 5, marginTop: 4 }}>
                         <User size={12} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                        <span style={{ fontSize: 11, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {tenantName}
                         </span>
                       </div>
@@ -1195,7 +1195,7 @@ export default function BuildingUnitsPage() {
         {/* ── PASO 0: selección de tipología (solo residential_multi) ── */}
         {createModalStep === 0 && (
           <div>
-            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
               Selecciona una tipología como base o empieza desde cero.
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
@@ -1217,15 +1217,15 @@ export default function BuildingUnitsPage() {
                   }}
                 >
                   <div style={{ flex: 1 }}>
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>{ut.name}</p>
+                    <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>{ut.name}</p>
                     {(ut.bedrooms != null || ut.bathrooms != null) && (
-                      <div style={{ marginTop: 3, fontSize: 12, color: "var(--text-muted)", display: "flex", gap: 10 }}>
+                      <div style={{ marginTop: 3, fontSize: "0.75rem", color: "var(--text-muted)", display: "flex", gap: 10 }}>
                         {ut.bedrooms != null && <span>{ut.bedrooms} rec.</span>}
                         {ut.bathrooms != null && <span>{ut.bathrooms} baño{ut.bathrooms !== 1 ? "s" : ""}</span>}
                       </div>
                     )}
                   </div>
-                  <span style={{ fontSize: 13, color: "var(--accent)", fontWeight: 600, flexShrink: 0 }}>Usar →</span>
+                  <span style={{ fontSize: "0.8125rem", color: "var(--accent)", fontWeight: 600, flexShrink: 0 }}>Usar →</span>
                 </button>
               ))}
             </div>
@@ -1315,10 +1315,10 @@ export default function BuildingUnitsPage() {
                   </AppFormField>
                 )}
               </div>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Espacios incluidos</p>
+              <p style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>Espacios incluidos</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 16 }}>
                 {([ ["has_storage", "Bodega / trastienda"], ["has_bathroom", "Sanitarios"], ["has_parking", "Estacionamiento asignado"], ["has_independent_access", "Acceso independiente"] ] as const).map(([key, label]) => (
-                  <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer", color: "var(--text-primary)" }}>
+                  <label key={key} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: "0.8125rem", cursor: "pointer", color: "var(--text-primary)" }}>
                     <input
                       type="checkbox"
                       checked={createCommFlags[key]}
@@ -1354,7 +1354,7 @@ export default function BuildingUnitsPage() {
                     </AppFormField>
                   ))}
                 </div>
-                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 16 }}>
                   Total: <strong>{total > 0 ? `${total.toLocaleString("es-MX")} m²` : "—"}</strong>
                 </p>
                 <AppFormField label="Piso">
@@ -1372,7 +1372,7 @@ export default function BuildingUnitsPage() {
           )}
 
           {building.code && createUnitNumber && createUnitNumber.trim() ? (
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 16 }}>
+            <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginBottom: 16 }}>
               Código generado: <strong>{generateDisplayCode(building.code, createUnitNumber)}</strong>
             </p>
           ) : null}
@@ -1395,7 +1395,7 @@ export default function BuildingUnitsPage() {
               background: "var(--icon-bg-blue)",
               border: "1px solid var(--metric-border-neutral)",
               marginBottom: 12,
-              fontSize: 12,
+              fontSize: "0.75rem",
               color: "var(--badge-text-blue)",
             }}>
               <span style={{ fontWeight: 600 }}>Se crearán: </span>
@@ -1436,7 +1436,7 @@ export default function BuildingUnitsPage() {
         title={`Duplicar ${labels.unit.toLowerCase()}`}
       >
         <div style={{ display: "grid", gap: 16 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-secondary)" }}>
             ¿Cuántas copias quieres crear de <strong>{pendingDupUnit?.unit_number}</strong>?
           </p>
           <AppFormField label="Cantidad de copias">
@@ -1480,7 +1480,7 @@ function TypePreview({ type }: { type: UnitType }) {
         background: "var(--bg-page)",
         border: "1px solid var(--border-default)",
         marginBottom: 16,
-        fontSize: 13,
+        fontSize: "0.8125rem",
         color: "var(--text-secondary)",
       }}
     >

@@ -84,7 +84,7 @@ const DEFAULT_EQ: Equipment = {
   cuartoServicio: { ...DEFAULT_BEDROOM_EQ },
   sala: { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [], guestBath: "NONE", guestBathShower: "NONE" },
   cocina: { ac: "NONE", hasHalfBath: false, stoveType: "NONE", stoveBurners: "4Q", oven: "NONE", fridge: "NONE", fridgeModel: "", others: [] },
-  lavanderia: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }], centroCarga: "NO", washer: "NO", dryer: "NONE" },
+  lavanderia: { boilers: [], centroCarga: "NO", washer: "NO", dryer: "NONE" },
   cuartoMaquinas: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }] },
   equiposFuncionales: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }], centroCarga: "NO", washer: "NO", dryer: "NONE" },
   aireCentral: { capacity: "5" },
@@ -127,11 +127,11 @@ function computeBathroomsHalf(s2: Step2, eq: Equipment): number {
 
 /* ─── Sub-components ─────────────────────────────────────────────────── */
 
-const ACCENT = "#8B2252";
+const ACCENT = "var(--accent)";
 
 function ps(active: boolean): React.CSSProperties {
   return {
-    padding: "5px 11px", borderRadius: 999, fontSize: 12, fontWeight: 600, cursor: "pointer",
+    padding: "5px 11px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
     border: active ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)",
     background: active ? "#f9eaf3" : "var(--bg-card)",
     color: active ? ACCENT : "var(--text-secondary)",
@@ -178,13 +178,13 @@ function Counter({ value, onChange, min = 0, max = 10, label }: {
 }) {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)" }}>
-      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{label}</span>
+      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
         <button type="button" onClick={() => onChange(Math.max(min, value - 1))}
-          style={{ width: 30, height: 30, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
-        <span style={{ fontSize: 18, fontWeight: 700, minWidth: 20, textAlign: "center" }}>{value}</span>
+          style={{ width: 30, height: 30, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: "1.125rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+        <span style={{ fontSize: "1.125rem", fontWeight: 700, minWidth: 20, textAlign: "center" }}>{value}</span>
         <button type="button" onClick={() => onChange(Math.min(max, value + 1))}
-          style={{ width: 30, height: 30, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+          style={{ width: 30, height: 30, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: "1.125rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
       </div>
     </div>
   );
@@ -302,17 +302,17 @@ function PillsInput({ value, onChange, placeholder = "Agregar..." }: {
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder={placeholder}
-          style={{ flex: 1, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 12, outline: "none" }}
+          style={{ flex: 1, padding: "6px 10px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.75rem", outline: "none" }}
         />
         <button type="button" onClick={add}
-          style={{ padding: "0 12px", borderRadius: "var(--border-radius-md)", border: "none", background: ACCENT, color: "#fff", fontSize: 12, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+          style={{ padding: "0 12px", borderRadius: "var(--border-radius-md)", border: "none", background: ACCENT, color: "#fff", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
           Agregar
         </button>
       </div>
       {value.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
           {value.map((item, idx) => (
-            <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "#f9eaf3", color: ACCENT }}>
+            <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "3px 8px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600, background: "#f9eaf3", color: ACCENT }}>
               {item}
               <button type="button" onClick={() => onChange(value.filter((_, i) => i !== idx))}
                 style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: ACCENT, display: "flex", alignItems: "center" }}>
@@ -735,10 +735,10 @@ function StepIndicator({ step }: { step: number }) {
         return (
           <div key={n} style={{ display: "flex", alignItems: "center", flex: i < labels.length - 1 ? 1 : "none" }}>
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-              <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, background: (done || active) ? ACCENT : "var(--bg-input)", color: (done || active) ? "#fff" : "var(--text-muted)", flexShrink: 0 }}>
+              <div style={{ width: 28, height: 28, borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.8125rem", fontWeight: 700, background: (done || active) ? ACCENT : "var(--bg-input)", color: (done || active) ? "#fff" : "var(--text-muted)", flexShrink: 0 }}>
                 {done ? <Check size={14} /> : n}
               </div>
-              <span style={{ fontSize: 10, fontWeight: active ? 700 : 500, color: active ? ACCENT : "var(--text-muted)", whiteSpace: "nowrap" }}>{label}</span>
+              <span style={{ fontSize: "0.625rem", fontWeight: active ? 700 : 500, color: active ? ACCENT : "var(--text-muted)", whiteSpace: "nowrap" }}>{label}</span>
             </div>
             {i < labels.length - 1 && (
               <div style={{ flex: 1, height: 2, background: done ? ACCENT : "var(--border-default)", margin: "0 6px", marginBottom: 16 }} />
@@ -748,6 +748,27 @@ function StepIndicator({ step }: { step: number }) {
       })}
     </div>
   );
+}
+
+/* ─── Draft helpers ──────────────────────────────────────────────────── */
+
+function draftKey(buildingId: string) { return `typology_wizard_draft_${buildingId}`; }
+
+type DraftData = { step: number; s1: Step1; s2: Step2; eq: Equipment };
+
+function saveDraft(buildingId: string, data: DraftData) {
+  try { localStorage.setItem(draftKey(buildingId), JSON.stringify(data)); } catch {}
+}
+
+function loadDraftData(buildingId: string): DraftData | null {
+  try {
+    const raw = localStorage.getItem(draftKey(buildingId));
+    return raw ? (JSON.parse(raw) as DraftData) : null;
+  } catch { return null; }
+}
+
+function clearDraft(buildingId: string) {
+  try { localStorage.removeItem(draftKey(buildingId)); } catch {}
 }
 
 /* ─── Main component ─────────────────────────────────────────────────── */
@@ -764,6 +785,26 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   const [customSpaceInput, setCustomSpaceInput] = useState("");
   const [showCustomInput, setShowCustomInput]   = useState(false);
   const [visitedSpaces, setVisitedSpaces]       = useState<Set<string>>(new Set());
+  const [draftFound, setDraftFound]             = useState(false);
+
+  /* Auto-save draft on state change (debounced 400ms) */
+  const draftTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!open || !buildingId) return;
+    if (draftTimer.current) clearTimeout(draftTimer.current);
+    draftTimer.current = setTimeout(() => {
+      saveDraft(buildingId, { step, s1, s2, eq });
+    }, 400);
+    return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
+  }, [open, buildingId, step, s1, s2, eq]);
+
+  /* Check for existing draft when modal opens */
+  useEffect(() => {
+    if (open && buildingId) {
+      const draft = loadDraftData(buildingId);
+      if (draft && draft.s1.name.trim()) setDraftFound(true);
+    }
+  }, [open, buildingId]);
 
   const STEP_TITLES = ["Nueva tipología — Información", "Nueva tipología — Espacios", "Nueva tipología — Equipamiento", "Nueva tipología — Resumen"];
 
@@ -778,6 +819,24 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     setEq(JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment);
     setSelectedSpace(""); setSaving(false); setS1Error("");
     setCustomSpaceInput(""); setShowCustomInput(false); setVisitedSpaces(new Set());
+    setDraftFound(false);
+    if (buildingId) clearDraft(buildingId);
+  }
+
+  function restoreDraft() {
+    if (!buildingId) return;
+    const draft = loadDraftData(buildingId);
+    if (!draft) return;
+    setStep(draft.step);
+    setS1(draft.s1);
+    setS2(draft.s2);
+    setEq(draft.eq);
+    setDraftFound(false);
+  }
+
+  function discardDraft() {
+    if (buildingId) clearDraft(buildingId);
+    setDraftFound(false);
   }
 
   function handleClose() { reset(); onClose(); }
@@ -875,7 +934,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function eqRow(label: string, children: React.ReactNode) {
     return (
       <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>
+        <div style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: 6 }}>{label}</div>
         {children}
       </div>
     );
@@ -885,7 +944,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function boilersSection(boilers: BoilerUnit[], onBoilers: (v: BoilerUnit[]) => void) {
     const btnStyle: React.CSSProperties = {
       width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)",
-      background: "var(--bg-input)", cursor: "pointer", fontSize: 15,
+      background: "var(--bg-input)", cursor: "pointer", fontSize: "0.9375rem",
       display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)",
     };
     function updateAt(idx: number, patch: Partial<BoilerUnit>) {
@@ -899,7 +958,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button type="button" style={btnStyle}
               onClick={() => { if (boilers.length > 1) onBoilers(boilers.slice(0, -1)); }}>−</button>
-            <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{boilers.length}</span>
+            <span style={{ fontSize: "0.9375rem", fontWeight: 700, minWidth: 16, textAlign: "center" }}>{boilers.length}</span>
             <button type="button" style={btnStyle}
               onClick={() => onBoilers([...boilers, { type: "DEP_GAS", capacity: "60L", services: "1" }])}>+</button>
           </div>
@@ -913,22 +972,22 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             >
               <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "12px 14px", marginBottom: 8 }}>
                 {boilers.length > 1 && (
-                  <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                     Boiler {idx + 1}
                   </div>
                 )}
                 <div style={{ display: "grid", gap: 8 }}>
-                  <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Tipo</div>
+                  <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>Tipo</div>
                   <Radio value={b.type} onChange={(v) => updateAt(idx, { type: v })} options={BOILER_TYPE_OPTIONS} />
                   <Expand show={IS_DEP(b.type)} id={`boiler-dep-${idx}`}>
                     <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Capacidad</div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>Capacidad</div>
                       <Radio value={b.capacity} onChange={(v) => updateAt(idx, { capacity: v })} options={BOILER_CAP_OPTIONS} />
                     </div>
                   </Expand>
                   <Expand show={IS_PASO(b.type)} id={`boiler-svc-${idx}`}>
                     <div style={{ display: "grid", gap: 6, marginTop: 4 }}>
-                      <div style={{ fontSize: 11, color: "var(--text-muted)" }}>Servicios (salidas de agua caliente)</div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>Servicios (salidas de agua caliente)</div>
                       <Radio value={b.services} onChange={(v) => updateAt(idx, { services: v })}
                         options={[{ value: "1", label: "1" }, { value: "2", label: "2" }, { value: "3", label: "3" }, { value: "4+", label: "4+" }]} />
                     </div>
@@ -957,18 +1016,18 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         <Expand show={bEq.hasOwnBath} id="bath-details">
           <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
             <div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Regadera</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: 4 }}>Regadera</div>
               <Radio value={bEq.shower !== "NONE" ? "YES" : "NO"}
                 onChange={(v) => onShower(v === "YES" ? "NORMAL" : "NONE")}
                 options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Tina</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: 4 }}>Tina</div>
               <Radio value={bEq.hasTub ? "YES" : "NO"} onChange={(v) => onHasTub(v === "YES")}
                 options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
             </div>
             <div>
-              <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>Jacuzzi</div>
+              <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: 4 }}>Jacuzzi</div>
               <Radio value={bEq.hasJacuzzi ? "YES" : "NO"} onChange={(v) => onHasJacuzzi(v === "YES")}
                 options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
             </div>
@@ -982,7 +1041,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   function bedroomCount(b: BedroomEq) {
     return (b.hasOwnBath ? 1 : 0)
       + (b.ac !== "NONE" ? 1 : 0) + (b.fan === "YES" ? 1 : 0) + (b.heater !== "NONE" ? 1 : 0)
-      + (b.bed !== "NONE" ? 1 : 0) + (b.closet !== "NONE" ? 1 : 0) + (b.tv === "YES" ? 1 : 0)
+      + (b.bed !== "NONE" ? b.bedCount : 0) + (b.closet !== "NONE" ? 1 : 0) + (b.tv === "YES" ? 1 : 0)
       + b.furnitureOther.length;
   }
   function salaCount(s: SalaEq) {
@@ -1043,7 +1102,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
         onClick={() => toggleSpace(key as keyof Step2 & string)}
         style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: "var(--border-radius-md)", cursor: "pointer", border: on ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)", background: on ? "#f9eaf3" : "var(--bg-card)", color: on ? ACCENT : "var(--text-secondary)" }}>
         <Icon size={18} />
-        <span style={{ fontSize: 11, fontWeight: 600 }}>{label}</span>
+        <span style={{ fontSize: "0.6875rem", fontWeight: 600 }}>{label}</span>
       </button>
     );
   }
@@ -1059,6 +1118,13 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       {/* ── PASO 1: Información ── */}
       {step === 1 && (
         <div style={{ display: "grid", gap: 14 }}>
+          {draftFound && (
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)" }}>
+              <span style={{ flex: 1, fontSize: "0.8125rem", color: "#6366F1", fontWeight: 600 }}>Hay un borrador guardado de esta tipología. ¿Deseas restaurarlo?</span>
+              <button type="button" onClick={restoreDraft} style={{ padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid #6366F1", background: "#6366F1", color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>Restaurar</button>
+              <button type="button" onClick={discardDraft} style={{ padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(99,102,241,0.3)", background: "transparent", color: "#6366F1", cursor: "pointer", whiteSpace: "nowrap" }}>Descartar</button>
+            </div>
+          )}
           <AppFormField label="Nombre de la tipología" required>
             <input
               value={s1.name}
@@ -1066,7 +1132,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               placeholder="Ej. Tipo A — 2 recámaras"
               style={STEP_INPUT}
             />
-            {s1Error && <p style={{ margin: "4px 0 0", color: "#ef4444", fontSize: 12 }}>{s1Error}</p>}
+            {s1Error && <p style={{ margin: "4px 0 0", color: "var(--metric-value-red)", fontSize: "0.75rem" }}>{s1Error}</p>}
           </AppFormField>
           <AppFormField label="Superficie m²">
             <input value={s1.sqm} onChange={(e) => setS1((p) => ({ ...p, sqm: e.target.value }))} type="number" min={0} placeholder="Ej. 60" style={STEP_INPUT} />
@@ -1089,10 +1155,10 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
           {/* PRIVADOS */}
           <div>
-            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Privados</p>
+            <p style={{ margin: "0 0 10px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Privados</p>
             <div style={{ display: "grid", gap: 10 }}>
               <Counter label="Recámaras" value={s2.bedrooms} onChange={(v) => setCount("bedrooms", v)} min={0} max={10} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(6.875rem, 1fr))", gap: 8 }}>
                 {PRIVADOS_SPACES.map(({ key, label, Icon }) => spaceToggle(key, label, Icon))}
               </div>
             </div>
@@ -1100,23 +1166,23 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
 
           {/* SOCIALES */}
           <div>
-            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Sociales</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
+            <p style={{ margin: "0 0 10px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Sociales</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(6.875rem, 1fr))", gap: 8 }}>
               {SOCIALES_SPACES.map(({ key, label, Icon }) => spaceToggle(key, label, Icon))}
             </div>
           </div>
 
           {/* SERVICIO */}
           <div>
-            <p style={{ margin: "0 0 10px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Servicio</p>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8 }}>
+            <p style={{ margin: "0 0 10px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Servicio</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(6.875rem, 1fr))", gap: 8 }}>
               {SERVICIO_SPACES.map(({ key, label, Icon }) => spaceToggle(key, label, Icon))}
               {/* Otro */}
               <button type="button"
                 onClick={() => setShowCustomInput((v) => !v)}
                 style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "10px 8px", borderRadius: "var(--border-radius-md)", cursor: "pointer", border: (showCustomInput || s2.customSpaces.length > 0) ? `2px solid ${ACCENT}` : "1.5px solid var(--border-default)", background: (showCustomInput || s2.customSpaces.length > 0) ? "#f9eaf3" : "var(--bg-card)", color: (showCustomInput || s2.customSpaces.length > 0) ? ACCENT : "var(--text-secondary)" }}>
                 <Plus size={18} />
-                <span style={{ fontSize: 11, fontWeight: 600 }}>Otro</span>
+                <span style={{ fontSize: "0.6875rem", fontWeight: 600 }}>Otro</span>
               </button>
             </div>
 
@@ -1127,10 +1193,10 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                   onChange={(e) => setCustomSpaceInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustomSpace(); } }}
                   placeholder="Ej. Estudio, Terraza privada..."
-                  style={{ ...STEP_INPUT, flex: 1, fontSize: 13 }}
+                  style={{ ...STEP_INPUT, flex: 1, fontSize: "0.8125rem" }}
                 />
                 <button type="button" onClick={addCustomSpace}
-                  style={{ padding: "0 14px", borderRadius: "var(--border-radius-md)", border: "none", background: ACCENT, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  style={{ padding: "0 14px", borderRadius: "var(--border-radius-md)", border: "none", background: ACCENT, color: "#fff", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
                   Agregar
                 </button>
               </div>
@@ -1139,7 +1205,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             {s2.customSpaces.length > 0 && (
               <div style={{ marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6 }}>
                 {s2.customSpaces.map((cs, idx) => (
-                  <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f9eaf3", color: ACCENT }}>
+                  <span key={idx} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: "#f9eaf3", color: ACCENT }}>
                     {cs}
                     <button type="button" onClick={() => removeCustomSpace(idx)}
                       style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: ACCENT, display: "flex", alignItems: "center" }}>
@@ -1176,11 +1242,11 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     <Radio value={bEq.bed} onChange={(v) => { setBedEq(i, "bed", v); if (v === "NONE") setBedEq(i, "bedCount", 1); }} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }, { value: "LITERA", label: "Litera" }]} />
                     <Expand show={bEq.bed !== "NONE"} id={`bed-count-${i}`}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
+                        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <button type="button" onClick={() => setBedEq(i, "bedCount", Math.max(1, bEq.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
-                          <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{bEq.bedCount}</span>
-                          <button type="button" onClick={() => setBedEq(i, "bedCount", bEq.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+                          <button type="button" onClick={() => setBedEq(i, "bedCount", Math.max(1, bEq.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: "0.9375rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+                          <span style={{ fontSize: "0.9375rem", fontWeight: 700, minWidth: 16, textAlign: "center" }}>{bEq.bedCount}</span>
+                          <button type="button" onClick={() => setBedEq(i, "bedCount", bEq.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: "0.9375rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
                         </div>
                       </div>
                     </Expand>
@@ -1207,11 +1273,11 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     <Radio value={b.bed} onChange={(v) => { setCuartoServ("bed", v); if (v === "NONE") setCuartoServ("bedCount", 1); }} options={[{ value: "NONE", label: "No incluye" }, { value: "INDIVIDUAL", label: "Individual" }, { value: "MATRIMONIAL", label: "Matrimonial" }, { value: "QUEEN", label: "Queen" }, { value: "KING", label: "King" }, { value: "LITERA", label: "Litera" }]} />
                     <Expand show={b.bed !== "NONE"} id="bed-count-cs">
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 2 }}>
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
+                        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>Cantidad</span>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <button type="button" onClick={() => setCuartoServ("bedCount", Math.max(1, b.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
-                          <span style={{ fontSize: 15, fontWeight: 700, minWidth: 16, textAlign: "center" }}>{b.bedCount}</span>
-                          <button type="button" onClick={() => setCuartoServ("bedCount", b.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
+                          <button type="button" onClick={() => setCuartoServ("bedCount", Math.max(1, b.bedCount - 1))} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: "0.9375rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>−</button>
+                          <span style={{ fontSize: "0.9375rem", fontWeight: 700, minWidth: 16, textAlign: "center" }}>{b.bedCount}</span>
+                          <button type="button" onClick={() => setCuartoServ("bedCount", b.bedCount + 1)} style={{ width: 24, height: 24, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-input)", cursor: "pointer", fontSize: "0.9375rem", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-primary)" }}>+</button>
                         </div>
                       </div>
                     </Expand>
@@ -1257,7 +1323,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               {eqRow("Refrigeración", <div style={{ display: "grid", gap: 8 }}>
                 <Radio value={eq.cocina.fridge} onChange={(v) => setCocina("fridge", v)} options={[{ value: "NONE", label: "No incluye" }, { value: "FRIDGE", label: "Refrigerador" }, { value: "FRIGOBAR", label: "Frigobar" }]} />
                 <Expand show={eq.cocina.fridge !== "NONE"} id="fridge-model">
-                  <input value={eq.cocina.fridgeModel} onChange={(e) => setCocina("fridgeModel", e.target.value)} placeholder="Modelo (opcional)" style={{ ...STEP_INPUT, fontSize: 12 }} />
+                  <input value={eq.cocina.fridgeModel} onChange={(e) => setCocina("fridgeModel", e.target.value)} placeholder="Modelo (opcional)" style={{ ...STEP_INPUT, fontSize: "0.75rem" }} />
                 </Expand>
               </div>)}
               {eqRow("Electrodomésticos", <Pills value={eq.cocina.others} onChange={(v) => setCocina("others", v)} options={[{ value: "MICROWAVE", label: "Microondas" }, { value: "DISHWASHER", label: "Lavavajillas" }, { value: "EXTRACTOR", label: "Campana extractora" }]} />)}
@@ -1290,7 +1356,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               {eqRow("Espacios cubiertos", (
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {centralSpaces.map((sp) => (
-                    <span key={sp} style={{ padding: "3px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "#f9eaf3", color: ACCENT, border: `1px solid ${ACCENT}` }}>{sp}</span>
+                    <span key={sp} style={{ padding: "3px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: "#f9eaf3", color: ACCENT, border: `1px solid ${ACCENT}` }}>{sp}</span>
                   ))}
                 </div>
               ))}
@@ -1301,7 +1367,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     onChange={(e) => setAireCentralEq("capacity", e.target.value)}
                     placeholder="Ej. 7.5"
                     style={{ ...STEP_INPUT, width: 100 }} />
-                  <span style={{ fontSize: 13, color: "var(--text-muted)" }}>ton</span>
+                  <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>ton</span>
                 </div>
               ))}
             </>
@@ -1331,12 +1397,12 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                       }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0, flex: 1 }}>
                         <SpIcon size={15} color={active ? ACCENT : "var(--text-muted)"} />
-                        <span style={{ fontSize: 13, fontWeight: active ? 700 : 500, color: active ? ACCENT : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                        <span style={{ fontSize: "0.8125rem", fontWeight: active ? 700 : 500, color: active ? ACCENT : "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
                           {sp.label}
                         </span>
                       </div>
                       {sp.count > 0 && (
-                        <span style={{ flexShrink: 0, padding: "1px 7px", borderRadius: 999, background: active ? `${ACCENT}18` : "var(--bg-input)", color: active ? ACCENT : "var(--text-muted)", fontSize: 11, fontWeight: 700 }}>
+                        <span style={{ flexShrink: 0, padding: "1px 7px", borderRadius: 999, background: active ? `${ACCENT}18` : "var(--bg-input)", color: active ? ACCENT : "var(--text-muted)", fontSize: "0.6875rem", fontWeight: 700 }}>
                           {sp.count}
                         </span>
                       )}
@@ -1344,7 +1410,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                   );
                 })}
                 {panelSpaces.length === 0 && (
-                  <div style={{ padding: 16, fontSize: 12, color: "var(--text-muted)" }}>Sin espacios configurados.</div>
+                  <div style={{ padding: 16, fontSize: "0.75rem", color: "var(--text-muted)" }}>Sin espacios configurados.</div>
                 )}
               </div>
 
@@ -1361,9 +1427,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "16px 20px 12px", borderBottom: "1px solid var(--border-default)", position: "sticky", top: 0, background: "var(--bg-card)", zIndex: 1 }}>
                         <activeSpace.Icon size={18} color={ACCENT} />
-                        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.headerLabel ?? activeSpace.label}</span>
+                        <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>{activeSpace.headerLabel ?? activeSpace.label}</span>
                         {activeSpace.count > 0 && (
-                          <span style={{ padding: "2px 9px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
+                          <span style={{ padding: "2px 9px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: "0.6875rem", fontWeight: 700 }}>
                             {activeKey === "aireCentral"
                               ? `${activeSpace.count} espacio${activeSpace.count !== 1 ? "s" : ""}`
                               : `${activeSpace.count} equipo${activeSpace.count !== 1 ? "s" : ""}`}
@@ -1379,7 +1445,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
                       transition={{ duration: 0.15 }}
-                      style={{ padding: 24, fontSize: 13, color: "var(--text-muted)" }}
+                      style={{ padding: 24, fontSize: "0.8125rem", color: "var(--text-muted)" }}
                     >
                       Selecciona un espacio para configurar.
                     </motion.div>
@@ -1393,9 +1459,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                   <Wrench size={15} color={ACCENT} />
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Equipos funcionales</span>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Equipos funcionales</span>
                   {funcionalesCount(eq.equiposFuncionales) > 0 && (
-                    <span style={{ padding: "1px 8px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: 11, fontWeight: 700 }}>
+                    <span style={{ padding: "1px 8px", borderRadius: 999, background: "#f9eaf3", color: ACCENT, fontSize: "0.6875rem", fontWeight: 700 }}>
                       {funcionalesCount(eq.equiposFuncionales)} equipo{funcionalesCount(eq.equiposFuncionales) !== 1 ? "s" : ""}
                     </span>
                   )}
@@ -1433,21 +1499,21 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
           <div style={{ display: "grid", gap: 16 }}>
             {/* Info general */}
             <div style={{ padding: 16, border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", display: "grid", gap: 8 }}>
-              <p style={{ margin: 0, fontWeight: 700, fontSize: 16, color: "var(--text-primary)" }}>{s1.name}</p>
+              <p style={{ margin: 0, fontWeight: 700, fontSize: "1rem", color: "var(--text-primary)" }}>{s1.name}</p>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                   {s2.bedrooms} rec. · {bathroomsComplete} baño{bathroomsComplete !== 1 ? "s" : ""}
                   {bathroomsHalf > 0 ? ` · ${bathroomsHalf} medio${bathroomsHalf !== 1 ? "s" : ""}` : ""}
                 </span>
-                {s1.sqm && <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {s1.sqm} m²</span>}
+                {s1.sqm && <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>· {s1.sqm} m²</span>}
               </div>
-              {s1.description && <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>{s1.description}</p>}
+              {s1.description && <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{s1.description}</p>}
             </div>
 
             {/* Cards de equipamiento por espacio */}
             {groupsWithEq.length > 0 && (
               <div>
-                <p style={{ margin: "0 0 10px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>
+                <p style={{ margin: "0 0 10px", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>
                   EQUIPAMIENTO POR ESPACIO ({totalItems} elemento{totalItems !== 1 ? "s" : ""})
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: `repeat(${groupsWithEq.length <= 4 ? 2 : groupsWithEq.length <= 6 ? 3 : groupsWithEq.length <= 10 ? Math.ceil(groupsWithEq.length / 2) : 5}, 1fr)`, gap: 10 }}>
@@ -1455,11 +1521,12 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                     <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", overflow: "hidden" }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", background: "var(--bg-input)" }}>
                         <g.Icon size={14} color={ACCENT} />
-                        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
+                        <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginLeft: "auto" }}>{g.items.length} equipo{g.items.length !== 1 ? "s" : ""}</span>
                       </div>
                       <div style={{ padding: "10px 12px", display: "grid", gap: 4 }}>
                         {g.items.map((item, j) => (
-                          <div key={j} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--text-secondary)" }}>
+                          <div key={j} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                             <div style={{ width: 4, height: 4, borderRadius: "50%", background: ACCENT, flexShrink: 0 }} />
                             {item}
                           </div>
@@ -1472,24 +1539,24 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
             )}
 
             {totalItems === 0 && (
-              <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Sin equipamiento configurado. La tipología se creará sin equipos plantilla.</p>
+              <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>Sin equipamiento configurado. La tipología se creará sin equipos plantilla.</p>
             )}
 
             {/* Otros espacios como badges */}
             {hasBadges && (
               <div>
-                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "var(--text-muted)" }}>OTROS ESPACIOS</p>
+                <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>OTROS ESPACIOS</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {noEqSpaces.map((lbl) => (
-                    <span key={lbl} style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>{lbl}</span>
+                    <span key={lbl} style={{ padding: "4px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>{lbl}</span>
                   ))}
                   {bathroomsComplete > 0 && (
-                    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
                       {bathroomsComplete} Baño{bathroomsComplete !== 1 ? "s" : ""} completo{bathroomsComplete !== 1 ? "s" : ""}
                     </span>
                   )}
                   {bathroomsHalf > 0 && (
-                    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: 12, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                    <span style={{ padding: "4px 10px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
                       {bathroomsHalf} Medio{bathroomsHalf !== 1 ? "s" : ""} baño{bathroomsHalf !== 1 ? "s" : ""}
                     </span>
                   )}

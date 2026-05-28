@@ -362,7 +362,7 @@ export default function UnitTypeDetailPage() {
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center",
                   borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)",
-                  color: "var(--text-primary)", padding: "10px 12px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+                  color: "var(--text-primary)", padding: "10px 12px", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                 }}
                 aria-label="Más acciones"
               >
@@ -377,7 +377,7 @@ export default function UnitTypeDetailPage() {
                   <button
                     type="button"
                     onClick={() => { openEditForm(); setIsActionsMenuOpen(false); }}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "transparent", color: "var(--text-primary)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
                   >
                     <Edit3 size={14} />
                     Editar
@@ -385,7 +385,7 @@ export default function UnitTypeDetailPage() {
                   <button
                     type="button"
                     onClick={openDeleteModal}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 8, width: "100%", border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer" }}
                   >
                     <Trash2 size={14} />
                     Eliminar
@@ -401,15 +401,15 @@ export default function UnitTypeDetailPage() {
         <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: "16px" }}>{msg}</p>
       ) : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "16px", marginBottom: "24px" }}>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Recámaras</p><strong style={{ fontSize: "28px" }}>{unitType.bedrooms}</strong></div><BedDouble size={18} /></div></div>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Baños</p><strong style={{ fontSize: "28px" }}>{unitType.bathrooms}</strong></div><Bath size={18} /></div></div>
-        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "13px", color: "var(--text-muted)", marginBottom: "8px" }}>Equipamiento base</p><strong style={{ fontSize: "28px" }}>{templateAssets.length}</strong></div><PackageSearch size={18} /></div></div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: "16px", marginBottom: "24px" }}>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>Recámaras</p><strong style={{ fontSize: "1.75rem" }}>{unitType.bedrooms}</strong></div><BedDouble size={18} /></div></div>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>Baños</p><strong style={{ fontSize: "1.75rem" }}>{unitType.bathrooms}</strong></div><Bath size={18} /></div></div>
+        <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: "18px", background: "var(--bg-card)" }}><div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}><div><p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: "8px" }}>Equipamiento base</p><strong style={{ fontSize: "1.75rem" }}>{templateAssets.length}</strong></div><PackageSearch size={18} /></div></div>
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "24px" }}>
         <SectionCard title="Información actual" subtitle="Configuración física y funcional de la tipología." icon={<Home size={18} />}>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))", gap: "12px" }}>
             <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Nombre</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.name}</p></div>
             <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Sala</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_living_room ? "Sí" : "No"}</p></div>
             <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "14px" }}><strong>Comedor</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.has_dining_room ? "Sí" : "No"}</p></div>
@@ -431,7 +431,7 @@ export default function UnitTypeDetailPage() {
                     <AssetTypeIcon assetType={asset.asset_type} size={18} />
                     <div>
                       <strong style={{ display: "block" }}>{asset.name}</strong>
-                      <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>{asset.asset_type} · Orden {asset.sort_order ?? 0}</p>
+                      <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>{asset.asset_type} · Orden {asset.sort_order ?? 0}</p>
                     </div>
                   </div>
                 </div>
@@ -443,11 +443,11 @@ export default function UnitTypeDetailPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: "0.875rem", fontWeight: 600, lineHeight: 1.5 }}>
             ¿Eliminar la tipología <strong>{unitType?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>

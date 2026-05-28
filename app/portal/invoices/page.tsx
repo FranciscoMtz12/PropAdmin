@@ -140,19 +140,19 @@ const iconBoxStyle: React.CSSProperties = {
 };
 
 const mutedTextStyle: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   lineHeight: 1.6,
   color: "var(--text-muted)",
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
 
 const valueStyle: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: "1.125rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -317,7 +317,7 @@ function DetailRow({
     >
       <div
         style={{
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: "var(--text-muted)",
           fontWeight: 600,
         }}
@@ -327,7 +327,7 @@ function DetailRow({
 
       <div
         style={{
-          fontSize: 14,
+          fontSize: "0.875rem",
           color: "var(--text-primary)",
           fontWeight: 600,
           wordBreak: "break-word",
@@ -751,7 +751,7 @@ export default function PortalInvoicesPage() {
                     padding: "0 14px",
                     background: "var(--bg-card)",
                     color: "var(--text-primary)",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     outline: "none",
                   }}
@@ -789,7 +789,7 @@ export default function PortalInvoicesPage() {
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)",
                       color: "var(--text-primary)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 700,
                       cursor: "pointer",
                     }}
@@ -811,7 +811,7 @@ export default function PortalInvoicesPage() {
                       border: "none",
                       background: "var(--text-primary)",
                       color: "var(--bg-card)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 700,
                       cursor: "pointer",
                       opacity: effectiveTenantId ? 1 : 0.6,
@@ -834,7 +834,7 @@ export default function PortalInvoicesPage() {
                       border: "none",
                       background: "var(--accent)",
                       color: "var(--bg-card)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 700,
                       cursor: "pointer",
                       opacity: effectiveTenantId ? 1 : 0.6,
@@ -856,7 +856,7 @@ export default function PortalInvoicesPage() {
                     border: "1px solid var(--border-default)",
                   }}
                 >
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     Tenant seleccionado: {selectedTenant.full_name || "Sin nombre"}
                   </div>
                   <div style={{ marginTop: 6, ...mutedTextStyle }}>
@@ -1006,7 +1006,7 @@ export default function PortalInvoicesPage() {
                         <div>
                           <div
                             style={{
-                              fontSize: 18,
+                              fontSize: "1.125rem",
                               fontWeight: 700,
                               color: "var(--text-primary)",
                             }}
@@ -1031,7 +1031,7 @@ export default function PortalInvoicesPage() {
                           background: colors.background,
                           color: colors.text,
                           fontWeight: 700,
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           alignSelf: "flex-start",
                         }}
                       >
@@ -1097,7 +1097,7 @@ export default function PortalInvoicesPage() {
                           background: "var(--metric-bg-neutral)",
                           border: "1px solid var(--border-default)",
                           color: "var(--badge-text-blue)",
-                          fontSize: 14,
+                          fontSize: "0.875rem",
                           fontWeight: 600,
                         }}
                       >
@@ -1212,7 +1212,7 @@ export default function PortalInvoicesPage() {
                     border: "none",
                     background: "var(--text-primary)",
                     color: "var(--bg-card)",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 700,
                     cursor: "pointer",
                     opacity: effectiveTenantId ? 1 : 0.6,
@@ -1235,7 +1235,7 @@ export default function PortalInvoicesPage() {
                     border: "none",
                     background: "var(--accent)",
                     color: "var(--bg-card)",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 700,
                     cursor: "pointer",
                     opacity: effectiveTenantId ? 1 : 0.6,
@@ -1258,7 +1258,7 @@ export default function PortalInvoicesPage() {
                       border: "1px solid var(--border-default)",
                       background: "var(--bg-card)",
                       color: "var(--text-primary)",
-                      fontSize: 14,
+                      fontSize: "0.875rem",
                       fontWeight: 700,
                       cursor: "pointer",
                     }}

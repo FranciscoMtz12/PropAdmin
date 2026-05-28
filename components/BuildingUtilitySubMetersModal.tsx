@@ -132,7 +132,7 @@ export default function BuildingUtilitySubMetersModal({
           borderRadius: "var(--border-radius-lg)",
           background: "rgba(245,158,11,0.1)",
           color: "var(--text-primary)",
-          fontSize: 13,
+          fontSize: "0.8125rem",
           fontWeight: 600,
           lineHeight: 1.5,
           marginBottom: 20,
@@ -161,7 +161,7 @@ export default function BuildingUtilitySubMetersModal({
               key={unit.id}
               style={{
                 borderRadius: "var(--border-radius-lg)",
-                border: checked ? "1px solid #8B2252" : "1px solid var(--border-default)",
+                border: checked ? "1px solid var(--accent)" : "1px solid var(--border-default)",
                 background: checked ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
                 padding: "12px 14px",
                 transition: "border-color 0.15s, background 0.15s",
@@ -175,7 +175,7 @@ export default function BuildingUtilitySubMetersModal({
                   gap: 10,
                   cursor: "pointer",
                   fontWeight: 600,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   color: "var(--text-primary)",
                 }}
               >
@@ -183,7 +183,7 @@ export default function BuildingUtilitySubMetersModal({
                   type="checkbox"
                   checked={checked}
                   onChange={e => updateUnit(unit.id, { checked: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#8B2252" }}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }}
                 />
                 {unit.unit_number}
               </label>
@@ -201,7 +201,7 @@ export default function BuildingUtilitySubMetersModal({
                   <div style={{ display: "grid", gap: 6 }}>
                     <label
                       style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 600,
                         color: "var(--text-secondary)",
                       }}
@@ -220,7 +220,7 @@ export default function BuildingUtilitySubMetersModal({
                   <div style={{ display: "grid", gap: 6 }}>
                     <label
                       style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         fontWeight: 600,
                         color: "var(--text-secondary)",
                       }}
@@ -244,7 +244,7 @@ export default function BuildingUtilitySubMetersModal({
         })}
 
         {sortedUnits.length === 0 && (
-          <p style={{ color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: "24px 0" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", textAlign: "center", padding: "24px 0" }}>
             No hay unidades en este edificio.
           </p>
         )}

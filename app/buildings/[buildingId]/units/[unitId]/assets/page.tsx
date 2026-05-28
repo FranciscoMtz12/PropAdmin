@@ -69,7 +69,7 @@ type AssetRow = {
 
 const labelStyle: CSSProperties = {
   display: "block",
-  fontSize: "14px",
+  fontSize: "0.875rem",
   fontWeight: 600,
   marginBottom: "8px",
   color: "var(--text-primary)",
@@ -105,7 +105,7 @@ function StatusPill({ status }: { status: string }) {
         alignItems: "center",
         borderRadius: "999px",
         padding: "6px 10px",
-        fontSize: "12px",
+        fontSize: "0.75rem",
         fontWeight: 700,
         background: colors.background,
         color: colors.color,
@@ -141,8 +141,8 @@ const ASSET_DEFAULTS: AssetFormValues = {
 };
 
 const errorTextStyle: CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -450,7 +450,7 @@ export default function UnitAssetsPage() {
                       <div>
                         <div
                           style={{
-                            fontSize: "16px",
+                            fontSize: "1rem",
                             fontWeight: 700,
                             color: "var(--text-primary)",
                           }}
@@ -465,7 +465,7 @@ export default function UnitAssetsPage() {
                             alignItems: "center",
                             gap: "8px",
                             color: "var(--text-muted)",
-                            fontSize: "13px",
+                            fontSize: "0.8125rem",
                             fontWeight: 600,
                           }}
                         >
@@ -485,7 +485,7 @@ export default function UnitAssetsPage() {
                   {asset.notes ? (
                     <div
                       style={{
-                        fontSize: "14px",
+                        fontSize: "0.875rem",
                         lineHeight: 1.6,
                         color: "var(--text-secondary)",
                         background: "var(--bg-page)",

@@ -43,8 +43,11 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { withCompanyFilter } from "@/lib/supabase/query-helpers";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useFontScale } from "@/lib/useFontScale";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS, MODULE_LABELS } from "@/lib/notifications";
 
@@ -219,7 +222,7 @@ function MXNTooltip({
         border: "1px solid var(--border-default)",
         borderRadius: "var(--border-radius-md)",
         padding: "12px 16px",
-        fontSize: 13,
+        fontSize: "0.8125rem",
         boxShadow: "var(--shadow-md, 0 4px 16px rgba(0,0,0,0.12))",
       }}
     >
@@ -298,6 +301,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { isDark } = useTheme();
+  const { fontScale, cols3, cols2 } = useFontScale();
+  const { isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   const role = user?.role;
   const isSuperOrAdmin = role === 'superadmin' || user?.is_superadmin || role === 'administracion' || role === 'directivo';
@@ -316,6 +321,7 @@ export default function DashboardPage() {
   const [loadingSetup, setLoadingSetup] = useState(true);
 
   const [loadingData, setLoadingData] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
 
   /* ── Datos crudos de Supabase ──────────────────────────────────── */
   const [units, setUnits] = useState<Unit[]>([]);
@@ -334,6 +340,21 @@ export default function DashboardPage() {
     if (!loading && !user) router.push("/");
   }, [loading, user, router]);
 
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  /* Superadmin sin impersonar → Control Center SAPROA */
+  useEffect(() => {
+    if (loading) return;
+    if (isRealSuperAdmin && !isImpersonating) {
+      router.replace('/saproa-admin/overview');
+    }
+  }, [loading, isRealSuperAdmin, isImpersonating, router]);
+
   /* Redirect por rol a dashboard específico */
   useEffect(() => {
     if (loading || !user) return;
@@ -344,26 +365,28 @@ export default function DashboardPage() {
 
   /* Carga inicial cuando el usuario está listo */
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadDashboard();
+    if (!loading && user && !user.is_superadmin) void loadDashboard();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
-    if (user?.company_id) void loadSetupProgress();
-  }, [user?.company_id]);
+    if (!loading && user) {
+      if (user.company_id) void loadSetupProgress();
+      else setLoadingSetup(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user?.id, user?.company_id]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadChecklist(user?.company_id ?? null);
+    if (!loading && user && !user.is_superadmin) void loadChecklist(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadDashboard() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     setLoadingData(true);
 
-    const cid = user.company_id;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+    const cid = user?.company_id ?? null;
 
     const today = todayDateKey();
 
@@ -388,10 +411,10 @@ export default function DashboardPage() {
       maintenanceRes,
     ] = await Promise.all([
       /* Unidades — incluye unit_type_id para card de disponibles */
-      co(supabase
+      withCompanyFilter(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)"))
-        .is("deleted_at", null),
+        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)"),
+        cid).is("deleted_at", null),
 
       /* Tipos de unidad — para mostrar tipo en card de disponibles */
       supabase
@@ -399,49 +422,50 @@ export default function DashboardPage() {
         .select("id, name"),
 
       /* Leases — activos + contratos próximos a vencer */
-      co(supabase
+      withCompanyFilter(supabase
         .from("leases")
-        .select("id, unit_id, tenant_id, status, end_date"))
-        .is("deleted_at", null),
+        .select("id, unit_id, tenant_id, status, end_date"),
+        cid).is("deleted_at", null),
 
       /* Inquilinos — solo nombre */
-      co(supabase
+      withCompanyFilter(supabase
         .from("tenants")
-        .select("id, full_name"))
-        .is("deleted_at", null),
+        .select("id, full_name"),
+        cid).is("deleted_at", null),
 
       /* Edificios — solo nombre */
-      co(supabase
+      withCompanyFilter(supabase
         .from("buildings")
-        .select("id, name"))
-        .is("deleted_at", null),
+        .select("id, name"),
+        cid).is("deleted_at", null),
 
       /* Cobros — últimos 6 meses para chart + métricas del mes */
-      co(supabase
+      withCompanyFilter(supabase
         .from("collection_records")
         .select(
           "id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status"
-        ))
-        .is("deleted_at", null)
+        ),
+        cid).is("deleted_at", null)
         .gte("due_date", sixMonthsAgoKey)
         .order("due_date", { ascending: true }),
 
-      /* Limpiezas de edificios activas — filtramos por día en memo */
-      co(supabase
+      /* Limpiezas de edificios — sin filtro company_id, RLS filtra vía building_id */
+      supabase
         .from("cleaning_building_schedules")
-        .select("id, building_id, day_of_week")),
+        .select("id, building_id, day_of_week"),
 
-      /* Limpiezas de unidades activas — filtramos por día en memo */
-      co(supabase
+      /* Limpiezas de unidades — sin filtro company_id, RLS filtra vía building_id */
+      supabase
         .from("cleaning_unit_schedules")
-        .select("id, unit_id, day_of_week, active"))
+        .select("id, unit_id, day_of_week, active")
         .is("deleted_at", null)
         .eq("active", true),
 
       /* Mantenimientos con fecha programada = hoy */
-      co(supabase
+      withCompanyFilter(supabase
         .from("maintenance_logs")
-        .select("id, unit_id, title, status")),
+        .select("id, unit_id, title, status"),
+        cid),
     ]);
 
     setUnits((unitsRes.data as Unit[]) || []);
@@ -459,8 +483,6 @@ export default function DashboardPage() {
 
   async function loadChecklist(companyId: string | null) {
     setChecklistLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -474,21 +496,21 @@ export default function DashboardPage() {
       { count: lecturasCount },
       { count: contratosCount },
     ] = await Promise.all([
-      co(supabase.from('collection_records')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('period_year', year)
         .eq('period_month', month),
-      co(supabase.from('collection_records')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('status', 'overdue')
         .is('deleted_at', null),
-      co(supabase.from('building_utility_readings')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('building_utility_readings')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('period_year', year)
         .eq('period_month', month)
         .is('deleted_at', null),
-      co(supabase.from('leases')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('leases')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('status', 'ACTIVE')
         .not('end_date', 'is', null)
         .lte('end_date', thirtyStr)
@@ -796,27 +818,33 @@ export default function DashboardPage() {
   const monthName = new Date().toLocaleDateString("es-MX", { month: "long" });
   const monthLabel = monthName.charAt(0).toUpperCase() + monthName.slice(1);
 
-  /* Altura de placeholder de loading para las donas */
-  const DONUT_LOADING_HEIGHT = 220;
+  /* Altura de la dona (loading state), escala con font-scale */
+  const donutHeight = Math.round(220 * fontScale);
+  const chartHeight = Math.round(280 * fontScale);
+  const cardGap = Math.round(20 * fontScale);
+  const DONUT_LOADING_HEIGHT = donutHeight;
 
   /* ─── Paleta de colores según modo ───────────────────────────────
      Centralizado aquí para que todos los elementos del render usen
      el mismo set de colores y no haya valores hardcodeados dispersos.
   ─────────────────────────────────────────────────────────────────── */
   const c = {
-    /* Textos */
-    textPrimary:   isDark ? "#F1F5F9" : "#101828",
-    textSecondary: isDark ? "#CBD5E1" : "#374151",
-    textMuted:     isDark ? "#94A3B8" : "#667085",
-    textSubtle:    isDark ? "#64748B" : "#94A3B8",
-    textLabel:     isDark ? "#64748B" : "#9CA3AF",   /* labels uppercase */
-    /* Divisores y bordes internos de card */
-    divider:       isDark ? "#2D3748" : "#F3F4F6",
-    /* Recharts */
+    /* Recharts — kept as raw hex because they go to chart props (stroke/fill/tick.fill) */
     chartAxis:     isDark ? "#64748B" : "#667085",
     chartGrid:     isDark ? "#2D3748" : "#F2F4F7",
-    /* Segmento neutro de las donas (vacío/sin datos) */
+    /* Segmento neutro de las donas (vacío/sin datos) — used in Recharts Cell fill */
     donutEmpty:    isDark ? "#374151" : "#e5e7eb",
+  };
+
+  /* Mapea severidad a CSS variables que respetan dark mode */
+  const getSeverityStyle = (sev: string) => {
+    switch (sev) {
+      case 'critical': return { bg: 'var(--metric-bg-red)',   border: 'var(--metric-border-red)',   text: 'var(--metric-value-red)',   dot: 'var(--metric-value-red)'   };
+      case 'warning':  return { bg: 'var(--metric-bg-amber)', border: 'var(--metric-border-amber)', text: 'var(--metric-value-amber)', dot: 'var(--metric-value-amber)' };
+      case 'brand':    return { bg: 'var(--metric-bg-blue)',  border: 'var(--accent)',              text: 'var(--accent)',             dot: 'var(--accent)'             };
+      case 'info':     return { bg: 'var(--metric-bg-blue)',  border: 'var(--accent)',              text: 'var(--accent)',             dot: 'var(--accent)'             };
+      default:         return { bg: 'var(--bg-card)',         border: 'var(--border-default)',      text: 'var(--text-primary)',       dot: 'var(--text-muted)'         };
+    }
   };
 
   /* ─── Render ─────────────────────────────────────────────────── */
@@ -830,99 +858,24 @@ export default function DashboardPage() {
         actions={<UiButton href="/buildings">Ver edificios</UiButton>}
       />
 
-      {/* ══ CARD: SETUP PENDIENTE ═══════════════════════════════════ */}
-      <AnimatePresence>
-        {!loadingSetup && setupProgress.length > 0 && (
-          <motion.div
-            key="setup-progress-card"
-            initial={{ opacity: 0, y: -12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -12, height: 0, marginBottom: 0 }}
-            transition={{ duration: 0.25 }}
-            style={{ marginBottom: 24 }}
-          >
-            <SectionCard
-              title="Configuración pendiente"
-              subtitle={`${setupProgress.length} ${setupProgress.length === 1 ? "propiedad" : "propiedades"} sin completar`}
-              icon={<ClipboardList size={18} />}
-            >
-              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                {setupProgress.map((b, bi) => {
-                  const stepsArr = [
-                    { label: "Propiedad creada", done: b.steps.created, action: null },
-                    { label: "Tipología", done: b.steps.hasUnitTypes, action: { label: "Crear tipología", href: `/buildings/${b.buildingId}?tab=typologies` } },
-                    { label: "Unidades", done: b.steps.hasUnits, action: { label: "Agregar unidades", href: `/buildings/${b.buildingId}?tab=typologies` } },
-                    { label: "Servicios", done: b.steps.hasServices, action: { label: "Configurar servicios", href: `/buildings/${b.buildingId}?tab=services` } },
-                    { label: "Inquilino activo", done: b.steps.hasTenant, action: { label: "Agregar inquilino", href: "/tenants" } },
-                  ] as const;
-                  const completedCount = stepsArr.filter(s => s.done).length;
-                  const progressPct = (completedCount / stepsArr.length) * 100;
-                  const pendingSteps = stepsArr.filter(s => !s.done && s.action);
-                  return (
-                    <div key={b.buildingId} style={{ paddingBottom: bi < setupProgress.length - 1 ? 20 : 0, borderBottom: bi < setupProgress.length - 1 ? "1px solid var(--border-default)" : "none" }}>
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <Building2 size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                          <a href={`/buildings/${b.buildingId}`} style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
-                            {b.buildingName}
-                          </a>
-                        </div>
-                        <span style={{ fontSize: 12, color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/5</span>
-                      </div>
-                      {/* Barra de progreso */}
-                      <div style={{ height: 6, background: "var(--border-default)", borderRadius: 999, overflow: "hidden", marginBottom: 12 }}>
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progressPct}%` }}
-                          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
-                          style={{ height: "100%", background: "var(--accent)", borderRadius: 999 }}
-                        />
-                      </div>
-                      {/* Chips de pasos pendientes */}
-                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                        {pendingSteps.map(step => step.action && (
-                          <a
-                            key={step.label}
-                            href={step.action.href}
-                            style={{
-                              display: "inline-flex", alignItems: "center", gap: 4,
-                              fontSize: 12, fontWeight: 600, color: "var(--accent)",
-                              border: "1px solid var(--accent)", borderRadius: "var(--border-radius-sm)",
-                              padding: "4px 10px", textDecoration: "none",
-                            }}
-                          >
-                            {step.action.label}
-                            <ChevronRight size={12} />
-                          </a>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </SectionCard>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* ══ FILA 1: TRES DONAS ════════════════════════════════════════ */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
       <div
         className="dashboard-grid-3"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 20,
-          marginBottom: 24,
+          gridTemplateColumns: `repeat(${cols3}, 1fr)`,
+          gap: cardGap,
+          marginBottom: cardGap,
         }}
       >
         {/* ── Dona 1: Ocupación ─────────────────────────────────── */}
         <AppCard className="dashboard-card-mobile" style={{ padding: 24 }}>
           <p
             style={{
-              fontSize: 11,
+              fontSize: "0.6875rem",
               fontWeight: 700,
-              color: c.textLabel,
+              color: "var(--text-muted)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: "0 0 4px",
@@ -938,8 +891,8 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
-                fontSize: 14,
+                color: "var(--text-muted)",
+                fontSize: "0.875rem",
               }}
             >
               Cargando...
@@ -953,8 +906,8 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+              <div style={{ position: "relative", width: "100%" }}>
+                <ResponsiveContainer width="100%" aspect={1}>
                   <PieChart>
                     <Pie
                       data={[
@@ -963,8 +916,8 @@ export default function DashboardPage() {
                       ]}
                       cx="50%"
                       cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
+                      innerRadius="55%"
+                      outerRadius="80%"
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -987,35 +940,35 @@ export default function DashboardPage() {
                 >
                   <strong
                     style={{
-                      fontSize: 30,
+                      fontSize: "1.875rem",
                       fontWeight: 800,
-                      color: c.textPrimary,
+                      color: "var(--text-primary)",
                       display: "block",
                       lineHeight: 1,
                     }}
                   >
                     {occupancyStats.rate}%
                   </strong>
-                  <span style={{ fontSize: 11, color: c.textMuted, fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600 }}>
                     ocupación
                   </span>
                 </div>
               </div>
               <div
                 style={{
-                  borderTop: `1px solid ${c.divider}`,
+                  borderTop: "1px solid var(--divider)",
                   paddingTop: 14,
                   marginTop: 6,
                   textAlign: "center",
                 }}
               >
-                <p style={{ margin: 0, fontSize: 13, color: c.textSecondary }}>
-                  <strong style={{ color: "#22c55e" }}>{occupancyStats.occupied}</strong>{" "}
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
+                  <strong style={{ color: "var(--metric-value-green)" }}>{occupancyStats.occupied}</strong>{" "}
                   ocupadas de{" "}
-                  <strong style={{ color: c.textPrimary }}>{occupancyStats.total}</strong> totales
+                  <strong style={{ color: "var(--text-primary)" }}>{occupancyStats.total}</strong> totales
                 </p>
                 {occupancyStats.vacant > 0 && (
-                  <p style={{ margin: "4px 0 0", fontSize: 12, color: c.textMuted }}>
+                  <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     {occupancyStats.vacant}{" "}
                     {occupancyStats.vacant === 1 ? "disponible" : "disponibles"}
                   </p>
@@ -1029,9 +982,9 @@ export default function DashboardPage() {
         <AppCard className="dashboard-card-mobile" style={{ padding: 24 }}>
           <p
             style={{
-              fontSize: 11,
+              fontSize: "0.6875rem",
               fontWeight: 700,
-              color: c.textLabel,
+              color: "var(--text-muted)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: "0 0 4px",
@@ -1047,8 +1000,8 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
-                fontSize: 14,
+                color: "var(--text-muted)",
+                fontSize: "0.875rem",
               }}
             >
               Cargando...
@@ -1056,15 +1009,15 @@ export default function DashboardPage() {
           ) : (
             <>
               {/* Dona siempre visible — gris si no hay datos */}
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+              <div style={{ position: "relative", width: "100%" }}>
+                <ResponsiveContainer width="100%" aspect={1}>
                   <PieChart>
                     <Pie
                       data={collectionDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
+                      innerRadius="55%"
+                      outerRadius="80%"
                       paddingAngle={collectionDonutIsEmpty ? 0 : 2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1090,9 +1043,9 @@ export default function DashboardPage() {
                 >
                   <strong
                     style={{
-                      fontSize: collectionDonutIsEmpty ? 18 : 16,
+                      fontSize: collectionDonutIsEmpty ? "1.125rem" : "1rem",
                       fontWeight: 800,
-                      color: collectionDonutIsEmpty ? c.textSubtle : c.textPrimary,
+                      color: collectionDonutIsEmpty ? "var(--text-muted)" : "var(--text-primary)",
                       display: "block",
                       lineHeight: 1.2,
                     }}
@@ -1101,7 +1054,7 @@ export default function DashboardPage() {
                       ? "$0.00"
                       : formatMXNCompact(collectionMonthStats.monthTotal)}
                   </strong>
-                  <span style={{ fontSize: 10, color: c.textSubtle, fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", fontWeight: 600 }}>
                     total mes
                   </span>
                 </div>
@@ -1110,7 +1063,7 @@ export default function DashboardPage() {
               {/* Pie: desglose o mensaje vacío */}
               <div
                 style={{
-                  borderTop: `1px solid ${c.divider}`,
+                  borderTop: "1px solid var(--divider)",
                   paddingTop: 14,
                   marginTop: 6,
                 }}
@@ -1119,8 +1072,8 @@ export default function DashboardPage() {
                   <p
                     style={{
                       margin: 0,
-                      fontSize: 12,
-                      color: c.textSubtle,
+                      fontSize: "0.75rem",
+                      color: "var(--text-muted)",
                       textAlign: "center",
                     }}
                   >
@@ -1148,8 +1101,8 @@ export default function DashboardPage() {
                               display: "inline-flex",
                               alignItems: "center",
                               gap: 6,
-                              fontSize: 12,
-                              color: c.textMuted,
+                              fontSize: "0.75rem",
+                              color: "var(--text-muted)",
                             }}
                           >
                             <span
@@ -1164,7 +1117,7 @@ export default function DashboardPage() {
                             />
                             {label}
                           </span>
-                          <span style={{ fontSize: 12, fontWeight: 700, color }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 700, color }}>
                             {formatMXN(value)}
                           </span>
                         </div>
@@ -1180,9 +1133,9 @@ export default function DashboardPage() {
         <AppCard className="dashboard-card-mobile" style={{ padding: 24 }}>
           <p
             style={{
-              fontSize: 11,
+              fontSize: "0.6875rem",
               fontWeight: 700,
-              color: c.textLabel,
+              color: "var(--text-muted)",
               textTransform: "uppercase",
               letterSpacing: "0.08em",
               margin: "0 0 4px",
@@ -1198,8 +1151,8 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
-                fontSize: 14,
+                color: "var(--text-muted)",
+                fontSize: "0.875rem",
               }}
             >
               Cargando...
@@ -1213,15 +1166,15 @@ export default function DashboardPage() {
             </div>
           ) : (
             <>
-              <div className="dashboard-donut-wrap" style={{ position: "relative", height: 190 }}>
-                <ResponsiveContainer width="100%" height="100%" minWidth={1}>
+              <div style={{ position: "relative", width: "100%" }}>
+                <ResponsiveContainer width="100%" aspect={1}>
                   <PieChart>
                     <Pie
                       data={buildingDonutData}
                       cx="50%"
                       cy="50%"
-                      innerRadius={58}
-                      outerRadius={84}
+                      innerRadius="55%"
+                      outerRadius="80%"
                       paddingAngle={2}
                       dataKey="value"
                       strokeWidth={0}
@@ -1245,32 +1198,32 @@ export default function DashboardPage() {
                 >
                   <strong
                     style={{
-                      fontSize: 30,
+                      fontSize: "1.875rem",
                       fontWeight: 800,
-                      color: c.textPrimary,
+                      color: "var(--text-primary)",
                       display: "block",
                       lineHeight: 1,
                     }}
                   >
                     {buildingStats.total}
                   </strong>
-                  <span style={{ fontSize: 11, color: c.textMuted, fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600 }}>
                     edificios
                   </span>
                 </div>
               </div>
               <div
                 style={{
-                  borderTop: `1px solid ${c.divider}`,
+                  borderTop: "1px solid var(--divider)",
                   paddingTop: 14,
                   marginTop: 6,
                   textAlign: "center",
                 }}
               >
-                <p style={{ margin: 0, fontSize: 13, color: c.textSecondary }}>
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                   <strong style={{ color: "#6366f1" }}>{buildingStats.withTenants}</strong>{" "}
                   con inquilinos ·{" "}
-                  <strong style={{ color: c.textSecondary }}>{buildingStats.empty}</strong>{" "}
+                  <strong style={{ color: "var(--text-secondary)" }}>{buildingStats.empty}</strong>{" "}
                   {buildingStats.empty === 1 ? "vacío" : "vacíos"}
                 </p>
               </div>
@@ -1296,8 +1249,8 @@ export default function DashboardPage() {
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                color: c.textMuted,
-                fontSize: 14,
+                color: "var(--text-muted)",
+                fontSize: "0.875rem",
               }}
             >
               Cargando datos...
@@ -1310,26 +1263,26 @@ export default function DashboardPage() {
           ) : (
             <div className="dashboard-chart-wrap">
               <div className="dashboard-chart-legend">
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
-                  <span style={{ color: "#22c55e" }}>●</span> Cobrado
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.8125rem" }}>
+                  <span style={{ color: "var(--metric-value-green)" }}>●</span> Cobrado
                 </span>
-                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 13 }}>
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.8125rem" }}>
                   <span style={{ color: "#f97316" }}>●</span> Pendiente
                 </span>
               </div>
               <div className="dashboard-bar-container">
-              <ResponsiveContainer width="100%" height={280} minWidth={1}>
+              <ResponsiveContainer width="100%" height={chartHeight} minWidth={1}>
                 <BarChart data={barChartData} barGap={4} barCategoryGap="28%" margin={{ top: 5, right: 10, bottom: 30, left: 0 }}>
                   <CartesianGrid vertical={false} stroke={c.chartGrid} />
                   <XAxis
                     dataKey="mes"
-                    tick={{ fontSize: 12, fill: c.chartAxis }}
+                    tick={{ fontSize: "0.75rem", fill: c.chartAxis }}
                     axisLine={false}
                     tickLine={false}
                   />
                   <YAxis
                     tickFormatter={yAxisFormatter}
-                    tick={{ fontSize: 12, fill: c.chartAxis }}
+                    tick={{ fontSize: "0.75rem", fill: c.chartAxis }}
                     axisLine={false}
                     tickLine={false}
                     width={56}
@@ -1352,13 +1305,14 @@ export default function DashboardPage() {
         className="dashboard-grid-2"
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(2, 1fr)",
-          gap: 20,
-          marginBottom: 24,
+          gridTemplateColumns: `repeat(${cols2}, 1fr)`,
+          gap: cardGap,
+          marginBottom: cardGap,
+          alignItems: "stretch",
         }}
       >
         {/* ── Card A: Agenda de hoy ─────────────────────────────── */}
-        <div style={{ overflow: "hidden", minWidth: 0 }}>
+        <div style={{ overflow: "hidden", minWidth: 0, height: "100%" }}>
         <SectionCard
           title="Agenda de hoy"
           subtitle={new Date().toLocaleDateString("es-MX", {
@@ -1369,7 +1323,7 @@ export default function DashboardPage() {
           icon={<Calendar size={18} />}
         >
           {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : !agendaHoy.hasActivity ? (
             <AppEmptyState
               title="Día sin actividades programadas ✓"
@@ -1406,11 +1360,11 @@ export default function DashboardPage() {
                     <Sparkles size={18} />
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "var(--metric-value-green)" }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "0.875rem", color: "var(--metric-value-green)" }}>
                       {agendaHoy.totalCleanings}{" "}
                       {agendaHoy.totalCleanings === 1 ? "limpieza" : "limpiezas"}
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                       {agendaHoy.buildingCleanings > 0 &&
                         `${agendaHoy.buildingCleanings} de edificio`}
                       {agendaHoy.buildingCleanings > 0 && agendaHoy.unitCleanings > 0 && " · "}
@@ -1450,11 +1404,11 @@ export default function DashboardPage() {
                     <Wrench size={18} />
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontWeight: 700, fontSize: 14, color: "var(--text-primary)" }}>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: "0.875rem", color: "var(--text-primary)" }}>
                       {agendaHoy.maintenances}{" "}
                       {agendaHoy.maintenances === 1 ? "mantenimiento" : "mantenimientos"}
                     </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                       Programados para hoy
                     </p>
                   </div>
@@ -1467,14 +1421,14 @@ export default function DashboardPage() {
         </div>
 
         {/* ── Card B: Unidades disponibles ──────────────────────── */}
-        <div style={{ overflow: "hidden", minWidth: 0 }}>
+        <div style={{ overflow: "hidden", minWidth: 0, height: "100%" }}>
         <SectionCard
           title="Unidades disponibles"
           subtitle="Sin lease activo · máximo 6"
           icon={<DoorOpen size={18} />}
         >
           {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : availableUnitRows.length === 0 ? (
             <AppEmptyState
               title="Sin unidades disponibles"
@@ -1493,14 +1447,14 @@ export default function DashboardPage() {
                       <span
                         style={{
                           fontWeight: 600,
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           display: "block",
-                          color: c.textPrimary,
+                          color: "var(--text-primary)",
                         }}
                       >
                         {row.unitLabel}
                       </span>
-                      <span style={{ fontSize: 11, color: c.textMuted }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {row.buildingName}
                       </span>
                     </div>
@@ -1510,7 +1464,7 @@ export default function DashboardPage() {
                   key: "type",
                   header: "Recámaras",
                   render: (row) => (
-                    <span style={{ fontSize: 13, color: c.textSecondary }}>
+                    <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                       {row.bedroomsLabel}
                     </span>
                   ),
@@ -1533,12 +1487,11 @@ export default function DashboardPage() {
       */}
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.24 }}>
       <div
-        className="dashboard-grid-3"
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",
+          gridTemplateColumns: isMobile ? "1fr" : `repeat(${cols2}, minmax(0, 1fr))`,
           gap: 24,
-          alignItems: "start",
+          alignItems: "stretch",
         }}
       >
         {/* ── Tabla 1: Cobros vencidos urgentes ─────────────────── */}
@@ -1548,7 +1501,7 @@ export default function DashboardPage() {
           icon={<AlertTriangle size={18} />}
         >
           {loadingData ? (
-            <p style={{ color: c.textMuted, fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : overdueRows.length === 0 ? (
             <AppEmptyState
               title="Sin cobros vencidos ✓"
@@ -1568,9 +1521,9 @@ export default function DashboardPage() {
                       <span
                         style={{
                           fontWeight: 600,
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           display: "block",
-                          color: c.textPrimary,
+                          color: "var(--text-primary)",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
                           whiteSpace: "nowrap",
@@ -1580,8 +1533,8 @@ export default function DashboardPage() {
                       </span>
                       <span
                         style={{
-                          fontSize: 11,
-                          color: c.textMuted,
+                          fontSize: "0.6875rem",
+                          color: "var(--text-muted)",
                           display: "block",
                           overflow: "hidden",
                           textOverflow: "ellipsis",
@@ -1602,7 +1555,7 @@ export default function DashboardPage() {
                       <span
                         style={{
                           fontWeight: 700,
-                          fontSize: 13,
+                          fontSize: "0.8125rem",
                           color: "var(--badge-text-red)",
                           display: "block",
                         }}
@@ -1634,7 +1587,7 @@ export default function DashboardPage() {
             icon={<CalendarClock size={18} />}
           >
             {loadingData ? (
-              <p style={{ color: c.textMuted, fontSize: 14 }}>Cargando...</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
             ) : expiringLeaseRows.length === 0 ? (
               <AppEmptyState
                 title="Sin contratos por vencer"
@@ -1655,9 +1608,9 @@ export default function DashboardPage() {
                         <span
                           style={{
                             fontWeight: 600,
-                            fontSize: 13,
+                            fontSize: "0.8125rem",
                             display: "block",
-                            color: c.textPrimary,
+                            color: "var(--text-primary)",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
                             whiteSpace: "nowrap",
@@ -1669,8 +1622,8 @@ export default function DashboardPage() {
                         </span>
                         <span
                           style={{
-                            fontSize: 11,
-                            color: c.textMuted,
+                            fontSize: "0.6875rem",
+                            color: "var(--text-muted)",
                             display: "block",
                             overflow: "hidden",
                             textOverflow: "ellipsis",
@@ -1695,8 +1648,8 @@ export default function DashboardPage() {
                         <div style={{ textAlign: "right" }}>
                           <span
                             style={{
-                              fontSize: 11,
-                              color: c.textMuted,
+                              fontSize: "0.6875rem",
+                              color: "var(--text-muted)",
                               display: "block",
                               whiteSpace: "nowrap",
                             }}
@@ -1729,7 +1682,7 @@ export default function DashboardPage() {
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.32 }}>
       <div
         className="dashboard-grid-2"
-        style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 20, marginTop: 24 }}
+        style={{ display: "grid", gridTemplateColumns: `repeat(${cols2}, 1fr)`, gap: cardGap, marginTop: cardGap, alignItems: "stretch" }}
       >
         {/* ── Card: Notificaciones activas ──────────────────────── */}
         <SectionCard
@@ -1738,19 +1691,19 @@ export default function DashboardPage() {
           icon={<Bell size={18} />}
         >
           {notifLoading ? (
-            <p style={{ color: c.textMuted, fontSize: 14 }}>Calculando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Calculando...</p>
           ) : notifications.length === 0 ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
-              <CheckCircle2 size={36} color="#22C55E" />
-              <p style={{ margin: 0, fontWeight: 700, color: "#22C55E", fontSize: 15 }}>Todo al día</p>
-              <p style={{ margin: 0, fontSize: 12, color: c.textMuted, textAlign: "center" }}>
+              <CheckCircle2 size={36} color="var(--metric-value-green)" />
+              <p style={{ margin: 0, fontWeight: 700, color: "var(--metric-value-green)", fontSize: "0.9375rem" }}>Todo al día</p>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>
                 No hay alertas operativas pendientes.
               </p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {notifications.map(notif => {
-                const col = SEVERITY_COLORS[notif.severity];
+                const col = getSeverityStyle(notif.severity);
                 return (
                   <div
                     key={notif.id}
@@ -1775,12 +1728,12 @@ export default function DashboardPage() {
                             flexShrink: 0,
                           }}
                         />
-                        <span style={{ fontSize: 11, fontWeight: 700, color: col.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                        <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: col.text, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                           {MODULE_LABELS[notif.module]}
                         </span>
                       </div>
-                      <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: col.text }}>{notif.title}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 12, color: col.text, opacity: 0.8 }}>{notif.description}</p>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: "0.8125rem", color: col.text }}>{notif.title}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: col.text, opacity: 0.8 }}>{notif.description}</p>
                     </div>
                     {notif.action_route && (
                       <a
@@ -1788,11 +1741,15 @@ export default function DashboardPage() {
                         style={{
                           alignSelf: "center",
                           flexShrink: 0,
-                          fontSize: 12,
+                          fontSize: "0.75rem",
                           fontWeight: 700,
                           color: col.text,
                           textDecoration: "underline",
                           whiteSpace: "nowrap",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          minHeight: 44,
+                          padding: "0 4px",
                         }}
                       >
                         Ver →
@@ -1824,12 +1781,12 @@ export default function DashboardPage() {
               icon={<ClipboardList size={18} />}
             >
               {checklistLoading ? (
-                <p style={{ color: c.textMuted, fontSize: 14 }}>Calculando...</p>
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Calculando...</p>
               ) : allDone ? (
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "16px 0" }}>
-                  <CheckCircle2 size={36} color="#22C55E" />
-                  <p style={{ margin: 0, fontWeight: 700, color: "#22C55E", fontSize: 15 }}>Mes al día</p>
-                  <p style={{ margin: 0, fontSize: 12, color: c.textMuted, textAlign: "center" }}>
+                  <CheckCircle2 size={36} color="var(--metric-value-green)" />
+                  <p style={{ margin: 0, fontWeight: 700, color: "var(--metric-value-green)", fontSize: "0.9375rem" }}>Mes al día</p>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)", textAlign: "center" }}>
                     Todas las tareas del mes están completadas.
                   </p>
                 </div>
@@ -1858,7 +1815,7 @@ export default function DashboardPage() {
                         <span
                           style={{
                             flex: 1,
-                            fontSize: 13,
+                            fontSize: "0.8125rem",
                             fontWeight: done ? 600 : 500,
                             color: done ? "var(--badge-text-green)" : "var(--text-primary)",
                             textDecoration: done ? "line-through" : "none",
@@ -1871,11 +1828,15 @@ export default function DashboardPage() {
                           <a
                             href={task.route}
                             style={{
-                              fontSize: 12,
+                              fontSize: "0.75rem",
                               fontWeight: 700,
                               color: "var(--accent)",
                               textDecoration: "none",
                               flexShrink: 0,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              minHeight: 44,
+                              padding: "0 4px",
                             }}
                           >
                             Ir →
@@ -1891,6 +1852,79 @@ export default function DashboardPage() {
         })()}
       </div>
       </motion.div>
+
+      {/* ══ CARD: SETUP PENDIENTE ═══════════════════════════════════ */}
+      <AnimatePresence>
+        {!loadingSetup && setupProgress.length > 0 && (
+          <motion.div
+            key="setup-progress-card"
+            initial={{ opacity: 0, y: -12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12, height: 0, marginBottom: 0 }}
+            transition={{ duration: 0.25 }}
+            style={{ marginTop: 24 }}
+          >
+            <SectionCard
+              title="Configuración pendiente"
+              subtitle={`${setupProgress.length} ${setupProgress.length === 1 ? "propiedad" : "propiedades"} sin completar`}
+              icon={<ClipboardList size={18} />}
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {setupProgress.map((b, bi) => {
+                  const stepsArr = [
+                    { label: "Propiedad creada", done: b.steps.created, action: null },
+                    { label: "Tipología", done: b.steps.hasUnitTypes, action: { label: "Crear tipología", href: `/buildings/${b.buildingId}?tab=typologies` } },
+                    { label: "Unidades", done: b.steps.hasUnits, action: { label: "Agregar unidades", href: `/buildings/${b.buildingId}?tab=typologies` } },
+                    { label: "Servicios", done: b.steps.hasServices, action: { label: "Configurar servicios", href: `/buildings/${b.buildingId}?tab=services` } },
+                    { label: "Inquilino activo", done: b.steps.hasTenant, action: { label: "Agregar inquilino", href: "/tenants" } },
+                  ] as const;
+                  const completedCount = stepsArr.filter(s => s.done).length;
+                  const progressPct = (completedCount / stepsArr.length) * 100;
+                  const pendingSteps = stepsArr.filter(s => !s.done && s.action);
+                  return (
+                    <div key={b.buildingId} style={{ paddingBottom: bi < setupProgress.length - 1 ? 20 : 0, borderBottom: bi < setupProgress.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          <Building2 size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                          <a href={`/buildings/${b.buildingId}`} style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
+                            {b.buildingName}
+                          </a>
+                        </div>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/5</span>
+                      </div>
+                      <div style={{ height: 6, background: "var(--border-default)", borderRadius: 999, overflow: "hidden", marginBottom: 12 }}>
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progressPct}%` }}
+                          transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+                          style={{ height: "100%", background: "var(--accent)", borderRadius: 999 }}
+                        />
+                      </div>
+                      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                        {pendingSteps.map(step => step.action && (
+                          <a
+                            key={step.label}
+                            href={step.action.href}
+                            style={{
+                              display: "inline-flex", alignItems: "center", gap: 4,
+                              fontSize: "0.75rem", fontWeight: 600, color: "var(--accent)",
+                              border: "1px solid var(--accent)", borderRadius: "var(--border-radius-sm)",
+                              padding: "4px 10px", textDecoration: "none",
+                            }}
+                          >
+                            {step.action.label}
+                            <ChevronRight size={12} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </SectionCard>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </PageContainer>
   );

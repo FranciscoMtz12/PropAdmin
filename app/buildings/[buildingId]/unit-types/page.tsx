@@ -77,7 +77,7 @@ type UnitTypeAssetCountRow = {
 const dropdownTriggerStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", justifyContent: "center",
   borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-card)",
-  color: "var(--text-primary)", padding: "8px 10px", fontSize: 13, fontWeight: 700, cursor: "pointer",
+  color: "var(--text-primary)", padding: "8px 10px", fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
 };
 
 const dropdownMenuStyle: React.CSSProperties = {
@@ -89,18 +89,18 @@ const dropdownMenuStyle: React.CSSProperties = {
 const dropdownItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
   border: "none", background: "transparent", color: "var(--text-primary)",
-  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
 };
 
 const dropdownDeleteItemStyle: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 8, width: "100%",
   border: "none", background: "var(--badge-bg-red)", color: "var(--badge-text-red)",
-  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: 13, fontWeight: 600, cursor: "pointer",
+  borderRadius: "var(--border-radius-md)", padding: "9px 10px", fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
 };
 
 const errorTextStyle: React.CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -480,7 +480,7 @@ export default function BuildingUnitTypesPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "var(--text-primary)" }}>
         Cargando usuario...
       </div>
     );
@@ -490,7 +490,7 @@ export default function BuildingUnitTypesPage() {
 
   if (loadingData) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "var(--text-primary)" }}>
         Cargando tipologías...
       </div>
     );
@@ -498,9 +498,9 @@ export default function BuildingUnitTypesPage() {
 
   if (!building) {
     return (
-      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "black" }}>
+      <div style={{ minHeight: "100vh", padding: "40px", background: "var(--bg-card)", color: "var(--text-primary)" }}>
         <p>{msg || "No se encontró el edificio."}</p>
-        <a href="/buildings" style={{ display: "inline-block", marginTop: "16px", color: "black" }}>
+        <a href="/buildings" style={{ display: "inline-block", marginTop: "16px", color: "var(--text-primary)" }}>
           Volver a edificios
         </a>
       </div>
@@ -524,7 +524,7 @@ export default function BuildingUnitTypesPage() {
         }
       />
 
-      {msg ? <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: "16px" }}>{msg}</p> : null}
+      {msg ? <p style={{ color: msg.includes("correctamente") ? "var(--metric-value-green)" : "var(--metric-value-red)", marginBottom: "16px" }}>{msg}</p> : null}
 
       <SectionCard title="Tipologías del edificio" subtitle="Cada tipología puede tener sus datos base y su equipamiento plantilla." icon={<LayoutPanelTop size={18} />}>
         {unitTypes.length === 0 ? (
@@ -539,21 +539,21 @@ export default function BuildingUnitTypesPage() {
                   </div>
                   <div>
                     <p style={{ fontWeight: "bold", marginBottom: "4px" }}>{unitType.name}</p>
-                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>Plantilla base del edificio</p>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Plantilla base del edificio</p>
                   </div>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: "10px", marginBottom: "14px" }}>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><BedDouble size={16} /><span>Recámaras</span></div><strong>{unitType.bedrooms}</strong></div>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><Bath size={16} /><span>Baños</span></div><strong>{unitType.bathrooms}</strong></div>
                   <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: "12px" }}><div style={{ display: "flex", gap: "8px", alignItems: "center" }}><PackageOpen size={16} /><span>Equipamiento base</span></div><strong>{unitType.asset_template_count || 0}</strong></div>
                 </div>
 
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><Sofa size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Sala: {unitType.has_living_room ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}><UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Comedor: {unitType.has_dining_room ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Patio: {unitType.has_patio ? "Sí" : "No"}</span>
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "12px" }}>Estufa: {unitType.stove_type}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}><Sofa size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Sala: {unitType.has_living_room ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}><UtensilsCrossed size={12} style={{ marginRight: 6, verticalAlign: 'middle' }} /> Comedor: {unitType.has_dining_room ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}>Patio: {unitType.has_patio ? "Sí" : "No"}</span>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem" }}>Estufa: {unitType.stove_type}</span>
                 </div>
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
@@ -605,11 +605,11 @@ export default function BuildingUnitTypesPage() {
 
       <Modal open={isDeleteModalOpen} onClose={closeDeleteModal} title="Eliminar tipología" maxWidth="480px">
         <div style={{ display: "grid", gap: 16 }}>
-          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: 14, fontWeight: 600, lineHeight: 1.5 }}>
+          <div style={{ padding: "14px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", color: "var(--badge-text-amber)", fontSize: "0.875rem", fontWeight: 600, lineHeight: 1.5 }}>
             ¿Eliminar la tipología <strong>{unitTypeToDelete?.name}</strong>? Esta acción la ocultará del sistema pero conservará toda su información.
           </div>
           {deleteError ? (
-            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
+            <div style={{ padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--badge-bg-red)", border: "1px solid var(--metric-border-red)", color: "var(--badge-text-red)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.5 }}>{deleteError}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="button" variant="secondary" onClick={closeDeleteModal} disabled={deleting}>Cancelar</UiButton>

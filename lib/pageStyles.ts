@@ -20,7 +20,7 @@ export const INPUT_STYLE: CSSProperties = {
   background: "var(--bg-input)",
   color: "var(--text-primary)",
   outline: "none",
-  fontSize: 14,
+  fontSize: "0.875rem",
 };
 
 export const TEXTAREA_STYLE: CSSProperties = {
@@ -41,7 +41,7 @@ export const dropdownTriggerStyle: CSSProperties = {
   background: "var(--bg-card)",
   color: "var(--text-primary)",
   padding: "10px 12px",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -72,7 +72,7 @@ export const dropdownActionButtonStyle: CSSProperties = {
   color: "var(--text-primary)",
   borderRadius: "var(--border-radius-sm)",
   padding: "9px 10px",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -87,7 +87,7 @@ export const dropdownDeleteItemStyle: CSSProperties = {
   color: "#dc2626",
   borderRadius: "var(--border-radius-sm)",
   padding: "9px 10px",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   cursor: "pointer",
 };
@@ -100,7 +100,7 @@ export const warnBannerStyle: CSSProperties = {
   background: "var(--badge-bg-amber)",
   border: "1px solid var(--metric-border-amber)",
   color: "var(--badge-text-amber)",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   lineHeight: 1.5,
 };
@@ -111,7 +111,7 @@ export const errorBannerStyle: CSSProperties = {
   background: "var(--badge-bg-red)",
   border: "1px solid var(--metric-border-red)",
   color: "var(--badge-text-red)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   lineHeight: 1.5,
 };
@@ -122,7 +122,7 @@ export const successBannerStyle: CSSProperties = {
   background: "var(--badge-bg-green)",
   border: "1px solid var(--metric-border-green)",
   color: "var(--badge-text-green)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   lineHeight: 1.5,
 };
@@ -141,7 +141,7 @@ export const dangerButtonStyle: CSSProperties = {
   color: "white",
   fontWeight: 700,
   cursor: "pointer",
-  fontSize: 13,
+  fontSize: "0.8125rem",
 };
 
 /* ─── Link de acción (texto-link dentro de cards) ─────────────────── */
@@ -152,7 +152,7 @@ export const cardActionLinkStyle: CSSProperties = {
   gap: 8,
   color: "var(--accent)",
   textDecoration: "none",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 700,
 };
 
@@ -168,7 +168,7 @@ export const cardNavButtonStyle: CSSProperties = {
   background: "var(--bg-card)",
   color: "var(--text-primary)",
   padding: "9px 12px",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   textDecoration: "none",
   cursor: "pointer",

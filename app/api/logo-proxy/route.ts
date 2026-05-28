@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
+
+function extractBucketAndPath(url: string): { bucket: string; path: string } | null {
+  // Handles: /storage/v1/object/public/<bucket>/<path> and signed variants
+  const match = url.match(/\/storage\/v1\/object\/(?:public|sign)\/([^/?]+)\/(.+?)(?:\?.*)?$/);
+  if (!match) return null;
+  return { bucket: match[1], path: match[2] };
+}
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");
@@ -9,14 +17,22 @@ export async function GET(req: NextRequest) {
     return new NextResponse("Forbidden", { status: 403 });
   }
 
+  const info = extractBucketAndPath(url);
+  if (!info) return new NextResponse("Invalid storage URL", { status: 400 });
+
   try {
-    const upstream = await fetch(url);
-    if (!upstream.ok) return new NextResponse("Upstream error", { status: upstream.status });
-    const buffer = await upstream.arrayBuffer();
+    // Use supabaseAdmin (service role) so this works for both public and private buckets
+    const { data, error } = await supabaseAdmin.storage
+      .from(info.bucket)
+      .download(info.path);
+
+    if (error || !data) return new NextResponse("Not found", { status: 404 });
+
+    const buffer = await data.arrayBuffer();
     return new NextResponse(buffer, {
       headers: {
-        "Content-Type": upstream.headers.get("content-type") || "image/png",
-        "Cache-Control": "public, max-age=3600",
+        "Content-Type": data.type || "image/png",
+        "Cache-Control": "private, max-age=3600",
       },
     });
   } catch {

@@ -19,6 +19,7 @@ import Webcam from "react-webcam";
 
 import { sortByNatural } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
+import { getSignedUrl, getSignedUrls } from "@/lib/storage";
 import { useCurrentUser } from "@/contexts/UserContext";
 import Modal from "@/components/Modal";
 
@@ -62,7 +63,8 @@ type MaterialGroup = {
 type CreatePhoto = {
   id: string;
   localUrl: string;
-  publicUrl: string | null;
+  previewUrl: string | null;   // signed URL for preview (temporary)
+  uploadedPath: string | null; // storage path saved to DB
   uploading: boolean;
 };
 
@@ -129,11 +131,12 @@ export default function CampoTicketsPage() {
   const { user, loading } = useCurrentUser();
 
   /* List */
-  const [tickets,     setTickets]     = useState<Ticket[]>([]);
-  const [buildings,   setBuildings]   = useState<Building[]>([]);
-  const [filter,      setFilter]      = useState<StatusFilter>("all");
-  const [loadingData, setLoadingData] = useState(true);
-  const [expandedId,  setExpandedId]  = useState<string | null>(null);
+  const [tickets,         setTickets]         = useState<Ticket[]>([]);
+  const [buildings,       setBuildings]       = useState<Building[]>([]);
+  const [filter,          setFilter]          = useState<StatusFilter>("all");
+  const [loadingData,     setLoadingData]     = useState(true);
+  const [expandedId,      setExpandedId]      = useState<string | null>(null);
+  const [signedPhotoUrls, setSignedPhotoUrls] = useState<Record<string, string>>({});
 
   /* Detail per ticket — materiales agrupados por proveedor */
   const [ticketMaterialGroups, setTicketMaterialGroups] = useState<Record<string, MaterialGroup[]>>({});
@@ -356,11 +359,11 @@ export default function CampoTicketsPage() {
     for (const file of files) {
       const id       = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const localUrl = URL.createObjectURL(file);
-      setCPhotos(prev => [...prev, { id, localUrl, publicUrl: null, uploading: true }]);
+      setCPhotos(prev => [...prev, { id, localUrl, previewUrl: null, uploadedPath: null, uploading: true }]);
 
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path      = `temp/${user.id}-${id}-${cleanName}`;
-      const { data, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
       if (uploadErr) {
@@ -369,10 +372,10 @@ export default function CampoTicketsPage() {
         setCPhotos(prev => prev.filter(p => p.id !== id));
         continue;
       }
-      const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
+      const previewUrl = await getSignedUrl("maintenance-photos", path);
       setCPhotos(prev => prev.map(p =>
         p.id === id
-          ? { ...p, publicUrl: urlData?.publicUrl || null, uploading: false }
+          ? { ...p, previewUrl, uploadedPath: path, uploading: false }
           : p
       ));
     }
@@ -397,7 +400,7 @@ export default function CampoTicketsPage() {
     for (const file of files) {
       const cleanName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
       const path      = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}-${cleanName}`;
-      const { data, error: uploadErr } = await supabase.storage
+      const { error: uploadErr } = await supabase.storage
         .from("maintenance-photos")
         .upload(path, file);
       if (uploadErr) {
@@ -405,13 +408,15 @@ export default function CampoTicketsPage() {
         toast.error("Error al subir: " + uploadErr.message);
         continue;
       }
-      const { data: urlData } = supabase.storage.from("maintenance-photos").getPublicUrl(path);
-      if (urlData?.publicUrl) newUrls.push(urlData.publicUrl);
+      newUrls.push(path); // store path, not public URL
     }
     if (newUrls.length === 0) return;
     const updated = [...(ticket?.photos || []), ...newUrls];
     await supabase.from("maintenance_logs").update({ photos: updated }).eq("id", ticketId);
     setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, photos: updated } : t));
+    // Preload signed URLs for the newly added photos
+    const signed = await getSignedUrls("maintenance-photos", newUrls);
+    setSignedPhotoUrls(prev => ({ ...prev, ...signed }));
   }
 
   /* ── Webcam: capturar foto y reutilizar los handlers de upload existentes ── */
@@ -457,8 +462,8 @@ export default function CampoTicketsPage() {
     setSaving(true);
 
     const photoUrls: string[] = cPhotos
-      .filter(p => p.publicUrl)
-      .map(p => p.publicUrl as string);
+      .filter(p => p.uploadedPath)
+      .map(p => p.uploadedPath as string);
 
     const isFixedArea = FIXED_AREA_VALUES.has(form.area);
     const unitId      = !isFixedArea && form.area ? form.area : null;
@@ -489,6 +494,13 @@ export default function CampoTicketsPage() {
   async function handleToggleExpand(ticketId: string) {
     if (expandedId === ticketId) { setExpandedId(null); return; }
     setExpandedId(ticketId);
+    // Load signed URLs for this ticket's photos
+    const ticket = tickets.find(t => t.id === ticketId);
+    const photos = ticket?.photos?.filter(Boolean) ?? [];
+    if (photos.length > 0) {
+      const signed = await getSignedUrls("maintenance-photos", photos);
+      setSignedPhotoUrls(prev => ({ ...prev, ...signed }));
+    }
     if (!ticketMaterialGroups[ticketId]) {
       setTicketMatsLoading(prev => ({ ...prev, [ticketId]: true }));
       const { data } = await supabase
@@ -792,13 +804,13 @@ export default function CampoTicketsPage() {
   const inputStyle: CSSProperties = {
     width: "100%", padding: "11px 12px", borderRadius: "var(--border-radius-md)",
     border: "1px solid var(--border-default)", background: "var(--bg-input)",
-    color: "var(--text-primary)", fontSize: 15, boxSizing: "border-box",
+    color: "var(--text-primary)", fontSize: "0.9375rem", boxSizing: "border-box",
   };
   const labelStyle: CSSProperties = {
-    fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6,
+    fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6,
   };
   const sectionLabel: CSSProperties = {
-    margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)",
+    margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)",
     textTransform: "uppercase" as const, letterSpacing: "0.06em",
   };
 
@@ -824,7 +836,7 @@ export default function CampoTicketsPage() {
 
       <div style={{ padding: "16px 16px 80px", maxWidth: 560, margin: "0 auto", width: "100%" }}>
 
-        <h2 style={{ margin: "0 0 16px", fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
+        <h2 style={{ margin: "0 0 16px", fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)" }}>
           Tickets
         </h2>
 
@@ -835,7 +847,7 @@ export default function CampoTicketsPage() {
               key={tab.key} type="button"
               onClick={() => setFilter(tab.key)}
               style={{
-                flexShrink: 0, padding: "7px 14px", borderRadius: "var(--border-radius-xl)", fontSize: 13,
+                flexShrink: 0, padding: "7px 14px", borderRadius: "var(--border-radius-xl)", fontSize: "0.8125rem",
                 fontWeight: filter === tab.key ? 700 : 500, border: "none", cursor: "pointer",
                 background: filter === tab.key ? "var(--accent)" : "var(--bg-card)",
                 color: filter === tab.key ? "#fff" : "var(--text-secondary)",
@@ -849,9 +861,9 @@ export default function CampoTicketsPage() {
 
         {/* List */}
         {loadingData ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
         ) : filtered.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Sin tickets.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin tickets.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {filtered.map(t => {
@@ -873,11 +885,11 @@ export default function CampoTicketsPage() {
                     style={{ width: "100%", padding: "14px 16px", background: "none", border: "none", cursor: "pointer", textAlign: "left", display: "flex", flexDirection: "column", gap: 6 }}
                   >
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", flex: 1, textAlign: "left" }}>
+                      <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", flex: 1, textAlign: "left" }}>
                         {t.title}
                       </span>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-xl)", fontSize: 11, fontWeight: 700, background: badge.bg, color: badge.text, whiteSpace: "nowrap" }}>
+                        <span style={{ padding: "3px 8px", borderRadius: "var(--border-radius-xl)", fontSize: "0.6875rem", fontWeight: 700, background: badge.bg, color: badge.text, whiteSpace: "nowrap" }}>
                           {STATUS_LABELS[t.status] || t.status}
                         </span>
                         {isExpanded ? <ChevronUp size={16} color="var(--text-muted)" /> : <ChevronDown size={16} color="var(--text-muted)" />}
@@ -885,18 +897,18 @@ export default function CampoTicketsPage() {
                     </div>
                     <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                       {t.ticket_number && (
-                        <span style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "monospace" }}>#{t.ticket_number}</span>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontFamily: "monospace" }}>#{t.ticket_number}</span>
                       )}
                       {bName && (
-                        <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>
                           {bName}{uCode ? ` · ${uCode}` : ""}
                         </span>
                       )}
-                      <span style={{ fontSize: 11, fontWeight: 700, color: PRIORITY_COLORS[t.priority] || "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: PRIORITY_COLORS[t.priority] || "var(--text-muted)" }}>
                         {PRIORITY_LABELS[t.priority] || t.priority}
                       </span>
                       {photos.length > 0 && (
-                        <span style={{ fontSize: 11, color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "inline-flex", alignItems: "center", gap: 4 }}>
                           <Camera size={20} /> {photos.length}
                         </span>
                       )}
@@ -918,17 +930,17 @@ export default function CampoTicketsPage() {
                       {t.description && (
                         <div>
                           <p style={sectionLabel}>Descripción</p>
-                          <p style={{ margin: 0, fontSize: 14, color: "var(--text-primary)", lineHeight: 1.5 }}>{t.description}</p>
+                          <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-primary)", lineHeight: 1.5 }}>{t.description}</p>
                         </div>
                       )}
 
                       {/* Meta chips */}
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                        <span style={{ padding: "5px 10px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", fontSize: 12, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <span style={{ padding: "5px 10px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 6 }}>
                           <Calendar size={20} /> {new Date(t.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
                         </span>
                         {bName && (
-                          <span style={{ padding: "5px 10px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", fontSize: 12, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                          <span style={{ padding: "5px 10px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 6 }}>
                             <Building2 size={20} /> {bName}{uCode ? ` · ${uCode}` : ""}
                           </span>
                         )}
@@ -939,19 +951,22 @@ export default function CampoTicketsPage() {
                         <p style={sectionLabel}>Fotos {photos.length > 0 ? `(${photos.length})` : ""}</p>
                         {photos.length > 0 && (
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 6, marginBottom: 10 }}>
-                            {photos.map((url, i) => (
+                            {photos.map((urlOrPath, i) => {
+                              const src = signedPhotoUrls[urlOrPath] || urlOrPath;
+                              return (
                               <img
-                                key={i} src={url} alt={`Foto ${i + 1}`}
+                                key={i} src={src} alt={`Foto ${i + 1}`}
                                 style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", cursor: "pointer" }}
-                                onClick={() => window.open(url, "_blank")}
+                                onClick={() => src && window.open(src, "_blank")}
                               />
-                            ))}
+                              );
+                            })}
                           </div>
                         )}
                         <button
                           type="button"
                           onClick={() => { addingPhotoForRef.current = t.id; setPhotoPicker(t.id); }}
-                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer" }}
+                          style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: "0.8125rem", cursor: "pointer" }}
                         >
                           <Camera size={15} /> Agregar foto
                         </button>
@@ -961,22 +976,22 @@ export default function CampoTicketsPage() {
                       <div>
                         <p style={sectionLabel}>Materiales</p>
                         {matsLoading ? (
-                          <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>Cargando...</p>
+                          <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>Cargando...</p>
                         ) : matGroups.length === 0 ? (
                           /* Sin materiales: CTA grande centrado */
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, padding: "20px 0" }}>
                             {showSupplierPicker === t.id ? (
                               <div style={{ width: "100%", display: "flex", flexDirection: "column", gap: 6, padding: "8px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)" }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Selecciona proveedor:</span>
-                                <button type="button" onClick={() => addSupplierGroup(t.id, null)} style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Selecciona proveedor:</span>
+                                <button type="button" onClick={() => addSupplierGroup(t.id, null)} style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: "0.8125rem", cursor: "pointer", textAlign: "left" }}>
                                   Otro (sin proveedor)
                                 </button>
                                 {suppliers.map(s => (
-                                  <button key={s.id} type="button" onClick={() => addSupplierGroup(t.id, s)} style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}>
+                                  <button key={s.id} type="button" onClick={() => addSupplierGroup(t.id, s)} style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: "0.8125rem", cursor: "pointer", textAlign: "left" }}>
                                     {s.name}
                                   </button>
                                 ))}
-                                <button type="button" onClick={() => setShowSupplierPicker(null)} style={{ padding: "6px", fontSize: 12, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}>
+                                <button type="button" onClick={() => setShowSupplierPicker(null)} style={{ padding: "6px", fontSize: "0.75rem", color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}>
                                   Cancelar
                                 </button>
                               </div>
@@ -988,7 +1003,7 @@ export default function CampoTicketsPage() {
                                   padding: "16px 28px", borderRadius: "var(--border-radius-lg)",
                                   border: "2px dashed var(--border-strong)",
                                   background: "transparent", color: "var(--text-secondary)",
-                                  fontSize: 15, fontWeight: 700, cursor: "pointer",
+                                  fontSize: "0.9375rem", fontWeight: 700, cursor: "pointer",
                                   display: "flex", alignItems: "center", gap: 8,
                                 }}
                               >
@@ -1011,7 +1026,7 @@ export default function CampoTicketsPage() {
                                   background: group.supplier_id ? "var(--bg-input)" : "transparent",
                                   borderBottom: "1px solid var(--border-default)",
                                 }}>
-                                  <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+                                  <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
                                     {group.supplier_name}
                                   </span>
                                   <button
@@ -1031,19 +1046,19 @@ export default function CampoTicketsPage() {
                                         value={m.description}
                                         onChange={e => updateMaterialInGroup(t.id, gIdx, mIdx, "description", e.target.value)}
                                         placeholder="Descripción"
-                                        style={{ ...inputStyle, flex: 3, padding: "8px 10px", fontSize: 13 }}
+                                        style={{ ...inputStyle, flex: 3, padding: "8px 10px", fontSize: "0.8125rem" }}
                                       />
                                       <input
                                         value={m.quantity}
                                         onChange={e => updateMaterialInGroup(t.id, gIdx, mIdx, "quantity", e.target.value)}
                                         placeholder="Cant."
                                         inputMode="decimal"
-                                        style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13, textAlign: "center" }}
+                                        style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: "0.8125rem", textAlign: "center" }}
                                       />
                                       <select
                                         value={m.unit}
                                         onChange={e => updateMaterialInGroup(t.id, gIdx, mIdx, "unit", e.target.value)}
-                                        style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: 13, appearance: "none", WebkitAppearance: "none" }}
+                                        style={{ ...inputStyle, flex: 1, padding: "8px", fontSize: "0.8125rem", appearance: "none", WebkitAppearance: "none" }}
                                       >
                                         {MATERIAL_UNITS.map(u => <option key={u} value={u}>{u}</option>)}
                                       </select>
@@ -1059,7 +1074,7 @@ export default function CampoTicketsPage() {
                                   <button
                                     type="button"
                                     onClick={() => addMaterialToGroup(t.id, gIdx)}
-                                    style={{ padding: "6px", borderRadius: "var(--border-radius-sm)", border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
+                                    style={{ padding: "6px", borderRadius: "var(--border-radius-sm)", border: "1px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: "0.75rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}
                                   >
                                     <Plus size={12} /> Agregar material
                                   </button>
@@ -1070,11 +1085,11 @@ export default function CampoTicketsPage() {
                             {/* Agregar proveedor */}
                             {showSupplierPicker === t.id ? (
                               <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)" }}>
-                                <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Selecciona proveedor:</span>
+                                <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Selecciona proveedor:</span>
                                 <button
                                   type="button"
                                   onClick={() => addSupplierGroup(t.id, null)}
-                                  style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                                  style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: "0.8125rem", cursor: "pointer", textAlign: "left" }}
                                 >
                                   Otro (sin proveedor)
                                 </button>
@@ -1083,7 +1098,7 @@ export default function CampoTicketsPage() {
                                     key={s.id}
                                     type="button"
                                     onClick={() => addSupplierGroup(t.id, s)}
-                                    style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13, cursor: "pointer", textAlign: "left" }}
+                                    style={{ padding: "8px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: "0.8125rem", cursor: "pointer", textAlign: "left" }}
                                   >
                                     {s.name}
                                   </button>
@@ -1091,7 +1106,7 @@ export default function CampoTicketsPage() {
                                 <button
                                   type="button"
                                   onClick={() => setShowSupplierPicker(null)}
-                                  style={{ padding: "6px", fontSize: 12, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
+                                  style={{ padding: "6px", fontSize: "0.75rem", color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer" }}
                                 >
                                   Cancelar
                                 </button>
@@ -1100,7 +1115,7 @@ export default function CampoTicketsPage() {
                               <button
                                 type="button"
                                 onClick={() => setShowSupplierPicker(t.id)}
-                                style={{ padding: "8px", borderRadius: "var(--border-radius-md)", border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                                style={{ padding: "8px", borderRadius: "var(--border-radius-md)", border: "1.5px dashed var(--border-strong)", background: "transparent", color: "var(--text-secondary)", fontSize: "0.8125rem", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
                               >
                                 <Plus size={14} /> Agregar proveedor
                               </button>
@@ -1111,7 +1126,7 @@ export default function CampoTicketsPage() {
                               type="button"
                               onClick={() => saveMaterials(t.id)}
                               disabled={savingMatsFor === t.id}
-                              style={{ padding: "10px", borderRadius: "var(--border-radius-md)", border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: 14, fontWeight: 700, cursor: savingMatsFor === t.id ? "wait" : "pointer", opacity: savingMatsFor === t.id ? 0.7 : 1 }}
+                              style={{ padding: "10px", borderRadius: "var(--border-radius-md)", border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: "0.875rem", fontWeight: 700, cursor: savingMatsFor === t.id ? "wait" : "pointer", opacity: savingMatsFor === t.id ? 0.7 : 1 }}
                             >
                               {savingMatsFor === t.id ? "Guardando y creando OCs..." : "Guardar materiales"}
                             </button>
@@ -1127,7 +1142,7 @@ export default function CampoTicketsPage() {
                               type="button"
                               disabled={updatingStatusFor === t.id}
                               onClick={() => updateStatus(t.id, "in_progress")}
-                              style={{ width: "100%", padding: "14px", borderRadius: "var(--border-radius-lg)", border: "none", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", fontSize: 15, fontWeight: 700, cursor: updatingStatusFor === t.id ? "wait" : "pointer", opacity: updatingStatusFor === t.id ? 0.7 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                              style={{ width: "100%", padding: "14px", borderRadius: "var(--border-radius-lg)", border: "none", background: "var(--icon-bg-blue)", color: "var(--icon-color-blue)", fontSize: "0.9375rem", fontWeight: 700, cursor: updatingStatusFor === t.id ? "wait" : "pointer", opacity: updatingStatusFor === t.id ? 0.7 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                             >
                               {updatingStatusFor === t.id ? "Actualizando..." : (<><Play size={20} /> Iniciar trabajo</>)}
                             </button>
@@ -1137,7 +1152,7 @@ export default function CampoTicketsPage() {
                               type="button"
                               disabled={updatingStatusFor === t.id}
                               onClick={() => updateStatus(t.id, "resolved")}
-                              style={{ width: "100%", padding: "14px", borderRadius: "var(--border-radius-lg)", border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: 15, fontWeight: 700, cursor: updatingStatusFor === t.id ? "wait" : "pointer", opacity: updatingStatusFor === t.id ? 0.7 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
+                              style={{ width: "100%", padding: "14px", borderRadius: "var(--border-radius-lg)", border: "none", background: "var(--icon-bg-green)", color: "var(--icon-color-green)", fontSize: "0.9375rem", fontWeight: 700, cursor: updatingStatusFor === t.id ? "wait" : "pointer", opacity: updatingStatusFor === t.id ? 0.7 : 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}
                             >
                               {updatingStatusFor === t.id ? "Actualizando..." : (<><Check size={20} /> Marcar resuelto</>)}
                             </button>
@@ -1183,7 +1198,7 @@ export default function CampoTicketsPage() {
             >
               {/* Sheet header */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <h3 style={{ margin: 0, fontSize: 18, fontWeight: 800, color: "var(--text-primary)" }}>Nuevo ticket</h3>
+                <h3 style={{ margin: 0, fontSize: "1.125rem", fontWeight: 800, color: "var(--text-primary)" }}>Nuevo ticket</h3>
                 <button type="button" onClick={() => setCreateOpen(false)} style={{ background: "none", border: "none", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}>
                   <X size={20} />
                 </button>
@@ -1192,10 +1207,10 @@ export default function CampoTicketsPage() {
               {/* Draft banner */}
               {hasDraft && (
                 <div style={{ padding: "10px 12px", background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)", borderRadius: "var(--border-radius-md)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                  <span style={{ fontSize: 13, color: "var(--metric-value-amber)", fontWeight: 600 }}>
+                  <span style={{ fontSize: "0.8125rem", color: "var(--metric-value-amber)", fontWeight: 600 }}>
                     Tienes un borrador guardado
                   </span>
-                  <button type="button" onClick={discardDraft} style={{ background: "none", border: "none", fontSize: 12, color: "var(--metric-value-amber)", cursor: "pointer", fontWeight: 700, textDecoration: "underline" }}>
+                  <button type="button" onClick={discardDraft} style={{ background: "none", border: "none", fontSize: "0.75rem", color: "var(--metric-value-amber)", cursor: "pointer", fontWeight: 700, textDecoration: "underline" }}>
                     Descartar
                   </button>
                 </div>
@@ -1269,13 +1284,13 @@ export default function CampoTicketsPage() {
                       {cPhotos.map((p, i) => (
                         <div key={p.id} style={{ position: "relative" }}>
                           <img
-                            src={p.publicUrl || p.localUrl}
+                            src={p.previewUrl || p.localUrl}
                             alt={`Foto ${i + 1}`}
                             style={{ width: "100%", aspectRatio: "1", objectFit: "cover", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", opacity: p.uploading ? 0.5 : 1 }}
                           />
                           {p.uploading && (
                             <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.4)", borderRadius: "var(--border-radius-md)" }}>
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "#fff" }}>Subiendo...</span>
+                              <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "#fff" }}>Subiendo...</span>
                             </div>
                           )}
                           <button type="button" onClick={() => removeCreatePhoto(p.id)} style={{ position: "absolute", top: 4, right: 4, background: "rgba(0,0,0,0.6)", border: "none", borderRadius: "50%", width: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", cursor: "pointer" }}>
@@ -1285,15 +1300,15 @@ export default function CampoTicketsPage() {
                       ))}
                     </div>
                   )}
-                  <button type="button" onClick={() => setPhotoPicker("create")} style={{ width: "100%", padding: "12px", borderRadius: "var(--border-radius-md)", border: "1.5px dashed var(--border-strong)", background: "var(--bg-page)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: 14, cursor: "pointer" }}>
+                  <button type="button" onClick={() => setPhotoPicker("create")} style={{ width: "100%", padding: "12px", borderRadius: "var(--border-radius-md)", border: "1.5px dashed var(--border-strong)", background: "var(--bg-page)", color: "var(--text-secondary)", display: "flex", alignItems: "center", justifyContent: "center", gap: 8, fontSize: "0.875rem", cursor: "pointer" }}>
                     <Camera size={18} />
                     {cPhotos.length > 0 ? "Agregar otra foto" : "Agregar foto"}
                   </button>
                 </div>
 
-                {createError && <p style={{ margin: 0, fontSize: 13, color: "var(--badge-text-red)" }}>{createError}</p>}
+                {createError && <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--badge-text-red)" }}>{createError}</p>}
 
-                <button type="button" onClick={handleCreate} disabled={saving} style={{ width: "100%", padding: "14px", borderRadius: "var(--border-radius-lg)", border: "none", background: "var(--accent)", color: "#fff", fontSize: 15, fontWeight: 700, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1, marginTop: 4 }}>
+                <button type="button" onClick={handleCreate} disabled={saving} style={{ width: "100%", padding: "14px", borderRadius: "var(--border-radius-lg)", border: "none", background: "var(--accent)", color: "#fff", fontSize: "0.9375rem", fontWeight: 700, cursor: saving ? "wait" : "pointer", opacity: saving ? 0.7 : 1, marginTop: 4 }}>
                   {saving ? "Guardando..." : "Crear ticket"}
                 </button>
 
@@ -1314,7 +1329,7 @@ export default function CampoTicketsPage() {
             style={{ width: "100%", background: "var(--bg-card)", borderRadius: "20px 20px 0 0", overflow: "hidden", paddingBottom: "env(safe-area-inset-bottom, 8px)" }}
             onClick={e => e.stopPropagation()}
           >
-            <p style={{ margin: 0, padding: "18px 20px 14px", fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+            <p style={{ margin: 0, padding: "18px 20px 14px", fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
               Agregar foto
             </p>
 
@@ -1328,7 +1343,7 @@ export default function CampoTicketsPage() {
                 setPhotoPicker(null);
                 setTimeout(() => setWebcamOpen(target), 100);
               }}
-              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--text-primary)", textAlign: "left" }}
+              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "left" }}
             >
               <Camera size={20} /> Tomar foto
             </button>
@@ -1338,7 +1353,7 @@ export default function CampoTicketsPage() {
             <button
               type="button"
               onClick={() => triggerInput(photoPicker === "create" ? createGalleryRef : detailGalleryRef)}
-              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--text-primary)", textAlign: "left" }}
+              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: "0.9375rem", color: "var(--text-primary)", textAlign: "left" }}
             >
               <ImageIcon size={20} /> Elegir del carrete
             </button>
@@ -1348,7 +1363,7 @@ export default function CampoTicketsPage() {
             <button
               type="button"
               onClick={() => setPhotoPicker(null)}
-              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: 15, color: "var(--badge-text-red)", textAlign: "left" }}
+              style={{ width: "100%", padding: "16px 20px", display: "flex", alignItems: "center", gap: 14, background: "none", border: "none", cursor: "pointer", fontSize: "0.9375rem", color: "var(--badge-text-red)", textAlign: "left" }}
             >
               <X size={20} /> Cancelar
             </button>
@@ -1368,10 +1383,10 @@ export default function CampoTicketsPage() {
       >
         {webcamError ? (
           <div style={{ textAlign: "center", padding: 24 }}>
-            <p style={{ color: "#EF4444", marginBottom: 12, fontWeight: 600 }}>
+            <p style={{ color: "var(--metric-value-red)", marginBottom: 12, fontWeight: 600 }}>
               {webcamError}
             </p>
-            <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
               Verifica que el navegador tiene permiso para usar la cámara.
             </p>
           </div>
@@ -1397,12 +1412,12 @@ export default function CampoTicketsPage() {
               type="button"
               onClick={handleCapturePhoto}
               style={{
-                background: "#8B2252",
+                background: "var(--accent)",
                 color: "white",
                 border: "none",
                 borderRadius: "var(--border-radius-md)",
                 padding: "12px 0",
-                fontSize: 15,
+                fontSize: "0.9375rem",
                 fontWeight: 500,
                 cursor: "pointer",
                 display: "flex",

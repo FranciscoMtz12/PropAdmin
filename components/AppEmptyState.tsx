@@ -43,7 +43,7 @@ export default function AppEmptyState({
           <strong
             style={{
               display: "block",
-              fontSize: 16,
+              fontSize: "1rem",
               marginBottom: 6,
               color: "var(--text-primary)",
             }}
@@ -54,7 +54,7 @@ export default function AppEmptyState({
             style={{
               margin: 0,
               color: "var(--text-muted)",
-              fontSize: 14,
+              fontSize: "0.875rem",
             }}
           >
             {description}

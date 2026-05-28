@@ -415,10 +415,10 @@ export default function CampoComprasPage() {
     <div style={containerStyle}>
       {/* Encabezado */}
       <div style={{ marginBottom: 20 }}>
-        <h1 style={{ margin: 0, fontSize: 20, fontWeight: 800, color: "var(--text-primary)" }}>
+        <h1 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 800, color: "var(--text-primary)" }}>
           Órdenes de Compra
         </h1>
-        <p style={{ margin: "4px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+        <p style={{ margin: "4px 0 0", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
           OCs asignadas a ti pendientes de surtir
         </p>
       </div>
@@ -431,7 +431,7 @@ export default function CampoComprasPage() {
         return (
           <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1.5px solid var(--accent)", marginBottom: 16 }}>
             <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
+            <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>
               {newOrders.length} orden{newOrders.length !== 1 ? "es" : ""} nueva{newOrders.length !== 1 ? "s" : ""} en las últimas 24 h —{" "}
               {newOrders.map(o => o.folio).join(", ")}
             </div>
@@ -441,7 +441,7 @@ export default function CampoComprasPage() {
 
       {/* Lista */}
       {loadingData ? (
-        <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: 14 }}>
+        <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)", fontSize: "0.875rem" }}>
           Cargando órdenes...
         </div>
       ) : orders.length === 0 ? (
@@ -452,10 +452,10 @@ export default function CampoComprasPage() {
           <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}>
             <ShoppingCart size={36} color="var(--text-muted)" />
           </div>
-          <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+          <p style={{ margin: 0, fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
             Sin órdenes pendientes
           </p>
-          <p style={{ margin: "6px 0 0", fontSize: 13, color: "var(--text-muted)" }}>
+          <p style={{ margin: "6px 0 0", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
             Cuando te asignen una OC enviada, aparecerá aquí.
           </p>
         </div>
@@ -470,7 +470,7 @@ export default function CampoComprasPage() {
                 <div style={{ padding: "16px 16px 12px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                     <span style={{
-                      fontFamily: "monospace", fontSize: 13, fontWeight: 800,
+                      fontFamily: "monospace", fontSize: "0.8125rem", fontWeight: 800,
                       color: "var(--text-primary)", letterSpacing: "0.02em",
                     }}>
                       {order.folio}
@@ -480,28 +480,28 @@ export default function CampoComprasPage() {
                       background: "var(--metric-bg-blue)",
                       color: "var(--metric-value-blue)",
                       border: "1px solid var(--metric-border-blue)",
-                      fontSize: 11, fontWeight: 700,
+                      fontSize: "0.6875rem", fontWeight: 700,
                     }}>
                       Enviada
                     </span>
                   </div>
 
-                  <p style={{ margin: "0 0 3px", fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                  <p style={{ margin: "0 0 3px", fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     {order.supplier_name}
                     {order.branch_name ? (
-                      <span style={{ fontWeight: 500, color: "var(--text-secondary)", fontSize: 13 }}>
+                      <span style={{ fontWeight: 500, color: "var(--text-secondary)", fontSize: "0.8125rem" }}>
                         {" · "}{order.branch_name}
                       </span>
                     ) : null}
                   </p>
 
                   {order.building_name ? (
-                    <p style={{ margin: "0 0 3px", fontSize: 13, color: "var(--text-secondary)" }}>
+                    <p style={{ margin: "0 0 3px", fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                       Edificio: {order.building_name}
                     </p>
                   ) : null}
 
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
+                  <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
                     Enviada el {formatDate(order.sent_at ?? order.created_at)}
                   </p>
                 </div>
@@ -516,18 +516,18 @@ export default function CampoComprasPage() {
                       padding: "14px 16px",
                     }}>
                       <div style={{
-                        fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
+                        fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)",
                         marginBottom: 10, display: "flex", alignItems: "center", gap: 8,
                       }}>
                         🔄 ESTA ES UNA ORDEN DE CAMBIO
                       </div>
-                      <div style={{ fontSize: 13, color: "var(--text-primary)", marginBottom: 10 }}>
+                      <div style={{ fontSize: "0.8125rem", color: "var(--text-primary)", marginBottom: 10 }}>
                         Al recoger el material nuevo, también debes{" "}
                         <strong>ENTREGAR</strong> al proveedor:
                       </div>
                       <ul style={{ margin: 0, paddingLeft: 20, color: "var(--text-primary)" }}>
                         {ctx.items.map((it, idx) => (
-                          <li key={idx} style={{ marginBottom: 4, fontSize: 13 }}>
+                          <li key={idx} style={{ marginBottom: 4, fontSize: "0.8125rem" }}>
                             <strong>{it.description}</strong> — {it.quantity_returned} {it.unit}
                           </li>
                         ))}
@@ -535,7 +535,7 @@ export default function CampoComprasPage() {
                       <div style={{
                         marginTop: 10, paddingTop: 10,
                         borderTop: "1px solid rgba(245,158,11,0.3)",
-                        fontSize: 13, color: "var(--text-primary)",
+                        fontSize: "0.8125rem", color: "var(--text-primary)",
                       }}>
                         <strong>Motivo:</strong> {RETURN_REASON_LABEL[ctx.reason]}
                         {ctx.reason_notes ? (
@@ -556,7 +556,7 @@ export default function CampoComprasPage() {
                     background: "var(--bg-input)",
                   }}>
                     <p style={{
-                      margin: "0 0 8px", fontSize: 11, fontWeight: 700,
+                      margin: "0 0 8px", fontSize: "0.6875rem", fontWeight: 700,
                       color: "var(--text-muted)", textTransform: "uppercase",
                       letterSpacing: "0.06em",
                     }}>
@@ -568,11 +568,11 @@ export default function CampoComprasPage() {
                           display: "flex", justifyContent: "space-between",
                           alignItems: "center", gap: 8,
                         }}>
-                          <span style={{ fontSize: 13, color: "var(--text-primary)", flex: 1 }}>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", flex: 1 }}>
                             {it.description}
                           </span>
                           <span style={{
-                            fontSize: 12, fontWeight: 700,
+                            fontSize: "0.75rem", fontWeight: 700,
                             color: "var(--text-secondary)",
                             background: "var(--bg-card)",
                             border: "1px solid var(--border-default)",
@@ -603,7 +603,7 @@ export default function CampoComprasPage() {
                         padding: "12px 16px", borderRadius: "var(--border-radius-md)", minHeight: 44,
                         border: "1px solid var(--border-default)",
                         background: "var(--bg-card)", color: "var(--text-secondary)",
-                        fontSize: 13, fontWeight: 600, textDecoration: "none",
+                        fontSize: "0.8125rem", fontWeight: 600, textDecoration: "none",
                         flex: "1 1 auto",
                       }}
                     >
@@ -619,8 +619,8 @@ export default function CampoComprasPage() {
                       display: "inline-flex", alignItems: "center",
                       justifyContent: "center", gap: 6,
                       padding: "12px 16px", borderRadius: "var(--border-radius-md)", minHeight: 44,
-                      border: "1px solid #10B981", background: "#10B981", color: "#fff",
-                      fontSize: 13, fontWeight: 700, cursor: "pointer",
+                      border: "1px solid var(--metric-border-green)", background: "var(--metric-bg-green)", color: "#fff",
+                      fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                       flex: "2 1 auto",
                     }}
                   >
@@ -645,7 +645,7 @@ export default function CampoComprasPage() {
       >
         {receptionOrder ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
               Marca si faltó algo en algún material. Los items sin marca se registran como recibidos completos.
             </p>
 
@@ -667,11 +667,11 @@ export default function CampoComprasPage() {
                     display: "flex", justifyContent: "space-between",
                     alignItems: "flex-start", gap: 8, marginBottom: 10,
                   }}>
-                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", flex: 1 }}>
+                    <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", flex: 1 }}>
                       {item.description}
                     </span>
                     <span style={{
-                      fontSize: 12, fontWeight: 700, color: "var(--text-secondary)",
+                      fontSize: "0.75rem", fontWeight: 700, color: "var(--text-secondary)",
                       background: "var(--bg-card)", border: "1px solid var(--border-default)",
                       borderRadius: "var(--border-radius-sm)", padding: "3px 8px", whiteSpace: "nowrap", flexShrink: 0,
                     }}>
@@ -683,7 +683,7 @@ export default function CampoComprasPage() {
                   <label style={{
                     display: "flex", alignItems: "center", gap: 8,
                     cursor: "pointer", userSelect: "none",
-                    fontSize: 13, color: "var(--text-secondary)", fontWeight: 500,
+                    fontSize: "0.8125rem", color: "var(--text-secondary)", fontWeight: 500,
                   }}>
                     <input
                       type="checkbox"
@@ -705,7 +705,7 @@ export default function CampoComprasPage() {
                   {item.faltaAlgo ? (
                     <div style={{ marginTop: 10 }}>
                       <label style={{
-                        fontSize: 12, fontWeight: 600, color: "#92400e",
+                        fontSize: "0.75rem", fontWeight: 600, color: "#92400e",
                         marginBottom: 4, display: "block",
                       }}>
                         ¿Cuánto faltó? (máx. {item.quantity} {item.unit})
@@ -725,9 +725,9 @@ export default function CampoComprasPage() {
                         placeholder={`Máx. ${item.quantity}`}
                         style={{
                           width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)",
-                          border: "1px solid #F59E0B",
+                          border: "1px solid var(--metric-border-amber)",
                           background: "#fff7ed", color: "#92400e",
-                          fontSize: 14, fontWeight: 600,
+                          fontSize: "0.875rem", fontWeight: 600,
                           outline: "none", boxSizing: "border-box",
                         }}
                       />
@@ -744,8 +744,8 @@ export default function CampoComprasPage() {
                 padding: "10px 12px", borderRadius: "var(--border-radius-md)",
                 background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
               }}>
-                <AlertCircle size={16} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
-                <p style={{ margin: 0, fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5 }}>
+                <AlertCircle size={16} style={{ color: "var(--metric-value-amber)", flexShrink: 0, marginTop: 1 }} />
+                <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-primary)", lineHeight: 1.5 }}>
                   Se creará un borrador de OC en Compras con los materiales faltantes para que el equipo de compras la complete.
                 </p>
               </div>
@@ -769,8 +769,8 @@ export default function CampoComprasPage() {
                   display: "inline-flex", alignItems: "center",
                   justifyContent: "center", gap: 8,
                   padding: "11px 20px", borderRadius: "var(--border-radius-lg)", minHeight: 44,
-                  border: "1px solid #10B981", background: "#10B981", color: "#fff",
-                  fontSize: 14, fontWeight: 700,
+                  border: "1px solid var(--metric-border-green)", background: "var(--metric-bg-green)", color: "#fff",
+                  fontSize: "0.875rem", fontWeight: 700,
                   cursor: savingReception ? "wait" : "pointer",
                   opacity: savingReception ? 0.7 : 1,
                 }}

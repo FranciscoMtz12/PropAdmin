@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { motion } from "framer-motion";
 import AppIconBox from "@/components/AppIconBox";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useIconSize } from "@/lib/useFontScale";
 
 /*
   Encabezado reutilizable para páginas del sistema.
@@ -27,11 +28,12 @@ export default function PageHeader({
   titleIcon,
 }: {
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actions?: ReactNode;
   titleIcon?: ReactNode;
 }) {
   const { showDescriptions } = useTheme();
+  const iconBoxSz = useIconSize(46);
 
   return (
     <div
@@ -51,7 +53,7 @@ export default function PageHeader({
         transition={{ duration: 0.3 }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-          {titleIcon ? <AppIconBox size={46} radius="var(--border-radius-lg)">{titleIcon}</AppIconBox> : null}
+          {titleIcon ? <AppIconBox size={iconBoxSz} radius="var(--border-radius-lg)">{titleIcon}</AppIconBox> : null}
 
           <div style={{ display: "flex", alignItems: "flex-start", gap: "14px" }}>
             {/* Barra vertical de acento a la izquierda del título */}
@@ -71,7 +73,7 @@ export default function PageHeader({
               <h1
                 className="ph-title"
                 style={{
-                  fontSize: "38px",
+                  fontSize: "2.375rem",
                   fontWeight: 700,
                   lineHeight: 1.08,
                   marginBottom: subtitle && showDescriptions ? "8px" : 0,

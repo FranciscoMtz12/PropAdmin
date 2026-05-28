@@ -57,13 +57,13 @@ type BuildingOption = {
 };
 
 const sectionTextStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   lineHeight: 1.6,
   color: "var(--text-secondary)",
 };
 
 const strongValueStyle: CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -75,7 +75,7 @@ const badgeBaseStyle: CSSProperties = {
   gap: 6,
   padding: "6px 10px",
   borderRadius: 999,
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 800,
 };
 
@@ -337,7 +337,7 @@ export default function PendingInvoiceUploadsPage() {
             <div>
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 700,
                   color: "var(--text-primary)",
                 }}
@@ -354,7 +354,7 @@ export default function PendingInvoiceUploadsPage() {
         <div
           style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
             gap: 16,
           }}
         >
@@ -403,7 +403,7 @@ export default function PendingInvoiceUploadsPage() {
       {!loading && filteredRows.length === 0 ? (
         <AppCard>
           <div style={{ display: "grid", gap: 8 }}>
-            <div style={{ ...strongValueStyle, fontSize: 18 }}>No hay pendientes de factura</div>
+            <div style={{ ...strongValueStyle, fontSize: "1.125rem" }}>No hay pendientes de factura</div>
             <div style={sectionTextStyle}>
               Cuando marques una factura como generada en el control mensual, aparecerá aquí hasta que cargues su XML/PDF real.
             </div>
@@ -446,7 +446,7 @@ export default function PendingInvoiceUploadsPage() {
                 <div
                   style={{
                     display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                    gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))",
                     gap: 12,
                   }}
                 >
@@ -467,7 +467,7 @@ export default function PendingInvoiceUploadsPage() {
                         display: "inline-flex",
                         alignItems: "center",
                         gap: 8,
-                        fontSize: 15,
+                        fontSize: "0.9375rem",
                         fontWeight: 800,
                         color: "var(--text-primary)",
                       }}

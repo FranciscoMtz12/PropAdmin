@@ -31,9 +31,9 @@ const SERVICE_TYPE_TO_CONCEPT: Partial<Record<UtilityServiceType, string>> = {
 }
 
 const SERVICE_TYPE_COLOR: Partial<Record<UtilityServiceType, string>> = {
-  electricity: "#F59E0B",
-  gas:         "#EF4444",
-  water:       "#3B82F6",
+  electricity: "var(--metric-value-amber)",
+  gas:         "var(--metric-value-red)",
+  water:       "var(--metric-value-blue)",
   internet:    "#8B5CF6",
 }
 
@@ -51,11 +51,11 @@ function Badge({ variant, children }: { variant: "gray" | "green" | "blue" | "in
   const styles: Record<string, React.CSSProperties> = {
     gray:   { background: "var(--divider, #f1f5f9)", color: "var(--text-secondary)" },
     green:  { background: "#d1fae5", color: "#065f46" },
-    blue:   { background: "#dbeafe", color: "#1d4ed8" },
+    blue:   { background: "#dbeafe", color: "var(--metric-value-blue)" },
     indigo: { background: "#ede9fe", color: "#5b21b6" },
   }
   return (
-    <span style={{ ...styles[variant], fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 999 }}>
+    <span style={{ ...styles[variant], fontSize: "0.6875rem", fontWeight: 600, padding: "2px 7px", borderRadius: 999 }}>
       {children}
     </span>
   )
@@ -83,11 +83,11 @@ function MeterRow({
       <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px", flexWrap: "wrap" }}>
         {/* Name + number */}
         <div style={{ minWidth: 120, display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
+          <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--text-primary)" }}>
             {meter.provider_name ?? "Sin proveedor"}
           </span>
           {meter.meter_number && (
-            <span style={{ fontFamily: "monospace", fontSize: 11, color: "var(--text-muted)", padding: "1px 6px", background: "var(--bg-page, #f8fafc)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)" }}>
+            <span style={{ fontFamily: "monospace", fontSize: "0.6875rem", color: "var(--text-muted)", padding: "1px 6px", background: "var(--bg-page, #f8fafc)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)" }}>
               {meter.meter_number}
             </span>
           )}
@@ -102,7 +102,7 @@ function MeterRow({
                 ? <Badge variant="gray">Inquilino directo</Badge>
                 : <Badge variant="green">Empresa cobra</Badge>}
               {dedicatedUnit && (
-                <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Depa {dedicatedUnit.unit_number}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Depa {dedicatedUnit.unit_number}</span>
               )}
             </>
           ) : (
@@ -120,12 +120,12 @@ function MeterRow({
             <Badge variant="indigo">${new Intl.NumberFormat("es-MX", { maximumFractionDigits: 0 }).format(meter.fixed_amount)}/mes</Badge>
           )}
           {meter.meter_type === "shared" && meter.billing_mode === "included" && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-muted)" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.6875rem", color: "var(--text-muted)" }}>
               <Info size={10} />Gasto del edificio
             </span>
           )}
           {hasSubs && subs.length === 0 && (
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, color: "var(--text-primary)", background: "rgba(245,158,11,0.12)", borderRadius: 999, padding: "1px 7px" }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.6875rem", color: "var(--text-primary)", background: "rgba(245,158,11,0.12)", borderRadius: 999, padding: "1px 7px" }}>
               <AlertTriangle size={10} />Sin submedidores
             </span>
           )}
@@ -133,7 +133,7 @@ function MeterRow({
             <button
               type="button"
               onClick={() => setSubsOpen(o => !o)}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: 12, color: "var(--accent, #8B2252)", display: "inline-flex", alignItems: "center", gap: 2 }}
+              style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.75rem", color: "var(--accent, #8B2252)", display: "inline-flex", alignItems: "center", gap: 2 }}
             >
               {subsOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
               Ver {subs.length} submedidor{subs.length === 1 ? "" : "es"}
@@ -149,7 +149,7 @@ function MeterRow({
             </button>
           )}
           <button type="button" onClick={onEdit} style={ghostBtn()}>Editar</button>
-          <button type="button" onClick={onDelete} style={{ ...ghostBtn(), color: "#dc2626", borderColor: "#fca5a5" }}>
+          <button type="button" onClick={onDelete} style={{ ...ghostBtn(), color: "var(--metric-value-red)", borderColor: "#fca5a5" }}>
             <Trash2 size={11} />
           </button>
         </div>
@@ -159,7 +159,7 @@ function MeterRow({
       {subsOpen && subs.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, padding: "0 18px 10px" }}>
           {subs.map(sm => (
-            <span key={sm.id} style={{ fontSize: 12, padding: "2px 8px", background: "var(--bg-page, #f8fafc)", border: "1px solid var(--border-default)", borderRadius: 999, color: "var(--text-secondary)" }}>
+            <span key={sm.id} style={{ fontSize: "0.75rem", padding: "2px 8px", background: "var(--bg-page, #f8fafc)", border: "1px solid var(--border-default)", borderRadius: 999, color: "var(--text-secondary)" }}>
               Depa {sm.unit_number ?? sm.unit_id.slice(0, 6)}
             </span>
           ))}
@@ -172,7 +172,7 @@ function MeterRow({
 function ghostBtn(extra?: React.CSSProperties): React.CSSProperties {
   return {
     display: "inline-flex", alignItems: "center", gap: 4,
-    fontSize: 11, padding: "3px 8px", borderRadius: "var(--border-radius-sm)", cursor: "pointer",
+    fontSize: "0.6875rem", padding: "3px 8px", borderRadius: "var(--border-radius-sm)", cursor: "pointer",
     border: "1px solid var(--border-default)", background: "transparent",
     color: "var(--text-secondary)",
     ...extra,
@@ -299,12 +299,12 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <Zap size={14} color="var(--accent, #8B2252)" />
-          <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Suministros</span>
+          <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Suministros</span>
         </div>
         <button
           type="button"
           onClick={() => { setEditingMeter(null); setMeterModalOpen(true) }}
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
         >
           <Plus size={12} />Agregar servicio
         </button>
@@ -313,11 +313,11 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
       {/* Empty state */}
       {isEmpty && (
         <div style={{ padding: "24px 18px", textAlign: "center" }}>
-          <p style={{ margin: "0 0 12px", fontSize: 13, color: "var(--text-muted)" }}>Sin servicios configurados</p>
+          <p style={{ margin: "0 0 12px", fontSize: "0.8125rem", color: "var(--text-muted)" }}>Sin servicios configurados</p>
           <button
             type="button"
             onClick={() => { setEditingMeter(null); setMeterModalOpen(true) }}
-            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "6px 14px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--accent, #8B2252)", background: "transparent", color: "var(--accent, #8B2252)", cursor: "pointer", fontWeight: 600 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", padding: "6px 14px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--accent, #8B2252)", background: "transparent", color: "var(--accent, #8B2252)", cursor: "pointer", fontWeight: 600 }}
           >
             <Plus size={12} />Agregar servicio
           </button>
@@ -328,12 +328,12 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
       {placeholders.map((ph) => (
         <div key={ph.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, padding: "10px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))", background: "rgba(245,158,11,0.08)", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ color: "#F59E0B" }}><ServiceIcon type={ph.service_type as UtilityServiceType} size={14} /></span>
+            <span style={{ color: "var(--metric-value-amber)" }}><ServiceIcon type={ph.service_type as UtilityServiceType} size={14} /></span>
             <div>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", background: "rgba(245,158,11,0.15)", padding: "1px 7px", borderRadius: 999, display: "inline-block", marginBottom: 2 }}>
+              <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-primary)", background: "rgba(245,158,11,0.15)", padding: "1px 7px", borderRadius: 999, display: "inline-block", marginBottom: 2 }}>
                 Pendiente de configurar
               </span>
-              <p style={{ margin: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+              <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                 {SERVICE_TYPE_LABEL[ph.service_type as UtilityServiceType] ?? ph.service_type} — completa la configuración
               </p>
             </div>
@@ -341,7 +341,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
           <button
             type="button"
             onClick={() => { setEditingMeter(ph); setMeterModalOpen(true) }}
-            style={{ fontSize: 12, padding: "4px 12px", borderRadius: "var(--border-radius-sm)", border: "1px dashed #D97706", background: "transparent", color: "#D97706", cursor: "pointer", fontWeight: 600 }}
+            style={{ fontSize: "0.75rem", padding: "4px 12px", borderRadius: "var(--border-radius-sm)", border: "1px dashed var(--metric-value-amber)", background: "transparent", color: "var(--metric-value-amber)", cursor: "pointer", fontWeight: 600 }}
           >
             Configurar ahora →
           </button>
@@ -356,7 +356,7 @@ export default function BuildingServicesTab({ buildingId, companyId, buildingNam
             <span style={{ color: SERVICE_TYPE_COLOR[group.type] ?? "var(--text-muted)", lineHeight: 0 }}>
               <ServiceIcon type={group.type} size={12} />
             </span>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               {SERVICE_TYPE_LABEL[group.type]}
             </span>
           </div>

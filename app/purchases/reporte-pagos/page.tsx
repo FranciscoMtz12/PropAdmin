@@ -139,8 +139,8 @@ const reporteSchema = z.object({
 type ReporteFormValues = z.infer<typeof reporteSchema>;
 
 const reporteErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -546,21 +546,10 @@ export default function ReportePagosPage() {
   /* ── Guardar (crear o editar) ───────────────────────────────── */
 
   const handleSave = rhfSubmit(async (data) => {
-    /* ── Logs de validación ────────────────────────────────────── */
-    console.log("[handleSave] user:", user);
-    console.log("[handleSave] editingReportId:", editingReportId);
-    console.log("[handleSave] elaboratedBy (signerName):", data.signerName);
-    console.log("[handleSave] reportDate:", data.reportDate);
-    console.log("[handleSave] folio computed:", folio, "week:", week, "year:", year);
-    console.log("[handleSave] itemDrafts size:", itemDrafts.size, "entries:", Array.from(itemDrafts.entries()));
-    console.log("[handleSave] customSignerMode:", customSignerMode);
-
     if (!user?.company_id) {
-      console.log("[handleSave] ABORT: no company_id en user");
       return;
     }
     if (itemDrafts.size === 0) {
-      console.log("[handleSave] ABORT: itemDrafts vacío");
       setError("Selecciona al menos una OC.");
       return;
     }
@@ -737,7 +726,7 @@ export default function ReportePagosPage() {
     borderRadius: "var(--border-radius-md)",
     background: "var(--bg-input)",
     color: "var(--text-primary)",
-    fontSize: 14,
+    fontSize: "0.875rem",
     boxSizing: "border-box",
     outline: "none",
   };
@@ -755,12 +744,12 @@ export default function ReportePagosPage() {
     cursor: "pointer", flexShrink: 0,
   };
   const monthNavLabelStyle: CSSProperties = {
-    fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
+    fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)",
     minWidth: 140, textAlign: "center",
   };
 
   const thStyle: CSSProperties = {
-    padding: "10px 12px", fontSize: 11, fontWeight: 700,
+    padding: "10px 12px", fontSize: "0.6875rem", fontWeight: 700,
     color: "var(--text-muted)", textAlign: "center",
     textTransform: "uppercase", letterSpacing: "0.04em",
     background: "var(--bg-input)",
@@ -801,19 +790,19 @@ export default function ReportePagosPage() {
           <>
             {overdueOCs.length > 0 && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(220,38,38,0.1)", border: "1.5px solid rgba(220,38,38,0.3)", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0, marginTop: 5 }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-bg-red)", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", marginBottom: 4 }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)", marginBottom: 4 }}>
                     {overdueOCs.length} OC{overdueOCs.length !== 1 ? "s" : ""} facturada{overdueOCs.length !== 1 ? "s" : ""} sin reportar — más de 7 días
                   </div>
                   <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
                     {overdueOCs.slice(0, MAX_FOLIOS).map(o => (
-                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: 11, fontWeight: 700, padding: "2px 7px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", color: "var(--text-primary)" }}>
+                      <span key={o.id} style={{ fontFamily: "monospace", fontSize: "0.6875rem", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", color: "var(--text-primary)" }}>
                         {o.folio}
                       </span>
                     ))}
                     {overdueOCs.length > MAX_FOLIOS && (
-                      <span style={{ fontSize: 11, color: "var(--text-primary)", alignSelf: "center" }}>+{overdueOCs.length - MAX_FOLIOS} más</span>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-primary)", alignSelf: "center" }}>+{overdueOCs.length - MAX_FOLIOS} más</span>
                     )}
                   </div>
                 </div>
@@ -821,12 +810,12 @@ export default function ReportePagosPage() {
             )}
             {recentOCs.length > 0 && (
               <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(245,158,11,0.1)", border: "1.5px solid rgba(245,158,11,0.3)", marginBottom: 10 }}>
-                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0, marginTop: 5 }} />
+                <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-bg-amber)", flexShrink: 0, marginTop: 5 }} />
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+                  <div style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                     {recentOCs.length} OC{recentOCs.length !== 1 ? "s" : ""} facturada{recentOCs.length !== 1 ? "s" : ""} pendiente{recentOCs.length !== 1 ? "s" : ""} de reportar
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Listas para incluir en el próximo reporte a pagos</div>
+                  <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 2 }}>Listas para incluir en el próximo reporte a pagos</div>
                 </div>
               </div>
             )}
@@ -876,12 +865,12 @@ export default function ReportePagosPage() {
 
       {/* ── OCs facturadas pendientes de reportar ─────────────── */}
       <AppCard style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+        <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
           OCs facturadas pendientes de reportar a pagos ({unreportedOCs.length})
         </div>
 
         {unreportedOCs.length === 0 ? (
-          <p style={{ margin: 0, fontSize: 13, color: "var(--metric-value-green)", fontWeight: 600 }}>
+          <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--metric-value-green)", fontWeight: 600 }}>
             Todas las OCs facturadas ya están reportadas ✓
           </p>
         ) : (
@@ -892,7 +881,7 @@ export default function ReportePagosPage() {
             maxHeight: 300,
             overflowY: "auto",
           }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
               <thead>
                 <tr>
                   <th style={{ ...thStyle, width: 36 }}>#</th>
@@ -963,11 +952,11 @@ export default function ReportePagosPage() {
                       </AppBadge>
                     </div>
 
-                    <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+                    <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
                       {r.elaborated_by || "Sin firmante"}
                     </div>
 
-                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: 13, color: "var(--text-muted)" }}>
+                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                       <span>Fecha: {formatDateShort(r.report_date)}</span>
                       <span>· Creado: {formatDateShort(r.created_at)}</span>
                     </div>
@@ -982,7 +971,7 @@ export default function ReportePagosPage() {
                         onClick={(e) => e.stopPropagation()}
                         style={{
                           display: "inline-flex", alignItems: "center", gap: 4,
-                          fontSize: 12, color: "var(--metric-value-green)",
+                          fontSize: "0.75rem", color: "var(--metric-value-green)",
                           textDecoration: "none", fontWeight: 600,
                         }}
                         title="PDF guardado"
@@ -1009,7 +998,7 @@ export default function ReportePagosPage() {
                     {/* Sección 1: Datos generales */}
                     <div>
                       <SectionLabel>Datos generales</SectionLabel>
-                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))", gap: 12 }}>
                         <DetailRow label="Elaboró" value={r.elaborated_by || "—"} />
                         <DetailRow label="Empresa" value={legalName || companyName || shortName || "—"} />
                         <DetailRow label="Fecha" value={formatDateShort(r.report_date)} />
@@ -1024,14 +1013,14 @@ export default function ReportePagosPage() {
                     <div>
                       <SectionLabel>Órdenes incluidas ({items.length})</SectionLabel>
                       {items.length === 0 ? (
-                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>Sin órdenes incluidas</p>
+                        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem" }}>Sin órdenes incluidas</p>
                       ) : (
                         <div style={{
                           border: "1px solid var(--border-default)",
                           borderRadius: "var(--border-radius-md)", overflow: "hidden",
                           background: "var(--bg-card)",
                         }}>
-                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                             <thead>
                               <tr>
                                 <th style={{ ...thStyle, width: 36 }}>#</th>
@@ -1089,7 +1078,7 @@ export default function ReportePagosPage() {
                             padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
-                            fontSize: 13, fontWeight: 600,
+                            fontSize: "0.8125rem", fontWeight: 600,
                             cursor: generatingPdfId === r.id ? "wait" : "pointer",
                             opacity: generatingPdfId === r.id ? 0.7 : 1,
                           }}
@@ -1106,7 +1095,7 @@ export default function ReportePagosPage() {
                             padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                             border: "1px solid var(--border-default)",
                             background: "var(--bg-card)", color: "var(--text-primary)",
-                            fontSize: 13, fontWeight: 600, cursor: "pointer",
+                            fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                           }}
                         >
                           <Edit3 size={14} />
@@ -1123,7 +1112,7 @@ export default function ReportePagosPage() {
                             border: "1px solid var(--badge-text-red)",
                             background: "transparent",
                             color: "var(--badge-text-red)",
-                            fontSize: 13, fontWeight: 600,
+                            fontSize: "0.8125rem", fontWeight: 600,
                             cursor: archivingId === r.id ? "wait" : "pointer",
                             opacity: archivingId === r.id ? 0.7 : 1,
                             marginLeft: "auto",
@@ -1155,7 +1144,7 @@ export default function ReportePagosPage() {
           {/* Datos del reporte */}
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+            gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))",
             gap: 16,
             marginBottom: 8,
           }}>
@@ -1221,8 +1210,8 @@ export default function ReportePagosPage() {
               padding: "10px 12px", borderRadius: "var(--border-radius-md)", marginBottom: 4,
               background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)",
             }}>
-              <AlertTriangle size={15} style={{ color: "#F59E0B", flexShrink: 0, marginTop: 1 }} />
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5 }}>
+              <AlertTriangle size={15} style={{ color: "var(--metric-value-amber)", flexShrink: 0, marginTop: 1 }} />
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-primary)", lineHeight: 1.5 }}>
                 Ya existe el reporte <strong>{duplicateWarning.folio}</strong> para la semana {duplicateWarning.week} de {duplicateWarning.year}. Si continúas, se creará un reporte duplicado.
               </p>
             </div>
@@ -1234,16 +1223,16 @@ export default function ReportePagosPage() {
               display: "flex", alignItems: "center", justifyContent: "space-between",
               marginBottom: 10,
             }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
                 Órdenes de compra para incluir
               </div>
-              <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                 {itemDrafts.size} seleccionada{itemDrafts.size === 1 ? "" : "s"} · {availableOCsForModal.length} disponible{availableOCsForModal.length === 1 ? "" : "s"}
               </span>
             </div>
 
             {availableOCsForModal.length === 0 ? (
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem" }}>
                 No hay OCs enviadas pendientes de reportar.
               </p>
             ) : (
@@ -1254,7 +1243,7 @@ export default function ReportePagosPage() {
                 maxHeight: 280,
                 overflowY: "auto",
               }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                   <thead>
                     <tr>
                       <th style={{ ...thStyle, width: 40 }}></th>
@@ -1313,7 +1302,7 @@ export default function ReportePagosPage() {
           {/* ── Tabla 2: Detalle de facturas (solo las seleccionadas) ── */}
           {itemDrafts.size > 0 ? (
             <div style={{ marginBottom: 12 }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>
+              <div style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", marginBottom: 10 }}>
                 Detalle de facturas
               </div>
               <div style={{
@@ -1321,7 +1310,7 @@ export default function ReportePagosPage() {
                 borderRadius: "var(--border-radius-md)",
                 overflow: "hidden",
               }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                   <thead>
                     <tr>
                       <th style={{ ...thStyle, width: 130 }}>Folio OC</th>
@@ -1374,7 +1363,7 @@ export default function ReportePagosPage() {
           ) : null}
 
           {error ? (
-            <div style={{ color: "var(--badge-text-red)", marginBottom: 12, fontSize: 13, fontWeight: 600 }}>
+            <div style={{ color: "var(--badge-text-red)", marginBottom: 12, fontSize: "0.8125rem", fontWeight: 600 }}>
               {error}
             </div>
           ) : null}
@@ -1400,7 +1389,7 @@ export default function ReportePagosPage() {
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      fontSize: 11, fontWeight: 700, color: "var(--text-muted)",
+      fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)",
       textTransform: "uppercase", letterSpacing: "0.06em",
       marginBottom: 10,
     }}>
@@ -1412,10 +1401,10 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+      <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
         {label}
       </div>
-      <div style={{ fontSize: 14, color: "var(--text-primary)", marginTop: 3 }}>
+      <div style={{ fontSize: "0.875rem", color: "var(--text-primary)", marginTop: 3 }}>
         {value}
       </div>
     </div>

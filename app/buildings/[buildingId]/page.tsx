@@ -94,6 +94,7 @@ import {
   Trash2,
   Trees,
   Truck,
+  Users,
   Warehouse,
   Waves,
   Wifi,
@@ -107,6 +108,7 @@ import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useFontScale } from "@/lib/useFontScale";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
@@ -154,7 +156,7 @@ import IndustrialTypologyModal from "@/components/IndustrialTypologyModal";
 const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
   ssr: false,
   loading: () => (
-    <div style={{ height: 340, width: "100%", borderRadius: "var(--border-radius-md)", background: "var(--bg-card-hover)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
+    <div style={{ height: 340, width: "100%", borderRadius: "var(--border-radius-md)", background: "var(--bg-card-hover)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: "0.8125rem" }}>
       Cargando selector de ubicación...
     </div>
   ),
@@ -174,7 +176,7 @@ const BuildingMiniMap = dynamic(() => import("@/components/BuildingMiniMap"), {
         alignItems: "center",
         justifyContent: "center",
         color: "var(--text-muted)",
-        fontSize: 13,
+        fontSize: "0.8125rem",
       }}
     >
       Cargando mapa...
@@ -604,12 +606,12 @@ function formatFileSize(bytes: number | null) {
 }
 
 const DOC_CATEGORIES: Array<{ key: string; label: string; color: string; bg: string; border: string }> = [
-  { key: "contratos",          label: "Contratos",            color: "#2563eb", bg: "#eff6ff", border: "#93c5fd" },
-  { key: "facturas",           label: "Facturas",             color: "#d97706", bg: "#fffbeb", border: "#fcd34d" },
+  { key: "contratos",          label: "Contratos",            color: "var(--metric-value-blue)",  bg: "var(--metric-bg-blue)",    border: "var(--metric-border-blue)"  },
+  { key: "facturas",           label: "Facturas",             color: "var(--metric-value-amber)", bg: "var(--metric-bg-amber)",   border: "var(--metric-border-amber)" },
   { key: "fotos",              label: "Fotos",                color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
-  { key: "permisos_licencias", label: "Permisos y licencias", color: "#16a34a", bg: "#f0fdf4", border: "#86efac" },
+  { key: "permisos_licencias", label: "Permisos y licencias", color: "var(--metric-value-green)", bg: "var(--metric-bg-green)",   border: "var(--metric-border-green)" },
   { key: "planos",             label: "Planos",               color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
-  { key: "otros",              label: "Otros",                color: "#6b7280", bg: "#f9fafb", border: "#d1d5db" },
+  { key: "otros",              label: "Otros",                color: "var(--text-muted)",         bg: "var(--bg-page)",           border: "var(--border-strong)"       },
 ];
 
 function getFileCategoryLabel(cat: string) {
@@ -625,7 +627,7 @@ function getFileCategoryLabel(cat: string) {
 }
 
 function getDocCategoryMeta(cat: string) {
-  return DOC_CATEGORIES.find((c) => c.key === cat) ?? { key: cat, label: cat || "Otro", color: "#6b7280", bg: "#f9fafb", border: "#d1d5db" };
+  return DOC_CATEGORIES.find((c) => c.key === cat) ?? { key: cat, label: cat || "Otro", color: "var(--text-muted)", bg: "var(--bg-page)", border: "var(--border-strong)" };
 }
 
 function getDocFileIcon(mimeType: string | null, fileName: string): { color: string; bg: string } {
@@ -634,12 +636,12 @@ function getDocFileIcon(mimeType: string | null, fileName: string): { color: str
   if (mime.startsWith("image/") || ["jpg","jpeg","png","gif","webp","svg","avif"].includes(ext))
     return { color: "#7c3aed", bg: "#f5f3ff" };
   if (mime === "application/pdf" || ext === "pdf")
-    return { color: "#dc2626", bg: "#fef2f2" };
+    return { color: "var(--metric-value-red)", bg: "var(--metric-bg-red)" };
   if (mime.includes("word") || ["doc","docx"].includes(ext))
-    return { color: "#2563eb", bg: "#eff6ff" };
+    return { color: "var(--metric-value-blue)", bg: "var(--metric-bg-blue)" };
   if (mime.includes("excel") || mime.includes("spreadsheet") || ["xls","xlsx","csv"].includes(ext))
-    return { color: "#16a34a", bg: "#f0fdf4" };
-  return { color: "#6b7280", bg: "#f9fafb" };
+    return { color: "var(--metric-value-green)", bg: "var(--metric-bg-green)" };
+  return { color: "var(--text-muted)", bg: "var(--bg-page)" };
 }
 
 const SECTION_SUGGESTIONS: Record<string, string[]> = {
@@ -709,10 +711,10 @@ function computeOccupancyTrend(
  */
 function OccupancyDonutCard({ occupied, total }: { occupied: number; total: number }) {
   const pct   = total > 0 ? Math.round((occupied / total) * 100) : 0;
-  const color = total === 0 ? "#E5E7EB"
-    : pct >= 75 ? "#10B981"
-    : pct >= 40 ? "#F59E0B"
-    : "#EF4444";
+  const color = total === 0 ? "var(--border-default)"
+    : pct >= 75 ? "var(--metric-value-green)"
+    : pct >= 40 ? "var(--metric-value-amber)"
+    : "var(--metric-value-red)";
 
   const r    = 44;
   const circ = 2 * Math.PI * r;
@@ -724,7 +726,7 @@ function OccupancyDonutCard({ occupied, total }: { occupied: number; total: numb
         {/* SVG donut */}
         <div style={{ position: "relative", width: 100, height: 100, flexShrink: 0 }}>
           <svg width="100" height="100">
-            <circle cx="50" cy="50" r={r} fill="none" stroke="#E5E7EB" strokeWidth="10" />
+            <circle cx="50" cy="50" r={r} fill="none" stroke="var(--border-default)" strokeWidth="10" />
             <circle
               cx="50" cy="50" r={r}
               fill="none"
@@ -737,10 +739,10 @@ function OccupancyDonutCard({ occupied, total }: { occupied: number; total: numb
             />
           </svg>
           <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2 }}>
-            <span style={{ fontSize: 22, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
+            <span style={{ fontSize: "1.375rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>
               {pct}%
             </span>
-            <span style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3, textAlign: "center" }}>
+            <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", lineHeight: 1.3, textAlign: "center" }}>
               ocupación
             </span>
           </div>
@@ -748,10 +750,10 @@ function OccupancyDonutCard({ occupied, total }: { occupied: number; total: numb
 
         {/* Info textual */}
         <div>
-          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 6 }}>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: 6 }}>
             Ocupación actual
           </p>
-          <p style={{ fontSize: 14, color: "var(--text-secondary)", margin: 0 }}>
+          <p style={{ fontSize: "0.875rem", color: "var(--text-secondary)", margin: 0 }}>
             {occupied} ocupadas de {total} totales
           </p>
         </div>
@@ -802,7 +804,7 @@ function SummaryItem({
     <AppCard style={{ padding: 16, borderRadius: "var(--border-radius-md)" }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12 }}>
         <div>
-          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", marginBottom: 6 }}>{label}</p>
           <strong style={{ display: "block", lineHeight: 1.2 }}>{value}</strong>
         </div>
         <AppIconBox size={38} radius="var(--border-radius-md)">{icon}</AppIconBox>
@@ -820,7 +822,7 @@ function CollectionTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: 13 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: "0.8125rem" }}>
       <p style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>{label}</p>
       {payload.map((p) => (
         <p key={p.name} style={{ margin: "2px 0", color: p.color }}>
@@ -837,10 +839,10 @@ function OccupancyTooltip({ active, payload, label }: { active?: boolean; payloa
   const occupiedVal = (payload.find((p: any) => p.dataKey === "occupied")?.value as number) || 0;
   const pct         = totalVal > 0 ? Math.round((occupiedVal / totalVal) * 100) : 0;
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: 13 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "10px 14px", fontSize: "0.8125rem" }}>
       <p style={{ fontWeight: 700, marginBottom: 4, color: "var(--text-primary)" }}>{label}</p>
       <p style={{ margin: "2px 0", color: "var(--text-primary)" }}>Total: <strong>{totalVal}</strong></p>
-      <p style={{ margin: "2px 0", color: "#10B981" }}>Ocupadas: <strong>{occupiedVal}</strong></p>
+      <p style={{ margin: "2px 0", color: "var(--metric-value-green)" }}>Ocupadas: <strong>{occupiedVal}</strong></p>
       <p style={{ margin: "2px 0", color: "var(--text-muted)" }}>Ocupación: <strong>{pct}%</strong></p>
     </div>
   );
@@ -850,7 +852,7 @@ function PieTooltip({ active, payload }: { active?: boolean; payload?: any[] }) 
   if (!active || !payload?.length) return null;
   const item = payload[0];
   return (
-    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "8px 12px", fontSize: 13 }}>
+    <div style={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", padding: "8px 12px", fontSize: "0.8125rem" }}>
       <p style={{ color: item.payload.color as string, fontWeight: 700 }}>
         {item.name as string}: <strong>{item.value as number}</strong>
       </p>
@@ -878,6 +880,29 @@ const TASK_TAB_MAP: Record<string, string> = {
   add_first_unit:         'overview',
   setup_security_service: 'overview',
   setup_loading_dock:     'assets',
+}
+
+/* ─── Mapa task_key → categoría del checklist ────────────────────────── */
+
+const TASK_CATEGORY_MAP: Record<string, 'estructura' | 'servicios' | 'operacion' | 'documentos'> = {
+  add_unit_types:          'estructura',
+  add_first_unit:          'estructura',
+  add_electricity_meter:   'servicios',
+  add_water_meter:         'servicios',
+  add_gas_meter:           'servicios',
+  setup_internet:          'servicios',
+  setup_security_service:  'servicios',
+  setup_cleaning_schedule: 'servicios',
+  add_first_lease:         'operacion',
+  add_parking_spots:       'operacion',
+  setup_security_booth:    'operacion',
+  setup_admin_office:      'operacion',
+  setup_loading_dock:      'operacion',
+  upload_documents:        'documentos',
+  add_photos:              'documentos',
+  add_first_asset:         'documentos',
+  setup_common_areas:      'documentos',
+  setup_service_storage:   'documentos',
 }
 
 /* ─── Mapa task_key → label y ruta (derivado de PROPERTY_FEATURES) ─────── */
@@ -914,7 +939,7 @@ function TabPendingBanner({
       marginBottom: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tasks.length > 0 ? 6 : 0 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--brand-color, #8B2252)', fontSize: 13, fontWeight: 600 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--brand-color, #8B2252)', fontSize: "0.8125rem", fontWeight: 600 }}>
           <Settings size={13} />
           Pendiente en este módulo
         </span>
@@ -946,12 +971,12 @@ function TabPendingBanner({
                   alignItems: 'center',
                   gap: 6,
                   color: 'var(--text-primary)',
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   textAlign: 'left',
                   width: '100%',
                 }}
               >
-                <span style={{ color: 'var(--brand-color, #8B2252)', fontSize: 9, lineHeight: 1 }}>●</span>
+                <span style={{ color: 'var(--brand-color, #8B2252)', fontSize: "0.5625rem", lineHeight: 1 }}>●</span>
                 <span style={{ flex: 1 }}>{label}</span>
                 {resolvedRoute && <ChevronRight size={12} color="var(--text-muted)" />}
               </button>
@@ -1027,6 +1052,7 @@ export default function BuildingDetailPage() {
   const buildingId   = params.buildingId as string;
   const { user, loading } = useCurrentUser();
   const { setPropertyAccent, resetPropertyAccent } = useTheme();
+  const { fontScale } = useFontScale();
   const { notifications: allNotifications } = useNotifications(user?.company_id ?? "");
 
   /* Estado de datos */
@@ -1047,6 +1073,7 @@ export default function BuildingDetailPage() {
   const [savingBillingConcept, setSavingBillingConcept] =
     useState<BuildingBillingConceptCode | null>(null);
   const [openActionsAssetId, setOpenActionsAssetId] = useState<string | null>(null);
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
 
   /* Estado de modales */
   const [isEditModalOpen, setIsEditModalOpen]     = useState(false);
@@ -3021,7 +3048,7 @@ export default function BuildingDetailPage() {
     <PageContainer>
       {/* ── Breadcrumb dinámico ── */}
       <div style={{ width: "100%", padding: "18px 0 0 0" }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: 13, color: "var(--text-secondary)" }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "center", fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
           <a href="/dashboard" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Inicio</a>
           <span style={{ color: "var(--text-muted)" }}>{">"}</span>
           <a href="/buildings" style={{ color: "var(--text-secondary)", textDecoration: "none" }}>Propiedades</a>
@@ -3046,7 +3073,7 @@ export default function BuildingDetailPage() {
             gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
             border: "1px solid var(--border-default)", background: "var(--bg-card)",
             color: "var(--text-primary)", cursor: "pointer", textDecoration: "none",
-            fontSize: 12, fontWeight: 600,
+            fontSize: "0.75rem", fontWeight: 600,
           }}
         >
           <ArrowLeft size={16} />
@@ -3064,7 +3091,7 @@ export default function BuildingDetailPage() {
               gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
               border: "1px solid var(--border-default)", background: "var(--bg-card)",
               color: "var(--text-primary)", cursor: "pointer",
-              fontSize: 12, fontWeight: 600,
+              fontSize: "0.75rem", fontWeight: 600,
             }}
           >
             <Pencil size={16} />
@@ -3079,7 +3106,7 @@ export default function BuildingDetailPage() {
               gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
               border: "1px solid var(--border-default)", background: "var(--bg-card)",
               color: "var(--text-primary)", cursor: "pointer",
-              fontSize: 12, fontWeight: 600,
+              fontSize: "0.75rem", fontWeight: 600,
             }}
           >
             <Sliders size={16} />
@@ -3094,7 +3121,7 @@ export default function BuildingDetailPage() {
                 gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                 border: "1px solid var(--accent)", background: "var(--accent)",
                 color: "#ffffff", cursor: "pointer", textDecoration: "none",
-                fontSize: 12, fontWeight: 600,
+                fontSize: "0.75rem", fontWeight: 600,
               }}
             >
               <Layers3 size={16} />
@@ -3108,9 +3135,9 @@ export default function BuildingDetailPage() {
             style={{
               display: "flex", alignItems: "center",
               gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-              border: "1px solid #dc2626", background: "transparent",
-              color: "#dc2626", cursor: "pointer",
-              fontSize: 12, fontWeight: 600,
+              border: "1px solid var(--metric-value-red)", background: "transparent",
+              color: "var(--metric-value-red)", cursor: "pointer",
+              fontSize: "0.75rem", fontWeight: 600,
             }}
           >
             <Trash2 size={16} />
@@ -3120,7 +3147,7 @@ export default function BuildingDetailPage() {
       </div>
 
       {msg ? (
-        <p style={{ color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)", marginBottom: 16, fontSize: 14, fontWeight: 600 }}>
+        <p style={{ color: msg.includes("correctamente") ? "var(--badge-text-green)" : "var(--badge-text-red)", marginBottom: 16, fontSize: "0.875rem", fontWeight: 600 }}>
           {msg}
         </p>
       ) : null}
@@ -3133,7 +3160,7 @@ export default function BuildingDetailPage() {
           { key: "overview",  label: "Resumen",    icon: <Building2 size={16} />, pendingDot: tabsWithPendingTasks.has('overview') },
           ...(hasLeasesTab  ? [{ key: "leases",  label: labels.leases, icon: <FileClockIcon size={16} />, count: landLeases.length, pendingDot: tabsWithPendingTasks.has('leases') }] : []),
           ...(hasBodegasTab  ? [{ key: "bodegas",  label: "Bodegas",  icon: <Warehouse size={16} />, count: childBuildings.length }] : []),
-          ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: '#EF9F27' } : undefined }] : []),
+          ...(hasLocalesTab  ? [{ key: "locales", label: "Locales", icon: <Store size={16} />, count: plazaLocales.length, notifDot: unitsNeedingReview > 0 ? { count: unitsNeedingReview, color: 'var(--metric-value-amber)' } : undefined }] : []),
           ...(hasSuperficiesTab ? [{ key: "superficies", label: "Superficies", icon: <Ruler size={16} />, count: buildingAreas.length }] : []),
           ...(hasTypologiesTab ? [{ key: "typologies", label: "Tipologías", icon: <LayoutPanelTop size={16} />, count: unitTypeCount }] : []),
           ...(hasAssetsTab  ? [{ key: "assets",  label: "Equipamiento", icon: <Package size={16} />,      count: tabCounts.assets,    pendingDot: tabsWithPendingTasks.has('assets')       }] : []),
@@ -3142,6 +3169,7 @@ export default function BuildingDetailPage() {
           ...(hasServicesTab     ? [{ key: "services",     label: "Servicios",     icon: <Wrench size={16} />,  count: tabCounts.services, pendingDot: tabsWithPendingTasks.has('services')     }] : []),
           ...(hasParkingTab      ? [{ key: "parking",      label: "Cajones",       icon: <Car size={16} />,     count: tabCounts.parking,  pendingDot: tabsWithPendingTasks.has('parking')      }] : []),
           ...(hasCommonAreasTab  ? [{ key: "common_areas", label: "Áreas comunes / Amenidades", icon: <Trees size={16} />,   count: commonAreas.length, pendingDot: tabsWithPendingTasks.has('common_areas') }] : []),
+          ...(pendingSetupCount > 0 ? [{ key: "setup", label: "Configuración pendiente", icon: <CheckSquare size={16} />, count: pendingSetupCount }] : []),
         ]}
       />
 
@@ -3153,7 +3181,7 @@ export default function BuildingDetailPage() {
 
           {/* ── Fila 1: métricas ── */}
           {isLand ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: 16 }}>
               {building.land_sqm != null && (
                 <MetricCard label="M² de terreno" value={`${building.land_sqm.toLocaleString("es-MX")} m²`} icon={<MapPin size={18} />} helper="Superficie total del terreno" />
               )}
@@ -3173,7 +3201,7 @@ export default function BuildingDetailPage() {
               )}
             </div>
           ) : isIndustrialPark || isPlazaComercial ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: 16 }}>
               {isPlazaComercial ? (
                 <>
                   <MetricCard label="Locales" value={String(plazaLocales.length)} icon={<Store size={18} />} helper="Locales en la plaza" />
@@ -3251,12 +3279,12 @@ export default function BuildingDetailPage() {
             return (
               <SectionCard title="Ficha de la propiedad" icon={<Home size={18} />}>
                 {!hasAnyData ? (
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: 13 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: "0.8125rem" }}>
                     <span>Sin ficha configurada</span>
                     <button
                       type="button"
                       onClick={openEditModal}
-                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, textDecoration: "underline", padding: 0 }}
+                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "0.8125rem", textDecoration: "underline", padding: 0 }}
                     >
                       Editar propiedad
                     </button>
@@ -3270,7 +3298,7 @@ export default function BuildingDetailPage() {
                           <div key={i} style={{
                             display: "flex", alignItems: "center", gap: 6,
                             padding: "8px 14px", borderRadius: "var(--border-radius-md)", border: "0.5px solid var(--border-default)",
-                            background: "var(--bg-page)", fontSize: 13,
+                            background: "var(--bg-page)", fontSize: "0.8125rem",
                           }}>
                             <span style={{ color: "var(--text-muted)", lineHeight: 0 }}>{pill.icon}</span>
                             <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{pill.value}</span>
@@ -3282,12 +3310,12 @@ export default function BuildingDetailPage() {
                     {(activeAmenities.length > 0 || otherNotes) && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {activeAmenities.map((a) => (
-                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
+                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {a.label}
                           </span>
                         ))}
                         {otherNotes && String(otherNotes).split("\n").map((l) => l.trim()).filter((l) => l.length > 0).map((line, idx) => (
-                          <span key={idx} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: 12, background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
+                          <span key={idx} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {line.length > 40 ? line.slice(0, 38) + "…" : line}
                           </span>
                         ))}
@@ -3296,9 +3324,9 @@ export default function BuildingDetailPage() {
                     {rentalMode && (
                       <div>
                         <span style={{
-                          padding: "4px 12px", borderRadius: 999, fontSize: 12, fontWeight: 600,
-                          background: rentalMode === "whole" ? "#0369a11a" : "#8B22521a",
-                          color:      rentalMode === "whole" ? "#0369a1"   : "#8B2252",
+                          padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
+                          background: rentalMode === "whole" ? "#0369a11a" : "rgba(139,34,82,0.1)",
+                          color:      rentalMode === "whole" ? "#0369a1"   : "var(--accent)",
                         }}>
                           {rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
                         </span>
@@ -3320,16 +3348,16 @@ export default function BuildingDetailPage() {
             return (
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                 {sorted.map(notif => {
-                  const col = notif.severity === 'brand' ? { bg: '#FDF4FF', border: '#8B2252', text: '#6B1240', dot: '#8B2252' } : SEVERITY_COLORS[notif.severity]
+                  const col = notif.severity === 'brand' ? { bg: '#FDF4FF', border: 'var(--accent)', text: '#6B1240', dot: 'var(--accent)' } : SEVERITY_COLORS[notif.severity]
                   return (
                     <div key={notif.id} style={{ display: "flex", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: col.bg, borderLeft: `4px solid ${col.border}` }}>
                       <div style={{ width: 8, height: 8, borderRadius: "50%", background: col.dot, flexShrink: 0, marginTop: 4 }} />
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: col.text }}>{notif.title}</p>
-                        {notif.description && <p style={{ margin: "2px 0 0", fontSize: 12, color: col.text, opacity: 0.8 }}>{notif.description}</p>}
+                        <p style={{ margin: 0, fontWeight: 700, fontSize: "0.8125rem", color: col.text }}>{notif.title}</p>
+                        {notif.description && <p style={{ margin: "2px 0 0", fontSize: "0.75rem", color: col.text, opacity: 0.8 }}>{notif.description}</p>}
                       </div>
                       {notif.action_route && (
-                        <a href={notif.action_route} style={{ alignSelf: "center", flexShrink: 0, fontSize: 12, fontWeight: 700, color: col.text, textDecoration: "underline", whiteSpace: "nowrap" }}>Ver →</a>
+                        <a href={notif.action_route} style={{ alignSelf: "center", flexShrink: 0, fontSize: "0.75rem", fontWeight: 700, color: col.text, textDecoration: "underline", whiteSpace: "nowrap" }}>Ver →</a>
                       )}
                     </div>
                   )
@@ -3338,261 +3366,159 @@ export default function BuildingDetailPage() {
             )
           })()}
 
-          {/* ── Onboarding: 5 pasos de configuración básica ── */}
+          {/* ── Guía de onboarding — 4 pasos secuenciales ── */}
           {(() => {
-            const steps: Array<{ label: string; done: boolean; ctaLabel: string | null; ctaTab: string | null; ctaHref: string | null }> = [
-              { label: "Propiedad registrada", done: true, ctaLabel: null, ctaTab: null, ctaHref: null },
-              { label: "Al menos 1 tipología", done: unitTypeCount > 0, ctaLabel: "Crear tipología", ctaTab: hasTypologiesTab ? "typologies" : null, ctaHref: null },
-              { label: "Al menos 1 unidad", done: buildingUnits.length > 0, ctaLabel: "Agregar unidades", ctaTab: hasTypologiesTab ? "typologies" : null, ctaHref: null },
-              { label: "Al menos 1 servicio", done: utilityMeters.length > 0, ctaLabel: "Configurar servicios", ctaTab: hasServicesTab ? "services" : null, ctaHref: null },
-              { label: "Inquilino / contrato activo", done: activeLeasesCount > 0, ctaLabel: "Agregar inquilino", ctaTab: null, ctaHref: "/tenants" },
+            const ob1Done = unitTypeCount > 0;
+            const ob2Done = buildingUnits.length > 0;
+            const ob3Done = utilityMeters.length > 0;
+            const ob4Done = activeLeasesCount > 0;
+            const obDone  = [ob1Done, ob2Done, ob3Done, ob4Done].filter(Boolean).length;
+            if (obDone === 4 || isLand || isIndustrialPark || isPlazaComercial) return null;
+            const isEmpty = obDone === 0;
+            const circ    = 2 * Math.PI * 14;
+            const dashOff = circ * (1 - obDone / 4);
+            const steps = [
+              { n: 1, label: "Crear tipología",         desc: "Define los tipos de unidad disponibles",       done: ob1Done, enabled: true,    action: () => { handleTabChange(hasTypologiesTab ? "typologies" : "overview"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 2, label: "Agregar unidades",         desc: "Registra las unidades o espacios rentables",  done: ob2Done, enabled: ob1Done, action: () => { handleTabChange(hasTypologiesTab ? "typologies" : "overview"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 3, label: "Configurar servicios",     desc: "Da de alta medidores de luz, agua o gas",      done: ob3Done, enabled: ob2Done, action: () => { handleTabChange("services"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 4, label: "Agregar primer inquilino", desc: "Registra el primer contrato de arrendamiento", done: ob4Done, enabled: ob3Done, action: () => router.push("/tenants") },
             ];
-            const allDone = steps.every(s => s.done);
-            const completedCount = steps.filter(s => s.done).length;
             return (
               <AnimatePresence>
-                {!allDone && (
-                  <motion.div
-                    key="onboarding-5steps"
-                    initial={{ opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8, height: 0 }}
-                    transition={{ duration: 0.25 }}
-                  >
-                    <SectionCard
-                      title="Configuración de la propiedad"
-                      subtitle={`${completedCount} de 5 pasos completados`}
-                      icon={<CheckSquare size={18} />}
-                    >
-                      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                        {steps.map((step, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                            {step.done
-                              ? <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0 }} />
-                              : <div style={{ width: 18, height: 18, borderRadius: 999, border: "2px solid var(--border-default)", flexShrink: 0 }} />
-                            }
-                            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, minWidth: 0 }}>
-                              <span style={{ fontSize: 13, fontWeight: 500, color: step.done ? "var(--text-muted)" : "var(--text-primary)", textDecoration: step.done ? "line-through" : "none" }}>
-                                {step.label}
+                <motion.div
+                  key="onboarding-guide"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                >
+                  <div style={{
+                    borderRadius: "var(--border-radius-lg)",
+                    background: isEmpty ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
+                    border: isEmpty ? "1.5px solid rgba(139,34,82,0.25)" : "1px solid var(--border-default)",
+                    borderLeft: "4px solid var(--accent)",
+                    padding: 20,
+                  }}>
+                    {/* Header */}
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isEmpty ? (
+                          <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              <PartyPopper size={18} color="var(--accent)" />
+                              <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                                ¡Tu propiedad está lista! Configúrala paso a paso.
                               </span>
-                              {!step.done && (step.ctaTab ?? step.ctaHref) && (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    if (step.ctaTab) { handleTabChange(step.ctaTab); window.scrollTo({ top: 0, behavior: "smooth" }); }
-                                    else if (step.ctaHref) { router.push(step.ctaHref); }
-                                  }}
-                                  style={{ background: "none", border: "1px solid var(--accent)", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", fontSize: 12, fontWeight: 600, color: "var(--accent)", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-                                >
-                                  {step.ctaLabel} →
-                                </button>
-                              )}
                             </div>
+                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                              Sigue estos 4 pasos para dejar tu propiedad completamente operativa.
+                            </p>
+                          </>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <CheckSquare size={18} color="var(--accent)" />
+                            <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                              Configuración en progreso — {obDone}/4 completados
+                            </span>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </SectionCard>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            );
-          })()}
+                      {/* Donut X/4 */}
+                      <svg width="36" height="36" style={{ flexShrink: 0 }}>
+                        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-default)" strokeWidth="3.5" />
+                        <circle
+                          cx="18" cy="18" r="14" fill="none"
+                          stroke="var(--accent)" strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeDasharray={circ}
+                          strokeDashoffset={dashOff}
+                          transform="rotate(-90 18 18)"
+                          style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                        />
+                        <text x="18" y="23" textAnchor="middle" fontSize="9" fill="var(--text-primary)" fontWeight="700">{obDone}/4</text>
+                      </svg>
+                    </div>
 
-          {/* ── Setup checklist ── */}
-          {setupTasks.length > 0 && (() => {
-            const visibleSetupTasks = setupTasks.filter((t) => {
-              // Always show if feature/task is unknown (safe default)
-              const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
-              const task = feature?.tasks.find((tk) => tk.key === t.task_key);
-              if (!task?.applicableTypes) return true;
-              return task.applicableTypes.includes(building.building_category ?? "");
-            });
-            const pendingTasks   = visibleSetupTasks.filter((t) => !t.is_completed);
-            const completedTasks = visibleSetupTasks.filter((t) => t.is_completed);
-            const totalCount     = visibleSetupTasks.length;
-            const completedCount = completedTasks.length;
-            if (totalCount === 0) return null;
-            const allDone        = pendingTasks.length === 0;
-            const circ           = 2 * Math.PI * 12;
-            const dashOffset     = circ * (1 - completedCount / totalCount);
-
-            return (
-              <div style={{
-                borderRadius: "var(--border-radius-lg)",
-                background: "rgba(139,34,82,0.04)",
-                border: "1px solid rgba(139,34,82,0.2)",
-                borderLeft: "4px solid #8B2252",
-                padding: 20,
-              }}>
-                {/* Header */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: allDone ? 16 : 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <CheckSquare size={18} color="#8B2252" />
-                    <span style={{ fontWeight: 700, fontSize: 15, color: "var(--text-primary)" }}>
-                      Configuración pendiente
-                    </span>
-
-                    {/* Donut de progreso */}
-                    <svg width="32" height="32" style={{ flexShrink: 0 }}>
-                      <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-default)" strokeWidth="3" />
-                      <circle
-                        cx="16" cy="16" r="12"
-                        fill="none"
-                        stroke="#1D9E75"
-                        strokeWidth="3"
-                        strokeLinecap="round"
-                        strokeDasharray={circ}
-                        strokeDashoffset={dashOffset}
-                        transform="rotate(-90 16 16)"
-                      />
-                      <text
-                        x="16" y="20"
-                        textAnchor="middle"
-                        fontSize="9"
-                        fill="var(--text-secondary)"
-                        fontWeight="600"
-                      >
-                        {Math.round((completedCount / totalCount) * 100)}%
-                      </text>
-                    </svg>
-
-                    {/* Badge de pendientes */}
-                    {pendingTasks.length > 0 && (
-                      <span style={{
-                        background: "#8B2252", color: "#fff",
-                        borderRadius: 999, padding: "2px 8px", fontSize: 12, fontWeight: 700,
-                      }}>
-                        {pendingTasks.length}
-                      </span>
-                    )}
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => void handleDismissAllTasks()}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: 13, padding: "4px 8px", borderRadius: "var(--border-radius-sm)" }}
-                    title="Descartar todo"
-                  >
-                    ✕
-                  </button>
-                </div>
-
-                {/* Estado: todo completado */}
-                {allDone ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
-                    <CheckCircle2 size={32} color="#1D9E75" />
-                    <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: "var(--text-primary)" }}>
-                      ¡Propiedad configurada!
-                    </p>
-                    <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>
-                      Todos los pasos de configuración están completos.
-                    </p>
-                  </div>
-                ) : (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    {/* Tareas pendientes */}
-                    {pendingTasks.map((task) => {
-                      const feat    = getFeatureByKey(task.feature_key);
-                      const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
-                      if (!taskDef) return null;
-                      const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
-                      return (
-                        <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={false}
-                            onChange={() => void handleCompleteTask(task.id)}
-                            style={{ marginTop: 3, cursor: "pointer", accentColor: "#8B2252", flexShrink: 0 }}
-                          />
+                    {/* Pasos */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {steps.map((step) => (
+                        <div
+                          key={step.n}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "10px 14px",
+                            borderRadius: "var(--border-radius-md)",
+                            background: step.done ? "rgba(16,185,129,0.06)" : step.enabled ? "var(--bg-page)" : "transparent",
+                            border: step.done ? "1px solid rgba(16,185,129,0.2)" : step.enabled ? "1px solid var(--border-default)" : "1px solid transparent",
+                            opacity: (!step.done && !step.enabled) ? 0.45 : 1,
+                            transition: "opacity 0.2s",
+                          }}
+                        >
+                          {step.done ? (
+                            <CheckCircle2 size={22} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
+                          ) : (
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+                              background: step.enabled ? "var(--accent)" : "var(--border-default)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "0.6875rem", fontWeight: 800,
+                              color: step.enabled ? "#fff" : "var(--text-muted)",
+                            }}>
+                              {step.n}
+                            </div>
+                          )}
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            {resolvedRoute ? (
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
-                                    const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
-                                    if (tabValue) {
-                                      handleTabChange(tabValue);
-                                      window.scrollTo({ top: 0, behavior: "smooth" });
-                                      return;
-                                    }
-                                  }
-                                  router.push(resolvedRoute);
-                                }}
-                                style={{
-                                  background: "none", border: "none", padding: 0,
-                                  display: "inline-flex", alignItems: "center", gap: 3,
-                                  cursor: "pointer",
-                                  fontSize: 13, fontWeight: 600, color: "#8B2252",
-                                }}
-                              >
-                                {taskDef?.label ?? task.task_key}
-                                <ChevronRight size={14} color="var(--text-muted)" />
-                              </button>
-                            ) : (
-                              <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-                                {taskDef?.label ?? task.task_key}
-                              </span>
-                            )}
-                            {taskDef?.description && (
-                              <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-muted)" }}>
-                                {taskDef.description}
-                              </p>
+                            <div style={{
+                              fontSize: "0.8125rem", fontWeight: 600,
+                              color: step.done ? "var(--metric-value-green)" : step.enabled ? "var(--text-primary)" : "var(--text-muted)",
+                              textDecoration: step.done ? "line-through" : "none",
+                            }}>
+                              {step.label}
+                            </div>
+                            {!step.done && (
+                              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 1 }}>
+                                {step.enabled ? step.desc : `Completa el paso ${step.n - 1} primero`}
+                              </div>
                             )}
                           </div>
+                          {!step.done && step.enabled && (
+                            <button
+                              type="button"
+                              onClick={step.action}
+                              style={{
+                                background: "var(--accent)", color: "#fff",
+                                border: "none", padding: "6px 14px",
+                                borderRadius: "var(--border-radius-sm)",
+                                fontSize: "0.75rem", fontWeight: 700,
+                                cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                              }}
+                            >
+                              {step.label} →
+                            </button>
+                          )}
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
 
-                    {/* Separador + tareas completadas */}
-                    {completedTasks.length > 0 && (
-                      <>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                          <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
-                          <span style={{ fontSize: 11, fontWeight: 500, color: "#1D9E75", whiteSpace: "nowrap" }}>Completadas</span>
-                          <div style={{ flex: 1, height: 1, background: "rgba(16,185,129,0.25)" }} />
-                        </div>
-                        {completedTasks.map((task) => {
-                          const feat    = getFeatureByKey(task.feature_key);
-                          const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
-                          if (!taskDef) return null;
-                          return (
-                            <div key={task.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "6px 8px", borderRadius: "var(--border-radius-md)", background: "rgba(16,185,129,0.06)" }}>
-                              <CheckCircle2 size={18} color="#1D9E75" style={{ flexShrink: 0, marginTop: 2 }} />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <span style={{ fontSize: 13, fontWeight: 500, color: "#1D9E75" }}>
-                                  {taskDef?.label ?? task.task_key}
-                                </span>
-                                {taskDef?.description && (
-                                  <p style={{ margin: "2px 0 0", fontSize: 12, color: "rgba(21,128,61,0.7)" }}>
-                                    {taskDef.description}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </>
-                    )}
+                    {/* Footer: omitir */}
+                    <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--border-subtle)" }}>
+                      <button
+                        type="button"
+                        onClick={() => void handleDismissAllTasks()}
+                        style={{
+                          padding: "6px 14px", borderRadius: "var(--border-radius-sm)",
+                          border: "1px solid var(--border-default)", background: "transparent",
+                          fontSize: "0.75rem", color: "var(--text-muted)", cursor: "pointer",
+                          display: "flex", alignItems: "center", gap: 6,
+                        }}
+                      >
+                        <SkipForward size={13} />
+                        Ya tengo experiencia, omitir
+                      </button>
+                    </div>
                   </div>
-                )}
-
-                {/* Footer */}
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
-                  <button
-                    type="button"
-                    onClick={() => void handleDismissAllTasks()}
-                    style={{
-                      padding: "8px 16px", borderRadius: "var(--border-radius-md)",
-                      border: "1px solid var(--border-default)", background: "transparent",
-                      fontSize: 13, color: "var(--text-secondary)", cursor: "pointer",
-                      display: "flex", alignItems: "center", gap: 6,
-                    }}
-                  >
-                    <SkipForward size={14} />
-                    Ya tengo experiencia, omitir configuración
-                  </button>
-                </div>
-              </div>
+                </motion.div>
+              </AnimatePresence>
             );
           })()}
 
@@ -3605,7 +3531,7 @@ export default function BuildingDetailPage() {
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <BuildingCategoryBadge category={building.building_category} />
                 {building.building_category === "mixed_use" && building.building_subcategory ? (
-                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+                  <span style={{ border: "1px solid var(--border-default)", borderRadius: 999, padding: "6px 10px", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>
                     {getMixedUseSubcategoryLabel(building.building_subcategory)}
                   </span>
                 ) : null}
@@ -3660,12 +3586,12 @@ export default function BuildingDetailPage() {
                       gap: 8,
                     }}
                   >
-                    <p style={{ fontSize: 13, color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
+                    <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", textAlign: "center", margin: 0 }}>
                       Sin ubicación registrada
                     </p>
                     <a
                       href="/buildings/map"
-                      style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}
+                      style={{ fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }}
                     >
                       Agregar en el mapa →
                     </a>
@@ -3681,7 +3607,7 @@ export default function BuildingDetailPage() {
                 {building.land_sqm != null && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <Ruler size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                    <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
                       {building.land_sqm.toLocaleString("es-MX")} m² terreno
                     </span>
                   </div>
@@ -3689,7 +3615,7 @@ export default function BuildingDetailPage() {
                 {building.construction_sqm != null && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <Building2 size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                    <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
                       {building.construction_sqm.toLocaleString("es-MX")} m²
                     </span>
                   </div>
@@ -3697,7 +3623,7 @@ export default function BuildingDetailPage() {
                 {building.default_unit_sqm != null && !isLand && !isResidentialSingle && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 14px", borderRadius: 999, background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
                     <LayoutGrid size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+                    <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>
                       {building.default_unit_sqm.toLocaleString("es-MX")} m²/unidad
                     </span>
                   </div>
@@ -3708,7 +3634,7 @@ export default function BuildingDetailPage() {
               const total = buildingAreas.reduce((s, a) => s + (a.sqm ?? 0), 0);
               return (
                 <div style={{ marginTop: 20 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                  <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>
                     <Ruler size={14} style={{ color: "var(--text-muted)" }} />
                     Distribución de superficies
                   </div>
@@ -3718,29 +3644,29 @@ export default function BuildingDetailPage() {
                       const color = AREA_TYPE_COLORS[area.area_type] ?? "#6B7280";
                       return (
                         <div key={area.id} style={{ display: "grid", gridTemplateColumns: "1fr auto auto", gap: 10, alignItems: "center" }}>
-                          <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", fontWeight: 500, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {getAreaTypeLabel(area.area_type, area.area_label)}
                           </div>
-                          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap" }}>
+                          <div style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", whiteSpace: "nowrap" }}>
                             {(area.sqm ?? 0).toLocaleString("es-MX")} m²
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                             <div style={{ width: 80, height: 6, borderRadius: 999, background: "var(--bg-page)", overflow: "hidden" }}>
                               <div style={{ width: `${pct}%`, height: "100%", borderRadius: 999, background: color }} />
                             </div>
-                            <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>{pct}%</span>
+                            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>{pct}%</span>
                           </div>
                         </div>
                       );
                     })}
                     <div style={{ borderTop: "1px solid var(--border-default)", paddingTop: 8, marginTop: 4, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Total</span>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                      <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", fontWeight: 600 }}>Total</span>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                         {total.toLocaleString("es-MX")} m²
                       </span>
                     </div>
                     {building.construction_sqm != null && total > 0 && Math.abs(total - building.construction_sqm) > 1 ? (
-                      <div style={{ fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                      <div style={{ fontSize: "0.75rem", color: "var(--badge-text-amber)", fontWeight: 600 }}>
                         Registrado: {building.construction_sqm.toLocaleString("es-MX")} m² · Diferencia: {Math.abs(total - building.construction_sqm).toLocaleString("es-MX")} m²
                       </div>
                     ) : null}
@@ -3751,7 +3677,7 @@ export default function BuildingDetailPage() {
           </SectionCard>
 
           {/* ── Fila 2: PieChart distribución | BarChart cobranza ── */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 24, alignItems: "stretch" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(18.75rem, 1fr))", gap: 24, alignItems: "stretch" }}>
 
             {/* Col izquierda: Distribución — oculta para terrenos, parques y residencial unifamiliar */}
             {!isLand && !isIndustrialPark && !isResidentialSingle && <SectionCard title={`Distribución de ${labels.units.toLowerCase()}`} icon={<Home size={18} />} style={{ height: "100%" }}>
@@ -3762,14 +3688,14 @@ export default function BuildingDetailPage() {
                 />
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height={200}>
+                  <ResponsiveContainer width="100%" height={Math.round(200 * fontScale)}>
                     <PieChart>
                       <Pie
                         data={pieData}
                         cx="50%"
                         cy="50%"
-                        innerRadius={60}
-                        outerRadius={90}
+                        innerRadius={Math.round(60 * fontScale)}
+                        outerRadius={Math.round(90 * fontScale)}
                         paddingAngle={3}
                         dataKey="value"
                         nameKey="name"
@@ -3787,7 +3713,7 @@ export default function BuildingDetailPage() {
                     {pieData.map((item) => (
                       <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ width: 10, height: 10, borderRadius: "50%", background: item.color, flexShrink: 0 }} />
-                        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+                        <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
                           {item.name}: <strong style={{ color: "var(--text-primary)" }}>{item.value}</strong>
                         </span>
                       </div>
@@ -3808,7 +3734,7 @@ export default function BuildingDetailPage() {
                   type="button"
                   onClick={() => setCollectionMonths(collectionMonths === 3 ? 6 : 3)}
                   style={{
-                    fontSize: 12, fontWeight: 600, cursor: "pointer",
+                    fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
                     background: "var(--bg-page)", color: "var(--accent)",
                     border: "1px solid var(--border-default)",
                     borderRadius: "var(--border-radius-md)", padding: "5px 10px",
@@ -3824,16 +3750,16 @@ export default function BuildingDetailPage() {
                   description="No hay cobros registrados para este edificio en el período seleccionado."
                 />
               ) : (
-                <ResponsiveContainer width="100%" height={200}>
+                <ResponsiveContainer width="100%" height={Math.round(200 * fontScale)}>
                   <BarChart data={collectionChartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }} barCategoryGap="30%">
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: "0.75rem", fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
                     <YAxis
                       tickFormatter={(v: number) => v >= 1_000 ? `$${Math.round(v / 1_000)}k` : `$${v}`}
-                      tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={48}
+                      tick={{ fontSize: "0.75rem", fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={48}
                     />
                     <Tooltip content={<CollectionTooltip />} />
-                    <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} formatter={(v: string) => v === "cobrado" ? "Cobrado" : "Pendiente"} />
+                    <Legend wrapperStyle={{ fontSize: "0.8125rem", paddingTop: 8 }} formatter={(v: string) => v === "cobrado" ? "Cobrado" : "Pendiente"} />
                     <Bar dataKey="cobrado"   name="cobrado"   fill="#22c55e" radius={[4,4,0,0]} />
                     <Bar dataKey="pendiente" name="pendiente" fill="#f97316" radius={[4,4,0,0]} />
                   </BarChart>
@@ -3854,16 +3780,16 @@ export default function BuildingDetailPage() {
                 description="No hay datos suficientes para mostrar la tendencia de ocupación."
               />
             ) : (
-              <ResponsiveContainer width="100%" height={220}>
+              <ResponsiveContainer width="100%" height={Math.round(220 * fontScale)}>
                 <LineChart data={occupancyTrend} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="var(--border-default)" vertical={false} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                  <XAxis dataKey="label" tick={{ fontSize: "0.75rem", fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
                   <YAxis
                     allowDecimals={false}
-                    tick={{ fontSize: 12, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={32}
+                    tick={{ fontSize: "0.75rem", fill: "var(--text-muted)" }} axisLine={false} tickLine={false} width={32}
                   />
                   <Tooltip content={<OccupancyTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 13, paddingTop: 8 }} />
+                  <Legend wrapperStyle={{ fontSize: "0.8125rem", paddingTop: 8 }} />
                   <Line
                     type="monotone" dataKey="occupied" name="Ocupadas"
                     stroke="#10B981" strokeWidth={2}
@@ -3875,18 +3801,18 @@ export default function BuildingDetailPage() {
           </SectionCard>}
 
           {/* ── Fila 4: Grid 2 columnas — Facturación | Accesos (oculta para parques) ── */}
-          {!isIndustrialPark && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 24, alignItems: "stretch" }}>
+          {!isIndustrialPark && <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(16.25rem, 1fr))", gap: 24, alignItems: "stretch" }}>
 
             {/* Servicios activos */}
             <SectionCard title="Servicios activos" subtitle="Gestionado desde el tab Servicios." icon={<Wrench size={18} />}>
               {utilityMeters.length === 0 ? (
                 <div>
-                  <p style={{ color: "var(--text-secondary)", fontSize: 13, margin: 0 }}>
+                  <p style={{ color: "var(--text-secondary)", fontSize: "0.8125rem", margin: 0 }}>
                     Sin servicios configurados.{" "}
                     <button
                       type="button"
                       onClick={() => handleTabChange("services")}
-                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: 13, padding: 0, textDecoration: "underline" }}
+                      style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "0.8125rem", padding: 0, textDecoration: "underline" }}
                     >
                       Ir a Servicios →
                     </button>
@@ -3902,14 +3828,14 @@ export default function BuildingDetailPage() {
                         padding: "8px 12px", borderRadius: 999,
                         background: "var(--bg-page)",
                         border: "1px solid var(--border-default)",
-                        fontSize: 13,
+                        fontSize: "0.8125rem",
                       }}
                     >
                       <UtilityServiceIcon type={m.service_type} size={14} />
                       <span style={{ fontWeight: 600 }}>{SERVICE_TYPE_LABEL[m.service_type]}</span>
                       <span style={{ color: "var(--text-muted)" }}>·</span>
                       <span style={{
-                        fontSize: 12,
+                        fontSize: "0.75rem",
                         color: utilityMeterBillsTenant(m) ? "var(--badge-text-green)" : "var(--text-muted)",
                       }}>
                         {utilityMeterBillsTenant(m) ? "Se cobra" : "Incluido"}
@@ -3962,8 +3888,8 @@ export default function BuildingDetailPage() {
                           <LayoutPanelTop size={17} />
                         </div>
                         <div>
-                          <p style={{ fontWeight: 700, margin: "0 0 3px", fontSize: 15, color: "var(--text-primary)" }}>{ut.name}</p>
-                          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13 }}>
+                          <p style={{ fontWeight: 700, margin: "0 0 3px", fontSize: "0.9375rem", color: "var(--text-primary)" }}>{ut.name}</p>
+                          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem" }}>
                             {building.building_category === "commercial" ? (
                               <>
                                 {ut.entrega ? `${ut.entrega} · ` : ""}
@@ -4031,21 +3957,21 @@ export default function BuildingDetailPage() {
                       const groups = groupUTAssets(ut.assets, ut.bedrooms);
                       return groups.length > 0 ? (
                         <div style={{ marginBottom: 14 }}>
-                          <p style={{ margin: "0 0 8px", fontSize: 11, fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          <p style={{ margin: "0 0 8px", fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                             EQUIPAMIENTO POR ESPACIO
                           </p>
-                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))", gap: 8 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10.62rem, 1fr))", gap: 8 }}>
                             {groups.map((g) => {
                               const SpaceIcon = g.label.startsWith("Recámara") ? BedDouble : (UT_SPACE_ICONS[g.label] ?? PackageOpen);
                               return (
                                 <div key={g.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", overflow: "hidden" }}>
                                   <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "8px 10px", background: "var(--bg-input)" }}>
                                     <SpaceIcon size={13} color="var(--accent)" />
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: "var(--text-primary)" }}>{g.label}</span>
                                   </div>
                                   <div style={{ padding: "8px 10px", display: "grid", gap: 3 }}>
                                     {g.items.map((item, j) => (
-                                      <div key={j} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: 11, color: "var(--text-secondary)" }}>
+                                      <div key={j} style={{ display: "flex", alignItems: "center", gap: 5, fontSize: "0.6875rem", color: "var(--text-secondary)" }}>
                                         <div style={{ width: 3, height: 3, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                                         {item}
                                       </div>
@@ -4057,7 +3983,7 @@ export default function BuildingDetailPage() {
                           </div>
                         </div>
                       ) : (
-                        <p style={{ margin: "0 0 14px", fontSize: 13, color: "var(--text-muted)" }}>Sin equipamiento plantilla configurado.</p>
+                        <p style={{ margin: "0 0 14px", fontSize: "0.8125rem", color: "var(--text-muted)" }}>Sin equipamiento plantilla configurado.</p>
                       );
                     })()}
 
@@ -4072,7 +3998,7 @@ export default function BuildingDetailPage() {
                       return badges.length > 0 ? (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 5, marginBottom: 14 }}>
                           {badges.map((b) => (
-                            <span key={b} style={{ padding: "3px 9px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
+                            <span key={b} style={{ padding: "3px 9px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600, background: "var(--bg-input)", color: "var(--text-secondary)", border: "1px solid var(--border-default)" }}>
                               {b}
                             </span>
                           ))}
@@ -4113,7 +4039,7 @@ export default function BuildingDetailPage() {
             )}
             <div style={{ display: "grid", gap: 24 }}>
             {/* Métricas */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: 16 }}>
               <MetricCard
                 label="Total equipamiento"
                 value={buildingAssets.length}
@@ -4158,8 +4084,8 @@ export default function BuildingDetailPage() {
                         <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
                           <AssetTypeIcon assetType={asset.asset_type} size={18} />
                           <div style={{ flex: 1, minWidth: 0 }}>
-                            <strong style={{ display: "block", fontSize: 14, marginBottom: 2 }}>{asset.name}</strong>
-                            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 12, marginBottom: 8 }}>{typeLabel}</p>
+                            <strong style={{ display: "block", fontSize: "0.875rem", marginBottom: 2 }}>{asset.name}</strong>
+                            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.75rem", marginBottom: 8 }}>{typeLabel}</p>
                             {getAssetStatusBadge(asset.status)}
                           </div>
                           <div style={{ position: "relative", flexShrink: 0 }}>
@@ -4183,7 +4109,7 @@ export default function BuildingDetailPage() {
                           </div>
                         </div>
                         {asset.notes ? (
-                          <p style={{ margin: "10px 0 0", color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.5 }}>
+                          <p style={{ margin: "10px 0 0", color: "var(--text-secondary)", fontSize: "0.8125rem", lineHeight: 1.5 }}>
                             {asset.notes}
                           </p>
                         ) : null}
@@ -4221,7 +4147,7 @@ export default function BuildingDetailPage() {
           return true;
         });
 
-        const canDelete = user?.role === "superadmin" || user?.is_superadmin || user?.role === "titular";
+        const canDelete = user?.role === "superadmin" || user?.is_superadmin || user?.role === "titular" || user?.role === "group_admin";
 
         return (
           <>
@@ -4284,11 +4210,11 @@ export default function BuildingDetailPage() {
             </div>
 
             {/* ── Breadcrumb ── */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, fontSize: 13, color: "var(--text-muted)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
               <button
                 type="button"
                 onClick={() => setDocsActiveCat(null)}
-                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: docsActiveCat ? "var(--text-link, #2563eb)" : "var(--text-primary)", fontWeight: docsActiveCat ? 400 : 600, fontSize: 13 }}
+                style={{ background: "none", border: "none", padding: 0, cursor: "pointer", color: docsActiveCat ? "var(--text-link, #2563eb)" : "var(--text-primary)", fontWeight: docsActiveCat ? 400 : 600, fontSize: "0.8125rem" }}
               >
                 Documentos
               </button>
@@ -4304,7 +4230,7 @@ export default function BuildingDetailPage() {
 
             {/* ── Folder grid (only at root level) ── */}
             {!docsActiveCat && !docsSearch && (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12, marginBottom: 28 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12, marginBottom: 28 }}>
                 {allDocCatKeys.map((catKey) => {
                   const meta  = getDocCategoryMeta(catKey);
                   const count = documentFiles.filter((f) => f.file_category === catKey).length;
@@ -4323,8 +4249,8 @@ export default function BuildingDetailPage() {
                       }}
                     >
                       <Folder size={22} color={meta.color} />
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{meta.label}</span>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{count} archivo{count !== 1 ? "s" : ""}</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3 }}>{meta.label}</span>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{count} archivo{count !== 1 ? "s" : ""}</span>
                     </button>
                   );
                 })}
@@ -4345,13 +4271,13 @@ export default function BuildingDetailPage() {
               ) : docsViewMode === "list" ? (
                 /* ── LIST VIEW ── */
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, minWidth: 480 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem", minWidth: 480 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid var(--border-default)" }}>
-                        <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Nombre</th>
-                        <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Categoría</th>
-                        <th style={{ textAlign: "right", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Fecha</th>
-                        <th style={{ textAlign: "right", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: 12 }}>Tamaño</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem" }}>Nombre</th>
+                        <th style={{ textAlign: "left", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem" }}>Categoría</th>
+                        <th style={{ textAlign: "right", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem" }}>Fecha</th>
+                        <th style={{ textAlign: "right", padding: "8px 10px", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.75rem" }}>Tamaño</th>
                         {canDelete && <th style={{ width: 40 }} />}
                       </tr>
                     </thead>
@@ -4385,7 +4311,7 @@ export default function BuildingDetailPage() {
                               </button>
                             </td>
                             <td style={{ padding: "10px 10px", whiteSpace: "nowrap" }}>
-                              <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: 11, fontWeight: 600, background: catMeta.bg, color: catMeta.color, border: `1px solid ${catMeta.border}` }}>
+                              <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600, background: catMeta.bg, color: catMeta.color, border: `1px solid ${catMeta.border}` }}>
                                 {catMeta.label}
                               </span>
                             </td>
@@ -4415,7 +4341,7 @@ export default function BuildingDetailPage() {
                 </div>
               ) : (
                 /* ── GRID VIEW ── */
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 12 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(10rem, 1fr))", gap: 12 }}>
                   {filteredDocs.map((file) => {
                     const { color, bg } = getDocFileIcon(file.mime_type, file.file_name);
                     const catMeta = getDocCategoryMeta(file.file_category);
@@ -4433,14 +4359,14 @@ export default function BuildingDetailPage() {
                           style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}
                           title={file.file_name}
                         >
-                          <span style={{ display: "block", fontSize: 12, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
+                          <span style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "100%" }}>
                             {file.file_name}
                           </span>
                         </button>
-                        <span style={{ display: "inline-block", padding: "1px 7px", borderRadius: 999, fontSize: 10, fontWeight: 600, background: catMeta.bg, color: catMeta.color, border: `1px solid ${catMeta.border}`, alignSelf: "flex-start" }}>
+                        <span style={{ display: "inline-block", padding: "1px 7px", borderRadius: 999, fontSize: "0.625rem", fontWeight: 600, background: catMeta.bg, color: catMeta.color, border: `1px solid ${catMeta.border}`, alignSelf: "flex-start" }}>
                           {catMeta.label}
                         </span>
-                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{formatFileSize(file.file_size_bytes)}</span>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{formatFileSize(file.file_size_bytes)}</span>
                         {canDelete && (
                           <button
                             type="button"
@@ -4465,7 +4391,7 @@ export default function BuildingDetailPage() {
               onClose={() => { setDocsUploadOpen(false); setDocsPendingFiles([]); }}
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-                <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+                <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
                   {docsPendingFiles.map((f) => f.name).join(", ")}
                 </p>
                 <AppFormField label="Carpeta">
@@ -4567,7 +4493,7 @@ export default function BuildingDetailPage() {
 
           {/* Header */}
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
-            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 14 }}>
+            <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.875rem" }}>
               {galleryFiles.length} foto{galleryFiles.length !== 1 ? "s" : ""} · {gallerySections.length} sección{gallerySections.length !== 1 ? "es" : ""}
             </p>
             <div style={{ display: "flex", gap: 8 }}>
@@ -4589,7 +4515,7 @@ export default function BuildingDetailPage() {
 
           {/* Progreso de subida */}
           {galleryUploadProgress !== null && (
-            <div style={{ padding: "10px 14px", background: "var(--badge-bg-blue)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 14, color: "var(--badge-text-blue)", fontWeight: 600 }}>
+            <div style={{ padding: "10px 14px", background: "var(--badge-bg-blue)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.875rem", color: "var(--badge-text-blue)", fontWeight: 600 }}>
               Subiendo... {galleryUploadProgress}%
             </div>
           )}
@@ -4703,7 +4629,7 @@ export default function BuildingDetailPage() {
                                 position: "relative", aspectRatio: "1", borderRadius: "var(--border-radius-md)", overflow: "hidden",
                                 cursor: "grab", background: "var(--bg-page)",
                                 opacity: isDragging ? 0.4 : 1,
-                                outline: isDropTarget ? "2px solid #8B2252" : "none",
+                                outline: isDropTarget ? "2px solid var(--accent)" : "none",
                                 transition: "opacity 0.15s, outline 0.1s",
                               }}
                               onClick={() => { if (!dragItem) setLightboxIndex(globalIdx >= 0 ? globalIdx : 0); }}
@@ -4717,7 +4643,7 @@ export default function BuildingDetailPage() {
                               />
                               {isOverlaySlot && (
                                 <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.55)", display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-                                  <span style={{ color: "white", fontSize: 22, fontWeight: 700 }}>+{overflow}</span>
+                                  <span style={{ color: "white", fontSize: "1.375rem", fontWeight: 700 }}>+{overflow}</span>
                                 </div>
                               )}
                             </div>
@@ -4736,13 +4662,13 @@ export default function BuildingDetailPage() {
                             style={{
                               aspectRatio: "1", borderRadius: "var(--border-radius-md)",
                               background: "var(--bg-page)",
-                              border: isAddTarget ? "2px solid #8B2252" : "1.5px dashed var(--border-default)",
+                              border: isAddTarget ? "2px solid var(--accent)" : "1.5px dashed var(--border-default)",
                               display: "flex", alignItems: "center", justifyContent: "center",
                               cursor: "pointer",
                               transition: "border 0.1s",
                             }}
                           >
-                            <Plus size={20} color="#8B2252" />
+                            <Plus size={20} color="var(--accent)" />
                           </div>
                         );
                       })()}
@@ -4772,7 +4698,7 @@ export default function BuildingDetailPage() {
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => (prev ?? 1) - 1); }}
-                    style={{ position: "absolute", left: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
+                    style={{ position: "absolute", left: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "12px 18px", fontSize: "1.5rem", lineHeight: 1 }}
                   >
                     ‹
                   </button>
@@ -4784,14 +4710,14 @@ export default function BuildingDetailPage() {
                   onClick={(e) => e.stopPropagation()}
                   style={{ maxWidth: "90vw", maxHeight: "90vh", objectFit: "contain", borderRadius: "var(--border-radius-md)" }}
                 />
-                <p style={{ position: "absolute", bottom: 20, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,0.65)", fontSize: 13, margin: 0, pointerEvents: "none" }}>
+                <p style={{ position: "absolute", bottom: 20, left: 0, right: 0, textAlign: "center", color: "rgba(255,255,255,0.65)", fontSize: "0.8125rem", margin: 0, pointerEvents: "none" }}>
                   {file?.file_name} · {lightboxIndex + 1}/{galleryFiles.length}
                 </p>
                 {lightboxIndex < galleryFiles.length - 1 && (
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setLightboxIndex(prev => (prev ?? 0) + 1); }}
-                    style={{ position: "absolute", right: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "12px 18px", fontSize: 24, lineHeight: 1 }}
+                    style={{ position: "absolute", right: 16, background: "rgba(255,255,255,0.12)", border: "none", color: "white", cursor: "pointer", borderRadius: "var(--border-radius-md)", padding: "12px 18px", fontSize: "1.5rem", lineHeight: 1 }}
                   >
                     ›
                   </button>
@@ -4816,7 +4742,7 @@ export default function BuildingDetailPage() {
                 />
               </AppFormField>
               <div>
-                <p style={{ margin: "0 0 8px", fontSize: 12, color: "var(--text-secondary)" }}>Sugerencias</p>
+                <p style={{ margin: "0 0 8px", fontSize: "0.75rem", color: "var(--text-secondary)" }}>Sugerencias</p>
                 <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                   {[...(SECTION_SUGGESTIONS[building?.building_category ?? ""] ?? SECTION_SUGGESTIONS.residential_multi), "Otro"].map((sug) => (
                     <button
@@ -4828,7 +4754,7 @@ export default function BuildingDetailPage() {
                         border: `1px solid ${newSectionName === sug ? "var(--accent)" : "var(--border-default)"}`,
                         background: newSectionName === sug ? "var(--accent)" : "var(--bg-card)",
                         color: newSectionName === sug ? "#ffffff" : "var(--text-secondary)",
-                        fontSize: 12, cursor: "pointer",
+                        fontSize: "0.75rem", cursor: "pointer",
                       }}
                     >
                       {sug}
@@ -4927,16 +4853,16 @@ export default function BuildingDetailPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <Sparkles size={14} color="var(--accent, #8B2252)" />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Limpieza</span>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Limpieza</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <a href={`/cleaning?building_id=${building.id}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
+                  <a href={`/cleaning?building_id=${building.id}`} style={{ fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }}>
                     Ver historial completo →
                   </a>
                   <button
                     type="button"
                     onClick={() => setAddScheduleOpen(true)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", padding: "5px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
                   >
                     <Plus size={12} />Agregar horario
                   </button>
@@ -4946,7 +4872,7 @@ export default function BuildingDetailPage() {
               {/* Schedules como filas flat */}
               {buildingSchedules.length === 0 ? (
                 <div style={{ padding: "14px 18px" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)", fontStyle: "italic" }}>
+                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)", fontStyle: "italic" }}>
                     Sin horarios de limpieza configurados
                   </p>
                 </div>
@@ -4956,9 +4882,9 @@ export default function BuildingDetailPage() {
                   const isLast = si === buildingSchedules.length - 1 && recentCleaningLogs.length === 0;
                   return (
                     <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px 10px 15px", borderLeft: `3px solid ${borderColor}`, background: "var(--bg-card-hover)", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
-                      <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>
+                      <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                         {DAY_LABELS_MAP[s.day_of_week] ?? s.day_of_week} · {s.time_block === 'morning' ? 'mañana' : 'tarde'}
-                        <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-muted)" }}>
+                        <span style={{ marginLeft: 8, fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                           {CLEANING_TYPE_LABEL[s.cleaning_type] ?? s.cleaning_type}
                         </span>
                       </span>
@@ -4966,7 +4892,7 @@ export default function BuildingDetailPage() {
                         <button
                           type="button"
                           onClick={() => toast('Próximamente')}
-                          style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-secondary)", fontSize: 12 }}
+                          style={{ background: "transparent", border: "none", cursor: "pointer", padding: "2px 4px", color: "var(--text-secondary)", fontSize: "0.75rem" }}
                         >
                           Editar
                         </button>
@@ -4991,14 +4917,14 @@ export default function BuildingDetailPage() {
               {recentCleaningLogs.length > 0 && (
                 <>
                   <div style={{ padding: "10px 18px 4px", borderTop: buildingSchedules.length > 0 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : undefined }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Últimos registros</span>
+                    <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Últimos registros</span>
                   </div>
                   {recentCleaningLogs.map((log, li) => (
                     <div key={log.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 18px", borderBottom: li < recentCleaningLogs.length - 1 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : "none" }}>
-                      <span style={{ color: "var(--text-muted)", minWidth: 52, flexShrink: 0, fontSize: 12 }}>{formatShortDate(log.scheduled_date)}</span>
-                      <span style={{ flex: 1, fontSize: 13, color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
+                      <span style={{ color: "var(--text-muted)", minWidth: 52, flexShrink: 0, fontSize: "0.75rem" }}>{formatShortDate(log.scheduled_date)}</span>
+                      <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
                       <span style={{
-                        padding: "2px 7px", borderRadius: 999, fontSize: 11, fontWeight: 600, flexShrink: 0,
+                        padding: "2px 7px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600, flexShrink: 0,
                         background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
                         color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
                       }}>
@@ -5016,16 +4942,16 @@ export default function BuildingDetailPage() {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 18px", borderBottom: "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
                   <Wrench size={14} color="var(--accent, #8B2252)" />
-                  <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>Mantenimiento</span>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Mantenimiento</span>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <a href={`/maintenance?building_id=${building.id}`} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}>
+                  <a href={`/maintenance?building_id=${building.id}`} style={{ fontSize: "0.75rem", color: "var(--accent)", textDecoration: "none" }}>
                     Ver todos los tickets →
                   </a>
                   <button
                     type="button"
                     onClick={() => setAddTicketOpen(true)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 12, padding: "5px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: "0.75rem", padding: "5px 10px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", cursor: "pointer" }}
                   >
                     <Plus size={12} />Nuevo ticket
                   </button>
@@ -5035,7 +4961,7 @@ export default function BuildingDetailPage() {
               {/* Tickets abiertos */}
               {openTickets.length === 0 ? (
                 <div style={{ padding: "14px 18px" }}>
-                  <p style={{ margin: 0, fontSize: 13, color: "#10B981", fontWeight: 600 }}>
+                  <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--metric-value-green)", fontWeight: 600 }}>
                     Sin tickets pendientes
                   </p>
                 </div>
@@ -5050,11 +4976,11 @@ export default function BuildingDetailPage() {
                   return (
                     <div key={ticket.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
                       <span style={{ width: 10, height: 10, borderRadius: "50%", background: dotColor, flexShrink: 0 }} />
-                      <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)" }}>{ticket.title}</span>
-                      <span style={{ padding: "2px 6px", borderRadius: 999, fontSize: 10, fontWeight: 600, background: pillBg, color: pillColor, flexShrink: 0 }}>
+                      <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-primary)" }}>{ticket.title}</span>
+                      <span style={{ padding: "2px 6px", borderRadius: 999, fontSize: "0.625rem", fontWeight: 600, background: pillBg, color: pillColor, flexShrink: 0 }}>
                         {priorityLabel}
                       </span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)", flexShrink: 0 }}>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", flexShrink: 0 }}>
                         {age === 0 ? 'Hoy' : `Hace ${age} día${age === 1 ? '' : 's'}`}
                       </span>
                     </div>
@@ -5066,12 +4992,12 @@ export default function BuildingDetailPage() {
               {upcomingPreventives.length > 0 && (
                 <>
                   <div style={{ padding: "10px 18px 4px", borderTop: openTickets.length > 0 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : undefined }}>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Preventivos próximos</span>
+                    <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Preventivos próximos</span>
                   </div>
                   {upcomingPreventives.map((p, pi) => (
                     <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 18px", borderBottom: pi < upcomingPreventives.length - 1 ? "0.5px solid var(--color-border-tertiary, var(--border-default))" : "none" }}>
-                      <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{p.assets?.[0]?.name ?? 'Activo'}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>{formatShortDate(p.next_due_date)}</span>
+                      <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{p.assets?.[0]?.name ?? 'Activo'}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{formatShortDate(p.next_due_date)}</span>
                     </div>
                   ))}
                 </>
@@ -5088,31 +5014,31 @@ export default function BuildingDetailPage() {
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Tipo</p>
+                <p style={{ margin: "0 0 10px", fontSize: "0.8125rem", fontWeight: 600 }}>Tipo</p>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([{ value: 'common_area', label: 'Áreas comunes' }, { value: 'exterior', label: 'Exterior' }]).map(opt => (
-                    <button key={opt.value} type="button" onClick={() => setAddScheduleType(opt.value)} style={{ padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: addScheduleType === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleType === opt.value ? "var(--accent)" : "var(--bg-card)", color: addScheduleType === opt.value ? "#fff" : "var(--text-secondary)" }}>
+                    <button key={opt.value} type="button" onClick={() => setAddScheduleType(opt.value)} style={{ padding: "7px 16px", borderRadius: 999, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", border: addScheduleType === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleType === opt.value ? "var(--accent)" : "var(--bg-card)", color: addScheduleType === opt.value ? "#fff" : "var(--text-secondary)" }}>
                       {opt.label}
                     </button>
                   ))}
                 </div>
               </div>
               <div>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Días</p>
+                <p style={{ margin: "0 0 10px", fontSize: "0.8125rem", fontWeight: 600 }}>Días</p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {(['monday','tuesday','wednesday','thursday','friday','saturday'] as const).map(day => (
-                    <button key={day} type="button" onClick={() => setAddScheduleDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])} style={{ padding: "7px 12px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: addScheduleDays.includes(day) ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleDays.includes(day) ? "var(--accent)" : "var(--bg-card)", color: addScheduleDays.includes(day) ? "#fff" : "var(--text-secondary)" }}>
+                    <button key={day} type="button" onClick={() => setAddScheduleDays(prev => prev.includes(day) ? prev.filter(d => d !== day) : [...prev, day])} style={{ padding: "7px 12px", borderRadius: 999, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", border: addScheduleDays.includes(day) ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleDays.includes(day) ? "var(--accent)" : "var(--bg-card)", color: addScheduleDays.includes(day) ? "#fff" : "var(--text-secondary)" }}>
                       {DAY_LABELS_MAP[day]}
                     </button>
                   ))}
                 </div>
-                {addScheduleDays.length === 0 && <p style={{ margin: "6px 0 0", fontSize: 12, color: "#EF4444" }}>Selecciona al menos un día.</p>}
+                {addScheduleDays.length === 0 && <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "var(--metric-value-red)" }}>Selecciona al menos un día.</p>}
               </div>
               <div>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Turno</p>
+                <p style={{ margin: "0 0 10px", fontSize: "0.8125rem", fontWeight: 600 }}>Turno</p>
                 <div style={{ display: "flex", gap: 8 }}>
                   {([{ value: 'morning', label: 'Mañana' }, { value: 'afternoon', label: 'Tarde' }]).map(opt => (
-                    <button key={opt.value} type="button" onClick={() => setAddScheduleBlock(opt.value)} style={{ padding: "7px 16px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", border: addScheduleBlock === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleBlock === opt.value ? "var(--accent)" : "var(--bg-card)", color: addScheduleBlock === opt.value ? "#fff" : "var(--text-secondary)" }}>
+                    <button key={opt.value} type="button" onClick={() => setAddScheduleBlock(opt.value)} style={{ padding: "7px 16px", borderRadius: 999, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", border: addScheduleBlock === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: addScheduleBlock === opt.value ? "var(--accent)" : "var(--bg-card)", color: addScheduleBlock === opt.value ? "#fff" : "var(--text-secondary)" }}>
                       {opt.label}
                     </button>
                   ))}
@@ -5136,18 +5062,18 @@ export default function BuildingDetailPage() {
           >
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600 }}>Título *</p>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8125rem", fontWeight: 600 }}>Título *</p>
                 <input value={newTicketTitle} onChange={e => setNewTicketTitle(e.target.value)} placeholder="Ej: Fuga en tubería del 3er piso" style={INPUT_STYLE} />
               </div>
               <div>
-                <p style={{ margin: "0 0 6px", fontSize: 13, fontWeight: 600 }}>Descripción (opcional)</p>
+                <p style={{ margin: "0 0 6px", fontSize: "0.8125rem", fontWeight: 600 }}>Descripción (opcional)</p>
                 <textarea value={newTicketDesc} onChange={e => setNewTicketDesc(e.target.value)} rows={3} placeholder="Describe el problema en detalle..." style={TEXTAREA_STYLE} />
               </div>
               <div>
-                <p style={{ margin: "0 0 10px", fontSize: 13, fontWeight: 600 }}>Prioridad</p>
+                <p style={{ margin: "0 0 10px", fontSize: "0.8125rem", fontWeight: 600 }}>Prioridad</p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   {([{ value: 'low', label: 'Baja' }, { value: 'medium', label: 'Media' }, { value: 'high', label: 'Alta' }, { value: 'urgent', label: 'Urgente' }]).map(opt => (
-                    <button key={opt.value} type="button" onClick={() => setNewTicketPriority(opt.value)} style={{ padding: "7px 14px", borderRadius: 999, fontSize: 13, fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, border: newTicketPriority === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: newTicketPriority === opt.value ? "var(--accent)" : "var(--bg-card)", color: newTicketPriority === opt.value ? "#fff" : "var(--text-secondary)" }}>
+                    <button key={opt.value} type="button" onClick={() => setNewTicketPriority(opt.value)} style={{ padding: "7px 14px", borderRadius: 999, fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4, border: newTicketPriority === opt.value ? "1.5px solid var(--accent)" : "1.5px solid var(--border-default)", background: newTicketPriority === opt.value ? "var(--accent)" : "var(--bg-card)", color: newTicketPriority === opt.value ? "#fff" : "var(--text-secondary)" }}>
                       <span>{MAINT_PRIORITY_ICON[opt.value]}</span>{opt.label}
                     </button>
                   ))}
@@ -5188,20 +5114,20 @@ export default function BuildingDetailPage() {
               {/* Barra de ocupación del terreno — solo para terrenos */}
               {building.building_category === "land" && building.land_sqm != null && (
                 <div style={{ marginBottom: 20 }}>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
+                  <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 10 }}>
                     Ocupación del terreno
                   </p>
                   <div style={{ background: "var(--border-default)", borderRadius: 999, height: 10, overflow: "hidden", marginBottom: 8 }}>
-                    <div style={{ width: `${pctRented}%`, height: "100%", background: "#10B981", borderRadius: 999, transition: "width 0.4s ease" }} />
+                    <div style={{ width: `${pctRented}%`, height: "100%", background: "var(--metric-bg-green)", borderRadius: 999, transition: "width 0.4s ease" }} />
                   </div>
-                  <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
+                  <p style={{ fontSize: "0.75rem", color: "var(--text-secondary)", margin: 0 }}>
                     {totalLeasedSqm.toLocaleString("es-MX")} m² rentados
                     {" · "}
                     {availableSqm.toLocaleString("es-MX")} m² disponibles
                     {" · "}
                     {totalLandSqm.toLocaleString("es-MX")} m² totales
                     {" · "}
-                    <strong style={{ color: "#10B981" }}>{pctRented}%</strong>
+                    <strong style={{ color: "var(--metric-value-green)" }}>{pctRented}%</strong>
                   </p>
                 </div>
               )}
@@ -5217,32 +5143,32 @@ export default function BuildingDetailPage() {
                     <AppCard key={lease.id} style={{ padding: 16, borderRadius: "var(--border-radius-lg)" }}>
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
                         <div>
-                          <strong style={{ fontSize: 14, display: "block", marginBottom: 2 }}>
+                          <strong style={{ fontSize: "0.875rem", display: "block", marginBottom: 2 }}>
                             {lease.tenant_name ?? "Arrendatario"}
                           </strong>
-                          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: 12 }}>
+                          <p style={{ margin: 0, color: "var(--text-secondary)", fontSize: "0.75rem" }}>
                             {lease.start_date ?? "Sin fecha"}{lease.end_date ? ` → ${lease.end_date}` : " (sin vencimiento)"}
                           </p>
                         </div>
                         <div style={{ display: "flex", alignItems: "center", gap: 16, flexShrink: 0 }}>
                           {lease.leased_sqm != null && (
                             <div style={{ textAlign: "right" }}>
-                              <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, margin: 0 }}>
+                              <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, margin: 0 }}>
                                 {lease.leased_sqm.toLocaleString("es-MX")} m²
                               </p>
-                              <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "3px 0 0 0" }}>superficie</p>
+                              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", margin: "3px 0 0 0" }}>superficie</p>
                             </div>
                           )}
                           <div style={{ textAlign: "right" }}>
-                            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, margin: 0 }}>
+                            <p style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)", lineHeight: 1, margin: 0 }}>
                               {formatMXN(lease.rent_amount)}
                             </p>
-                            <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "3px 0 0 0" }}>mensual</p>
+                            <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", margin: "3px 0 0 0" }}>mensual</p>
                           </div>
                           <span style={{
-                            padding: "3px 10px", borderRadius: 999, fontSize: 11, fontWeight: 600,
+                            padding: "3px 10px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600,
                             background: lease.status === "ACTIVE" ? "rgba(16,185,129,0.1)" : "var(--bg-page)",
-                            color: lease.status === "ACTIVE" ? "#10B981" : "var(--text-muted)",
+                            color: lease.status === "ACTIVE" ? "var(--metric-value-green)" : "var(--text-muted)",
                           }}>
                             {lease.status === "ACTIVE" ? "Activo" : lease.status}
                           </span>
@@ -5278,9 +5204,9 @@ export default function BuildingDetailPage() {
             }
           >
             {loadingParking ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 14, padding: "16px 20px" }}>Cargando...</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", padding: "16px 20px" }}>Cargando...</p>
             ) : parkingSpots.length === 0 ? (
-              <p style={{ color: "var(--text-muted)", fontSize: 14, padding: "16px 20px" }}>Sin cajones registrados. Usa &quot;Agregar cajón&quot; para comenzar.</p>
+              <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", padding: "16px 20px" }}>Sin cajones registrados. Usa &quot;Agregar cajón&quot; para comenzar.</p>
             ) : (
               <div>
                 {parkingSpots.map((spot, i) => {
@@ -5295,13 +5221,13 @@ export default function BuildingDetailPage() {
                       borderTop: i > 0 ? "1px solid var(--border-default)" : undefined,
                     }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                        <span style={{ fontWeight: 700, fontSize: 15 }}>Cajón #{spot.spot_number}</span>
+                        <span style={{ fontWeight: 700, fontSize: "0.9375rem" }}>Cajón #{spot.spot_number}</span>
                         <AppBadge variant={occupied ? "red" : "green"}>{occupied ? "Ocupado" : "Disponible"}</AppBadge>
                         {occupied && tenantName && (
-                          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{tenantName}</span>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{tenantName}</span>
                         )}
                         {occupied && spot.monthly_fee > 0 && (
-                          <span style={{ fontSize: 13, color: "var(--text-muted)" }}>{formatMXN(spot.monthly_fee)}/mes</span>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>{formatMXN(spot.monthly_fee)}/mes</span>
                         )}
                       </div>
                       <div>
@@ -5355,7 +5281,7 @@ export default function BuildingDetailPage() {
                 onAction={() => { const n = (childBuildings.length + 1).toString().padStart(2, "0"); setBodegaName(""); setBodegaCode(`B-${n}`); setBodegaConstructionSqm(""); setBodegaPatioSqm(""); setBodegaRampas(""); setBodegaMsg(""); setIsCreateBodegaOpen(true); }}
               />
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(18.75rem, 1fr))", gap: 12 }}>
                 {childBuildings.map((cb) => {
                   const isOccupied = bodegaOccupied.has(cb.id);
                   return (
@@ -5397,7 +5323,7 @@ export default function BuildingDetailPage() {
                         }
                       >
                         {(cb.construction_sqm != null || cb.land_sqm != null) && (
-                          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 4 }}>
                             {cb.construction_sqm != null && <span style={{ fontWeight: 600 }}>{cb.construction_sqm.toLocaleString("es-MX")} m² construcción</span>}
                             {cb.land_sqm != null && <span style={{ marginLeft: cb.construction_sqm != null ? 8 : 0 }}>{cb.land_sqm.toLocaleString("es-MX")} m² terreno</span>}
                           </div>
@@ -5458,7 +5384,7 @@ export default function BuildingDetailPage() {
                 }}
               />
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(18.75rem, 1fr))", gap: 12 }}>
                 {plazaLocales.map((local) => {
                   const occupied = local.status === "OCCUPIED";
                   return (
@@ -5469,7 +5395,7 @@ export default function BuildingDetailPage() {
                           style={{
                             position: "absolute", top: -6, right: -6,
                             width: 18, height: 18, borderRadius: "50%",
-                            background: "#EF9F27",
+                            background: "var(--metric-value-amber)",
                             zIndex: 2, pointerEvents: "none",
                           }}
                         />
@@ -5518,7 +5444,7 @@ export default function BuildingDetailPage() {
                         }
                       >
                         {local.sqm != null && (
-                          <div style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
+                          <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginTop: 4 }}>
                             <span style={{ fontWeight: 600 }}>{local.sqm.toLocaleString("es-MX")} m²</span>
                           </div>
                         )}
@@ -5600,7 +5526,7 @@ export default function BuildingDetailPage() {
                   {/* ── Áreas automáticas ── */}
                   {autoAreas.length > 0 ? (
                     <>
-                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      <div style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>
                         Áreas calculadas automáticamente
                       </div>
                       {autoAreas.map((area) => {
@@ -5611,20 +5537,20 @@ export default function BuildingDetailPage() {
                               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                                 <div>
                                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
-                                    <strong style={{ fontSize: 14, color: "var(--text-primary)" }}>{area.label}</strong>
-                                    <span style={{ fontSize: 10, fontWeight: 700, background: "var(--icon-bg-blue)", color: "var(--badge-text-blue)", borderRadius: 999, padding: "2px 7px" }}>
+                                    <strong style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>{area.label}</strong>
+                                    <span style={{ fontSize: "0.625rem", fontWeight: 700, background: "var(--icon-bg-blue)", color: "var(--badge-text-blue)", borderRadius: 999, padding: "2px 7px" }}>
                                       Auto
                                     </span>
                                   </div>
-                                  <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 500 }}>
+                                  <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 500 }}>
                                     Calculado de los espacios registrados
                                   </span>
                                 </div>
                                 <div style={{ textAlign: "right", flexShrink: 0 }}>
-                                  <div style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                                  <div style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
                                     {area.sqm.toLocaleString("es-MX")} m²
                                   </div>
-                                  <div style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{pct}%</div>
+                                  <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>{pct}%</div>
                                 </div>
                               </div>
                               <div style={{ height: 6, borderRadius: 999, background: "var(--bg-page)", overflow: "hidden" }}>
@@ -5641,7 +5567,7 @@ export default function BuildingDetailPage() {
                   {autoAreas.length > 0 && buildingAreas.length > 0 ? (
                     <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "4px 0" }}>
                       <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
-                      <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 700, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 700, whiteSpace: "nowrap", textTransform: "uppercase", letterSpacing: 0.5 }}>
                         Áreas adicionales
                       </span>
                       <div style={{ flex: 1, height: 1, background: "var(--border-default)" }} />
@@ -5657,15 +5583,15 @@ export default function BuildingDetailPage() {
                         <div style={{ display: "grid", gap: 10 }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
                             <div>
-                              <strong style={{ fontSize: 14, color: "var(--text-primary)", display: "block", marginBottom: 2 }}>
+                              <strong style={{ fontSize: "0.875rem", color: "var(--text-primary)", display: "block", marginBottom: 2 }}>
                                 {getAreaTypeLabel(area.area_type, area.area_label)}
                               </strong>
-                              <span style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>
+                              <span style={{ fontSize: "0.9375rem", fontWeight: 700, color: "var(--text-primary)" }}>
                                 {(area.sqm ?? 0).toLocaleString("es-MX")} m²
                               </span>
                             </div>
                             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-muted)" }}>{pct}%</span>
+                              <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-muted)" }}>{pct}%</span>
                               <button
                                 type="button"
                                 onClick={() => void handleDeleteArea(area.id)}
@@ -5687,13 +5613,13 @@ export default function BuildingDetailPage() {
                   {/* ── Total general ── */}
                   <AppCard style={{ padding: 16 }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-secondary)" }}>Total</span>
-                      <span style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)" }}>
+                      <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-secondary)" }}>Total</span>
+                      <span style={{ fontSize: "1rem", fontWeight: 800, color: "var(--text-primary)" }}>
                         {grandTotal.toLocaleString("es-MX")} m²
                       </span>
                     </div>
                     {building.construction_sqm != null && Math.abs(grandTotal - building.construction_sqm) > 1 ? (
-                      <div style={{ marginTop: 6, fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                      <div style={{ marginTop: 6, fontSize: "0.75rem", color: "var(--badge-text-amber)", fontWeight: 600 }}>
                         Registrado: {building.construction_sqm.toLocaleString("es-MX")} m² · Diferencia: {Math.abs(grandTotal - building.construction_sqm).toLocaleString("es-MX")} m²
                       </div>
                     ) : null}
@@ -5736,7 +5662,7 @@ export default function BuildingDetailPage() {
                       border: selected ? `2px solid ${pt.color}` : "2px solid var(--border-default)",
                       background: selected ? pt.color + "15" : "var(--bg-card)",
                       color: selected ? pt.color : "var(--text-secondary)",
-                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: 12,
+                      cursor: "pointer", fontWeight: selected ? 700 : 500, fontSize: "0.75rem",
                       transition: "all 0.15s ease",
                     }}
                   >
@@ -5745,7 +5671,7 @@ export default function BuildingDetailPage() {
                         position: "absolute", top: 4, left: 4,
                         width: 16, height: 16, borderRadius: "50%",
                         background: pt.color, color: "#fff",
-                        fontSize: 10, fontWeight: 700,
+                        fontSize: "0.625rem", fontWeight: 700,
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
                         {orderIdx + 1}
@@ -5758,7 +5684,7 @@ export default function BuildingDetailPage() {
               })}
             </div>
             {editSelectedTypes.length > 1 && (
-              <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6, marginBottom: 0 }}>
                 Tipo principal: <strong style={{ color: "var(--text-primary)" }}>
                   {PROPERTY_TYPES.find((pt) => pt.value === editSelectedTypes[0])?.label}
                 </strong>
@@ -5788,8 +5714,8 @@ export default function BuildingDetailPage() {
                         }}
                       >
                         {StIcon && <StIcon size={15} color={sel ? color : "var(--text-muted)"} />}
-                        <p style={{ margin: 0, fontSize: 12, fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
-                        <p style={{ margin: 0, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
+                        <p style={{ margin: 0, fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? color : "var(--text-primary)", lineHeight: 1.2 }}>{st.label}</p>
+                        <p style={{ margin: 0, fontSize: "0.625rem", color: "var(--text-muted)", lineHeight: 1.3 }}>{st.description}</p>
                       </button>
                     );
                   })}
@@ -5799,7 +5725,7 @@ export default function BuildingDetailPage() {
           })()}
 
           <div style={{ marginBottom: 4 }}>
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
               Superficie
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -5822,7 +5748,7 @@ export default function BuildingDetailPage() {
             const setHF = (key: string, val: unknown) => setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
             return (
               <div style={{ marginTop: 4 }}>
-                <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
+                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
                   Características de la casa
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -5849,14 +5775,14 @@ export default function BuildingDetailPage() {
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   {HOUSE_AMENITIES.map((a) => (
-                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                       <input type="checkbox" checked={Boolean(hf[a.key])} onChange={(e) => setHF(a.key, e.target.checked)} style={{ accentColor: "#0369a1" }} />
                       {a.label}
                     </label>
                   ))}
                 </div>
                 <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: 13, color: "var(--text-primary)" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                     <input type="checkbox" checked={Boolean(hf.has_other)}
                       onChange={(e) => {
                         setHF("has_other", e.target.checked);
@@ -5867,25 +5793,25 @@ export default function BuildingDetailPage() {
                   </label>
                   {Boolean(hf.has_other) && (
                     <div style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
+                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
                       <textarea
                         value={(hf.other_notes as string) ?? ""}
                         onChange={(e) => setHF("other_notes", e.target.value || undefined)}
                         placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
                         rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: 13, resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
                       />
                     </div>
                   )}
                 </div>
                 <AppFormField label="Modo de renta">
                   <div style={{ display: "flex", gap: 20 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
                       <input type="radio" checked={hf.rental_mode === "whole"} onChange={() => setHF("rental_mode", "whole")} style={{ accentColor: "#0369a1" }} />
                       Casa completa
                     </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: 13 }}>
-                      <input type="radio" checked={hf.rental_mode === "by_room"} onChange={() => setHF("rental_mode", "by_room")} style={{ accentColor: "#8B2252" }} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
+                      <input type="radio" checked={hf.rental_mode === "by_room"} onChange={() => setHF("rental_mode", "by_room")} style={{ accentColor: "var(--accent)" }} />
                       Por cuartos
                     </label>
                   </div>
@@ -6110,7 +6036,7 @@ export default function BuildingDetailPage() {
 
                       {/* Ícono + nombre */}
                       <div style={{ color: "var(--accent)", lineHeight: 0 }}><IconComponent size={28} /></div>
-                      <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginTop: 8, lineHeight: 1.3, marginBottom: 10 }}>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 500, color: "var(--text-primary)", marginTop: 8, lineHeight: 1.3, marginBottom: 10 }}>
                         {area.name}
                       </span>
 
@@ -6127,7 +6053,7 @@ export default function BuildingDetailPage() {
                         style={{
                           display: "flex", alignItems: "center", gap: 6,
                           background: "none", border: "none", cursor: "pointer", padding: 0,
-                          fontSize: 11, fontWeight: 600,
+                          fontSize: "0.6875rem", fontWeight: 600,
                           color: area.is_reservable ? "var(--accent)" : "var(--text-muted)",
                         }}
                       >
@@ -6158,7 +6084,7 @@ export default function BuildingDetailPage() {
                           >
                             <div style={{ paddingTop: 10, display: "flex", flexDirection: "column", gap: 8, alignItems: "flex-start", width: "100%" }}>
                               {/* Unidad de reserva */}
-                              <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Unidad</p>
+                              <p style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Unidad</p>
                               <div style={{ display: "flex", gap: 4 }}>
                                 {UNITS.map(u => (
                                   <button
@@ -6166,7 +6092,7 @@ export default function BuildingDetailPage() {
                                     type="button"
                                     onClick={() => patchArea({ reservation_unit: u.key })}
                                     style={{
-                                      fontSize: 11, fontWeight: 600, padding: "3px 8px",
+                                      fontSize: "0.6875rem", fontWeight: 600, padding: "3px 8px",
                                       borderRadius: "var(--border-radius-sm)",
                                       border: (area.reservation_unit ?? "hora") === u.key ? "1.5px solid var(--accent)" : "1px solid var(--border-default)",
                                       background: (area.reservation_unit ?? "hora") === u.key ? "color-mix(in srgb, var(--accent) 12%, var(--bg-card))" : "var(--bg-page)",
@@ -6178,7 +6104,7 @@ export default function BuildingDetailPage() {
                               </div>
 
                               {/* Capacidad */}
-                              <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Capacidad</p>
+                              <p style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", margin: 0 }}>Capacidad</p>
                               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                                 <input
                                   type="number"
@@ -6190,13 +6116,13 @@ export default function BuildingDetailPage() {
                                   }}
                                   placeholder="—"
                                   style={{
-                                    width: 56, fontSize: 12, padding: "3px 6px", textAlign: "center",
+                                    width: 56, fontSize: "0.75rem", padding: "3px 6px", textAlign: "center",
                                     border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-sm)",
                                     background: "var(--bg-input)", color: "var(--text-primary)",
                                     outline: "none",
                                   }}
                                 />
-                                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>personas</span>
+                                <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>personas</span>
                               </div>
 
                               {/* Requiere aprobación */}
@@ -6206,7 +6132,7 @@ export default function BuildingDetailPage() {
                                 style={{
                                   display: "flex", alignItems: "center", gap: 6,
                                   background: "none", border: "none", cursor: "pointer", padding: 0,
-                                  fontSize: 11, fontWeight: 600,
+                                  fontSize: "0.6875rem", fontWeight: 600,
                                   color: area.requires_approval ? "var(--accent)" : "var(--text-muted)",
                                 }}
                               >
@@ -6242,7 +6168,7 @@ export default function BuildingDetailPage() {
               icon={<Calendar size={18} />}
               action={
                 <span style={{
-                  fontSize: 11, fontWeight: 700, padding: "3px 10px",
+                  fontSize: "0.6875rem", fontWeight: 700, padding: "3px 10px",
                   borderRadius: 999, background: "var(--metric-bg-amber)",
                   color: "var(--metric-value-amber)", border: "1px solid var(--metric-border-amber)",
                 }}>Próximamente</span>
@@ -6251,7 +6177,7 @@ export default function BuildingDetailPage() {
               <div style={{ position: "relative" }}>
                 {/* Tabla placeholder — opaca */}
                 <div style={{ opacity: 0.5, pointerEvents: "none", userSelect: "none" }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 8px 8px", borderBottom: "1px solid var(--border-default)", marginBottom: 4 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", padding: "0 8px 8px", borderBottom: "1px solid var(--border-default)", marginBottom: 4 }}>
                     <span>Área</span><span>Unidad / Inquilino</span><span>Fecha</span><span>Horario</span><span>Estado</span>
                   </div>
                   {[
@@ -6260,11 +6186,11 @@ export default function BuildingDetailPage() {
                     { area: "Roof garden",      tenant: "Depto 202 — Carlos Ruiz",   date: "5 Jun 2026",  time: "18:00 - 20:00", status: "Cancelada", statusColor: "#991b1b", statusBg: "#fef2f2" },
                   ].map((row, i) => (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", padding: "10px 8px", borderBottom: "1px solid var(--border-default)", alignItems: "center" }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{row.area}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.tenant}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.date}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{row.time}</span>
-                      <span style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: row.statusBg, color: row.statusColor }}>{row.status}</span>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{row.area}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.tenant}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.date}</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)" }}>{row.time}</span>
+                      <span style={{ fontSize: "0.6875rem", fontWeight: 700, padding: "2px 8px", borderRadius: 999, background: row.statusBg, color: row.statusColor }}>{row.status}</span>
                     </div>
                   ))}
                 </div>
@@ -6279,14 +6205,14 @@ export default function BuildingDetailPage() {
                   gap: 8, padding: 24, textAlign: "center",
                 }}>
                   <Calendar size={28} style={{ color: "var(--text-muted)" }} />
-                  <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
+                  <p style={{ fontSize: "0.9375rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>
                     Las reservaciones estarán disponibles próximamente
                   </p>
-                  <p style={{ fontSize: 13, color: "var(--text-subtle)", margin: 0, maxWidth: 380 }}>
+                  <p style={{ fontSize: "0.8125rem", color: "var(--text-subtle)", margin: 0, maxWidth: 380 }}>
                     Configura qué áreas son reservables y tu equipo podrá gestionar las solicitudes desde aquí. Los inquilinos podrán reservar desde su portal.
                   </p>
                   <button disabled style={{
-                    marginTop: 4, fontSize: 12, fontWeight: 600, padding: "7px 16px",
+                    marginTop: 4, fontSize: "0.75rem", fontWeight: 600, padding: "7px 16px",
                     borderRadius: "var(--border-radius-md)",
                     border: "1px solid var(--border-default)", background: "transparent",
                     color: "var(--text-muted)", cursor: "not-allowed",
@@ -6299,6 +6225,215 @@ export default function BuildingDetailPage() {
           )}
         </div>
       )}
+
+      {/* ══════════════════════════════════════════════════════════════
+          TAB: CONFIGURACIÓN PENDIENTE
+      ══════════════════════════════════════════════════════════════ */}
+      {activeTab === "setup" ? (
+        <div style={{ display: "grid", gap: 24 }}>
+          {setupTasks.length > 0 && (() => {
+            const visibleSetupTasks = setupTasks.filter((t) => {
+              const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
+              const task = feature?.tasks.find((tk) => tk.key === t.task_key);
+              if (!task?.applicableTypes) return true;
+              return task.applicableTypes.includes(building.building_category ?? "");
+            });
+            const pendingCount   = visibleSetupTasks.filter((t) => !t.is_completed).length;
+            const completedCount = visibleSetupTasks.filter((t) => t.is_completed).length;
+            const totalCount     = visibleSetupTasks.length;
+            if (totalCount === 0) return null;
+            const allDone    = pendingCount === 0;
+            const circ       = 2 * Math.PI * 12;
+            const dashOffset = circ * (1 - completedCount / totalCount);
+
+            const CATS = [
+              { key: 'estructura' as const, label: 'Estructura', icon: <Wrench     size={16} /> },
+              { key: 'servicios'  as const, label: 'Servicios',  icon: <Zap        size={16} /> },
+              { key: 'operacion'  as const, label: 'Operación',  icon: <Users      size={16} /> },
+              { key: 'documentos' as const, label: 'Documentos', icon: <FolderOpen size={16} /> },
+            ];
+
+            return (
+              <div style={{
+                borderRadius: "var(--border-radius-lg)",
+                background: "rgba(139,34,82,0.04)",
+                border: "1px solid rgba(139,34,82,0.2)",
+                borderLeft: "4px solid var(--accent)",
+                padding: 20,
+              }}>
+                {/* Header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <CheckSquare size={18} color="var(--accent)" />
+                    <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                      Configuración pendiente
+                    </span>
+                    <svg width="32" height="32" style={{ flexShrink: 0 }}>
+                      <circle cx="16" cy="16" r="12" fill="none" stroke="var(--border-default)" strokeWidth="3" />
+                      <circle
+                        cx="16" cy="16" r="12" fill="none"
+                        stroke="var(--metric-value-green)" strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeDasharray={circ}
+                        strokeDashoffset={dashOffset}
+                        transform="rotate(-90 16 16)"
+                      />
+                      <text x="16" y="20" textAnchor="middle" fontSize="9" fill="var(--text-secondary)" fontWeight="600">
+                        {Math.round((completedCount / totalCount) * 100)}%
+                      </text>
+                    </svg>
+                    {pendingCount > 0 && (
+                      <span style={{ background: "var(--accent)", color: "#fff", borderRadius: 999, padding: "2px 8px", fontSize: "0.75rem", fontWeight: 700 }}>
+                        {pendingCount}
+                      </span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => void handleDismissAllTasks()}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.8125rem", padding: "4px 8px", borderRadius: "var(--border-radius-sm)" }}
+                    title="Descartar todo"
+                  >
+                    ✕
+                  </button>
+                </div>
+
+                {allDone ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "12px 0" }}>
+                    <CheckCircle2 size={32} color="var(--metric-value-green)" />
+                    <p style={{ margin: 0, fontSize: "0.875rem", fontWeight: 500, color: "var(--text-primary)" }}>¡Propiedad configurada!</p>
+                    <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Todos los pasos de configuración están completos.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                    {CATS.map((cat) => {
+                      const catTasks     = visibleSetupTasks.filter((t) => (TASK_CATEGORY_MAP[t.task_key] ?? 'documentos') === cat.key);
+                      if (catTasks.length === 0) return null;
+                      const catPending   = catTasks.filter((t) => !t.is_completed).length;
+                      const catCompleted = catTasks.filter((t) => t.is_completed).length;
+                      const catTotal     = catTasks.length;
+                      const catDone      = catPending === 0;
+                      const isCollapsed  = collapsedCategories.has(cat.key);
+                      const catCirc      = 2 * Math.PI * 8;
+                      const catDash      = catCirc * (1 - catCompleted / catTotal);
+                      return (
+                        <div key={cat.key} style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)", overflow: "hidden" }}>
+                          <button
+                            type="button"
+                            onClick={() => setCollapsedCategories((prev) => {
+                              const next = new Set(prev);
+                              if (next.has(cat.key)) next.delete(cat.key); else next.add(cat.key);
+                              return next;
+                            })}
+                            style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
+                          >
+                            <span style={{ display: "flex", alignItems: "center", color: catDone ? "var(--metric-value-green)" : "var(--accent)" }}>{cat.icon}</span>
+                            <span style={{ fontWeight: 600, fontSize: "0.8125rem", flex: 1, color: catDone ? "var(--metric-value-green)" : "var(--text-primary)" }}>
+                              {cat.label}
+                            </span>
+                            <svg width="20" height="20" style={{ flexShrink: 0 }}>
+                              <circle cx="10" cy="10" r="8" fill="none" stroke="var(--border-default)" strokeWidth="2.5" />
+                              <circle cx="10" cy="10" r="8" fill="none" stroke={catDone ? "var(--metric-value-green)" : "var(--accent)"} strokeWidth="2.5" strokeLinecap="round" strokeDasharray={catCirc} strokeDashoffset={catDash} transform="rotate(-90 10 10)" />
+                            </svg>
+                            <span style={{ fontSize: "0.6875rem", color: catDone ? "var(--metric-value-green)" : "var(--text-muted)", fontWeight: 600, minWidth: 28, textAlign: "right" }}>
+                              {catCompleted}/{catTotal}
+                            </span>
+                            <ChevronRight
+                              size={14} color="var(--text-muted)"
+                              style={{ transform: isCollapsed ? "rotate(0deg)" : "rotate(90deg)", transition: "transform 0.2s", flexShrink: 0 }}
+                            />
+                          </button>
+                          {!isCollapsed && (
+                            <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
+                              {catTasks.map((task, taskIdx) => {
+                                const feat    = getFeatureByKey(task.feature_key);
+                                const taskDef = feat?.tasks.find((t) => t.key === task.task_key);
+                                if (!taskDef) return null;
+                                const resolvedRoute = taskDef?.route?.replace("[id]", building.id);
+                                return (
+                                  <div
+                                    key={task.id}
+                                    style={{
+                                      display: "flex", alignItems: "center", gap: 12, padding: "9px 14px",
+                                      borderBottom: taskIdx < catTasks.length - 1 ? "1px solid var(--border-subtle)" : "none",
+                                      background: task.is_completed ? "rgba(16,185,129,0.04)" : "transparent",
+                                    }}
+                                  >
+                                    {task.is_completed ? (
+                                      <CheckCircle2 size={16} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
+                                    ) : (
+                                      <input
+                                        type="checkbox"
+                                        checked={false}
+                                        onChange={() => void handleCompleteTask(task.id)}
+                                        style={{ marginTop: 0, cursor: "pointer", accentColor: "var(--accent)", flexShrink: 0 }}
+                                      />
+                                    )}
+                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                      <div style={{
+                                        fontSize: "0.8125rem", fontWeight: 600,
+                                        color: task.is_completed ? "var(--metric-value-green)" : "var(--text-primary)",
+                                        textDecoration: task.is_completed ? "line-through" : "none",
+                                      }}>
+                                        {taskDef?.label ?? task.task_key}
+                                      </div>
+                                      {taskDef?.description && !task.is_completed && (
+                                        <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                                          {taskDef.description}
+                                        </p>
+                                      )}
+                                    </div>
+                                    {!task.is_completed && resolvedRoute && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          if (resolvedRoute.includes(`/buildings/${building.id}?tab=`)) {
+                                            const tabValue = new URL(resolvedRoute, window.location.origin).searchParams.get("tab");
+                                            if (tabValue) { handleTabChange(tabValue); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+                                          }
+                                          router.push(resolvedRoute);
+                                        }}
+                                        style={{
+                                          background: "none", border: "1px solid var(--border-default)",
+                                          padding: "3px 10px", borderRadius: "var(--border-radius-sm)",
+                                          fontSize: "0.75rem", fontWeight: 600, color: "var(--accent)",
+                                          cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0,
+                                        }}
+                                      >
+                                        Ir →
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
+                  <button
+                    type="button"
+                    onClick={() => void handleDismissAllTasks()}
+                    style={{
+                      padding: "8px 16px", borderRadius: "var(--border-radius-md)",
+                      border: "1px solid var(--border-default)", background: "transparent",
+                      fontSize: "0.8125rem", color: "var(--text-secondary)", cursor: "pointer",
+                      display: "flex", alignItems: "center", gap: 6,
+                    }}
+                  >
+                    <SkipForward size={14} />
+                    Ya tengo experiencia, omitir configuración
+                  </button>
+                </div>
+              </div>
+            );
+          })()}
+        </div>
+      ) : null}
 
       {/* ── Modal: agregar área / amenidad ── */}
       {(() => {
@@ -6357,7 +6492,7 @@ export default function BuildingDetailPage() {
                 color: selected ? "var(--accent)" : already ? "var(--text-muted)" : "var(--text-primary)",
                 opacity: already ? 0.5 : 1,
                 transition: "border-color 0.15s, background 0.15s, color 0.15s",
-                textAlign: "center", fontSize: 12, fontWeight: 500,
+                textAlign: "center", fontSize: "0.75rem", fontWeight: 500,
                 position: "relative", whiteSpace: "normal", lineHeight: 1.3,
                 minHeight: 72,
               }}
@@ -6366,7 +6501,7 @@ export default function BuildingDetailPage() {
               <span>{name}</span>
               {already && (
                 <span style={{
-                  position: "absolute", top: -7, right: -7, fontSize: 10, fontWeight: 700,
+                  position: "absolute", top: -7, right: -7, fontSize: "0.625rem", fontWeight: 700,
                   background: "var(--bg-card)", color: "var(--text-muted)",
                   borderRadius: 999, padding: "1px 5px", border: "1px solid var(--border-default)",
                 }}>✓</span>
@@ -6378,9 +6513,9 @@ export default function BuildingDetailPage() {
         return (
           <Modal open={addingCommonArea} onClose={closeModal} title="Agregar área" maxWidth={620}>
             {/* Sección 1: Amenidades */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Amenidades</p>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Amenidades</p>
             <motion.div variants={staggerContainer} initial="hidden" animate="show"
-              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(110px, 1fr))", gap: 8, marginBottom: 20 }}
+              style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(6.875rem, 1fr))", gap: 8, marginBottom: 20 }}
             >
               {AMENITIES.map(renderAreaCard)}
             </motion.div>
@@ -6388,7 +6523,7 @@ export default function BuildingDetailPage() {
             <div style={{ borderTop: "1px solid var(--border-default)", marginBottom: 20 }} />
 
             {/* Sección 3: Personalizada */}
-            <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Otra</p>
+            <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: 10 }}>Otra</p>
             <div style={{ display: "flex", gap: 8, marginBottom: pendingCustomAreas.length > 0 ? 10 : 20 }}>
               <input
                 value={customAreaInput}
@@ -6406,7 +6541,7 @@ export default function BuildingDetailPage() {
                     display: "inline-flex", alignItems: "center", gap: 4,
                     padding: "4px 10px", borderRadius: 999,
                     background: "var(--bg-card-hover)", border: "1px solid var(--border-default)",
-                    fontSize: 12, color: "var(--text-primary)", fontWeight: 500,
+                    fontSize: "0.75rem", color: "var(--text-primary)", fontWeight: 500,
                   }}>
                     {name}
                     <button type="button" onClick={() => setPendingCustomAreas(prev => prev.filter((_, j) => j !== i))}
@@ -6468,20 +6603,20 @@ export default function BuildingDetailPage() {
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 8, flex: 1, minWidth: 0 }}>
                     {FeatIcon && <span style={{ flexShrink: 0, marginTop: 2, lineHeight: 0 }}><FeatIcon size={15} color={feat.color} /></span>}
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{feat.label}</p>
-                      <p style={{ margin: "2px 0 0", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.3 }}>{feat.description}</p>
+                      <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{feat.label}</p>
+                      <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)", lineHeight: 1.3 }}>{feat.description}</p>
                     </div>
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                     {isActive && status === "ok" && (
                       <span title="Configurado" style={{ lineHeight: 0 }}>
-                        <CheckCircle2 size={14} color="#1D9E75" />
+                        <CheckCircle2 size={14} color="var(--metric-value-green)" />
                       </span>
                     )}
                     {isActive && status === "pending" && (
                       <span style={{ display: "flex", alignItems: "center", gap: 3 }}>
-                        <AlertCircle size={14} color="#EF9F27" />
-                        <span style={{ fontSize: 10, color: "#EF9F27", fontWeight: 600 }}>Pendiente</span>
+                        <AlertCircle size={14} color="var(--metric-value-amber)" />
+                        <span style={{ fontSize: "0.625rem", color: "var(--metric-value-amber)", fontWeight: 600 }}>Pendiente</span>
                       </span>
                     )}
                     <button
@@ -6505,7 +6640,7 @@ export default function BuildingDetailPage() {
                   </div>
                 </div>
                 {isActive && status === "pending" && hint && (
-                  <p style={{ margin: 0, fontSize: 11, color: "#EF9F27", paddingLeft: 23 }}>
+                  <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--metric-value-amber)", paddingLeft: 23 }}>
                     {hint.text.split("→")[0].trim()}{" → "}
                     <button
                       type="button"
@@ -6518,7 +6653,7 @@ export default function BuildingDetailPage() {
                           router.push(hint.path);
                         }
                       }}
-                      style={{ background: "none", border: "none", color: "#EF9F27", fontWeight: 700, fontSize: 11, cursor: "pointer", padding: 0, textDecoration: "underline" }}
+                      style={{ background: "none", border: "none", color: "var(--metric-value-amber)", fontWeight: 700, fontSize: "0.6875rem", cursor: "pointer", padding: 0, textDecoration: "underline" }}
                     >
                       {hint.text.split("→")[1]?.trim()}
                     </button>
@@ -6537,8 +6672,8 @@ export default function BuildingDetailPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                       <Building2 size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                       <div>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
-                        <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
+                        <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Espacios físicos</p>
+                        <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>Construcciones e instalaciones de la propiedad</p>
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -6553,8 +6688,8 @@ export default function BuildingDetailPage() {
                     <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14 }}>
                       <Zap size={15} color="var(--text-secondary)" style={{ flexShrink: 0 }} />
                       <div>
-                        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
-                        <p style={{ margin: 0, fontSize: 11, color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
+                        <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)" }}>Servicios</p>
+                        <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>Suministros y servicios operativos activos</p>
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
@@ -6567,8 +6702,8 @@ export default function BuildingDetailPage() {
               {featureWarnToast && (
                 <div style={{
                   marginTop: 16, padding: "10px 14px", borderRadius: "var(--border-radius-md)",
-                  background: "#fff7ed", border: "1px solid #fed7aa",
-                  color: "#c2410c", fontSize: 13, fontWeight: 500,
+                  background: "var(--metric-bg-amber)", border: "1px solid var(--metric-border-amber)",
+                  color: "var(--metric-value-amber)", fontSize: "0.8125rem", fontWeight: 500,
                 }}>
                   {featureWarnToast}
                 </div>
@@ -6578,7 +6713,7 @@ export default function BuildingDetailPage() {
                 <div style={{
                   marginTop: 16, padding: "10px 14px", borderRadius: "var(--border-radius-md)",
                   background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.25)",
-                  color: "#10B981", fontSize: 13, fontWeight: 500,
+                  color: "var(--metric-value-green)", fontSize: "0.8125rem", fontWeight: 500,
                 }}>
                   {featureToast}
                 </div>
@@ -6676,7 +6811,7 @@ export default function BuildingDetailPage() {
       >
         <div style={{ display: "grid", gap: 16 }}>
           <div>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+            <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
               Tipo de área
             </label>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
@@ -6688,7 +6823,7 @@ export default function BuildingDetailPage() {
                   style={{
                     padding: "8px 14px",
                     borderRadius: "var(--border-radius-xl)",
-                    fontSize: 13,
+                    fontSize: "0.8125rem",
                     fontWeight: 600,
                     border: newAreaType === t ? "2px solid var(--accent)" : "1px solid var(--border-default)",
                     background: newAreaType === t ? "var(--icon-bg-blue)" : "var(--bg-card)",
@@ -6703,7 +6838,7 @@ export default function BuildingDetailPage() {
           </div>
           {newAreaType === "otro" ? (
             <div>
-              <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+              <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
                 Descripción personalizada
               </label>
               <input
@@ -6715,7 +6850,7 @@ export default function BuildingDetailPage() {
             </div>
           ) : null}
           <div>
-            <label style={{ display: "block", fontSize: 14, fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
+            <label style={{ display: "block", fontSize: "0.875rem", fontWeight: 600, marginBottom: 8, color: "var(--text-primary)" }}>
               M²
             </label>
             <input
@@ -6727,7 +6862,7 @@ export default function BuildingDetailPage() {
             />
           </div>
           {areaMsg ? (
-            <div style={{ color: "var(--badge-text-red)", fontSize: 13, fontWeight: 600 }}>{areaMsg}</div>
+            <div style={{ color: "var(--badge-text-red)", fontSize: "0.8125rem", fontWeight: 600 }}>{areaMsg}</div>
           ) : null}
           <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
             <UiButton variant="secondary" onClick={() => { setAreaCreateOpen(false); setAreaMsg(""); }}>
@@ -6773,7 +6908,7 @@ export default function BuildingDetailPage() {
                 style={INPUT_STYLE}
               />
             </AppFormField>
-            {editLocalMsg ? <p style={{ color: "var(--badge-text-red)", fontSize: 13, margin: 0 }}>{editLocalMsg}</p> : null}
+            {editLocalMsg ? <p style={{ color: "var(--badge-text-red)", fontSize: "0.8125rem", margin: 0 }}>{editLocalMsg}</p> : null}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
               <UiButton type="button" variant="secondary" onClick={() => setEditingLocal(null)} disabled={savingLocal}>Cancelar</UiButton>
               <UiButton type="submit" variant="primary" disabled={savingLocal}>{savingLocal ? "Guardando..." : "Guardar"}</UiButton>
@@ -6799,7 +6934,7 @@ export default function BuildingDetailPage() {
         title="Duplicar local"
       >
         <div style={{ display: "grid", gap: 16 }}>
-          <p style={{ margin: 0, fontSize: 14, color: "var(--text-secondary)" }}>
+          <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-secondary)" }}>
             ¿Cuántas copias quieres crear de <strong>{duplicatingLocal?.unit_number}</strong>?
           </p>
           <AppFormField label="Cantidad de copias">

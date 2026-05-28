@@ -17,11 +17,12 @@
 
 :root {
   /* ── Acento de empresa ─────────────────────────────────────────── */
-  --accent: #8B2252; /* sobreescrito por ThemeContext desde companies.brand_color o saproa_config */
-  --accent-gradient: linear-gradient(135deg, #a82d62 0%, #8B2252 45%, #6b1a3f 100%); /* generado por JS vía generateMetallicGradient */
-  --group-accent: #8B2252; /* color del grupo corporativo — nunca cambia dentro de una sesión */
+  --accent: #6366F1; /* sobreescrito por ThemeContext desde companies.brand_color o saproa_config */
+  --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366F1 45%, #4f46e5 100%); /* generado por JS vía generateMetallicGradient */
+  --group-accent: #6366F1; /* color del grupo corporativo — nunca cambia dentro de una sesión */
   --btn-primary-bg: var(--accent); /* 'solid': var(--accent) | 'metallic': var(--accent-gradient) — controlado por ThemeContext */
   --color-primary: #1E293B; /* color estructural de la plataforma SAPROA — sobreescrito para superadmin */
+  --font-scale: 1; /* sobreescrito por JS vía ThemeContext según preferencia del usuario */
 
   /* ── Fondos ────────────────────────────────────────────────────── */
   --bg-page:        #F1F5F9;
@@ -250,6 +251,10 @@
   box-sizing: border-box;
 }
 
+html {
+  font-size: calc(16px * var(--font-scale));
+}
+
 html,
 body {
   margin: 0;
@@ -282,6 +287,16 @@ textarea {
 a {
   color: inherit;
 }
+
+/* ════════════════════════════════════════════════════════════════════
+   Scrollbars — thin, subtle gray, minimal
+   ════════════════════════════════════════════════════════════════════ */
+
+::-webkit-scrollbar { width: 3px; height: 3px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128,128,128,0.45); }
+* { scrollbar-width: thin; scrollbar-color: rgba(128,128,128,0.25) transparent; }
 
 /* ════════════════════════════════════════════════════════════════════
    Sidebar responsive
@@ -603,7 +618,7 @@ a {
   .dashboard-units-table table { min-width: 0 !important; width: 100% !important; }
   .dashboard-units-table td,
   .dashboard-units-table th {
-    font-size: 12px;
+    font-size: 0.75rem;
     padding: 6px 8px;
     white-space: nowrap;
     overflow: hidden;
@@ -652,7 +667,7 @@ a {
   .mod-grid-3, .mod-grid-2 { grid-template-columns: 1fr !important; }
   /* Tablas */
   .mod-table-wrap { overflow-x: auto; }
-  .mod-table-wrap table { font-size: 12px; }
+  .mod-table-wrap table { font-size: 0.75rem; }
   /* Modales */
   .mod-modal {
     width: 95vw !important;
@@ -699,7 +714,7 @@ a {
 
 @media (max-width: 767px) {
   .ph-title {
-    font-size: 22px !important;
+    font-size: 1.375rem !important;
   }
 }
 
@@ -795,7 +810,7 @@ a {
   .app-tab-item {
     text-align: center;
     justify-content: center !important;
-    font-size: 12px !important;
+    font-size: 0.75rem !important;
     padding: 8px 4px !important;
     white-space: nowrap;
     overflow: hidden;
@@ -821,7 +836,7 @@ a {
     overflow: visible;
   }
   .building-card-addr {
-    font-size: 12px !important;
+    font-size: 0.75rem !important;
   }
   /* Card top: fila con dona a la derecha */
   .building-card-top {
@@ -884,10 +899,193 @@ a {
    ════════════════════════════════════════════════════════════════════ */
 
 [data-theme="rigido"] {
-  --border-radius-sm: 2px;
-  --border-radius-md: 4px;
+  --border-radius-sm: 1px;
+  --border-radius-md: 2px;
   --border-radius-lg: 4px;
   --border-radius-xl: 6px;
   --card-shadow:    none;
   --sidebar-radius: 0;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   MetricCircles — solo mobile ≤768px
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (min-width: 769px) {
+  .metric-circles-mobile-only { display: none !important; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Dashboard donuts — fila horizontal en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .dashboard-grid-3 {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+  .dashboard-card-mobile {
+    padding: 10px !important;
+  }
+  .dashboard-donut-wrap {
+    height: 120px !important;
+  }
+  .dashboard-donut-wrap strong {
+    font-size: 1rem !important;
+  }
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+  .dashboard-chart-wrap {
+    overflow-x: hidden;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Maintenance — filtros en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .maintenance-filters-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .maintenance-filters-row > * {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 0;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   saproa-admin/empresas — layout mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .saproa-empresa-card {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 10px !important;
+  }
+  .saproa-empresa-stats {
+    flex-direction: row !important;
+    gap: 20px !important;
+  }
+  .saproa-empresa-impersonar {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   saproa-admin/overview — métricas en grid 2×2 mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .saproa-overview-metrics {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+  .saproa-overview-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   saproa-admin/impersonar — padding mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .saproa-impersonar-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  .saproa-impersonar-tree {
+    padding: 8px !important;
+  }
+  .saproa-impersonar-tree [style*="padding-left: 22px"],
+  .saproa-impersonar-tree [style*="padding-left: 40px"],
+  .saproa-impersonar-tree [style*="padding-left: 38px"] {
+    /* reduce indentation on mobile via padding override — each level narrower */
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Calendar — ocultar subtitle largo en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 768px) {
+  .calendar-subtitle-desktop { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Gap lateral consistency — grids 2-col en mobile
+   ════════════════════════════════════════════════════════════════════ */
+
+@media (max-width: 767px) {
+  .dashboard-grid-2 { gap: 16px !important; }
+}
+
+/* ══ MetricCards rectangulares — ocultar en mobile (MetricCircles toma su lugar) ══ */
+@media (max-width: 768px) {
+  .metric-grid-desktop-only { display: none !important; }
+}
+
+/* ══ Buscadores compactos en mobile ══ */
+@media (max-width: 768px) {
+  .search-label-mobile-hide { display: none !important; }
+  .search-input-mobile {
+    padding: 6px 12px !important;
+    height: 36px !important;
+    font-size: 0.875rem !important;
+    box-sizing: border-box;
+  }
+  .search-bar-compact-mobile {
+    padding: 5px 10px !important;
+    min-width: 0 !important;
+    flex: 1 1 auto !important;
+    max-width: 100% !important;
+  }
+}
+
+/* ══ FIX 4 — Dashboard donuts sin card en mobile ══ */
+@media (max-width: 768px) {
+  .dashboard-card-mobile {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 4px 0 !important;
+    border-radius: 0 !important;
+  }
+  .dashboard-donut-label-text {
+    font-size: 0.6rem !important;
+  }
+}
+
+/* ══ FIX 5 — Recharts responsive height cap en mobile ══ */
+@media (max-width: 768px) {
+  .dashboard-bar-container .recharts-responsive-container { height: 180px !important; }
+}
+
+/* ══ FIX 6+7 — Una sola columna en mobile para grids de 2+ col ══ */
+@media (max-width: 768px) {
+  .collections-grid-2,
+  .buildings-section-grid,
+  .analytics-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+}
+
+/* ══ FIX 9 — Collections donuts en columna en mobile ══ */
+@media (max-width: 768px) {
+  .collections-chart-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* ══ FIX 12 — Stat bars: ocultar en mobile (MetricCircles toma su lugar) ══ */
+@media (max-width: 768px) {
+  .mod-stat-bar { display: none !important; }
 }

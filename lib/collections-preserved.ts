@@ -315,7 +315,7 @@
 //               checked={chargeForm.createFirstRecordNow}
 //               onChange={(e) => setChargeForm((p) => ({ ...p, createFirstRecordNow: e.target.checked }))}
 //             />
-//             <span style={{ fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
+//             <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>
 //               Crear primer cobro ahora
 //             </span>
 //           </label>
@@ -349,7 +349,7 @@
 
 // const quickLinksGridStyle: CSSProperties = {
 //   display: "grid",
-//   gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+//   gridTemplateColumns: "repeat(auto-fit, minmax(8.75rem, 1fr))",
 //   gap: 12,
 // };
 //
@@ -379,7 +379,7 @@
 // };
 //
 // const quickLinkLabelStyle: CSSProperties = {
-//   fontSize: 13,
+//   fontSize: "0.8125rem",
 //   fontWeight: 600,
 //   color: "var(--text-primary)",
 // };

@@ -39,7 +39,7 @@ const BuildingsMap = dynamic(() => import("@/components/BuildingsMap"), {
         alignItems: "center",
         justifyContent: "center",
         color: "var(--text-muted)",
-        fontSize: 14,
+        fontSize: "0.875rem",
       }}
     >
       Cargando mapa...
@@ -179,7 +179,7 @@ export default function BuildingsMapPage() {
             marginBottom: 14,
           }}
         >
-          <div style={{ fontSize: 14, color: "var(--text-primary)" }}>
+          <div style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>
             <strong>{mapPoints.length}</strong>{" "}
             edificio{mapPoints.length === 1 ? "" : "s"} en el mapa
             {withoutCoordsCount > 0 ? (
@@ -196,7 +196,7 @@ export default function BuildingsMapPage() {
               padding: 40,
               textAlign: "center",
               color: "var(--text-muted)",
-              fontSize: 14,
+              fontSize: "0.875rem",
             }}
           >
             No hay edificios con coordenadas capturadas. Edita un edificio y

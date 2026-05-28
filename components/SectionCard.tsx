@@ -54,7 +54,7 @@ export default function SectionCard({
             <div>
               <h2
                 style={{
-                  fontSize: "20px",
+                  fontSize: "1.25rem",
                   fontWeight: 700,
                   marginBottom: subtitle && showDescriptions ? "4px" : 0,
                   /* var(--text-primary) → #101828 light / #F1F5F9 dark */
@@ -69,7 +69,7 @@ export default function SectionCard({
                     /* var(--text-muted) → #667085 light / #94A3B8 dark */
                     color: "var(--text-muted)",
                     margin: 0,
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                   }}
                 >
                   {subtitle}

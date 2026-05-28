@@ -147,7 +147,7 @@ export default function LandingPage() {
             height={36}
             style={{ objectFit: "contain" }}
           />
-          <span style={{ fontSize: 16, fontWeight: 500, color: "#fff", letterSpacing: "2px" }}>
+          <span style={{ fontSize: "1rem", fontWeight: 500, color: "#fff", letterSpacing: "2px" }}>
             SAPROA
           </span>
         </div>
@@ -157,7 +157,7 @@ export default function LandingPage() {
           style={{
             padding: ".45rem 1.1rem",
             borderRadius: "var(--border-radius-xl)",
-            fontSize: 12,
+            fontSize: "0.75rem",
             fontWeight: 500,
             cursor: "pointer",
             border: "1px solid rgba(255,255,255,.28)",
@@ -185,7 +185,7 @@ export default function LandingPage() {
         </div>
         <div
           style={{
-            fontSize: 11,
+            fontSize: "0.6875rem",
             color: "rgba(255,255,255,.45)",
             letterSpacing: "4px",
             marginBottom: "1rem",
@@ -242,7 +242,7 @@ export default function LandingPage() {
                 style={{
                   padding: ".65rem 1.75rem",
                   borderRadius: "var(--border-radius-xl)",
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                   fontWeight: 500,
                   cursor: "pointer",
                   letterSpacing: ".3px",

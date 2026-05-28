@@ -63,6 +63,7 @@ import AppStatBar from "@/components/AppStatBar";
 import AppCard from "@/components/AppCard";
 import AppIconBox from "@/components/AppIconBox";
 import AppSelect from "@/components/AppSelect";
+import SensitiveField from "@/components/SensitiveField";
 
 type Building = {
   id: string;
@@ -175,7 +176,7 @@ const readOnlyInputStyle: CSSProperties = {
 
 const labelStyle: CSSProperties = {
   display: "block",
-  fontSize: "14px",
+  fontSize: "0.875rem",
   fontWeight: 600,
   marginBottom: "8px",
   color: "var(--text-primary)",
@@ -289,7 +290,7 @@ function StatusPill({ status }: { status: string }) {
         alignItems: "center",
         borderRadius: "999px",
         padding: "6px 10px",
-        fontSize: "12px",
+        fontSize: "0.75rem",
         fontWeight: 700,
         background: colors.background,
         color: colors.color,
@@ -310,7 +311,7 @@ function LeaseStatusPill({ status }: { status: string | null }) {
         alignItems: "center",
         borderRadius: "999px",
         padding: "8px 14px",
-        fontSize: "13px",
+        fontSize: "0.8125rem",
         fontWeight: 800,
         background: colors.background,
         color: colors.color,
@@ -341,7 +342,7 @@ function InfoStatCard({
         <div>
           <div
             style={{
-              fontSize: "13px",
+              fontSize: "0.8125rem",
               color: "var(--text-muted)",
               fontWeight: 600,
             }}
@@ -352,7 +353,7 @@ function InfoStatCard({
           <div
             style={{
               marginTop: "4px",
-              fontSize: "16px",
+              fontSize: "1rem",
               color: "var(--text-primary)",
               fontWeight: 700,
             }}
@@ -1307,8 +1308,8 @@ export default function UnitDetailPage() {
           border: "1px solid rgba(245,158,11,0.3)",
           marginBottom: 16,
         }}>
-          <AlertCircle size={18} style={{ color: "#F59E0B", flexShrink: 0 }} />
-          <span style={{ flex: 1, fontSize: 13, color: "var(--text-primary)", fontWeight: 500 }}>
+          <AlertCircle size={18} style={{ color: "var(--metric-value-amber)", flexShrink: 0 }} />
+          <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>
             Esta unidad fue creada por duplicación — revisa que todos los datos sean correctos
           </span>
           <UiButton
@@ -1382,7 +1383,7 @@ export default function UnitDetailPage() {
                 <span style={{
                   display: "inline-flex", alignItems: "center",
                   borderRadius: 999, padding: "4px 10px",
-                  fontSize: 11, fontWeight: 700,
+                  fontSize: "0.6875rem", fontWeight: 700,
                   background: "var(--badge-bg-blue)",
                   color: "var(--badge-text-blue)",
                 }}>
@@ -1492,11 +1493,11 @@ export default function UnitDetailPage() {
               {isCommercialUnit ? (
                 <AppCard>
                   <div style={{ display: "grid", gap: "12px" }}>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                    <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                       Información del local
                     </div>
                     {unit.sqm != null ? (
-                      <div style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>
+                      <div style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", fontWeight: 600 }}>
                         Superficie: <strong>{unit.sqm} m²</strong>
                       </div>
                     ) : null}
@@ -1508,7 +1509,7 @@ export default function UnitDetailPage() {
                             style={{
                               padding: "6px 14px",
                               borderRadius: "var(--border-radius-xl)",
-                              fontSize: 13,
+                              fontSize: "0.8125rem",
                               fontWeight: 600,
                               background: "var(--icon-bg-green)",
                               color: "var(--badge-text-green)",
@@ -1520,7 +1521,7 @@ export default function UnitDetailPage() {
                         ))}
                       </div>
                     ) : (
-                      <div style={{ color: "var(--text-muted)", fontSize: 13, fontWeight: 500 }}>
+                      <div style={{ color: "var(--text-muted)", fontSize: "0.8125rem", fontWeight: 500 }}>
                         Sin características registradas.
                       </div>
                     )}
@@ -1530,7 +1531,7 @@ export default function UnitDetailPage() {
 
               {isIndustrialUnit && unitAreas.length > 0 ? (
                 <div style={{ display: "grid", gap: "12px" }}>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                  <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                     Áreas
                   </div>
                   {unitAreas.map((area) => (
@@ -1547,7 +1548,7 @@ export default function UnitDetailPage() {
                     <AppCard>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
                         <div style={miniLabelStyle}>Total</div>
-                        <div style={{ ...miniValueStyle, fontSize: 15 }}>
+                        <div style={{ ...miniValueStyle, fontSize: "0.9375rem" }}>
                           {unitAreas.reduce((sum, a) => sum + (a.sqm ?? 0), 0)} m²
                         </div>
                       </div>
@@ -1673,14 +1674,14 @@ export default function UnitDetailPage() {
                   const days = daysUntilEnd(lease.end_date);
                   const expiryBadge = days != null && days >= 0 ? (
                     <span style={{
-                      padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: 12, fontWeight: 700,
+                      padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700,
                       background: days < 30 ? "rgba(220,38,38,0.1)" : days < 90 ? "rgba(245,158,11,0.1)" : "var(--bg-page)",
-                      color:      days < 30 ? "#DC2626" : days < 90 ? "#F59E0B" : "var(--text-muted)",
+                      color:      days < 30 ? "var(--metric-value-red)" : days < 90 ? "var(--metric-value-amber)" : "var(--text-muted)",
                     }}>
                       {days === 0 ? "Vence hoy" : `${days}d para vencer`}
                     </span>
                   ) : days != null && days < 0 ? (
-                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: 12, fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "#DC2626" }}>
+                    <span style={{ padding: "3px 10px", borderRadius: "var(--border-radius-xl)", fontSize: "0.75rem", fontWeight: 700, background: "rgba(220,38,38,0.1)", color: "var(--metric-value-red)" }}>
                       Vencido hace {Math.abs(days)}d
                     </span>
                   ) : null;
@@ -1699,7 +1700,7 @@ export default function UnitDetailPage() {
                         >
                           <div
                             style={{
-                              fontSize: "16px",
+                              fontSize: "1rem",
                               fontWeight: 800,
                               color: "var(--text-primary)",
                             }}
@@ -1748,7 +1749,7 @@ export default function UnitDetailPage() {
 
                         <div style={miniGroupStyle}>
                           <div style={miniLabelStyle}>Renta mensual</div>
-                          <div style={{ ...miniValueStyle, fontSize: "16px", fontWeight: 800, color: "var(--text-primary)" }}>
+                          <div style={{ ...miniValueStyle, fontSize: "1rem", fontWeight: 800, color: "var(--text-primary)" }}>
                             {formatCurrency(lease.rent_amount)}
                           </div>
                         </div>
@@ -1781,7 +1782,9 @@ export default function UnitDetailPage() {
                         <div style={miniGroupStyle}>
                           <div style={miniLabelStyle}>RFC de facturación</div>
                           <div style={miniValueStyle}>
-                            {lease.billing_tax_id || "Sin definir"}
+                            {lease.billing_tax_id
+                              ? <SensitiveField value={lease.billing_tax_id} type="rfc" />
+                              : "Sin definir"}
                           </div>
                         </div>
 
@@ -1856,7 +1859,7 @@ export default function UnitDetailPage() {
                     <div style={{ display: "grid", gap: "8px" }}>
                       <div
                         style={{
-                          fontSize: "16px",
+                          fontSize: "1rem",
                           fontWeight: 700,
                           color: "var(--text-primary)",
                         }}
@@ -1866,7 +1869,7 @@ export default function UnitDetailPage() {
 
                       <div
                         style={{
-                          fontSize: "13px",
+                          fontSize: "0.8125rem",
                           color: "var(--text-muted)",
                           fontWeight: 600,
                         }}
@@ -1876,7 +1879,7 @@ export default function UnitDetailPage() {
 
                       <div
                         style={{
-                          fontSize: "13px",
+                          fontSize: "0.8125rem",
                           color: "var(--text-secondary)",
                           fontWeight: 600,
                         }}
@@ -1923,7 +1926,7 @@ export default function UnitDetailPage() {
                         >
                           <div
                             style={{
-                              fontSize: "16px",
+                              fontSize: "1rem",
                               fontWeight: 700,
                               color: "var(--text-primary)",
                             }}
@@ -1955,11 +1958,12 @@ export default function UnitDetailPage() {
 
                         <div style={historyMetaTextStyle}>
                           Facturación:{" "}
-                          {lease.billing_name || lease.billing_email || lease.billing_tax_id
-                            ? `${lease.billing_name || "Sin nombre"} · ${
-                                lease.billing_email || "Sin email"
-                              }${lease.billing_tax_id ? ` · RFC ${lease.billing_tax_id}` : ""}`
-                            : "Sin datos de facturación"}
+                          {lease.billing_name || lease.billing_email || lease.billing_tax_id ? (
+                            <>
+                              {lease.billing_name || "Sin nombre"} · {lease.billing_email || "Sin email"}
+                              {lease.billing_tax_id ? <> · RFC <SensitiveField value={lease.billing_tax_id} type="rfc" /></> : null}
+                            </>
+                          ) : "Sin datos de facturación"}
                         </div>
 
                         <div style={{ marginTop: "4px" }}>
@@ -2054,10 +2058,10 @@ export default function UnitDetailPage() {
                   style={{ marginTop: 3, flexShrink: 0 }}
                 />
                 <div>
-                  <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
+                  <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: 4 }}>
                     Rentar por cuarto
                   </div>
-                  <div style={{ fontSize: "13px", color: "var(--text-muted)", lineHeight: 1.5 }}>
+                  <div style={{ fontSize: "0.8125rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
                     Activa esto si esta unidad se renta por recámara individual.
                     Cada cuarto tiene su propio lease e inquilino.
                   </div>
@@ -2073,7 +2077,7 @@ export default function UnitDetailPage() {
                   background: "var(--bg-card-hover)",
                   border: "1px solid var(--border-default)",
                   color: "var(--text-secondary)",
-                  fontSize: "14px",
+                  fontSize: "0.875rem",
                   fontWeight: 500,
                 }}
               >
@@ -2123,7 +2127,7 @@ export default function UnitDetailPage() {
                   gap: 12,
                 }}
               >
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                   Esta unidad tiene {unit.unit_types?.bedrooms} recámaras. ¿Cómo quieres rentar esta unidad?
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -2145,7 +2149,7 @@ export default function UnitDetailPage() {
                         ? "var(--badge-text-blue)"
                         : "var(--text-primary)",
                       fontWeight: 700,
-                      fontSize: 13,
+                      fontSize: "0.8125rem",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
@@ -2170,7 +2174,7 @@ export default function UnitDetailPage() {
                         ? "var(--badge-text-blue)"
                         : "var(--text-primary)",
                       fontWeight: 700,
-                      fontSize: 13,
+                      fontSize: "0.8125rem",
                       cursor: "pointer",
                       textAlign: "center",
                     }}
@@ -2179,7 +2183,7 @@ export default function UnitDetailPage() {
                   </button>
                 </div>
                 {leaseRentalChoice === "by_room" ? (
-                  <div style={{ fontSize: 12, color: "var(--badge-text-amber)", fontWeight: 600 }}>
+                  <div style={{ fontSize: "0.75rem", color: "var(--badge-text-amber)", fontWeight: 600 }}>
                     Al guardar, la unidad quedará marcada como "Por cuarto" y cada recámara tendrá su propio lease.
                   </div>
                 ) : null}
@@ -2189,7 +2193,7 @@ export default function UnitDetailPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
                 gap: "16px",
               }}
             >
@@ -2239,7 +2243,7 @@ export default function UnitDetailPage() {
                   gap: "12px",
                 }}
               >
-                <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--text-primary)" }}>
+                <div style={{ fontSize: "0.9375rem", fontWeight: 800, color: "var(--text-primary)" }}>
                   Facturación y cobranza
                 </div>
 
@@ -2248,7 +2252,7 @@ export default function UnitDetailPage() {
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
-                    fontSize: "14px",
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     color: "var(--text-primary)",
                   }}
@@ -2274,7 +2278,7 @@ export default function UnitDetailPage() {
                 {leaseForm.useTenantBilling ? (
                   <div
                     style={{
-                      fontSize: "13px",
+                      fontSize: "0.8125rem",
                       color: "var(--text-muted)",
                       lineHeight: 1.5,
                     }}
@@ -2285,7 +2289,7 @@ export default function UnitDetailPage() {
                   <div
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
                       gap: "16px",
                     }}
                   >
@@ -2498,7 +2502,7 @@ export default function UnitDetailPage() {
                   borderRadius: "var(--border-radius-lg)",
                   background: "var(--badge-bg-red)",
                   color: "var(--badge-text-red)",
-                  fontSize: "14px",
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
               >
@@ -2544,7 +2548,7 @@ export default function UnitDetailPage() {
               background: "var(--metric-bg-amber)",
               border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
-              fontSize: "14px",
+              fontSize: "0.875rem",
               fontWeight: 600,
               lineHeight: 1.5,
             }}
@@ -2591,32 +2595,32 @@ export default function UnitDetailPage() {
 }
 
 const miniLabelStyle: CSSProperties = {
-  fontSize: "13px",
+  fontSize: "0.8125rem",
   color: "var(--text-muted)",
   fontWeight: 600,
 };
 
 const miniValueStyle: CSSProperties = {
-  fontSize: "16px",
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
 
 const summaryCardTitleStyle: CSSProperties = {
-  fontSize: "14px",
+  fontSize: "0.875rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
 
 const summaryCardTextStyle: CSSProperties = {
   marginTop: "4px",
-  fontSize: "13px",
+  fontSize: "0.8125rem",
   color: "var(--text-muted)",
   fontWeight: 500,
 };
 
 const historyMetaTextStyle: CSSProperties = {
-  fontSize: "14px",
+  fontSize: "0.875rem",
   color: "var(--text-secondary)",
 };
 

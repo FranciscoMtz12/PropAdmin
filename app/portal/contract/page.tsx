@@ -70,19 +70,19 @@ const iconBoxStyle: React.CSSProperties = {
 };
 
 const mutedTextStyle: React.CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   lineHeight: 1.6,
   color: "var(--text-muted)",
 };
 
 const sectionTitleStyle: React.CSSProperties = {
-  fontSize: 16,
+  fontSize: "1rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
 
 const valueStyle: React.CSSProperties = {
-  fontSize: 18,
+  fontSize: "1.125rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -91,7 +91,7 @@ const actionButtonStyle: React.CSSProperties = {
   border: "none",
   borderRadius: "var(--border-radius-lg)",
   padding: "12px 16px",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -226,7 +226,7 @@ function DetailRow({
     >
       <div
         style={{
-          fontSize: 13,
+          fontSize: "0.8125rem",
           color: "var(--text-muted)",
           fontWeight: 600,
         }}
@@ -236,7 +236,7 @@ function DetailRow({
 
       <div
         style={{
-          fontSize: 14,
+          fontSize: "0.875rem",
           color: "var(--text-primary)",
           fontWeight: 600,
           wordBreak: "break-word",
@@ -461,7 +461,7 @@ export default function PortalContractPage() {
                     padding: "0 14px",
                     background: "var(--bg-card)",
                     color: "var(--text-primary)",
-                    fontSize: 14,
+                    fontSize: "0.875rem",
                     fontWeight: 600,
                     outline: "none",
                   }}

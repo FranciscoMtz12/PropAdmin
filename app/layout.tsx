@@ -10,7 +10,6 @@ import { ImpersonationBridge } from "@/components/ImpersonationBridge";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import GlobalBreadcrumbs from "@/components/GlobalBreadcrumbs";
 import SidebarGate from "@/components/SidebarGate";
-import ImpersonationGate from "@/components/ImpersonationGate";
 import AppShell from "@/components/AppShell";
 import RouteGuard from "@/components/RouteGuard";
 import SplashScreen from "@/components/SplashScreen";
@@ -124,8 +123,6 @@ export default function RootLayout({
                     </main>
                   </div>
 
-                  {/* Panel de impersonación — sidebar derecha fija, solo superadmin */}
-                  <ImpersonationGate />
                 </AppShell>
               </ThemeProvider>
             </ImpersonationBridge>
@@ -142,7 +139,7 @@ export default function RootLayout({
               color: "var(--text-primary)",
               border: "0.5px solid var(--border-default)",
               borderRadius: "var(--border-radius-md)",
-              fontSize: "13px",
+              fontSize: "0.8125rem",
               padding: "12px 16px",
             },
             success: {

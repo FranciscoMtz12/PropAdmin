@@ -50,8 +50,8 @@ function SummaryCard({ label, value, icon }: { label: string; value: string | nu
     <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-xl)", padding: 18, background: "var(--bg-card)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div>
-          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 8 }}>{label}</p>
-          <strong style={{ fontSize: 26, lineHeight: 1.1 }}>{value}</strong>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: 8 }}>{label}</p>
+          <strong style={{ fontSize: "1.625rem", lineHeight: 1.1 }}>{value}</strong>
         </div>
         <div style={{ width: 38, height: 38, borderRadius: "var(--border-radius-lg)", background: "var(--icon-bg-purple)", color: "var(--icon-color-purple)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{icon}</div>
       </div>
@@ -213,14 +213,14 @@ export default function UnitTypeAssetDetailPage() {
 
       {msg && !showEditForm ? <p style={{ color: msg.includes("correctamente") ? "green" : "crimson", marginBottom: 16 }}>{msg}</p> : null}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: 16, marginBottom: 24 }}>
         <SummaryCard label="Tipo" value={templateAsset.asset_type} icon={<AssetTypeIcon assetType={templateAsset.asset_type} size={18} />} />
         <SummaryCard label="Estatus" value={templateAsset.status} icon={<ClipboardList size={18} />} />
         <SummaryCard label="Orden visual" value={templateAsset.sort_order ?? 0} icon={<PackageOpen size={18} />} />
       </div>
 
       <SectionCard title="Información actual" subtitle="Datos base del equipo plantilla dentro de la tipología." icon={<PackageOpen size={18} />}>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))", gap: 14 }}>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: 14 }}><strong>Edificio</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{building.name}</p></div>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: 14 }}><strong>Tipología</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{unitType.name}</p></div>
           <div style={{ border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", padding: 14 }}><strong>Tipo de equipamiento</strong><p style={{ margin: "8px 0 0 0", color: "var(--text-muted)" }}>{templateAsset.asset_type}</p></div>

@@ -116,35 +116,35 @@ export default function CaptureUtilityReadingModal({
       title={`Depa ${subMeter.unit_number} — ${meter.provider_name || meter.service_type}`}
     >
       {meter.building_id && (
-        <p style={{ margin: "0 0 8px", fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 5 }}>
+        <p style={{ margin: "0 0 8px", fontSize: "0.8125rem", color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 5 }}>
           <MapPin size={13} />{meter.description || meter.meter_number || meter.service_type}
         </p>
       )}
 
       {activeLease ? (
-        <p style={{ margin: "0 0 12px", fontSize: 14, fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
+        <p style={{ margin: "0 0 12px", fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 6 }}>
           <User size={14} />{activeLease.tenant_name}
         </p>
       ) : (
-        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 12, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 12, fontSize: "0.8125rem", color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
           <AlertTriangle size={14} />Este depa no tiene inquilino activo
         </div>
       )}
 
-      <div style={{ padding: "10px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13 }}>
+      <div style={{ padding: "10px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem" }}>
         <span>Lectura anterior: <strong>{previousReading.toLocaleString("es-MX")}</strong>
           {consumptionUnit ? ` ${consumptionUnit}` : ""}
         </span>
-        <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: 12 }}>
+        <p style={{ margin: "6px 0 0", color: "var(--text-muted)", fontSize: "0.75rem" }}>
           Período: {MONTH_NAMES[period.month - 1]} {period.year}
         </p>
-        <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: 12 }}>
+        <p style={{ margin: "4px 0 0", color: "var(--text-muted)", fontSize: "0.75rem" }}>
           Fecha de captura: {captureDateLabel}
         </p>
       </div>
 
       {bucketMissing && (
-        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 12, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 12, fontSize: "0.8125rem", color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           Crea el bucket <strong>utility-readings</strong> en Supabase Storage para habilitar fotos.
         </div>
@@ -159,12 +159,12 @@ export default function CaptureUtilityReadingModal({
             value={currentReading}
             onChange={e => setCurrentReading(e.target.value)}
             placeholder="0.00"
-            style={{ ...INPUT_STYLE, fontSize: 20, fontWeight: 700 }}
+            style={{ ...INPUT_STYLE, fontSize: "1.25rem", fontWeight: 700 }}
             step="0.01"
             autoFocus
           />
           {current > 0 && hasConsumption && (
-            <p style={{ margin: "4px 0 0", fontSize: 13, color: consumption >= 0 ? "#15803d" : "#dc2626", fontWeight: 600 }}>
+            <p style={{ margin: "4px 0 0", fontSize: "0.8125rem", color: consumption >= 0 ? "var(--metric-value-green)" : "var(--metric-value-red)", fontWeight: 600 }}>
               Consumo: {consumption.toFixed(2)} {consumptionUnit}
             </p>
           )}
@@ -188,11 +188,11 @@ export default function CaptureUtilityReadingModal({
             }}
           >
             {photoFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-green)", fontWeight: 600, fontSize: "0.875rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Camera size={14} />{photoFile.name}
               </p>
             ) : (
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 14, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <Camera size={14} />Toca para tomar foto del medidor
               </p>
             )}

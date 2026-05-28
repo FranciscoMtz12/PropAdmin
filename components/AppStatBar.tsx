@@ -44,8 +44,8 @@ export default function AppStatBar({
           marginBottom: 12,
         }}
       >
-        <strong style={{ fontSize: 15, color: "var(--text-primary)" }}>{title}</strong>
-        <span style={{ fontSize: 13, color: "var(--text-muted)" }}>
+        <strong style={{ fontSize: "0.9375rem", color: "var(--text-primary)" }}>{title}</strong>
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)" }}>
           {totalLabel || `Total: ${total}`}
         </span>
       </div>
@@ -93,7 +93,7 @@ export default function AppStatBar({
                 display: "inline-block",
               }}
             />
-            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+            <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
               {segment.label}: <strong style={{ color: "var(--text-primary)" }}>{segment.value}</strong>
             </span>
           </div>

@@ -34,20 +34,20 @@ const inputStyle: React.CSSProperties = {
   border: "1px solid rgba(255,255,255,.15)",
   borderRadius: "var(--border-radius-md)",
   color: "#fff",
-  fontSize: 14,
+  fontSize: "0.875rem",
   outline: "none",
   boxSizing: "border-box",
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: "rgba(255,255,255,.5)",
   display: "block",
   marginBottom: 6,
 };
 
 const errorStyle: React.CSSProperties = {
-  fontSize: 11,
+  fontSize: "0.6875rem",
   color: "#f87171",
   marginTop: 4,
 };
@@ -146,7 +146,7 @@ export default function PortalLoginPage() {
         position:"absolute", top:"1.5rem", left:"1.5rem",
         background:"rgba(255,255,255,.1)", border:"1px solid rgba(255,255,255,.2)",
         color:"rgba(255,255,255,.7)", borderRadius: "var(--border-radius-xl)", padding:".4rem 1rem",
-        fontSize:12, cursor:"pointer", zIndex:2,
+        fontSize: "0.75rem", cursor:"pointer", zIndex:2,
       }}>
         ← Volver
       </button>
@@ -171,7 +171,7 @@ export default function PortalLoginPage() {
               style={{ objectFit:"contain" }}
             />
           </div>
-          <div style={{ fontSize:12, color:"rgba(255,255,255,.4)", letterSpacing:"2px" }}>
+          <div style={{ fontSize: "0.75rem", color:"rgba(255,255,255,.4)", letterSpacing:"2px" }}>
             PORTAL DE INQUILINOS
           </div>
         </div>
@@ -180,7 +180,7 @@ export default function PortalLoginPage() {
         <div style={{ display:"flex", gap:".5rem", marginBottom:"1.5rem" }}>
           {(["login","activate"] as PortalTab[]).map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              flex:1, padding:".55rem", borderRadius: "var(--border-radius-md)", fontSize:12, fontWeight:500,
+              flex:1, padding:".55rem", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem", fontWeight:500,
               cursor:"pointer", transition:"all .2s",
               background: activeTab === tab ? "rgba(255,255,255,.15)" : "transparent",
               border: activeTab === tab ? "1px solid rgba(255,255,255,.25)" : "1px solid rgba(255,255,255,.08)",
@@ -205,15 +205,15 @@ export default function PortalLoginPage() {
               {loginForm.formState.errors.password && <p style={errorStyle}>{loginForm.formState.errors.password.message}</p>}
             </div>
             {loginMessage && (
-              <div style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding:".6rem .9rem", fontSize:13, color:"#fca5a5" }}>
+              <div style={{ background:"rgba(239,68,68,.15)", border:"1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding:".6rem .9rem", fontSize: "0.8125rem", color:"#fca5a5" }}>
                 {loginMessage}
               </div>
             )}
             <button type="submit" disabled={loginForm.formState.isSubmitting} style={{
               marginTop:".25rem", padding:".75rem",
-              background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
               border:"none", borderRadius: "var(--border-radius-md)", color:"#fff",
-              fontSize:14, fontWeight:500, cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
+              fontSize: "0.875rem", fontWeight:500, cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
             }}>
               {loginForm.formState.isSubmitting ? "Iniciando sesión..." : "Entrar al portal"}
             </button>
@@ -242,7 +242,7 @@ export default function PortalLoginPage() {
               <div style={{
                 background: activateSuccess ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)",
                 border: `1px solid ${activateSuccess ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"}`,
-                borderRadius: "var(--border-radius-md)", padding:".6rem .9rem", fontSize:13,
+                borderRadius: "var(--border-radius-md)", padding:".6rem .9rem", fontSize: "0.8125rem",
                 color: activateSuccess ? "#6ee7b7" : "#fca5a5",
               }}>
                 {activateMessage}
@@ -250,9 +250,9 @@ export default function PortalLoginPage() {
             )}
             <button type="submit" disabled={activateForm.formState.isSubmitting} style={{
               marginTop:".25rem", padding:".75rem",
-              background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "#8B2252",
+              background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
               border:"none", borderRadius: "var(--border-radius-md)", color:"#fff",
-              fontSize:14, fontWeight:500, cursor: activateForm.formState.isSubmitting ? "not-allowed" : "pointer",
+              fontSize: "0.875rem", fontWeight:500, cursor: activateForm.formState.isSubmitting ? "not-allowed" : "pointer",
             }}>
               {activateForm.formState.isSubmitting ? "Activando..." : "Activar cuenta"}
             </button>
@@ -261,7 +261,7 @@ export default function PortalLoginPage() {
       </div>
 
       {/* Footer */}
-      <div style={{ position:"relative", zIndex:2, marginTop:"1.5rem", fontSize:11, color:"rgba(255,255,255,.25)", letterSpacing:1 }}>
+      <div style={{ position:"relative", zIndex:2, marginTop:"1.5rem", fontSize: "0.6875rem", color:"rgba(255,255,255,.25)", letterSpacing:1 }}>
         SAPROA © {new Date().getFullYear()}
       </div>
     </div>

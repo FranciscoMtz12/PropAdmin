@@ -462,25 +462,25 @@ export default function UtilityInvoiceModal({
   }
 
   const periodLabel = `${MONTH_NAMES[period.month - 1]} ${period.year}`
-  const thStyle: React.CSSProperties = { padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", borderBottom: "2px solid var(--border-default)", fontSize: 12 }
-  const tdStyle: React.CSSProperties = { padding: "8px 10px", verticalAlign: "middle", fontSize: 13 }
+  const thStyle: React.CSSProperties = { padding: "8px 10px", textAlign: "left", fontWeight: 600, color: "var(--text-secondary)", borderBottom: "2px solid var(--border-default)", fontSize: "0.75rem" }
+  const tdStyle: React.CSSProperties = { padding: "8px 10px", verticalAlign: "middle", fontSize: "0.8125rem" }
 
   if (!isOpen) return null
 
   return (
     <Modal open onClose={onClose} title={`${SERVICE_TYPE_LABEL[meter.service_type]} — ${building.name}`}>
       <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", marginBottom: 16 }}>
-        <span style={{ fontSize: 13, color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)", display: "inline-flex", alignItems: "center", gap: 4 }}>
           <MapPin size={13} />{building.name}
         </span>
-        <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+        <span style={{ fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
           {[meter.provider_name || "Sin proveedor", meter.billing_frequency === "bimonthly" ? "Bimestral" : null, periodLabel]
             .filter(Boolean).join(" · ")}
         </span>
       </div>
 
       {bucketMissing && (
-        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 14, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{ padding: "10px 14px", background: "rgba(245,158,11,0.1)", borderRadius: "var(--border-radius-md)", marginBottom: 14, fontSize: "0.8125rem", color: "var(--text-primary)", display: "flex", alignItems: "flex-start", gap: 8 }}>
           <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           Crea el bucket <strong>utility-invoices</strong> en Supabase Storage para habilitar PDFs.
         </div>
@@ -495,7 +495,7 @@ export default function UtilityInvoiceModal({
             value={totalAmount}
             onChange={e => setTotalAmount(e.target.value)}
             placeholder="0.00"
-            style={{ ...INPUT_STYLE, fontSize: 18, fontWeight: 700 }}
+            style={{ ...INPUT_STYLE, fontSize: "1.125rem", fontWeight: 700 }}
             step="0.01"
             min="0"
             autoFocus
@@ -536,20 +536,20 @@ export default function UtilityInvoiceModal({
             onClick={() => fileRef.current?.click()}
             style={{
               padding: "16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer", textAlign: "center",
-              border: `2px dashed ${pdfFile ? "#15803d" : existingInvoice?.pdf_path ? "#1d4ed8" : "var(--border-default)"}`,
-              background: pdfFile ? "#dcfce7" : existingInvoice?.pdf_path ? "#eff6ff" : "var(--bg-card)",
+              border: `2px dashed ${pdfFile ? "var(--metric-border-green)" : existingInvoice?.pdf_path ? "var(--metric-border-blue)" : "var(--border-default)"}`,
+              background: pdfFile ? "var(--metric-bg-green)" : existingInvoice?.pdf_path ? "var(--metric-bg-blue)" : "var(--bg-card)",
             }}
           >
             {pdfFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-green)", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{pdfFile.name}
               </p>
             ) : existingInvoice?.pdf_path ? (
-              <p style={{ margin: 0, color: "#1d4ed8", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-blue)", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />PDF existente — toca para reemplazar
               </p>
             ) : (
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />Toca para adjuntar PDF de la factura
               </p>
             )}
@@ -558,7 +558,7 @@ export default function UtilityInvoiceModal({
 
         {/* Dedicated + tenant contract */}
         {isTenantContract && amountValid && (
-          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
+          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             Contrato directo del inquilino — se registra solo como referencia, sin generar cobro.
           </div>
@@ -566,7 +566,7 @@ export default function UtilityInvoiceModal({
 
         {/* Dedicated + company contract */}
         {!isShared && !isTenantContract && amountValid && (
-          <div style={{ padding: "12px 14px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8 }}>
+          <div style={{ padding: "12px 14px", background: "var(--metric-bg-blue)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "var(--metric-value-blue)", display: "flex", alignItems: "flex-start", gap: 8 }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             El cobro de <strong>${formattedAmount}</strong> se asignará directamente a Depa{" "}
             <strong>{dedicatedUnit?.unit_number ?? "—"}</strong>.
@@ -575,7 +575,7 @@ export default function UtilityInvoiceModal({
 
         {/* Shared + included */}
         {isShared && isIncluded && amountValid && (
-          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: 13, color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
+          <div style={{ padding: "12px 14px", background: "var(--bg-page)", borderRadius: "var(--border-radius-md)", marginBottom: 16, fontSize: "0.8125rem", color: "var(--text-secondary)", display: "flex", alignItems: "flex-start", gap: 8, border: "1px solid var(--border-default)" }}>
             <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
             Gasto del edificio — se registra sin generar cobros a inquilinos.
           </div>
@@ -585,19 +585,19 @@ export default function UtilityInvoiceModal({
         {isShared && !isIncluded && amountValid && !loadingData && (
           <div style={{ marginBottom: 16 }}>
             {distRows.length === 0 ? (
-              <div style={{ padding: "10px 14px", background: "#fef3c7", borderRadius: "var(--border-radius-md)", fontSize: 13, color: "#92400e", display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <div style={{ padding: "10px 14px", background: "var(--metric-bg-amber)", borderRadius: "var(--border-radius-md)", fontSize: "0.8125rem", color: "var(--metric-value-amber)", display: "flex", alignItems: "flex-start", gap: 8 }}>
                 <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                 No hay unidades con inquilino activo para distribuir.
               </div>
             ) : (
               <>
-                <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+                <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>
                   {hasReadings
                     ? `Distribución proporcional por consumo — ${distRows.length} unidades`
                     : `Distribución equitativa — ${distRows.length} unidades`}
                 </p>
                 <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.8125rem" }}>
                     <thead>
                       <tr style={{ background: "var(--bg-page)" }}>
                         <th style={thStyle}>Depa</th>
@@ -641,7 +641,7 @@ export default function UtilityInvoiceModal({
         )}
 
         {isShared && !isIncluded && loadingData && (
-          <p style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 16 }}>Cargando datos...</p>
+          <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", marginBottom: 16 }}>Cargando datos...</p>
         )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>

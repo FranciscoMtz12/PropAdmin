@@ -35,11 +35,13 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import AppGrid from "@/components/AppGrid";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppTable from "@/components/AppTable";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
 import AppSelect from "@/components/AppSelect";
+import SensitiveField from "@/components/SensitiveField";
 import { motion, AnimatePresence } from "framer-motion";
 
 type Tenant = {
@@ -188,15 +190,15 @@ const textareaStyle: CSSProperties = {
 
 const labelStyle: CSSProperties = {
   display: "block",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   marginBottom: 8,
   color: "var(--text-primary)",
 };
 
 const errorTextStyle: CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -243,14 +245,25 @@ export default function TenantsPage() {
 
   const [rentBuildingFilter, setRentBuildingFilter] = useState<string>("all");
 
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
+
+  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
 
     void loadTenantsPage();
-  }, [loading, user?.company_id, user?.is_superadmin, isGroupMode]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -269,7 +282,7 @@ export default function TenantsPage() {
   }, []);
 
   async function loadTenantsPage() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
 
     setLoadingPage(true);
     setMessage("");
@@ -504,6 +517,7 @@ export default function TenantsPage() {
 
   const filteredRows = useMemo(() => {
     return tenantRows.filter((row) => {
+      if (isGroupMode && groupCompanyIds.length > 0 && !groupCompanyIds.includes(row.company_id)) return false;
       if (statusFilter !== "all" && row.status !== statusFilter) {
         return false;
       }
@@ -543,7 +557,18 @@ export default function TenantsPage() {
 
       return true;
     });
-  }, [tenantRows, statusFilter, buildingFilter, search]);
+  }, [tenantRows, statusFilter, buildingFilter, search, isGroupMode, groupCompanyIds]);
+
+  const tenantsByCompany = useMemo(() => {
+    if (!isGroupMode) return [];
+    return groupCompanies
+      .filter((c) => groupCompanyIds.includes(c.id))
+      .map((company) => ({
+        company,
+        compTenants: filteredRows.filter((t) => t.company_id === company.id),
+      }))
+      .filter(({ compTenants }) => compTenants.length > 0);
+  }, [isGroupMode, groupCompanies, groupCompanyIds, filteredRows]);
 
   const activeCount = tenantRows.filter((row) => row.status === "ACTIVE").length;
   const inactiveCount = tenantRows.filter((row) => row.status === "INACTIVE").length;
@@ -656,7 +681,7 @@ export default function TenantsPage() {
 
   if (!user) return null;
 
-  const tenantTableColumns = [
+  const TENANT_COLS = [
     {
       key: "fullName",
       header: "Inquilino",
@@ -672,8 +697,8 @@ export default function TenantsPage() {
       header: "Contacto",
       render: (row: TenantRow) => (
         <div style={{ display: "grid", gap: 4 }}>
-          <span style={cellPrimaryStyle}>{row.email}</span>
-          <span style={cellSecondaryStyle}>{row.phone}</span>
+          <SensitiveField value={row.email} type="email" />
+          <SensitiveField value={row.phone} type="phone" />
         </div>
       ),
     },
@@ -701,7 +726,7 @@ export default function TenantsPage() {
       key: "taxId",
       header: "RFC",
       render: (row: TenantRow) => (
-        <span style={cellPrimaryStyle}>{row.taxId}</span>
+        <SensitiveField value={row.taxId === "—" ? null : row.taxId} type="rfc" />
       ),
     },
     {
@@ -710,7 +735,21 @@ export default function TenantsPage() {
       render: (row: TenantRow) => {
         const colors = getStatusColors(row.status);
         return (
-          <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", padding: "6px 10px", borderRadius: 999, border: `1px solid ${colors.border}`, background: colors.background, color: colors.color, fontSize: 12, fontWeight: 800, whiteSpace: "nowrap" }}>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: "6px 10px",
+              borderRadius: 999,
+              border: `1px solid ${colors.border}`,
+              background: colors.background,
+              color: colors.color,
+              fontSize: "0.75rem",
+              fontWeight: 800,
+              whiteSpace: "nowrap",
+            }}
+          >
             {row.statusLabel}
           </span>
         );
@@ -730,31 +769,64 @@ export default function TenantsPage() {
         const tenant = tenants.find((item) => item.id === row.id);
         const isOpen = openActionsTenantId === row.id;
         return (
-          <div style={{ position: "relative", display: "inline-block" }} ref={isOpen ? actionsMenuRef : null}>
-            <button type="button" onClick={() => setOpenActionsTenantId((prev) => prev === row.id ? null : row.id)} style={dropdownTriggerStyle}>
+          <div
+            style={{ position: "relative", display: "inline-block" }}
+            ref={isOpen ? actionsMenuRef : null}
+          >
+            <button
+              type="button"
+              onClick={() =>
+                setOpenActionsTenantId((prev) =>
+                  prev === row.id ? null : row.id
+                )
+              }
+              style={dropdownTriggerStyle}
+            >
               <MoreHorizontal size={14} />
               Acciones
               <ChevronDown size={14} />
             </button>
             <AnimatePresence>
             {isOpen ? (
-              <motion.div initial={{ opacity: 0, y: -6, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -6, scale: 0.97 }} transition={{ duration: 0.15 }} style={dropdownMenuStyle}>
+              <motion.div
+                initial={{ opacity: 0, y: -6, scale: 0.97 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -6, scale: 0.97 }}
+                transition={{ duration: 0.15 }}
+                style={dropdownMenuStyle}
+              >
                 {isSuperAdmin ? (
                   <>
-                    <button type="button" onClick={() => handleOpenTenantPortalDashboard(row.id)} style={dropdownPortalItemStyle}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTenantPortalDashboard(row.id)}
+                      style={dropdownPortalItemStyle}
+                    >
                       <ExternalLink size={14} />
                       Ver dashboard portal
                     </button>
-                    <button type="button" onClick={() => handleOpenTenantPortalInvoices(row.id)} style={dropdownPortalSecondaryItemStyle}>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTenantPortalInvoices(row.id)}
+                      style={dropdownPortalSecondaryItemStyle}
+                    >
                       <FileText size={14} />
                       Ver adeudos
                     </button>
                   </>
                 ) : null}
-                <button type="button" onClick={() => { if (tenant) openEditModal(tenant); }} style={dropdownItemStyle}>
+                <button
+                  type="button"
+                  onClick={() => { if (tenant) openEditModal(tenant); }}
+                  style={dropdownItemStyle}
+                >
                   Editar
                 </button>
-                <button type="button" onClick={() => openDeleteModal(row)} style={dropdownDeleteItemStyle}>
+                <button
+                  type="button"
+                  onClick={() => openDeleteModal(row)}
+                  style={dropdownDeleteItemStyle}
+                >
                   <Trash2 size={14} />
                   Eliminar
                 </button>
@@ -816,7 +888,7 @@ export default function TenantsPage() {
             <div style={{ flex: 1 }}>
               <div
                 style={{
-                  fontSize: 16,
+                  fontSize: "1rem",
                   fontWeight: 700,
                   color: "var(--text-primary)",
                 }}
@@ -827,7 +899,7 @@ export default function TenantsPage() {
               <div
                 style={{
                   marginTop: 6,
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   lineHeight: 1.6,
                   color: "var(--text-muted)",
                 }}
@@ -841,8 +913,14 @@ export default function TenantsPage() {
         </AppCard>
       ) : null}
 
+      <MetricCircles metrics={[
+        { value: tenantRows.length, label: "Total" },
+        { value: activeCount, label: "Activos", color: "success" },
+        { value: withLeaseCount, label: "Con lease", color: "info" },
+        { value: inactiveCount, label: "Inactivos", color: "danger" },
+      ]} />
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <AppGrid minWidth={220}>
+      <AppGrid minWidth={220} className="metric-grid-desktop-only">
         <AppCard>
           <div style={{ display: "grid", gap: 8 }}>
             <div style={metricLabelStyle}>Total</div>
@@ -875,106 +953,157 @@ export default function TenantsPage() {
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.05 }} style={{ marginTop: 16 }}>
       <SectionCard title="Filtros">
-        <div
-          className="tenants-filter-grid"
-          style={{
-            display: "grid",
-            gridTemplateColumns:
-              "minmax(260px, 1.2fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr)",
-            gap: 16,
-          }}
-        >
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <Search size={14} />
-                Buscar
-              </div>
-
+        {isMobile ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px", height: 36, boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)" }}>
+              <Search size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Nombre, email, teléfono, RFC o unidad"
-                style={inputStyle}
+                placeholder="Nombre, email, RFC o unidad"
+                style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.875rem", color: "var(--text-primary)" }}
               />
             </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <User2 size={14} />
-                Estatus
-              </div>
-
-              <AppSelect
-                value={statusFilter}
-                onChange={(e) =>
-                  setStatusFilter(e.target.value as "all" | "ACTIVE" | "INACTIVE")
-                }
-              >
-                <option value="all">Todos</option>
-                <option value="ACTIVE">Activos</option>
-                <option value="INACTIVE">Inactivos</option>
-              </AppSelect>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {(["all", "ACTIVE", "INACTIVE"] as const).map((val) => (
+                <button
+                  key={val}
+                  type="button"
+                  onClick={() => setStatusFilter(val)}
+                  style={{
+                    padding: "4px 10px", fontSize: "0.75rem", minHeight: 32,
+                    borderRadius: "var(--border-radius-md)",
+                    border: "0.5px solid var(--border-default)",
+                    background: statusFilter === val ? "var(--accent)" : "var(--bg-input)",
+                    color: statusFilter === val ? "#fff" : "var(--text-secondary)",
+                    cursor: "pointer", fontWeight: 600, whiteSpace: "nowrap",
+                  }}
+                >
+                  {val === "all" ? "Todos" : val === "ACTIVE" ? "Activos" : "Inactivos"}
+                </button>
+              ))}
             </div>
-          </AppCard>
-
-          <AppCard>
-            <div style={{ display: "grid", gap: 10 }}>
-              <div style={filterLabelStyle}>
-                <Building2 size={14} />
-                Edificio
+            <select
+              value={buildingFilter}
+              onChange={(e) => setBuildingFilter(e.target.value)}
+              style={{ width: "100%", padding: "6px 10px", height: 32, fontSize: "0.875rem", boxSizing: "border-box", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", outline: "none" }}
+            >
+              <option value="all">Todos los edificios</option>
+              <option value="no_lease">Sin lease activo</option>
+              {buildings.map((building) => (
+                <option key={building.id} value={building.id}>{building.name}</option>
+              ))}
+            </select>
+          </div>
+        ) : (
+          <div
+            className="tenants-filter-grid"
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "minmax(260px, 1.2fr) minmax(220px, 0.8fr) minmax(240px, 0.9fr)",
+              gap: 16,
+            }}
+          >
+            <AppCard>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={filterLabelStyle}>
+                  <Search size={14} />
+                  Buscar
+                </div>
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Nombre, email, teléfono, RFC o unidad"
+                  style={inputStyle}
+                />
               </div>
+            </AppCard>
 
-              <AppSelect
-                value={buildingFilter}
-                onChange={(e) => setBuildingFilter(e.target.value)}
-              >
-                <option value="all">Todos</option>
-                <option value="no_lease">Sin lease activo</option>
-                {buildings.map((building) => (
-                  <option key={building.id} value={building.id}>
-                    {building.name}
-                  </option>
-                ))}
-              </AppSelect>
-            </div>
-          </AppCard>
-        </div>
+            <AppCard>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={filterLabelStyle}>
+                  <User2 size={14} />
+                  Estatus
+                </div>
+                <AppSelect
+                  value={statusFilter}
+                  onChange={(e) =>
+                    setStatusFilter(e.target.value as "all" | "ACTIVE" | "INACTIVE")
+                  }
+                >
+                  <option value="all">Todos</option>
+                  <option value="ACTIVE">Activos</option>
+                  <option value="INACTIVE">Inactivos</option>
+                </AppSelect>
+              </div>
+            </AppCard>
+
+            <AppCard>
+              <div style={{ display: "grid", gap: 10 }}>
+                <div style={filterLabelStyle}>
+                  <Building2 size={14} />
+                  Edificio
+                </div>
+                <AppSelect
+                  value={buildingFilter}
+                  onChange={(e) => setBuildingFilter(e.target.value)}
+                >
+                  <option value="all">Todos</option>
+                  <option value="no_lease">Sin lease activo</option>
+                  {buildings.map((building) => (
+                    <option key={building.id} value={building.id}>
+                      {building.name}
+                    </option>
+                  ))}
+                </AppSelect>
+              </div>
+            </AppCard>
+          </div>
+        )}
       </SectionCard>
       </motion.div>
 
       <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }} style={{ marginTop: 16 }}>
-      <SectionCard title={isGroupMode ? "Inquilinos consolidados" : "Listado de inquilinos"}>
+      <SectionCard title={isGroupMode ? "Vista consolidada — Inquilinos" : "Listado de inquilinos"}>
+        <div className="mod-table-wrap">
         {isGroupMode ? (
           tenantsByCompany.length === 0 ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No hay inquilinos en las empresas del grupo.</p>
+            <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin inquilinos en las empresas activas.</p>
           ) : (
-            <div style={{ display: "grid", gap: 24 }}>
-              {tenantsByCompany.map(({ company, rows }) => {
-                const compColor = company.brand_color || "#6b7280";
+            <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
+              {tenantsByCompany.map(({ company, compTenants }) => {
+                const compColor = company.brand_color || "var(--accent)";
                 return (
                   <div key={company.id}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, marginTop: 4 }}>
-                      <div style={{ width: 10, height: 10, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{company.short_name || company.name}</span>
-                      <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {rows.length} inquilino{rows.length !== 1 ? "s" : ""}</span>
-                      <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 4 }} />
+                    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+                      <div style={{ width: 8, height: 8, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
+                      <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>
+                        {company.short_name || company.name}
+                      </span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginLeft: 4 }}>
+                        {compTenants.length} {compTenants.length === 1 ? "inquilino" : "inquilinos"}
+                      </span>
+                      <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 8 }} />
                     </div>
-                    <div className="mod-table-wrap">
-                      <AppTable rows={rows} emptyState="Sin inquilinos." columns={tenantTableColumns} />
-                    </div>
+                    <AppTable
+                      rows={compTenants}
+                      emptyState="Sin inquilinos en esta empresa."
+                      columns={TENANT_COLS}
+                    />
                   </div>
                 );
               })}
             </div>
           )
         ) : (
-          <div className="mod-table-wrap">
-            <AppTable rows={filteredRows} emptyState="Todavía no hay inquilinos registrados." columns={tenantTableColumns} />
-          </div>
+          <AppTable
+            rows={filteredRows}
+            emptyState="Todavía no hay inquilinos registrados."
+            columns={TENANT_COLS}
+          />
         )}
+        </div>
       </SectionCard>
       </motion.div>
 
@@ -995,7 +1124,7 @@ export default function TenantsPage() {
         </div>
 
         {rentHistoryData.length === 0 ? (
-          <p style={{ color: "var(--text-muted)", fontSize: 13 }}>No hay historial de precios registrado.</p>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.8125rem" }}>No hay historial de precios registrado.</p>
         ) : (
           <div style={{ display: "grid", gap: 20 }}>
             {rentHistoryData.map(({ building, entries }) => (
@@ -1003,16 +1132,16 @@ export default function TenantsPage() {
                 {/* Encabezado del edificio */}
                 <div style={{
                   display: "flex", alignItems: "center", gap: 8, marginBottom: 10,
-                  fontSize: 14, fontWeight: 700, color: "var(--text-primary)",
+                  fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)",
                 }}>
                   <Building2 size={15} style={{ color: "var(--text-muted)" }} />
                   {building.name}
-                  <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-muted)" }}>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 500, color: "var(--text-muted)" }}>
                     · {entries.length} unidad{entries.length !== 1 ? "es" : ""}
                   </span>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 10 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(17.5rem, 1fr))", gap: 10 }}>
                   {entries.map(({ unit, leases: unitLeases }) => {
                     const currentLease  = unitLeases.find((l) => l.status === "ACTIVE");
                     const currentRent   = currentLease?.rent_amount ?? null;
@@ -1030,23 +1159,23 @@ export default function TenantsPage() {
                         {/* Header: nombre unidad + precio actual */}
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8, marginBottom: 10 }}>
                           <div>
-                            <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                            <div style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                               {unit.display_code || unit.unit_number || "Unidad"}
                             </div>
-                            <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                            <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 2 }}>
                               {currentLease ? "Contrato activo" : "Sin contrato activo"}
                             </div>
                           </div>
                           <div style={{ textAlign: "right", flexShrink: 0 }}>
-                            <div style={{ fontSize: 17, fontWeight: 800, color: currentRent ? "var(--text-primary)" : "var(--text-muted)" }}>
+                            <div style={{ fontSize: "1.0625rem", fontWeight: 800, color: currentRent ? "var(--text-primary)" : "var(--text-muted)" }}>
                               {formatCurrency(currentRent)}
                             </div>
                             {direction === "up" ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 11, fontWeight: 700, color: "#16a34a" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "var(--metric-value-green)" }}>
                                 <TrendingUp size={12} /> subió
                               </div>
                             ) : direction === "down" ? (
-                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: 11, fontWeight: 700, color: "#DC2626" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 3, justifyContent: "flex-end", fontSize: "0.6875rem", fontWeight: 700, color: "var(--metric-value-red)" }}>
                                 <TrendingDown size={12} /> bajó
                               </div>
                             ) : null}
@@ -1066,7 +1195,7 @@ export default function TenantsPage() {
                                   display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
                                   padding: "5px 8px", borderRadius: "var(--border-radius-md)",
                                   background: isActive ? "var(--icon-bg-green)" : "var(--bg-input)",
-                                  fontSize: 12,
+                                  fontSize: "0.75rem",
                                 }}>
                                   <span style={{ fontWeight: 700, color: "var(--text-primary)", minWidth: 80, fontFamily: "monospace" }}>
                                     {formatCurrency(lease.rent_amount)}
@@ -1076,12 +1205,12 @@ export default function TenantsPage() {
                                     {lease.end_date ? ` → ${formatDate(lease.end_date)}` : ""}
                                   </span>
                                   {isActive ? (
-                                    <span style={{ fontSize: 10, fontWeight: 700, color: "#10B981", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
+                                    <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--metric-value-green)", background: "rgba(16,185,129,0.12)", padding: "1px 6px", borderRadius: "var(--border-radius-md)" }}>ACTIVO</span>
                                   ) : null}
                                   {diff != null && diff !== 0 ? (
                                     <span style={{
-                                      fontSize: 10, fontWeight: 700, padding: "1px 5px", borderRadius: "var(--border-radius-md)",
-                                      color: diff > 0 ? "#10B981" : "#DC2626",
+                                      fontSize: "0.625rem", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--border-radius-md)",
+                                      color: diff > 0 ? "var(--metric-value-green)" : "var(--metric-value-red)",
                                       background: diff > 0 ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
                                     }}>
                                       {diff > 0 ? "+" : ""}{formatCurrency(diff)}
@@ -1113,7 +1242,7 @@ export default function TenantsPage() {
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
                 gap: 16,
               }}
             >
@@ -1206,7 +1335,7 @@ export default function TenantsPage() {
                   borderRadius: "var(--border-radius-lg)",
                   background: "var(--badge-bg-red)",
                   color: "var(--badge-text-red)",
-                  fontSize: 14,
+                  fontSize: "0.875rem",
                   fontWeight: 600,
                 }}
               >
@@ -1250,9 +1379,9 @@ export default function TenantsPage() {
               padding: "14px 16px",
               borderRadius: "var(--border-radius-lg)",
               background: "var(--metric-bg-amber)",
-              border: "1px solid #FED7AA",
+              border: "1px solid var(--metric-border-amber)",
               color: "var(--badge-text-amber)",
-              fontSize: 14,
+              fontSize: "0.875rem",
               fontWeight: 600,
               lineHeight: 1.5,
             }}
@@ -1295,13 +1424,13 @@ export default function TenantsPage() {
 }
 
 const metricLabelStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "0.8125rem",
   color: "var(--text-muted)",
   fontWeight: 600,
 };
 
 const metricValueStyle: CSSProperties = {
-  fontSize: 28,
+  fontSize: "1.75rem",
   color: "var(--text-primary)",
   fontWeight: 800,
 };
@@ -1310,7 +1439,7 @@ const filterLabelStyle: CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: 8,
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   color: "var(--text-muted)",
   textTransform: "uppercase",
@@ -1318,13 +1447,13 @@ const filterLabelStyle: CSSProperties = {
 };
 
 const cellPrimaryStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "0.8125rem",
   color: "var(--text-primary)",
   fontWeight: 700,
 };
 
 const cellSecondaryStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: "var(--text-muted)",
 };
 
@@ -1337,7 +1466,7 @@ const dropdownTriggerStyle: CSSProperties = {
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   color: "var(--text-secondary)",
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1368,7 +1497,7 @@ const dropdownItemStyle: CSSProperties = {
   border: "none",
   background: "var(--bg-card)",
   color: "var(--text-secondary)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1384,7 +1513,7 @@ const dropdownPortalItemStyle: CSSProperties = {
   border: "none",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1400,7 +1529,7 @@ const dropdownPortalSecondaryItemStyle: CSSProperties = {
   border: "none",
   background: "var(--icon-bg-purple)",
   color: "var(--icon-color-purple)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -1416,7 +1545,7 @@ const dropdownDeleteItemStyle: CSSProperties = {
   border: "none",
   background: "var(--badge-bg-red)",
   color: "var(--badge-text-red)",
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   cursor: "pointer",
 };

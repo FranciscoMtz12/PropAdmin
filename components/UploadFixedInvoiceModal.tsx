@@ -97,14 +97,14 @@ export default function UploadFixedInvoiceModal({
 
   return (
     <Modal open onClose={onClose} title={`Subir factura — ${SERVICE_TYPE_LABEL[meter.service_type] ?? meter.service_type}`}>
-      <p style={{ margin: "0 0 16px", fontSize: 13, color: "var(--text-secondary)" }}>
+      <p style={{ margin: "0 0 16px", fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
         {building.name} · {periodLabel}
       </p>
 
       {meter.fixed_amount > 0 && (
         <div style={{
-          padding: "10px 14px", background: "#eff6ff", borderRadius: "var(--border-radius-md)", marginBottom: 14,
-          fontSize: 13, color: "#1d4ed8", display: "flex", alignItems: "flex-start", gap: 8,
+          padding: "10px 14px", background: "var(--metric-bg-blue)", borderRadius: "var(--border-radius-md)", marginBottom: 14,
+          fontSize: "0.8125rem", color: "var(--metric-value-blue)", display: "flex", alignItems: "flex-start", gap: 8,
         }}>
           <Info size={14} style={{ flexShrink: 0, marginTop: 1 }} />
           Monto fijo configurado: <strong>{fmt(meter.fixed_amount)}/mes</strong>. Confirma o ajusta el monto real.
@@ -117,7 +117,7 @@ export default function UploadFixedInvoiceModal({
         <AppFormField label="Monto real de la factura *">
           <input
             type="number" value={amount} onChange={e => setAmount(e.target.value)}
-            placeholder="0.00" style={{ ...INPUT_STYLE, fontSize: 16, fontWeight: 700 }}
+            placeholder="0.00" style={{ ...INPUT_STYLE, fontSize: "1rem", fontWeight: 700 }}
             step="0.01" min="0" autoFocus
           />
         </AppFormField>
@@ -139,16 +139,16 @@ export default function UploadFixedInvoiceModal({
             onClick={() => fileRef.current?.click()}
             style={{
               padding: "14px", borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "center",
-              border: `2px dashed ${pdfFile ? "#15803d" : "var(--border-default)"}`,
-              background: pdfFile ? "#dcfce7" : "var(--bg-card)",
+              border: `2px dashed ${pdfFile ? "var(--metric-border-green)" : "var(--border-default)"}`,
+              background: pdfFile ? "var(--metric-bg-green)" : "var(--bg-card)",
             }}
           >
             {pdfFile ? (
-              <p style={{ margin: 0, color: "#15803d", fontWeight: 600, fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--metric-value-green)", fontWeight: 600, fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />{pdfFile.name}
               </p>
             ) : (
-              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.8125rem", display: "inline-flex", alignItems: "center", gap: 6 }}>
                 <FileText size={14} />Toca para adjuntar PDF de la factura
               </p>
             )}

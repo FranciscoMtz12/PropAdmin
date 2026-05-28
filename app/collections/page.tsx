@@ -48,6 +48,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useFontScale } from "@/lib/useFontScale";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -56,6 +57,7 @@ import { z } from "zod";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppGrid from "@/components/AppGrid";
 import AppSelect from "@/components/AppSelect";
 import UiButton from "@/components/UiButton";
@@ -238,8 +240,8 @@ const positiveAmountString = () =>
     });
 
 const collectionsErrorTextStyle: CSSProperties = {
-  color: "#EF4444",
-  fontSize: 12,
+  color: "var(--metric-value-red)",
+  fontSize: "0.75rem",
   marginTop: 4,
   marginBottom: 0,
 };
@@ -279,7 +281,7 @@ function getStatusLabel(status: CollectionStoredStatus) {
 function getStatusColors(status: CollectionStoredStatus) {
   if (status === "collected") return { bg: "var(--badge-bg-green)",  text: "var(--badge-text-green)",  border: "var(--metric-border-green)" };
   if (status === "partial")   return { bg: "var(--metric-bg-neutral)", text: "var(--badge-text-blue)",  border: "#BFDBFE" };
-  if (status === "pending")   return { bg: "#FEFCE8",                text: "#A16207",                  border: "#FDE68A" };
+  if (status === "pending")   return { bg: "var(--metric-bg-amber)",  text: "var(--metric-value-amber)", border: "var(--metric-border-amber)" };
   return                             { bg: "var(--badge-bg-red)",    text: "var(--badge-text-red)",    border: "#FECACA" };
 }
 
@@ -294,13 +296,13 @@ function getChargeTypeLabel(type: CollectionChargeType) {
 
 function getChargeTypeIcon(type: CollectionChargeType) {
   if (type === "rent")            return <House size={15} color="var(--badge-text-blue)" />;
-  if (type === "maintenance_fee") return <Wrench size={15} color="#D97706" />;
-  if (type === "electricity")     return <Zap size={15} color="#2563EB" />;
+  if (type === "maintenance_fee") return <Wrench size={15} color="var(--metric-value-amber)" />;
+  if (type === "electricity")     return <Zap size={15} color="var(--metric-value-blue)" />;
   if (type === "water")           return <Droplets size={15} color="#0EA5E9" />;
   if (type === "gas")             return <Flame size={15} color="#EA580C" />;
   if (type === "amenities")       return <Gem size={15} color="#7C3AED" />;
   if (type === "parking")         return <CarFront size={15} color="#0F766E" />;
-  if (type === "penalty")         return <AlertTriangle size={15} color="#DC2626" />;
+  if (type === "penalty")         return <AlertTriangle size={15} color="var(--metric-value-red)" />;
   return                                 <Receipt size={15} color="#6D28D9" />;
 }
 
@@ -318,6 +320,7 @@ function computeEstadoGeneral(records: CollectionRecord[]): CollectionStoredStat
 
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
+  const { fontScale } = useFontScale();
 
   const now = new Date();
   const [selectedYear, setSelectedYear]   = useState(now.getFullYear());
@@ -378,10 +381,10 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     void loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, user?.company_id]);
 
   useEffect(() => {
     if (user?.company_id) void loadReadingsStatus(user.company_id);
@@ -410,7 +413,7 @@ export default function CollectionsPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     setLoadingPage(true);
 
     const cid = user?.company_id ?? null;
@@ -450,7 +453,7 @@ export default function CollectionsPage() {
   // ── PASO 3: auto-mark overdue ─────────────────────────────────────────────────
 
   async function autoMarkOverdue() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
@@ -1092,7 +1095,7 @@ export default function CollectionsPage() {
   if (loading || loadingPage) {
     return (
       <PageContainer>
-        <div style={{ padding: "32px 0", color: "var(--text-muted)", fontSize: 14, fontWeight: 600 }}>
+        <div style={{ padding: "32px 0", color: "var(--text-muted)", fontSize: "0.875rem", fontWeight: 600 }}>
           Cargando cobranza...
         </div>
       </PageContainer>
@@ -1121,8 +1124,8 @@ export default function CollectionsPage() {
       {overdueRecordsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(220,38,38,0.1)", border: "1px solid rgba(220,38,38,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#DC2626", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-red)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {overdueRecordsBanner.length} cobro{overdueRecordsBanner.length !== 1 ? "s" : ""} vencido{overdueRecordsBanner.length !== 1 ? "s" : ""}
             </span>
           </div>
@@ -1130,13 +1133,13 @@ export default function CollectionsPage() {
             {overdueRecordsBanner.slice(0, 12).map(r => (
               <button key={r.id} type="button"
                 onClick={() => setFilterStatus("overdue")}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
                 {_unitLabelMap.get(r.unit_id) ?? r.unit_id.slice(0, 6)}
               </button>
             ))}
             {overdueRecordsBanner.length > 12 && (
               <button type="button" onClick={() => setFilterStatus("overdue")}
-                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: 12, cursor: "pointer" }}>
+                style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(220,38,38,0.08)", border: "1px solid rgba(220,38,38,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", cursor: "pointer" }}>
                 +{overdueRecordsBanner.length - 12} más
               </button>
             )}
@@ -1147,12 +1150,12 @@ export default function CollectionsPage() {
       {dueSoonRecordsBanner.length > 0 && (
         <div style={{ marginBottom: 12, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               {dueSoonRecordsBanner.length} cobro{dueSoonRecordsBanner.length !== 1 ? "s" : ""} vence{dueSoonRecordsBanner.length !== 1 ? "n" : ""} en los próximos 5 días
             </span>
             <button type="button" onClick={() => setFilterStatus("pending")}
-              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+              style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}>
               Ver pendientes
             </button>
           </div>
@@ -1162,11 +1165,11 @@ export default function CollectionsPage() {
       {missingReadingsCount > 0 && (
         <div style={{ marginBottom: 20, borderRadius: "var(--border-radius-lg)", background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", padding: "12px 16px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#F59E0B", flexShrink: 0 }} />
-            <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--metric-value-amber)", flexShrink: 0 }} />
+            <span style={{ fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
               Hay lecturas de medidores pendientes de capturar ({missingReadingsCount} sin registrar)
             </span>
-            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: 12, fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
+            <a href="/servicios" style={{ marginLeft: "auto", padding: "3px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", color: "var(--text-primary)", fontSize: "0.75rem", fontWeight: 600, textDecoration: "none", whiteSpace: "nowrap" }}>
               Ir a Servicios
             </a>
           </div>
@@ -1195,7 +1198,15 @@ export default function CollectionsPage() {
       </div>
 
       {/* ── Métricas ── */}
-      <AppGrid minWidth={200} style={{ marginTop: 24 }}>
+      <div style={{ marginBottom: 24 }}>
+        <MetricCircles metrics={[
+          { value: formatCurrency(metrics.totalDue), label: "Total" },
+          { value: formatCurrency(metrics.collected), label: "Cobrado", color: "success" },
+          { value: formatCurrency(metrics.pendiente), label: "Pendiente", color: "warning" },
+          { value: formatCurrency(metrics.vencido), label: "Vencido", color: "danger" },
+        ]} />
+      </div>
+      <AppGrid minWidth={200} className="metric-grid-desktop-only" style={{ marginTop: 24 }}>
         <MetricCard
           label="Total a cobrar"
           value={formatCurrency(metrics.totalDue)}
@@ -1226,18 +1237,18 @@ export default function CollectionsPage() {
       </AppGrid>
 
       {/* ── Gráfica donut + barra de cantidades ── */}
-      <div style={{ ...chartRowStyle, marginTop: 24 }}>
+      <div className="collections-chart-row" style={{ ...chartRowStyle, marginTop: 24 }}>
         {/* Donut — distribución por monto */}
         <div style={donutCardStyle}>
           <p style={sectionLabelStyle}>Distribución del mes</p>
-          <ResponsiveContainer width="100%" height={180}>
+          <ResponsiveContainer width="100%" height={Math.round(180 * fontScale)}>
             <PieChart>
               <Pie
                 data={donutData}
                 cx="50%"
                 cy="50%"
-                innerRadius={52}
-                outerRadius={78}
+                innerRadius={Math.round(52 * fontScale)}
+                outerRadius={Math.round(78 * fontScale)}
                 paddingAngle={3}
                 dataKey="value"
                 stroke="none"
@@ -1253,7 +1264,7 @@ export default function CollectionsPage() {
                   border: "1px solid var(--border-default)",
                   background: "var(--bg-card)",
                   color: "var(--text-primary)",
-                  fontSize: 13,
+                  fontSize: "0.8125rem",
                 }}
               />
             </PieChart>
@@ -1262,7 +1273,7 @@ export default function CollectionsPage() {
             {donutData.map((d) => (
               <div key={d.name} style={donutLegendItemStyle}>
                 <span style={{ width: 10, height: 10, borderRadius: "50%", background: d.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 12, color: "var(--text-muted)", fontWeight: 600 }}>{d.name}</span>
+                <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", fontWeight: 600 }}>{d.name}</span>
               </div>
             ))}
           </div>
@@ -1273,31 +1284,31 @@ export default function CollectionsPage() {
           <p style={sectionLabelStyle}>Cobros del mes</p>
           <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, padding: "8px 0" }}>
             {countData.total === 0 ? (
-              <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Sin cobros generados</p>
+              <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", margin: 0 }}>Sin cobros generados</p>
             ) : (
               <>
                 {/* Barra apilada horizontal */}
                 <div style={{ display: "flex", height: 20, borderRadius: "var(--border-radius-md)", overflow: "hidden", gap: 2 }}>
                   {countData.overdue > 0 && (
-                    <div style={{ flex: countData.overdue, background: "#EF4444", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
+                    <div style={{ flex: countData.overdue, background: "var(--metric-value-red)", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
                   )}
                   {countData.pending > 0 && (
-                    <div style={{ flex: countData.pending, background: "#F59E0B", minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
+                    <div style={{ flex: countData.pending, background: "var(--metric-value-amber)", minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
                   )}
                   {countData.collected > 0 && (
-                    <div style={{ flex: countData.collected, background: "#10B981", minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
+                    <div style={{ flex: countData.collected, background: "var(--metric-value-green)", minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
                   )}
                 </div>
                 {/* Leyenda de conteos */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                   {[
-                    { label: "Vencido",   count: countData.overdue,   color: "#EF4444" },
-                    { label: "Pendiente", count: countData.pending,   color: "#F59E0B" },
-                    { label: "Cobrado",   count: countData.collected, color: "#10B981" },
+                    { label: "Vencido",   count: countData.overdue,   color: "var(--metric-value-red)"   },
+                    { label: "Pendiente", count: countData.pending,   color: "var(--metric-value-amber)" },
+                    { label: "Cobrado",   count: countData.collected, color: "var(--metric-value-green)" },
                   ].map(({ label, count, color }) => (
                     <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                      <span style={{ fontSize: 18, fontWeight: 800, color }}>{count}</span>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
+                      <span style={{ fontSize: "1.125rem", fontWeight: 800, color }}>{count}</span>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 600 }}>{label}</span>
                     </div>
                   ))}
                 </div>
@@ -1319,7 +1330,7 @@ export default function CollectionsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Buscar inquilino o departamento..."
-            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: 13, color: "var(--text-primary)" }}
+            style={{ flex: 1, background: "transparent", border: "none", outline: "none", fontSize: "0.8125rem", color: "var(--text-primary)" }}
           />
           {searchQuery ? (
             <button type="button" onClick={() => setSearchQuery("")} style={{ display: "flex", background: "none", border: "none", padding: 0, cursor: "pointer", color: "var(--text-muted)" }}>
@@ -1404,7 +1415,7 @@ export default function CollectionsPage() {
                     {/* Centro: saldo pendiente o badge cobrado */}
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                       {row.balance > 0 ? (
-                        <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>
+                        <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)" }}>
                           {formatCurrency(row.balance)}
                         </span>
                       ) : null}
@@ -1466,12 +1477,12 @@ export default function CollectionsPage() {
                               {/* Monto — 3 líneas */}
                               <div style={{ display: "grid", gap: 2, textAlign: "right" }}>
                                 {needsCaptura ? (
-                                  <span style={{ fontSize: 14, fontWeight: 700, color: "var(--text-muted)" }}>—</span>
+                                  <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-muted)" }}>—</span>
                                 ) : (
                                   <>
-                                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Total: {formatCurrency(record.amount_due)}</span>
-                                    <span style={{ fontSize: 12, fontWeight: 600, color: "#10B981" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "#EF4444" : "#10B981" }}>
+                                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>Total: {formatCurrency(record.amount_due)}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--metric-value-green)" }}>Pagado: {formatCurrency(record.amount_collected || 0)}</span>
+                                    <span style={{ fontSize: "0.75rem", fontWeight: 700, color: (record.amount_due - (record.amount_collected || 0)) > 0 ? "var(--metric-value-red)" : "var(--metric-value-green)" }}>
                                       Resta: {formatCurrency(Math.max(record.amount_due - (record.amount_collected || 0), 0))}
                                     </span>
                                   </>
@@ -1481,13 +1492,13 @@ export default function CollectionsPage() {
                               {/* Estado */}
                               <div style={{ display: "flex", justifyContent: "center" }}>
                                 {needsCaptura ? (
-                                  <span style={{ ...badgeStyle, fontSize: 11, padding: "4px 8px", background: "var(--metric-bg-amber)", color: "var(--badge-text-amber)", border: "1px solid var(--metric-border-amber)" }}>
+                                  <span style={{ ...badgeStyle, fontSize: "0.6875rem", padding: "4px 8px", background: "var(--metric-bg-amber)", color: "var(--badge-text-amber)", border: "1px solid var(--metric-border-amber)" }}>
                                     Pendiente captura
                                   </span>
                                 ) : (
                                   <span style={{
                                     ...badgeStyle,
-                                    fontSize: 11,
+                                    fontSize: "0.6875rem",
                                     padding: "4px 8px",
                                     background: recColors.bg,
                                     color: recColors.text,
@@ -1532,7 +1543,7 @@ export default function CollectionsPage() {
                                       type="button"
                                       onClick={() => setRevertConfirmId(record.id)}
                                       disabled={isMarking}
-                                      style={{ ...editBtnStyle, width: "auto", padding: "4px 9px", fontSize: 11, fontWeight: 600 }}
+                                      style={{ ...editBtnStyle, width: "auto", padding: "4px 9px", fontSize: "0.6875rem", fontWeight: 600 }}
                                     >
                                       {isMarking ? "..." : "Revertir"}
                                     </button>
@@ -1553,10 +1564,10 @@ export default function CollectionsPage() {
                                         minWidth: 160,
                                         whiteSpace: "nowrap",
                                       }}>
-                                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>¿Revertir pago?</span>
+                                        <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-primary)" }}>¿Revertir pago?</span>
                                         <div style={{ display: "flex", gap: 6 }}>
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); void handleRevertRecord(record); }} style={{ flex: 1, padding: "5px 0", borderRadius: "var(--border-radius-md)", border: "1px solid #FECACA", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", fontSize: 11, fontWeight: 700, cursor: "pointer" }}>Sí</button>
-                                          <button type="button" onClick={(e) => { e.stopPropagation(); setRevertConfirmId(null); }} style={{ flex: 1, padding: "5px 0", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>No</button>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); void handleRevertRecord(record); }} style={{ flex: 1, padding: "5px 0", borderRadius: "var(--border-radius-md)", border: "1px solid #FECACA", background: "var(--badge-bg-red)", color: "var(--badge-text-red)", fontSize: "0.6875rem", fontWeight: 700, cursor: "pointer" }}>Sí</button>
+                                          <button type="button" onClick={(e) => { e.stopPropagation(); setRevertConfirmId(null); }} style={{ flex: 1, padding: "5px 0", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }}>No</button>
                                         </div>
                                       </div>
                                     ) : null}
@@ -1584,7 +1595,7 @@ export default function CollectionsPage() {
 
                       {/* Pie del expand */}
                       <div style={{ ...expandFooterStyle, justifyContent: "space-between" }}>
-                        <span style={{ fontSize: 13, color: "var(--text-muted)", fontWeight: 500 }}>
+                        <span style={{ fontSize: "0.8125rem", color: "var(--text-muted)", fontWeight: 500 }}>
                           Saldo pendiente: <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(row.balance)}</strong>
                         </span>
                         <button
@@ -1594,7 +1605,7 @@ export default function CollectionsPage() {
                             setEventoModal({ groupKey: row.groupKey, leaseId: row.leaseId, buildingId: row.buildingId, unitId: row.records[0]?.unit_id || "" });
                             eventoForm.reset({ concepto: "", chargeType: "amenities", monto: "" });
                           }}
-                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: 12, fontWeight: 600, cursor: "pointer" }}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer" }}
                         >
                           <Plus size={13} />
                           Cargo eventual
@@ -1682,12 +1693,12 @@ export default function CollectionsPage() {
       >
         {abonoRecord ? (
           <form onSubmit={handleAbonoSubmit} style={{ display: "grid", gap: 16 }}>
-            <p style={{ margin: 0, fontSize: 13, color: "var(--text-muted)" }}>
+            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
               Total del cobro:{" "}
               <strong style={{ color: "var(--text-primary)" }}>{formatCurrency(abonoRecord.amount_due)}</strong>
               {(abonoRecord.amount_collected || 0) > 0 ? (
                 <> · Ya abonado:{" "}
-                  <strong style={{ color: "#10B981" }}>{formatCurrency(abonoRecord.amount_collected || 0)}</strong>
+                  <strong style={{ color: "var(--metric-value-green)" }}>{formatCurrency(abonoRecord.amount_collected || 0)}</strong>
                 </>
               ) : null}
             </p>
@@ -1875,7 +1886,7 @@ const monthNavBtnStyle: CSSProperties = {
 };
 
 const monthNavLabelStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 700,
   color: "var(--text-primary)",
   minWidth: 120,
@@ -1899,7 +1910,7 @@ const donutCardStyle: CSSProperties = {
 };
 
 const sectionLabelStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   color: "var(--text-muted)",
   textTransform: "uppercase",
@@ -1956,13 +1967,13 @@ const tenantCardHeaderStyle: CSSProperties = {
 };
 
 const tenantNameStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 600,
   color: "var(--text-primary)",
 };
 
 const tenantSubtitleStyle: CSSProperties = {
-  fontSize: 12,
+  fontSize: "0.75rem",
   color: "var(--text-muted)",
   fontWeight: 500,
 };
@@ -1972,7 +1983,7 @@ const badgeStyle: CSSProperties = {
   alignItems: "center",
   borderRadius: 999,
   padding: "5px 10px",
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 800,
   whiteSpace: "nowrap",
 };
@@ -2014,7 +2025,7 @@ const conceptsHeaderRowStyle: CSSProperties = {
 };
 
 const thStyle: CSSProperties = {
-  fontSize: 11,
+  fontSize: "0.6875rem",
   fontWeight: 700,
   color: "var(--text-muted)",
   textTransform: "uppercase",
@@ -2043,18 +2054,18 @@ const chargeIconWrapStyle: CSSProperties = {
 };
 
 const conceptNameStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 600,
   color: "var(--text-primary)",
 };
 
 const conceptSubStyle: CSSProperties = {
-  fontSize: 11,
+  fontSize: "0.6875rem",
   color: "var(--text-muted)",
 };
 
 const conceptAmountStyle: CSSProperties = {
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -2068,7 +2079,7 @@ const paidBtnStyle: CSSProperties = {
   border: "1px solid var(--metric-border-green)",
   background: "var(--badge-bg-green)",
   color: "var(--badge-text-green)",
-  fontSize: 12,
+  fontSize: "0.75rem",
   fontWeight: 700,
   cursor: "pointer",
 };
@@ -2106,7 +2117,7 @@ const emptyBoxStyle: CSSProperties = {
   borderRadius: "var(--border-radius-lg)",
   border: "1px dashed var(--border-default)",
   color: "var(--text-muted)",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 500,
   lineHeight: 1.6,
   textAlign: "center",
@@ -2118,14 +2129,14 @@ const warningBoxStyle: CSSProperties = {
   background: "var(--metric-bg-amber)",
   border: "1px solid var(--metric-border-amber)",
   color: "var(--badge-text-amber)",
-  fontSize: 14,
+  fontSize: "0.875rem",
   fontWeight: 500,
   lineHeight: 1.6,
 };
 
 const formGridStyle: CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+  gridTemplateColumns: "repeat(auto-fit, minmax(15rem, 1fr))",
   gap: 16,
 };
 
@@ -2136,7 +2147,7 @@ const fieldStyle: CSSProperties = {
 };
 
 const fieldLabelStyle: CSSProperties = {
-  fontSize: 13,
+  fontSize: "0.8125rem",
   fontWeight: 700,
   color: "var(--text-primary)",
 };
@@ -2148,7 +2159,7 @@ const inputStyle: CSSProperties = {
   border: "1px solid var(--border-default)",
   background: "var(--bg-card)",
   outline: "none",
-  fontSize: 14,
+  fontSize: "0.875rem",
   color: "var(--text-primary)",
 };
 

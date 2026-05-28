@@ -87,9 +87,12 @@ export default function RouteGuard() {
       return;
     }
 
+    // /home es accesible para cualquier usuario admin autenticado (incluyendo superadmin en modo impersonación)
+    if (pathname === "/home") return;
+
     // Field: solo /campo/*
     if (user.role === "field") {
-      if (!pathname.startsWith("/campo")) { router.replace("/campo/dashboard"); return; }
+      if (!pathname.startsWith("/campo") && pathname !== "/settings") { router.replace("/campo/dashboard"); return; }
       return;
     }
 
@@ -104,22 +107,22 @@ export default function RouteGuard() {
     const skipGranular = user.role === "superadmin" || user.is_superadmin;
 
     if (!skipGranular) {
-      if (user.role === "titular") {
+      if (user.role === "titular" || user.role === "group_admin") {
         if (pathname.startsWith("/feedback")) { router.replace("/dashboard"); return; }
         return;
       }
       if (user.role === "compras") {
-        const allowed = ["/dashboard", "/purchases", "/suppliers"]
+        const allowed = ["/dashboard", "/purchases", "/suppliers", "/settings"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/purchases"); return; }
         return;
       }
       if (user.role === "mantenimiento") {
-        const allowed = ["/dashboard", "/maintenance", "/cleaning"]
+        const allowed = ["/dashboard", "/maintenance", "/cleaning", "/settings"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/maintenance"); return; }
         return;
       }
       if (user.role === "administracion") {
-        const allowed = ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants"]
+        const allowed = ["/dashboard", "/buildings", "/servicios", "/payments", "/collections", "/cobranza", "/tenants", "/settings"]
         if (!allowed.some(p => pathname.startsWith(p))) { router.replace("/dashboard"); return; }
         return;
       }

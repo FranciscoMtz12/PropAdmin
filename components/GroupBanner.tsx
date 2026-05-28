@@ -1,11 +1,13 @@
 "use client";
 
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useCurrentUser } from "@/contexts/UserContext";
 import { initials } from "@/contexts/ThemeContext";
 
 const GROUP_COLOR = "#C9A84C";
 
 export default function GroupBanner() {
+  const { user } = useCurrentUser();
   const {
     isImpersonating,
     impersonationMode,
@@ -15,7 +17,8 @@ export default function GroupBanner() {
     toggleGroupCompany,
   } = useImpersonation();
 
-  if (!isImpersonating || impersonationMode !== 'group') return null;
+  const isGroupAdmin = user?.role === 'group_admin';
+  if (!isGroupAdmin && (!isImpersonating || impersonationMode !== 'group')) return null;
 
   return (
     <div
@@ -34,11 +37,11 @@ export default function GroupBanner() {
     >
       {/* Nombre del grupo */}
       <span style={{
-        fontSize: 13, fontWeight: 700, color: GROUP_COLOR, whiteSpace: "nowrap",
+        fontSize: "0.8125rem", fontWeight: 700, color: GROUP_COLOR, whiteSpace: "nowrap",
       }}>
         {impersonatedGroupName
           ? (impersonatedGroupName.startsWith("Grupo") ? impersonatedGroupName : `Grupo ${impersonatedGroupName}`)
-          : "Grupo"}
+          : "Grupo MATZ"}
       </span>
 
       {/* Divisor vertical */}
@@ -48,6 +51,11 @@ export default function GroupBanner() {
 
       {/* Círculos de empresas */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
+        {groupCompanies.length === 0 && (
+          <span style={{ fontSize: "0.75rem", color: "rgba(201,168,76,0.5)", fontStyle: "italic" }}>
+            Cargando…
+          </span>
+        )}
         {groupCompanies.map(company => {
           const isActive = groupCompanyIds.includes(company.id);
           const bgColor  = company.brand_color || "#6b7280";
@@ -82,7 +90,7 @@ export default function GroupBanner() {
                 />
               ) : (
                 <span style={{
-                  fontSize: 9, fontWeight: 700, color: "#fff", userSelect: "none", lineHeight: 1,
+                  fontSize: "0.5625rem", fontWeight: 700, color: "#fff", userSelect: "none", lineHeight: 1,
                 }}>
                   {abbr}
                 </span>

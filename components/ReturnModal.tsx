@@ -201,7 +201,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
   ].filter(Boolean).join(" · ");
 
   const tdStyle: React.CSSProperties = {
-    padding: "8px 6px", fontSize: 13, color: "var(--text-primary)",
+    padding: "8px 6px", fontSize: "0.8125rem", color: "var(--text-primary)",
     borderBottom: "1px solid var(--border-default)",
   };
 
@@ -213,7 +213,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
 
         {/* Tipo de movimiento */}
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>
+          <label style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>
             Tipo de movimiento *
           </label>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
@@ -229,7 +229,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
               <div style={{ fontWeight: 600, marginBottom: 4, color: type === "return" ? "#c2410c" : "var(--text-primary)" }}>
                 ↩ Devolución
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                 Regreso definitivo, no espero reposición
               </div>
             </button>
@@ -238,14 +238,14 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
               onClick={() => setType("exchange")}
               style={{
                 padding: 12, borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "left",
-                border: type === "exchange" ? "2px solid #2563eb" : "1px solid var(--border-default)",
-                background: type === "exchange" ? "#eff6ff" : "var(--bg-input)",
+                border: type === "exchange" ? "2px solid var(--metric-value-blue)" : "1px solid var(--border-default)",
+                background: type === "exchange" ? "var(--metric-bg-blue)" : "var(--bg-input)",
               }}
             >
-              <div style={{ fontWeight: 600, marginBottom: 4, color: type === "exchange" ? "#1d4ed8" : "var(--text-primary)" }}>
+              <div style={{ fontWeight: 600, marginBottom: 4, color: type === "exchange" ? "var(--metric-value-blue)" : "var(--text-primary)" }}>
                 🔄 Cambio
               </div>
-              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>
+              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                 El proveedor me repondrá los mismos artículos
               </div>
             </button>
@@ -254,7 +254,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
 
         {/* Tabla de items */}
         <div>
-          <p style={{ margin: "0 0 8px", fontSize: 12, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+          <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
             {type === "exchange" ? "Artículos a cambiar" : "Items a devolver"}
           </p>
           <div style={{ overflowX: "auto" }}>
@@ -292,7 +292,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
                             border: "1px solid var(--border-default)",
                             background: noRecibido ? "var(--bg-page)" : "var(--bg-input)",
                             color: noRecibido ? "var(--text-muted)" : "var(--text-primary)",
-                            fontSize: 13, textAlign: "right",
+                            fontSize: "0.8125rem", textAlign: "right",
                           }}
                         />
                       </td>
@@ -307,13 +307,13 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
 
         {/* Motivo */}
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
             Motivo *
           </label>
           <select
             value={reason}
             onChange={(e) => setReason(e.target.value as PurchaseReturnReason)}
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14 }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.875rem" }}
           >
             <option value="">Seleccionar motivo...</option>
             {(Object.entries(RETURN_REASON_LABEL) as [PurchaseReturnReason, string][]).map(([val, label]) => (
@@ -324,7 +324,7 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
 
         {/* Notas */}
         <div>
-          <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+          <label style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
             Notas (opcional)
           </label>
           <textarea
@@ -333,17 +333,17 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             maxLength={500}
             rows={3}
             placeholder="Descripción adicional..."
-            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: 14, resize: "vertical", boxSizing: "border-box" }}
+            style={{ width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box" }}
           />
-          <p style={{ margin: "4px 0 0", fontSize: 11, color: "var(--text-muted)", textAlign: "right" }}>{notes.length}/500</p>
+          <p style={{ margin: "4px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)", textAlign: "right" }}>{notes.length}/500</p>
         </div>
 
         {/* Aviso de cambio */}
         {type === "exchange" ? (
           <div style={{
             padding: "10px 14px", borderRadius: "var(--border-radius-md)",
-            background: "#eff6ff", border: "1px solid #93c5fd",
-            fontSize: 13, color: "#1d4ed8",
+            background: "var(--metric-bg-blue)", border: "1px solid #93c5fd",
+            fontSize: "0.8125rem", color: "var(--metric-value-blue)",
           }}>
             Se creará automáticamente una OC de cambio ya enviada a campo. El responsable verá un aviso indicando que debe entregar el material al proveedor al recoger el reemplazo.
           </div>
@@ -361,10 +361,10 @@ export default function ReturnModal({ oc, items, isOpen, onClose, onSuccess }: P
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
               padding: "11px 16px", borderRadius: "var(--border-radius-lg)",
-              border:      type === "exchange" ? "1px solid #2563eb" : "1px solid #c2410c",
-              background:  type === "exchange" ? "#2563eb"           : "#c2410c",
+              border:      type === "exchange" ? "1px solid var(--metric-value-blue)" : "1px solid #c2410c",
+              background:  type === "exchange" ? "var(--metric-value-blue)"          : "#c2410c",
               color: "#fff",
-              fontSize: 14, fontWeight: 700,
+              fontSize: "0.875rem", fontWeight: 700,
               cursor:  isSubmitting ? "wait"    : "pointer",
               opacity: isSubmitting ? 0.7       : 1,
             }}

@@ -140,7 +140,7 @@ export default function DashboardComprasPage() {
       />
 
       {/* ── Fila 1: Métricas ──────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.12rem, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard
           label="OCs pendientes de aprobar"
           value={pageLoading ? "…" : pendingApprove.length}
@@ -170,12 +170,12 @@ export default function DashboardComprasPage() {
       </div>
 
       {/* ── Fila 2: Dos columnas ──────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(21.25rem, 1fr))", gap: 24 }}>
 
         {/* OCs pendientes de aprobar */}
         <SectionCard title="OCs pendientes de aprobar" subtitle="Más antiguas primero · máx. 8">
           {pageLoading ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : pendingTable.length === 0 ? (
             <AppEmptyState title="Sin OCs pendientes" description="No hay órdenes de compra pendientes de aprobación." />
           ) : (
@@ -188,10 +188,10 @@ export default function DashboardComprasPage() {
                   header: "Folio / Proveedor",
                   render: (row) => (
                     <div>
-                      <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
+                      <span style={{ fontWeight: 600, fontSize: "0.8125rem", display: "block", color: "var(--text-primary)" }}>
                         {row.folio ?? "Sin folio"}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {row.supplier_name ?? "Sin proveedor"}
                       </span>
                     </div>
@@ -207,7 +207,7 @@ export default function DashboardComprasPage() {
                     const bv     = days > 3 ? "red" : days > 1 ? "amber" : "gray";
                     return (
                       <div style={{ textAlign: "right" }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, display: "block", color: "var(--text-primary)" }}>
+                        <span style={{ fontSize: "0.8125rem", fontWeight: 600, display: "block", color: "var(--text-primary)" }}>
                           {row.total_estimated != null ? formatMXN(row.total_estimated) : "—"}
                         </span>
                         <AppBadge variant={bv}>
@@ -225,7 +225,7 @@ export default function DashboardComprasPage() {
         {/* OCs enviadas sin recibir */}
         <SectionCard title="OCs enviadas sin recibir" subtitle="Más antiguas primero · máx. 8">
           {pageLoading ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : sentTable.length === 0 ? (
             <AppEmptyState title="Sin OCs enviadas pendientes" description="No hay órdenes enviadas sin confirmar recepción." />
           ) : (
@@ -238,10 +238,10 @@ export default function DashboardComprasPage() {
                   header: "Folio / Proveedor",
                   render: (row) => (
                     <div>
-                      <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
+                      <span style={{ fontWeight: 600, fontSize: "0.8125rem", display: "block", color: "var(--text-primary)" }}>
                         {row.folio ?? "Sin folio"}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {row.supplier_name ?? "Sin proveedor"}
                       </span>
                     </div>
@@ -256,10 +256,10 @@ export default function DashboardComprasPage() {
                     const days = daysAgo(row.updated_at);
                     return (
                       <div style={{ textAlign: "right" }}>
-                        <span style={{ fontSize: 13, fontWeight: 600, display: "block", color: "var(--text-primary)" }}>
+                        <span style={{ fontSize: "0.8125rem", fontWeight: 600, display: "block", color: "var(--text-primary)" }}>
                           {row.total_estimated != null ? formatMXN(row.total_estimated) : "—"}
                         </span>
-                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                           hace {days} {days === 1 ? "día" : "días"}
                         </span>
                       </div>

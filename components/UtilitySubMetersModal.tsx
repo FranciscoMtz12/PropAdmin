@@ -109,7 +109,7 @@ export default function UtilitySubMetersModal({
 
   return (
     <Modal open title={modalTitle} onClose={onClose} maxWidth="640px">
-      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "#fef3c7", color: "#92400e", fontSize: 13, fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--metric-bg-amber)", color: "var(--metric-value-amber)", fontSize: "0.8125rem", fontWeight: 600, lineHeight: 1.5, marginBottom: 20 }}>
         <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} />
         <span>Marca las unidades conectadas a este medidor. La lectura base puede ser 0 si no la conoces.</span>
       </div>
@@ -127,17 +127,17 @@ export default function UtilitySubMetersModal({
               key={unit.id}
               style={{
                 borderRadius: "var(--border-radius-lg)",
-                border: checked ? "1px solid #8B2252" : "1px solid var(--border-default)",
+                border: checked ? "1px solid var(--accent)" : "1px solid var(--border-default)",
                 background: checked ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
                 padding: "12px 14px",
               }}
             >
-              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 600, fontSize: 14, color: "var(--text-primary)" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", fontWeight: 600, fontSize: "0.875rem", color: "var(--text-primary)" }}>
                 <input
                   type="checkbox"
                   checked={checked}
                   onChange={e => updateUnit(unit.id, { checked: e.target.checked })}
-                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "#8B2252" }}
+                  style={{ width: 16, height: 16, cursor: "pointer", accentColor: "var(--accent)" }}
                 />
                 {unit.unit_number}
               </label>
@@ -145,7 +145,7 @@ export default function UtilitySubMetersModal({
               {checked && (
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
                   <div style={{ display: "grid", gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+                    <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>
                       Número de submedidor (opcional)
                     </label>
                     <input
@@ -157,7 +157,7 @@ export default function UtilitySubMetersModal({
                     />
                   </div>
                   <div style={{ display: "grid", gap: 6 }}>
-                    <label style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>Lectura base</label>
+                    <label style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)" }}>Lectura base</label>
                     <input
                       type="number"
                       value={state.baselineReading}
@@ -175,7 +175,7 @@ export default function UtilitySubMetersModal({
         })}
 
         {sortedUnits.length === 0 && (
-          <p style={{ color: "var(--text-muted)", fontSize: 14, textAlign: "center", padding: "24px 0" }}>
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", textAlign: "center", padding: "24px 0" }}>
             No hay unidades en este edificio.
           </p>
         )}

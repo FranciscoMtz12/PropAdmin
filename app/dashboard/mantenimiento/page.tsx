@@ -187,7 +187,7 @@ export default function DashboardMantenimientoPage() {
       />
 
       {/* ── Fila 1: Métricas ──────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.12rem, 1fr))", gap: 16, marginBottom: 24 }}>
         <MetricCard
           label="Tickets abiertos"
           value={pageLoading ? "…" : openTickets.length}
@@ -217,12 +217,12 @@ export default function DashboardMantenimientoPage() {
       </div>
 
       {/* ── Fila 2: Dos columnas ──────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(21.25rem, 1fr))", gap: 24 }}>
 
         {/* Tickets abiertos por prioridad */}
         <SectionCard title="Tickets abiertos por prioridad" subtitle="Urgente → Baja · máx. 8">
           {pageLoading ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : openTable.length === 0 ? (
             <AppEmptyState title="Sin tickets abiertos" description="No hay órdenes de trabajo abiertas." />
           ) : (
@@ -247,18 +247,18 @@ export default function DashboardMantenimientoPage() {
                       : null;
                     return (
                       <div>
-                        <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
+                        <span style={{ fontWeight: 600, fontSize: "0.8125rem", display: "block", color: "var(--text-primary)" }}>
                           {row.ticket_number ?? "Sin número"}
                         </span>
                         {titlePreview && (
-                          <span style={{ fontSize: 11, color: "var(--text-muted)", display: "block" }}>
+                          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", display: "block" }}>
                             {titlePreview}
                           </span>
                         )}
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
                           <AppBadge variant={p.variant}>{p.label}</AppBadge>
                           {row.building_name && (
-                            <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{row.building_name}</span>
+                            <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{row.building_name}</span>
                           )}
                         </div>
                       </div>
@@ -288,7 +288,7 @@ export default function DashboardMantenimientoPage() {
         {/* Actividad reciente (maintenance_logs) */}
         <SectionCard title="Actividad reciente" subtitle="Últimos 10 registros">
           {pageLoading ? (
-            <p style={{ color: "var(--text-muted)", fontSize: 14 }}>Cargando...</p>
+            <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Cargando...</p>
           ) : recentActivity.length === 0 ? (
             <AppEmptyState title="Sin actividad" description="No hay registros de mantenimiento recientes." />
           ) : (
@@ -301,10 +301,10 @@ export default function DashboardMantenimientoPage() {
                   header: "Registro",
                   render: (row) => (
                     <div>
-                      <span style={{ fontWeight: 600, fontSize: 13, display: "block", color: "var(--text-primary)" }}>
+                      <span style={{ fontWeight: 600, fontSize: "0.8125rem", display: "block", color: "var(--text-primary)" }}>
                         {row.title ?? row.ticket_number ?? "Sin título"}
                       </span>
-                      <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
                         {row.building_name ?? "Sin edificio"}
                       </span>
                     </div>
@@ -316,7 +316,7 @@ export default function DashboardMantenimientoPage() {
                   align: "right",
                   width: 100,
                   render: (row) => (
-                    <span style={{ fontSize: 12, color: "var(--text-muted)" }}>
+                    <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>
                       {timeAgo(row.created_at)}
                     </span>
                   ),

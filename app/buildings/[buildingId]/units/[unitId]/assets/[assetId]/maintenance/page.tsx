@@ -78,7 +78,7 @@ function getStatusStyles(status: MaintenanceItem["status"]): CSSProperties {
       return {
         background: "var(--icon-bg-amber)",
         color: "var(--badge-text-amber)",
-        border: "1px solid #FDE68A",
+        border: "1px solid var(--metric-border-amber)",
       };
     case "IN_PROGRESS":
       return {
@@ -90,7 +90,7 @@ function getStatusStyles(status: MaintenanceItem["status"]): CSSProperties {
       return {
         background: "var(--icon-bg-green)",
         color: "var(--badge-text-green)",
-        border: "1px solid #BBF7D0",
+        border: "1px solid var(--metric-border-green)",
       };
     default:
       return {
@@ -226,7 +226,7 @@ export default function AssetMaintenancePage() {
       <div
         style={{
           display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gridTemplateColumns: "repeat(auto-fit, minmax(13.75rem, 1fr))",
           gap: 16,
           marginBottom: 20,
         }}
@@ -237,8 +237,8 @@ export default function AssetMaintenancePage() {
               <ClipboardList size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Total</p>
-              <strong style={{ fontSize: 24 }}>{stats.total}</strong>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Total</p>
+              <strong style={{ fontSize: "1.5rem" }}>{stats.total}</strong>
             </div>
           </div>
         </AppCard>
@@ -249,8 +249,8 @@ export default function AssetMaintenancePage() {
               <CalendarDays size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Pendientes</p>
-              <strong style={{ fontSize: 24 }}>{stats.pending}</strong>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Pendientes</p>
+              <strong style={{ fontSize: "1.5rem" }}>{stats.pending}</strong>
             </div>
           </div>
         </AppCard>
@@ -261,8 +261,8 @@ export default function AssetMaintenancePage() {
               <Wrench size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>En proceso</p>
-              <strong style={{ fontSize: 24 }}>{stats.inProgress}</strong>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>En proceso</p>
+              <strong style={{ fontSize: "1.5rem" }}>{stats.inProgress}</strong>
             </div>
           </div>
         </AppCard>
@@ -273,8 +273,8 @@ export default function AssetMaintenancePage() {
               <ShieldCheck size={18} />
             </AppIconBox>
             <div>
-              <p style={{ margin: 0, fontSize: 12, color: "var(--text-muted)" }}>Completados</p>
-              <strong style={{ fontSize: 24 }}>{stats.completed}</strong>
+              <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>Completados</p>
+              <strong style={{ fontSize: "1.5rem" }}>{stats.completed}</strong>
             </div>
           </div>
         </AppCard>
@@ -288,7 +288,7 @@ export default function AssetMaintenancePage() {
         {logs.length === 0 ? (
           <div
             style={{
-              border: "1px dashed #D0D5DD",
+              border: "1px dashed var(--border-dashed)",
               borderRadius: "var(--border-radius-xl)",
               padding: 24,
               textAlign: "center",
@@ -331,7 +331,7 @@ export default function AssetMaintenancePage() {
                           alignItems: "center",
                           padding: "6px 10px",
                           borderRadius: 999,
-                          fontSize: 12,
+                          fontSize: "0.75rem",
                           fontWeight: 600,
                           ...getStatusStyles(item.status),
                         }}
@@ -347,30 +347,30 @@ export default function AssetMaintenancePage() {
                     <div
                       style={{
                         display: "grid",
-                        gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+                        gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))",
                         gap: 10,
                       }}
                     >
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <UserRound size={15} />
-                        <span style={{ fontSize: 14 }}>{item.provider}</span>
+                        <span style={{ fontSize: "0.875rem" }}>{item.provider}</span>
                       </div>
 
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <DollarSign size={15} />
-                        <span style={{ fontSize: 14 }}>{item.cost}</span>
+                        <span style={{ fontSize: "0.875rem" }}>{item.cost}</span>
                       </div>
 
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <CalendarDays size={15} />
-                        <span style={{ fontSize: 14 }}>
+                        <span style={{ fontSize: "0.875rem" }}>
                           Servicio: {formatDate(item.serviceDate)}
                         </span>
                       </div>
 
                       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <CalendarDays size={15} />
-                        <span style={{ fontSize: 14 }}>
+                        <span style={{ fontSize: "0.875rem" }}>
                           Próximo: {item.nextServiceDate ? formatDate(item.nextServiceDate) : "Sin fecha"}
                         </span>
                       </div>
@@ -381,7 +381,7 @@ export default function AssetMaintenancePage() {
                         <p
                           style={{
                             margin: 0,
-                            fontSize: 12,
+                            fontSize: "0.75rem",
                             color: "var(--text-muted)",
                             marginBottom: 4,
                           }}

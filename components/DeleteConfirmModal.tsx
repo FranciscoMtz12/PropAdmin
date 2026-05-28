@@ -31,7 +31,7 @@ export default function DeleteConfirmModal({
       onClose={onCancel}
     >
       <div style={{ display: "grid", gap: 18 }}>
-        <p style={{ margin: 0, fontSize: 14, lineHeight: 1.7, color: "var(--text-secondary)" }}>
+        <p style={{ margin: 0, fontSize: "0.875rem", lineHeight: 1.7, color: "var(--text-secondary)" }}>
           {description}
         </p>
 

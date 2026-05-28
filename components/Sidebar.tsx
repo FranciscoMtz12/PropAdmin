@@ -12,6 +12,7 @@
 */
 
 import { useState, useEffect } from "react";
+import { useSwipeable } from "react-swipeable";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
@@ -22,6 +23,7 @@ import {
   CalendarDays,
   CreditCard,
   DollarSign,
+  Eye,
   FileText,
   KeyRound,
   Layers,
@@ -41,6 +43,7 @@ import {
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme, initials } from "@/contexts/ThemeContext";
+import { useIconSize } from "@/lib/useFontScale";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
@@ -58,6 +61,36 @@ type NavSection = {
   label: string;
   items: SidebarItem[];
 };
+
+const SAPROA_ACCENT = "#6366F1";
+
+/* ─── SAPROA Admin sections (superadmin sin impersonar) ─────────── */
+
+const SAPROA_SECTIONS: NavSection[] = [
+  {
+    label: "PLATAFORMA",
+    items: [
+      { label: "Overview",  href: "/saproa-admin/overview",  icon: LayoutDashboard },
+      { label: "Empresas",  href: "/saproa-admin/empresas",  icon: Building2       },
+      { label: "Usuarios",  href: "/saproa-admin/usuarios",  icon: Users           },
+    ],
+  },
+  {
+    label: "DEVELOPER",
+    items: [
+      { label: "Impersonar", href: "/saproa-admin/impersonar", icon: Eye          },
+      { label: "Roadmap",    href: "/saproa-admin/roadmap",    icon: FileText     },
+      { label: "Sandbox",    href: "#",                        icon: Sparkles, disabled: true },
+    ],
+  },
+  {
+    label: "SOPORTE",
+    items: [
+      { label: "Feedback", href: "/saproa-admin/feedback", icon: MessageSquare },
+      { label: "Sistema",  href: "/saproa-admin/sistema",  icon: Settings      },
+    ],
+  },
+];
 
 /* ─── Admin sections ─────────────────────────────────────────────── */
 
@@ -175,6 +208,7 @@ function NavItem({
   notifBadge?: { count: number; severity: 'critical' | 'warning' | 'brand' | 'info' } | null;
 }) {
   const Icon = item.icon;
+  const navIconSz = useIconSize(17);
   const resolvedHref =
     item.href && !item.disabled
       ? appendTenantPreviewToHref(item.href, previewTenantId)
@@ -198,7 +232,7 @@ function NavItem({
   const leftBlock = (
     <div className="sidebar-nav-item-left" style={{ display: "flex", alignItems: "center", gap: 11, minWidth: 0, flex: 1 }}>
       <Icon
-        size={17}
+        size={navIconSz}
         color={
           item.disabled
             ? "rgba(255,255,255,0.35)"
@@ -215,7 +249,7 @@ function NavItem({
             : active
               ? "#ffffff"
               : "rgba(255,255,255,0.82)",
-          fontSize: 14,
+          fontSize: "0.875rem",
           fontWeight: active ? 700 : 500,
           whiteSpace: "nowrap",
           overflow: "hidden",
@@ -240,7 +274,7 @@ function NavItem({
         borderRadius: 999,
         background: "transparent",
         border: `1.5px solid ${badgeColor}`,
-        fontSize: 11,
+        fontSize: "0.6875rem",
         fontWeight: 700,
         color: badgeColor,
         lineHeight: 1,
@@ -288,7 +322,7 @@ function SidebarSection({
       {title && (
         <div
           style={{
-            fontSize: 12,
+            fontSize: "0.75rem",
             color: "rgba(255,255,255,0.55)",
             textTransform: "uppercase",
             letterSpacing: "0.06em",
@@ -319,14 +353,56 @@ function SidebarSection({
 
 export default function Sidebar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768);
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
+
+  const swipeOpenHandlers = useSwipeable({
+    onSwipedRight: () => setMobileOpen(true),
+    delta: 30,
+    trackTouch: true,
+    trackMouse: false,
+    preventScrollOnSwipe: false,
+    swipeDuration: 300,
+  });
+
+  const swipeCloseHandlers = useSwipeable({
+    onSwipedLeft: () => setMobileOpen(false),
+    delta: 30,
+    trackTouch: true,
+    trackMouse: false,
+    preventScrollOnSwipe: false,
+    swipeDuration: 300,
+  });
+
+  // Attach swipe-open listener to document.body (no covering div → no tap blocking)
+  const { ref: attachSwipeOpen } = swipeOpenHandlers;
+  useEffect(() => {
+    if (!isMobile || mobileOpen) {
+      attachSwipeOpen(null);
+      return;
+    }
+    attachSwipeOpen(document.body);
+    return () => attachSwipeOpen(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isMobile, mobileOpen]);
   const searchParams = useSearchParams();
   const { user } = useCurrentUser();
-  const { groupColor, logoUrl, logoDarkUrl, shortName, platformName, isDark } = useTheme();
-  const { impersonationMode } = useImpersonation();
-  const { moduleStats } = useNotifications(user?.company_id ?? "");
+  const { accentColor, groupColor, logoUrl, logoDarkUrl, shortName, platformName } = useTheme();
+  const { impersonationMode, isRealSuperAdmin, isImpersonating } = useImpersonation();
+  const footerIconSz = useIconSize(15);
+  const shieldIconSz = useIconSize(18);
+
+  /* Modo SAPROA Control Center: superadmin real SIN impersonar ninguna empresa */
+  const isSaproaMode = isRealSuperAdmin && !isImpersonating;
+  const { moduleStats } = useNotifications(user?.company_id ?? null, !!user && !isSaproaMode);
 
   const isPortalPath = pathname?.startsWith("/portal") ?? false;
   const isHiddenRoute =
@@ -338,9 +414,10 @@ export default function Sidebar() {
   const isField = user?.role === "field";
 
   const activeSections: NavSection[] = (() => {
+    if (isSaproaMode) return SAPROA_SECTIONS;
     if (isSuperAdmin) return ALL_ADMIN_SECTIONS;
-    // titular: todo excepto /users y /feedback (panel superadmin)
-    if (user?.role === "titular") {
+    // titular / group_admin: todo excepto /feedback (panel superadmin)
+    if (user?.role === "titular" || user?.role === "group_admin") {
       const TITULAR_DENIED = ["/feedback"];
       return ALL_ADMIN_SECTIONS
         .map(section => ({
@@ -368,14 +445,33 @@ export default function Sidebar() {
   if (isHiddenRoute) return null;
 
   async function handleLogout() {
+    /* Limpiar localStorage del usuario actual ANTES de hacer signOut */
+    const lastUid = localStorage.getItem("last_user_id");
+    if (lastUid) {
+      localStorage.removeItem(`darkMode_${lastUid}`);
+      localStorage.removeItem(`uiTheme_${lastUid}`);
+      localStorage.removeItem(`fontScale_${lastUid}`);
+    }
+    localStorage.removeItem("last_user_id");
+
+    /* Resetear CSS a colores base de SAPROA sincrónicamente antes del redirect */
+    const root = document.documentElement.style;
+    root.setProperty("--accent",           "#6366F1");
+    root.setProperty("--accent-gradient",  "linear-gradient(135deg,#818cf8 0%,#6366F1 45%,#4f46e5 100%)");
+    root.setProperty("--color-accent",     "#6366F1");
+    root.setProperty("--color-primary",    "#6366F1");
+    root.setProperty("--group-accent",     "#6366F1");
+    root.setProperty("--color-accent-rgb", "99, 102, 241");
+    root.setProperty("--font-scale",       "1");
+
     await supabase.auth.signOut();
     router.push("/");
   }
 
-  const sidebarTitle = impersonationMode === 'group'
-    ? "Vista consolidada"
-    : isSuperAdmin
-      ? "Control total del sistema"
+  const sidebarTitle = isSaproaMode
+    ? "Control center"
+    : impersonationMode === "group"
+      ? "Vista consolidada"
       : isPortalPath
         ? "Portal del inquilino"
         : "Gestión de Propiedades";
@@ -383,17 +479,19 @@ export default function Sidebar() {
   const sessionName = user?.full_name || (isPortalPath ? "Inquilino" : "Sin sesión");
   const sessionEmail = user?.email || "No autenticado";
 
-  const sidebarBg = isDark ? "#0f1623" : "#1e2a3a";
+  const sidebarBg = "var(--bg-sidebar)";
   const activeLogo = logoDarkUrl ?? logoUrl;
   /* Superadmin sin company_id usa el nombre de la plataforma SAPROA */
   const displayName = (isSuperAdmin && !user?.company_id) ? platformName : shortName;
   const logoInitials = initials(displayName);
+  const activeAccent = isSaproaMode ? SAPROA_ACCENT : accentColor;
 
   return (
     <>
-    {/* Overlay móvil */}
+    {/* Overlay móvil — captura swipe izquierda para cerrar */}
     {mobileOpen && (
       <div
+        {...swipeCloseHandlers}
         onClick={() => setMobileOpen(false)}
         style={{
           position: "fixed",
@@ -419,7 +517,7 @@ export default function Sidebar() {
         width: 44,
         height: 44,
         borderRadius: "50%",
-        background: groupColor,
+        background: activeAccent,
         border: "none",
         cursor: "pointer",
         alignItems: "center",
@@ -465,7 +563,7 @@ export default function Sidebar() {
       }}
     >
       {/* ── Barra de acento superior (3px) ──────────────────────── */}
-      <div style={{ height: 3, background: groupColor, flexShrink: 0, transition: "background 0.3s" }} />
+      <div style={{ height: 3, background: activeAccent, flexShrink: 0, transition: "background 0.3s" }} />
 
       {/* ── Área scrollable ──────────────────────────────────────── */}
       <div
@@ -481,34 +579,52 @@ export default function Sidebar() {
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           {/* ── Área de logo (altura fija 56px) ─────────────────── */}
-          <div style={{ height: 56, display: "flex", alignItems: "center", gap: 12, paddingTop: 4 }}>
-            {activeLogo ? (
-              <img
-                src={activeLogo}
-                alt={shortName}
-                style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
-              />
-            ) : (
-              <div
-                style={{
-                  width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
-                  background: groupColor,
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontWeight: 800, fontSize: 14, color: "#ffffff",
-                  letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
-                }}
-              >
-                {logoInitials}
-              </div>
-            )}
-            <div className="sidebar-logo-text" style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#ffffff", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {displayName}
-              </div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.52)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {sidebarTitle}
-              </div>
-            </div>
+          <div style={{ height: 56, display: "flex", justifyContent: "center", alignItems: "center", width: "100%", padding: "16px 0" }}>
+            <Link
+              href="/home"
+              style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0, minHeight: 44, minWidth: 44, justifyContent: "center" }}
+            >
+              {isSaproaMode ? (
+                activeLogo ? (
+                  <img
+                    src={activeLogo}
+                    alt="SAPROA"
+                    style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
+                  />
+                ) : (
+                  /* Fallback SAPROA: círculo índigo con inicial "S" */
+                  <div
+                    style={{
+                      width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
+                      background: SAPROA_ACCENT,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 900, fontSize: "1.25rem", color: "#ffffff",
+                      letterSpacing: "-0.02em", flexShrink: 0,
+                    }}
+                  >
+                    S
+                  </div>
+                )
+              ) : activeLogo ? (
+                <img
+                  src={activeLogo}
+                  alt={shortName}
+                  style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
+                />
+              ) : (
+                <div
+                  style={{
+                    width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
+                    background: accentColor,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontWeight: 800, fontSize: "0.875rem", color: "#ffffff",
+                    letterSpacing: "0.04em", flexShrink: 0, transition: "background 0.3s",
+                  }}
+                >
+                  {logoInitials}
+                </div>
+              )}
+            </Link>
           </div>
 
           {/* Separador debajo del logo */}
@@ -520,7 +636,7 @@ export default function Sidebar() {
               title=""
               items={FIELD_ITEMS}
               pathname={pathname}
-              accentColor={groupColor}
+              accentColor={activeAccent}
             />
           ) : isPortalPath ? (
             <SidebarSection
@@ -528,17 +644,17 @@ export default function Sidebar() {
               items={TENANT_ITEMS}
               pathname={pathname}
               previewTenantId={previewTenantId}
-              accentColor={groupColor}
+              accentColor={activeAccent}
             />
           ) : (
             <div style={{ display: "flex", flexDirection: "column" }}>
               {activeSections.map((section, idx) => (
                 <div key={idx}>
-                  {section.label && isSuperAdmin && (
+                  {section.label && (isSuperAdmin || isSaproaMode || user?.role === "group_admin") && (
                     <div style={{ padding: "12px 4px 4px" }}>
                       <span
                         style={{
-                          fontSize: 10,
+                          fontSize: "0.625rem",
                           fontWeight: 700,
                           letterSpacing: "0.10em",
                           color: "rgba(255,255,255,0.38)",
@@ -555,7 +671,7 @@ export default function Sidebar() {
                         key={item.href ?? item.label}
                         item={item}
                         pathname={pathname}
-                        accentColor={groupColor}
+                        accentColor={activeAccent}
                         notifBadge={getItemBadge(item)}
                       />
                     ))}
@@ -579,11 +695,11 @@ export default function Sidebar() {
         >
           {/* Datos de sesión */}
           <div className="sidebar-user-info" style={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>
+            <span style={{ fontSize: "0.6875rem", color: "rgba(255,255,255,0.50)", textTransform: "uppercase", letterSpacing: "0.04em", fontWeight: 700 }}>
               Sesión actual
             </span>
-            <span style={{ fontSize: 13, fontWeight: 700, color: "#FFFFFF" }}>{sessionName}</span>
-            <span style={{ fontSize: 12, color: "rgba(255,255,255,0.58)" }}>{sessionEmail}</span>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#FFFFFF" }}>{sessionName}</span>
+            <span style={{ fontSize: "0.75rem", color: "rgba(255,255,255,0.58)" }}>{sessionEmail}</span>
             {isSuperAdmin && (
               <span
                 style={{
@@ -595,7 +711,7 @@ export default function Sidebar() {
                   background: "rgba(34,197,94,0.14)",
                   border: "1px solid rgba(34,197,94,0.25)",
                   color: "#86EFAC",
-                  fontSize: 11,
+                  fontSize: "0.6875rem",
                   fontWeight: 800,
                   letterSpacing: "0.04em",
                 }}
@@ -605,18 +721,33 @@ export default function Sidebar() {
             )}
           </div>
 
+          {/* Ajustes */}
+          <button
+            type="button"
+            onClick={() => router.push("/settings")}
+            style={{
+              display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
+              minHeight: 44, padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
+              border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
+              color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
+            }}
+          >
+            <Settings size={footerIconSz} />
+            <span className="sidebar-footer-text">Ajustes</span>
+          </button>
+
           {/* Cerrar sesión */}
           <button
             type="button"
             onClick={handleLogout}
             style={{
               display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 10, width: "100%",
-              padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
+              minHeight: 44, padding: "10px 12px", borderRadius: "var(--border-radius-md, 12px)",
               border: "1px solid rgba(255,255,255,0.12)", background: "rgba(255,255,255,0.05)",
-              color: "#FFFFFF", fontWeight: 700, fontSize: 13, cursor: "pointer",
+              color: "#FFFFFF", fontWeight: 700, fontSize: "0.8125rem", cursor: "pointer",
             }}
           >
-            <LogOut size={15} />
+            <LogOut size={footerIconSz} />
             <span className="sidebar-footer-text">Cerrar sesión</span>
           </button>
         </div>

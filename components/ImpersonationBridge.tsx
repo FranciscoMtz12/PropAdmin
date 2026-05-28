@@ -23,6 +23,8 @@ export function ImpersonationBridge({ children }: { children: React.ReactNode })
   const effectiveCtx = useMemo((): UserContextType => {
     if (!isImpersonating || !realCtx.user) return realCtx;
 
+    const realGroupId = (realCtx.user as AdminUser).group_id ?? null;
+
     /* Modo grupo: ve todos los módulos pero sin empresa específica */
     if (impersonationMode === 'group') {
       const effectiveUser: AdminUser = {
@@ -30,6 +32,7 @@ export function ImpersonationBridge({ children }: { children: React.ReactNode })
         email:         realCtx.user.email,
         full_name:     realCtx.user.full_name,
         company_id:    null,
+        group_id:      realGroupId,
         is_superadmin: false,
         role:          'superadmin' as AdminRole,
       };
@@ -46,6 +49,7 @@ export function ImpersonationBridge({ children }: { children: React.ReactNode })
       email:        realCtx.user.email,
       full_name:    realCtx.user.full_name,
       company_id:   impersonatedCompanyId,
+      group_id:     realGroupId,
       is_superadmin: false,
       role:         ((impersonatedRole ?? "titular") as AdminRole),
     };
