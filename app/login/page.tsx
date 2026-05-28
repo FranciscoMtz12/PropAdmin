@@ -7,16 +7,58 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
+import { resolveUserDestination } from "@/lib/auth-routing";
 
-const schema = z.object({
+const loginSchema = z.object({
   email: z.string().min(1, "El email es obligatorio").email("Email inválido"),
   password: z.string().min(1, "La contraseña es obligatoria"),
 });
-type FormValues = z.infer<typeof schema>;
+type LoginValues = z.infer<typeof loginSchema>;
+
+const activateSchema = z
+  .object({
+    email: z.string().min(1, "El email es obligatorio").email("Email inválido"),
+    password: z.string().min(8, "La contraseña debe tener al menos 8 caracteres"),
+    confirmPassword: z.string().min(1, "Confirma la contraseña"),
+  })
+  .refine((d) => d.password === d.confirmPassword, {
+    message: "Las contraseñas no coinciden",
+    path: ["confirmPassword"],
+  });
+type ActivateValues = z.infer<typeof activateSchema>;
+type LoginTab = "login" | "activate";
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: ".65rem .9rem",
+  background: "rgba(255,255,255,.08)",
+  border: "1px solid rgba(255,255,255,.15)",
+  borderRadius: "var(--border-radius-md)",
+  color: "#fff",
+  fontSize: "0.875rem",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "0.75rem",
+  color: "rgba(255,255,255,.5)",
+  display: "block",
+  marginBottom: 6,
+};
+
+const errorStyle: React.CSSProperties = {
+  fontSize: "0.6875rem",
+  color: "#f87171",
+  marginTop: 4,
+};
 
 export default function LoginPage() {
   const router = useRouter();
-  const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<LoginTab>("login");
+  const [loginError, setLoginError] = useState("");
+  const [activateMessage, setActivateMessage] = useState("");
+  const [activateSuccess, setActivateSuccess] = useState(false);
 
   /* Garantizar colores SAPROA en cuanto la página monta, sin esperar ThemeContext */
   useEffect(() => {
@@ -29,56 +71,77 @@ export default function LoginPage() {
     root.setProperty("--color-accent-rgb", "99, 102, 241");
     root.setProperty("--font-scale",       "1");
   }, []);
-  const {
-    register,
-    handleSubmit,
-    formState: { errors, isSubmitting },
-  } = useForm<FormValues>({
-    resolver: zodResolver(schema),
+
+  const loginForm = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
   });
 
-  async function onSubmit(data: FormValues) {
-    setError("");
+  const activateForm = useForm<ActivateValues>({
+    resolver: zodResolver(activateSchema),
+    defaultValues: { email: "", password: "", confirmPassword: "" },
+  });
+
+  const onLogin = loginForm.handleSubmit(async (data) => {
+    setLoginError("");
     const { data: authData, error: err } = await supabase.auth.signInWithPassword({
       email: data.email.toLowerCase().trim(),
       password: data.password,
     });
     if (err) {
-      setError("Credenciales incorrectas");
+      setLoginError("Credenciales incorrectas");
       return;
     }
 
     const uid = authData.session?.user.id;
-    let role: string | null = null;
-    if (uid) {
-      const { data: profile } = await supabase
-        .from("app_users")
-        .select("id, full_name, email, role, is_superadmin, company_id")
-        .eq("id", uid)
-        .maybeSingle();
-      role = profile?.role ?? null;
-    }
+    if (!uid) { setLoginError("Error inesperado. Intenta de nuevo."); return; }
 
-    if (role === "superadmin") {
-      router.push("/saproa-admin/overview");
-    } else if (role === "group_admin") {
-      router.push("/home");
-    } else if (role === "titular") {
-      router.push("/home");
-    } else if (role === "field") {
-      router.push("/campo/dashboard");
-    } else {
-      router.push("/home");
+    const profile = await resolveUserDestination(uid);
+    if (profile.type === "unknown") {
+      setLoginError("Tu cuenta no tiene un perfil asignado. Contacta al administrador.");
+      await supabase.auth.signOut();
+      return;
     }
-  }
+    router.push(profile.destination);
+  });
+
+  const onActivate = activateForm.handleSubmit(async (data) => {
+    setActivateMessage("");
+    setActivateSuccess(false);
+    try {
+      const normalizedEmail = data.email.trim().toLowerCase();
+      const response = await fetch("/api/portal/activate-account", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: normalizedEmail,
+          password: data.password,
+          confirmPassword: data.confirmPassword,
+        }),
+      });
+      const rawText = await response.text();
+      let payload: { error?: string; message?: string } | null = null;
+      try { payload = rawText ? JSON.parse(rawText) : null; } catch { payload = null; }
+      if (!response.ok) {
+        setActivateMessage(payload?.error || "Error inesperado.");
+        return;
+      }
+      setActivateSuccess(true);
+      setActivateMessage(payload?.message || "Cuenta activada correctamente.");
+      setActiveTab("login");
+      loginForm.reset({ email: normalizedEmail, password: "" });
+      activateForm.reset({ email: "", password: "", confirmPassword: "" });
+    } catch {
+      setActivateMessage("Ocurrió un error inesperado.");
+    }
+  });
 
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        background:
-          "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
+        background: "linear-gradient(160deg, #0d1b2a 0%, #1c3a5e 60%, #0d1b2a 100%)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -87,37 +150,16 @@ export default function LoginPage() {
         padding: "1rem",
       }}
     >
-      {/* Textura igual que la landing */}
+      {/* Textura */}
       <svg
-        style={{
-          position: "absolute",
-          inset: 0,
-          width: "100%",
-          height: "100%",
-          opacity: 0.04,
-          pointerEvents: "none",
-        }}
+        style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0.04, pointerEvents: "none" }}
         viewBox="0 0 400 600"
         preserveAspectRatio="xMidYMid slice"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <pattern
-            id="lp"
-            x="0"
-            y="0"
-            width="110"
-            height="110"
-            patternUnits="userSpaceOnUse"
-            patternTransform="rotate(-12)"
-          >
-            <g
-              fill="none"
-              stroke="#ffffff"
-              strokeWidth="1.1"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
+          <pattern id="lp" x="0" y="0" width="110" height="110" patternUnits="userSpaceOnUse" patternTransform="rotate(-12)">
+            <g fill="none" stroke="#ffffff" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round">
               <rect x="8" y="8" width="18" height="24" />
               <rect x="11" y="12" width="4" height="5" />
               <rect x="19" y="12" width="4" height="5" />
@@ -154,210 +196,158 @@ export default function LoginPage() {
       </svg>
 
       {/* Overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          background:
-            "linear-gradient(to top, rgba(0,0,0,.6) 0%, rgba(0,0,0,.2) 100%)",
-          pointerEvents: "none",
-        }}
-      />
+      <div style={{ position: "absolute", inset: 0, background: "linear-gradient(to top,rgba(0,0,0,.6) 0%,rgba(0,0,0,.2) 100%)", pointerEvents: "none" }} />
 
       {/* Botón volver */}
       <button
         type="button"
         onClick={() => router.push("/")}
         style={{
-          position: "absolute",
-          top: "1.5rem",
-          left: "1.5rem",
-          background: "rgba(255,255,255,.1)",
-          border: "1px solid rgba(255,255,255,.2)",
-          color: "rgba(255,255,255,.7)",
-          borderRadius: "var(--border-radius-xl)",
-          padding: ".5rem 1rem",
-          fontSize: "0.75rem",
-          cursor: "pointer",
-          zIndex: 2,
-          minHeight: 44,
-          display: "inline-flex",
-          alignItems: "center",
+          position: "absolute", top: "1.5rem", left: "1.5rem",
+          background: "rgba(255,255,255,.1)", border: "1px solid rgba(255,255,255,.2)",
+          color: "rgba(255,255,255,.7)", borderRadius: "var(--border-radius-xl)",
+          padding: ".5rem 1rem", fontSize: "0.75rem", cursor: "pointer",
+          zIndex: 2, minHeight: 44, display: "inline-flex", alignItems: "center",
         }}
       >
         ← Volver
       </button>
 
-      {/* Card de login */}
+      {/* Card */}
       <div
         style={{
-          position: "relative",
-          zIndex: 2,
-          background: "rgba(255,255,255,.06)",
-          backdropFilter: "blur(20px)",
-          border: "1px solid rgba(255,255,255,.12)",
-          borderRadius: "var(--border-radius-xl)",
-          padding: "2.5rem 2rem",
-          width: "100%",
-          maxWidth: 380,
+          position: "relative", zIndex: 2,
+          background: "rgba(255,255,255,.06)", backdropFilter: "blur(20px)",
+          border: "1px solid rgba(255,255,255,.12)", borderRadius: "var(--border-radius-xl)",
+          padding: "2.5rem 2rem", width: "100%", maxWidth: 400,
           boxShadow: "0 8px 40px rgba(0,0,0,.4)",
         }}
       >
-        {/* Logo + título */}
-        <div style={{ textAlign: "center", marginBottom: "2rem" }}>
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "1.5rem" }}>
+        {/* Logo */}
+        <div style={{ textAlign: "center", marginBottom: "1.75rem" }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "1rem" }}>
             <Image
               src="/brands/saproa/saproa-stacked-dark.png"
               alt="SAPROA"
-              width={140}
-              height={140}
+              width={120}
+              height={120}
               style={{ objectFit: "contain" }}
             />
           </div>
-          <div style={{ fontSize: "1.25rem", fontWeight: 500, color: "#fff" }}>
-            Iniciar sesión
-          </div>
         </div>
 
-        {/* Form */}
-        <form
-          onSubmit={handleSubmit(onSubmit)}
-          style={{ display: "flex", flexDirection: "column", gap: "1rem" }}
-        >
-          <div>
-            <label
-              style={{
-                fontSize: "0.75rem",
-                color: "rgba(255,255,255,.5)",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Email
-            </label>
-            <input
-              {...register("email")}
-              type="email"
-              autoComplete="email"
-              placeholder="usuario@empresa.com"
-              style={{
-                width: "100%",
-                padding: ".65rem .9rem",
-                background: "rgba(255,255,255,.08)",
-                border: "1px solid rgba(255,255,255,.15)",
-                borderRadius: "var(--border-radius-md)",
-                color: "#fff",
-                fontSize: "0.875rem",
-                outline: "none",
-              }}
-            />
-            {errors.email && (
-              <p style={{ fontSize: "0.6875rem", color: "#f87171", marginTop: 4 }}>
-                {errors.email.message}
-              </p>
-            )}
-          </div>
+        {/* Tabs */}
+        <div style={{ display: "flex", gap: ".5rem", marginBottom: "1.5rem" }}>
+          {(["login", "activate"] as LoginTab[]).map(tab => (
+            <button key={tab} type="button" onClick={() => setActiveTab(tab)} style={{
+              flex: 1, padding: ".55rem", borderRadius: "var(--border-radius-md)",
+              fontSize: "0.75rem", fontWeight: 500, cursor: "pointer", transition: "all .2s",
+              background: activeTab === tab ? "rgba(255,255,255,.15)" : "transparent",
+              border: activeTab === tab ? "1px solid rgba(255,255,255,.25)" : "1px solid rgba(255,255,255,.08)",
+              color: activeTab === tab ? "#fff" : "rgba(255,255,255,.45)",
+            }}>
+              {tab === "login" ? "Iniciar sesión" : "Activar cuenta"}
+            </button>
+          ))}
+        </div>
 
-          <div>
-            <label
-              style={{
-                fontSize: "0.75rem",
-                color: "rgba(255,255,255,.5)",
-                display: "block",
-                marginBottom: 6,
-              }}
-            >
-              Contraseña
-            </label>
-            <input
-              {...register("password")}
-              type="password"
-              autoComplete="current-password"
-              placeholder="••••••••"
-              style={{
-                width: "100%",
-                padding: ".65rem .9rem",
-                background: "rgba(255,255,255,.08)",
-                border: "1px solid rgba(255,255,255,.15)",
-                borderRadius: "var(--border-radius-md)",
-                color: "#fff",
-                fontSize: "0.875rem",
-                outline: "none",
-              }}
-            />
-            {errors.password && (
-              <p style={{ fontSize: "0.6875rem", color: "#f87171", marginTop: 4 }}>
-                {errors.password.message}
-              </p>
-            )}
-          </div>
-
-          {error && (
-            <div
-              style={{
-                background: "rgba(239,68,68,.15)",
-                border: "1px solid rgba(239,68,68,.3)",
-                borderRadius: "var(--border-radius-md)",
-                padding: ".6rem .9rem",
-                fontSize: "0.8125rem",
-                color: "#fca5a5",
-              }}
-            >
-              {error}
+        {/* Tab: Iniciar sesión */}
+        {activeTab === "login" && (
+          <form onSubmit={onLogin} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input {...loginForm.register("email")} type="email" autoComplete="email" placeholder="usuario@empresa.com" style={inputStyle} />
+              {loginForm.formState.errors.email && <p style={errorStyle}>{loginForm.formState.errors.email.message}</p>}
             </div>
-          )}
 
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            style={{
-              marginTop: ".5rem",
-              padding: ".75rem",
-              background: isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
-              border: "none",
-              borderRadius: "var(--border-radius-md)",
-              color: "#fff",
-              fontSize: "0.875rem",
-              fontWeight: 500,
-              cursor: isSubmitting ? "not-allowed" : "pointer",
-              transition: "background .2s",
-            }}
-          >
-            {isSubmitting ? "Iniciando sesión..." : "Entrar"}
-          </button>
+            <div>
+              <label style={labelStyle}>Contraseña</label>
+              <input {...loginForm.register("password")} type="password" autoComplete="current-password" placeholder="••••••••" style={inputStyle} />
+              {loginForm.formState.errors.password && <p style={errorStyle}>{loginForm.formState.errors.password.message}</p>}
+            </div>
 
-          <p style={{ textAlign: "center", marginTop: "12px", fontSize: "0.875rem", color: "rgba(255,255,255,.55)" }}>
-            ¿No tienes cuenta?{" "}
-            <a href="/register" style={{ color: "var(--accent)", fontWeight: 600, display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 4px" }}>
-              Regístrate →
-            </a>
-          </p>
+            {loginError && (
+              <div style={{ background: "rgba(239,68,68,.15)", border: "1px solid rgba(239,68,68,.3)", borderRadius: "var(--border-radius-md)", padding: ".6rem .9rem", fontSize: "0.8125rem", color: "#fca5a5" }}>
+                {loginError}
+              </div>
+            )}
 
-          <p style={{ textAlign: "center", marginTop: "8px", fontSize: "0.6875rem", color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
-            Al iniciar sesión aceptas nuestros{" "}
-            <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>
-              Términos y condiciones
-            </a>{" "}y{" "}
-            <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>
-              Aviso de privacidad
-            </a>
-          </p>
-        </form>
+            <button
+              type="submit"
+              disabled={loginForm.formState.isSubmitting}
+              style={{
+                marginTop: ".5rem", padding: ".75rem",
+                background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
+                border: "none", borderRadius: "var(--border-radius-md)",
+                color: "#fff", fontSize: "0.875rem", fontWeight: 500,
+                cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
+                transition: "background .2s",
+              }}
+            >
+              {loginForm.formState.isSubmitting ? "Iniciando sesión..." : "Entrar"}
+            </button>
+
+            <p style={{ textAlign: "center", marginTop: "8px", fontSize: "0.6875rem", color: "rgba(255,255,255,.3)", lineHeight: 1.5 }}>
+              Al iniciar sesión aceptas nuestros{" "}
+              <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>Términos y condiciones</a>{" "}y{" "}
+              <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ color: "rgba(255,255,255,.5)", textDecoration: "underline" }}>Aviso de privacidad</a>
+            </p>
+          </form>
+        )}
+
+        {/* Tab: Activar cuenta */}
+        {activeTab === "activate" && (
+          <form onSubmit={onActivate} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            <div>
+              <label style={labelStyle}>Email</label>
+              <input {...activateForm.register("email")} type="email" placeholder="inquilino@empresa.com" style={inputStyle} />
+              {activateForm.formState.errors.email && <p style={errorStyle}>{activateForm.formState.errors.email.message}</p>}
+            </div>
+            <div>
+              <label style={labelStyle}>Nueva contraseña</label>
+              <input {...activateForm.register("password")} type="password" placeholder="Mínimo 8 caracteres" style={inputStyle} />
+              {activateForm.formState.errors.password && <p style={errorStyle}>{activateForm.formState.errors.password.message}</p>}
+            </div>
+            <div>
+              <label style={labelStyle}>Confirmar contraseña</label>
+              <input {...activateForm.register("confirmPassword")} type="password" placeholder="••••••••" style={inputStyle} />
+              {activateForm.formState.errors.confirmPassword && <p style={errorStyle}>{activateForm.formState.errors.confirmPassword.message}</p>}
+            </div>
+
+            {activateMessage && (
+              <div style={{
+                background: activateSuccess ? "rgba(16,185,129,.15)" : "rgba(239,68,68,.15)",
+                border: `1px solid ${activateSuccess ? "rgba(16,185,129,.3)" : "rgba(239,68,68,.3)"}`,
+                borderRadius: "var(--border-radius-md)", padding: ".6rem .9rem",
+                fontSize: "0.8125rem", color: activateSuccess ? "#6ee7b7" : "#fca5a5",
+              }}>
+                {activateMessage}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={activateForm.formState.isSubmitting}
+              style={{
+                marginTop: ".25rem", padding: ".75rem",
+                background: activateForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
+                border: "none", borderRadius: "var(--border-radius-md)",
+                color: "#fff", fontSize: "0.875rem", fontWeight: 500,
+                cursor: activateForm.formState.isSubmitting ? "not-allowed" : "pointer",
+              }}
+            >
+              {activateForm.formState.isSubmitting ? "Activando..." : "Activar cuenta"}
+            </button>
+          </form>
+        )}
       </div>
 
       {/* Footer */}
       <div
         style={{
-          position: "relative",
-          zIndex: 2,
-          marginTop: "1.5rem",
-          fontSize: "0.6875rem",
-          color: "rgba(255,255,255,.25)",
-          letterSpacing: 1,
-          display: "flex",
-          gap: "0.75rem",
-          flexWrap: "wrap",
-          justifyContent: "center",
+          position: "relative", zIndex: 2, marginTop: "1.5rem",
+          fontSize: "0.6875rem", color: "rgba(255,255,255,.25)", letterSpacing: 1,
+          display: "flex", gap: "0.75rem", flexWrap: "wrap", justifyContent: "center",
         }}
       >
         <span>© {new Date().getFullYear()} SAPROA</span>
