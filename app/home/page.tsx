@@ -140,7 +140,7 @@ export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { accentColor, logoUrl, shortName, uiTheme } = useTheme();
-  const { isRealSuperAdmin, isImpersonating } = useImpersonation();
+  const { isRealSuperAdmin, isImpersonating, groupCompanyIds } = useImpersonation();
 
   const [now, setNow] = useState(() => new Date());
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -167,9 +167,13 @@ export default function HomePage() {
   }, [loading, user, isRealSuperAdmin, isImpersonating, router]);
 
   useEffect(() => {
-    if (!user?.company_id) return;
-    void fetchMetrics(user.company_id);
-  }, [user?.company_id]);
+    if (user?.company_id) {
+      void fetchMetrics(user.company_id);
+    } else if (groupCompanyIds.length > 0) {
+      void fetchGroupMetrics(groupCompanyIds);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id, groupCompanyIds.join(",")]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -203,6 +207,47 @@ export default function HomePage() {
         .select("id", { count: "exact", head: true })
         .eq("status", "ACTIVE")
         .eq("company_id", cid)
+        .is("deleted_at", null)
+        .gte("end_date", today)
+        .lte("end_date", in60),
+    ]);
+
+    const cobros = (cobrosRes.data ?? []) as { status: string; amount_due: number; amount_collected: number | null }[];
+    const tickets = (ticketsRes.data ?? []) as { priority: string }[];
+
+    setMetrics({
+      cobrosPendientes: cobros.length,
+      cobrosVencidos: cobros.filter(r => r.status === "overdue").length,
+      cobrosDeuda: cobros.reduce((acc, r) => acc + r.amount_due - (r.amount_collected ?? 0), 0),
+      ticketsAbiertos: tickets.length,
+      ticketsUrgentes: tickets.filter(r => r.priority === "urgent").length,
+      contratosVenciendo: contratosRes.count ?? 0,
+    });
+  }
+
+  async function fetchGroupMetrics(cids: string[]) {
+    if (cids.length === 0) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const in60 = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
+
+    const [cobrosRes, ticketsRes, contratosRes] = await Promise.all([
+      supabase
+        .from("collection_records")
+        .select("status, amount_due, amount_collected")
+        .in("status", ["pending", "partial", "overdue"])
+        .in("company_id", cids)
+        .is("deleted_at", null),
+      supabase
+        .from("maintenance_logs")
+        .select("priority")
+        .not("status", "in", "(DONE,CANCELLED)")
+        .in("company_id", cids)
+        .is("deleted_at", null),
+      supabase
+        .from("leases")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "ACTIVE")
+        .in("company_id", cids)
         .is("deleted_at", null)
         .gte("end_date", today)
         .lte("end_date", in60),
