@@ -381,6 +381,19 @@ export default function DashboardPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.company_id, user?.is_superadmin, groupCompanyIds.join(",")]);
 
+  useEffect(() => {
+    const isWaiting = !loading && !!user && (user.role as string) === 'group_admin'
+      && !user?.company_id && !user?.is_superadmin && groupCompanyIds.length === 0;
+    if (!isWaiting) return;
+    const t = setTimeout(() => {
+      setLoadingData(false);
+      setChecklistLoading(false);
+      setLoadingSetup(false);
+    }, 3000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user?.company_id, user?.is_superadmin, (user as { role?: string })?.role, groupCompanyIds.length]);
+
   async function loadDashboard() {
     const isGroupMode = !user?.company_id && !user?.is_superadmin && groupCompanyIds.length > 0;
     if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;

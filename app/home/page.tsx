@@ -180,6 +180,17 @@ export default function HomePage() {
     void fetchQuickLinks(user.id, (user as { role?: string }).role ?? "");
   }, [user?.id]);
 
+  useEffect(() => {
+    const isWaiting = !loading && !!user && (user.role as string) === 'group_admin'
+      && !user?.company_id && groupCompanyIds.length === 0;
+    if (!isWaiting) return;
+    const t = setTimeout(() => {
+      setMetrics({ cobrosPendientes: 0, cobrosVencidos: 0, cobrosDeuda: 0, ticketsAbiertos: 0, ticketsUrgentes: 0, contratosVenciendo: 0 });
+    }, 3000);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, user?.company_id, (user as { role?: string })?.role, groupCompanyIds.length]);
+
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
