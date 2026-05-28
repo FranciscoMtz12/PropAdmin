@@ -16,9 +16,14 @@ import {
   createContext,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
+
+/* useLayoutEffect en cliente (sincrónico antes del paint), useEffect en SSR */
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser, type AdminUser } from "@/contexts/UserContext";
@@ -213,7 +218,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, [isDark]);
 
   /* ── Aplicar --accent + --accent-gradient en :root cuando cambie accentColor ── */
-  useEffect(() => {
+  useIsomorphicLayoutEffect(() => {
     document.documentElement.style.setProperty("--accent", accentColor);
     document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(accentColor));
   }, [accentColor]);

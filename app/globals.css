@@ -17,9 +17,9 @@
 
 :root {
   /* ── Acento de empresa ─────────────────────────────────────────── */
-  --accent: #8B2252; /* sobreescrito por ThemeContext desde companies.brand_color o saproa_config */
-  --accent-gradient: linear-gradient(135deg, #a82d62 0%, #8B2252 45%, #6b1a3f 100%); /* generado por JS vía generateMetallicGradient */
-  --group-accent: #8B2252; /* color del grupo corporativo — nunca cambia dentro de una sesión */
+  --accent: #6366F1; /* sobreescrito por ThemeContext desde companies.brand_color o saproa_config */
+  --accent-gradient: linear-gradient(135deg, #818cf8 0%, #6366F1 45%, #4f46e5 100%); /* generado por JS vía generateMetallicGradient */
+  --group-accent: #6366F1; /* color del grupo corporativo — nunca cambia dentro de una sesión */
   --btn-primary-bg: var(--accent); /* 'solid': var(--accent) | 'metallic': var(--accent-gradient) — controlado por ThemeContext */
   --color-primary: #1E293B; /* color estructural de la plataforma SAPROA — sobreescrito para superadmin */
   --font-scale: 1; /* sobreescrito por JS vía ThemeContext según preferencia del usuario */
