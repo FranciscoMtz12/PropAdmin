@@ -160,13 +160,23 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   /* ── Resetear branding al cerrar sesión (user → null) ──────────── */
   useEffect(() => {
     if (!user) {
+      /* Limpiar preferencias del usuario anterior para que el login vea defaults */
+      const lastUid = localStorage.getItem("last_user_id");
+      if (lastUid) {
+        localStorage.removeItem(fontScaleKey(lastUid));
+      }
+      localStorage.removeItem("last_user_id");
+
       document.documentElement.style.setProperty('--font-scale', '1');
       setFontScaleState(1);
       setAccentColor(DEFAULT_ACCENT);
       setGroupColor(DEFAULT_ACCENT);
       companyBaseColorRef.current = DEFAULT_ACCENT;
       document.documentElement.style.setProperty("--accent", DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--accent-gradient", DEFAULT_ACCENT);
       document.documentElement.style.setProperty("--group-accent", DEFAULT_ACCENT);
+      /* --color-primary lo setea loadGroupBranding; debe resetearse en logout */
+      document.documentElement.style.setProperty("--color-primary", DEFAULT_ACCENT);
       setLogoUrl(null);
       setLogoDarkUrl(null);
       setLogoGroupUrl(null);
