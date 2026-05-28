@@ -41,7 +41,7 @@ export default function LoginPage() {
     if (uid) {
       const { data: profile } = await supabase
         .from("app_users")
-        .select("role")
+        .select("id, full_name, email, role, is_superadmin, company_id")
         .eq("id", uid)
         .maybeSingle();
       role = profile?.role ?? null;
