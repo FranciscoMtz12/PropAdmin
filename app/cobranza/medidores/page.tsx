@@ -235,6 +235,7 @@ export default function CobranzaMedidoresPage() {
 
   const filteredGroups = useMemo(() => {
     if (!isGroupMode) return groups;
+    if (groupCompanyIds.length === 0) return groups;
     return groups.filter(g => g.company_id != null && groupCompanyIds.includes(g.company_id));
   }, [isGroupMode, groups, groupCompanyIds]);
 

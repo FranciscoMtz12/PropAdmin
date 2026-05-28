@@ -1398,7 +1398,7 @@ export default function MaintenancePage() {
   const filteredTickets = useMemo(() => {
     const q = searchQuery.trim() ? normalizeText(searchQuery.trim()) : "";
     return tickets.filter((t) => {
-      if (isGroupMode && t.building_id) {
+      if (isGroupMode && groupCompanyIds.length > 0 && t.building_id) {
         const cid = buildingCompanyMap.get(t.building_id);
         if (!cid || !groupCompanyIds.includes(cid)) return false;
       }

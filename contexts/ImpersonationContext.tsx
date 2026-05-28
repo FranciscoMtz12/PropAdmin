@@ -108,9 +108,13 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     if (!isGroupAdmin || !groupId) return;
     if (impersonatedGroupId === groupId) return; // ya activo para este grupo
 
+    /* Activar modo grupo SÍNCRONAMENTE para que isGroupMode sea true de inmediato */
+    setImpersonationMode('group');
+    setImpersonatedGroupId(groupId);
+
     let cancelled = false;
 
-    async function activateGroupMode() {
+    async function loadGroupData() {
       const [{ data: groupData }, { data: companiesData }] = await Promise.all([
         supabase
           .from("company_groups")
@@ -124,14 +128,13 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
           .is("deleted_at", null),
       ]);
 
-      if (cancelled || !groupData) return;
+      if (cancelled) return;
 
-      const rawName = (groupData as any).short_name || groupData.name;
-      const groupName = rawName.startsWith("Grupo") ? rawName : `Grupo ${rawName}`;
-
-      setImpersonationMode('group');
-      setImpersonatedGroupId(groupData.id);
-      setImpersonatedGroupName(groupName);
+      if (groupData) {
+        const rawName = (groupData as any).short_name || groupData.name;
+        const groupName = rawName.startsWith("Grupo") ? rawName : `Grupo ${rawName}`;
+        setImpersonatedGroupName(groupName);
+      }
       setGroupCompanies((companiesData as GroupCompany[]) || []);
       setGroupCompanyIds(((companiesData || []) as GroupCompany[]).map(c => c.id));
       setImpersonatedCompanyId(null);
@@ -142,7 +145,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
       setImpersonatedRole(null);
     }
 
-    void activateGroupMode();
+    void loadGroupData();
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGroupAdmin, user && 'group_id' in user ? user.group_id : null, impersonatedGroupId]);

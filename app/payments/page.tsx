@@ -663,6 +663,7 @@ export default function PaymentsPage() {
 
   const filteredInvoiceGroups = useMemo(() => {
     if (!isGroupMode) return invoiceGroups
+    if (groupCompanyIds.length === 0) return invoiceGroups
     return invoiceGroups.filter(g => g.company_id != null && groupCompanyIds.includes(g.company_id))
   }, [isGroupMode, invoiceGroups, groupCompanyIds])
 

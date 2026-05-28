@@ -515,7 +515,7 @@ export default function TenantsPage() {
 
   const filteredRows = useMemo(() => {
     return tenantRows.filter((row) => {
-      if (isGroupMode && !groupCompanyIds.includes(row.company_id)) return false;
+      if (isGroupMode && groupCompanyIds.length > 0 && !groupCompanyIds.includes(row.company_id)) return false;
       if (statusFilter !== "all" && row.status !== statusFilter) {
         return false;
       }

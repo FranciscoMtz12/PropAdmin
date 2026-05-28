@@ -396,6 +396,7 @@ export default function CleaningPage() {
 
   const displayedBuildings = useMemo(() => {
     if (!isGroupMode) return buildings;
+    if (groupCompanyIds.length === 0) return buildings;
     return buildings.filter(b => b.company_id != null && groupCompanyIds.includes(b.company_id));
   }, [isGroupMode, buildings, groupCompanyIds]);
   const unitById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);

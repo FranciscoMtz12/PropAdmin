@@ -299,7 +299,7 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
 export default function BuildingsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const { notifications } = useNotifications(user?.company_id ?? "");
+  const { notifications } = useNotifications(user?.company_id ?? null, !!user);
   const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
   const isGroupMode = impersonationMode === 'group';
 
@@ -606,7 +606,7 @@ export default function BuildingsPage() {
   /* Edificios filtrados por categoría y ordenados alfabéticamente (orden natural) */
   const filteredBuildings = useMemo(
     () => {
-      const base = isGroupMode
+      const base = isGroupMode && groupCompanyIds.length > 0
         ? buildings.filter((b) => groupCompanyIds.includes(b.company_id))
         : buildings;
       return base
@@ -1036,7 +1036,7 @@ export default function BuildingsPage() {
           ) : undefined
         }
       >
-        {loadingBuildings ? (
+        {loadingBuildings || (isGroupMode && groupCompanies.length === 0) ? (
           <p style={{ margin: 0 }}>Cargando edificios...</p>
         ) : isGroupMode ? (
           buildingsByCompany.length === 0 ? (

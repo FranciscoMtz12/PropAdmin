@@ -641,7 +641,7 @@ export default function PurchasesPage() {
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     return orders.filter((o) => {
-      if (isGroupMode && o.company_id && !groupCompanyIds.includes(o.company_id)) return false;
+      if (isGroupMode && groupCompanyIds.length > 0 && o.company_id && !groupCompanyIds.includes(o.company_id)) return false;
       /* Filtro por mes (created_at) */
       const d = new Date(o.created_at);
       if (d.getFullYear() !== selectedYear || d.getMonth() + 1 !== selectedMonth) return false;

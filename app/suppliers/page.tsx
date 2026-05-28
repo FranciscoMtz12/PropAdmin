@@ -229,6 +229,7 @@ export default function SuppliersPage() {
 
   const displayedSuppliers = useMemo(() => {
     if (!isGroupMode) return suppliers;
+    if (groupCompanyIds.length === 0) return suppliers;
     return suppliers.filter((s) => groupCompanyIds.includes(s.company_id));
   }, [suppliers, isGroupMode, groupCompanyIds]);
 

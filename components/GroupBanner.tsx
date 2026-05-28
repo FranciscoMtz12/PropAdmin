@@ -51,6 +51,11 @@ export default function GroupBanner() {
 
       {/* Círculos de empresas */}
       <div style={{ display: "flex", alignItems: "center", gap: 6, flex: 1, flexWrap: "wrap" }}>
+        {groupCompanies.length === 0 && (
+          <span style={{ fontSize: "0.75rem", color: "rgba(201,168,76,0.5)", fontStyle: "italic" }}>
+            Cargando…
+          </span>
+        )}
         {groupCompanies.map(company => {
           const isActive = groupCompanyIds.includes(company.id);
           const bgColor  = company.brand_color || "#6b7280";
