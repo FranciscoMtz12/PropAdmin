@@ -8,7 +8,7 @@ type AdminUser = {
   email: string;
   full_name: string;
   company_id: string | null;
-  group_id?: string | null;
+  group_id: string | null;
   is_superadmin: boolean;
   role: "superadmin" | "titular" | "administracion" | "directivo" | "compras" | "mantenimiento" | "field" | "group_admin";
 };
@@ -63,7 +63,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     // 1) Intentar resolver como admin
     const { data: adminData, error: adminError } = await supabase
       .from("app_users")
-      .select("id, email, full_name, company_id, role, is_superadmin")
+      .select("id, email, full_name, company_id, group_id, role, is_superadmin")
       .eq("id", authUserId)
       .maybeSingle();
 
@@ -73,6 +73,7 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
         email: adminData.email || authEmail,
         full_name: adminData.full_name || "",
         company_id: adminData.company_id ?? null,
+        group_id: adminData.group_id ?? null,
         is_superadmin: Boolean(adminData.is_superadmin),
         role: adminData.role as AdminUser["role"],
       });

@@ -301,7 +301,7 @@ export default function DashboardPage() {
   const { user, loading } = useCurrentUser();
   const { isDark } = useTheme();
   const { fontScale, cols3, cols2 } = useFontScale();
-  const { isRealSuperAdmin, isImpersonating } = useImpersonation();
+  const { isRealSuperAdmin, isImpersonating, groupCompanyIds } = useImpersonation();
 
   const role = user?.role;
   const isSuperOrAdmin = role === 'superadmin' || user?.is_superadmin || role === 'administracion' || role === 'directivo';
@@ -364,26 +364,35 @@ export default function DashboardPage() {
 
   /* Carga inicial cuando el usuario está listo */
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadDashboard();
+    if (user?.company_id || user?.is_superadmin || groupCompanyIds.length > 0) void loadDashboard();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.is_superadmin]);
+  }, [user?.company_id, user?.is_superadmin, groupCompanyIds.join(",")]);
 
   useEffect(() => {
     if (user?.company_id) void loadSetupProgress();
-  }, [user?.company_id]);
+    else if (!user?.company_id && groupCompanyIds.length > 0) setLoadingSetup(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id, groupCompanyIds.join(",")]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin) void loadChecklist(user?.company_id ?? null);
+    if (user?.company_id || user?.is_superadmin || groupCompanyIds.length > 0) {
+      void loadChecklist(user?.company_id ?? null);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.is_superadmin]);
+  }, [user?.company_id, user?.is_superadmin, groupCompanyIds.join(",")]);
 
   async function loadDashboard() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    const isGroupMode = !user?.company_id && !user?.is_superadmin && groupCompanyIds.length > 0;
+    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
     setLoadingData(true);
 
-    const cid = user.company_id;
+    const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const co = (q: any) => cid ? q.eq("company_id", cid) : q;
+    const co = (q: any) => {
+      if (cid) return q.eq("company_id", cid);
+      if (isGroupMode) return q.in("company_id", groupCompanyIds);
+      return q;
+    };
 
     const today = todayDateKey();
 
@@ -480,7 +489,11 @@ export default function DashboardPage() {
   async function loadChecklist(companyId: string | null) {
     setChecklistLoading(true);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
+    const co = (q: any) => {
+      if (companyId) return q.eq("company_id", companyId);
+      if (groupCompanyIds.length > 0) return q.in("company_id", groupCompanyIds);
+      return q;
+    };
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;

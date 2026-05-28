@@ -21,7 +21,7 @@ import {
 } from "react";
 
 import { supabase } from "@/lib/supabaseClient";
-import { useCurrentUser } from "@/contexts/UserContext";
+import { useCurrentUser, type AdminUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
 
@@ -231,6 +231,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       const isSA = Boolean(user.is_superadmin) || user.role === 'superadmin';
       const isGA = (user.role as string) === 'group_admin';
       void loadCompanyBranding(user.company_id, isSA, isGA);
+    } else if (!user?.company_id && (user?.role as string) === 'group_admin' && (user as AdminUser)?.group_id) {
+      /* group_admin sin empresa: cargar colores del grupo directamente */
+      void loadGroupBranding((user as AdminUser).group_id!, '');
     } else if (user?.is_superadmin) {
       /* Superadmin con company_id = null: cargar config de plataforma directo */
       void loadSaproaConfig();
@@ -239,7 +242,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       void loadUserPreferences(user.id);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isImpersonating, impersonationMode, impersonatedCompanyId, impersonatedGroupId, user?.company_id, user?.id, user?.is_superadmin, user?.role]);
+  }, [isImpersonating, impersonationMode, impersonatedCompanyId, impersonatedGroupId, user?.company_id, (user as AdminUser)?.group_id, user?.id, user?.is_superadmin, user?.role]);
 
   async function loadGroupBranding(groupId: string, groupName: string) {
     const { data } = await supabase
