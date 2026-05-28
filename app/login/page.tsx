@@ -27,7 +27,7 @@ export default function LoginPage() {
 
   async function onSubmit(data: FormValues) {
     setError("");
-    const { error: err } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: err } = await supabase.auth.signInWithPassword({
       email: data.email.toLowerCase().trim(),
       password: data.password,
     });
@@ -35,7 +35,29 @@ export default function LoginPage() {
       setError("Credenciales incorrectas");
       return;
     }
-    router.push("/home");
+
+    const uid = authData.session?.user.id;
+    let role: string | null = null;
+    if (uid) {
+      const { data: profile } = await supabase
+        .from("app_users")
+        .select("role")
+        .eq("id", uid)
+        .maybeSingle();
+      role = profile?.role ?? null;
+    }
+
+    if (role === "superadmin") {
+      router.push("/saproa-admin/overview");
+    } else if (role === "group_admin") {
+      router.push("/home");
+    } else if (role === "titular") {
+      router.push("/home");
+    } else if (role === "field") {
+      router.push("/campo/dashboard");
+    } else {
+      router.push("/home");
+    }
   }
 
   return (
