@@ -106,7 +106,6 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   useEffect(() => {
     const groupId = user && 'group_id' in user ? user.group_id : null;
     if (!isGroupAdmin || !groupId) return;
-    if (impersonatedGroupId === groupId) return; // ya activo para este grupo
 
     /* Activar modo grupo SÍNCRONAMENTE para que isGroupMode sea true de inmediato */
     setImpersonationMode('group');
@@ -147,8 +146,10 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
 
     void loadGroupData();
     return () => { cancelled = true; };
+  // impersonatedGroupId se omite intencionalmente: incluirlo hace que React cancele
+  // el fetch asíncrono cuando setImpersonatedGroupId() actualiza estado a mitad del vuelo.
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isGroupAdmin, user && 'group_id' in user ? user.group_id : null, impersonatedGroupId]);
+  }, [isGroupAdmin, user && 'group_id' in user ? user.group_id : null]);
 
   function startImpersonation(params: ImpersonationParams) {
     setImpersonationMode(params.userId !== null ? 'user' : 'company');
