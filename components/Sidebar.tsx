@@ -32,7 +32,6 @@ import {
   MessageSquare,
   Package,
   Settings,
-  Shield,
   ShoppingCart,
   Sparkles,
   Truck,
@@ -568,18 +567,26 @@ export default function Sidebar() {
               style={{ display: "flex", alignItems: "center", textDecoration: "none", flexShrink: 0, minHeight: 44, minWidth: 44, justifyContent: "center" }}
             >
               {isSaproaMode ? (
-                /* Logo SAPROA Control Center — círculo índigo con Shield */
-                <div
-                  style={{
-                    width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
-                    background: SAPROA_ACCENT,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontWeight: 900, fontSize: "1.125rem", color: "#ffffff",
-                    letterSpacing: "-0.02em", flexShrink: 0,
-                  }}
-                >
-                  <Shield size={shieldIconSz} color="#fff" />
-                </div>
+                activeLogo ? (
+                  <img
+                    src={activeLogo}
+                    alt="SAPROA"
+                    style={{ height: 36, width: "auto", objectFit: "contain", flexShrink: 0 }}
+                  />
+                ) : (
+                  /* Fallback SAPROA: círculo índigo con inicial "S" */
+                  <div
+                    style={{
+                      width: 38, height: 38, borderRadius: "var(--border-radius-md, 10px)",
+                      background: SAPROA_ACCENT,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontWeight: 900, fontSize: "1.25rem", color: "#ffffff",
+                      letterSpacing: "-0.02em", flexShrink: 0,
+                    }}
+                  >
+                    S
+                  </div>
+                )
               ) : activeLogo ? (
                 <img
                   src={activeLogo}

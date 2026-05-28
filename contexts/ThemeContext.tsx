@@ -157,11 +157,20 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.style.setProperty('--font-scale', String(fontScale));
   }, [fontScale]);
 
-  /* ── Resetear font-scale al cerrar sesión (user → null) ─────────── */
+  /* ── Resetear branding al cerrar sesión (user → null) ──────────── */
   useEffect(() => {
     if (!user) {
       document.documentElement.style.setProperty('--font-scale', '1');
       setFontScaleState(1);
+      setAccentColor(DEFAULT_ACCENT);
+      setGroupColor(DEFAULT_ACCENT);
+      companyBaseColorRef.current = DEFAULT_ACCENT;
+      document.documentElement.style.setProperty("--accent", DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--group-accent", DEFAULT_ACCENT);
+      setLogoUrl(null);
+      setLogoDarkUrl(null);
+      setLogoGroupUrl(null);
+      setShortName("PropAdmin");
     }
   }, [user]);
 

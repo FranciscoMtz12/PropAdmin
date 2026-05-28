@@ -41,7 +41,7 @@ export default function GroupBanner() {
       }}>
         {impersonatedGroupName
           ? (impersonatedGroupName.startsWith("Grupo") ? impersonatedGroupName : `Grupo ${impersonatedGroupName}`)
-          : "Grupo"}
+          : "Grupo MATZ"}
       </span>
 
       {/* Divisor vertical */}
