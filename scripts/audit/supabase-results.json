@@ -1,0 +1,161 @@
+{
+  "unitTypesNoCompany": {
+    "count": 0
+  },
+  "badCollections": {
+    "count": 12
+  },
+  "dupeFolios": [],
+  "buckets": [
+    {
+      "id": "electricity-readings",
+      "name": "electricity-readings",
+      "public": false,
+      "file_size_limit": 5242880
+    },
+    {
+      "id": "utility-invoices",
+      "name": "utility-invoices",
+      "public": false,
+      "file_size_limit": 10485760
+    },
+    {
+      "id": "building-gallery",
+      "name": "building-gallery",
+      "public": true,
+      "file_size_limit": 10485760
+    },
+    {
+      "id": "building-documents",
+      "name": "building-documents",
+      "public": true,
+      "file_size_limit": 20971520
+    },
+    {
+      "id": "invoices",
+      "name": "invoices",
+      "public": false,
+      "file_size_limit": null
+    },
+    {
+      "id": "payment-proofs",
+      "name": "payment-proofs",
+      "public": false,
+      "file_size_limit": null
+    },
+    {
+      "id": "company-assets",
+      "name": "company-assets",
+      "public": false,
+      "file_size_limit": null
+    },
+    {
+      "id": "maintenance-photos",
+      "name": "maintenance-photos",
+      "public": false,
+      "file_size_limit": null
+    },
+    {
+      "id": "purchase-orders",
+      "name": "purchase-orders",
+      "public": false,
+      "file_size_limit": null
+    },
+    {
+      "id": "payment-reports",
+      "name": "payment-reports",
+      "public": false,
+      "file_size_limit": null
+    }
+  ],
+  "utilityReadingsBucket": null,
+  "publicBuckets": [
+    "building-gallery",
+    "building-documents"
+  ],
+  "roleCounts": {
+    "administracion": 5,
+    "compras": 1,
+    "mantenimiento": 1,
+    "field": 1,
+    "titular": 4,
+    "superadmin": 1,
+    "group_admin": 1
+  },
+  "companies": [
+    {
+      "id": "d79d69ae-702c-42a9-bdf9-5c5908404a47",
+      "short_name": "Inmo Prue",
+      "brand_color": "#07ca76",
+      "accent_style": "solid"
+    },
+    {
+      "id": "e44a1dcc-ba2d-4f82-b5b9-5312214c6584",
+      "short_name": "INMOBILI 2",
+      "brand_color": "#d2cc14",
+      "accent_style": "solid"
+    },
+    {
+      "id": "9df579b0-d66d-4fbf-a0b0-7313dac56359",
+      "short_name": "INMO 3",
+      "brand_color": "#2b00ff",
+      "accent_style": "solid"
+    },
+    {
+      "id": "0968e34d-145d-4c3b-bf8d-9a625e6d5482",
+      "short_name": "FRA-MAR",
+      "brand_color": "#8B2252",
+      "accent_style": "solid"
+    },
+    {
+      "id": "ce573c9d-e94d-4f98-9949-8c3bfac40916",
+      "short_name": "INMB P2",
+      "brand_color": "#d9d212",
+      "accent_style": "solid"
+    },
+    {
+      "id": "efc8380c-aec8-42ca-88e2-ffdc8f82ba79",
+      "short_name": "IN B",
+      "brand_color": "#f204f6",
+      "accent_style": "solid"
+    },
+    {
+      "id": "9785fbab-07ad-4aa7-b596-f05c98260f6a",
+      "short_name": "INMBO 5",
+      "brand_color": "#09a537",
+      "accent_style": "solid"
+    },
+    {
+      "id": "7f79276c-0950-4825-9366-2c67601ce9dc",
+      "short_name": "INM P",
+      "brand_color": "#efd00b",
+      "accent_style": "solid"
+    },
+    {
+      "id": "98bf6434-41bc-49f1-86ae-99ff28ec4c39",
+      "short_name": "ujryn",
+      "brand_color": "#1f69e0",
+      "accent_style": "solid"
+    },
+    {
+      "id": "e8d70ff9-cd31-47ba-a893-1ed3ee60d8dd",
+      "short_name": "FRA-MAR",
+      "brand_color": "#8B2252",
+      "accent_style": "solid"
+    }
+  ],
+  "userPrefSample": [
+    {
+      "user_id": "94e15ff9-caeb-47f6-995d-8d25e1135630",
+      "dark_mode": false,
+      "ui_theme": "clasico",
+      "show_descriptions": true
+    },
+    {
+      "user_id": "a3e4f406-01b9-47bf-9e01-8e48731b02bc",
+      "dark_mode": false,
+      "ui_theme": "clasico",
+      "show_descriptions": true
+    }
+  ]
+}
