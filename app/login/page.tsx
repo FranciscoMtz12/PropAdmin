@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,18 @@ type FormValues = z.infer<typeof schema>;
 export default function LoginPage() {
   const router = useRouter();
   const [error, setError] = useState("");
+
+  /* Garantizar colores SAPROA en cuanto la página monta, sin esperar ThemeContext */
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--accent",           "#6366F1");
+    root.setProperty("--accent-gradient",  "linear-gradient(135deg,#818cf8 0%,#6366F1 45%,#4f46e5 100%)");
+    root.setProperty("--color-accent",     "#6366F1");
+    root.setProperty("--color-primary",    "#6366F1");
+    root.setProperty("--group-accent",     "#6366F1");
+    root.setProperty("--color-accent-rgb", "99, 102, 241");
+    root.setProperty("--font-scale",       "1");
+  }, []);
   const {
     register,
     handleSubmit,

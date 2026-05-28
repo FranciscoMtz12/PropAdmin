@@ -445,7 +445,25 @@ export default function Sidebar() {
   if (isHiddenRoute) return null;
 
   async function handleLogout() {
-    document.documentElement.style.setProperty('--font-scale', '1');
+    /* Limpiar localStorage del usuario actual ANTES de hacer signOut */
+    const lastUid = localStorage.getItem("last_user_id");
+    if (lastUid) {
+      localStorage.removeItem(`darkMode_${lastUid}`);
+      localStorage.removeItem(`uiTheme_${lastUid}`);
+      localStorage.removeItem(`fontScale_${lastUid}`);
+    }
+    localStorage.removeItem("last_user_id");
+
+    /* Resetear CSS a colores base de SAPROA sincrónicamente antes del redirect */
+    const root = document.documentElement.style;
+    root.setProperty("--accent",           "#6366F1");
+    root.setProperty("--accent-gradient",  "linear-gradient(135deg,#818cf8 0%,#6366F1 45%,#4f46e5 100%)");
+    root.setProperty("--color-accent",     "#6366F1");
+    root.setProperty("--color-primary",    "#6366F1");
+    root.setProperty("--group-accent",     "#6366F1");
+    root.setProperty("--color-accent-rgb", "99, 102, 241");
+    root.setProperty("--font-scale",       "1");
+
     await supabase.auth.signOut();
     router.push("/");
   }
