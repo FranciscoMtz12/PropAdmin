@@ -63,7 +63,7 @@ type ThemeContextType = {
 
 /* ─── Valor por defecto (antes de cargar empresa) ────────────────── */
 
-const DEFAULT_ACCENT = "#8B2252";
+const DEFAULT_ACCENT = "#6366F1";
 
 const ThemeContext = createContext<ThemeContextType>({
   accentColor: DEFAULT_ACCENT,
@@ -172,11 +172,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       setAccentColor(DEFAULT_ACCENT);
       setGroupColor(DEFAULT_ACCENT);
       companyBaseColorRef.current = DEFAULT_ACCENT;
-      document.documentElement.style.setProperty("--accent", DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--accent",          DEFAULT_ACCENT);
       document.documentElement.style.setProperty("--accent-gradient", DEFAULT_ACCENT);
-      document.documentElement.style.setProperty("--group-accent", DEFAULT_ACCENT);
-      /* --color-primary lo setea loadGroupBranding; debe resetearse en logout */
-      document.documentElement.style.setProperty("--color-primary", DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--color-accent",    DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--color-primary",   DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--group-accent",    DEFAULT_ACCENT);
+      document.documentElement.style.setProperty("--color-accent-rgb", "99, 102, 241");
       setLogoUrl(null);
       setLogoDarkUrl(null);
       setLogoGroupUrl(null);
