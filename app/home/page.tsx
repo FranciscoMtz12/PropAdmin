@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { AlertCircle, Calendar, Coins, LogOut, Settings, Wrench } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { withCompanyFilter } from "@/lib/supabase/query-helpers";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
@@ -140,7 +141,7 @@ export default function HomePage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { accentColor, logoUrl, shortName, uiTheme } = useTheme();
-  const { isRealSuperAdmin, isImpersonating, groupCompanyIds } = useImpersonation();
+  const { isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   const [now, setNow] = useState(() => new Date());
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -167,101 +168,42 @@ export default function HomePage() {
   }, [loading, user, isRealSuperAdmin, isImpersonating, router]);
 
   useEffect(() => {
-    if (user?.company_id) {
-      void fetchMetrics(user.company_id);
-    } else if (groupCompanyIds.length > 0) {
-      void fetchGroupMetrics(groupCompanyIds);
-    }
+    if (!loading && user && !isRealSuperAdmin) void fetchMetrics(user.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, groupCompanyIds.join(",")]);
+  }, [loading, user?.id, user?.company_id, isRealSuperAdmin]);
 
   useEffect(() => {
     if (!user?.id) return;
     void fetchQuickLinks(user.id, (user as { role?: string }).role ?? "");
   }, [user?.id]);
 
-  useEffect(() => {
-    const isWaiting = !loading && !!user && (user.role as string) === 'group_admin'
-      && !user?.company_id && groupCompanyIds.length === 0;
-    if (!isWaiting) return;
-    const t = setTimeout(() => {
-      setMetrics({ cobrosPendientes: 0, cobrosVencidos: 0, cobrosDeuda: 0, ticketsAbiertos: 0, ticketsUrgentes: 0, contratosVenciendo: 0 });
-    }, 3000);
-    return () => clearTimeout(t);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.company_id, (user as { role?: string })?.role, groupCompanyIds.length]);
-
   async function handleLogout() {
     await supabase.auth.signOut();
     router.push("/login");
   }
 
-  async function fetchMetrics(cid: string) {
+  async function fetchMetrics(cid: string | null) {
     const today = new Date().toISOString().slice(0, 10);
     const in60 = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
 
     const [cobrosRes, ticketsRes, contratosRes] = await Promise.all([
-      supabase
+      withCompanyFilter(supabase
         .from("collection_records")
         .select("status, amount_due, amount_collected")
         .in("status", ["pending", "partial", "overdue"])
-        .eq("company_id", cid)
-        .is("deleted_at", null),
-      supabase
+        .is("deleted_at", null), cid),
+      withCompanyFilter(supabase
         .from("maintenance_logs")
         .select("priority")
         .not("status", "in", "(DONE,CANCELLED)")
-        .eq("company_id", cid)
-        .is("deleted_at", null),
-      supabase
+        .is("deleted_at", null), cid),
+      withCompanyFilter(supabase
         .from("leases")
         .select("id", { count: "exact", head: true })
         .eq("status", "ACTIVE")
-        .eq("company_id", cid)
         .is("deleted_at", null)
         .gte("end_date", today)
-        .lte("end_date", in60),
-    ]);
-
-    const cobros = (cobrosRes.data ?? []) as { status: string; amount_due: number; amount_collected: number | null }[];
-    const tickets = (ticketsRes.data ?? []) as { priority: string }[];
-
-    setMetrics({
-      cobrosPendientes: cobros.length,
-      cobrosVencidos: cobros.filter(r => r.status === "overdue").length,
-      cobrosDeuda: cobros.reduce((acc, r) => acc + r.amount_due - (r.amount_collected ?? 0), 0),
-      ticketsAbiertos: tickets.length,
-      ticketsUrgentes: tickets.filter(r => r.priority === "urgent").length,
-      contratosVenciendo: contratosRes.count ?? 0,
-    });
-  }
-
-  async function fetchGroupMetrics(cids: string[]) {
-    if (cids.length === 0) return;
-    const today = new Date().toISOString().slice(0, 10);
-    const in60 = new Date(Date.now() + 60 * 86_400_000).toISOString().slice(0, 10);
-
-    const [cobrosRes, ticketsRes, contratosRes] = await Promise.all([
-      supabase
-        .from("collection_records")
-        .select("status, amount_due, amount_collected")
-        .in("status", ["pending", "partial", "overdue"])
-        .in("company_id", cids)
-        .is("deleted_at", null),
-      supabase
-        .from("maintenance_logs")
-        .select("priority")
-        .not("status", "in", "(DONE,CANCELLED)")
-        .in("company_id", cids)
-        .is("deleted_at", null),
-      supabase
-        .from("leases")
-        .select("id", { count: "exact", head: true })
-        .eq("status", "ACTIVE")
-        .in("company_id", cids)
-        .is("deleted_at", null)
-        .gte("end_date", today)
-        .lte("end_date", in60),
+        .lte("end_date", in60), cid),
     ]);
 
     const cobros = (cobrosRes.data ?? []) as { status: string; amount_due: number; amount_collected: number | null }[];

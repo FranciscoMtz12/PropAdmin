@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { withCompanyFilter } from "@/lib/supabase/query-helpers";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFontScale } from "@/lib/useFontScale";
@@ -301,7 +302,7 @@ export default function DashboardPage() {
   const { user, loading } = useCurrentUser();
   const { isDark } = useTheme();
   const { fontScale, cols3, cols2 } = useFontScale();
-  const { isRealSuperAdmin, isImpersonating, groupCompanyIds } = useImpersonation();
+  const { isRealSuperAdmin, isImpersonating } = useImpersonation();
 
   const role = user?.role;
   const isSuperOrAdmin = role === 'superadmin' || user?.is_superadmin || role === 'administracion' || role === 'directivo';
@@ -364,48 +365,28 @@ export default function DashboardPage() {
 
   /* Carga inicial cuando el usuario está listo */
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || groupCompanyIds.length > 0) void loadDashboard();
+    if (!loading && user && !user.is_superadmin) void loadDashboard();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.is_superadmin, groupCompanyIds.join(",")]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
-    if (user?.company_id) void loadSetupProgress();
-    else if (!user?.company_id && groupCompanyIds.length > 0) setLoadingSetup(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, groupCompanyIds.join(",")]);
-
-  useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || groupCompanyIds.length > 0) {
-      void loadChecklist(user?.company_id ?? null);
+    if (!loading && user) {
+      if (user.company_id) void loadSetupProgress();
+      else setLoadingSetup(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.company_id, user?.is_superadmin, groupCompanyIds.join(",")]);
+  }, [loading, user?.id, user?.company_id]);
 
   useEffect(() => {
-    const isWaiting = !loading && !!user && (user.role as string) === 'group_admin'
-      && !user?.company_id && !user?.is_superadmin && groupCompanyIds.length === 0;
-    if (!isWaiting) return;
-    const t = setTimeout(() => {
-      setLoadingData(false);
-      setChecklistLoading(false);
-      setLoadingSetup(false);
-    }, 3000);
-    return () => clearTimeout(t);
+    if (!loading && user && !user.is_superadmin) void loadChecklist(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.company_id, user?.is_superadmin, (user as { role?: string })?.role, groupCompanyIds.length]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadDashboard() {
-    const isGroupMode = !user?.company_id && !user?.is_superadmin && groupCompanyIds.length > 0;
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setLoadingData(true);
 
     const cid = user?.company_id ?? null;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const co = (q: any) => {
-      if (cid) return q.eq("company_id", cid);
-      if (isGroupMode) return q.in("company_id", groupCompanyIds);
-      return q;
-    };
 
     const today = todayDateKey();
 
@@ -430,10 +411,10 @@ export default function DashboardPage() {
       maintenanceRes,
     ] = await Promise.all([
       /* Unidades — incluye unit_type_id para card de disponibles */
-      co(supabase
+      withCompanyFilter(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)"))
-        .is("deleted_at", null),
+        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)"),
+        cid).is("deleted_at", null),
 
       /* Tipos de unidad — para mostrar tipo en card de disponibles */
       supabase
@@ -441,49 +422,50 @@ export default function DashboardPage() {
         .select("id, name"),
 
       /* Leases — activos + contratos próximos a vencer */
-      co(supabase
+      withCompanyFilter(supabase
         .from("leases")
-        .select("id, unit_id, tenant_id, status, end_date"))
-        .is("deleted_at", null),
+        .select("id, unit_id, tenant_id, status, end_date"),
+        cid).is("deleted_at", null),
 
       /* Inquilinos — solo nombre */
-      co(supabase
+      withCompanyFilter(supabase
         .from("tenants")
-        .select("id, full_name"))
-        .is("deleted_at", null),
+        .select("id, full_name"),
+        cid).is("deleted_at", null),
 
       /* Edificios — solo nombre */
-      co(supabase
+      withCompanyFilter(supabase
         .from("buildings")
-        .select("id, name"))
-        .is("deleted_at", null),
+        .select("id, name"),
+        cid).is("deleted_at", null),
 
       /* Cobros — últimos 6 meses para chart + métricas del mes */
-      co(supabase
+      withCompanyFilter(supabase
         .from("collection_records")
         .select(
           "id, building_id, unit_id, lease_id, period_year, period_month, due_date, amount_due, amount_collected, status"
-        ))
-        .is("deleted_at", null)
+        ),
+        cid).is("deleted_at", null)
         .gte("due_date", sixMonthsAgoKey)
         .order("due_date", { ascending: true }),
 
-      /* Limpiezas de edificios activas — filtramos por día en memo */
-      co(supabase
+      /* Limpiezas de edificios — sin filtro company_id, RLS filtra vía building_id */
+      supabase
         .from("cleaning_building_schedules")
-        .select("id, building_id, day_of_week")),
+        .select("id, building_id, day_of_week"),
 
-      /* Limpiezas de unidades activas — filtramos por día en memo */
-      co(supabase
+      /* Limpiezas de unidades — sin filtro company_id, RLS filtra vía building_id */
+      supabase
         .from("cleaning_unit_schedules")
-        .select("id, unit_id, day_of_week, active"))
+        .select("id, unit_id, day_of_week, active")
         .is("deleted_at", null)
         .eq("active", true),
 
       /* Mantenimientos con fecha programada = hoy */
-      co(supabase
+      withCompanyFilter(supabase
         .from("maintenance_logs")
-        .select("id, unit_id, title, status")),
+        .select("id, unit_id, title, status"),
+        cid),
     ]);
 
     setUnits((unitsRes.data as Unit[]) || []);
@@ -501,12 +483,6 @@ export default function DashboardPage() {
 
   async function loadChecklist(companyId: string | null) {
     setChecklistLoading(true);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const co = (q: any) => {
-      if (companyId) return q.eq("company_id", companyId);
-      if (groupCompanyIds.length > 0) return q.in("company_id", groupCompanyIds);
-      return q;
-    };
     const now = new Date();
     const year = now.getFullYear();
     const month = now.getMonth() + 1;
@@ -520,21 +496,21 @@ export default function DashboardPage() {
       { count: lecturasCount },
       { count: contratosCount },
     ] = await Promise.all([
-      co(supabase.from('collection_records')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('period_year', year)
         .eq('period_month', month),
-      co(supabase.from('collection_records')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('collection_records')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('status', 'overdue')
         .is('deleted_at', null),
-      co(supabase.from('building_utility_readings')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('building_utility_readings')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('period_year', year)
         .eq('period_month', month)
         .is('deleted_at', null),
-      co(supabase.from('leases')
-        .select('id', { count: 'exact', head: true }))
+      withCompanyFilter(supabase.from('leases')
+        .select('id', { count: 'exact', head: true }), companyId)
         .eq('status', 'ACTIVE')
         .not('end_date', 'is', null)
         .lte('end_date', thirtyStr)
