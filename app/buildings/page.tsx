@@ -1036,10 +1036,12 @@ export default function BuildingsPage() {
           ) : undefined
         }
       >
-        {loadingBuildings || (isGroupMode && groupCompanies.length === 0) ? (
+        {loadingBuildings ? (
           <p style={{ margin: 0 }}>Cargando edificios...</p>
         ) : isGroupMode ? (
-          buildingsByCompany.length === 0 ? (
+          groupCompanies.length === 0 ? (
+            <p style={{ margin: 0 }}>Cargando empresas del grupo…</p>
+          ) : buildingsByCompany.length === 0 ? (
             <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "0.875rem" }}>Sin propiedades en las empresas activas.</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 32 }}>
