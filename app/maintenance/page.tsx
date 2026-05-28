@@ -674,9 +674,9 @@ export default function MaintenancePage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadPageData();
+    if (user && !user.is_superadmin) void loadPageData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isGroupMode]);
+  }, [user?.id, user?.company_id, user?.is_superadmin]);
 
   /* Auto-expand por URL ?expand=<id> (entrada desde Compras) */
   useEffect(() => {
@@ -704,7 +704,7 @@ export default function MaintenancePage() {
   // ─── DATA LOADING ─────────────────────────────────────────────────────────
 
   async function loadPageData() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setLoadingData(true);
     setMsg("");
 

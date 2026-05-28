@@ -366,9 +366,9 @@ export default function PurchasesPage() {
   /* ── Load ──────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadAll(user?.company_id ?? null);
+    if (!userLoading && user && !user.is_superadmin) void loadAll(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user, isGroupMode]);
+  }, [userLoading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadAll(companyId: string | null) {
     setLoading(true);

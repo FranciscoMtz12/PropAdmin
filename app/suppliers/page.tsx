@@ -193,9 +193,9 @@ export default function SuppliersPage() {
   /* ── Load ────────────────────────────────────────────────────────── */
 
   useEffect(() => {
-    if (!userLoading && (user?.company_id || user?.is_superadmin || isGroupMode)) void loadSuppliers(user?.company_id ?? null);
+    if (!userLoading && user && !user.is_superadmin) void loadSuppliers(user?.company_id ?? null);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userLoading, user, isGroupMode]);
+  }, [userLoading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadSuppliers(companyId: string | null) {
     setLoading(true);

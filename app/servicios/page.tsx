@@ -577,15 +577,15 @@ export default function ServiciosPage() {
   }, [period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadData();
-  }, [user?.company_id, user?.is_superadmin, isGroupMode, period.year, period.month]);
+    if (user && !user.is_superadmin) void loadData();
+  }, [user?.id, user?.company_id, user?.is_superadmin, period.year, period.month]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadPendingMeters();
-  }, [user?.company_id, user?.is_superadmin, isGroupMode]);
+    if (user && !user.is_superadmin) void loadPendingMeters();
+  }, [user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadPendingMeters() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
@@ -610,7 +610,7 @@ export default function ServiciosPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setPageLoading(true);
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

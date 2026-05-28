@@ -604,12 +604,12 @@ export default function CalendarPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     void loadCalendarData();
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadCalendarData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
 
     setLoadingPage(true);
     setMsg("");

@@ -381,10 +381,10 @@ export default function CollectionsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     void loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, user?.company_id]);
 
   useEffect(() => {
     if (user?.company_id) void loadReadingsStatus(user.company_id);
@@ -413,7 +413,7 @@ export default function CollectionsPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     setLoadingPage(true);
 
     const cid = user?.company_id ?? null;
@@ -453,7 +453,7 @@ export default function CollectionsPage() {
   // ── PASO 3: auto-mark overdue ─────────────────────────────────────────────────
 
   async function autoMarkOverdue() {
-    if (!user?.company_id && !user?.is_superadmin) return;
+    if (!user) return;
     const cid = user?.company_id ?? null;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;

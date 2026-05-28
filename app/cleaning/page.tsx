@@ -307,13 +307,13 @@ export default function CleaningPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     void loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.company_id, user?.is_superadmin, isGroupMode]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setLoadingData(true);
 
     const cid = user?.company_id ?? null;

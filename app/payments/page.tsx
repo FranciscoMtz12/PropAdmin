@@ -272,8 +272,8 @@ export default function PaymentsPage() {
   const [mpMsg, setMpMsg]               = useState("")
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadData()
-  }, [user, year, month, isGroupMode])
+    if (user && !user.is_superadmin) void loadData()
+  }, [user?.id, user?.company_id, user?.is_superadmin, year, month])
 
   function navMonth(delta: number) {
     let m = month + delta, y = year
@@ -291,7 +291,7 @@ export default function PaymentsPage() {
   }
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return
+    if (!user) return
     setPageLoading(true)
     const cid = user?.company_id ?? null
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

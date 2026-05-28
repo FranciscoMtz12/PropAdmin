@@ -161,7 +161,7 @@ export default function AnalyticsPage() {
   }, [loading, user, hasAccess, router]);
 
   async function loadData() {
-    if (!user?.company_id && !user?.is_superadmin && !isRealSuperAdmin) {
+    if (!user) {
       setLoadingData(false);
       return;
     }

@@ -258,10 +258,10 @@ export default function TenantsPage() {
 
   useEffect(() => {
     if (loading) return;
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
 
     void loadTenantsPage();
-  }, [loading, user?.company_id, user?.is_superadmin, isGroupMode]);
+  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
     function handleOutsideClick(event: MouseEvent) {
@@ -280,7 +280,7 @@ export default function TenantsPage() {
   }, []);
 
   async function loadTenantsPage() {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
 
     setLoadingPage(true);
     setMessage("");

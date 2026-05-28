@@ -434,7 +434,7 @@ export default function BuildingsPage() {
   /* ── Carga de datos ─────────────────────────────────────────────── */
 
   const loadBuildings = useCallback(async () => {
-    if (!user?.company_id && !user?.is_superadmin && !isGroupMode) return;
+    if (!user) return;
     setLoadingBuildings(true);
 
     const cid = user?.company_id ?? null;
@@ -531,11 +531,11 @@ export default function BuildingsPage() {
 
     setActiveLeasesCountByBuilding(leaseCounts);
     setLoadingBuildings(false);
-  }, [user, isGroupMode]);
+  }, [user?.id, user?.company_id, user?.is_superadmin]);
 
   useEffect(() => {
-    if (user?.company_id || user?.is_superadmin || isGroupMode) void loadBuildings();
-  }, [loadBuildings, user?.company_id, user?.is_superadmin, isGroupMode]);
+    if (user && !user.is_superadmin) void loadBuildings();
+  }, [loadBuildings]);
 
   /* ── Métricas del portafolio ─────────────────────────────────────── */
 
