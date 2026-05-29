@@ -430,40 +430,6 @@ ${notes.trim() || "(sin notas)"}
         }}
       >
 
-        {/* ── Selector de viewport ─── */}
-        <div style={{ marginBottom: "16px", display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-          <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", flexShrink: 0 }}>
-            Viewport:
-          </span>
-          <div style={{ display: "flex", gap: "4px", padding: "4px", borderRadius: "var(--border-radius-md)", background: "var(--bg-card)", border: "1px solid var(--border-default)" }}>
-            {VIEWPORT_PRESETS.map(({ label, value, display, Icon }) => {
-              const active = viewport === value;
-              return (
-                <button
-                  key={label}
-                  type="button"
-                  title={`Simular ${label} (${display})`}
-                  onClick={() => setViewport(value)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", gap: "5px",
-                    padding: "6px 12px", borderRadius: "var(--border-radius-sm)", border: "none",
-                    background: active ? accent : "transparent",
-                    color: active ? "#fff" : "var(--text-secondary)",
-                    fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
-                    transition: "all 0.15s", whiteSpace: "nowrap",
-                  }}
-                >
-                  <Icon size={13} />
-                  <span>{label}</span>
-                </button>
-              );
-            })}
-          </div>
-          <span style={{ fontSize: "0.75rem", fontFamily: "monospace", fontWeight: 700, color: "var(--accent)", padding: "4px 8px", borderRadius: "var(--border-radius-sm)", background: "var(--bg-table-header)", border: "1px solid var(--border-default)" }}>
-            {viewportPreset.display}
-          </span>
-        </div>
-
         {/* ── Catálogo restringido al viewport seleccionado ─── */}
         <div style={{ maxWidth: viewport !== null ? `${viewport}px` : "none", margin: "0 auto", transition: "max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1)" }}>
           <div
@@ -671,6 +637,39 @@ ${notes.trim() || "(sin notas)"}
         <h2 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "18px", letterSpacing: "0.01em" }}>
           Controles de previsualización
         </h2>
+
+        {/* ── Viewport ─── */}
+        <div style={{ marginBottom: "18px" }}>
+          <CtrlLabel label="Viewport" value={viewportPreset.display} />
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
+            {VIEWPORT_PRESETS.map(({ label, value, Icon }) => {
+              const active = viewport === value;
+              return (
+                <button
+                  key={label}
+                  type="button"
+                  title={`${label} — ${VIEWPORT_PRESETS.find((p) => p.value === value)?.display}`}
+                  onClick={() => setViewport(value)}
+                  style={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px",
+                    padding: "7px 6px",
+                    borderRadius: "var(--border-radius-md)",
+                    border: active ? `1px solid ${accent}` : "1px solid var(--border-default)",
+                    background: active ? accent : "var(--bg-card)",
+                    color: active ? "#fff" : "var(--text-secondary)",
+                    fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
+                    transition: "all 0.15s", whiteSpace: "nowrap",
+                  }}
+                >
+                  <Icon size={12} />
+                  <span>{label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div style={{ height: "1px", background: "var(--border-default)", margin: "4px 0 16px" }} />
 
         {/* ── Border-radius ─── */}
         <div style={{ marginBottom: "18px" }}>
