@@ -76,32 +76,28 @@ export default function SaproaOverviewPage() {
   async function loadData() {
     setLoading(true);
     const [
-      { count: companiesCount },
-      { count: usersCount },
       { count: buildingsCount },
       { count: feedbackCount },
       { data: companiesData },
       { data: feedbackData },
       { data: usersData },
     ] = await Promise.all([
-      supabase.from("companies").select("*", { count: "exact", head: true }).is("deleted_at", null),
-      supabase.from("app_users").select("*", { count: "exact", head: true }).eq("is_superadmin", false),
       supabase.from("buildings").select("*", { count: "exact", head: true }).is("deleted_at", null),
       supabase.from("feedback").select("*", { count: "exact", head: true }).eq("status", "nuevo"),
       supabase.from("companies").select("id, name, short_name, brand_color, created_at").is("deleted_at", null).order("name"),
       supabase.from("feedback").select("id, type, title, created_at, status").order("created_at", { ascending: false }).limit(3),
-      supabase.from("app_users").select("id, company_id").eq("is_superadmin", false),
+      supabase.from("app_users").select("company_id").eq("is_superadmin", false),
     ]);
 
     setMetrics({
-      companies: companiesCount ?? 0,
-      users: usersCount ?? 0,
+      companies: (companiesData ?? []).length,
+      users: (usersData ?? []).length,
       buildings: buildingsCount ?? 0,
       feedbackPending: feedbackCount ?? 0,
     });
 
     const userCountByCompany = new Map<string, number>();
-    for (const u of (usersData ?? []) as { id: string; company_id: string | null }[]) {
+    for (const u of (usersData ?? []) as { company_id: string | null }[]) {
       if (u.company_id) userCountByCompany.set(u.company_id, (userCountByCompany.get(u.company_id) ?? 0) + 1);
     }
 

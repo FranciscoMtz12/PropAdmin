@@ -175,6 +175,9 @@ export default function AnalyticsPage() {
     const twelveMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 11, 1)
       .toISOString()
       .slice(0, 10);
+    const fiveYearsAgo = new Date(today.getFullYear() - 5, today.getMonth(), 1)
+      .toISOString()
+      .slice(0, 10);
 
     const [unitsRes, unitTypesRes, leasesRes, tenantsRes, buildingsRes, collectionsRes] =
       await Promise.all([
@@ -189,7 +192,8 @@ export default function AnalyticsPage() {
         co(supabase
           .from("leases")
           .select("id, unit_id, tenant_id, status, start_date, end_date, rent_amount"))
-          .is("deleted_at", null),
+          .is("deleted_at", null)
+          .or(`status.eq.ACTIVE,end_date.gte.${fiveYearsAgo}`),
         co(supabase
           .from("tenants")
           .select("id, full_name"))
@@ -226,8 +230,13 @@ export default function AnalyticsPage() {
   const buildingById = useMemo(() => new Map(buildings.map((b) => [b.id, b])), [buildings]);
   const tenantById = useMemo(() => new Map(tenants.map((t) => [t.id, t])), [tenants]);
   const unitById = useMemo(() => new Map(units.map((u) => [u.id, u])), [units]);
+  const leaseById = useMemo(() => new Map(leases.map((l) => [l.id, l])), [leases]);
 
   const activeLeases = useMemo(() => leases.filter((l) => l.status === "ACTIVE"), [leases]);
+  const activeLeasByTenantId = useMemo(
+    () => new Map(activeLeases.map((l) => [l.tenant_id, l])),
+    [activeLeases]
+  );
 
   const totalUnits = units.length;
   const occupiedUnits = units.filter((u) => isOccupiedStatus(u.status)).length;
@@ -404,7 +413,7 @@ export default function AnalyticsPage() {
     const byTenant = new Map<string, { due: number; collected: number; paid: number; late: number; lateDays: number[] }>();
 
     collectionRecords.forEach((r) => {
-      const lease = r.lease_id ? leases.find((l) => l.id === r.lease_id) : null;
+      const lease = r.lease_id ? leaseById.get(r.lease_id) : null;
       if (!lease) return;
       const tenantId = lease.tenant_id;
       if (!tenantId) return;
@@ -426,7 +435,7 @@ export default function AnalyticsPage() {
       .map(([tenantId, data]) => {
         const tenant = tenantById.get(tenantId);
         // Buscar el edificio via su lease activo
-        const activeLease = activeLeases.find((l) => l.tenant_id === tenantId);
+        const activeLease = activeLeasByTenantId.get(tenantId);
         const unit = activeLease ? unitById.get(activeLease.unit_id) : null;
         const building = unit ? buildingById.get(unit.building_id) : null;
 
@@ -455,7 +464,7 @@ export default function AnalyticsPage() {
       })
       .filter((r) => r.totalPayments > 0)
       .sort((a, b) => b.collectedRate - a.collectedRate);
-  }, [collectionRecords, leases, activeLeases, tenantById, unitById, buildingById]);
+  }, [collectionRecords, leaseById, activeLeasByTenantId, tenantById, unitById, buildingById]);
 
   /* ── Historial de precios de renta ─────────────────────────────── */
   const rentHistory = useMemo(() => {

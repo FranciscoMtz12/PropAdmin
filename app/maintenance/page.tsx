@@ -599,6 +599,7 @@ export default function MaintenancePage() {
 
   /* ── Main tab ───────────────────────────────────────────────────── */
   const [activeMainTab, setActiveMainTab] = useState<MainTab>("tickets");
+  const [calendarLoaded, setCalendarLoaded] = useState(false);
 
   /* ── Shared data ────────────────────────────────────────────────── */
   const [buildings, setBuildings]   = useState<BuildingOption[]>([]);
@@ -690,6 +691,15 @@ export default function MaintenancePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams, tickets]);
 
+  /* Carga lazy del calendario: solo cuando el usuario abre ese tab */
+  useEffect(() => {
+    if (activeMainTab === "calendar" && !calendarLoaded && !loadingData && user?.company_id) {
+      setCalendarLoaded(true);
+      void loadCalendarData(user.company_id);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, calendarLoaded, loadingData, user?.company_id]);
+
   /* Cargar signed URLs cuando se expande un ticket con fotos */
   useEffect(() => {
     if (!expandedId) return;
@@ -772,52 +782,35 @@ export default function MaintenancePage() {
       setCompanyLogoUrl(cd.logo_url || "");
     }
 
-    await loadCalendarData(user?.company_id ?? null);
     setLoadingData(false);
   }
 
   async function loadCalendarData(companyId: string | null) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => companyId ? q.eq("company_id", companyId) : q;
-    const [{ data: buildData }, { data: logsData }] = await Promise.all([
-      co(supabase
-        .from("buildings")
-        .select("id, name, code, address"))
-        .is("deleted_at", null)
-        .order("name"),
 
-      co(supabase
-        .from("maintenance_logs")
-        .select(
-          "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
-        ))
-        .is("deleted_at", null)
-        .order("performed_at", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(1000),
-    ]);
+    // buildings already loaded by loadPageData — reuse to avoid redundant fetch
+    setCalendarBuildings(buildings.length > 0 ? buildings : []);
 
-    setCalendarBuildings((buildData as BuildingOption[]) || []);
+    const { data: logsData } = await co(supabase
+      .from("maintenance_logs")
+      .select(
+        "id, title, log_type, performed_at, next_due_at, status, asset_name_snapshot, asset_type_snapshot, category_name_snapshot, building_id, unit_id, asset_id"
+      ))
+      .is("deleted_at", null)
+      .order("performed_at", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(1000);
+
     const parsedLogs = (logsData as RecentLogRow[]) || [];
 
-    const buildingIds = Array.from(
-      new Set(parsedLogs.map((l) => l.building_id).filter(Boolean) as string[])
-    );
+    // Build building map from already-loaded state (avoids extra buildings query)
+    const buildingMap = new Map<string, BuildingOption>(buildings.map((b) => [b.id, b]));
+    let unitMap = new Map<string, UnitOption>();
+
     const unitIds = Array.from(
       new Set(parsedLogs.map((l) => l.unit_id).filter(Boolean) as string[])
     );
-
-    let buildingMap = new Map<string, BuildingOption>();
-    let unitMap     = new Map<string, UnitOption>();
-
-    if (buildingIds.length > 0) {
-      const { data } = await supabase
-        .from("buildings")
-        .select("id, name, code, address")
-        .in("id", buildingIds)
-        .is("deleted_at", null);
-      if (data) buildingMap = new Map((data as BuildingOption[]).map((b) => [b.id, b]));
-    }
 
     if (unitIds.length > 0) {
       const { data } = await supabase

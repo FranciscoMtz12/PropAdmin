@@ -618,40 +618,32 @@ export default function ServiciosPage() {
     const { year, month } = period;
 
     try {
-      const { data: buildingsData, error: bErr } = await co(supabase
-        .from("buildings")
-        .select("id, name, company_id"))
-        .is("deleted_at", null)
-        .order("name");
-      if (bErr) throw bErr;
+      const [buildingsRes, umRes, unitsRes, uiRes] = await Promise.all([
+        co(supabase.from("buildings").select("id, name, company_id"))
+          .is("deleted_at", null)
+          .order("name"),
+
+        co(supabase.from("building_utility_meters").select("*"))
+          .eq("active", true)
+          .is("deleted_at", null),
+
+        co(supabase.from("units").select("id, unit_number, building_id"))
+          .is("deleted_at", null),
+
+        co(supabase.from("building_utility_invoices").select("*"))
+          .eq("period_year", year)
+          .eq("period_month", month)
+          .is("deleted_at", null),
+      ]);
+
+      if (buildingsRes.error) throw buildingsRes.error;
+      const buildingsData = buildingsRes.data;
       if (!buildingsData?.length) {
         setGroups([]);
         setHasAnyMeters(false);
         setPageLoading(false);
         return;
       }
-
-      const bIds = (buildingsData as { id: string; name: string; company_id: string | null }[]).map(b => b.id);
-
-      const [umRes, unitsRes, uiRes] = await Promise.all([
-        supabase.from("building_utility_meters")
-          .select("*")
-          .in("building_id", bIds)
-          .eq("active", true)
-          .is("deleted_at", null),
-
-        supabase.from("units")
-          .select("id, unit_number, building_id")
-          .in("building_id", bIds)
-          .is("deleted_at", null),
-
-        supabase.from("building_utility_invoices")
-          .select("*")
-          .in("building_id", bIds)
-          .eq("period_year", year)
-          .eq("period_month", month)
-          .is("deleted_at", null),
-      ]);
 
       const utilMetersByBuilding = new Map<string, BuildingUtilityMeter[]>();
       const unitsByBuilding = new Map<string, { id: string; unit_number: string }[]>();
