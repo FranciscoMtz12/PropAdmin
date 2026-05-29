@@ -117,7 +117,9 @@ function classifyDOM(info) {
 
   /* ─── 3. Submit ─────────────────────────────────────────────────────── */
   const tSubmit = Date.now() - t0;
-  await page.click('button[type="submit"]');
+  // force:true because the Framer Motion exit animation of the hydration splash
+  // briefly keeps a transparent z=9999 div in the DOM (pointer-events not none).
+  await page.locator('button[type="submit"]').click({ force: true });
   console.log(`\n[t=0ms] Submit click`);
 
   /* ─── 4. Esperar hasta que /home esté estable ───────────────────────── */

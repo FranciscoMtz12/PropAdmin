@@ -102,7 +102,7 @@ export default function LoginPage() {
       await supabase.auth.signOut();
       return;
     }
-    router.push(profile.destination);
+    // RouteGuard handles the redirect — no competing router.push needed
   });
 
   const onActivate = activateForm.handleSubmit(async (data) => {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -55,6 +55,22 @@ export default function RouteGuard() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const [isValidating, setIsValidating] = useState(true);
+
+  // Welcome splash: fires when user authenticates from /login, clears on arrival at destination.
+  // This lets us suppress the splash on /login before submit while preserving it post-submit.
+  const [welcomeTransition, setWelcomeTransition] = useState(false);
+  const prevUserIdRef = useRef<string | undefined>(undefined);
+
+  useEffect(() => {
+    const curr = user?.id;
+    if (!prevUserIdRef.current && curr && pathname === "/login") setWelcomeTransition(true);
+    if (prevUserIdRef.current && !curr) setWelcomeTransition(false);
+    prevUserIdRef.current = curr;
+  }, [user?.id, pathname]);
+
+  useEffect(() => {
+    if (welcomeTransition && pathname && !isAdminPublicPath(pathname)) setWelcomeTransition(false);
+  }, [welcomeTransition, pathname]);
 
   useEffect(() => {
     if (!pathname || loading) return;
@@ -141,7 +157,8 @@ export default function RouteGuard() {
     if (adminPublic) { router.replace(adminHome); return; }
   }, [pathname, router, user, loading]);
 
-  const showSplash = loading || isValidating;
+  const adminPublicPage = pathname ? isAdminPublicPath(pathname) : false;
+  const showSplash = welcomeTransition || (!adminPublicPage && (loading || isValidating));
 
   return (
     <AnimatePresence>
