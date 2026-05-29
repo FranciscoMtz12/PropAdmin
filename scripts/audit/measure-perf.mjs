@@ -1,18 +1,23 @@
 /**
  * Performance measurement: mide tiempo hasta networkidle en cada página principal.
- * Requiere credenciales de admin con acceso a todas las secciones.
- * Run: node scripts/audit/measure-perf.mjs <email> <password>
+ * Credenciales en .env.local (no se versiona). Correr con:
+ *   node --env-file=.env.local scripts/audit/measure-perf.mjs
+ *
+ * Variables requeridas en .env.local:
+ *   SAPROA_AUDIT_EMAIL=<email>
+ *   SAPROA_AUDIT_PW=<password>
  *
  * Output: tabla página → ms → veredicto
  */
 import { chromium } from "playwright";
 
-const email    = process.argv[2] ?? "";
-const password = process.argv[3] ?? "";
+const email    = process.env.SAPROA_AUDIT_EMAIL ?? "";
+const password = process.env.SAPROA_AUDIT_PW    ?? "";
 const BASE_URL = "http://localhost:3000";
 
 if (!email || !password) {
-  console.error("Usage: node measure-perf.mjs <email> <password>");
+  console.error("Error: SAPROA_AUDIT_EMAIL y SAPROA_AUDIT_PW no están definidas.");
+  console.error("Asegúrate de tener .env.local y corre con: node --env-file=.env.local scripts/audit/measure-perf.mjs");
   process.exit(1);
 }
 
