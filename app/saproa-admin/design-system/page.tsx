@@ -7,25 +7,35 @@ import {
   Building2, Users, TrendingUp, AlertCircle,
   Plus, Settings, Eye, Loader2,
   Monitor, Tablet, Smartphone, Laptop,
+  X, Bell, FileText, Home, Star, Check, CreditCard,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell,
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip as RechartTooltip, ResponsiveContainer,
+  LineChart, Line, Legend,
 } from "recharts";
 
-import PageHeader from "@/components/PageHeader";
-import AppCard from "@/components/AppCard";
-import UiButton from "@/components/UiButton";
-import AppBadge from "@/components/AppBadge";
-import MetricCard from "@/components/MetricCard";
-import AppTable from "@/components/AppTable";
-import AppSelect from "@/components/AppSelect";
-import AppTabs from "@/components/AppTabs";
-import EntityCard from "@/components/EntityCard";
-import AppEmptyState from "@/components/AppEmptyState";
-import MetricCircles from "@/components/MetricCircles";
-import Modal from "@/components/Modal";
+import PageHeader        from "@/components/PageHeader";
+import AppCard           from "@/components/AppCard";
+import UiButton          from "@/components/UiButton";
+import AppBadge          from "@/components/AppBadge";
+import MetricCard        from "@/components/MetricCard";
+import AppTable          from "@/components/AppTable";
+import AppSelect         from "@/components/AppSelect";
+import AppTabs           from "@/components/AppTabs";
+import EntityCard        from "@/components/EntityCard";
+import AppEmptyState     from "@/components/AppEmptyState";
+import MetricCircles     from "@/components/MetricCircles";
+import Modal             from "@/components/Modal";
+import SectionCard       from "@/components/SectionCard";
+import AppGrid           from "@/components/AppGrid";
+import BuildingCategoryBadge from "@/components/BuildingCategoryBadge";
+import AppFormField      from "@/components/AppFormField";
+import SensitiveField    from "@/components/SensitiveField";
+import AppStatBar        from "@/components/AppStatBar";
+import AppIconBox        from "@/components/AppIconBox";
+import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -94,6 +104,15 @@ const BAR_DATA = [
   { mes: "May", ingresos: 55000, gastos: 38000 },
 ];
 
+const LINE_DATA = [
+  { mes: "Ene", ocupacion: 62, ingresos: 42 },
+  { mes: "Feb", ocupacion: 65, ingresos: 38 },
+  { mes: "Mar", ocupacion: 71, ingresos: 51 },
+  { mes: "Abr", ocupacion: 68, ingresos: 47 },
+  { mes: "May", ocupacion: 75, ingresos: 55 },
+  { mes: "Jun", ocupacion: 78, ingresos: 60 },
+];
+
 const METRIC_CIRCLES_DATA = [
   { value: "68%",  label: "Ocupac.",  color: "success" as const },
   { value: "12",   label: "Mant.",    color: "warning" as const },
@@ -142,6 +161,7 @@ const LIGHT_VARS: Record<string, string> = {
   "--icon-bg-amber":    "#FEF3C7", "--icon-color-amber":   "#B45309",
   "--icon-bg-red":      "#FEE2E2", "--icon-color-red":     "#B91C1C",
   "--icon-bg-blue":     "#EFF6FF", "--icon-color-blue":    "#1D4ED8",
+  "--icon-bg-purple":   "#F3E8FF", "--icon-color-purple":  "#7E22CE",
 };
 
 const DARK_VARS: Record<string, string> = {
@@ -181,6 +201,7 @@ const DARK_VARS: Record<string, string> = {
   "--icon-bg-amber":      "#1C1106", "--icon-color-amber":    "#FCD34D",
   "--icon-bg-red":        "#1C0507", "--icon-color-red":      "#F87171",
   "--icon-bg-blue":       "#0C1A3A", "--icon-color-blue":     "#60A5FA",
+  "--icon-bg-purple":     "#2E1065", "--icon-color-purple":   "#C084FC",
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -252,9 +273,36 @@ function SkeletonRow() {
   );
 }
 
+function DsToggle({ label, description, icon, checked, onChange, saving }: {
+  label: string; description: string; icon: ReactNode; checked: boolean; onChange: () => void; saving?: boolean;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: "12px 14px", borderRadius: "var(--border-radius-lg)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+        <div style={{ width: 32, height: 32, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-neutral)", color: "var(--icon-color-neutral)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          {icon}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{label}</p>
+          <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", margin: 0 }}>{description}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={checked}
+        onClick={onChange}
+        disabled={saving}
+        style={{ position: "relative", width: 44, height: 24, borderRadius: "var(--border-radius-lg)", border: "none", cursor: saving ? "wait" : "pointer", background: checked ? "var(--accent)" : "var(--border-strong)", transition: "background 0.2s", flexShrink: 0, opacity: saving ? 0.7 : 1 }}
+      >
+        <span style={{ position: "absolute", top: 2, left: checked ? "calc(100% - 22px)" : 2, width: 20, height: 20, borderRadius: "50%", background: "#fff", transition: "left 0.2s", boxShadow: "0 1px 3px rgba(0,0,0,0.25)" }} />
+      </button>
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
-// Panel width constant — used both for the fixed sidebar and the catalog's right padding.
 const PANEL_W = 264;
 
 export default function DesignSystemPage() {
@@ -265,10 +313,16 @@ export default function DesignSystemPage() {
   const [isDark, setIsDark]           = useState(false);
   const [notes, setNotes]             = useState("");
   const [showModal, setShowModal]     = useState(false);
+  const [showModal640, setShowModal640] = useState(false);
+  const [showModal760, setShowModal760] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [reportDone, setReportDone]   = useState(false);
   const [activeTab, setActiveTab]     = useState("cards");
+  const [activeTab2, setActiveTab2]   = useState("resumen");
   const [viewport, setViewport]       = useState<ViewportSize>(null);
   const [customColor, setCustomColor] = useState<string | null>(null);
+  const [toggle1, setToggle1]         = useState(true);
+  const [toggle2, setToggle2]         = useState(false);
 
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
@@ -331,7 +385,6 @@ ${notes.trim() || "(sin notas)"}
     setTimeout(() => setReportDone(false), 4000);
   }, [radius, spacing, accent, theme, isDark, notes, viewport, viewportPreset, customColor, themeLabel]);
 
-  // ── catalogVars applied to the fixed panel via inline style ──────────────
   const panelStyle = {
     position: "fixed" as const,
     right: 0,
@@ -343,21 +396,17 @@ ${notes.trim() || "(sin notas)"}
     zIndex: 50,
     padding: "18px",
     boxSizing: "border-box" as const,
-    // CSS vars applied directly so dark mode / radius / accent work on the panel
     ...(catalogVars as unknown as CSSProperties),
     background: "var(--bg-card)",
     borderLeft: "1px solid var(--border-default)",
     transition: "background 0.3s, border-color 0.3s",
   };
 
+  const labelStyle: CSSProperties = { display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "6px" };
+  const inputBase: CSSProperties  = { width: "100%", padding: "10px 12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" };
+
   return (
-    // Root wrapper — MainContentWrapper exempts this path from maxWidth:1280, so
-    // this div fills the full area between the left sidebar spacer and screen edge.
-    <div
-      className="ds-page-wrapper"
-      style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}
-    >
-      {/* ── CSS local ─── */}
+    <div className="ds-page-wrapper" style={{ width: "100%", minWidth: 0, boxSizing: "border-box" }}>
       <style>{`
         .ds-show-circles .metric-circles-mobile-only {
           display: flex !important;
@@ -367,6 +416,11 @@ ${notes.trim() || "(sin notas)"}
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.4; }
         }
+        @keyframes ds-spin {
+          from { transform: rotate(0deg); }
+          to   { transform: rotate(360deg); }
+        }
+        .ds-spin { animation: ds-spin 1s linear infinite; display: inline-flex; }
         .ds-range {
           -webkit-appearance: none; appearance: none;
           width: 100%; height: 6px;
@@ -387,7 +441,6 @@ ${notes.trim() || "(sin notas)"}
           background: var(--accent); cursor: pointer;
           border: 2px solid var(--bg-card);
         }
-        /* Mobile: stack vertically, panel goes to top, full right padding */
         @media (max-width: 900px) {
           .ds-page-wrapper { display: flex; flex-direction: column; }
           .ds-controls-sidebar {
@@ -405,7 +458,6 @@ ${notes.trim() || "(sin notas)"}
         }
       `}</style>
 
-      {/* ── Header con padding estándar ─── */}
       <div style={{ padding: "24px 32px 0", boxSizing: "border-box" }}>
         <PageHeader
           title="Sistema de Diseño"
@@ -414,12 +466,6 @@ ${notes.trim() || "(sin notas)"}
         />
       </div>
 
-      {/* ════════════════════════════════════════════════════════════════
-          ÁREA DEL CATÁLOGO
-          padding-right = PANEL_W + 16px de respiro → el catálogo NUNCA
-          se monta bajo el panel fijo, en cualquier ancho de pantalla.
-          padding-left = 32px estándar de la app.
-      ════════════════════════════════════════════════════════════════ */}
       <div
         className="ds-catalog-wrapper"
         style={{
@@ -429,8 +475,6 @@ ${notes.trim() || "(sin notas)"}
           transition: "all 0.3s ease",
         }}
       >
-
-        {/* ── Catálogo restringido al viewport seleccionado ─── */}
         <div style={{ maxWidth: viewport !== null ? `${viewport}px` : "none", margin: "0 auto", transition: "max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1)" }}>
           <div
             className="ds-catalog"
@@ -448,6 +492,13 @@ ${notes.trim() || "(sin notas)"}
                 <MetricCard label="Vacantes" value="12" icon={<Eye size={18} />} variant="blue" />
               </div>
 
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>MetricCard — con helper (subtexto bajo el valor)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px", marginBottom: "16px" }}>
+                <MetricCard label="Reserva mant." value="$42k" helper="Actualizado hoy" icon={<TrendingUp size={18} />} variant="green" />
+                <MetricCard label="Mora promedio" value="18 días" helper="↑ 3 días vs mes ant." icon={<AlertCircle size={18} />} variant="amber" />
+                <MetricCard label="Cobranza" value="94%" helper="Meta: 95%" icon={<Users size={18} />} variant="blue" />
+              </div>
+
               <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>AppCard — base genérica</p>
               <AppCard style={{ marginBottom: "16px" }}>
                 <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 600 }}>AppCard genérico</p>
@@ -455,7 +506,7 @@ ${notes.trim() || "(sin notas)"}
               </AppCard>
 
               <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>EntityCard — con métricas y acciones</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px", marginBottom: "16px" }}>
                 <EntityCard
                   title="Torre Reforma 222" subtitle="Av. Reforma 222, CDMX"
                   badge={<AppBadge variant="green">Activo</AppBadge>}
@@ -469,19 +520,69 @@ ${notes.trim() || "(sin notas)"}
                   actions={<UiButton variant="secondary" style={{ fontSize: "0.75rem", padding: "6px 10px" }}>Ver</UiButton>}
                 />
               </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>EntityCard — con statusIndicator (caja visual 72×72 a la derecha)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
+                <EntityCard
+                  title="Piso 12B" subtitle="Torre Reforma"
+                  badge={<AppBadge variant="red">Morosa</AppBadge>}
+                  statusIndicator={
+                    <div style={{ width: 72, height: 72, borderRadius: "var(--border-radius-md)", background: "var(--metric-bg-red)", border: "1px solid var(--metric-border-red)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 4 }}>
+                      <AlertCircle size={20} style={{ color: "var(--metric-value-red)" }} />
+                      <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--metric-value-red)" }}>$12k</span>
+                    </div>
+                  }
+                  metrics={[{ label: "Meses vencidos", value: 2, color: "var(--metric-value-red)" }]}
+                />
+                <EntityCard
+                  title="Local B-04" subtitle="Pabellón Polanco"
+                  badge={<AppBadge variant="green">Al corriente</AppBadge>}
+                  statusIndicator={
+                    <div style={{ width: 72, height: 72, borderRadius: "var(--border-radius-md)", background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 4 }}>
+                      <Check size={20} style={{ color: "var(--metric-value-green)" }} />
+                      <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--metric-value-green)" }}>OK</span>
+                    </div>
+                  }
+                  metrics={[{ label: "Renta", value: "$18k", color: "var(--metric-value-green)" }]}
+                />
+              </div>
             </CatalogSection>
 
             {/* ── 2. Botones ─── */}
             <CatalogSection title="Botones" componentNames={["UiButton", "AppTabs"]}>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px" }}>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Variantes principales</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
                 <UiButton variant="primary" icon={<Plus size={15} />}>Primario</UiButton>
                 <UiButton variant="secondary" icon={<Settings size={15} />}>Secundario</UiButton>
                 <UiButton variant="ghost" icon={<Eye size={15} />}>Ghost</UiButton>
-                <UiButton variant="primary" disabled icon={<Loader2 size={15} />}>Cargando…</UiButton>
                 <UiButton variant="secondary" disabled>Deshabilitado</UiButton>
               </div>
-              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>AppTabs — navegación horizontal con conteo</p>
-              <AppTabs activeKey={activeTab} onChange={setActiveTab} items={[{ key: "cards", label: "Cards", count: 3 }, { key: "botones", label: "Botones", count: 5 }, { key: "tablas", label: "Tablas", count: 1 }, { key: "graficas", label: "Gráficas" }]} />
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>UiButton como link (href → &lt;a&gt;)</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
+                <UiButton variant="primary" href="#">Link primario</UiButton>
+                <UiButton variant="secondary" href="#" icon={<Eye size={15} />}>Ver detalle</UiButton>
+                <UiButton variant="ghost" href="#">Ghost link</UiButton>
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>UiButton loading (spinner animado, disabled)</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "20px" }}>
+                <UiButton variant="primary" disabled icon={<span className="ds-spin"><Loader2 size={15} /></span>}>Guardando…</UiButton>
+                <UiButton variant="secondary" disabled icon={<span className="ds-spin"><Loader2 size={15} /></span>}>Cargando…</UiButton>
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>AppTabs — con conteo</p>
+              <div style={{ marginBottom: "16px" }}>
+                <AppTabs activeKey={activeTab} onChange={setActiveTab} items={[{ key: "cards", label: "Cards", count: 3 }, { key: "botones", label: "Botones", count: 5 }, { key: "tablas", label: "Tablas", count: 1 }, { key: "graficas", label: "Gráficas" }]} />
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>AppTabs — con ícono, notifDot y pendingDot</p>
+              <AppTabs activeKey={activeTab2} onChange={setActiveTab2} items={[
+                { key: "resumen", label: "Resumen",  icon: <Home size={14} /> },
+                { key: "pagos",   label: "Pagos",    icon: <CreditCard size={14} />, count: 4 },
+                { key: "docs",    label: "Docs",     icon: <FileText size={14} />,   notifDot: { count: 2, color: "#ef4444" } },
+                { key: "notas",   label: "Notas",    icon: <Star size={14} />,       pendingDot: true },
+              ]} />
             </CatalogSection>
 
             {/* ── 3. Badges ─── */}
@@ -509,18 +610,41 @@ ${notes.trim() || "(sin notas)"}
 
             {/* ── 5. Tablas ─── */}
             <CatalogSection title="Tablas" componentNames={["AppTable"]}>
-              <AppTable columns={TABLE_COLS} rows={TABLE_ROWS} minWidth={400} />
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Con datos</p>
+              <div style={{ marginBottom: "16px" }}>
+                <AppTable columns={TABLE_COLS} rows={TABLE_ROWS} minWidth={400} />
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Empty state — borde dashed (default)</p>
+              <div style={{ marginBottom: "16px" }}>
+                <AppTable columns={TABLE_COLS} rows={[]} minWidth={400} />
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Empty state custom + minWidth=0 (para grids estrechos)</p>
+              <AppTable
+                columns={TABLE_COLS.slice(0, 2)}
+                rows={[]}
+                minWidth={0}
+                emptyState={
+                  <div style={{ textAlign: "center", padding: "16px 0" }}>
+                    <Building2 size={28} style={{ color: "var(--text-muted)", marginBottom: 8 }} />
+                    <p style={{ margin: 0, fontWeight: 600, color: "var(--text-secondary)" }}>Sin inmuebles</p>
+                    <p style={{ margin: "4px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>Agrega uno para comenzar.</p>
+                  </div>
+                }
+              />
             </CatalogSection>
 
             {/* ── 6. Inputs y selects ─── */}
             <CatalogSection title="Inputs y selects" componentNames={["AppSelect"]}>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px" }}>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Estados base</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px", marginBottom: "16px" }}>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "6px" }}>Campo de texto</label>
-                  <input type="text" placeholder="Buscar inmueble…" style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-input)", color: "var(--text-primary)", fontSize: "0.875rem", outline: "none", boxSizing: "border-box" }} />
+                  <label style={labelStyle}>Campo de texto</label>
+                  <input type="text" placeholder="Buscar inmueble…" style={inputBase} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "6px" }}>Select</label>
+                  <label style={labelStyle}>Select</label>
                   <AppSelect>
                     <option>Seleccionar tipo</option>
                     <option>Oficinas</option>
@@ -530,8 +654,39 @@ ${notes.trim() || "(sin notas)"}
                   </AppSelect>
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "6px" }}>Deshabilitado</label>
-                  <input type="text" disabled value="Solo lectura" style={{ width: "100%", padding: "10px 12px", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", background: "var(--bg-table-header)", color: "var(--text-muted)", fontSize: "0.875rem", outline: "none", boxSizing: "border-box", cursor: "not-allowed", opacity: 0.7 }} />
+                  <label style={labelStyle}>Deshabilitado</label>
+                  <input type="text" disabled value="Solo lectura" style={{ ...inputBase, background: "var(--bg-table-header)", color: "var(--text-muted)", cursor: "not-allowed", opacity: 0.7 }} />
+                </div>
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Input — focus (borde acento) y error (borde rojo + mensaje)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px", marginBottom: "16px" }}>
+                <div>
+                  <label style={labelStyle}>Focus</label>
+                  <input type="text" defaultValue="Av. Reforma 222" style={{ ...inputBase, border: `2px solid ${accent}`, outline: "none" }} />
+                </div>
+                <div>
+                  <label style={labelStyle}>Error</label>
+                  <input type="text" defaultValue="correo-invalido" style={{ ...inputBase, border: "2px solid var(--badge-text-red)" }} />
+                  <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "var(--badge-text-red)", fontWeight: 600 }}>Formato de correo inválido</p>
+                </div>
+              </div>
+
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>AppSelect — disabled y error (override via style prop)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "14px" }}>
+                <div>
+                  <label style={labelStyle}>Select disabled</label>
+                  <AppSelect disabled style={{ opacity: 0.6, cursor: "not-allowed" }}>
+                    <option>Seleccionar tipo</option>
+                  </AppSelect>
+                </div>
+                <div>
+                  <label style={labelStyle}>Select error</label>
+                  <AppSelect style={{ border: "2px solid var(--badge-text-red)" }}>
+                    <option>— Elige una opción —</option>
+                    <option>Oficinas</option>
+                  </AppSelect>
+                  <p style={{ margin: "6px 0 0", fontSize: "0.75rem", color: "var(--badge-text-red)", fontWeight: 600 }}>Campo requerido</p>
                 </div>
               </div>
             </CatalogSection>
@@ -544,7 +699,7 @@ ${notes.trim() || "(sin notas)"}
             </CatalogSection>
 
             {/* ── 8. Gráficas ─── */}
-            <CatalogSection title="Gráficas" componentNames={["Recharts · PieChart", "Recharts · BarChart"]}>
+            <CatalogSection title="Gráficas" componentNames={["Recharts · PieChart", "Recharts · BarChart", "Recharts · LineChart"]}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "16px" }}>
                 <AppCard>
                   <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "12px" }}>Ocupación por estado</p>
@@ -579,15 +734,34 @@ ${notes.trim() || "(sin notas)"}
                     </BarChart>
                   </ResponsiveContainer>
                 </AppCard>
+
+                <AppCard>
+                  <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-secondary)", marginBottom: "12px" }}>Evolución mensual — LineChart</p>
+                  <ResponsiveContainer width="100%" height={200}>
+                    <LineChart data={LINE_DATA} margin={{ top: 5, right: 16, left: 0, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--chart-grid)" vertical={false} />
+                      <XAxis dataKey="mes" tick={{ fill: "var(--chart-axis)", fontSize: 12 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "var(--chart-axis)", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <RechartTooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "8px", color: "var(--text-primary)", fontSize: "0.8125rem" }} />
+                      <Legend wrapperStyle={{ fontSize: "0.75rem", color: "var(--text-secondary)" }} />
+                      <Line type="monotone" dataKey="ocupacion" stroke={accent}    strokeWidth={2} dot={{ fill: accent,    r: 4 }} name="Ocupación %" />
+                      <Line type="monotone" dataKey="ingresos"  stroke="#94A3B8"   strokeWidth={2} dot={{ fill: "#94A3B8", r: 4 }} name="Ingresos k" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </AppCard>
               </div>
             </CatalogSection>
 
             {/* ── 9. Modales ─── */}
-            <CatalogSection title="Modales" componentNames={["Modal"]}>
-              <UiButton variant="primary" onClick={() => setShowModal(true)} icon={<Eye size={15} />}>
-                Abrir modal de ejemplo
-              </UiButton>
-              <Modal open={showModal} title="Modal de ejemplo" subtitle="Responde a radius, acento y modo del sandbox" onClose={() => setShowModal(false)} maxWidth="480px">
+            <CatalogSection title="Modales" componentNames={["Modal", "DeleteConfirmModal"]}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
+                <UiButton variant="secondary" onClick={() => setShowModal(true)}>Modal 480px</UiButton>
+                <UiButton variant="secondary" onClick={() => setShowModal640(true)}>Modal 640px</UiButton>
+                <UiButton variant="secondary" onClick={() => setShowModal760(true)}>Modal 760px (default)</UiButton>
+                <UiButton variant="secondary" icon={<AlertCircle size={15} />} onClick={() => setShowDeleteModal(true)}>DeleteConfirmModal</UiButton>
+              </div>
+
+              <Modal open={showModal} title="Modal de ejemplo" subtitle="maxWidth='480px' — responde a radius, acento y modo" onClose={() => setShowModal(false)} maxWidth="480px">
                 <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "16px", lineHeight: 1.6 }}>Los componentes dentro del modal heredan las CSS vars del sandbox.</p>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
                   <AppBadge variant="green">Activo</AppBadge>
@@ -600,6 +774,30 @@ ${notes.trim() || "(sin notas)"}
                   <UiButton variant="primary" onClick={() => setShowModal(false)}>Confirmar</UiButton>
                 </div>
               </Modal>
+
+              <Modal open={showModal640} title="Modal 640px" subtitle="maxWidth='640px'" onClose={() => setShowModal640(false)} maxWidth="640px">
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "16px" }}>Ancho intermedio para formularios de media complejidad.</p>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
+                  <UiButton variant="ghost" onClick={() => setShowModal640(false)}>Cancelar</UiButton>
+                  <UiButton variant="primary" onClick={() => setShowModal640(false)}>Confirmar</UiButton>
+                </div>
+              </Modal>
+
+              <Modal open={showModal760} title="Modal 760px (default)" subtitle="maxWidth='760px' — ancho por defecto del componente Modal" onClose={() => setShowModal760(false)} maxWidth="760px">
+                <p style={{ color: "var(--text-muted)", fontSize: "0.875rem", marginBottom: "16px" }}>Ancho default para formularios complejos y wizards.</p>
+                <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end", marginTop: "20px" }}>
+                  <UiButton variant="ghost" onClick={() => setShowModal760(false)}>Cancelar</UiButton>
+                  <UiButton variant="primary" onClick={() => setShowModal760(false)}>Confirmar</UiButton>
+                </div>
+              </Modal>
+
+              <DeleteConfirmModal
+                open={showDeleteModal}
+                title="Eliminar inmueble"
+                description="¿Confirmas que deseas eliminar 'Torre Reforma 222'? El registro se ocultará del sistema."
+                onConfirm={() => setShowDeleteModal(false)}
+                onCancel={() => setShowDeleteModal(false)}
+              />
             </CatalogSection>
 
             {/* ── 10. Empty states y loading ─── */}
@@ -620,18 +818,269 @@ ${notes.trim() || "(sin notas)"}
               </div>
             </CatalogSection>
 
+            {/* ── 11. SectionCard ─── */}
+            <CatalogSection title="SectionCard" componentNames={["SectionCard"]}>
+              <div style={{ display: "grid", gap: "16px" }}>
+                <SectionCard title="Sección básica" subtitle="Subtítulo descriptivo (visible cuando showDescriptions=true en la app)">
+                  <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+                    Contenido de la sección. Usa AppCard internamente con padding 24px.
+                  </p>
+                </SectionCard>
+                <SectionCard
+                  title="Con ícono y acción"
+                  subtitle="El ícono va en AppIconBox variant=neutral; la acción al extremo derecho del header"
+                  icon={<Building2 size={20} />}
+                  action={<UiButton variant="primary" icon={<Plus size={14} />}>Nuevo</UiButton>}
+                >
+                  <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+                    SectionCard es el wrapper estándar para secciones, formularios y listas de la app.
+                  </p>
+                </SectionCard>
+              </div>
+            </CatalogSection>
+
+            {/* ── 12. AppGrid ─── */}
+            <CatalogSection title="AppGrid" componentNames={["AppGrid"]}>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>minWidth=200 — auto-fit responsive</p>
+              <AppGrid minWidth={200} gap={12} style={{ marginBottom: "16px" }}>
+                {["Item A", "Item B", "Item C", "Item D", "Item E", "Item F"].map((label) => (
+                  <AppCard key={label}>
+                    <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)", textAlign: "center" }}>{label}</p>
+                  </AppCard>
+                ))}
+              </AppGrid>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>minWidth=100 — más columnas en el mismo ancho</p>
+              <AppGrid minWidth={100} gap={8}>
+                {["1","2","3","4","5","6","7","8"].map((n) => (
+                  <div key={n} style={{ padding: "10px", borderRadius: "var(--border-radius-md)", background: "var(--metric-bg-blue)", border: "1px solid var(--metric-border-blue)", textAlign: "center", fontSize: "0.875rem", fontWeight: 700, color: "var(--metric-value-blue)" }}>{n}</div>
+                ))}
+              </AppGrid>
+            </CatalogSection>
+
+            {/* ── 13. BuildingCategoryBadge ─── */}
+            <CatalogSection title="BuildingCategoryBadge" componentNames={["BuildingCategoryBadge"]}>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+                <BuildingCategoryBadge category="residential" />
+                <BuildingCategoryBadge category="commercial" />
+                <BuildingCategoryBadge category="industrial" />
+                <BuildingCategoryBadge category="mixed_use" />
+                <BuildingCategoryBadge category="house" />
+                <BuildingCategoryBadge category="land" />
+                <BuildingCategoryBadge category={null} />
+              </div>
+            </CatalogSection>
+
+            {/* ── 14. AppFormField ─── */}
+            <CatalogSection title="AppFormField" componentNames={["AppFormField"]}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "0 16px" }}>
+                <AppFormField label="Campo básico">
+                  <input type="text" placeholder="Nombre del inmueble…" style={inputBase} />
+                </AppFormField>
+                <AppFormField label="Con helper text" helperText="Máximo 12 caracteres alfanuméricos.">
+                  <input type="text" placeholder="RFC…" style={inputBase} />
+                </AppFormField>
+                <AppFormField label="Requerido con error" required error="Este campo es requerido.">
+                  <input type="text" placeholder="Dirección…" style={{ ...inputBase, border: "2px solid var(--badge-text-red)" }} />
+                </AppFormField>
+              </div>
+            </CatalogSection>
+
+            {/* ── 15. SensitiveField ─── */}
+            <CatalogSection title="SensitiveField" componentNames={["SensitiveField"]}>
+              <AppCard>
+                <div style={{ display: "grid", gap: "10px" }}>
+                  {([
+                    { label: "RFC",             type: "rfc"     as const, value: "MATF850101AB3" },
+                    { label: "Teléfono",        type: "phone"   as const, value: "5512345678" },
+                    { label: "Email",           type: "email"   as const, value: "francisco@empresa.com" },
+                    { label: "Cuenta bancaria", type: "bank"    as const, value: "1234567890123456" },
+                    { label: "Genérico",        type: "generic" as const, value: "dato-sensitivo-xyz123" },
+                  ]).map(({ label, type, value }) => (
+                    <div key={type} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", minWidth: 130 }}>{label}</span>
+                      <SensitiveField value={value} type={type} />
+                    </div>
+                  ))}
+                </div>
+              </AppCard>
+            </CatalogSection>
+
+            {/* ── 16. AppStatBar ─── */}
+            <CatalogSection title="AppStatBar" componentNames={["AppStatBar"]}>
+              <div style={{ display: "grid", gap: "16px" }}>
+                <AppStatBar
+                  title="Ocupación del portafolio"
+                  segments={[
+                    { label: "Ocupadas", value: 68, color: accent },
+                    { label: "Vacantes", value: 18, color: "#94A3B8" },
+                    { label: "En obras", value: 9,  color: "#f59e0b" },
+                    { label: "Reservas", value: 5,  color: "#60a5fa" },
+                  ]}
+                />
+                <AppStatBar
+                  title="Estado de contratos"
+                  totalLabel="89 contratos"
+                  segments={[
+                    { label: "Vigentes",    value: 72, color: "#22c55e" },
+                    { label: "Por vencer",  value: 11, color: "#f59e0b" },
+                    { label: "Vencidos",    value: 6,  color: "#ef4444" },
+                  ]}
+                />
+              </div>
+            </CatalogSection>
+
+            {/* ── 17. AppIconBox ─── */}
+            <CatalogSection title="AppIconBox" componentNames={["AppIconBox"]}>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>6 variantes semánticas (size=44 default)</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
+                {([
+                  { variant: "neutral" as const, icon: <Settings size={20} /> },
+                  { variant: "green"   as const, icon: <Check size={20} /> },
+                  { variant: "amber"   as const, icon: <AlertCircle size={20} /> },
+                  { variant: "red"     as const, icon: <X size={20} /> },
+                  { variant: "blue"    as const, icon: <Bell size={20} /> },
+                  { variant: "purple"  as const, icon: <Star size={20} /> },
+                ]).map(({ variant, icon }) => (
+                  <div key={variant} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                    <AppIconBox variant={variant}>{icon}</AppIconBox>
+                    <code style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>{variant}</code>
+                  </div>
+                ))}
+              </div>
+              <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "8px" }}>Distintos size y radius</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "12px", alignItems: "flex-end" }}>
+                <AppIconBox variant="blue"    size={28} radius={6}><Bell size={14} /></AppIconBox>
+                <AppIconBox variant="green"   size={36} radius={10}><Check size={16} /></AppIconBox>
+                <AppIconBox variant="amber"   size={44} radius={14}><AlertCircle size={18} /></AppIconBox>
+                <AppIconBox variant="neutral" size={56} radius={18}><Settings size={22} /></AppIconBox>
+                <AppIconBox variant="red"     size={44} radius="50%"><X size={18} /></AppIconBox>
+                <AppIconBox variant="purple"  size={44} radius="var(--border-radius-xl)"><Star size={18} /></AppIconBox>
+              </div>
+            </CatalogSection>
+
+            {/* ── 18. Toggle / Switch ─── */}
+            <CatalogSection title="Toggle / Switch" componentNames={["SettingsModal → ToggleRow"]}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "12px" }}>
+                Componente interno de SettingsModal. La función <code style={{ fontSize: "0.6875rem" }}>ToggleRow</code> no está exportada; se replica aquí como <code style={{ fontSize: "0.6875rem" }}>DsToggle</code>.
+              </p>
+              <AppCard>
+                <div style={{ display: "grid", gap: "8px" }}>
+                  <DsToggle
+                    label="Modo oscuro"
+                    description="Cambiar entre tema claro y oscuro"
+                    icon={<Moon size={15} />}
+                    checked={toggle1}
+                    onChange={() => setToggle1((v) => !v)}
+                  />
+                  <DsToggle
+                    label="Mostrar descripciones"
+                    description="Subtítulos grises bajo los títulos de sección"
+                    icon={<FileText size={15} />}
+                    checked={toggle2}
+                    onChange={() => setToggle2((v) => !v)}
+                  />
+                  <DsToggle
+                    label="Estado saving / disabled"
+                    description="opacity 0.7, cursor wait"
+                    icon={<Settings size={15} />}
+                    checked={false}
+                    onChange={() => {}}
+                    saving
+                  />
+                </div>
+              </AppCard>
+            </CatalogSection>
+
+            {/* ── 19. Checkbox ─── */}
+            <CatalogSection title="Checkbox" componentNames={["<input type='checkbox'>"]}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "12px" }}>
+                No existe un componente AppCheckbox — se usa el elemento nativo con <code style={{ fontSize: "0.6875rem" }}>accentColor: accent</code> para respetar el color de tema.
+              </p>
+              <AppCard>
+                <div style={{ display: "grid", gap: "12px" }}>
+                  {([
+                    { label: "Opción sin marcar",              checked: false, disabled: false },
+                    { label: "Opción marcada",                 checked: true,  disabled: false },
+                    { label: "Deshabilitada sin marcar",       checked: false, disabled: true  },
+                    { label: "Deshabilitada y marcada",        checked: true,  disabled: true  },
+                  ]).map(({ label, checked, disabled }, i) => (
+                    <label key={i} style={{ display: "flex", alignItems: "center", gap: "10px", cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.6 : 1 }}>
+                      <input
+                        type="checkbox"
+                        defaultChecked={checked}
+                        disabled={disabled}
+                        style={{ width: 18, height: 18, accentColor: accent, cursor: disabled ? "not-allowed" : "pointer" }}
+                      />
+                      <span style={{ fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: checked ? 600 : 400 }}>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </AppCard>
+            </CatalogSection>
+
+            {/* ── 20. Toast / Notificación ─── */}
+            <CatalogSection title="Toast / Notificación" componentNames={["react-hot-toast"]}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "12px" }}>
+                Apariencia visual estática. En la app se disparan con <code style={{ fontSize: "0.6875rem" }}>toast.success()</code> / <code style={{ fontSize: "0.6875rem" }}>toast.error()</code>.
+              </p>
+              <div style={{ display: "grid", gap: "10px", maxWidth: 380 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-md)" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--metric-bg-green)", border: "1px solid var(--metric-border-green)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Check size={14} style={{ color: "var(--metric-value-green)" }} />
+                  </div>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Guardado correctamente</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "var(--border-radius-lg)", background: "var(--bg-card)", border: "1px solid var(--border-default)", boxShadow: "var(--shadow-md)" }}>
+                  <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--metric-bg-red)", border: "1px solid var(--metric-border-red)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <X size={14} style={{ color: "var(--metric-value-red)" }} />
+                  </div>
+                  <span style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)" }}>Error al guardar los cambios</span>
+                </div>
+              </div>
+            </CatalogSection>
+
+            {/* ── 21. ImpersonationBanner + GroupBanner ─── */}
+            <CatalogSection title="ImpersonationBanner + GroupBanner" componentNames={["ImpersonationBanner", "GroupBanner"]}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "12px" }}>
+                Ambos componentes requieren ImpersonationContext activo y retornan <code style={{ fontSize: "0.6875rem" }}>null</code> sin él. Se muestra su apariencia visual estática.
+              </p>
+              <div style={{ display: "grid", gap: "12px" }}>
+                {/* ImpersonationBanner — visual estática */}
+                <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--border-radius-md)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366F1", flexShrink: 0 }} />
+                  <Eye size={14} color="#6366F1" style={{ flexShrink: 0 }} />
+                  <span style={{ flex: 1, fontSize: "0.8125rem", color: "#6366F1", fontWeight: 600, lineHeight: 1.4 }}>
+                    Vista simulada · Fra-Mar · Administración (admin@fra-mar.mx)
+                  </span>
+                  <button type="button" style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(99,102,241,0.4)", background: "transparent", color: "#6366F1", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                    Salir de vista simulada
+                  </button>
+                </div>
+
+                {/* GroupBanner — visual estática */}
+                <div style={{ background: "rgba(201,168,76,0.08)", border: "1px solid rgba(201,168,76,0.2)", borderRadius: "var(--border-radius-md)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                  <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "#C9A84C", whiteSpace: "nowrap" }}>Grupo MATZ</span>
+                  <div style={{ width: 1, height: 22, background: "rgba(201,168,76,0.3)", flexShrink: 0 }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    {[
+                      { label: "MT", color: "#FF6600", active: true  },
+                      { label: "SA", color: "#6366F1", active: true  },
+                      { label: "PM", color: "#808080", active: false },
+                    ].map((co) => (
+                      <div key={co.label} style={{ width: 26, height: 26, borderRadius: "50%", background: co.color, display: "flex", alignItems: "center", justifyContent: "center", opacity: co.active ? 1 : 0.3, border: co.active ? "2px solid rgba(255,255,255,0.35)" : "2px solid transparent", flexShrink: 0 }}>
+                        <span style={{ fontSize: "0.5625rem", fontWeight: 700, color: "#fff", userSelect: "none" }}>{co.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CatalogSection>
+
           </div>
         </div>
-        {/* /viewport-constrained */}
       </div>
-      {/* /ds-catalog-wrapper */}
 
-      {/* ════════════════════════════════════════════════════════════════
-          PANEL DE CONTROLES — sidebar fija al borde derecho de la pantalla.
-          position:fixed + right:0 → siempre pegada al borde, sin importar
-          el ancho del viewport ni el maxWidth del contenido central.
-          CSS vars aplicadas directamente en panelStyle.
-      ════════════════════════════════════════════════════════════════ */}
+      {/* ── Panel de controles ─── */}
       <div className="ds-controls-sidebar" style={panelStyle}>
 
         <h2 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "18px", letterSpacing: "0.01em" }}>
@@ -650,16 +1099,7 @@ ${notes.trim() || "(sin notas)"}
                   type="button"
                   title={`${label} — ${VIEWPORT_PRESETS.find((p) => p.value === value)?.display}`}
                   onClick={() => setViewport(value)}
-                  style={{
-                    display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px",
-                    padding: "7px 6px",
-                    borderRadius: "var(--border-radius-md)",
-                    border: active ? `1px solid ${accent}` : "1px solid var(--border-default)",
-                    background: active ? accent : "var(--bg-card)",
-                    color: active ? "#fff" : "var(--text-secondary)",
-                    fontSize: "0.75rem", fontWeight: 600, cursor: "pointer",
-                    transition: "all 0.15s", whiteSpace: "nowrap",
-                  }}
+                  style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "7px 6px", borderRadius: "var(--border-radius-md)", border: active ? `1px solid ${accent}` : "1px solid var(--border-default)", background: active ? accent : "var(--bg-card)", color: active ? "#fff" : "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap" }}
                 >
                   <Icon size={12} />
                   <span>{label}</span>
@@ -680,7 +1120,7 @@ ${notes.trim() || "(sin notas)"}
           </div>
         </div>
 
-        {/* ── Espaciado entre elementos ─── */}
+        {/* ── Espaciado ─── */}
         <div style={{ marginBottom: "18px" }}>
           <CtrlLabel label="Espaciado entre elementos" value={`${spacing}px`} hint="Gap entre ítems del catálogo" />
           <input type="range" className="ds-range" min={2} max={8} step={1} value={spacing} onChange={(e) => setSpacing(Number(e.target.value))} />
@@ -694,14 +1134,12 @@ ${notes.trim() || "(sin notas)"}
         {/* ── Color de acento ─── */}
         <div style={{ marginBottom: "18px" }}>
           <CtrlLabel label="Color de acento" value={accent === ACCENT_BASE.value ? "SAPROA" : ACCENT_COMPANIES.find((o) => o.value === accent)?.company ?? "Custom"} />
-
           <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>Base plataforma</p>
           <div style={{ marginBottom: "10px" }}>
             <button type="button" title={`SAPROA — ${ACCENT_BASE.value}`} onClick={() => setAccent(ACCENT_BASE.value)}
               style={{ width: "32px", height: "32px", borderRadius: "50%", background: ACCENT_BASE.value, border: accent === ACCENT_BASE.value ? "3px solid var(--text-primary)" : "2px solid var(--border-default)", cursor: "pointer", transform: accent === ACCENT_BASE.value ? "scale(1.18)" : "scale(1)", boxShadow: accent === ACCENT_BASE.value ? `0 0 0 3px ${ACCENT_BASE.value}40` : "none", transition: "transform 0.15s, box-shadow 0.15s" }}
             />
           </div>
-
           <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>Empresas</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "8px", marginBottom: "10px" }}>
             {ACCENT_COMPANIES.map((opt) => (
@@ -710,7 +1148,6 @@ ${notes.trim() || "(sin notas)"}
               />
             ))}
           </div>
-
           <p style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-muted)", marginBottom: "6px" }}>Personalizado (sesión)</p>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             {customColor && (
@@ -795,9 +1232,7 @@ ${notes.trim() || "(sin notas)"}
         </div>
 
       </div>
-      {/* /ds-controls-sidebar */}
 
     </div>
-    // /ds-page-wrapper
   );
 }
