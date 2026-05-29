@@ -1041,8 +1041,8 @@ export default function SettingsPage() {
             <SectionCard title="Tema de interfaz" subtitle="El cambio se aplica de inmediato." icon={<Monitor size={18} />}>
               <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                 {([
-                  { key: "clasico",    label: "Clásico",    previewR: 8,  btnR: 6,  desc: "Bordes estándar, limpio y profesional" },
                   { key: "super_soft", label: "Super Soft", previewR: 28, btnR: 14, desc: "Bordes muy redondeados, look moderno y suave" },
+                  { key: "clasico",    label: "Clásico",    previewR: 8,  btnR: 6,  desc: "Bordes estándar, limpio y profesional" },
                   { key: "rigido",     label: "Rígido",     previewR: 0,  btnR: 0,  desc: "Bordes rectos, estilo corporativo" },
                 ] as const).map(({ key, label, previewR, btnR, desc }) => {
                   const active = uiTheme === key;
