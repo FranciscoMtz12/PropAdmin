@@ -317,7 +317,7 @@ export default function RegisterPage() {
       });
 
       sessionStorage.setItem("show_splash", "1");
-      router.push("/dashboard");
+      router.push("/home");
     } catch {
       setGlobalError("Ocurrió un error inesperado. Intenta de nuevo.");
     } finally {

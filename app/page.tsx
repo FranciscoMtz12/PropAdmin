@@ -68,7 +68,7 @@ export default function LandingPage() {
     const role = user.role as string;
     if (role === "tenant") { router.replace("/portal/dashboard"); return; }
     if (role === "field")  { router.replace("/campo/dashboard");  return; }
-    router.replace("/dashboard");
+    router.replace("/home");
   }, [user, loading, router]);
 
   const current = ROLES.find((r) => r.id === active);

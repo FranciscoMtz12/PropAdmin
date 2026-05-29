@@ -262,6 +262,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
+    /* Aplicar accent cacheado de forma síncrona antes del query async para evitar flash */
+    if (user?.id) {
+      const cached = localStorage.getItem(accentColorKey(user.id));
+      if (cached) {
+        setAccentColor(cached);
+        document.documentElement.style.setProperty("--accent",          cached);
+        document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(cached));
+        document.documentElement.style.setProperty("--color-accent",    cached);
+        document.documentElement.style.setProperty("--color-primary",   cached);
+        companyBaseColorRef.current = cached;
+      }
+    }
+
     if (impersonationMode === 'group' && impersonatedGroupId) {
       void loadGroupBranding(impersonatedGroupId, impersonatedGroupName ?? '');
     } else if (isImpersonating && impersonatedCompanyId) {
