@@ -50,6 +50,10 @@ function isPublicFicha(pathname: string) {
   return pathname.startsWith("/p/") || pathname === "/p";
 }
 
+function isLegalPage(pathname: string) {
+  return pathname === "/terms" || pathname === "/privacy";
+}
+
 export default function RouteGuard() {
   const pathname = usePathname();
   const router = useRouter();
@@ -86,6 +90,9 @@ export default function RouteGuard() {
 
     // Public unit share pages — no auth required
     if (isPublicFicha(pathname)) return;
+
+    // Legal pages — accessible without authentication
+    if (isLegalPage(pathname)) return;
 
     // Campo routes handle their own auth/role redirect internally
     if (campoPath) return;
