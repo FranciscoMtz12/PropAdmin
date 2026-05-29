@@ -119,6 +119,43 @@
   --card-gap:     16px;
   --section-gap:  24px;
 
+  /* ── Escala de espaciado (base 4 px) ───────────────────────────── */
+  --spacing-xs:   4px;
+  --spacing-sm:   8px;
+  --spacing-md:   12px;
+  --spacing-lg:   16px;
+  --spacing-xl:   24px;
+  --spacing-2xl:  32px;
+  --spacing-3xl:  48px;
+
+  /* ── Escala tipográfica ─────────────────────────────────────────── */
+  --font-size-xs:   11px;   /* badges, etiquetas pequeñas */
+  --font-size-sm:   13px;   /* texto secundario, captions */
+  --font-size-base: 14px;   /* cuerpo, default */
+  --font-size-md:   16px;   /* subtítulos, inputs */
+  --font-size-lg:   18px;   /* títulos de card */
+  --font-size-xl:   22px;   /* títulos de sección */
+  --font-size-2xl:  28px;   /* título de página */
+  --font-size-3xl:  36px;   /* métricas grandes */
+
+  /* ── Colores semánticos de estado ──────────────────────────────── */
+  /* Error / rojo */
+  --color-error:        #DC2626;
+  --color-error-bg:     #FCEBEB;
+  --color-error-border: #FCCDD0;
+  /* Éxito / verde */
+  --color-success:        #16A34A;
+  --color-success-bg:     #EAF3DE;
+  --color-success-border: #BBF7D0;
+  /* Warning / ámbar */
+  --color-warning:        #D97706;
+  --color-warning-bg:     #FAEEDA;
+  --color-warning-border: #FDE68A;
+  /* Info / azul */
+  --color-info:        #2563EB;
+  --color-info-bg:     #E6F1FB;
+  --color-info-border: #BFDBFE;
+
   /* ── Compatibilidad con tokens legacy ──────────────────────────── */
   --bg-primary:    #F1F5F9;
   --border-color:  #E2E8F0;
@@ -209,6 +246,24 @@
 
   /* ── Separadores internos de cards ────────────────────────────── */
   --divider: #2D3748;
+
+  /* ── Colores semánticos de estado ──────────────────────────────── */
+  /* Error / rojo */
+  --color-error:        #F87171;
+  --color-error-bg:     #1C0507;
+  --color-error-border: #9F1239;
+  /* Éxito / verde */
+  --color-success:        #4ADE80;
+  --color-success-bg:     #052E16;
+  --color-success-border: #166534;
+  /* Warning / ámbar */
+  --color-warning:        #FCD34D;
+  --color-warning-bg:     #1C1106;
+  --color-warning-border: #854D0E;
+  /* Info / azul */
+  --color-info:        #60A5FA;
+  --color-info-bg:     #0C1A3A;
+  --color-info-border: #1E40AF;
 
   /* ── Compatibilidad con tokens legacy ──────────────────────────── */
   --bg-primary:   #0F1623;
