@@ -240,6 +240,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
      confirmed (in loadCompanyBranding / loadGroupBranding / loadSaproaConfig). ── */
   useIsomorphicLayoutEffect(() => {
     if (!user?.id) return;
+    // Superadmin always gets their color from loadSaproaConfig — skip cache to avoid
+    // flashing a contaminated color (e.g. last-impersonated company's brand color).
+    if (user.is_superadmin || user.role === 'superadmin') return;
     const cached = localStorage.getItem(accentColorKey(user.id));
     if (cached) {
       setAccentColor(cached);
@@ -309,7 +312,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setAccentColor(color);
     setGroupColor(color);
     companyBaseColorRef.current = color;
-    if (user?.id) localStorage.setItem(accentColorKey(user.id), color);
+    if (user?.id && !isImpersonating) localStorage.setItem(accentColorKey(user.id), color);
     document.documentElement.style.setProperty("--color-primary", color);
     document.documentElement.style.setProperty("--group-accent", color);
     setAccentStyleState('solid');
@@ -400,7 +403,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     setAccentColor(baseAccent);
     companyBaseColorRef.current = baseAccent;
-    if (user?.id) localStorage.setItem(accentColorKey(user.id), baseAccent);
+    if (user?.id && !forceCompanyColor) localStorage.setItem(accentColorKey(user.id), baseAccent);
   }
 
   async function loadUserPreferences(userId: string) {
