@@ -231,11 +231,26 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useIsomorphicLayoutEffect(() => {
     document.documentElement.style.setProperty("--accent", accentColor);
     document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(accentColor));
-    if (user?.id) {
-      localStorage.setItem(accentColorKey(user.id), accentColor);
+  }, [accentColor]);
+
+  /* ── Al recibir user?.id, restaurar color cacheado antes del primer paint ──────
+     Fires synchronously before paint when user.id arrives (null → uid on login).
+     Reads the cached company color so the browser never paints DEFAULT_ACCENT.
+     Does NOT write to localStorage here — write happens only after DB color is
+     confirmed (in loadCompanyBranding / loadGroupBranding / loadSaproaConfig). ── */
+  useIsomorphicLayoutEffect(() => {
+    if (!user?.id) return;
+    const cached = localStorage.getItem(accentColorKey(user.id));
+    if (cached) {
+      setAccentColor(cached);
+      document.documentElement.style.setProperty("--accent",          cached);
+      document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(cached));
+      document.documentElement.style.setProperty("--color-accent",    cached);
+      document.documentElement.style.setProperty("--color-primary",   cached);
+      companyBaseColorRef.current = cached;
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [accentColor, user?.id]);
+  }, [user?.id]);
 
   /* ── Aplicar --btn-primary-bg según accentStyle ─────────────────── */
   useEffect(() => {
@@ -262,19 +277,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Cargar branding + preferencias de usuario cuando esté listo ── */
   useEffect(() => {
-    /* Aplicar accent cacheado de forma síncrona antes del query async para evitar flash */
-    if (user?.id) {
-      const cached = localStorage.getItem(accentColorKey(user.id));
-      if (cached) {
-        setAccentColor(cached);
-        document.documentElement.style.setProperty("--accent",          cached);
-        document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(cached));
-        document.documentElement.style.setProperty("--color-accent",    cached);
-        document.documentElement.style.setProperty("--color-primary",   cached);
-        companyBaseColorRef.current = cached;
-      }
-    }
-
     if (impersonationMode === 'group' && impersonatedGroupId) {
       void loadGroupBranding(impersonatedGroupId, impersonatedGroupName ?? '');
     } else if (isImpersonating && impersonatedCompanyId) {
@@ -307,6 +309,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setAccentColor(color);
     setGroupColor(color);
     companyBaseColorRef.current = color;
+    if (user?.id) localStorage.setItem(accentColorKey(user.id), color);
     document.documentElement.style.setProperty("--color-primary", color);
     document.documentElement.style.setProperty("--group-accent", color);
     setAccentStyleState('solid');
@@ -332,6 +335,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     setAccentColor(color);
     setGroupColor(color);
     companyBaseColorRef.current = color;
+    if (user?.id) localStorage.setItem(accentColorKey(user.id), color);
     document.documentElement.style.setProperty("--color-primary", color);
     setAccentStyleState(data.accent_style === 'metallic' ? 'metallic' : 'solid');
     if (data.platform_name) setPlatformName(data.platform_name);
@@ -396,6 +400,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
     setAccentColor(baseAccent);
     companyBaseColorRef.current = baseAccent;
+    if (user?.id) localStorage.setItem(accentColorKey(user.id), baseAccent);
   }
 
   async function loadUserPreferences(userId: string) {

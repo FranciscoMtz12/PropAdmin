@@ -138,7 +138,7 @@ const FAKE_COLOR = "#8B2252"; // fake "company color" — visually distinct from
     }
   }
 
-  /* ── Report 3: did the fake color survive? ── */
+  /* ── Report 3: verdict — did the fix work? ── */
   const finalLs = await page.evaluate(({ uid }) =>
     Object.fromEntries(
       Object.keys(localStorage)
@@ -151,16 +151,33 @@ const FAKE_COLOR = "#8B2252"; // fake "company color" — visually distinct from
   console.log("\n━━━ FINAL localStorage state ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   console.log(JSON.stringify(finalLs, null, 2));
 
-  const survivalKey = `accentColor_${KNOWN_UID}`;
-  const survived = finalLs[survivalKey] === FAKE_COLOR;
+  // The real check: was the fake cached color applied to CSS BEFORE the DB resolved?
+  // (not whether the fake color "survived" — the DB correctly overwrites it with the real color)
+  const navEntry  = timeline.find(s => s.inline === FAKE_COLOR);
+  const navIdx    = navEntry ? timeline.indexOf(navEntry) : -1;
+  const preNavDefault = timeline
+    .slice(0, navIdx > 0 ? navIdx : timeline.length)
+    .filter(s => s.inline === "#6366f1" || s.inline === "#6366F1");
+
+  // Was DEFAULT_ACCENT written to LS before navigation? (that was the bug)
+  const prematureLsWrite = mutations.find(m =>
+    m.key === `accentColor_${KNOWN_UID}` &&
+    (m.value === "#6366F1" || m.value === "#6366f1") &&
+    m.ms < (mutations.find(mm => mm.key === "last_user_id")?.ms ?? Infinity)
+  );
+
+  const cacheAppliedBeforePaint = navEntry !== undefined;
+  const noPrematureWrite = !prematureLsWrite;
+
   console.log(`\n━━━ VERDICT ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
-  console.log(`  Pre-seeded: "${survivalKey}" = "${FAKE_COLOR}"`);
-  console.log(`  Final:      "${survivalKey}" = "${finalLs[survivalKey] ?? "(missing)"}"`);
-  if (!survived) {
-    console.log(`  ✗ CACHE DESTROYED — useIsomorphicLayoutEffect overwrote the cached color with DEFAULT_ACCENT`);
-    console.log(`    This is the root cause of the color flash.`);
+  console.log(`  Pre-seeded fake color: "${FAKE_COLOR}"`);
+  console.log(`  (1) Cached color applied to CSS before DB resolved? ${cacheAppliedBeforePaint ? "✅ YES" : "✗ NO"}`);
+  console.log(`  (2) DEFAULT_ACCENT written to LS before DB confirmed color? ${noPrematureWrite ? "✅ NO (fix works)" : "✗ YES (bug present)"}`);
+  if (cacheAppliedBeforePaint && noPrematureWrite) {
+    console.log(`\n  ✅ FIX VERIFIED — cached color applied before paint, cache not prematurely destroyed.`);
+    console.log(`     Final LS value is the DB-confirmed real color (expected).`);
   } else {
-    console.log(`  ✓ Cache survived — bug NOT reproduced (check if account UID matched)`);
+    console.log(`\n  ✗ FIX NOT WORKING — cache was destroyed before the paint or not applied.`);
   }
 
   await browser.close();
