@@ -63,7 +63,6 @@ import { type PurchaseReturn, type PurchaseOrderVersionType, type PurchaseOrderI
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { renderPurchaseOrderPage, prepareLogoForPDF } from "@/app/maintenance/page";
 
 import PageContainer from "@/components/PageContainer";
@@ -132,7 +131,6 @@ type POItem = {
 
 type PurchaseOrder = {
   id:                   string;
-  company_id:           string;
   folio:                string;
   company_id:           string | null;
   supplier_id:          string;
@@ -501,7 +499,6 @@ export default function PurchasesPage() {
       const agg = itemsByOc.get(r.id);
       return {
         id:                   r.id,
-        company_id:           r.company_id,
         folio:                r.folio,
         company_id:           r.company_id ?? null,
         supplier_id:          r.supplier_id,
@@ -649,7 +646,7 @@ export default function PurchasesPage() {
       const d = new Date(o.created_at);
       if (d.getFullYear() !== selectedYear || d.getMonth() + 1 !== selectedMonth) return false;
 
-      if (isGroupMode && !groupCompanyIds.includes(o.company_id)) return false;
+      if (isGroupMode && (o.company_id === null || !groupCompanyIds.includes(o.company_id))) return false;
 
       if (filterSupplier !== "ALL" && o.supplier_id !== filterSupplier) return false;
       if (filterStatus   !== "ALL" && o.status !== filterStatus) return false;
