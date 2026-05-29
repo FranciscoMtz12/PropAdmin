@@ -277,7 +277,7 @@ export default function LoginPage() {
               disabled={loginForm.formState.isSubmitting}
               style={{
                 marginTop: ".5rem", padding: ".75rem",
-                background: loginForm.formState.isSubmitting ? "rgba(139,34,82,.5)" : "var(--accent)",
+                background: "var(--accent)",
                 border: "none", borderRadius: "var(--border-radius-md)",
                 color: "#fff", fontSize: "0.875rem", fontWeight: 500,
                 cursor: loginForm.formState.isSubmitting ? "not-allowed" : "pointer",
