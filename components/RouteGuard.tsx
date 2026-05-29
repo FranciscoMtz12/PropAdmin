@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { getAdminDestination } from "@/lib/auth-routing";
 
 /*
   RouteGuard cliente para separar experiencia admin vs tenant.
@@ -23,7 +24,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
 */
 
 const ADMIN_PUBLIC_ROUTES = ["/login", "/register"];
-const PORTAL_PUBLIC_ROUTES = ["/portal/login"];
+const PORTAL_PUBLIC_ROUTES = ["/portal/login"]; // /portal/login redirects to /login server-side
 
 function isPortalPath(pathname: string) {
   return pathname.startsWith("/portal");
@@ -134,9 +135,10 @@ export default function RouteGuard() {
     }
 
     // Todos los roles admin — no pueden estar en portal ni campo
-    if (portalPath) { router.replace("/dashboard"); return; }
-    if (pathname.startsWith("/campo")) { router.replace("/dashboard"); return; }
-    if (adminPublic) { router.replace("/dashboard"); return; }
+    const adminHome = user.role ? getAdminDestination(user.role, Boolean(user.is_superadmin)) : "/home";
+    if (portalPath) { router.replace(adminHome); return; }
+    if (pathname.startsWith("/campo")) { router.replace(adminHome); return; }
+    if (adminPublic) { router.replace(adminHome); return; }
   }, [pathname, router, user, loading]);
 
   const showSplash = loading || isValidating;

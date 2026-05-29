@@ -561,18 +561,18 @@ export default function SuppliersPage() {
         </AppCard>
       ) : isGroupMode ? (
         <div style={{ display: "grid", gap: 24 }}>
-          {suppliersByCompany.map(({ company, items }) => {
+          {suppliersByCompany.map(({ company, compSuppliers }) => {
             const compColor = company.brand_color || "#6b7280";
             return (
               <div key={company.id}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                   <div style={{ width: 10, height: 10, borderRadius: "50%", background: compColor, flexShrink: 0 }} />
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{company.short_name || company.name}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {items.length} proveedor{items.length !== 1 ? "es" : ""}</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>· {compSuppliers.length} proveedor{compSuppliers.length !== 1 ? "es" : ""}</span>
                   <div style={{ flex: 1, height: 1, background: "var(--border-default)", marginLeft: 4 }} />
                 </div>
                 <AppGrid minWidth={320}>
-                  {items.map((s, index) => (
+                  {compSuppliers.map((s, index) => (
                     <motion.div key={s.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: index * 0.05 }}>
                       <AppCard style={{ ...cardStyle, borderLeft: `4px solid ${compColor}` }}>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>

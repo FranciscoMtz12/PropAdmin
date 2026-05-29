@@ -255,9 +255,6 @@ export default function TenantsPage() {
 
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
-  const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
-  const isGroupMode = impersonationMode === 'group';
-
   useEffect(() => {
     if (loading) return;
     if (!user) return;
@@ -573,17 +570,6 @@ export default function TenantsPage() {
   const activeCount = tenantRows.filter((row) => row.status === "ACTIVE").length;
   const inactiveCount = tenantRows.filter((row) => row.status === "INACTIVE").length;
   const withLeaseCount = tenantRows.filter((row) => row.hasActiveLease).length;
-
-  const tenantsByCompany = useMemo(() => {
-    if (!isGroupMode) return [];
-    return groupCompanies
-      .filter((c) => groupCompanyIds.includes(c.id))
-      .map((company) => ({
-        company,
-        rows: filteredRows.filter((r) => r.company_id === company.id),
-      }))
-      .filter(({ rows }) => rows.length > 0);
-  }, [isGroupMode, groupCompanies, groupCompanyIds, filteredRows]);
 
   /* ── Historial de precios de renta por unidad ── */
   const rentHistoryData = useMemo(() => {

@@ -116,9 +116,10 @@ export function initials(name: string): string {
 
 /* ─── Claves de localStorage por usuario ─────────────────────────── */
 
-function darkModeKey(uid: string)   { return `darkMode_${uid}`; }
-function uiThemeKey(uid: string)   { return `uiTheme_${uid}`; }
-function fontScaleKey(uid: string) { return `fontScale_${uid}`; }
+function darkModeKey(uid: string)    { return `darkMode_${uid}`; }
+function uiThemeKey(uid: string)    { return `uiTheme_${uid}`; }
+function fontScaleKey(uid: string)  { return `fontScale_${uid}`; }
+function accentColorKey(uid: string){ return `accentColor_${uid}`; }
 
 /* ─── Provider ────────────────────────────────────────────────────── */
 
@@ -201,6 +202,15 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
         setFontScaleState(storedScale);
         document.documentElement.style.setProperty('--font-scale', String(storedScale));
       }
+      /* Restaurar accent color desde caché para evitar FOUC de color de marca */
+      const cachedAccent = localStorage.getItem(accentColorKey(lastUid));
+      if (cachedAccent) {
+        setAccentColor(cachedAccent);
+        document.documentElement.style.setProperty("--accent",          cachedAccent);
+        document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(cachedAccent));
+        document.documentElement.style.setProperty("--color-accent",    cachedAccent);
+        document.documentElement.style.setProperty("--color-primary",   cachedAccent);
+      }
       const stored = localStorage.getItem(darkModeKey(lastUid));
       if (stored === "true" || stored === "false") {
         setIsDark(stored === "true");
@@ -221,7 +231,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useIsomorphicLayoutEffect(() => {
     document.documentElement.style.setProperty("--accent", accentColor);
     document.documentElement.style.setProperty("--accent-gradient", generateMetallicGradient(accentColor));
-  }, [accentColor]);
+    if (user?.id) {
+      localStorage.setItem(accentColorKey(user.id), accentColor);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accentColor, user?.id]);
 
   /* ── Aplicar --btn-primary-bg según accentStyle ─────────────────── */
   useEffect(() => {

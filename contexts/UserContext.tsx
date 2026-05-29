@@ -108,12 +108,24 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    refreshUser();
-
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => {
-      refreshUser();
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT") {
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN") {
+        if (session) {
+          void refreshUser();
+        } else {
+          setUser(null);
+          setLoading(false);
+        }
+        return;
+      }
+      // TOKEN_REFRESHED, USER_UPDATED, PASSWORD_RECOVERY — skip full reload
     });
 
     return () => {
