@@ -112,6 +112,26 @@ const ROADMAP: RoadmapItem[] = [
     description: "Video de onboarding generado con IA para nuevos clientes.",
     category: "Marketing", priority: "baja", status: "pendiente",
   },
+  {
+    id: "DS-P1",
+    label: "Tokens de color adicionales opcionales",
+    description: "Candidatos identificados en el mapa de paleta: --color-return / --color-return-bg (#EA580C, #c2410c — naranja devolución), colores de roles en settings (#DBEAFE, #CCFBF1, etc.), --color-media-border (#a855f7 borde de Facturada en compras).",
+    note: "Opcional. Crear solo si los colores se reutilizan en más contextos o si se quiere control de tema completo sobre esas UI.",
+    category: "Design System", priority: "baja", status: "pendiente",
+  },
+  {
+    id: "DS-P2",
+    label: "Bug: CSS inválido en IndustrialTypologyModal",
+    description: "La línea `background: \\`${amber}12\\`` genera 'var(--metric-value-amber)12' como string — valor CSS inválido. El fondo queda transparente en lugar de mostrar el tint ámbar. Arreglar con una constante rgba explícita o un token de tint.",
+    note: "Bug menor preexistente. Impacto visual mínimo (fondo de botón seleccionado en un modal poco usado).",
+    category: "Design System", priority: "baja", status: "pendiente",
+  },
+  {
+    id: "DS-P3",
+    label: "Fase futura: homologación de componentes",
+    description: "Una vez estabilizados los tokens, homologar variantes de cards/botones, crear AppCheckbox (actualmente no existe como componente reutilizable), y revisar consistencia de AppTabs/AppSelect entre módulos.",
+    category: "Design System", priority: "baja", status: "pendiente",
+  },
 
   /* ══════════════════════════════════════════════════════════════════
      COMPLETADOS — verificados contra el código real
@@ -162,6 +182,36 @@ const ROADMAP: RoadmapItem[] = [
     id: "F-DS2",
     label: "Catálogo de componentes creado",
     description: "Página /saproa-admin/design-system con galería completa, sandbox de previsualización de temas y generador de reporte de preferencias de diseño.",
+    category: "Design System", status: "completado",
+  },
+  {
+    id: "F-DS3",
+    label: "Tokens completos: tipografía, espaciado y paleta unificada",
+    description: "Escala tipográfica convertida a rem (respeta --font-scale del usuario). Familias nuevas: --status-* (occupied/vacant/partial/maintenance/default), --priority-* (dot + bg + text para 4 niveles), --accent-tint-subtle/soft/medium vía color-mix(), semánticos error/success/warning/info con variantes -bg/-border/-text, --color-chart-green/blue/orange, --color-media/-bg, --color-info-dark, --color-warning-text, --status-default. Mapa de paleta documentado en scripts/audit/mapa-paleta-fase-d-2026-06-01.md.",
+    category: "Design System", status: "completado",
+  },
+  {
+    id: "F-DS4",
+    label: "Catálogo de componentes ampliado + sandbox mejorado",
+    description: "14 componentes nuevos agregados al catálogo (SectionCard, AppGrid, BuildingCategoryBadge, AppFormField, SensitiveField, AppStatBar, AppIconBox, LineChart, DeleteConfirmModal, Toggle/Switch, Checkbox, Toast, ImpersonationBanner, GroupBanner) + 8 variantes de componentes existentes. Sandbox: slider de ancho libre 320–1700px con marcas en 1280/1440/1600, marco de dispositivo (phone/tablet), panel de controles tipo drawer en móvil.",
+    category: "Design System", status: "completado",
+  },
+  {
+    id: "F-DS5",
+    label: "Unificación de paleta: tonos casi-idénticos fusionados",
+    description: "Cuatro pares de tokens con delta imperceptible colapsados: --status-partial #EF9F27→#F59E0B, --status-occupied #1D9E75→#10B981, --status-vacant #378ADD→#3B82F6, --status-maintenance #E24B4A→#EF4444. Cada par comparte ahora el mismo valor que el token de prioridad/chart correspondiente.",
+    category: "Design System", status: "completado",
+  },
+  {
+    id: "F-DS6",
+    label: "Fix multi-tenant: rgba del acento/vino migradas a --accent-tint-*",
+    description: "43+ ocurrencias de rgba(139,34,82,...) y rgba(99,102,241,...) hardcodeadas en 13 archivos migradas a var(--accent-tint-subtle/soft/medium). Corrige la fuga donde los fondos/bordes no cambiaban al cambiar de empresa (Fra-Mar → SAPROA → otras). Los tints ahora derivan del --accent activo via color-mix().",
+    category: "Design System", status: "completado",
+  },
+  {
+    id: "F-DS7",
+    label: "Migración masiva de colores a tokens",
+    description: "Barrido en 15+ archivos: buildings/[id] (~42 valores), CommercialTypologyModal, modales industriales, AssetTypeIcon, settings, purchases, buildings lista, campo/compras, roadmap, invoice-generation, layout y otros. Estado final: todo lo tokenizable migrado; SVG/Recharts fills, overlays rgba(0,0,0), blancos estructurales y colores únicos sin token dejados hardcodeados a propósito.",
     category: "Design System", status: "completado",
   },
 ];
