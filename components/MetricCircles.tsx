@@ -51,10 +51,13 @@ function formatMetricValue(value: string | number): string {
 }
 
 /* Todos los círculos tienen siempre el mismo ancho: 1/6 del contenedor.
-   El espacio sobrante cuando hay menos de 6 se distribuye con space-evenly. */
-const CIRCLE_WIDTH = "calc((100% - 30px) / 6)"; // (100% - 5 * 6px) / 6
-const NUM_FS = "calc((100% - 30px) / 6 * 0.27)";
-const LBL_FS = "calc((100% - 30px) / 6 * 0.13)";
+   El espacio sobrante cuando hay menos de 6 se distribuye con space-evenly.
+   NOTA: % en font-size resuelve al font-size heredado (no al ancho del padre),
+   por eso usamos cqw (CSS Container Queries): el círculo se declara container
+   y sus hijos usan 1cqw = 1% del ancho del propio círculo. */
+const CIRCLE_WIDTH = "calc((100% - 30px) / 6)";
+const NUM_FS = "clamp(10px, 27cqw, 30px)";
+const LBL_FS = "clamp(8px, 13cqw, 15px)";
 
 export default function MetricCircles({ metrics }: MetricCirclesProps) {
   const { uiTheme } = useTheme();
@@ -66,7 +69,7 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
     : uiTheme === 'rigido'   ? '2px'
     : 'var(--border-radius-md)';
 
-  const circleStyle: CSSProperties = {
+  const circleStyle: CSSProperties & { containerType?: string } = {
     width: CIRCLE_WIDTH,
     flexShrink: 0,
     aspectRatio: "1",
@@ -79,6 +82,7 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
     justifyContent: "center",
     overflow: "hidden",
     minWidth: 0,
+    containerType: "inline-size",
   };
 
   return (
