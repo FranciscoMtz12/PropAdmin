@@ -335,6 +335,217 @@ function DeviceFrame({ type, children }: { type: FrameType; children: ReactNode 
   );
 }
 
+// ─── Paleta de colores — datos ───────────────────────────────────────────────
+
+const CHECKER_BG = "repeating-conic-gradient(#d4d4d4 0% 25%, #f0f0f0 0% 50%) 0 0 / 10px 10px";
+
+type ColorToken  = { token: string; usage: string; transparent?: boolean };
+type ColorFamily = { title: string; tokens: ColorToken[] };
+
+const COLOR_FAMILIES: ColorFamily[] = [
+  {
+    title: "Acento y tints",
+    tokens: [
+      { token: "--accent",             usage: "Color de marca de la empresa activa. Botones primarios, bordes activos, iconos de acción." },
+      { token: "--accent-tint-subtle", usage: "Fondo muy sutil del acento (~5%). Filas seleccionadas, opciones activas de radio/checkbox.", transparent: true },
+      { token: "--accent-tint-soft",   usage: "Fondo suave del acento (~10%). Alertas de marca, badges de estado.", transparent: true },
+      { token: "--accent-tint-medium", usage: "Fondo medio del acento (~25%). Bordes destacados, selección enfatizada.", transparent: true },
+    ],
+  },
+  {
+    title: "Estado de unidad",
+    tokens: [
+      { token: "--status-occupied",    usage: "Unidad ocupada / contrato activo. StatusCircle verde y borders de limpieza exterior." },
+      { token: "--status-vacant",      usage: "Unidad vacante / disponible. StatusCircle azul, borders de áreas comunes." },
+      { token: "--status-partial",     usage: "Ocupación parcial. StatusCircle ámbar." },
+      { token: "--status-maintenance", usage: "Unidad en mantenimiento o fuera de servicio. StatusCircle rojo." },
+      { token: "--status-default",     usage: "Sin estado definido / inactivo. StatusCircle gris." },
+    ],
+  },
+  {
+    title: "Prioridad de tickets",
+    tokens: [
+      { token: "--priority-urgent",      usage: "Dot urgente en listas de tickets." },
+      { token: "--priority-urgent-bg",   usage: "Fondo del pill de prioridad urgente." },
+      { token: "--priority-urgent-text", usage: "Texto del pill de prioridad urgente." },
+      { token: "--priority-high",        usage: "Dot de prioridad alta." },
+      { token: "--priority-high-bg",     usage: "Fondo del pill de prioridad alta." },
+      { token: "--priority-high-text",   usage: "Texto del pill de prioridad alta." },
+      { token: "--priority-medium",      usage: "Dot de prioridad media. También --status-partial." },
+      { token: "--priority-medium-bg",   usage: "Fondo del pill de prioridad media." },
+      { token: "--priority-medium-text", usage: "Texto del pill de prioridad media." },
+      { token: "--priority-low",         usage: "Dot de prioridad baja." },
+      { token: "--priority-low-bg",      usage: "Fondo del pill de prioridad baja." },
+      { token: "--priority-low-text",    usage: "Texto del pill de prioridad baja." },
+    ],
+  },
+  {
+    title: "Semánticos — Error",
+    tokens: [
+      { token: "--color-error",        usage: "Mensajes de validación, bordes de input inválido, toasts de error." },
+      { token: "--color-error-bg",     usage: "Fondo de alertas de error." },
+      { token: "--color-error-border", usage: "Borde de alertas y campos con error." },
+    ],
+  },
+  {
+    title: "Semánticos — Éxito",
+    tokens: [
+      { token: "--color-success",        usage: "Badges activos, toasts de éxito, checkmarks." },
+      { token: "--color-success-bg",     usage: "Fondo de alertas de éxito." },
+      { token: "--color-success-border", usage: "Borde de alertas de éxito." },
+      { token: "--color-success-subtle", usage: "Tint muy sutil de verde éxito (~12%). Amenidades, lease activo.", transparent: true },
+    ],
+  },
+  {
+    title: "Semánticos — Warning",
+    tokens: [
+      { token: "--color-warning",        usage: "Badges ámbar, iconos de advertencia." },
+      { token: "--color-warning-bg",     usage: "Fondo de alertas de advertencia." },
+      { token: "--color-warning-border", usage: "Borde de alertas de advertencia." },
+      { token: "--color-warning-text",   usage: "Texto ámbar oscuro. Etiquetas de roles titular/group_admin, iconos de overdue." },
+    ],
+  },
+  {
+    title: "Semánticos — Info",
+    tokens: [
+      { token: "--color-info",        usage: "Links, avisos informativos." },
+      { token: "--color-info-bg",     usage: "Fondo de alertas informativas." },
+      { token: "--color-info-border", usage: "Borde de alertas informativas." },
+      { token: "--color-info-dark",   usage: "Azul oscuro para accentColor de checkboxes, radio buttons, selector de subtipo de edificio." },
+    ],
+  },
+  {
+    title: "Charts",
+    tokens: [
+      { token: "--color-chart-green",  usage: "Verde en Recharts. Cobrado, ocupación, métricas positivas." },
+      { token: "--color-chart-blue",   usage: "Azul en Recharts. Disponible, estacionamiento, distribución de área." },
+      { token: "--color-chart-orange", usage: "Naranja en Recharts. Pendiente, prioridad alta en gráficas." },
+    ],
+  },
+  {
+    title: "Media y especiales",
+    tokens: [
+      { token: "--color-media",    usage: "Morado para archivos de fotos, status 'Facturada' en compras, ícono de elevador." },
+      { token: "--color-media-bg", usage: "Fondo morado sutil. Badge de fotos, background de status invoiced." },
+    ],
+  },
+  {
+    title: "Texto",
+    tokens: [
+      { token: "--text-primary",   usage: "Texto principal, títulos, valores de métricas." },
+      { token: "--text-secondary", usage: "Texto secundario, etiquetas de formulario, encabezados de tabla." },
+      { token: "--text-muted",     usage: "Texto apagado, placeholders, notas auxiliares." },
+    ],
+  },
+  {
+    title: "Fondos",
+    tokens: [
+      { token: "--bg-page",       usage: "Fondo de página. Canvas principal de la app." },
+      { token: "--bg-card",       usage: "Fondo de cards, paneles y modales." },
+      { token: "--bg-card-hover", usage: "Fondo de card en hover o estado secundario." },
+      { token: "--bg-input",      usage: "Fondo de inputs y selects." },
+    ],
+  },
+  {
+    title: "Bordes",
+    tokens: [
+      { token: "--border-default", usage: "Borde estándar de cards, inputs y tablas." },
+      { token: "--border-strong",  usage: "Borde más pronunciado para separaciones importantes." },
+      { token: "--border-subtle",  usage: "Borde muy sutil, casi invisible." },
+    ],
+  },
+];
+
+function rgbToHex(rgb: string): string {
+  const m = rgb.match(/rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*([\d.]+))?\s*\)/);
+  if (!m) return rgb;
+  const hex = [m[1], m[2], m[3]].map(v => parseInt(v).toString(16).padStart(2, "0")).join("");
+  if (m[4] !== undefined) {
+    const a = parseFloat(m[4]);
+    if (a < 1) return `#${hex}${Math.round(a * 255).toString(16).padStart(2, "0")}`;
+  }
+  return `#${hex}`;
+}
+
+type TipState = { visible: boolean; value: string; resolved: string; x: number; y: number };
+
+function ColorSwatch({ token, usage, transparent }: ColorToken) {
+  const [tip, setTip] = useState<TipState>({ visible: false, value: "", resolved: "", x: 0, y: 0 });
+  const ref = useRef<HTMLDivElement>(null);
+
+  function handleEnter() {
+    if (!ref.current) return;
+    const raw = getComputedStyle(ref.current).getPropertyValue(token).trim();
+    const inner = ref.current.querySelector("[data-color-inner]") as HTMLElement | null;
+    const resolvedRgb = inner ? getComputedStyle(inner).backgroundColor : "";
+    const resolved = resolvedRgb ? rgbToHex(resolvedRgb) : "";
+    const rect = ref.current.getBoundingClientRect();
+    setTip({ visible: true, value: raw || "—", resolved, x: rect.left + rect.width / 2, y: rect.bottom + 8 });
+  }
+
+  const isComplex = tip.value.includes("(");
+  const primaryVal = tip.resolved || tip.value;
+  const showRaw = isComplex && !!tip.resolved;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5, position: "relative" }}>
+      <div
+        ref={ref}
+        className="ds-color-swatch"
+        onMouseEnter={handleEnter}
+        onMouseLeave={() => setTip(t => ({ ...t, visible: false }))}
+        style={{
+          width: 52, height: 52, borderRadius: "var(--border-radius-md)",
+          position: "relative", overflow: "hidden",
+          border: "1px solid var(--border-default)", cursor: "default", flexShrink: 0,
+        }}
+      >
+        {transparent && <div style={{ position: "absolute", inset: 0, backgroundImage: CHECKER_BG }} />}
+        <div data-color-inner style={{ position: "absolute", inset: 0, background: `var(${token})` }} />
+      </div>
+
+      <code style={{ fontSize: "0.5rem", color: "var(--text-muted)", textAlign: "center", lineHeight: 1.3, maxWidth: 68, wordBreak: "break-all" }}>
+        {token}
+      </code>
+
+      {/* Tooltip — position:fixed para no ser recortado por overflow:hidden del catálogo */}
+      {tip.visible && (
+        <div className="ds-color-tip" style={{
+          position: "fixed", top: tip.y, left: tip.x, transform: "translateX(-50%)",
+          zIndex: 9999, background: "var(--bg-card)", border: "1px solid var(--border-default)",
+          borderRadius: "var(--border-radius-md)", padding: "10px 12px",
+          minWidth: 220, maxWidth: 260, boxShadow: "var(--shadow-md)", pointerEvents: "none",
+        }}>
+          <div style={{
+            position: "absolute", top: -5, left: "50%", marginLeft: -5,
+            width: 10, height: 10, background: "var(--bg-card)",
+            border: "1px solid var(--border-default)", borderBottom: "none", borderRight: "none",
+            transform: "rotate(45deg)",
+          }} />
+          <p style={{ margin: "0 0 5px", fontFamily: "monospace", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-primary)" }}>
+            {token}
+          </p>
+          <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: showRaw ? 3 : 6 }}>
+            <div style={{ width: 14, height: 14, borderRadius: 3, background: `var(${token})`, border: "1px solid var(--border-default)", flexShrink: 0 }} />
+            <code style={{ fontSize: "0.5625rem", color: "var(--accent)", lineHeight: 1.4, wordBreak: "break-all" }}>
+              {primaryVal}
+            </code>
+          </div>
+          {showRaw && (
+            <p style={{ margin: "0 0 6px", fontFamily: "monospace", fontSize: "0.5rem", color: "var(--text-muted)", lineHeight: 1.4, wordBreak: "break-all" }}>
+              {tip.value}
+            </p>
+          )}
+          <div style={{ height: 1, background: "var(--border-default)", margin: "4px 0 6px" }} />
+          <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
+            {usage}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const PANEL_W = 264;
@@ -479,6 +690,22 @@ ${notes.trim() || "(sin notas)"}
           background: var(--accent); cursor: pointer;
           border: 2px solid var(--bg-card);
         }
+        /* ── Swatches de color ─── */
+        .ds-color-swatch {
+          transition: transform 0.15s ease, box-shadow 0.15s ease;
+        }
+        .ds-color-swatch:hover {
+          transform: scale(1.13);
+          box-shadow: 0 4px 14px rgba(0,0,0,0.2);
+          z-index: 1;
+        }
+        .ds-color-tip {
+          animation: ds-tip-in 0.12s ease;
+        }
+        @keyframes ds-tip-in {
+          from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+          to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
         /* ── Dispositivos móviles (drawer) ─── */
         @media (max-width: 900px) {
           .ds-page-header { padding: 16px 12px 0 !important; }
@@ -532,6 +759,22 @@ ${notes.trim() || "(sin notas)"}
             className="ds-catalog"
             style={{ padding: "24px", borderRadius: inFrame ? 0 : "var(--border-radius-lg)", background: "var(--bg-page)", border: inFrame ? "none" : "1px solid var(--border-default)", transition: "background 0.3s, border-color 0.3s", overflow: "hidden" }}
           >
+
+            {/* ── 0. Paleta de colores ─── */}
+            <CatalogSection title="Paleta de colores">
+              {COLOR_FAMILIES.map((family) => (
+                <div key={family.title} style={{ marginBottom: "22px" }}>
+                  <p style={{ margin: "0 0 10px", fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+                    {family.title}
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "12px 10px" }}>
+                    {family.tokens.map((t) => (
+                      <ColorSwatch key={t.token} token={t.token} usage={t.usage} transparent={t.transparent} />
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </CatalogSection>
 
             {/* ── 1. Cards ─── */}
             <CatalogSection title="Cards" componentNames={["MetricCard", "AppCard", "EntityCard"]}>
