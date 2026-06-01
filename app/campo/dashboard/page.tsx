@@ -265,7 +265,7 @@ export default function CampoDashboardPage() {
           </a>
 
           <a href="/campo/compras" style={quickCardStyle}>
-            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "#f3e8ff", color: "#7c3aed", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 40, height: 40, borderRadius: "var(--border-radius-lg)", background: "#f3e8ff", color: "var(--color-media)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <ShoppingCart size={20} />
             </div>
             <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", textAlign: "center" }}>

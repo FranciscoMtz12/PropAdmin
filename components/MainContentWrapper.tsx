@@ -55,7 +55,11 @@ export default function MainContentWrapper({ children }: { children: ReactNode }
   const pathname = usePathname();
   useScrollPreservation(pathname);
 
-  if (pathname?.startsWith("/campo") || pathname?.startsWith("/p/")) {
+  if (
+    pathname?.startsWith("/campo") ||
+    pathname?.startsWith("/p/") ||
+    pathname?.startsWith("/saproa-admin/design-system")
+  ) {
     return <>{children}</>;
   }
 

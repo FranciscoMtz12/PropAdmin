@@ -550,8 +550,8 @@ export default function HomePage() {
             }}
           >
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "clamp(10px, 1.5vw, 20px)" }}>
-              <IconBox bg="rgba(99,102,241,0.18)"><Calendar style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#a5b4fc" /></IconBox>
-              <Badge bg="rgba(99,102,241,0.2)" color="#a5b4fc">próximos 60 días</Badge>
+              <IconBox bg="var(--accent-tint-medium)"><Calendar style={{ width: "clamp(18px, 2vw, 28px)", height: "clamp(18px, 2vw, 28px)" }} color="#a5b4fc" /></IconBox>
+              <Badge bg="var(--accent-tint-medium)" color="#a5b4fc">próximos 60 días</Badge>
             </div>
             <div style={BIG_VAL}>{metrics?.contratosVenciendo ?? "—"}</div>
             <div style={CARD_LABEL}>Contratos por vencer</div>

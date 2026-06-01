@@ -110,14 +110,14 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
               <div style={{
                 width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
-                background: step > i + 1 ? "#1D9E75" : step === i + 1 ? "#0369a1" : "var(--border-default)",
+                background: step > i + 1 ? "#1D9E75" : step === i + 1 ? "var(--color-info-dark)" : "var(--border-default)",
                 color: step >= i + 1 ? "#fff" : "var(--text-muted)",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 fontSize: "0.6875rem", fontWeight: 700,
               }}>
                 {step > i + 1 ? "✓" : i + 1}
               </div>
-              <span style={{ fontSize: "0.5625rem", color: step >= i + 1 ? "#0369a1" : "var(--text-muted)", fontWeight: step === i + 1 ? 700 : 400 }}>
+              <span style={{ fontSize: "0.5625rem", color: step >= i + 1 ? "var(--color-info-dark)" : "var(--text-muted)", fontWeight: step === i + 1 ? 700 : 400 }}>
                 {label}
               </span>
             </div>
@@ -154,16 +154,16 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                     style={{
                       display: "flex", alignItems: "flex-start", gap: 10,
                       padding: "10px 14px", borderRadius: "var(--border-radius-md)", textAlign: "left",
-                      border: sel ? "2px solid #0369a1" : "1.5px solid var(--border-default)",
+                      border: sel ? "2px solid var(--color-info-dark)" : "1.5px solid var(--border-default)",
                       background: sel ? "#0369a112" : "var(--bg-card)",
                       cursor: "pointer", transition: "all 0.15s ease",
                     }}
                   >
-                    <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${sel ? "#0369a1" : "var(--border-default)"}`, flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#0369a1" }} />}
+                    <div style={{ width: 16, height: 16, borderRadius: "50%", border: `2px solid ${sel ? "var(--color-info-dark)" : "var(--border-default)"}`, flexShrink: 0, marginTop: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {sel && <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--color-info-dark)" }} />}
                     </div>
                     <div>
-                      <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{opt.label}</p>
+                      <p style={{ margin: 0, fontSize: "0.8125rem", fontWeight: sel ? 700 : 500, color: sel ? "var(--color-info-dark)" : "var(--text-primary)" }}>{opt.label}</p>
                       <p style={{ margin: "2px 0 0", fontSize: "0.6875rem", color: "var(--text-muted)" }}>{opt.desc}</p>
                     </div>
                   </button>
@@ -196,15 +196,15 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
                   style={{
                     display: "flex", alignItems: "center", gap: 10,
                     padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
-                    border: sel ? "2px solid #0369a1" : "1.5px solid var(--border-default)",
+                    border: sel ? "2px solid var(--color-info-dark)" : "1.5px solid var(--border-default)",
                     background: sel ? "#0369a112" : "var(--bg-card)",
                     cursor: "pointer", transition: "all 0.15s ease",
                   }}
                 >
-                  <div style={{ width: 16, height: 16, borderRadius: "var(--border-radius-sm)", border: `2px solid ${sel ? "#0369a1" : "var(--border-default)"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: sel ? "#0369a1" : "transparent" }}>
+                  <div style={{ width: 16, height: 16, borderRadius: "var(--border-radius-sm)", border: `2px solid ${sel ? "var(--color-info-dark)" : "var(--border-default)"}`, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", background: sel ? "var(--color-info-dark)" : "transparent" }}>
                     {sel && <span style={{ color: "#fff", fontSize: "0.625rem", lineHeight: 1 }}>✓</span>}
                   </div>
-                  <span style={{ fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? "#0369a1" : "var(--text-primary)" }}>{label}</span>
+                  <span style={{ fontSize: "0.75rem", fontWeight: sel ? 700 : 500, color: sel ? "var(--color-info-dark)" : "var(--text-primary)" }}>{label}</span>
                 </button>
               );
             })}
@@ -235,10 +235,10 @@ export default function CommercialTypologyModal({ open, buildingId, companyId, o
           {/* Resumen */}
           <div style={{ padding: 14, borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)", marginBottom: 20, fontSize: "0.75rem", color: "var(--text-secondary)" }}>
             <strong style={{ color: "var(--text-primary)", fontSize: "0.875rem" }}>{name}</strong>
-            {entrega && <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a115", color: "#0369a1", fontSize: "0.6875rem", fontWeight: 600 }}>{ENTREGA_OPTIONS.find(o => o.value === entrega)?.label}</span>}
+            {entrega && <span style={{ marginLeft: 8, padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a115", color: "var(--color-info-dark)", fontSize: "0.6875rem", fontWeight: 600 }}>{ENTREGA_OPTIONS.find(o => o.value === entrega)?.label}</span>}
             <div style={{ marginTop: 6, display: "flex", flexWrap: "wrap", gap: 4 }}>
               {INSTALACIONES.filter(i => flags[i.key]).map(i => (
-                <span key={i.key} style={{ padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a112", color: "#0369a1", fontSize: "0.6875rem" }}>{i.label}</span>
+                <span key={i.key} style={{ padding: "2px 8px", borderRadius: "var(--border-radius-sm)", background: "#0369a112", color: "var(--color-info-dark)", fontSize: "0.6875rem" }}>{i.label}</span>
               ))}
             </div>
           </div>

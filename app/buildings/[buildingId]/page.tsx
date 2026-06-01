@@ -520,7 +520,7 @@ const AREA_TYPE_LABELS: Record<string, string> = {
 const AREA_TYPE_COLORS: Record<string, string> = {
   locales:         "#8B2252",
   estacionamiento: "#3B82F6",
-  circulacion:     "#9CA3AF",
+  circulacion:     "var(--text-muted)",
   area_verde:      "#10B981",
   servicios:       "#F59E0B",
   naves:           "#6366F1",
@@ -609,7 +609,7 @@ function formatFileSize(bytes: number | null) {
 const DOC_CATEGORIES: Array<{ key: string; label: string; color: string; bg: string; border: string }> = [
   { key: "contratos",          label: "Contratos",            color: "var(--metric-value-blue)",  bg: "var(--metric-bg-blue)",    border: "var(--metric-border-blue)"  },
   { key: "facturas",           label: "Facturas",             color: "var(--metric-value-amber)", bg: "var(--metric-bg-amber)",   border: "var(--metric-border-amber)" },
-  { key: "fotos",              label: "Fotos",                color: "#7c3aed", bg: "#f5f3ff", border: "#c4b5fd" },
+  { key: "fotos",              label: "Fotos",                color: "var(--color-media)", bg: "var(--color-media-bg)", border: "#c4b5fd" },
   { key: "permisos_licencias", label: "Permisos y licencias", color: "var(--metric-value-green)", bg: "var(--metric-bg-green)",   border: "var(--metric-border-green)" },
   { key: "planos",             label: "Planos",               color: "#0891b2", bg: "#ecfeff", border: "#67e8f9" },
   { key: "otros",              label: "Otros",                color: "var(--text-muted)",         bg: "var(--bg-page)",           border: "var(--border-strong)"       },
@@ -635,7 +635,7 @@ function getDocFileIcon(mimeType: string | null, fileName: string): { color: str
   const ext = (fileName.split(".").pop() ?? "").toLowerCase();
   const mime = mimeType ?? "";
   if (mime.startsWith("image/") || ["jpg","jpeg","png","gif","webp","svg","avif"].includes(ext))
-    return { color: "#7c3aed", bg: "#f5f3ff" };
+    return { color: "var(--color-media)", bg: "var(--color-media-bg)" };
   if (mime === "application/pdf" || ext === "pdf")
     return { color: "var(--metric-value-red)", bg: "var(--metric-bg-red)" };
   if (mime.includes("word") || ["doc","docx"].includes(ext))
@@ -769,16 +769,16 @@ function getStatusIndicator(status: string) {
   switch ((status ?? "").toUpperCase()) {
     case "OCCUPIED":
     case "RENTED":
-      return { color: "#1D9E75", icon: "Check" };
+      return { color: "var(--status-occupied)", icon: "Check" };
     case "VACANT":
-      return { color: "#378ADD", icon: "Home" };
+      return { color: "var(--status-vacant)", icon: "Home" };
     case "PARTIAL":
-      return { color: "#EF9F27", icon: "Clock" };
+      return { color: "var(--status-partial)", icon: "Clock" };
     case "MAINTENANCE":
     case "OUT_OF_SERVICE":
-      return { color: "#E24B4A", icon: "Ban" };
+      return { color: "var(--status-maintenance)", icon: "Ban" };
     default:
-      return { color: "#888780", icon: "Minus" };
+      return { color: "var(--status-default)", icon: "Minus" };
   }
 }
 
@@ -933,7 +933,7 @@ function TabPendingBanner({
   if (tasks.length === 0) return null;
   return (
     <div style={{
-      background: 'rgba(139, 34, 82, 0.05)',
+      background: 'var(--accent-tint-subtle)',
       borderLeft: '3px solid var(--brand-color, #8B2252)',
       borderRadius: 'var(--border-radius-md, 8px)',
       padding: '10px 14px',
@@ -3311,12 +3311,12 @@ export default function BuildingDetailPage() {
                     {(activeAmenities.length > 0 || otherNotes) && (
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         {activeAmenities.map((a) => (
-                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
+                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "var(--color-success-subtle)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {a.label}
                           </span>
                         ))}
                         {otherNotes && String(otherNotes).split("\n").map((l) => l.trim()).filter((l) => l.length > 0).map((line, idx) => (
-                          <span key={idx} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "rgba(16,185,129,0.1)", color: "var(--text-primary)", fontWeight: 500 }}>
+                          <span key={idx} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "var(--color-success-subtle)", color: "var(--text-primary)", fontWeight: 500 }}>
                             {line.length > 40 ? line.slice(0, 38) + "…" : line}
                           </span>
                         ))}
@@ -3326,8 +3326,8 @@ export default function BuildingDetailPage() {
                       <div>
                         <span style={{
                           padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
-                          background: rentalMode === "whole" ? "#0369a11a" : "rgba(139,34,82,0.1)",
-                          color:      rentalMode === "whole" ? "#0369a1"   : "var(--accent)",
+                          background: rentalMode === "whole" ? "#0369a11a" : "var(--accent-tint-soft)",
+                          color:      rentalMode === "whole" ? "var(--color-info-dark)"   : "var(--accent)",
                         }}>
                           {rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
                         </span>
@@ -3395,8 +3395,8 @@ export default function BuildingDetailPage() {
                 >
                   <div style={{
                     borderRadius: "var(--border-radius-lg)",
-                    background: isEmpty ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
-                    border: isEmpty ? "1.5px solid rgba(139,34,82,0.25)" : "1px solid var(--border-default)",
+                    background: isEmpty ? "var(--accent-tint-subtle)" : "var(--bg-card)",
+                    border: isEmpty ? "1.5px solid var(--accent-tint-medium)" : "1px solid var(--border-default)",
                     borderLeft: "4px solid var(--accent)",
                     padding: 20,
                   }}>
@@ -4879,7 +4879,7 @@ export default function BuildingDetailPage() {
                 </div>
               ) : (
                 buildingSchedules.map((s, si) => {
-                  const borderColor = s.cleaning_type === 'common_area' ? '#378ADD' : '#10B981';
+                  const borderColor = s.cleaning_type === 'common_area' ? 'var(--status-vacant)' : 'var(--color-chart-green)';
                   const isLast = si === buildingSchedules.length - 1 && recentCleaningLogs.length === 0;
                   return (
                     <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px 10px 15px", borderLeft: `3px solid ${borderColor}`, background: "var(--bg-card-hover)", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
@@ -4926,8 +4926,8 @@ export default function BuildingDetailPage() {
                       <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
                       <span style={{
                         padding: "2px 7px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600, flexShrink: 0,
-                        background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
-                        color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
+                        background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? 'var(--badge-bg-amber)' : 'var(--divider)',
+                        color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? 'var(--color-warning-text)' : 'var(--text-secondary)',
                       }}>
                         {log.status === 'completed' ? 'Completado' : log.status === 'skipped' ? 'Omitido' : 'Pendiente'}
                       </span>
@@ -4968,9 +4968,9 @@ export default function BuildingDetailPage() {
                 </div>
               ) : (
                 openTickets.map((ticket, ti) => {
-                  const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
-                  const pillBg = ticket.priority === 'urgent' ? '#fee2e2' : ticket.priority === 'high' ? '#ffedd5' : ticket.priority === 'medium' ? '#fef9c3' : '#f3f4f6';
-                  const pillColor = ticket.priority === 'urgent' ? '#991b1b' : ticket.priority === 'high' ? '#9a3412' : ticket.priority === 'medium' ? '#713f12' : '#6b7280';
+                  const dotColor = ticket.priority === 'urgent' ? 'var(--priority-urgent)' : ticket.priority === 'high' ? 'var(--priority-high)' : ticket.priority === 'medium' ? 'var(--priority-medium)' : 'var(--text-muted)';
+                  const pillBg    = ticket.priority === 'urgent' ? 'var(--priority-urgent-bg)'   : ticket.priority === 'high' ? 'var(--priority-high-bg)'   : ticket.priority === 'medium' ? 'var(--priority-medium-bg)'   : 'var(--priority-low-bg)';
+                  const pillColor = ticket.priority === 'urgent' ? 'var(--priority-urgent-text)' : ticket.priority === 'high' ? 'var(--priority-high-text)' : ticket.priority === 'medium' ? 'var(--priority-medium-text)' : 'var(--priority-low-text)';
                   const priorityLabel = ticket.priority === 'urgent' ? 'Urgente' : ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja';
                   const age = daysAgo(ticket.created_at);
                   const isLast = ti === openTickets.length - 1 && upcomingPreventives.length === 0;
@@ -5168,7 +5168,7 @@ export default function BuildingDetailPage() {
                           </div>
                           <span style={{
                             padding: "3px 10px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600,
-                            background: lease.status === "ACTIVE" ? "rgba(16,185,129,0.1)" : "var(--bg-page)",
+                            background: lease.status === "ACTIVE" ? "var(--color-success-subtle)" : "var(--bg-page)",
                             color: lease.status === "ACTIVE" ? "var(--metric-value-green)" : "var(--text-muted)",
                           }}>
                             {lease.status === "ACTIVE" ? "Activo" : lease.status}
@@ -5696,7 +5696,7 @@ export default function BuildingDetailPage() {
           {(buildingCategory === "commercial" || buildingCategory === "industrial") && (() => {
             const subtypes = buildingCategory === "commercial" ? COMMERCIAL_SUBTYPES : INDUSTRIAL_SUBTYPES;
             const label = buildingCategory === "commercial" ? "Tipo de espacio comercial" : "Tipo de instalación industrial";
-            const color = buildingCategory === "commercial" ? "#0369a1" : "#b45309";
+            const color = buildingCategory === "commercial" ? "var(--color-info-dark)" : "var(--metric-value-amber)";
             const effective = subtypes.find(s => s.value === editSubtype) ? editSubtype : subtypes[0].value;
             return (
               <AppFormField label={label}>
@@ -5777,7 +5777,7 @@ export default function BuildingDetailPage() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
                   {HOUSE_AMENITIES.map((a) => (
                     <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                      <input type="checkbox" checked={Boolean(hf[a.key])} onChange={(e) => setHF(a.key, e.target.checked)} style={{ accentColor: "#0369a1" }} />
+                      <input type="checkbox" checked={Boolean(hf[a.key])} onChange={(e) => setHF(a.key, e.target.checked)} style={{ accentColor: "var(--color-info-dark)" }} />
                       {a.label}
                     </label>
                   ))}
@@ -5789,7 +5789,7 @@ export default function BuildingDetailPage() {
                         setHF("has_other", e.target.checked);
                         if (!e.target.checked) setHF("other_notes", undefined);
                       }}
-                      style={{ accentColor: "#0369a1" }} />
+                      style={{ accentColor: "var(--color-info-dark)" }} />
                     Otro
                   </label>
                   {Boolean(hf.has_other) && (
@@ -5808,7 +5808,7 @@ export default function BuildingDetailPage() {
                 <AppFormField label="Modo de renta">
                   <div style={{ display: "flex", gap: 20 }}>
                     <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
-                      <input type="radio" checked={hf.rental_mode === "whole"} onChange={() => setHF("rental_mode", "whole")} style={{ accentColor: "#0369a1" }} />
+                      <input type="radio" checked={hf.rental_mode === "whole"} onChange={() => setHF("rental_mode", "whole")} style={{ accentColor: "var(--color-info-dark)" }} />
                       Casa completa
                     </label>
                     <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
@@ -6182,8 +6182,8 @@ export default function BuildingDetailPage() {
                     <span>Área</span><span>Unidad / Inquilino</span><span>Fecha</span><span>Horario</span><span>Estado</span>
                   </div>
                   {[
-                    { area: "Alberca",          tenant: "Depto 101 — Juan García",   date: "28 May 2026", time: "10:00 - 12:00",  status: "Aprobada",  statusColor: "#15803d", statusBg: "#f0fdf4" },
-                    { area: "Salón de eventos", tenant: "Depto 305 — María López",   date: "1 Jun 2026",  time: "Todo el día",    status: "Pendiente", statusColor: "#b45309", statusBg: "#fffbeb" },
+                    { area: "Alberca",          tenant: "Depto 101 — Juan García",   date: "28 May 2026", time: "10:00 - 12:00",  status: "Aprobada",  statusColor: "var(--metric-value-green)", statusBg: "var(--metric-bg-green)" },
+                    { area: "Salón de eventos", tenant: "Depto 305 — María López",   date: "1 Jun 2026",  time: "Todo el día",    status: "Pendiente", statusColor: "var(--metric-value-amber)", statusBg: "var(--metric-bg-amber)" },
                     { area: "Roof garden",      tenant: "Depto 202 — Carlos Ruiz",   date: "5 Jun 2026",  time: "18:00 - 20:00", status: "Cancelada", statusColor: "#991b1b", statusBg: "#fef2f2" },
                   ].map((row, i) => (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", padding: "10px 8px", borderBottom: "1px solid var(--border-default)", alignItems: "center" }}>
@@ -6257,8 +6257,8 @@ export default function BuildingDetailPage() {
             return (
               <div style={{
                 borderRadius: "var(--border-radius-lg)",
-                background: "rgba(139,34,82,0.04)",
-                border: "1px solid rgba(139,34,82,0.2)",
+                background: "var(--accent-tint-subtle)",
+                border: "1px solid var(--accent-tint-medium)",
                 borderLeft: "4px solid var(--accent)",
                 padding: 20,
               }}>
@@ -6415,7 +6415,7 @@ export default function BuildingDetailPage() {
                   </div>
                 )}
 
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--accent-tint-soft)" }}>
                   <button
                     type="button"
                     onClick={() => void handleDismissAllTasks()}

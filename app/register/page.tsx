@@ -419,7 +419,7 @@ export default function RegisterPage() {
                 onClick={() => setOrgType(t)}
                 style={{
                   ...cardBase,
-                  background: active ? "rgba(139,34,82,.3)" : "rgba(255,255,255,.04)",
+                  background: active ? "var(--accent-tint-medium)" : "rgba(255,255,255,.04)",
                   border: active ? "1px solid var(--accent)" : "1px solid rgba(255,255,255,.15)",
                   color: "#fff",
                   textAlign: "left",

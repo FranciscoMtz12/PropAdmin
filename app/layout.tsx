@@ -143,10 +143,10 @@ export default function RootLayout({
               padding: "12px 16px",
             },
             success: {
-              iconTheme: { primary: "#10B981", secondary: "white" },
+              iconTheme: { primary: "var(--color-chart-green)", secondary: "white" },
             },
             error: {
-              iconTheme: { primary: "#EF4444", secondary: "white" },
+              iconTheme: { primary: "var(--priority-urgent)", secondary: "white" },
             },
           }}
         />

@@ -53,8 +53,8 @@ function formatMetricValue(value: string | number): string {
 /* Todos los círculos tienen siempre el mismo ancho: 1/6 del contenedor.
    El espacio sobrante cuando hay menos de 6 se distribuye con space-evenly. */
 const CIRCLE_WIDTH = "calc((100% - 30px) / 6)"; // (100% - 5 * 6px) / 6
-const NUM_FS = "calc((100vw - 32px) / 6 * 0.27)";
-const LBL_FS = "calc((100vw - 32px) / 6 * 0.13)";
+const NUM_FS = "calc((100% - 30px) / 6 * 0.27)";
+const LBL_FS = "calc((100% - 30px) / 6 * 0.13)";
 
 export default function MetricCircles({ metrics }: MetricCirclesProps) {
   const { uiTheme } = useTheme();

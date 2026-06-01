@@ -192,7 +192,7 @@ export default function UtilityMeterModal({
                   display: "flex", flexDirection: "column", gap: 6,
                   padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${meterType === type ? "var(--accent)" : "var(--border-default)"}`,
-                  background: meterType === type ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  background: meterType === type ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -223,7 +223,7 @@ export default function UtilityMeterModal({
                   display: "flex", flexDirection: "column", gap: 6,
                   padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${contractHolder === "company" ? "var(--accent)" : "var(--border-default)"}`,
-                  background: contractHolder === "company" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  background: contractHolder === "company" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="company" checked={contractHolder === "company"} onChange={() => setContractHolder("company")} style={{ accentColor: "var(--accent)" }} />
@@ -238,7 +238,7 @@ export default function UtilityMeterModal({
                   display: "flex", flexDirection: "column", gap: 6,
                   padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${contractHolder === "tenant" ? "var(--accent)" : "var(--border-default)"}`,
-                  background: contractHolder === "tenant" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  background: contractHolder === "tenant" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="tenant" checked={contractHolder === "tenant"} onChange={() => setContractHolder("tenant")} style={{ accentColor: "var(--accent)" }} />
@@ -272,7 +272,7 @@ export default function UtilityMeterModal({
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingMode === mode ? "var(--accent)" : "var(--border-default)"}`,
-                    background: billingMode === mode ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: billingMode === mode ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input type="radio" value={mode} checked={billingMode === mode} onChange={() => setBillingMode(mode)} style={{ accentColor: "var(--accent)" }} />
@@ -309,7 +309,7 @@ export default function UtilityMeterModal({
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingType === bt ? "var(--accent)" : "var(--border-default)"}`,
-                    background: billingType === bt ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: billingType === bt ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                       <input type="radio" value={bt} checked={billingType === bt} onChange={() => setBillingType(bt)} style={{ accentColor: "var(--accent)" }} />
@@ -347,7 +347,7 @@ export default function UtilityMeterModal({
                   display: "flex", flexDirection: "column", gap: 6,
                   padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${billingFrequency === "monthly" ? "var(--accent)" : "var(--border-default)"}`,
-                  background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  background: billingFrequency === "monthly" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="monthly" checked={billingFrequency === "monthly"} onChange={() => setBillingFrequency("monthly")} style={{ accentColor: "var(--accent)" }} />
@@ -360,7 +360,7 @@ export default function UtilityMeterModal({
                   display: "flex", flexDirection: "column", gap: 6,
                   padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                   border: `2px solid ${billingFrequency === "bimonthly" ? "var(--accent)" : "var(--border-default)"}`,
-                  background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                  background: billingFrequency === "bimonthly" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                     <input type="radio" value="bimonthly" checked={billingFrequency === "bimonthly"} onChange={() => setBillingFrequency("bimonthly")} style={{ accentColor: "var(--accent)" }} />

@@ -1672,7 +1672,7 @@ export default function BuildingsPage() {
           {(buildingCategory === "commercial" || buildingCategory === "industrial") && (() => {
             const subtypes = buildingCategory === "commercial" ? COMMERCIAL_SUBTYPES : INDUSTRIAL_SUBTYPES;
             const label = buildingCategory === "commercial" ? "Tipo de espacio comercial" : "Tipo de instalación industrial";
-            const color = buildingCategory === "commercial" ? "#0369a1" : "#b45309";
+            const color = buildingCategory === "commercial" ? "var(--color-info-dark)" : "var(--metric-value-amber)";
             const effective = subtypes.find(s => s.value === editSubtype) ? editSubtype : subtypes[0].value;
             return (
               <AppFormField label={label}>
@@ -1766,7 +1766,7 @@ export default function BuildingsPage() {
                     <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
                       <input type="checkbox" checked={!!(hf[a.key])}
                         onChange={(e) => setHF(a.key, e.target.checked || undefined)}
-                        style={{ width: 15, height: 15, accentColor: "#0369a1", cursor: "pointer" }} />
+                        style={{ width: 15, height: 15, accentColor: "var(--color-info-dark)", cursor: "pointer" }} />
                       {a.label}
                     </label>
                   ))}
@@ -1778,7 +1778,7 @@ export default function BuildingsPage() {
                         setHF("has_other", e.target.checked || undefined);
                         if (!e.target.checked) setHF("other_notes", undefined);
                       }}
-                      style={{ width: 15, height: 15, accentColor: "#0369a1", cursor: "pointer" }} />
+                      style={{ width: 15, height: 15, accentColor: "var(--color-info-dark)", cursor: "pointer" }} />
                     Otro
                   </label>
                   {Boolean(hf.has_other) && (
@@ -1804,7 +1804,7 @@ export default function BuildingsPage() {
                         <input type="radio" name="edit_rental_mode" value={opt.value}
                           checked={(hf.rental_mode as string | undefined) === opt.value}
                           onChange={() => setHF("rental_mode", opt.value)}
-                          style={{ accentColor: "#0369a1", cursor: "pointer" }} />
+                          style={{ accentColor: "var(--color-info-dark)", cursor: "pointer" }} />
                         {opt.label}
                       </label>
                     ))}
@@ -1985,7 +1985,7 @@ export default function BuildingsPage() {
               {(buildingCategory === "commercial" || buildingCategory === "industrial") && (() => {
                 const subtypes = buildingCategory === "commercial" ? COMMERCIAL_SUBTYPES : INDUSTRIAL_SUBTYPES;
                 const label = buildingCategory === "commercial" ? "Tipo de espacio comercial" : "Tipo de instalación industrial";
-                const color = buildingCategory === "commercial" ? "#0369a1" : "#b45309";
+                const color = buildingCategory === "commercial" ? "var(--color-info-dark)" : "var(--metric-value-amber)";
                 const effective = subtypes.find(s => s.value === createSubtype) ? createSubtype : subtypes[0].value;
                 return (
                   <AppFormField label={label}>

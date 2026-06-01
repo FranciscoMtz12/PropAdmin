@@ -503,8 +503,8 @@ export default function ImpersonationSidebar() {
             transition={{ duration: 0.18 }}
             style={{
               flexShrink: 0,
-              borderTop: "1px solid rgba(139,34,82,0.28)",
-              background: "rgba(139,34,82,0.14)",
+              borderTop: "1px solid var(--accent-tint-medium)",
+              background: "var(--accent-tint-soft)",
               padding: "12px 16px",
               display: "flex",
               flexDirection: "column",

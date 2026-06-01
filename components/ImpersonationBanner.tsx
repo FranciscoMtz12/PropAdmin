@@ -39,8 +39,8 @@ export function ImpersonationBanner() {
   return (
     <div
       style={{
-        background: "rgba(99,102,241,0.08)",
-        border: "1px solid rgba(99,102,241,0.2)",
+        background: "var(--accent-tint-soft)",
+        border: "1px solid var(--accent-tint-medium)",
         borderRadius: "var(--border-radius-md)",
         padding: "9px 14px",
         marginBottom: 16,

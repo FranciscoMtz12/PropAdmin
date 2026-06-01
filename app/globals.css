@@ -147,15 +147,15 @@
   --spacing-2xl:  32px;
   --spacing-3xl:  48px;
 
-  /* ── Escala tipográfica ─────────────────────────────────────────── */
-  --font-size-xs:   11px;   /* badges, etiquetas pequeñas */
-  --font-size-sm:   13px;   /* texto secundario, captions */
-  --font-size-base: 14px;   /* cuerpo, default */
-  --font-size-md:   16px;   /* subtítulos, inputs */
-  --font-size-lg:   18px;   /* títulos de card */
-  --font-size-xl:   22px;   /* títulos de sección */
-  --font-size-2xl:  28px;   /* título de página */
-  --font-size-3xl:  36px;   /* métricas grandes */
+  /* ── Escala tipográfica (rem — respeta html font-size con --font-scale) */
+  --font-size-xs:   0.6875rem; /* 11px @ 16px base — badges, etiquetas pequeñas */
+  --font-size-sm:   0.8125rem; /* 13px @ 16px base — texto secundario, captions */
+  --font-size-base: 0.875rem;  /* 14px @ 16px base — cuerpo, default */
+  --font-size-md:   1rem;      /* 16px @ 16px base — subtítulos, inputs */
+  --font-size-lg:   1.125rem;  /* 18px @ 16px base — títulos de card */
+  --font-size-xl:   1.375rem;  /* 22px @ 16px base — títulos de sección */
+  --font-size-2xl:  1.75rem;   /* 28px @ 16px base — título de página */
+  --font-size-3xl:  2.25rem;   /* 36px @ 16px base — métricas grandes */
 
   /* ── Colores semánticos de estado ──────────────────────────────── */
   /* Error / rojo */
@@ -174,6 +174,52 @@
   --color-info:        #2563EB;
   --color-info-bg:     #E6F1FB;
   --color-info-border: #BFDBFE;
+
+  /* ── Estado de unidad (StatusCircles) ──────────────────────────── */
+  --status-occupied:    #10B981; /* ocupada / verde  — unificado con chart-green */
+  --status-vacant:      #3B82F6; /* vacante / azul   — unificado con chart-blue */
+  --status-partial:     #F59E0B; /* parcial / ámbar  — unificado con priority-medium */
+  --status-maintenance: #EF4444; /* mantenimiento / rojo — unificado con priority-urgent */
+
+  /* ── Prioridad de tickets ───────────────────────────────────────── */
+  --priority-urgent:      #EF4444;
+  --priority-urgent-bg:   #FEE2E2;
+  --priority-urgent-text: #991B1B;
+  --priority-high:        #F97316;
+  --priority-high-bg:     #FFEDD5;
+  --priority-high-text:   #9A3412;
+  --priority-medium:      #F59E0B;
+  --priority-medium-bg:   #FEF9C3;
+  --priority-medium-text: #713F12;
+  --priority-low:         #6B7280;
+  --priority-low-bg:      #F3F4F6;
+  --priority-low-text:    #6B7280; /* mismo tono que el dot */
+
+  /* ── Tints del color de acento activo (color-mix) ──────────────── */
+  --accent-tint-subtle: color-mix(in srgb, var(--accent)  5%, transparent);
+  --accent-tint-soft:   color-mix(in srgb, var(--accent) 10%, transparent);
+  --accent-tint-medium: color-mix(in srgb, var(--accent) 25%, transparent);
+
+  /* ── Success sutil (rgba de #10B981 al 12%) ─────────────────────── */
+  --color-success-subtle: rgba(16, 185, 129, 0.12);
+
+  /* ── Charts (colores compartidos en Recharts) ───────────────────── */
+  --color-chart-green:  #10B981; /* verde cobrado / ocupación */
+  --color-chart-blue:   #3B82F6; /* azul disponible / estacionamiento */
+  --color-chart-orange: #F97316; /* naranja pendiente (= priority-high) */
+
+  /* ── Texto semántico oscuro ─────────────────────────────────────── */
+  --color-warning-text: #92400E; /* texto amber oscuro sobre fondos warning */
+
+  /* ── Accent forms (info oscuro) ─────────────────────────────────── */
+  --color-info-dark: #0369A1; /* checkboxes / acciones de formulario */
+
+  /* ── Status adicional ───────────────────────────────────────────── */
+  --status-default: #888780; /* StatusCircle sin estado / inactivo */
+
+  /* ── Media / Fotos ──────────────────────────────────────────────── */
+  --color-media:    #7c3aed;
+  --color-media-bg: #f5f3ff;
 
   /* ── Compatibilidad con tokens legacy ──────────────────────────── */
   --bg-primary:    #F1F5F9;
@@ -284,6 +330,33 @@
   --color-info:        #60A5FA;
   --color-info-bg:     #0C1A3A;
   --color-info-border: #1E40AF;
+
+  /* ── Estado de unidad dark ──────────────────────────────────────── */
+  --status-occupied:    #34D399; /* bright emerald */
+  --status-vacant:      #60A5FA; /* bright blue */
+  --status-partial:     #FCD34D; /* bright amber */
+  --status-maintenance: #F87171; /* bright red */
+
+  /* ── Prioridad de tickets dark ──────────────────────────────────── */
+  --priority-urgent:      #F87171;
+  --priority-urgent-bg:   #1C0507;  /* = badge-bg-red dark */
+  --priority-urgent-text: #FCA5A5;
+  --priority-high:        #FB923C;
+  --priority-high-bg:     #431407;
+  --priority-high-text:   #FB923C;
+  --priority-medium:      #FCD34D;
+  --priority-medium-bg:   #1C1106;  /* = badge-bg-amber dark */
+  --priority-medium-text: #FCD34D;
+  --priority-low:         #9CA3AF;
+  --priority-low-bg:      #2D3748;  /* = badge-bg-gray dark */
+  --priority-low-text:    #9CA3AF;
+
+  /* ── Success sutil dark (más opaco para visibilidad) ────────────── */
+  --color-success-subtle: rgba(16, 185, 129, 0.15);
+
+  /* ── Media / Fotos dark ─────────────────────────────────────────── */
+  --color-media:    #a78bfa;
+  --color-media-bg: #2e1065;
 
   /* ── Compatibilidad con tokens legacy ──────────────────────────── */
   --bg-primary:   #0F1623;

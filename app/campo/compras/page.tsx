@@ -696,7 +696,7 @@ export default function CampoComprasPage() {
                           )
                         );
                       }}
-                      style={{ width: 18, height: 18, cursor: "pointer", accentColor: "#F59E0B" }}
+                      style={{ width: 18, height: 18, cursor: "pointer", accentColor: "var(--priority-medium)" }}
                     />
                     ¿Faltó algo?
                   </label>
@@ -705,7 +705,7 @@ export default function CampoComprasPage() {
                   {item.faltaAlgo ? (
                     <div style={{ marginTop: 10 }}>
                       <label style={{
-                        fontSize: "0.75rem", fontWeight: 600, color: "#92400e",
+                        fontSize: "0.75rem", fontWeight: 600, color: "var(--color-warning-text)",
                         marginBottom: 4, display: "block",
                       }}>
                         ¿Cuánto faltó? (máx. {item.quantity} {item.unit})
@@ -726,7 +726,7 @@ export default function CampoComprasPage() {
                         style={{
                           width: "100%", padding: "10px 12px", borderRadius: "var(--border-radius-md)",
                           border: "1px solid var(--metric-border-amber)",
-                          background: "#fff7ed", color: "#92400e",
+                          background: "#fff7ed", color: "var(--color-warning-text)",
                           fontSize: "0.875rem", fontWeight: 600,
                           outline: "none", boxSizing: "border-box",
                         }}
