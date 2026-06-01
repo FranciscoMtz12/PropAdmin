@@ -8,6 +8,7 @@ import {
   Plus, Settings, Eye, Loader2,
   Monitor, Tablet, Smartphone, Laptop,
   X, Bell, FileText, Home, Star, Check, CreditCard,
+  Menu,
 } from "lucide-react";
 import {
   PieChart, Pie, Cell,
@@ -39,8 +40,8 @@ import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
-type ThemeOption  = "clasico" | "super_soft" | "rigido";
-type ViewportSize = 375 | 768 | 1280 | null;
+type ThemeOption = "clasico" | "super_soft" | "rigido";
+type FrameType   = "phone" | "tablet" | "none";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -60,11 +61,17 @@ const THEME_OPTIONS: { label: string; value: ThemeOption; radiusMd: number }[] =
   { label: "Rígido",     value: "rigido",     radiusMd: 2  },
 ];
 
-const VIEWPORT_PRESETS: { label: string; value: ViewportSize; display: string; Icon: React.ElementType }[] = [
-  { label: "Móvil",   value: 375,  display: "375px",    Icon: Smartphone },
-  { label: "Tablet",  value: 768,  display: "768px",    Icon: Tablet },
-  { label: "Laptop",  value: 1280, display: "1280px",   Icon: Laptop },
-  { label: "Desktop", value: null, display: "Completo", Icon: Monitor },
+// min/max del slider de ancho libre
+const SLIDER_MIN = 320;
+const SLIDER_MAX = 1700;
+// marcas de referencia visibles en el slider
+const SLIDER_REFS = [1280, 1440, 1600];
+
+const VIEWPORT_PRESETS: { label: string; value: number; Icon: React.ElementType }[] = [
+  { label: "Móvil",   value: 375,  Icon: Smartphone },
+  { label: "Tablet",  value: 768,  Icon: Tablet },
+  { label: "Laptop",  value: 1280, Icon: Laptop },
+  { label: "Desktop", value: 1440, Icon: Monitor },
 ];
 
 type TableRow = { id: string; nombre: string; tipo: string; estado: "activo" | "pendiente" | "inactivo" };
@@ -301,6 +308,33 @@ function DsToggle({ label, description, icon, checked, onChange, saving }: {
   );
 }
 
+function DeviceFrame({ type, children }: { type: FrameType; children: ReactNode }) {
+  if (type === "none") return <>{children}</>;
+  const isPhone = type === "phone";
+  return (
+    <div style={{
+      background: "#16161e",
+      borderRadius: isPhone ? "44px" : "28px",
+      padding: isPhone ? "16px 6px" : "16px 10px",
+      boxShadow: "inset 0 0 0 1px #323245, 0 0 0 3px #0a0a12, 0 28px 72px rgba(0,0,0,0.55)",
+      position: "relative",
+      userSelect: "none",
+    }}>
+      {isPhone ? (
+        <div style={{ position: "absolute", top: "12px", left: "50%", transform: "translateX(-50%)", width: "52px", height: "5px", borderRadius: "3px", background: "#2c2c3e" }} />
+      ) : (
+        <div style={{ position: "absolute", top: "9px", left: "50%", transform: "translateX(-50%)", width: "9px", height: "9px", borderRadius: "50%", background: "#2c2c3e" }} />
+      )}
+      <div style={{ borderRadius: isPhone ? "30px" : "16px", overflow: "hidden", marginTop: isPhone ? "8px" : "4px" }}>
+        {children}
+      </div>
+      {isPhone && (
+        <div style={{ margin: "10px auto 0", width: "90px", height: "4px", borderRadius: "2px", background: "#2c2c3e" }} />
+      )}
+    </div>
+  );
+}
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const PANEL_W = 264;
@@ -319,7 +353,8 @@ export default function DesignSystemPage() {
   const [reportDone, setReportDone]   = useState(false);
   const [activeTab, setActiveTab]     = useState("cards");
   const [activeTab2, setActiveTab2]   = useState("resumen");
-  const [viewport, setViewport]       = useState<ViewportSize>(null);
+  const [viewportPx, setViewportPx]   = useState(1440);
+  const [drawerOpen, setDrawerOpen]   = useState(false);
   const [customColor, setCustomColor] = useState<string | null>(null);
   const [toggle1, setToggle1]         = useState(true);
   const [toggle2, setToggle2]         = useState(false);
@@ -344,16 +379,19 @@ export default function DesignSystemPage() {
     "--btn-primary-bg": accent,
   };
 
-  const themeLabel     = THEME_OPTIONS.find((o) => o.value === theme)?.label ?? theme;
-  const viewportPreset = VIEWPORT_PRESETS.find((p) => p.value === viewport) ?? VIEWPORT_PRESETS[3];
-  const DONUT_COLORS   = [accent, "#94A3B8", "#FCD34D", "#60A5FA"];
+  const themeLabel    = THEME_OPTIONS.find((o) => o.value === theme)?.label ?? theme;
+  const matchedPreset = VIEWPORT_PRESETS.find((p) => p.value === viewportPx);
+  const frameType: FrameType = viewportPx === 375 ? "phone" : viewportPx === 768 ? "tablet" : "none";
+  const inFrame       = frameType !== "none";
+  const DONUT_COLORS  = [accent, "#94A3B8", "#FCD34D", "#60A5FA"];
 
   const handleGenerateReport = useCallback(() => {
     const now = new Date();
     const dateStr = now.toLocaleDateString("es-MX", { year: "numeric", month: "long", day: "numeric" });
     const timeStr = now.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
     const radiusDisplay = theme === "rigido" ? "1–6px (fijo — tema Rígido)" : theme === "super_soft" ? "14–32px (fijo — tema Super Soft)" : `${radius}px (Clásico custom)`;
-    const viewportDisplay = viewport === null ? "Desktop (ancho completo)" : `${viewportPreset.label} — ${viewport}px`;
+    const matchedP = VIEWPORT_PRESETS.find(p => p.value === viewportPx);
+    const viewportDisplay = matchedP ? `${matchedP.label} — ${viewportPx}px` : `Personalizado — ${viewportPx}px`;
 
     const md =
 `# Preferencias de diseño — ${dateStr} ${timeStr}
@@ -383,23 +421,23 @@ ${notes.trim() || "(sin notas)"}
     URL.revokeObjectURL(url);
     setReportDone(true);
     setTimeout(() => setReportDone(false), 4000);
-  }, [radius, spacing, accent, theme, isDark, notes, viewport, viewportPreset, customColor, themeLabel]);
+  }, [radius, spacing, accent, theme, isDark, notes, viewportPx, customColor, themeLabel]);
 
-  const panelStyle = {
-    position: "fixed" as const,
+  const panelStyle: CSSProperties = {
+    position: "fixed",
     right: 0,
     top: 0,
     height: "100vh",
     width: `${PANEL_W}px`,
-    overflowY: "auto" as const,
-    scrollbarWidth: "thin" as const,
-    zIndex: 50,
+    overflowY: "auto",
+    scrollbarWidth: "thin",
+    zIndex: 200,
     padding: "18px",
-    boxSizing: "border-box" as const,
+    boxSizing: "border-box",
     ...(catalogVars as unknown as CSSProperties),
     background: "var(--bg-card)",
     borderLeft: "1px solid var(--border-default)",
-    transition: "background 0.3s, border-color 0.3s",
+    transition: "background 0.3s, border-color 0.3s, transform 0.3s ease",
   };
 
   const labelStyle: CSSProperties = { display: "block", fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: "6px" };
@@ -441,24 +479,37 @@ ${notes.trim() || "(sin notas)"}
           background: var(--accent); cursor: pointer;
           border: 2px solid var(--bg-card);
         }
+        /* ── Dispositivos móviles (drawer) ─── */
         @media (max-width: 900px) {
-          .ds-page-wrapper { display: flex; flex-direction: column; }
-          .ds-controls-sidebar {
-            position: static !important;
-            width: 100% !important;
-            height: auto !important;
-            order: -1;
-            border-left: none !important;
-            border-bottom: 1px solid var(--border-default);
-          }
+          .ds-page-header { padding: 16px 12px 0 !important; }
           .ds-catalog-wrapper {
-            padding-right: 16px !important;
-            order: 0;
+            padding-right: 12px !important;
+            padding-left: 12px !important;
           }
+          .ds-controls-sidebar {
+            transform: translateX(100%);
+            width: min(85vw, 320px) !important;
+            z-index: 200 !important;
+          }
+          .ds-controls-sidebar.ds-drawer-open {
+            transform: translateX(0) !important;
+          }
+          .ds-hamburger { display: flex !important; }
+          .ds-drawer-overlay--open {
+            opacity: 1 !important;
+            pointer-events: all !important;
+          }
+          .ds-drawer-close { display: flex !important; }
+        }
+        @media (min-width: 901px) {
+          .ds-controls-sidebar { transform: none !important; }
+          .ds-hamburger { display: none !important; }
+          .ds-drawer-overlay { display: none !important; }
+          .ds-drawer-close { display: none !important; }
         }
       `}</style>
 
-      <div style={{ padding: "24px 32px 0", boxSizing: "border-box" }}>
+      <div className="ds-page-header" style={{ padding: "24px 32px 0", boxSizing: "border-box" }}>
         <PageHeader
           title="Sistema de Diseño"
           subtitle="Sandbox de previsualización — los controles solo afectan este catálogo"
@@ -475,10 +526,11 @@ ${notes.trim() || "(sin notas)"}
           transition: "all 0.3s ease",
         }}
       >
-        <div style={{ maxWidth: viewport !== null ? `${viewport}px` : "none", margin: "0 auto", transition: "max-width 0.35s cubic-bezier(0.4, 0, 0.2, 1)" }}>
+        <div style={{ maxWidth: `${viewportPx}px`, margin: "0 auto", transition: "max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1)" }}>
+          <DeviceFrame type={frameType}>
           <div
             className="ds-catalog"
-            style={{ padding: "24px", borderRadius: "var(--border-radius-lg)", background: "var(--bg-page)", border: "1px solid var(--border-default)", transition: "background 0.3s, border-color 0.3s", overflow: "hidden" }}
+            style={{ padding: "24px", borderRadius: inFrame ? 0 : "var(--border-radius-lg)", background: "var(--bg-page)", border: inFrame ? "none" : "1px solid var(--border-default)", transition: "background 0.3s, border-color 0.3s", overflow: "hidden" }}
           >
 
             {/* ── 1. Cards ─── */}
@@ -1077,28 +1129,133 @@ ${notes.trim() || "(sin notas)"}
             </CatalogSection>
 
           </div>
+          </DeviceFrame>
         </div>
       </div>
 
+      {/* ── Hamburguesa (solo móvil) ─── */}
+      <button
+        className="ds-hamburger"
+        type="button"
+        onClick={() => setDrawerOpen(true)}
+        aria-label="Abrir controles"
+        style={{
+          display: "none",
+          position: "fixed",
+          bottom: 20,
+          right: 20,
+          zIndex: 190,
+          width: 52,
+          height: 52,
+          borderRadius: "50%",
+          background: accent,
+          color: "#fff",
+          border: "none",
+          cursor: "pointer",
+          alignItems: "center",
+          justifyContent: "center",
+          boxShadow: "0 4px 20px rgba(0,0,0,0.35)",
+        }}
+      >
+        <Menu size={22} />
+      </button>
+
+      {/* ── Overlay del drawer (solo móvil) ─── */}
+      <div
+        className={`ds-drawer-overlay${drawerOpen ? " ds-drawer-overlay--open" : ""}`}
+        onClick={() => setDrawerOpen(false)}
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: 195,
+          background: "rgba(0,0,0,0.5)",
+          opacity: 0,
+          pointerEvents: "none",
+          transition: "opacity 0.3s",
+        }}
+      />
+
       {/* ── Panel de controles ─── */}
-      <div className="ds-controls-sidebar" style={panelStyle}>
+      <div className={`ds-controls-sidebar${drawerOpen ? " ds-drawer-open" : ""}`} style={panelStyle}>
 
-        <h2 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", marginBottom: "18px", letterSpacing: "0.01em" }}>
-          Controles de previsualización
-        </h2>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px" }}>
+          <h2 style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--text-primary)", margin: 0, letterSpacing: "0.01em" }}>
+            Controles de previsualización
+          </h2>
+          <button
+            className="ds-drawer-close"
+            type="button"
+            onClick={() => setDrawerOpen(false)}
+            aria-label="Cerrar controles"
+            style={{ display: "none", alignItems: "center", justifyContent: "center", width: 32, height: 32, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-page)", color: "var(--text-muted)", cursor: "pointer", flexShrink: 0 }}
+          >
+            <X size={16} />
+          </button>
+        </div>
 
-        {/* ── Viewport ─── */}
+        {/* ── Viewport / ancho libre ─── */}
         <div style={{ marginBottom: "18px" }}>
-          <CtrlLabel label="Viewport" value={viewportPreset.display} />
+          {/* Ancho actual */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: "8px" }}>
+            <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)" }}>
+              Ancho del catálogo
+            </span>
+            <span style={{ fontSize: "0.875rem", fontWeight: 700, color: "var(--accent)", fontFamily: "monospace" }}>
+              {viewportPx}px
+            </span>
+          </div>
+
+          {/* Slider libre 320–1700 */}
+          <input
+            type="range"
+            className="ds-range"
+            min={SLIDER_MIN}
+            max={SLIDER_MAX}
+            step={10}
+            value={viewportPx}
+            onChange={(e) => setViewportPx(Number(e.target.value))}
+            style={{ marginBottom: "4px" }}
+          />
+
+          {/* Marcas de referencia */}
+          <div style={{ position: "relative", height: "28px", marginBottom: "10px" }}>
+            {SLIDER_REFS.map((ref) => {
+              const pct = ((ref - SLIDER_MIN) / (SLIDER_MAX - SLIDER_MIN)) * 100;
+              return (
+                <button
+                  key={ref}
+                  type="button"
+                  title={`Ir a ${ref}px`}
+                  onClick={() => setViewportPx(ref)}
+                  style={{
+                    position: "absolute",
+                    left: `${pct}%`,
+                    transform: "translateX(-50%)",
+                    textAlign: "center",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    padding: 0,
+                  }}
+                >
+                  <div style={{ width: 1, height: 6, background: viewportPx === ref ? "var(--accent)" : "var(--border-strong)", margin: "0 auto 2px" }} />
+                  <span style={{ fontSize: "0.5rem", fontFamily: "monospace", color: viewportPx === ref ? "var(--accent)" : "var(--text-muted)", fontWeight: viewportPx === ref ? 700 : 400, whiteSpace: "nowrap" }}>
+                    {ref}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Presets rápidos */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px" }}>
             {VIEWPORT_PRESETS.map(({ label, value, Icon }) => {
-              const active = viewport === value;
+              const active = viewportPx === value;
               return (
                 <button
                   key={label}
                   type="button"
-                  title={`${label} — ${VIEWPORT_PRESETS.find((p) => p.value === value)?.display}`}
-                  onClick={() => setViewport(value)}
+                  onClick={() => setViewportPx(value)}
                   style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "5px", padding: "7px 6px", borderRadius: "var(--border-radius-md)", border: active ? `1px solid ${accent}` : "1px solid var(--border-default)", background: active ? accent : "var(--bg-card)", color: active ? "#fff" : "var(--text-secondary)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", transition: "all 0.15s", whiteSpace: "nowrap" }}
                 >
                   <Icon size={12} />
@@ -1107,6 +1264,9 @@ ${notes.trim() || "(sin notas)"}
               );
             })}
           </div>
+          <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: "4px" }}>
+            {matchedPreset ? `Preset: ${matchedPreset.label}` : "Ancho libre — arrastra el slider"}
+          </p>
         </div>
 
         <div style={{ height: "1px", background: "var(--border-default)", margin: "4px 0 16px" }} />
