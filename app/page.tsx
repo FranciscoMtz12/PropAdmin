@@ -230,7 +230,7 @@ export default function LandingPage() {
             const isActive = active === r.id;
             const activeStyle =
               r.id === "admin"
-                ? { background: "#8B2252", borderColor: "#8B2252", color: "#fff" }
+                ? { background: "var(--accent)", borderColor: "var(--accent)", color: "#fff" }
                 : r.id === "campo"
                 ? { background: "#185FA5", borderColor: "#185FA5", color: "#fff" }
                 : { background: "rgba(255,255,255,.2)", borderColor: "rgba(255,255,255,.5)", color: "#fff" };

@@ -183,7 +183,7 @@ const STATUS_FILTERS: { value: "ALL" | Status; label: string; color: string; bg:
   { value: "sent",      label: "Enviada",           color: "var(--metric-value-blue)", bg: "#eff6ff" },
   { value: "partial",   label: "Surtido parcial",   color: "var(--metric-value-amber)", bg: "#fffbeb" },
   { value: "received",  label: "Completada",        color: "var(--metric-value-green)", bg: "#f0fdf4" },
-  { value: "invoiced",  label: "Facturada",         color: "#7c3aed", bg: "#f5f3ff" },
+  { value: "invoiced",  label: "Facturada",         color: "var(--color-media)", bg: "var(--color-media-bg)" },
   { value: "cancelled", label: "Cancelada",         color: "var(--metric-value-red)", bg: "#fef2f2" },
 ];
 
@@ -202,7 +202,7 @@ const STATUS_VARIANT: Record<Status, StatusVariantValue> = {
 function getStatusBadgeProps(s: Status): { variant?: "amber" | "blue" | "green" | "red" | "gray"; backgroundColor?: string; textColor?: string; borderColor?: string } {
   const v = STATUS_VARIANT[s];
   if (v === "purple") {
-    return { backgroundColor: "#f3e8ff", textColor: "#7c3aed", borderColor: "#a855f7" };
+    return { backgroundColor: "#f3e8ff", textColor: "var(--color-media)", borderColor: "#a855f7" };
   }
   return { variant: v };
 }
@@ -1682,7 +1682,7 @@ export default function PurchasesPage() {
           { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "var(--metric-value-blue)" },
           { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "var(--metric-value-amber)" },
           { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "var(--metric-value-green)" },
-          { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "#7c3aed" },
+          { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "var(--color-media)" },
           { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "var(--metric-value-red)" },
         ].map((s, i, arr) => (
           <div key={i} className="purchases-statbar-cell" style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
@@ -2558,7 +2558,7 @@ export default function PurchasesPage() {
                             style={{
                               display: "inline-flex", alignItems: "center", gap: 6,
                               padding: "9px 14px", borderRadius: "var(--border-radius-md)",
-                              border: "1px solid #7c3aed", background: "#7c3aed", color: "#fff",
+                              border: "1px solid var(--color-media)", background: "var(--color-media)", color: "#fff",
                               fontSize: "0.8125rem", fontWeight: 700, cursor: "pointer",
                             }}
                           >
@@ -2576,7 +2576,7 @@ export default function PurchasesPage() {
                                 <span style={{
                                   display: "inline-flex", alignItems: "center", gap: 6,
                                   padding: "6px 12px", borderRadius: 999,
-                                  background: "#f3e8ff", color: "#7c3aed",
+                                  background: "#f3e8ff", color: "var(--color-media)",
                                   border: "1px solid #a855f7",
                                   fontSize: "0.75rem", fontWeight: 600,
                                 }}>
@@ -2600,7 +2600,7 @@ export default function PurchasesPage() {
                                   display: "inline-flex", alignItems: "center", gap: 6,
                                   padding: "9px 14px", borderRadius: "var(--border-radius-md)",
                                   border: "1px solid #a855f7", background: "transparent",
-                                  color: "#7c3aed",
+                                  color: "var(--color-media)",
                                   fontSize: "0.8125rem", fontWeight: 600, cursor: "pointer",
                                 }}
                               >
@@ -3343,8 +3343,8 @@ export default function PurchasesPage() {
                 style={{
                   display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8,
                   padding: "11px 16px", borderRadius: "var(--border-radius-lg)",
-                  border: "1px solid #7c3aed",
-                  background: "#7c3aed",
+                  border: "1px solid var(--color-media)",
+                  background: "var(--color-media)",
                   color: "#fff",
                   fontSize: "0.875rem", fontWeight: 700,
                   cursor: savingInvoice ? "wait" : "pointer",

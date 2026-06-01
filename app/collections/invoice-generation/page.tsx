@@ -564,7 +564,7 @@ export default function InvoiceGenerationPage() {
                 placeItems: "center",
               }}
             >
-              <CalendarClock size={18} color="#92400E" />
+              <CalendarClock size={18} color="var(--color-warning-text)" />
             </div>
           }
         />

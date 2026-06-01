@@ -202,7 +202,7 @@ export default function SaproaRoadmapPage() {
         <SectionCard
           title={`Bloqueador pre-lanzamiento (${blockerItems.length})`}
           subtitle="Estos ítems deben resolverse antes de onboardear usuarios reales"
-          icon={<AlertTriangle size={14} color="#EF4444" />}
+          icon={<AlertTriangle size={14} color="var(--priority-urgent)" />}
           style={{
             marginBottom: 16,
             border: "1.5px solid rgba(239,68,68,0.35)",
@@ -231,7 +231,7 @@ export default function SaproaRoadmapPage() {
               >
                 <AlertTriangle
                   size={18}
-                  color="#EF4444"
+                  color="var(--priority-urgent)"
                   style={{ flexShrink: 0, marginTop: 1 }}
                 />
                 <div style={{ flex: 1, minWidth: 0 }}>

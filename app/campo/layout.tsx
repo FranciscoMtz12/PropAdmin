@@ -69,7 +69,7 @@ export default function CampoLayout({ children }: { children: ReactNode }) {
   }
 
   const displayLogo = isDark ? (logoDarkUrl || logoUrl) : logoUrl;
-  const accent      = accentColor || "#8B2252";
+  const accent      = accentColor || "var(--accent)";
   const accentBg    = accentColor ? `${accentColor}22` : "var(--accent-tint-soft)";
 
   if (loading || !user || user.role === "tenant" || (user.role !== "field" && user.role !== "mantenimiento" && !user.is_superadmin)) return null;

@@ -98,12 +98,12 @@ const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 const ROLE_STYLE: Record<UserRole, { bg: string; fg: string }> = {
-  superadmin:     { bg: "#F3E8FF", fg: "#7C3AED" },
-  titular:        { bg: "#FEF3C7", fg: "#92400E" },
-  group_admin:    { bg: "#FEF3C7", fg: "#92400E" },
+  superadmin:     { bg: "#F3E8FF", fg: "var(--color-media)" },
+  titular:        { bg: "var(--badge-bg-amber)", fg: "var(--color-warning-text)" },
+  group_admin:    { bg: "var(--badge-bg-amber)", fg: "var(--color-warning-text)" },
   administracion: { bg: "var(--badge-bg-blue)",  fg: "var(--badge-text-blue)" },
   directivo:      { bg: "var(--badge-bg-gray)",  fg: "var(--badge-text-gray)" },
-  compras:        { bg: "#FFEDD5", fg: "#EA580C" },
+  compras:        { bg: "var(--priority-high-bg)", fg: "#EA580C" },
   mantenimiento:  { bg: "var(--badge-bg-green)", fg: "var(--badge-text-green)" },
   field:          { bg: "#DBEAFE", fg: "#1E40AF" },
   tenant:         { bg: "#CCFBF1", fg: "#0F766E" },
