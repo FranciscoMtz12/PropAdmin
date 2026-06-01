@@ -4925,7 +4925,7 @@ export default function BuildingDetailPage() {
                       <span style={{ flex: 1, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>{CLEANING_TYPE_LABEL[log.cleaning_type] ?? log.cleaning_type}</span>
                       <span style={{
                         padding: "2px 7px", borderRadius: 999, fontSize: "0.6875rem", fontWeight: 600, flexShrink: 0,
-                        background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? '#fef3c7' : 'var(--divider)',
+                        background: log.status === 'completed' ? '#d1fae5' : log.status === 'skipped' ? 'var(--badge-bg-amber)' : 'var(--divider)',
                         color: log.status === 'completed' ? '#065f46' : log.status === 'skipped' ? '#92400e' : 'var(--text-secondary)',
                       }}>
                         {log.status === 'completed' ? 'Completado' : log.status === 'skipped' ? 'Omitido' : 'Pendiente'}
@@ -4968,7 +4968,7 @@ export default function BuildingDetailPage() {
               ) : (
                 openTickets.map((ticket, ti) => {
                   const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
-                  const pillBg = ticket.priority === 'urgent' ? '#fee2e2' : ticket.priority === 'high' ? '#ffedd5' : ticket.priority === 'medium' ? '#fef9c3' : '#f3f4f6';
+                  const pillBg = ticket.priority === 'urgent' ? 'var(--badge-bg-red)' : ticket.priority === 'high' ? '#ffedd5' : ticket.priority === 'medium' ? '#fef9c3' : '#f3f4f6';
                   const pillColor = ticket.priority === 'urgent' ? '#991b1b' : ticket.priority === 'high' ? '#9a3412' : ticket.priority === 'medium' ? '#713f12' : '#6b7280';
                   const priorityLabel = ticket.priority === 'urgent' ? 'Urgente' : ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja';
                   const age = daysAgo(ticket.created_at);
@@ -6181,8 +6181,8 @@ export default function BuildingDetailPage() {
                     <span>Área</span><span>Unidad / Inquilino</span><span>Fecha</span><span>Horario</span><span>Estado</span>
                   </div>
                   {[
-                    { area: "Alberca",          tenant: "Depto 101 — Juan García",   date: "28 May 2026", time: "10:00 - 12:00",  status: "Aprobada",  statusColor: "#15803d", statusBg: "#f0fdf4" },
-                    { area: "Salón de eventos", tenant: "Depto 305 — María López",   date: "1 Jun 2026",  time: "Todo el día",    status: "Pendiente", statusColor: "#b45309", statusBg: "#fffbeb" },
+                    { area: "Alberca",          tenant: "Depto 101 — Juan García",   date: "28 May 2026", time: "10:00 - 12:00",  status: "Aprobada",  statusColor: "var(--metric-value-green)", statusBg: "var(--metric-bg-green)" },
+                    { area: "Salón de eventos", tenant: "Depto 305 — María López",   date: "1 Jun 2026",  time: "Todo el día",    status: "Pendiente", statusColor: "var(--metric-value-amber)", statusBg: "var(--metric-bg-amber)" },
                     { area: "Roof garden",      tenant: "Depto 202 — Carlos Ruiz",   date: "5 Jun 2026",  time: "18:00 - 20:00", status: "Cancelada", statusColor: "#991b1b", statusBg: "#fef2f2" },
                   ].map((row, i) => (
                     <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1.6fr 1fr 1fr 0.7fr", gap: "0 12px", padding: "10px 8px", borderBottom: "1px solid var(--border-default)", alignItems: "center" }}>
