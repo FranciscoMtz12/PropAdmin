@@ -804,7 +804,7 @@ ${notes.trim() || "(sin notas)"}
           transition: "all 0.3s ease",
         }}
       >
-        <div style={{ maxWidth: `${viewportPx}px`, margin: "0 auto", transition: "max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1)" }}>
+        <div style={{ maxWidth: `${viewportPx}px`, margin: "0 auto", transition: "max-width 0.25s cubic-bezier(0.4, 0, 0.2, 1)", transform: "translateZ(0)", position: "relative" }}>
           <DeviceFrame type={frameType}>
           <div
             className="ds-catalog"

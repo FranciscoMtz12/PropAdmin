@@ -63,7 +63,7 @@ export default function Modal({
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={{
-              width: "100%",
+              width: "min(100%, calc(100vw - 48px))",
               maxWidth,
               maxHeight,
               overflowY: "auto",
