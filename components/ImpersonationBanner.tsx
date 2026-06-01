@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Eye } from "lucide-react";
+import { Eye, X } from "lucide-react";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 const SAPROA_ACCENT = "#6366F1";
@@ -14,10 +14,11 @@ export function ImpersonationBanner() {
     impersonatedCompanyName,
     impersonatedRole,
     impersonatedUserEmail,
+    impersonatedGroupName,
     stopImpersonation,
   } = useImpersonation();
 
-  if (!isImpersonating || impersonationMode === "group") return null;
+  if (!isImpersonating) return null;
 
   const ROLE_LABEL: Record<string, string> = {
     titular: "Titular",
@@ -31,6 +32,17 @@ export function ImpersonationBanner() {
   const roleLabel =
     (impersonatedRole && ROLE_LABEL[impersonatedRole]) || impersonatedRole || "";
 
+  function label() {
+    if (impersonationMode === "group") {
+      return `Vista grupo · ${impersonatedGroupName ?? ""}`;
+    }
+    const base = `Vista simulada · ${impersonatedCompanyName ?? ""}`;
+    if (impersonationMode === "company") return `${base} · vista completa`;
+    if (roleLabel) return `${base} · ${roleLabel}`;
+    if (impersonatedUserEmail) return `${base} (${impersonatedUserEmail})`;
+    return base;
+  }
+
   function handleExit() {
     stopImpersonation();
     router.push("/saproa-admin/overview");
@@ -42,11 +54,11 @@ export function ImpersonationBanner() {
         background: "var(--accent-tint-soft)",
         border: "1px solid var(--accent-tint-medium)",
         borderRadius: "var(--border-radius-md)",
-        padding: "9px 14px",
+        padding: "8px 12px",
         marginBottom: 16,
         display: "flex",
         alignItems: "center",
-        gap: 10,
+        gap: 8,
         flexShrink: 0,
       }}
     >
@@ -67,23 +79,20 @@ export function ImpersonationBanner() {
           color: SAPROA_ACCENT,
           fontWeight: 600,
           lineHeight: 1.4,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
         }}
       >
-        Vista simulada
-        {impersonatedCompanyName ? ` · ${impersonatedCompanyName}` : ""}
-        {impersonationMode === "company"
-          ? " · vista completa"
-          : roleLabel
-          ? ` · ${roleLabel}`
-          : ""}
-        {impersonationMode === "user" && impersonatedUserEmail
-          ? ` (${impersonatedUserEmail})`
-          : ""}
+        {label()}
       </span>
       <button
         onClick={handleExit}
         style={{
-          padding: "4px 10px",
+          display: "flex",
+          alignItems: "center",
+          gap: 5,
+          padding: "5px 10px",
           borderRadius: "var(--border-radius-sm)",
           border: "1px solid rgba(99,102,241,0.4)",
           background: "transparent",
@@ -92,9 +101,11 @@ export function ImpersonationBanner() {
           fontWeight: 700,
           cursor: "pointer",
           whiteSpace: "nowrap",
+          flexShrink: 0,
         }}
       >
-        Salir de vista simulada
+        <X size={12} />
+        Salir
       </button>
     </div>
   );
