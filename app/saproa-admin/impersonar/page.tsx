@@ -91,26 +91,33 @@ export default function SaproaImpersonarPage() {
   }
 
   function toggleGroup(group: Group) {
+    /* Solo expande/colapsa — NO impersona */
     setOpenGroupIds(prev => {
       const next = new Set(prev);
       next.has(group.id) ? next.delete(group.id) : next.add(group.id);
       return next;
     });
+  }
 
+  function impersonateGroupDirect(group: Group) {
+    /* Impersonación explícita de grupo — solo desde el botón "Grupo" */
     if (group.id === UNGROUPED_ID) {
       const first = companies.find(c => !c.group_id);
       if (first) impersonateCompany(first);
-    } else {
-      const groupComps = companies.filter(c => c.group_id === group.id);
-      if (groupComps.length > 0) {
-        const gc: GroupCompany[] = groupComps.map(c => ({ id: c.id, name: c.name, short_name: c.short_name, brand_color: c.brand_color, logo_url: c.logo_url }));
-        startGroupImpersonation({ groupId: group.id, groupName: group.short_name || group.name, companies: gc });
-        router.push("/dashboard");
-      }
+      return;
     }
+    const groupComps = companies.filter(c => c.group_id === group.id);
+    if (groupComps.length === 0) return;
+    const gc: GroupCompany[] = groupComps.map(c => ({
+      id: c.id, name: c.name, short_name: c.short_name,
+      brand_color: c.brand_color, logo_url: c.logo_url,
+    }));
+    startGroupImpersonation({ groupId: group.id, groupName: group.short_name || group.name, companies: gc });
+    router.push("/dashboard");
   }
 
   function toggleCompany(company: Company) {
+    /* Solo expande/colapsa — NO impersona */
     if (openCompanyId === company.id) {
       setOpenCompanyId(null);
     } else {
@@ -119,7 +126,6 @@ export default function SaproaImpersonarPage() {
         void loadUsersForCompany(company.id);
       }
     }
-    impersonateCompany(company);
   }
 
   const ungrouped = companies.filter(c => !c.group_id);
@@ -148,20 +154,29 @@ export default function SaproaImpersonarPage() {
                   const dot = group.brand_color || "#6b7280";
                   return (
                     <motion.div key={group.id} variants={staggerItem}>
-                      {/* Group row */}
-                      <div
-                        onClick={() => toggleGroup(group)}
-                        style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: "var(--border-radius-md)", cursor: "pointer" }}
-                        className="hover-subtle"
-                      >
-                        <motion.div animate={{ rotate: isOpen ? 90 : 0 }} transition={{ duration: 0.15 }} style={{ flexShrink: 0 }}>
-                          <ChevronRight size={11} color="var(--text-muted)" />
-                        </motion.div>
-                        <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0 }} />
-                        <span style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-secondary)", textTransform: "uppercase", flex: 1 }}>
-                          {group.short_name || group.name}
-                        </span>
-                        <span style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>{gc.length}</span>
+                      {/* Fila de grupo: chevron+nombre expande · botón "Grupo" impersona */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                        <div
+                          onClick={() => toggleGroup(group)}
+                          style={{ flex: 1, display: "flex", alignItems: "center", gap: 8, padding: "8px 8px 8px 10px", borderRadius: "var(--border-radius-md)", cursor: "pointer", minWidth: 0 }}
+                          className="hover-subtle"
+                        >
+                          <motion.div animate={{ rotate: isOpen ? 90 : 0 }} transition={{ duration: 0.15 }} style={{ flexShrink: 0 }}>
+                            <ChevronRight size={11} color="var(--text-muted)" />
+                          </motion.div>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", background: dot, flexShrink: 0 }} />
+                          <span style={{ fontSize: "0.6875rem", fontWeight: 700, letterSpacing: "0.04em", color: "var(--text-secondary)", textTransform: "uppercase", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {group.short_name || group.name}
+                          </span>
+                          <span style={{ fontSize: "0.625rem", color: "var(--text-muted)", flexShrink: 0 }}>{gc.length}</span>
+                        </div>
+                        <button
+                          onClick={() => impersonateGroupDirect(group)}
+                          title="Activar vista de grupo"
+                          style={{ padding: "3px 8px", borderRadius: "var(--border-radius-sm)", border: `1px solid ${dot}44`, background: "transparent", color: dot, fontSize: "0.625rem", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}
+                        >
+                          Grupo
+                        </button>
                       </div>
 
                       <AnimatePresence>
@@ -172,18 +187,29 @@ export default function SaproaImpersonarPage() {
                               const cdot = company.brand_color || "#6b7280";
                               return (
                                 <div key={company.id}>
-                                  <div
-                                    onClick={() => toggleCompany(company)}
-                                    style={{ display: "flex", alignItems: "center", gap: 9, padding: "7px 8px 7px 22px", borderRadius: "var(--border-radius-md)", cursor: "pointer", borderLeft: isCoOpen ? `2px solid ${cdot}` : "2px solid transparent" }}
-                                    className="hover-subtle"
-                                  >
-                                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: cdot, flexShrink: 0 }} />
-                                    <span style={{ fontSize: "0.75rem", fontWeight: isCoOpen ? 700 : 400, color: "var(--text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                                      {company.short_name || company.name}
-                                    </span>
-                                    <motion.div animate={{ rotate: isCoOpen ? 90 : 0 }} transition={{ duration: 0.15 }}>
-                                      <ChevronRight size={10} color="var(--text-muted)" />
-                                    </motion.div>
+                                  {/* Fila de empresa: chevron+nombre expande · botón "Ver" impersona */}
+                                  <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                    <div
+                                      onClick={() => toggleCompany(company)}
+                                      style={{ flex: 1, display: "flex", alignItems: "center", gap: 9, padding: "7px 6px 7px 22px", borderRadius: "var(--border-radius-md)", cursor: "pointer", borderLeft: isCoOpen ? `2px solid ${cdot}` : "2px solid transparent", minWidth: 0 }}
+                                      className="hover-subtle"
+                                    >
+                                      <span style={{ width: 7, height: 7, borderRadius: "50%", background: cdot, flexShrink: 0 }} />
+                                      <span style={{ fontSize: "0.75rem", fontWeight: isCoOpen ? 700 : 400, color: "var(--text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {company.short_name || company.name}
+                                      </span>
+                                      <motion.div animate={{ rotate: isCoOpen ? 90 : 0 }} transition={{ duration: 0.15 }} style={{ flexShrink: 0 }}>
+                                        <ChevronRight size={10} color="var(--text-muted)" />
+                                      </motion.div>
+                                    </div>
+                                    <button
+                                      onClick={() => impersonateCompany(company)}
+                                      title={`Impersonar ${company.short_name || company.name}`}
+                                      style={{ padding: "3px 8px", borderRadius: "var(--border-radius-sm)", border: "1px solid var(--border-default)", background: "transparent", color: "var(--text-secondary)", fontSize: "0.625rem", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}
+                                    >
+                                      <Eye size={10} />
+                                      Ver
+                                    </button>
                                   </div>
 
                                   <AnimatePresence>
@@ -199,9 +225,7 @@ export default function SaproaImpersonarPage() {
                                             return (
                                               <div
                                                 key={u.id}
-                                                onClick={() => impersonateUser(u, company)}
-                                                style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 38px", borderRadius: "var(--border-radius-md)", cursor: "pointer", borderLeft: isSelected ? `2px solid ${SAPROA_ACCENT}` : "2px solid transparent" }}
-                                                className="hover-subtle"
+                                                style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 8px 6px 38px", borderRadius: "var(--border-radius-md)", borderLeft: isSelected ? `2px solid ${SAPROA_ACCENT}` : "2px solid transparent" }}
                                               >
                                                 <div style={{ width: 22, height: 22, borderRadius: "50%", background: isSelected ? SAPROA_ACCENT : "var(--bg-subtle)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "0.5625rem", fontWeight: 700, color: isSelected ? "#fff" : "var(--text-muted)", flexShrink: 0 }}>
                                                   {initials(u.full_name || u.email)}
@@ -210,6 +234,14 @@ export default function SaproaImpersonarPage() {
                                                   <div style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u.full_name || u.email}</div>
                                                   <div style={{ fontSize: "0.625rem", color: "var(--text-muted)" }}>{ROLE_LABEL[u.role] ?? u.role}</div>
                                                 </div>
+                                                <button
+                                                  onClick={() => impersonateUser(u, company)}
+                                                  title={`Ver como ${u.full_name || u.email}`}
+                                                  style={{ padding: "3px 8px", borderRadius: "var(--border-radius-sm)", border: isSelected ? `1px solid ${SAPROA_ACCENT}` : "1px solid var(--border-default)", background: isSelected ? SAPROA_ACCENT : "transparent", color: isSelected ? "#fff" : "var(--text-secondary)", fontSize: "0.625rem", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}
+                                                >
+                                                  <Eye size={10} />
+                                                  Ver
+                                                </button>
                                               </div>
                                             );
                                           })
@@ -290,9 +322,9 @@ export default function SaproaImpersonarPage() {
                 sin cambiar tu cuenta ni los datos reales.
               </p>
               <ul style={{ marginTop: 12, paddingLeft: 18, fontSize: "0.8125rem", color: "var(--text-secondary)", lineHeight: 1.8 }}>
-                <li>Haz click en un <strong>grupo</strong> para activar la vista consolidada multi-empresa.</li>
-                <li>Haz click en una <strong>empresa</strong> para ver su dashboard completo.</li>
-                <li>Haz click en un <strong>usuario</strong> para ver la plataforma con su rol específico.</li>
+                <li>Expande un <strong>grupo</strong> con el chevron para ver sus empresas. Usa el botón <strong>"Grupo"</strong> para activar la vista consolidada multi-empresa.</li>
+                <li>Expande una <strong>empresa</strong> para ver sus usuarios. Usa el botón <strong>"Ver"</strong> para ver su dashboard completo.</li>
+                <li>Usa el botón <strong>"Ver"</strong> junto a un usuario para ver la plataforma con su rol específico.</li>
               </ul>
               <p style={{ marginTop: 12, fontSize: "0.75rem", color: "var(--text-muted)", lineHeight: 1.5 }}>
                 El banner "Vista simulada" aparecerá en la parte superior para recordarte que estás en modo de simulación.
