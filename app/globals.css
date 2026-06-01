@@ -98,6 +98,25 @@
   --chart-axis: #94A3B8;
   --chart-grid: #E2E8F0;
 
+  /* Paleta fija de gráficas — mismos valores en light y dark */
+  /* Semánticos: el color comunica el SIGNIFICADO del dato */
+  --chart-positive:  #10B981;   /* cobrado, ocupado, ingreso */
+  --chart-warning:   #F59E0B;   /* pendiente, parcial */
+  --chart-negative:  #EF4444;   /* vencido, gasto, problema */
+  --chart-reference: #3B82F6;   /* total, línea de referencia */
+  --chart-neutral:   #94A3B8;   /* sin datos, vacío */
+  /* Categoriales: solo diferencian series/edificios, sin significado */
+  --chart-cat-1: #6366F1;
+  --chart-cat-2: #8B5CF6;
+  --chart-cat-3: #EC4899;
+  --chart-cat-4: #06B6D4;
+  --chart-cat-5: #14B8A6;
+  --chart-cat-6: #A855F7;
+  --chart-cat-7: #0EA5E9;
+  --chart-cat-8: #F472B6;
+  /* Segmento vacío de dona (único que varía entre light/dark) */
+  --chart-empty: #e5e7eb;
+
   /* ── Separadores internos de cards ────────────────────────────── */
   --divider: #F1F5F9;
 
@@ -243,6 +262,7 @@
   /* ── Recharts / charts ─────────────────────────────────────────── */
   --chart-axis: #64748B;
   --chart-grid: #2D3748;
+  --chart-empty: #374151;
 
   /* ── Separadores internos de cards ────────────────────────────── */
   --divider: #2D3748;

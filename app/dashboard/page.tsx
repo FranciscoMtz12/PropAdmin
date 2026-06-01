@@ -43,6 +43,7 @@ import {
 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
+import { CHART, chartEmptyColor } from "@/lib/chartColors";
 import { withCompanyFilter } from "@/lib/supabase/query-helpers";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -629,17 +630,16 @@ export default function DashboardPage() {
     Dona de cobranza: siempre mostrar.
     Sin datos → segmento gris único.
   */
-  /* Color del segmento neutro (vacío/sin datos) — depende del modo */
-  const neutralSegmentColor = isDark ? "#374151" : "#e5e7eb";
+  const neutralSegmentColor = chartEmptyColor(isDark);
 
   const collectionDonutData = useMemo(() => {
     const { collected, pending, overdue } = collectionMonthStats;
     const hasData = collected > 0 || pending > 0 || overdue > 0;
     if (!hasData) return [{ name: "Sin datos", value: 1, color: neutralSegmentColor }];
     const data: { name: string; value: number; color: string }[] = [];
-    if (collected > 0) data.push({ name: "Cobrado", value: collected, color: "#22c55e" });
-    if (pending > 0) data.push({ name: "Pendiente", value: pending, color: "#f97316" });
-    if (overdue > 0) data.push({ name: "Vencido", value: overdue, color: "#ef4444" });
+    if (collected > 0) data.push({ name: "Cobrado", value: collected, color: CHART.positive });
+    if (pending > 0) data.push({ name: "Pendiente", value: pending, color: CHART.warning });
+    if (overdue > 0) data.push({ name: "Vencido", value: overdue, color: CHART.negative });
     return data;
   }, [collectionMonthStats]);
 
@@ -668,7 +668,7 @@ export default function DashboardPage() {
   const buildingDonutData = useMemo(() => {
     if (buildingStats.total === 0) return [{ name: "Sin edificios", value: 1, color: neutralSegmentColor }];
     return [
-      { name: "Con inquilinos", value: buildingStats.withTenants || 0, color: "#6366f1" },
+      { name: "Con inquilinos", value: buildingStats.withTenants || 0, color: CHART.reference },
       { name: "Vacíos", value: buildingStats.empty || 0, color: neutralSegmentColor },
     ].filter((d) => d.value > 0);
   }, [buildingStats, neutralSegmentColor]);
@@ -829,11 +829,8 @@ export default function DashboardPage() {
      el mismo set de colores y no haya valores hardcodeados dispersos.
   ─────────────────────────────────────────────────────────────────── */
   const c = {
-    /* Recharts — kept as raw hex because they go to chart props (stroke/fill/tick.fill) */
-    chartAxis:     isDark ? "#64748B" : "#667085",
-    chartGrid:     isDark ? "#2D3748" : "#F2F4F7",
-    /* Segmento neutro de las donas (vacío/sin datos) — used in Recharts Cell fill */
-    donutEmpty:    isDark ? "#374151" : "#e5e7eb",
+    chartAxis: isDark ? "#64748B" : "#667085",
+    chartGrid: isDark ? "#2D3748" : "#F2F4F7",
   };
 
   /* Mapea severidad a CSS variables que respetan dark mode */
@@ -922,8 +919,8 @@ export default function DashboardPage() {
                       dataKey="value"
                       strokeWidth={0}
                     >
-                      <Cell fill="#22c55e" />
-                      <Cell fill={c.donutEmpty} />
+                      <Cell fill={CHART.positive} />
+                      <Cell fill={neutralSegmentColor} />
                     </Pie>
                     <Tooltip formatter={(v, n) => [v, n]} />
                   </PieChart>
@@ -1082,9 +1079,9 @@ export default function DashboardPage() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {[
-                      { label: "Cobrado", value: collectionMonthStats.collected, color: "#22c55e" },
-                      { label: "Pendiente", value: collectionMonthStats.pending, color: "#f97316" },
-                      { label: "Vencido", value: collectionMonthStats.overdue, color: "#ef4444" },
+                      { label: "Cobrado", value: collectionMonthStats.collected, color: CHART.positive },
+                      { label: "Pendiente", value: collectionMonthStats.pending, color: CHART.warning },
+                      { label: "Vencido", value: collectionMonthStats.overdue, color: CHART.negative },
                     ]
                       .filter((item) => item.value > 0)
                       .map(({ label, value, color }) => (
@@ -1221,7 +1218,7 @@ export default function DashboardPage() {
                 }}
               >
                 <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-secondary)" }}>
-                  <strong style={{ color: "#6366f1" }}>{buildingStats.withTenants}</strong>{" "}
+                  <strong style={{ color: CHART.reference }}>{buildingStats.withTenants}</strong>{" "}
                   con inquilinos ·{" "}
                   <strong style={{ color: "var(--text-secondary)" }}>{buildingStats.empty}</strong>{" "}
                   {buildingStats.empty === 1 ? "vacío" : "vacíos"}
@@ -1264,10 +1261,10 @@ export default function DashboardPage() {
             <div className="dashboard-chart-wrap">
               <div className="dashboard-chart-legend">
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.8125rem" }}>
-                  <span style={{ color: "var(--metric-value-green)" }}>●</span> Cobrado
+                  <span style={{ color: CHART.positive }}>●</span> Cobrado
                 </span>
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: "0.8125rem" }}>
-                  <span style={{ color: "#f97316" }}>●</span> Pendiente
+                  <span style={{ color: CHART.warning }}>●</span> Pendiente
                 </span>
               </div>
               <div className="dashboard-bar-container">
@@ -1288,8 +1285,8 @@ export default function DashboardPage() {
                     width={56}
                   />
                   <Tooltip content={<MXNTooltip isDark={isDark} />} />
-                  <Bar dataKey="Cobrado" fill="#22c55e" radius={[6, 6, 0, 0]} maxBarSize={36} />
-                  <Bar dataKey="Pendiente" fill="#f97316" radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="Cobrado" fill={CHART.positive} radius={[6, 6, 0, 0]} maxBarSize={36} />
+                  <Bar dataKey="Pendiente" fill={CHART.warning} radius={[6, 6, 0, 0]} maxBarSize={36} />
                 </BarChart>
               </ResponsiveContainer>
               </div>

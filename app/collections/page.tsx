@@ -45,6 +45,7 @@ import {
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
 
 import { AnimatePresence, motion } from "framer-motion";
+import { CHART } from "@/lib/chartColors";
 import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -177,11 +178,7 @@ const CHARGE_ORDER: Partial<Record<CollectionChargeType, number>> = {
 };
 
 /** Colores para identificar edificios por borde izquierdo */
-const BUILDING_COLORS = [
-  "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444",
-  "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16",
-  "#06B6D4", "#A855F7",
-];
+const BUILDING_COLORS = CHART.cat;
 
 // ── Helpers puros ──────────────────────────────────────────────────────────────
 
@@ -1074,9 +1071,9 @@ export default function CollectionsPage() {
 
   const donutData = useMemo(() => {
     const segments = [
-      { name: "Cobrado",   value: metrics.collected, color: "#10B981" },
-      { name: "Pendiente", value: metrics.pendiente, color: "#F59E0B" },
-      { name: "Vencido",   value: metrics.vencido,   color: "#EF4444" },
+      { name: "Cobrado",   value: metrics.collected, color: CHART.positive  },
+      { name: "Pendiente", value: metrics.pendiente, color: CHART.warning   },
+      { name: "Vencido",   value: metrics.vencido,   color: CHART.negative  },
     ].filter((s) => s.value > 0);
     return segments.length ? segments : [{ name: "Sin cobros", value: 1, color: "var(--border-strong)" }];
   }, [metrics]);
@@ -1290,21 +1287,21 @@ export default function CollectionsPage() {
                 {/* Barra apilada horizontal */}
                 <div style={{ display: "flex", height: 20, borderRadius: "var(--border-radius-md)", overflow: "hidden", gap: 2 }}>
                   {countData.overdue > 0 && (
-                    <div style={{ flex: countData.overdue, background: "var(--metric-value-red)", minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
+                    <div style={{ flex: countData.overdue, background: CHART.negative, minWidth: 4 }} title={`Vencido: ${countData.overdue}`} />
                   )}
                   {countData.pending > 0 && (
-                    <div style={{ flex: countData.pending, background: "var(--metric-value-amber)", minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
+                    <div style={{ flex: countData.pending, background: CHART.warning, minWidth: 4 }} title={`Pendiente/parcial: ${countData.pending}`} />
                   )}
                   {countData.collected > 0 && (
-                    <div style={{ flex: countData.collected, background: "var(--metric-value-green)", minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
+                    <div style={{ flex: countData.collected, background: CHART.positive, minWidth: 4 }} title={`Cobrado: ${countData.collected}`} />
                   )}
                 </div>
                 {/* Leyenda de conteos */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
                   {[
-                    { label: "Vencido",   count: countData.overdue,   color: "var(--metric-value-red)"   },
-                    { label: "Pendiente", count: countData.pending,   color: "var(--metric-value-amber)" },
-                    { label: "Cobrado",   count: countData.collected, color: "var(--metric-value-green)" },
+                    { label: "Vencido",   count: countData.overdue,   color: CHART.negative },
+                    { label: "Pendiente", count: countData.pending,   color: CHART.warning  },
+                    { label: "Cobrado",   count: countData.collected, color: CHART.positive },
                   ].map(({ label, count, color }) => (
                     <div key={label} style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                       <span style={{ fontSize: "1.125rem", fontWeight: 800, color }}>{count}</span>

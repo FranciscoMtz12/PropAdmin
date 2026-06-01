@@ -105,6 +105,7 @@ import {
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
 import { staggerContainer, staggerItem } from "@/lib/animations";
+import { CHART } from "@/lib/chartColors";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -712,9 +713,9 @@ function computeOccupancyTrend(
 function OccupancyDonutCard({ occupied, total }: { occupied: number; total: number }) {
   const pct   = total > 0 ? Math.round((occupied / total) * 100) : 0;
   const color = total === 0 ? "var(--border-default)"
-    : pct >= 75 ? "var(--metric-value-green)"
-    : pct >= 40 ? "var(--metric-value-amber)"
-    : "var(--metric-value-red)";
+    : pct >= 75 ? CHART.positive
+    : pct >= 40 ? CHART.warning
+    : CHART.negative;
 
   const r    = 44;
   const circ = 2 * Math.PI * r;
@@ -2191,10 +2192,10 @@ export default function BuildingDetailPage() {
   /* Datos para el PieChart de distribución */
   const rentedUnits = occupiedUnits - partialUnits;
   const pieData = useMemo(() => [
-    { name: "Rentados",      value: rentedUnits,      color: "#10B981" },
-    { name: "Parciales",     value: partialUnits,     color: "#F59E0B" },
-    { name: "Disponibles",   value: vacantUnits,      color: "#3B82F6" },
-    { name: "Mantenimiento", value: maintenanceUnits, color: "#EF4444" },
+    { name: "Rentados",      value: rentedUnits,      color: CHART.positive  },
+    { name: "Parciales",     value: partialUnits,     color: CHART.warning   },
+    { name: "Disponibles",   value: vacantUnits,      color: CHART.neutral   },
+    { name: "Mantenimiento", value: maintenanceUnits, color: CHART.negative  },
   ].filter((d) => d.value > 0), [rentedUnits, partialUnits, vacantUnits, maintenanceUnits]);
 
   /* Datos para el BarChart de cobranza — últimos N meses */
@@ -3760,8 +3761,8 @@ export default function BuildingDetailPage() {
                     />
                     <Tooltip content={<CollectionTooltip />} />
                     <Legend wrapperStyle={{ fontSize: "0.8125rem", paddingTop: 8 }} formatter={(v: string) => v === "cobrado" ? "Cobrado" : "Pendiente"} />
-                    <Bar dataKey="cobrado"   name="cobrado"   fill="#22c55e" radius={[4,4,0,0]} />
-                    <Bar dataKey="pendiente" name="pendiente" fill="#f97316" radius={[4,4,0,0]} />
+                    <Bar dataKey="cobrado"   name="cobrado"   fill={CHART.positive} radius={[4,4,0,0]} />
+                    <Bar dataKey="pendiente" name="pendiente" fill={CHART.warning}  radius={[4,4,0,0]} />
                   </BarChart>
                 </ResponsiveContainer>
               )}
@@ -3792,7 +3793,7 @@ export default function BuildingDetailPage() {
                   <Legend wrapperStyle={{ fontSize: "0.8125rem", paddingTop: 8 }} />
                   <Line
                     type="monotone" dataKey="occupied" name="Ocupadas"
-                    stroke="#10B981" strokeWidth={2}
+                    stroke={CHART.positive} strokeWidth={2}
                     dot={false} activeDot={{ r: 4 }}
                   />
                 </LineChart>

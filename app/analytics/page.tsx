@@ -28,6 +28,7 @@ import {
 } from "recharts";
 
 import { motion } from "framer-motion";
+import { CHART } from "@/lib/chartColors";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -82,10 +83,7 @@ type Building = { id: string; name: string };
 
 /* ═══ Constantes visuales ═════════════════════════════════════════ */
 
-const BUILDING_COLORS = [
-  "#3B82F6", "#10B981", "#8B5CF6", "#F59E0B", "#EF4444",
-  "#EC4899", "#14B8A6", "#F97316", "#6366F1", "#84CC16", "#06B6D4", "#A855F7",
-];
+const BUILDING_COLORS = CHART.cat;
 
 const MONTH_LABELS_SHORT = [
   "Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic",
@@ -763,8 +761,8 @@ export default function AnalyticsPage() {
                     <YAxis yAxisId="right" orientation="right" tick={{ fontSize: "0.6875rem", fill:"var(--text-muted)" }} />
                     <Tooltip contentStyle={{ background:"var(--bg-card)", border:"1px solid var(--border-default)", borderRadius: "var(--border-radius-md)", fontSize: "0.75rem" }} />
                     <Legend wrapperStyle={{ fontSize: "0.6875rem", paddingTop:6 }} />
-                    <Line yAxisId="left" type="monotone" dataKey="ocupacion" name="% Ocupación" stroke="#10B981" strokeWidth={2.5} dot={{ r:3 }} />
-                    <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke="#EF4444" strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
+                    <Line yAxisId="left" type="monotone" dataKey="ocupacion" name="% Ocupación" stroke={CHART.positive} strokeWidth={2.5} dot={{ r:3 }} />
+                    <Line yAxisId="right" type="monotone" dataKey="vacantes" name="Vacantes" stroke={CHART.negative} strokeWidth={2} strokeDasharray="5 5" dot={{ r:3 }} />
                   </LineChart>
                 </ResponsiveContainer>
               )}
