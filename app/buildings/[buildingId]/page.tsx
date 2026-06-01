@@ -519,7 +519,7 @@ const AREA_TYPE_LABELS: Record<string, string> = {
 const AREA_TYPE_COLORS: Record<string, string> = {
   locales:         "#8B2252",
   estacionamiento: "#3B82F6",
-  circulacion:     "#9CA3AF",
+  circulacion:     "var(--text-muted)",
   area_verde:      "#10B981",
   servicios:       "#F59E0B",
   naves:           "#6366F1",
@@ -932,7 +932,7 @@ function TabPendingBanner({
   if (tasks.length === 0) return null;
   return (
     <div style={{
-      background: 'rgba(139, 34, 82, 0.05)',
+      background: 'var(--accent-tint-subtle)',
       borderLeft: '3px solid var(--brand-color, #8B2252)',
       borderRadius: 'var(--border-radius-md, 8px)',
       padding: '10px 14px',
@@ -3325,7 +3325,7 @@ export default function BuildingDetailPage() {
                       <div>
                         <span style={{
                           padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
-                          background: rentalMode === "whole" ? "#0369a11a" : "rgba(139,34,82,0.1)",
+                          background: rentalMode === "whole" ? "#0369a11a" : "var(--accent-tint-soft)",
                           color:      rentalMode === "whole" ? "#0369a1"   : "var(--accent)",
                         }}>
                           {rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
@@ -3394,8 +3394,8 @@ export default function BuildingDetailPage() {
                 >
                   <div style={{
                     borderRadius: "var(--border-radius-lg)",
-                    background: isEmpty ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
-                    border: isEmpty ? "1.5px solid rgba(139,34,82,0.25)" : "1px solid var(--border-default)",
+                    background: isEmpty ? "var(--accent-tint-subtle)" : "var(--bg-card)",
+                    border: isEmpty ? "1.5px solid var(--accent-tint-medium)" : "1px solid var(--border-default)",
                     borderLeft: "4px solid var(--accent)",
                     padding: 20,
                   }}>
@@ -4967,7 +4967,7 @@ export default function BuildingDetailPage() {
                 </div>
               ) : (
                 openTickets.map((ticket, ti) => {
-                  const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : '#9CA3AF';
+                  const dotColor = ticket.priority === 'urgent' ? '#EF4444' : ticket.priority === 'high' ? '#F97316' : ticket.priority === 'medium' ? '#F59E0B' : 'var(--text-muted)';
                   const pillBg = ticket.priority === 'urgent' ? 'var(--badge-bg-red)' : ticket.priority === 'high' ? '#ffedd5' : ticket.priority === 'medium' ? '#fef9c3' : '#f3f4f6';
                   const pillColor = ticket.priority === 'urgent' ? '#991b1b' : ticket.priority === 'high' ? '#9a3412' : ticket.priority === 'medium' ? '#713f12' : '#6b7280';
                   const priorityLabel = ticket.priority === 'urgent' ? 'Urgente' : ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja';
@@ -6256,8 +6256,8 @@ export default function BuildingDetailPage() {
             return (
               <div style={{
                 borderRadius: "var(--border-radius-lg)",
-                background: "rgba(139,34,82,0.04)",
-                border: "1px solid rgba(139,34,82,0.2)",
+                background: "var(--accent-tint-subtle)",
+                border: "1px solid var(--accent-tint-medium)",
                 borderLeft: "4px solid var(--accent)",
                 padding: 20,
               }}>
@@ -6414,7 +6414,7 @@ export default function BuildingDetailPage() {
                   </div>
                 )}
 
-                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(139,34,82,0.15)" }}>
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--accent-tint-soft)" }}>
                   <button
                     type="button"
                     onClick={() => void handleDismissAllTasks()}

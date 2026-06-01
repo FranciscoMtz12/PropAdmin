@@ -157,10 +157,10 @@
   --color-info-border: #BFDBFE;
 
   /* ── Estado de unidad (StatusCircles) ──────────────────────────── */
-  --status-occupied:    #1D9E75; /* ocupada / verde */
-  --status-vacant:      #378ADD; /* vacante / azul */
-  --status-partial:     #EF9F27; /* parcial / ámbar */
-  --status-maintenance: #E24B4A; /* mantenimiento / rojo */
+  --status-occupied:    #10B981; /* ocupada / verde  — unificado con chart-green */
+  --status-vacant:      #3B82F6; /* vacante / azul   — unificado con chart-blue */
+  --status-partial:     #F59E0B; /* parcial / ámbar  — unificado con priority-medium */
+  --status-maintenance: #EF4444; /* mantenimiento / rojo — unificado con priority-urgent */
 
   /* ── Prioridad de tickets ───────────────────────────────────────── */
   --priority-urgent: #EF4444;
@@ -175,6 +175,20 @@
 
   /* ── Success sutil (rgba de #10B981 al 12%) ─────────────────────── */
   --color-success-subtle: rgba(16, 185, 129, 0.12);
+
+  /* ── Charts (colores compartidos en Recharts) ───────────────────── */
+  --color-chart-green:  #10B981; /* verde cobrado / ocupación */
+  --color-chart-blue:   #3B82F6; /* azul disponible / estacionamiento */
+  --color-chart-orange: #F97316; /* naranja pendiente (= priority-high) */
+
+  /* ── Texto semántico oscuro ─────────────────────────────────────── */
+  --color-warning-text: #92400E; /* texto amber oscuro sobre fondos warning */
+
+  /* ── Accent forms (info oscuro) ─────────────────────────────────── */
+  --color-info-dark: #0369A1; /* checkboxes / acciones de formulario */
+
+  /* ── Status adicional ───────────────────────────────────────────── */
+  --status-default: #888780; /* StatusCircle sin estado / inactivo */
 
   /* ── Media / Fotos ──────────────────────────────────────────────── */
   --color-media:    #7c3aed;
@@ -290,10 +304,10 @@
   --color-info-border: #1E40AF;
 
   /* ── Estado de unidad dark ──────────────────────────────────────── */
-  --status-occupied:    #34D399;
-  --status-vacant:      #60A5FA;
-  --status-partial:     #FCD34D;
-  --status-maintenance: #F87171;
+  --status-occupied:    #34D399; /* bright emerald */
+  --status-vacant:      #60A5FA; /* bright blue */
+  --status-partial:     #FCD34D; /* bright amber */
+  --status-maintenance: #F87171; /* bright red */
 
   /* ── Prioridad de tickets dark ──────────────────────────────────── */
   --priority-urgent: #F87171;

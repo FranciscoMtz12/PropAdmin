@@ -1098,7 +1098,7 @@ ${notes.trim() || "(sin notas)"}
               </p>
               <div style={{ display: "grid", gap: "12px" }}>
                 {/* ImpersonationBanner — visual estática */}
-                <div style={{ background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.2)", borderRadius: "var(--border-radius-md)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", borderRadius: "var(--border-radius-md)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366F1", flexShrink: 0 }} />
                   <Eye size={14} color="#6366F1" style={{ flexShrink: 0 }} />
                   <span style={{ flex: 1, fontSize: "0.8125rem", color: "#6366F1", fontWeight: 600, lineHeight: 1.4 }}>
@@ -1353,7 +1353,7 @@ ${notes.trim() || "(sin notas)"}
             {isDark ? <Moon size={16} /> : <Sun size={16} />}
             {isDark ? "Modo oscuro" : "Modo claro"}
           </button>
-          <div style={{ marginTop: "6px", padding: "5px 8px", borderRadius: "var(--border-radius-sm)", background: isDark ? "rgba(255,193,7,0.1)" : "rgba(99,102,241,0.08)", border: `1px solid ${isDark ? "rgba(255,193,7,0.25)" : "rgba(99,102,241,0.2)"}`, display: "flex", alignItems: "center", gap: "4px" }}>
+          <div style={{ marginTop: "6px", padding: "5px 8px", borderRadius: "var(--border-radius-sm)", background: isDark ? "rgba(255,193,7,0.1)" : "var(--accent-tint-soft)", border: `1px solid ${isDark ? "rgba(255,193,7,0.25)" : "var(--accent-tint-medium)"}`, display: "flex", alignItems: "center", gap: "4px" }}>
             <span style={{ fontSize: "11px" }}>👁</span>
             <span style={{ fontSize: "0.6875rem", fontWeight: 600, color: "var(--text-secondary)" }}>Solo previsualización — no afecta la app</span>
           </div>

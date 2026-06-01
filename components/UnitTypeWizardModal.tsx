@@ -1119,10 +1119,10 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       {step === 1 && (
         <div style={{ display: "grid", gap: 14 }}>
           {draftFound && (
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "rgba(99,102,241,0.08)", border: "1px solid rgba(99,102,241,0.25)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)" }}>
               <span style={{ flex: 1, fontSize: "0.8125rem", color: "#6366F1", fontWeight: 600 }}>Hay un borrador guardado de esta tipología. ¿Deseas restaurarlo?</span>
               <button type="button" onClick={restoreDraft} style={{ padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid #6366F1", background: "#6366F1", color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>Restaurar</button>
-              <button type="button" onClick={discardDraft} style={{ padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(99,102,241,0.3)", background: "transparent", color: "#6366F1", cursor: "pointer", whiteSpace: "nowrap" }}>Descartar</button>
+              <button type="button" onClick={discardDraft} style={{ padding: "4px 10px", fontSize: "0.75rem", fontWeight: 700, borderRadius: "var(--border-radius-sm)", border: "1px solid var(--accent-tint-medium)", background: "transparent", color: "#6366F1", cursor: "pointer", whiteSpace: "nowrap" }}>Descartar</button>
             </div>
           )}
           <AppFormField label="Nombre de la tipología" required>

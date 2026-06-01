@@ -761,7 +761,7 @@ export default function SettingsPage() {
             {/* Datos fiscales */}
             <SectionCard title="Datos fiscales">
               {pendingFiscal && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                   <span style={{ fontSize: "0.75rem", color: "var(--accent, #8B2252)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
                 </div>
@@ -813,7 +813,7 @@ export default function SettingsPage() {
             {/* Identidad de marca */}
             <SectionCard title="Identidad de marca">
               {pendingMarca && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "rgba(139,34,82,.08)", border: "1px solid rgba(139,34,82,.2)", marginBottom: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
                   <span style={{ fontSize: "0.75rem", color: "var(--accent, #8B2252)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
                 </div>
@@ -982,7 +982,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(invLink).then(() => toast.success("Copiado"))}
-                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, rgba(139,34,82,.15))", border: "1px solid var(--accent, #8B2252)", borderRadius: "var(--border-radius-sm)", color: "var(--accent, #8B2252)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, var(--accent-tint-soft))", border: "1px solid var(--accent, #8B2252)", borderRadius: "var(--border-radius-sm)", color: "var(--accent, #8B2252)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     Copiar enlace
                   </button>
@@ -1069,7 +1069,7 @@ export default function SettingsPage() {
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                           <span style={{ fontSize: "0.875rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                          {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                          {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "var(--accent-tint-soft)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                       </div>
@@ -1112,7 +1112,7 @@ export default function SettingsPage() {
                       <div>
                         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                           <span style={{ fontSize: "0.875rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                          {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                          {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "var(--accent-tint-soft)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                         </div>
                         <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                       </div>
@@ -1152,7 +1152,7 @@ export default function SettingsPage() {
                       <div style={{ textAlign: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5, marginBottom: 3, justifyContent: "center" }}>
                           <span style={{ fontSize: "0.8125rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{abbr}</span>
-                          {active && <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 6px" }}>Activo</span>}
+                          {active && <span style={{ fontSize: "0.625rem", fontWeight: 700, color: "var(--accent)", background: "var(--accent-tint-soft)", borderRadius: "var(--border-radius-xl)", padding: "1px 6px" }}>Activo</span>}
                         </div>
                         <div style={{ fontSize: "0.6875rem", color: "var(--text-secondary)" }}>{label}</div>
                       </div>
@@ -1212,7 +1212,7 @@ export default function SettingsPage() {
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                         <span style={{ fontSize: "0.875rem", fontWeight: 700, color: active ? "var(--accent)" : "var(--text-primary)" }}>{label}</span>
-                        {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "rgba(139,34,82,.12)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
+                        {active && <span style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--accent)", background: "var(--accent-tint-soft)", borderRadius: "var(--border-radius-xl)", padding: "1px 7px" }}>Activo</span>}
                       </div>
                       <div style={{ fontSize: "0.75rem", color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
                     </div>
@@ -1447,7 +1447,7 @@ export default function SettingsPage() {
 
             <SectionCard title="Plan actual" icon={<CreditCard size={18} />}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <span style={{ padding: "4px 14px", borderRadius: 999, background: "rgba(139,34,82,.12)", color: "var(--accent, #8B2252)", fontSize: "0.8125rem", fontWeight: 700, border: "1px solid rgba(139,34,82,.2)" }}>
+                <span style={{ padding: "4px 14px", borderRadius: 999, background: "var(--accent-tint-soft)", color: "var(--accent, #8B2252)", fontSize: "0.8125rem", fontWeight: 700, border: "1px solid var(--accent-tint-medium)" }}>
                   Plan Básico
                 </span>
                 <span style={{ fontSize: "0.8125rem", color: "#1D9E75", fontWeight: 600 }}>● Activo</span>

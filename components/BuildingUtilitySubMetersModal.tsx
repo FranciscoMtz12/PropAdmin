@@ -162,7 +162,7 @@ export default function BuildingUtilitySubMetersModal({
               style={{
                 borderRadius: "var(--border-radius-lg)",
                 border: checked ? "1px solid var(--accent)" : "1px solid var(--border-default)",
-                background: checked ? "rgba(139,34,82,0.04)" : "var(--bg-card)",
+                background: checked ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                 padding: "12px 14px",
                 transition: "border-color 0.15s, background 0.15s",
               }}

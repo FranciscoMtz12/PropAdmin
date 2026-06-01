@@ -193,7 +193,7 @@ export default function BuildingUtilityMeterModal({
                 borderRadius: "var(--border-radius-lg)",
                 cursor: "pointer",
                 border: `2px solid ${meterType === "dedicated" ? "var(--accent)" : "var(--border-default)"}`,
-                background: meterType === "dedicated" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                background: meterType === "dedicated" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -220,7 +220,7 @@ export default function BuildingUtilityMeterModal({
                 borderRadius: "var(--border-radius-lg)",
                 cursor: "pointer",
                 border: `2px solid ${meterType === "shared" ? "var(--accent)" : "var(--border-default)"}`,
-                background: meterType === "shared" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                background: meterType === "shared" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -249,7 +249,7 @@ export default function BuildingUtilityMeterModal({
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${contractHolder === "company" ? "var(--accent)" : "var(--border-default)"}`,
-                    background: contractHolder === "company" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: contractHolder === "company" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -273,7 +273,7 @@ export default function BuildingUtilityMeterModal({
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${contractHolder === "tenant" ? "var(--accent)" : "var(--border-default)"}`,
-                    background: contractHolder === "tenant" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: contractHolder === "tenant" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -318,7 +318,7 @@ export default function BuildingUtilityMeterModal({
                     borderRadius: "var(--border-radius-lg)",
                     cursor: "pointer",
                     border: `2px solid ${billingMode === "charged" ? "var(--accent)" : "var(--border-default)"}`,
-                    background: billingMode === "charged" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: billingMode === "charged" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -345,7 +345,7 @@ export default function BuildingUtilityMeterModal({
                     borderRadius: "var(--border-radius-lg)",
                     cursor: "pointer",
                     border: `2px solid ${billingMode === "included" ? "var(--accent)" : "var(--border-default)"}`,
-                    background: billingMode === "included" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: billingMode === "included" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -415,7 +415,7 @@ export default function BuildingUtilityMeterModal({
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingFrequency === "monthly" ? "var(--accent)" : "var(--border-default)"}`,
-                    background: billingFrequency === "monthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: billingFrequency === "monthly" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -439,7 +439,7 @@ export default function BuildingUtilityMeterModal({
                     display: "flex", flexDirection: "column", gap: 6,
                     padding: "14px 16px", borderRadius: "var(--border-radius-lg)", cursor: "pointer",
                     border: `2px solid ${billingFrequency === "bimonthly" ? "var(--accent)" : "var(--border-default)"}`,
-                    background: billingFrequency === "bimonthly" ? "rgba(139,34,82,0.06)" : "var(--bg-card)",
+                    background: billingFrequency === "bimonthly" ? "var(--accent-tint-subtle)" : "var(--bg-card)",
                   }}
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
