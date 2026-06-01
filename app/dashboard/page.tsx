@@ -49,6 +49,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFontScale } from "@/lib/useFontScale";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useActiveCompanyId, useShouldLoadCompanyData } from "@/lib/useActiveCompanyId";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS, MODULE_LABELS } from "@/lib/notifications";
 
@@ -304,6 +305,8 @@ export default function DashboardPage() {
   const { isDark } = useTheme();
   const { fontScale, cols3, cols2 } = useFontScale();
   const { isRealSuperAdmin, isImpersonating } = useImpersonation();
+  const activeCompanyId = useActiveCompanyId();
+  const shouldLoadData  = useShouldLoadCompanyData();
 
   const role = user?.role;
   const isSuperOrAdmin = role === 'superadmin' || user?.is_superadmin || role === 'administracion' || role === 'directivo';
@@ -311,7 +314,7 @@ export default function DashboardPage() {
   const isMantenimiento = role === 'mantenimiento';
   void isSuperOrAdmin;
 
-  const { notifications, loading: notifLoading } = useNotifications(user?.company_id ?? "");
+  const { notifications, loading: notifLoading } = useNotifications(activeCompanyId ?? "");
 
   /* ── Checklist mensual ─────────────────────────────────────── */
   const [checklistResults, setChecklistResults] = useState<Record<string, boolean>>({});
@@ -366,28 +369,28 @@ export default function DashboardPage() {
 
   /* Carga inicial cuando el usuario está listo */
   useEffect(() => {
-    if (!loading && user && !user.is_superadmin) void loadDashboard();
+    if (!loading && user && shouldLoadData) void loadDashboard();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, shouldLoadData, activeCompanyId]);
 
   useEffect(() => {
     if (!loading && user) {
-      if (user.company_id) void loadSetupProgress();
+      if (activeCompanyId) void loadSetupProgress();
       else setLoadingSetup(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, user?.company_id]);
+  }, [loading, user?.id, activeCompanyId]);
 
   useEffect(() => {
-    if (!loading && user && !user.is_superadmin) void loadChecklist(user?.company_id ?? null);
+    if (!loading && user && shouldLoadData) void loadChecklist(activeCompanyId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, user?.company_id, user?.is_superadmin]);
+  }, [loading, user?.id, shouldLoadData, activeCompanyId]);
 
   async function loadDashboard() {
     if (!user) return;
     setLoadingData(true);
 
-    const cid = user?.company_id ?? null;
+    const cid = activeCompanyId;
 
     const today = todayDateKey();
 
@@ -528,7 +531,8 @@ export default function DashboardPage() {
   }
 
   async function loadSetupProgress() {
-    if (!user?.company_id) return;
+    if (!activeCompanyId) return;
+    const cid = activeCompanyId;
     const [
       { data: bData },
       { data: uData },
@@ -536,11 +540,11 @@ export default function DashboardPage() {
       { data: mData },
       { data: lData },
     ] = await Promise.all([
-      supabase.from("buildings").select("id, name").eq("company_id", user.company_id).is("deleted_at", null),
-      supabase.from("units").select("id, building_id").eq("company_id", user.company_id).is("deleted_at", null),
-      supabase.from("unit_types").select("id, building_id").eq("company_id", user.company_id).is("deleted_at", null),
-      supabase.from("building_utility_meters").select("id, building_id").eq("company_id", user.company_id).eq("active", true).is("deleted_at", null),
-      supabase.from("leases").select("id, unit_id").eq("company_id", user.company_id).eq("status", "ACTIVE").is("deleted_at", null),
+      supabase.from("buildings").select("id, name").eq("company_id", cid).is("deleted_at", null),
+      supabase.from("units").select("id, building_id").eq("company_id", cid).is("deleted_at", null),
+      supabase.from("unit_types").select("id, building_id").eq("company_id", cid).is("deleted_at", null),
+      supabase.from("building_utility_meters").select("id, building_id").eq("company_id", cid).eq("active", true).is("deleted_at", null),
+      supabase.from("leases").select("id, unit_id").eq("company_id", cid).eq("status", "ACTIVE").is("deleted_at", null),
     ]);
 
     const bldgs = (bData ?? []) as Array<{ id: string; name: string }>;

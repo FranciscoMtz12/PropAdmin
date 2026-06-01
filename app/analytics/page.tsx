@@ -29,6 +29,7 @@ import {
 
 import { motion } from "framer-motion";
 import { CHART } from "@/lib/chartColors";
+import { useActiveCompanyId } from "@/lib/useActiveCompanyId";
 import { staggerContainer, staggerItem } from "@/lib/animations";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
@@ -128,6 +129,7 @@ export default function AnalyticsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
   const { fontScale } = useFontScale();
+  const activeCompanyId = useActiveCompanyId();
   const { isRealSuperAdmin } = useImpersonation();
 
   const [units, setUnits] = useState<Unit[]>([]);
@@ -165,7 +167,7 @@ export default function AnalyticsPage() {
     }
     setLoadingData(true);
 
-    const cid = user?.company_id ?? null;
+    const cid = activeCompanyId;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 

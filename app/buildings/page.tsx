@@ -69,6 +69,7 @@ import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useActiveCompanyId } from "@/lib/useActiveCompanyId";
 import { useNotifications } from "@/app/hooks/useNotifications";
 import { SEVERITY_COLORS } from "@/lib/notifications";
 import PageContainer from "@/components/PageContainer";
@@ -299,7 +300,8 @@ const LocationPicker = dynamic(() => import("@/components/LocationPicker"), {
 export default function BuildingsPage() {
   const router = useRouter();
   const { user, loading } = useCurrentUser();
-  const { notifications } = useNotifications(user?.company_id ?? null, !!user);
+  const activeCompanyId = useActiveCompanyId();
+  const { notifications } = useNotifications(activeCompanyId ?? null, !!user);
   const { impersonationMode, groupCompanyIds, groupCompanies } = useImpersonation();
   const isGroupMode = impersonationMode === 'group';
 
@@ -437,7 +439,7 @@ export default function BuildingsPage() {
     if (!user) return;
     setLoadingBuildings(true);
 
-    const cid = user?.company_id ?? null;
+    const cid = activeCompanyId;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 

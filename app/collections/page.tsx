@@ -50,6 +50,7 @@ import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useFontScale } from "@/lib/useFontScale";
+import { useActiveCompanyId } from "@/lib/useActiveCompanyId";
 import toast from "react-hot-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -318,6 +319,7 @@ function computeEstadoGeneral(records: CollectionRecord[]): CollectionStoredStat
 export default function CollectionsPage() {
   const { user, loading } = useCurrentUser();
   const { fontScale } = useFontScale();
+  const activeCompanyId = useActiveCompanyId();
 
   const now = new Date();
   const [selectedYear, setSelectedYear]   = useState(now.getFullYear());
@@ -413,7 +415,7 @@ export default function CollectionsPage() {
     if (!user) return;
     setLoadingPage(true);
 
-    const cid = user?.company_id ?? null;
+    const cid = activeCompanyId;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
 
@@ -451,7 +453,7 @@ export default function CollectionsPage() {
 
   async function autoMarkOverdue() {
     if (!user) return;
-    const cid = user?.company_id ?? null;
+    const cid = activeCompanyId;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const co = (q: any) => cid ? q.eq("company_id", cid) : q;
     await co(supabase
