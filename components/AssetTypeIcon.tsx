@@ -60,7 +60,7 @@ function getAssetColors(assetType: string): { bg: string; color: string } {
 
     /* ── Acceso / seguridad ───────────────────────────────────── */
     case "ELEVATOR":
-      return { bg: "rgba(124,58,237,0.1)", color: "#7C3AED" };
+      return { bg: "rgba(124,58,237,0.1)", color: "var(--color-media)" };
     case "GATE":
       return { bg: "rgba(109,40,217,0.1)", color: "#6D28D9" };
     case "SECURITY_CAMERA":
