@@ -1392,13 +1392,13 @@ ${notes.trim() || "(sin notas)"}
               </p>
               <div style={{ display: "grid", gap: "12px" }}>
                 {/* ImpersonationBanner — visual estática */}
-                <div style={{ background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", borderRadius: "var(--border-radius-md)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", borderRadius: "var(--border-radius-md)", padding: "9px 14px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#6366F1", flexShrink: 0 }} />
                   <Eye size={14} color="#6366F1" style={{ flexShrink: 0 }} />
-                  <span style={{ flex: 1, fontSize: "0.8125rem", color: "#6366F1", fontWeight: 600, lineHeight: 1.4 }}>
+                  <span style={{ flex: 1, minWidth: 0, fontSize: "0.8125rem", color: "#6366F1", fontWeight: 600, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     Vista simulada · Fra-Mar · Administración (admin@fra-mar.mx)
                   </span>
-                  <button type="button" style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(99,102,241,0.4)", background: "transparent", color: "#6366F1", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+                  <button type="button" style={{ padding: "4px 10px", borderRadius: "var(--border-radius-sm)", border: "1px solid rgba(99,102,241,0.4)", background: "transparent", color: "#6366F1", fontSize: "0.75rem", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                     Salir de vista simulada
                   </button>
                 </div>
