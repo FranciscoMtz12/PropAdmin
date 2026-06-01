@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
-  AlertTriangle, Building2, ChevronDown, ChevronUp, CreditCard, Download, Home, Info,
-  Lock, Monitor, Send, Settings2, Shield,
+  AlertTriangle, Building2, ChevronDown, ChevronUp, CreditCard, Download, FileText, Home,
+  Info, Link2, Lock, Monitor, Palette, Phone, Send, Settings2, Shield,
   Trash2, Upload, User, UserPlus, Users, X,
 } from "lucide-react";
 import toast from "react-hot-toast";
@@ -49,11 +49,13 @@ type Company = {
   accent_style: string | null;
   logo_url: string | null;
   logo_dark_url: string | null;
+  logo_group_url: string | null;
   initials: string | null;
   admin_contact_email: string | null;
   admin_contact_phone: string | null;
   purchases_contact_email: string | null;
   purchases_contact_phone: string | null;
+  group_id: string | null;
   created_at: string | null;
 };
 
@@ -211,6 +213,7 @@ export default function SettingsPage() {
   const searchParams = useSearchParams();
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
+  const logoGroupInputRef = useRef<HTMLInputElement>(null);
 
   const isSuperadmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
   const isTitular = user?.role === "titular" || user?.role === "group_admin";
@@ -245,15 +248,24 @@ export default function SettingsPage() {
   const [cPurchPhone, setCPurchPhone] = useState("");
   const [savingC, setSavingC] = useState(false);
 
-  // ── Tab: Empresa — Marca
+  // ── Tab: Empresa — Marca / Identidad
   const [mColor, setMColor] = useState("#8B2252");
   const [mLogoUrl, setMLogoUrl] = useState("");
   const [mLogoDarkUrl, setMLogoDarkUrl] = useState("");
+  const [mLogoGroupUrl, setMLogoGroupUrl] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkFile, setLogoDarkFile] = useState<File | null>(null);
+  const [logoGroupFile, setLogoGroupFile] = useState<File | null>(null);
   const [logoPreview, setLogoPreview] = useState("");
   const [logoDarkPreview, setLogoDarkPreview] = useState("");
+  const [logoGroupPreview, setLogoGroupPreview] = useState("");
   const [savingM, setSavingM] = useState(false);
+  const [savingI, setSavingI] = useState(false);
+
+  // ── Tab: Empresa — Grupo
+  const [groupId, setGroupId] = useState<string | null>(null);
+  const [groupName, setGroupName] = useState<string>("");
+  const [savingGroup, setSavingGroup] = useState(false);
 
   // ── Tab: Usuarios
   const [userRows, setUserRows] = useState<UserRow[]>([]);
@@ -350,7 +362,7 @@ export default function SettingsPage() {
     setLoading(true);
     const { data } = await supabase
       .from("companies")
-      .select("id,name,short_name,legal_name,email,phone,address,tax_id,regime,zip_code,brand_color,accent_style,logo_url,logo_dark_url,initials,admin_contact_email,admin_contact_phone,purchases_contact_email,purchases_contact_phone,created_at")
+      .select("id,name,short_name,legal_name,email,phone,address,tax_id,regime,zip_code,brand_color,accent_style,logo_url,logo_dark_url,logo_group_url,initials,admin_contact_email,admin_contact_phone,purchases_contact_email,purchases_contact_phone,group_id,created_at")
       .eq("id", user!.company_id)
       .single();
     if (data) {
@@ -372,6 +384,16 @@ export default function SettingsPage() {
       setMColor(data.brand_color ?? "#8B2252");
       setMLogoUrl(data.logo_url ?? "");
       setMLogoDarkUrl(data.logo_dark_url ?? "");
+      setMLogoGroupUrl(data.logo_group_url ?? "");
+      setGroupId(data.group_id ?? null);
+      if (data.group_id) {
+        const { data: grp } = await supabase
+          .from("company_groups")
+          .select("name, short_name")
+          .eq("id", data.group_id)
+          .maybeSingle();
+        setGroupName(grp?.short_name || grp?.name || "");
+      }
     }
     setLoading(false);
   }
@@ -463,6 +485,7 @@ export default function SettingsPage() {
       tax_id: fTaxId.trim().toUpperCase() || null,
       regime: fRegime.trim() || null,
       zip_code: fZip.trim() || null,
+      address: gAddress.trim() || null,
     }).eq("id", company.id);
     setSavingF(false);
     if (error) { toast.error("Error al guardar"); return; }
@@ -473,6 +496,8 @@ export default function SettingsPage() {
     if (!company) return;
     setSavingC(true);
     const { error } = await supabase.from("companies").update({
+      phone: gPhone.trim() || null,
+      email: gEmail.trim() || null,
       admin_contact_email: cAdminEmail.trim() || null,
       admin_contact_phone: cAdminPhone.trim() || null,
       purchases_contact_email: cPurchEmail.trim() || null,
@@ -481,6 +506,61 @@ export default function SettingsPage() {
     setSavingC(false);
     if (error) { toast.error("Error al guardar"); return; }
     toast.success("Contactos guardados");
+  }
+
+  async function saveIdentidad() {
+    if (!company) return;
+    setSavingI(true);
+    let logoUrl = mLogoUrl;
+    let logoDarkUrl = mLogoDarkUrl;
+    if (logoFile) logoUrl = await uploadLogo(logoFile, false);
+    if (logoDarkFile) logoDarkUrl = await uploadLogo(logoDarkFile, true);
+    const { error } = await supabase.from("companies").update({
+      name: gName.trim(),
+      short_name: gShort.trim() || null,
+      initials: gInitials.trim().toUpperCase().slice(0, 4) || null,
+      brand_color: mColor,
+      logo_url: logoUrl || null,
+      logo_dark_url: logoDarkUrl || null,
+    }).eq("id", company.id);
+    setSavingI(false);
+    if (error) { toast.error("Error al guardar"); return; }
+    setMLogoUrl(logoUrl); setMLogoDarkUrl(logoDarkUrl);
+    setLogoFile(null); setLogoDarkFile(null);
+    setLogoPreview(""); setLogoDarkPreview("");
+    toast.success("Identidad visual guardada");
+  }
+
+  async function uploadLogoGroup(file: File): Promise<string> {
+    const ext = file.name.split(".").pop();
+    const path = `groups/${company!.id}/logo_group.${ext}`;
+    await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
+    const { data: pub } = supabase.storage.from("company-assets").getPublicUrl(path);
+    return pub.publicUrl;
+  }
+
+  function handleLogoGroupInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => setLogoGroupPreview(ev.target?.result as string);
+    reader.readAsDataURL(file);
+    setLogoGroupFile(file);
+  }
+
+  async function saveGroup() {
+    if (!company) return;
+    setSavingGroup(true);
+    let logoGroupUrl = mLogoGroupUrl;
+    if (logoGroupFile) logoGroupUrl = await uploadLogoGroup(logoGroupFile);
+    const { error } = await supabase.from("companies").update({
+      logo_group_url: logoGroupUrl || null,
+    }).eq("id", company.id);
+    setSavingGroup(false);
+    if (error) { toast.error("Error al guardar"); return; }
+    setMLogoGroupUrl(logoGroupUrl);
+    setLogoGroupFile(null); setLogoGroupPreview("");
+    toast.success("Logo de grupo guardado");
   }
 
   async function uploadLogo(file: File, dark: boolean): Promise<string> {
@@ -731,9 +811,18 @@ export default function SettingsPage() {
         {activeTab === "empresa" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
 
-            {/* Datos generales */}
-            <SectionCard title="Datos generales">
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
+            {/* ── 1. Identidad visual ── */}
+            <SectionCard title="Identidad visual" icon={<Palette size={18} />}>
+              {pendingMarca && (
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", marginBottom: 16 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.75rem", color: "var(--accent)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
+                </div>
+              )}
+
+              {/* Nombre y referencias */}
+              <SubSectionTitle title="Nombre y referencias" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(14rem, 1fr))", gap: "1.25rem", marginBottom: "1.75rem" }}>
                 <Field label="Nombre de la empresa">
                   <input style={IS} value={gName} onChange={(e) => setGName(e.target.value)} placeholder="Inmobiliaria XYZ S.A. de C.V." />
                 </Field>
@@ -743,27 +832,184 @@ export default function SettingsPage() {
                 <Field label="Iniciales (máx. 4)">
                   <input style={IS} value={gInitials} onChange={(e) => setGInitials(e.target.value.slice(0, 4).toUpperCase())} placeholder="XYZ" maxLength={4} />
                 </Field>
-                <Field label="Teléfono">
-                  <input style={IS} value={gPhone} onChange={(e) => setGPhone(e.target.value)} placeholder="+52 55 1234 5678" />
-                </Field>
-                <Field label="Email principal">
-                  <input style={IS} type="email" value={gEmail} onChange={(e) => setGEmail(e.target.value)} placeholder="contacto@empresa.com" />
-                </Field>
-                <Field label="Dirección / Ciudad">
-                  <input style={IS} value={gAddress} onChange={(e) => setGAddress(e.target.value)} placeholder="Ciudad de México, CDMX" />
-                </Field>
               </div>
-              <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
-                <SaveBtn saving={savingG} onClick={saveGeneral} />
+
+              {/* Logos */}
+              <SubSectionTitle title="Logos" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.75rem" }}>
+                {([
+                  { label: "Logo principal", hint: "Sobre fondo claro", preview: logoPreview || mLogoUrl, dark: false, bg: "#ffffff", emptyColor: "#6b7280", ref: logoInputRef },
+                  { label: "Logo modo oscuro", hint: "Sobre fondo oscuro", preview: logoDarkPreview || mLogoDarkUrl, dark: true, bg: "#111827", emptyColor: "#9ca3af", ref: logoDarkInputRef },
+                ] as const).map(({ label, hint, preview, dark, bg, emptyColor, ref }) => (
+                  <div key={String(dark)}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
+                      <span style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-primary)" }}>{label}</span>
+                      <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>{hint}</span>
+                    </div>
+                    <div style={{
+                      position: "relative", background: bg,
+                      borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)",
+                      minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center",
+                      overflow: "hidden", transition: "border-color 0.15s",
+                    }}>
+                      {preview ? (
+                        <>
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={preview} alt="" style={{ maxWidth: "80%", maxHeight: 100, objectFit: "contain", display: "block" }} />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (dark) { setLogoDarkFile(null); setLogoDarkPreview(""); setMLogoDarkUrl(""); }
+                              else      { setLogoFile(null); setLogoPreview(""); setMLogoUrl(""); }
+                            }}
+                            title="Quitar logo"
+                            style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0 }}
+                          >
+                            <X size={12} />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => (ref as React.RefObject<HTMLInputElement>).current?.click()}
+                            title="Cambiar logo"
+                            style={{ position: "absolute", bottom: 8, right: 8, display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }}
+                          >
+                            <Upload size={11} /> Cambiar
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => (ref as React.RefObject<HTMLInputElement>).current?.click()}
+                          style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "1.5rem", background: "transparent", border: "none", color: emptyColor, fontSize: "0.8125rem", cursor: "pointer", opacity: 0.7, transition: "opacity 0.15s" }}
+                        >
+                          <Upload size={20} />
+                          <span>Subir logo</span>
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      ref={ref as React.RefObject<HTMLInputElement>}
+                      type="file" accept="image/*"
+                      onChange={(e) => handleLogoInput(e, dark)}
+                      style={{ display: "none" }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Color y estilo */}
+              <SubSectionTitle title="Color y estilo de acento" />
+              <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem", marginBottom: "1.75rem" }}>
+                <div>
+                  <label style={LS}>Color de marca</label>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                    <input type="color" value={mColor} onChange={(e) => setMColor(e.target.value)} style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none", flexShrink: 0 }} />
+                    <input style={{ ...IS, width: "auto", flex: 1, maxWidth: 140 }} value={mColor} onChange={(e) => setMColor(e.target.value)} maxLength={7} placeholder="#8B2252" />
+                    <div style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", background: mColor, border: "1px solid var(--border-default)", flexShrink: 0 }} />
+                  </div>
+                </div>
+                <div>
+                  <label style={LS}>Estilo de acento</label>
+                  <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+                    {(['solid', 'metallic'] as const).map((s) => {
+                      const active = accentStyle === s;
+                      const btnBg = s === 'metallic' ? generateMetallicGradient(mColor) : mColor;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => void setAccentStyle(s)}
+                          style={{ display: "flex", flexDirection: "column", gap: 10, padding: 14, borderRadius: "var(--border-radius-lg)", border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)", background: "var(--bg-card)", cursor: "pointer", textAlign: "left", flex: "1 1 140px", maxWidth: 200, outline: "none", transition: "border-color 0.15s" }}
+                        >
+                          <div style={{ height: 28, borderRadius: "var(--border-radius-sm)", background: btnBg }} />
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: "0.8125rem", fontWeight: active ? 700 : 500, color: active ? "var(--accent)" : "var(--text-primary)" }}>
+                              {s === 'solid' ? 'Sólido' : 'Metálico'}
+                            </span>
+                            {active && <span style={{ fontSize: "0.6875rem", color: "var(--color-success)", fontWeight: 700 }}>✓ Activo</span>}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginTop: 6, margin: "6px 0 0" }}>El estilo se guarda automáticamente al seleccionarlo.</p>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <SaveBtn saving={savingI} onClick={saveIdentidad} label="Guardar identidad" />
               </div>
             </SectionCard>
 
-            {/* Datos fiscales */}
-            <SectionCard title="Datos fiscales">
+            {/* ── 2. Pertenencia a grupo (condicional) ── */}
+            {groupId && (
+              <SectionCard title="Pertenencia a grupo" icon={<Link2 size={18} />}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20, padding: "10px 14px", borderRadius: "var(--border-radius-md)", background: "var(--bg-page)", border: "1px solid var(--border-default)" }}>
+                  <div style={{ width: 8, height: 8, borderRadius: "50%", background: "var(--group-accent, var(--accent))", flexShrink: 0 }} />
+                  <span style={{ fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 600 }}>
+                    {groupName ? `Grupo: ${groupName}` : "Esta empresa pertenece a un grupo corporativo"}
+                  </span>
+                </div>
+
+                <SubSectionTitle title="Logo del grupo (personalizado para esta empresa)" />
+                <p style={{ fontSize: "0.8125rem", color: "var(--text-muted)", lineHeight: 1.55, margin: "0 0 16px" }}>
+                  Reemplaza el logo del grupo en documentos como cotizaciones y órdenes de compra generados desde esta empresa.
+                </p>
+
+                <div style={{ maxWidth: 280 }}>
+                  <div style={{
+                    position: "relative", background: "var(--bg-page)",
+                    borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)",
+                    minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center",
+                    overflow: "hidden",
+                  }}>
+                    {(logoGroupPreview || mLogoGroupUrl) ? (
+                      <>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={logoGroupPreview || mLogoGroupUrl} alt="" style={{ maxWidth: "80%", maxHeight: 100, objectFit: "contain", display: "block" }} />
+                        <button
+                          type="button"
+                          onClick={() => { setLogoGroupFile(null); setLogoGroupPreview(""); setMLogoGroupUrl(""); }}
+                          title="Quitar logo"
+                          style={{ position: "absolute", top: 8, right: 8, width: 24, height: 24, borderRadius: "50%", background: "rgba(0,0,0,0.5)", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, flexShrink: 0 }}
+                        >
+                          <X size={12} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => logoGroupInputRef.current?.click()}
+                          title="Cambiar logo"
+                          style={{ position: "absolute", bottom: 8, right: 8, display: "flex", alignItems: "center", gap: 5, padding: "4px 10px", borderRadius: "var(--border-radius-sm)", background: "rgba(0,0,0,0.55)", border: "none", color: "#fff", fontSize: "0.6875rem", fontWeight: 600, cursor: "pointer" }}
+                        >
+                          <Upload size={11} /> Cambiar
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => logoGroupInputRef.current?.click()}
+                        style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8, padding: "1.5rem", background: "transparent", border: "none", color: "var(--text-muted)", fontSize: "0.8125rem", cursor: "pointer", opacity: 0.7 }}
+                      >
+                        <Upload size={20} />
+                        <span>Subir logo de grupo</span>
+                      </button>
+                    )}
+                  </div>
+                  <input ref={logoGroupInputRef} type="file" accept="image/*" onChange={handleLogoGroupInput} style={{ display: "none" }} />
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 16 }}>
+                  <SaveBtn saving={savingGroup} onClick={saveGroup} label="Guardar logo de grupo" />
+                </div>
+              </SectionCard>
+            )}
+
+            {/* ── 3. Datos fiscales ── */}
+            <SectionCard title="Datos fiscales" icon={<FileText size={18} />}>
               {pendingFiscal && (
                 <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", marginBottom: 16 }}>
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-                  <span style={{ fontSize: "0.75rem", color: "var(--accent, #8B2252)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
+                  <span style={{ fontSize: "0.75rem", color: "var(--accent)", fontWeight: 600 }}>Razón social y RFC son obligatorios para facturación</span>
                 </div>
               )}
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
@@ -779,16 +1025,30 @@ export default function SettingsPage() {
                 <Field label="Código postal">
                   <input style={IS} value={fZip} onChange={(e) => setFZip(e.target.value)} placeholder="06600" maxLength={5} />
                 </Field>
+                <Field label="Dirección fiscal">
+                  <input style={IS} value={gAddress} onChange={(e) => setGAddress(e.target.value)} placeholder="Av. Reforma 123, Col. Juárez, CDMX" />
+                </Field>
               </div>
               <div style={{ marginTop: "1.25rem", display: "flex", justifyContent: "flex-end" }}>
                 <SaveBtn saving={savingF} onClick={saveFiscal} />
               </div>
             </SectionCard>
 
-            {/* Contactos */}
-            <SectionCard title="Contactos">
-              <SubSectionTitle title="Administración" />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem", marginBottom: 20 }}>
+            {/* ── 4. Contacto ── */}
+            <SectionCard title="Contacto" icon={<Phone size={18} />}>
+              <SubSectionTitle title="Contacto general" />
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem", marginBottom: "1.5rem" }}>
+                <Field label="Teléfono">
+                  <input style={IS} value={gPhone} onChange={(e) => setGPhone(e.target.value)} placeholder="+52 55 1234 5678" />
+                </Field>
+                <Field label="Email principal">
+                  <input style={IS} type="email" value={gEmail} onChange={(e) => setGEmail(e.target.value)} placeholder="contacto@empresa.com" />
+                </Field>
+              </div>
+
+              <SubSectionTitle title="Contactos por área" />
+              <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", margin: "0 0 8px" }}>Administración</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem", marginBottom: "1.25rem" }}>
                 <Field label="Email">
                   <input style={IS} type="email" value={cAdminEmail} onChange={(e) => setCAdminEmail(e.target.value)} placeholder="admin@empresa.com" />
                 </Field>
@@ -796,7 +1056,7 @@ export default function SettingsPage() {
                   <input style={IS} value={cAdminPhone} onChange={(e) => setCAdminPhone(e.target.value)} placeholder="+52 55 1234 5678" />
                 </Field>
               </div>
-              <SubSectionTitle title="Compras" />
+              <p style={{ fontSize: "0.8125rem", fontWeight: 600, color: "var(--text-secondary)", margin: "0 0 8px" }}>Compras</p>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(16.25rem, 1fr))", gap: "1.25rem" }}>
                 <Field label="Email">
                   <input style={IS} type="email" value={cPurchEmail} onChange={(e) => setCPurchEmail(e.target.value)} placeholder="compras@empresa.com" />
@@ -810,70 +1070,6 @@ export default function SettingsPage() {
               </div>
             </SectionCard>
 
-            {/* Identidad de marca */}
-            <SectionCard title="Identidad de marca">
-              {pendingMarca && (
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: "var(--border-radius-md)", background: "var(--accent-tint-soft)", border: "1px solid var(--accent-tint-medium)", marginBottom: 16 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", flexShrink: 0 }} />
-                  <span style={{ fontSize: "0.75rem", color: "var(--accent, #8B2252)", fontWeight: 600 }}>Sube el logo para completar la identidad de marca</span>
-                </div>
-              )}
-              <div style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-                {/* Color */}
-                <div>
-                  <label style={LS}>Color de marca</label>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <input type="color" value={mColor} onChange={(e) => setMColor(e.target.value)} style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", cursor: "pointer", padding: 0, background: "none" }} />
-                    <input style={{ ...IS, width: "auto", flex: 1, maxWidth: 160 }} value={mColor} onChange={(e) => setMColor(e.target.value)} maxLength={7} placeholder="#8B2252" />
-                    <div style={{ width: 44, height: 44, borderRadius: "var(--border-radius-md)", background: mColor, border: "1px solid var(--border-default)" }} />
-                  </div>
-                </div>
-                {/* Logos */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(15rem, 1fr))", gap: "1.25rem" }}>
-                  {([
-                    { label: "Logo principal (fondo claro)", preview: logoPreview || mLogoUrl, dark: false, ref: logoInputRef },
-                    { label: "Logo modo oscuro",             preview: logoDarkPreview || mLogoDarkUrl, dark: true,  ref: logoDarkInputRef },
-                  ] as const).map(({ label, preview, dark, ref }) => (
-                    <div key={String(dark)}>
-                      <label style={LS}>{label}</label>
-                      <input
-                        ref={ref as React.RefObject<HTMLInputElement>}
-                        type="file" accept="image/*"
-                        onChange={(e) => handleLogoInput(e, dark)}
-                        style={{ display: "none" }}
-                      />
-                      {preview ? (
-                        <div style={{ position: "relative", display: "inline-block" }}>
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img src={preview} alt="" style={{ width: 80, height: 80, objectFit: "contain", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: dark ? "#1a1a2e" : "#f5f5f5" }} />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (dark) { setLogoDarkFile(null); setLogoDarkPreview(""); setMLogoDarkUrl(""); }
-                              else      { setLogoFile(null);     setLogoPreview("");     setMLogoUrl(""); }
-                            }}
-                            style={{ position: "absolute", top: -8, right: -8, width: 22, height: 22, borderRadius: "50%", background: "var(--metric-bg-red)", border: "none", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}
-                          >
-                            <X size={12} />
-                          </button>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => (ref as React.RefObject<HTMLInputElement>).current?.click()}
-                          style={{ display: "flex", alignItems: "center", gap: 8, padding: ".6rem 1rem", background: "var(--bg-card)", border: "1px dashed var(--border-default)", borderRadius: "var(--border-radius-md)", color: "var(--text-secondary)", fontSize: "0.8125rem", cursor: "pointer" }}
-                        >
-                          <Upload size={14} /> Subir logo
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <SaveBtn saving={savingM} onClick={saveMarca} />
-                </div>
-              </div>
-            </SectionCard>
           </div>
         )}
 
