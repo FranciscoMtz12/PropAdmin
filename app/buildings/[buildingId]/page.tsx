@@ -4878,7 +4878,7 @@ export default function BuildingDetailPage() {
                 </div>
               ) : (
                 buildingSchedules.map((s, si) => {
-                  const borderColor = s.cleaning_type === 'common_area' ? '#378ADD' : 'var(--color-chart-green)';
+                  const borderColor = s.cleaning_type === 'common_area' ? 'var(--status-vacant)' : 'var(--color-chart-green)';
                   const isLast = si === buildingSchedules.length - 1 && recentCleaningLogs.length === 0;
                   return (
                     <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 18px 10px 15px", borderLeft: `3px solid ${borderColor}`, background: "var(--bg-card-hover)", borderBottom: isLast ? "none" : "0.5px solid var(--color-border-tertiary, var(--border-default))" }}>
@@ -4968,8 +4968,8 @@ export default function BuildingDetailPage() {
               ) : (
                 openTickets.map((ticket, ti) => {
                   const dotColor = ticket.priority === 'urgent' ? 'var(--priority-urgent)' : ticket.priority === 'high' ? 'var(--priority-high)' : ticket.priority === 'medium' ? 'var(--priority-medium)' : 'var(--text-muted)';
-                  const pillBg = ticket.priority === 'urgent' ? 'var(--badge-bg-red)' : ticket.priority === 'high' ? '#ffedd5' : ticket.priority === 'medium' ? '#fef9c3' : '#f3f4f6';
-                  const pillColor = ticket.priority === 'urgent' ? '#991b1b' : ticket.priority === 'high' ? '#9a3412' : ticket.priority === 'medium' ? '#713f12' : 'var(--priority-low)';
+                  const pillBg    = ticket.priority === 'urgent' ? 'var(--priority-urgent-bg)'   : ticket.priority === 'high' ? 'var(--priority-high-bg)'   : ticket.priority === 'medium' ? 'var(--priority-medium-bg)'   : 'var(--priority-low-bg)';
+                  const pillColor = ticket.priority === 'urgent' ? 'var(--priority-urgent-text)' : ticket.priority === 'high' ? 'var(--priority-high-text)' : ticket.priority === 'medium' ? 'var(--priority-medium-text)' : 'var(--priority-low-text)';
                   const priorityLabel = ticket.priority === 'urgent' ? 'Urgente' : ticket.priority === 'high' ? 'Alta' : ticket.priority === 'medium' ? 'Media' : 'Baja';
                   const age = daysAgo(ticket.created_at);
                   const isLast = ti === openTickets.length - 1 && upcomingPreventives.length === 0;
