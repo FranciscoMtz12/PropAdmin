@@ -11,7 +11,7 @@
   - Fondo: #0f1623 en dark mode, #1e2a3a en light mode
 */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSwipeable } from "react-swipeable";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -364,8 +364,36 @@ export default function Sidebar() {
     return () => window.removeEventListener("resize", check);
   }, []);
 
+  /* swipeBlocked: true cuando el touchstart comenzó dentro de un contenedor
+     con scroll horizontal real (tabla, div overflow-x). En ese caso, el
+     onSwipedRight ignora el gesto y deja que el scroll nativo lo maneje. */
+  const swipeBlocked = useRef(false);
+
+  useEffect(() => {
+    if (!isMobile || mobileOpen) return;
+
+    function onTouchStart(e: TouchEvent) {
+      let node = e.target as Element | null;
+      swipeBlocked.current = false;
+      while (node && node !== document.body) {
+        const ox = window.getComputedStyle(node).overflowX;
+        if ((ox === "auto" || ox === "scroll") && node.scrollWidth > node.clientWidth) {
+          swipeBlocked.current = true;
+          break;
+        }
+        node = node.parentElement;
+      }
+    }
+
+    document.body.addEventListener("touchstart", onTouchStart, { passive: true });
+    return () => document.body.removeEventListener("touchstart", onTouchStart);
+  }, [isMobile, mobileOpen]);
+
   const swipeOpenHandlers = useSwipeable({
-    onSwipedRight: () => setMobileOpen(true),
+    onSwipedRight: () => {
+      if (swipeBlocked.current) { swipeBlocked.current = false; return; }
+      setMobileOpen(true);
+    },
     delta: 30,
     trackTouch: true,
     trackMouse: false,
