@@ -191,7 +191,7 @@ export default function IndustrialTypologyModal({ open, buildingId, companyId, o
                       display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 3,
                       padding: "10px 12px", borderRadius: "var(--border-radius-md)", textAlign: "left",
                       border: sel ? `2px solid ${amber}` : "1.5px solid var(--border-default)",
-                      background: sel ? `${amber}12` : "var(--bg-card)",
+                      background: sel ? "var(--metric-bg-amber)" : "var(--bg-card)",
                       cursor: "pointer", transition: "all 0.15s ease",
                     }}
                   >
