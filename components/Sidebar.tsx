@@ -31,7 +31,6 @@ import {
   LogOut,
   MessageSquare,
   Package,
-  Palette,
   Settings,
   ShoppingCart,
   Sparkles,
@@ -79,10 +78,9 @@ const SAPROA_SECTIONS: NavSection[] = [
   {
     label: "DEVELOPER",
     items: [
-      { label: "Impersonar",      href: "/saproa-admin/impersonar",    icon: Eye     },
-      { label: "Roadmap",         href: "/saproa-admin/roadmap",       icon: FileText },
-      { label: "Sistema de diseño", href: "/saproa-admin/design-system", icon: Palette },
-      { label: "Sandbox",         href: "#",                           icon: Sparkles, disabled: true },
+      { label: "Impersonar", href: "/saproa-admin/impersonar", icon: Eye          },
+      { label: "Roadmap",    href: "/saproa-admin/roadmap",    icon: FileText     },
+      { label: "Design System", href: "/saproa-admin/design-system", icon: Layers },
     ],
   },
   {
