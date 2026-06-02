@@ -392,6 +392,15 @@ export default function DashboardPage() {
 
     const cid = activeCompanyId;
 
+    // ── DEBUG TEMPORAL ──────────────────────────────────────────────
+    console.log('[DASH] ▶ loadDashboard called');
+    console.log('[DASH] cid (activeCompanyId)  =', cid);
+    console.log('[DASH] shouldLoadData         =', shouldLoadData);
+    console.log('[DASH] user.company_id        =', user?.company_id);
+    console.log('[DASH] user.is_superadmin     =', user?.is_superadmin);
+    console.log('[DASH] user.role              =', user?.role);
+    // ────────────────────────────────────────────────────────────────
+
     const today = todayDateKey();
 
     /* Primer día de hace 5 meses (= ventana de 6 meses para chart) */
@@ -471,6 +480,16 @@ export default function DashboardPage() {
         .select("id, unit_id, title, status"),
         cid),
     ]);
+
+    // ── DEBUG TEMPORAL ──────────────────────────────────────────────
+    console.log('[DASH] ◀ Promise.all results:');
+    console.log('[DASH]   buildings  count =', buildingsRes.data?.length,  '| error =', buildingsRes.error?.message   ?? 'none', '| sample =', buildingsRes.data?.slice(0, 2));
+    console.log('[DASH]   units      count =', unitsRes.data?.length,      '| error =', unitsRes.error?.message       ?? 'none', '| sample =', unitsRes.data?.slice(0, 2));
+    console.log('[DASH]   leases     count =', leasesRes.data?.length,     '| error =', leasesRes.error?.message      ?? 'none');
+    console.log('[DASH]   tenants    count =', tenantsRes.data?.length,    '| error =', tenantsRes.error?.message     ?? 'none');
+    console.log('[DASH]   collection count =', collectionRes.data?.length, '| error =', collectionRes.error?.message  ?? 'none');
+    console.log('[DASH]   maintenance count=', maintenanceRes.data?.length,'| error =', maintenanceRes.error?.message ?? 'none');
+    // ────────────────────────────────────────────────────────────────
 
     setUnits((unitsRes.data as Unit[]) || []);
     setUnitTypes((unitTypesRes.data as UnitType[]) || []);
