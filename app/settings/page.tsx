@@ -155,7 +155,7 @@ function SaveBtn({ saving, onClick, label = "Guardar" }: { saving: boolean; onCl
       disabled={saving}
       style={{
         padding: ".55rem 1.25rem",
-        background: saving ? "var(--accent-muted, #6B1A3F)" : "var(--accent, #8B2252)",
+        background: "var(--accent)",
         border: "none", borderRadius: "var(--border-radius-sm)", color: "#fff",
         fontSize: "0.8125rem", fontWeight: 600,
         cursor: saving ? "not-allowed" : "pointer",
@@ -174,7 +174,7 @@ function Toggle({ on, onToggle }: { on: boolean; onToggle: () => void }) {
       onClick={onToggle}
       style={{
         position: "relative", width: 48, height: 26, borderRadius: "var(--border-radius-lg)",
-        border: "none", background: on ? "var(--accent, #8B2252)" : "var(--border-default)",
+        border: "none", background: on ? "var(--accent)" : "var(--border-default)",
         cursor: "pointer", transition: "background 0.2s", padding: 0, flexShrink: 0,
       }}
     >
@@ -1175,7 +1175,7 @@ export default function SettingsPage() {
                 type="button"
                 onClick={createInvitation}
                 disabled={sendingInv}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent, #8B2252)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.8125rem", fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: ".6rem 1.1rem", background: "var(--accent)", border: "none", borderRadius: "var(--border-radius-md)", color: "#fff", fontSize: "0.8125rem", fontWeight: 600, cursor: sendingInv ? "not-allowed" : "pointer", opacity: sendingInv ? 0.7 : 1 }}
               >
                 <Send size={14} /> {sendingInv ? "Generando..." : "Generar invitación"}
               </button>
@@ -1185,7 +1185,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => navigator.clipboard.writeText(invLink).then(() => toast.success("Copiado"))}
-                    style={{ padding: ".4rem .8rem", background: "var(--accent-muted, var(--accent-tint-soft))", border: "1px solid var(--accent, #8B2252)", borderRadius: "var(--border-radius-sm)", color: "var(--accent, #8B2252)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
+                    style={{ padding: ".4rem .8rem", background: "var(--accent-tint-soft)", border: "1px solid var(--accent)", borderRadius: "var(--border-radius-sm)", color: "var(--accent)", fontSize: "0.75rem", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}
                   >
                     Copiar enlace
                   </button>
@@ -1650,7 +1650,7 @@ export default function SettingsPage() {
 
             <SectionCard title="Plan actual" icon={<CreditCard size={18} />}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
-                <span style={{ padding: "4px 14px", borderRadius: 999, background: "var(--accent-tint-soft)", color: "var(--accent, #8B2252)", fontSize: "0.8125rem", fontWeight: 700, border: "1px solid var(--accent-tint-medium)" }}>
+                <span style={{ padding: "4px 14px", borderRadius: 999, background: "var(--accent-tint-soft)", color: "var(--accent)", fontSize: "0.8125rem", fontWeight: 700, border: "1px solid var(--accent-tint-medium)" }}>
                   Plan Básico
                 </span>
                 <span style={{ fontSize: "0.8125rem", color: "#1D9E75", fontWeight: 600 }}>● Activo</span>

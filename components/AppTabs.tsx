@@ -155,7 +155,7 @@ export default function AppTabs({
                   width: 18,
                   height: 18,
                   borderRadius: "50%",
-                  background: "var(--brand-color, #8B2252)",
+                  background: "var(--accent)",
                   border: "2px solid var(--color-background-primary)",
                   zIndex: 10,
                   pointerEvents: "none",

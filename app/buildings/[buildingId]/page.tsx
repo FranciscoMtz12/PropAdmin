@@ -934,13 +934,13 @@ function TabPendingBanner({
   return (
     <div style={{
       background: 'var(--accent-tint-subtle)',
-      borderLeft: '3px solid var(--brand-color, #8B2252)',
+      borderLeft: '3px solid var(--accent)',
       borderRadius: 'var(--border-radius-md, 8px)',
       padding: '10px 14px',
       marginBottom: 16,
     }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: tasks.length > 0 ? 6 : 0 }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--brand-color, #8B2252)', fontSize: "0.8125rem", fontWeight: 600 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--accent)', fontSize: "0.8125rem", fontWeight: 600 }}>
           <Settings size={13} />
           Pendiente en este módulo
         </span>
@@ -977,7 +977,7 @@ function TabPendingBanner({
                   width: '100%',
                 }}
               >
-                <span style={{ color: 'var(--brand-color, #8B2252)', fontSize: "0.5625rem", lineHeight: 1 }}>●</span>
+                <span style={{ color: 'var(--accent)', fontSize: "0.5625rem", lineHeight: 1 }}>●</span>
                 <span style={{ flex: 1 }}>{label}</span>
                 {resolvedRoute && <ChevronRight size={12} color="var(--text-muted)" />}
               </button>
