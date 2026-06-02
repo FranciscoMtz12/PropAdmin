@@ -371,7 +371,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!loading && user && shouldLoadData) void loadDashboard();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, shouldLoadData, activeCompanyId]);
+  }, [loading, user?.id, user?.company_id, shouldLoadData, activeCompanyId]);
 
   useEffect(() => {
     if (!loading && user) {
@@ -379,12 +379,12 @@ export default function DashboardPage() {
       else setLoadingSetup(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, activeCompanyId]);
+  }, [loading, user?.id, user?.company_id, activeCompanyId]);
 
   useEffect(() => {
     if (!loading && user && shouldLoadData) void loadChecklist(activeCompanyId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, shouldLoadData, activeCompanyId]);
+  }, [loading, user?.id, user?.company_id, shouldLoadData, activeCompanyId]);
 
   async function loadDashboard() {
     if (!user) return;

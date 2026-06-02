@@ -10,6 +10,7 @@ import { withCompanyFilter } from "@/lib/supabase/query-helpers";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useActiveCompanyId, useShouldLoadCompanyData } from "@/lib/useActiveCompanyId";
 import { type QuickLink, ICON_MAP, getAllowedModules, getDefaultQuickLinks } from "@/lib/quick-links";
 
 /* ─── Color utilities ─────────────────────────────────────────────────── */
@@ -142,6 +143,8 @@ export default function HomePage() {
   const { user, loading } = useCurrentUser();
   const { accentColor, logoUrl, shortName, uiTheme } = useTheme();
   const { isRealSuperAdmin, isImpersonating } = useImpersonation();
+  const activeCompanyId = useActiveCompanyId();
+  const shouldLoadData  = useShouldLoadCompanyData();
 
   const [now, setNow] = useState(() => new Date());
   const [metrics, setMetrics] = useState<Metrics | null>(null);
@@ -168,9 +171,9 @@ export default function HomePage() {
   }, [loading, user, isRealSuperAdmin, isImpersonating, router]);
 
   useEffect(() => {
-    if (!loading && user && !isRealSuperAdmin) void fetchMetrics(user.company_id ?? null);
+    if (!loading && user && shouldLoadData && activeCompanyId) void fetchMetrics(activeCompanyId);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user?.id, user?.company_id, isRealSuperAdmin]);
+  }, [loading, user?.id, shouldLoadData, activeCompanyId]);
 
   useEffect(() => {
     if (!user?.id) return;

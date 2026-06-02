@@ -23,15 +23,24 @@ export function useActiveCompanyId(): string | null {
 
 /**
  * True si el componente debe cargar datos propios de la empresa activa.
- * Para superadmin: solo cuando está impersonando (modo empresa o usuario).
+ *
+ * Lee directamente desde ImpersonationContext (no vía ImpersonationBridge)
+ * para evitar dependencias de timing con el bridge.
  */
 export function useShouldLoadCompanyData(): boolean {
   const { user } = useCurrentUser();
-  const { isImpersonating, impersonationMode } = useImpersonation();
+  const { isImpersonating, impersonationMode, impersonatedCompanyId } = useImpersonation();
 
   if (!user) return false;
-  if (!user.is_superadmin) return true;
 
-  // Superadmin: cargar solo cuando impersona empresa o usuario (no grupo)
-  return isImpersonating && impersonationMode !== "group";
+  // Impersonando empresa o usuario: cargar solo si hay un company_id destino
+  if (isImpersonating && (impersonationMode === "company" || impersonationMode === "user")) {
+    return !!impersonatedCompanyId;
+  }
+
+  // Modo grupo: cargar (sin filtro de empresa específica)
+  if (isImpersonating && impersonationMode === "group") return true;
+
+  // Sin impersonar: cargar si el usuario tiene empresa propia
+  return !!user.company_id;
 }
