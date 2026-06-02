@@ -349,7 +349,13 @@ export default function SettingsPage() {
   useEffect(() => {
     if (activeTab === "usuarios" && !usersLoaded) void loadUsers();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeTab]);
+  }, [activeTab, usersLoaded]);
+
+  // ─── Reset users list when impersonated company changes ─────────
+  useEffect(() => {
+    setUsersLoaded(false);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.company_id]);
 
   // ─── Load quick links when "cuenta" tab is active ────────────────
   useEffect(() => {
@@ -410,14 +416,15 @@ export default function SettingsPage() {
 
   async function loadUsers() {
     setLoadingUsers(true);
+    const cid = user?.company_id ?? null;
     const usersQ = supabase
       .from("app_users")
       .select("id,full_name,email,role,is_superadmin,company_id,created_at")
       .order("created_at", { ascending: false });
-    if (isStrictTitular) usersQ.eq("company_id", user!.company_id!);
+    if (cid) usersQ.eq("company_id", cid);
 
-    const companiesQ = isStrictTitular
-      ? supabase.from("companies").select("id,name").eq("id", user!.company_id!)
+    const companiesQ = cid
+      ? supabase.from("companies").select("id,name").eq("id", cid)
       : supabase.from("companies").select("id,name").is("deleted_at", null).order("name");
 
     const [uRes, cRes] = await Promise.all([usersQ, companiesQ]);
