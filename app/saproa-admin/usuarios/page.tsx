@@ -101,7 +101,7 @@ export default function SaproaUsuariosPage() {
       userFullName: u.full_name,
       role:         u.role,
     });
-    router.push("/dashboard");
+    router.push("/home");
   }
 
   return (

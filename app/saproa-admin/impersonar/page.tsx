@@ -82,12 +82,12 @@ export default function SaproaImpersonarPage() {
 
   function impersonateCompany(company: Company) {
     startImpersonation({ companyId: company.id, companyName: company.short_name || company.name, userId: null, userEmail: null, userFullName: null, role: "superadmin" });
-    router.push("/dashboard");
+    router.push("/home");
   }
 
   function impersonateUser(user: AppUser, company: Company) {
     startImpersonation({ companyId: company.id, companyName: company.short_name || company.name, userId: user.id, userEmail: user.email, userFullName: user.full_name, role: user.role });
-    router.push("/dashboard");
+    router.push("/home");
   }
 
   function toggleGroup(group: Group) {
@@ -113,7 +113,7 @@ export default function SaproaImpersonarPage() {
       brand_color: c.brand_color, logo_url: c.logo_url,
     }));
     startGroupImpersonation({ groupId: group.id, groupName: group.short_name || group.name, companies: gc });
-    router.push("/dashboard");
+    router.push("/home");
   }
 
   function toggleCompany(company: Company) {

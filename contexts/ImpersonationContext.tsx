@@ -110,11 +110,11 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   const [groupCompanies,         setGroupCompanies]         = useState<GroupCompany[]>([]);
   const [groupCompanyIds,        setGroupCompanyIds]        = useState<string[]>([]);
 
-  /* Restaurar desde sessionStorage cuando el superadmin se confirma.
-     Resuelve el bug donde un hard-navigation (full page reload) vaciaba la impersonacion. */
+  /* Restaurar desde sessionStorage en el primer mount del cliente.
+     Usa deps=[] para que corra exactamente UNA VEZ después de la hidratación, sin
+     depender de que isRealSuperAdmin ya esté confirmado. Si el usuario resulta NO
+     ser superadmin, el efecto de limpieza borrará el estado restaurado. */
   useEffect(() => {
-    if (!isRealSuperAdmin) return;
-    if (impersonatedCompanyId !== null || impersonatedGroupId !== null) return;
     const s = readStorage();
     if (!s) return;
     if (s.companyId) {
@@ -133,8 +133,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
       setGroupCompanies(s.groupCompanies ?? []); setGroupCompanyIds(s.groupCompanyIds ?? []);
       setImpersonatedCompanyId(null); setImpersonatedCompanyName(null);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRealSuperAdmin]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* Limpiar cuando el usuario se confirma como NO superadmin.
      user !== null garantiza que esperamos a que el usuario cargue antes

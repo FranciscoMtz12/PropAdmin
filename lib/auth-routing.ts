@@ -56,7 +56,7 @@ export async function resolveUserDestination(authUserId: string): Promise<Resolv
  * Agregar un rol nuevo: añadir un case aquí.
  */
 export function getAdminDestination(role: string, isSuperadmin: boolean): AuthDestination {
-  if (isSuperadmin || role === "superadmin") return "/saproa-admin/overview";
+  if (isSuperadmin || role === "superadmin") return "/home";
   if (role === "field")                       return "/campo/dashboard";
   // titular, administracion, directivo, compras, mantenimiento, group_admin → /home
   return "/home";

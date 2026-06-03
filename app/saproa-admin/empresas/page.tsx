@@ -71,7 +71,7 @@ export default function SaproaEmpresasPage() {
       userFullName: null,
       role:         "superadmin",
     });
-    router.push("/dashboard");
+    router.push("/home");
   }
 
   return (

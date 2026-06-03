@@ -13,7 +13,7 @@ export default function SaproaAdminLayout({ children }: { children: React.ReactN
   useEffect(() => {
     if (loading) return;
     if (!user || !isRealSuperAdmin) {
-      router.replace("/dashboard");
+      router.replace("/home");
     }
   }, [loading, user, isRealSuperAdmin, router]);
 
