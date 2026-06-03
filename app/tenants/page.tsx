@@ -30,6 +30,7 @@ import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
+import { useActiveCompanyId, useShouldLoadCompanyData } from "@/lib/useActiveCompanyId";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -254,6 +255,8 @@ export default function TenantsPage() {
   }, []);
 
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
+  const activeCompanyId = useActiveCompanyId();
+  const shouldLoadData  = useShouldLoadCompanyData();
 
   useEffect(() => {
     if (loading) return;
@@ -654,6 +657,18 @@ export default function TenantsPage() {
     setMessage("Inquilino archivado correctamente.");
     await loadTenantsPage();
   }
+  /* Salvaguarda de seguridad: superadmin sin impersonacion activa no debe ver datos */
+  if (!loading && !shouldLoadData && isSuperAdmin) {
+    return (
+      <PageContainer>
+        <div style={{ padding: "48px 0", textAlign: "center", color: "var(--text-muted)" }}>
+          <p style={{ fontSize: "1rem", fontWeight: 600, marginBottom: 8 }}>Sin empresa seleccionada</p>
+          <p style={{ fontSize: "0.875rem" }}>Impersona una empresa para ver sus inquilinos.</p>
+        </div>
+      </PageContainer>
+    );
+  }
+
 
   if (loading || loadingPage) {
     return (

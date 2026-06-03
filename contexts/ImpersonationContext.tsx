@@ -78,6 +78,21 @@ const ImpersonationContext = createContext<ImpersonationContextType>({
 
 /* ─── Provider ────────────────────────────────────────────────────── */
 
+
+/* ── sessionStorage — persiste la impersonación a través de navigations duras ── */
+const STORAGE_KEY = "saproa_impersonation_v1";
+type StoredImpersonation = {
+  mode: "user" | "company" | "group";
+  companyId: string | null; companyName: string | null;
+  userId: string | null; userEmail: string | null; userFullName: string | null; role: string | null;
+  groupId: string | null; groupName: string | null;
+  groupCompanies: GroupCompany[]; groupCompanyIds: string[];
+};
+function readStorage(): StoredImpersonation | null {
+  try { const r = sessionStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+}
+function writeStorage(s: StoredImpersonation) { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {} }
+function clearStorage() { try { sessionStorage.removeItem(STORAGE_KEY); } catch {} }
 export function ImpersonationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
   const isRealSuperAdmin = Boolean(user?.is_superadmin);
@@ -95,12 +110,39 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   const [groupCompanies,         setGroupCompanies]         = useState<GroupCompany[]>([]);
   const [groupCompanyIds,        setGroupCompanyIds]        = useState<string[]>([]);
 
-  /* Limpiar impersonación si el usuario pierde privilegios (p.ej. cierra sesión) */
+  /* Restaurar desde sessionStorage cuando el superadmin se confirma.
+     Resuelve el bug donde un hard-navigation (full page reload) vaciaba la impersonacion. */
   useEffect(() => {
-    /* group_admin gestiona su propio modo grupo automáticamente */
-    if (!isRealSuperAdmin && !isGroupAdmin) stopImpersonation();
+    if (!isRealSuperAdmin) return;
+    if (impersonatedCompanyId !== null || impersonatedGroupId !== null) return;
+    const s = readStorage();
+    if (!s) return;
+    if (s.companyId) {
+      setImpersonationMode(s.mode ?? 'company');
+      setImpersonatedCompanyId(s.companyId);
+      setImpersonatedCompanyName(s.companyName);
+      setImpersonatedUserId(s.userId);
+      setImpersonatedUserEmail(s.userEmail);
+      setImpersonatedUserFullName(s.userFullName);
+      setImpersonatedRole(s.role);
+      setImpersonatedGroupId(null); setImpersonatedGroupName(null);
+      setGroupCompanies([]); setGroupCompanyIds([]);
+    } else if (s.groupId) {
+      setImpersonationMode('group');
+      setImpersonatedGroupId(s.groupId); setImpersonatedGroupName(s.groupName);
+      setGroupCompanies(s.groupCompanies ?? []); setGroupCompanyIds(s.groupCompanyIds ?? []);
+      setImpersonatedCompanyId(null); setImpersonatedCompanyName(null);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isRealSuperAdmin, isGroupAdmin]);
+  }, [isRealSuperAdmin]);
+
+  /* Limpiar cuando el usuario se confirma como NO superadmin.
+     user !== null garantiza que esperamos a que el usuario cargue antes
+     de borrar el sessionStorage (evita borrar durante un reload). */
+  useEffect(() => {
+    if (!isRealSuperAdmin && !isGroupAdmin && user !== null) stopImpersonation();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRealSuperAdmin, isGroupAdmin, user]);
 
   /* Auto-activar modo grupo cuando entra un group_admin */
   useEffect(() => {
@@ -152,6 +194,10 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   }, [isGroupAdmin, user && 'group_id' in user ? user.group_id : null]);
 
   function startImpersonation(params: ImpersonationParams) {
+    const _mode = params.userId !== null ? 'user' : 'company';
+    writeStorage({ mode: _mode, companyId: params.companyId, companyName: params.companyName,
+      userId: params.userId, userEmail: params.userEmail, userFullName: params.userFullName,
+      role: params.role, groupId: null, groupName: null, groupCompanies: [], groupCompanyIds: [] });
     setImpersonationMode(params.userId !== null ? 'user' : 'company');
     setImpersonatedCompanyId(params.companyId);
     setImpersonatedCompanyName(params.companyName);
@@ -166,6 +212,10 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   }
 
   function startGroupImpersonation(params: GroupImpersonationParams) {
+    writeStorage({ mode: 'group', companyId: null, companyName: null, userId: null,
+      userEmail: null, userFullName: null, role: null, groupId: params.groupId,
+      groupName: params.groupName, groupCompanies: params.companies,
+      groupCompanyIds: params.companies.map(c => c.id) });
     setImpersonationMode('group');
     setImpersonatedGroupId(params.groupId);
     setImpersonatedGroupName(params.groupName);
@@ -191,6 +241,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   }
 
   function stopImpersonation() {
+    clearStorage();
     setImpersonationMode('company');
     setImpersonatedCompanyId(null);
     setImpersonatedCompanyName(null);

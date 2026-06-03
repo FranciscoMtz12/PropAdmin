@@ -11,6 +11,7 @@
 */
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   BarChart,
@@ -1906,9 +1907,9 @@ export default function DashboardPage() {
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           <Building2 size={15} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-                          <a href={`/buildings/${b.buildingId}`} style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
+                          <Link href={`/buildings/${b.buildingId}`} style={{ fontSize: "0.875rem", fontWeight: 600, color: "var(--text-primary)", textDecoration: "none" }}>
                             {b.buildingName}
-                          </a>
+                          </Link>
                         </div>
                         <span style={{ fontSize: "0.75rem", color: "var(--text-muted)", whiteSpace: "nowrap" }}>{completedCount}/5</span>
                       </div>
@@ -1922,7 +1923,7 @@ export default function DashboardPage() {
                       </div>
                       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                         {pendingSteps.map(step => step.action && (
-                          <a
+                          <Link
                             key={step.label}
                             href={step.action.href}
                             style={{
@@ -1934,7 +1935,7 @@ export default function DashboardPage() {
                           >
                             {step.action.label}
                             <ChevronRight size={12} />
-                          </a>
+                          </Link>
                         ))}
                       </div>
                     </div>

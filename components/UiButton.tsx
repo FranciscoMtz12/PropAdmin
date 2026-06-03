@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 
 /*
@@ -78,9 +79,9 @@ export default function UiButton({
 
   if (href) {
     return (
-      <a href={href} style={style}>
+      <Link href={href} style={style}>
         {content}
-      </a>
+      </Link>
     );
   }
 
