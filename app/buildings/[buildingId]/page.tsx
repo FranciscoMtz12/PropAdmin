@@ -101,6 +101,7 @@ import {
   Wrench,
   X,
   Zap,
+  ArrowRightLeft,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";
@@ -1081,6 +1082,12 @@ export default function BuildingDetailPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [savingEdit, setSavingEdit]               = useState(false);
   const [deletingBuilding, setDeletingBuilding]   = useState(false);
+
+  /* Mover edificio a otra empresa */
+  const [isMoveCompanyOpen, setIsMoveCompanyOpen]   = useState(false);
+  const [moveTargetId, setMoveTargetId]             = useState('');
+  const [movingCompany, setMovingCompany]           = useState(false);
+  const [allCompanies, setAllCompanies]             = useState<{ id: string; name: string }[]>([]);
 
   /* Modales de assets del edificio */
   const [assetCreateOpen, setAssetCreateOpen]   = useState(false);
@@ -2836,6 +2843,40 @@ export default function BuildingDetailPage() {
     router.push("/buildings");
   }
 
+  /* ── Mover edificio a otra empresa ──────────────────────────────── */
+
+  async function openMoveCompanyModal() {
+    if (!building) return;
+    setMoveTargetId('');
+    setIsMoveCompanyOpen(true);
+    const { data } = await supabase
+      .from('companies')
+      .select('id, name')
+      .neq('id', building.company_id)
+      .order('name');
+    setAllCompanies((data ?? []) as { id: string; name: string }[]);
+  }
+
+  async function handleMoveToCompany() {
+    if (!building || !moveTargetId) return;
+    setMovingCompany(true);
+    const { data, error } = await supabase.rpc('move_building_to_company', {
+      p_building_id:    building.id,
+      p_target_company: moveTargetId,
+    });
+    setMovingCompany(false);
+    if (error) {
+      toast.error(`Error al mover el edificio: ${error.message}`);
+      return;
+    }
+    setIsMoveCompanyOpen(false);
+    const rows = (data as { rows_moved?: Record<string, number> } | null)?.rows_moved ?? {};
+    const total = Object.values(rows).reduce((s, n) => s + (n as number), 0);
+    const targetName = allCompanies.find(c => c.id === moveTargetId)?.name ?? moveTargetId;
+    toast.success(`Edificio movido a ${targetName}. ${total} registros actualizados.`);
+    router.push('/buildings');
+  }
+
   async function toggleBillingConcept(conceptCode: BuildingBillingConceptCode) {
     if (!building || !user?.company_id) return;
     const existing   = billingConcepts.find((item) => item.concept_code === conceptCode);
@@ -3128,6 +3169,23 @@ export default function BuildingDetailPage() {
               <Layers3 size={16} />
               <span>{labels.units}</span>
             </a>
+          )}
+          {/* Mover a otra empresa — solo superadmin */}
+          {user?.is_superadmin && (
+            <button
+              type="button"
+              onClick={() => void openMoveCompanyModal()}
+              style={{
+                display: "flex", alignItems: "center",
+                gap: 6, padding: "9px 14px", borderRadius: "var(--border-radius-md)",
+                border: "1px solid var(--metric-border-amber)", background: "transparent",
+                color: "var(--badge-text-amber)", cursor: "pointer",
+                fontSize: "0.75rem", fontWeight: 600,
+              }}
+            >
+              <ArrowRightLeft size={16} />
+              <span>Mover a otra empresa</span>
+            </button>
           )}
           {/* Eliminar */}
           <button
@@ -7087,6 +7145,74 @@ export default function BuildingDetailPage() {
         }}
         onCancel={() => { if (!deletingUT) setDeleteUTTarget(null); }}
       />
+
+    {/* ── Modal: Mover edificio a otra empresa ── */}
+    <Modal
+      open={isMoveCompanyOpen}
+      title="Mover edificio a otra empresa"
+      onClose={() => { if (!movingCompany) setIsMoveCompanyOpen(false); }}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        {/* Advertencia */}
+        <div style={{
+          background: "var(--badge-bg-amber)",
+          border: "1px solid var(--metric-border-amber)",
+          borderRadius: "var(--border-radius-md)",
+          padding: "12px 16px",
+          fontSize: "0.8125rem",
+          color: "var(--badge-text-amber)",
+          lineHeight: 1.5,
+        }}>
+          <strong>Atención:</strong> Se moverán <strong>todas las unidades, contratos,
+          inquilinos, cobranza, servicios y demás datos</strong> de{" "}
+          <strong>{building.name}</strong> a la empresa seleccionada.
+          Los inquilinos con contratos en otras empresas no se moverán.
+          Esta operación es atómica (todo o nada) pero no es fácilmente reversible.
+        </div>
+
+        {/* Selector de empresa destino */}
+        <AppFormField label="Empresa destino">
+          <AppSelect
+            value={moveTargetId}
+            onChange={(e) => setMoveTargetId(e.target.value)}
+          >
+            <option value="">— Seleccionar empresa —</option>
+            {allCompanies.map((co) => (
+              <option key={co.id} value={co.id}>{co.name}</option>
+            ))}
+          </AppSelect>
+        </AppFormField>
+
+        {/* Acciones */}
+        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+          <UiButton
+            variant="secondary"
+            disabled={movingCompany}
+            onClick={() => setIsMoveCompanyOpen(false)}
+          >
+            Cancelar
+          </UiButton>
+          <button
+            type="button"
+            disabled={!moveTargetId || movingCompany}
+            onClick={() => void handleMoveToCompany()}
+            style={{
+              padding: "11px 20px",
+              borderRadius: "var(--border-radius-sm)",
+              border: "1px solid var(--metric-border-amber)",
+              background: moveTargetId && !movingCompany ? "var(--badge-bg-amber)" : "var(--bg-card)",
+              color: "var(--badge-text-amber)",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              cursor: moveTargetId && !movingCompany ? "pointer" : "not-allowed",
+              opacity: !moveTargetId || movingCompany ? 0.5 : 1,
+            }}
+          >
+            {movingCompany ? "Moviendo…" : "Mover edificio"}
+          </button>
+        </div>
+      </div>
+    </Modal>
 
     </PageContainer>
   );
