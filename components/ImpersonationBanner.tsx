@@ -45,7 +45,7 @@ export function ImpersonationBanner() {
 
   function handleExit() {
     stopImpersonation();
-    router.push("/saproa-admin/overview");
+    router.push("/saproa-admin/impersonar");
   }
 
   return (
