@@ -1908,7 +1908,7 @@ export default function BuildingDetailPage() {
     setSavingSpot(true);
     setSpotMsg("");
     const { error } = await supabase.from("parking_spots").insert({
-      company_id: user.company_id, building_id: building.id,
+      company_id: building.company_id, building_id: building.id,
       spot_number: num, status: "vacant", monthly_fee: 0,
     });
     setSavingSpot(false);
@@ -1933,7 +1933,7 @@ export default function BuildingDetailPage() {
     if (error) { setSavingAssign(false); setAssignMsg(error.message); return; }
     if (fee > 0 && lease.unit_id) {
       await supabase.from("collection_schedules").insert({
-        company_id: user.company_id, building_id: building.id,
+        company_id: building.company_id, building_id: building.id,
         unit_id: lease.unit_id, lease_id: lease.id,
         charge_type: "parking",
         title: `Estacionamiento - Cajón ${assignSpot.spot_number}`,
@@ -2364,7 +2364,7 @@ export default function BuildingDetailPage() {
         const feat = PROPERTY_FEATURES.find((f) => f.key === key);
         return {
           building_id:      building.id,
-          company_id:       user.company_id,
+          company_id:       building.company_id,
           feature_key:      key,
           feature_category: feat?.category ?? "service",
           is_active:        true,
@@ -2471,7 +2471,7 @@ export default function BuildingDetailPage() {
     } else {
       await supabase.from("building_feature_config").insert({
         building_id:      building.id,
-        company_id:       user.company_id,
+        company_id:       building.company_id,
         feature_key:      featureKey,
         feature_category: feat?.category ?? "service",
         is_active:        true,
@@ -2485,7 +2485,7 @@ export default function BuildingDetailPage() {
           .filter((task) => !task.applicableTypes || task.applicableTypes.includes(building.building_category ?? ""))
           .map((task) => ({
             building_id:  building.id,
-            company_id:   user.company_id,
+            company_id:   building.company_id,
             task_key:     task.key,
             feature_key:  featureKey,
             is_completed: false,
@@ -2502,7 +2502,7 @@ export default function BuildingDetailPage() {
         if (isMeterKey(featureKey)) {
           await supabase.from("building_utility_meters").insert({
             building_id:       building.id,
-            company_id:        user.company_id,
+            company_id:        building.company_id,
             service_type:      featureKey,
             meter_type:        "dedicated",
             provider_name:     "Pendiente de configurar",
@@ -2516,7 +2516,7 @@ export default function BuildingDetailPage() {
         } else if (featureKey === "parking") {
           await supabase.from("parking_spots").insert({
             building_id: building.id,
-            company_id:  user.company_id,
+            company_id:  building.company_id,
             spot_number: "1",
             status:      "vacant",
           });
@@ -2524,7 +2524,7 @@ export default function BuildingDetailPage() {
         } else if (featureKey === "cleaning") {
           await supabase.from("cleaning_building_schedules").insert({
             building_id:   building.id,
-            company_id:    user.company_id,
+            company_id:    building.company_id,
             cleaning_type: "common",
             day_of_week:   "monday",
             time_block:    "morning",
@@ -2605,7 +2605,7 @@ export default function BuildingDetailPage() {
     if (building.building_subtype === "plaza_comercial") {
       /* Plaza comercial: crear unit */
       const { error } = await supabase.from("units").insert({
-        company_id:   user.company_id,
+        company_id:   building.company_id,
         building_id:  building.id,
         unit_number:  bodegaName.trim(),
         display_code: bodegaCode.trim() || null,
@@ -2619,7 +2619,7 @@ export default function BuildingDetailPage() {
       if (bodegaPatioSqm.trim()) localFeatures.patio_sqm = Number(bodegaPatioSqm);
       if (bodegaRampas.trim())   localFeatures.rampas    = Number(bodegaRampas);
       const { error } = await supabase.from("buildings").insert({
-        company_id:         user.company_id,
+        company_id:         building.company_id,
         name:               bodegaName.trim(),
         code:               bodegaCode.trim() || null,
         building_category:  "industrial",
@@ -2727,7 +2727,7 @@ export default function BuildingDetailPage() {
       }
 
       const { data: newLocal, error } = await supabase.from("units").insert({
-        company_id:   user.company_id,
+        company_id:   building.company_id,
         building_id:  building.id,
         unit_number:  newName,
         display_code: newCode,
@@ -2848,7 +2848,7 @@ export default function BuildingDetailPage() {
       if (error) errorMessage = error.message;
     } else {
       const { error } = await supabase.from("building_billing_concepts").insert({
-        company_id: user.company_id, building_id: building.id,
+        company_id: building.company_id, building_id: building.id,
         concept_code: conceptCode, is_active: true,
       });
       if (error) errorMessage = error.message;
@@ -2876,7 +2876,7 @@ export default function BuildingDetailPage() {
     setSavingAsset(true);
     setAssetModalMsg("");
     const { error } = await supabase.from("assets").insert({
-      company_id: user.company_id,
+      company_id: building.company_id,
       building_id: building.id,
       unit_id: null,
       asset_type: assetType,
@@ -2950,7 +2950,7 @@ export default function BuildingDetailPage() {
     setSavingArea(true);
     setAreaMsg("");
     const { error } = await supabase.from("building_areas").insert({
-      company_id: user.company_id,
+      company_id: building.company_id,
       building_id: building.id,
       area_type: newAreaType,
       area_label: newAreaType === "otro" ? newAreaLabel.trim() || null : null,

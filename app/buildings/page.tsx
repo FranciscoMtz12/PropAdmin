@@ -743,10 +743,10 @@ export default function BuildingsPage() {
   const handleSubmitBuilding = rhfSubmit(async (data) => {
     if (createStep !== 4) return;
     setMsg("");
-    if (!user?.company_id) { setMsg("No se encontró la empresa del usuario."); return; }
+    if (!activeCompanyId) { setMsg("No se encontró la empresa del usuario."); return; }
 
     const { data: newBuilding, error } = await supabase.from("buildings").insert({
-      company_id: user.company_id,
+      company_id: activeCompanyId,
       name: data.name.trim(),
       code: data.code?.trim() || null,
       address: data.address?.trim() || null,
@@ -771,7 +771,7 @@ export default function BuildingsPage() {
           const feat = PROPERTY_FEATURES.find((f) => f.key === key);
           return {
             building_id: newBuildingId,
-            company_id: user.company_id,
+            company_id: activeCompanyId,
             feature_key: key,
             feature_category: feat?.category ?? "service",
             is_active: true,
@@ -785,7 +785,7 @@ export default function BuildingsPage() {
           .filter((task) => !task.applicableTypes || task.applicableTypes.includes(data.building_category))
           .map((task) => ({
             building_id: newBuildingId,
-            company_id: user.company_id,
+            company_id: activeCompanyId,
             task_key: task.key,
             feature_key: key,
             is_completed: false,
@@ -800,7 +800,7 @@ export default function BuildingsPage() {
         await supabase.from("building_setup_tasks").insert(
           generalSetupFeature.tasks.map((task) => ({
             building_id: newBuildingId,
-            company_id: user.company_id,
+            company_id: activeCompanyId,
             task_key: task.key,
             feature_key: "general_setup",
             is_completed: false,

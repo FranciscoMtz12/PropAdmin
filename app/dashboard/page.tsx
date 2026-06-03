@@ -72,12 +72,12 @@ type Unit = {
   display_code: string | null;
   unit_type_id: string | null;
   status: string;
-  unit_types: { bedrooms: number | null } | { bedrooms: number | null }[] | null;
 };
 
 type UnitType = {
   id: string;
   name: string;
+  bedrooms: number | null;
 };
 
 type Lease = {
@@ -426,13 +426,13 @@ export default function DashboardPage() {
       /* Unidades — incluye unit_type_id para card de disponibles */
       withCompanyFilter(supabase
         .from("units")
-        .select("id, building_id, unit_number, display_code, unit_type_id, status, unit_types(bedrooms)"),
+        .select("id, building_id, unit_number, display_code, unit_type_id, status"),
         cid).is("deleted_at", null),
 
       /* Tipos de unidad — para mostrar tipo en card de disponibles */
-      supabase
+      withCompanyFilter(supabase
         .from("unit_types")
-        .select("id, name"),
+        .select("id, name, bedrooms"), cid).is("deleted_at", null),
 
       /* Leases — activos + contratos próximos a vencer */
       withCompanyFilter(supabase
@@ -762,10 +762,10 @@ export default function DashboardPage() {
         unitLabel: u.display_code ?? u.unit_number ?? "—",
         buildingName: buildingMap.get(u.building_id)?.name ?? "—",
         bedroomsLabel: (() => {
-          const ut = Array.isArray(u.unit_types) ? u.unit_types[0] : u.unit_types;
-          if (!ut || ut.bedrooms === null) return "—";
-          if (ut.bedrooms === 0) return "Studio";
-          return `${ut.bedrooms} rec.`;
+          const beds = u.unit_type_id ? unitTypeMap.get(u.unit_type_id)?.bedrooms ?? null : null;
+          if (beds === null) return "—";
+          if (beds === 0) return "Studio";
+          return `${beds} rec.`;
         })(),
       }));
   }, [units, leases, buildingMap, unitTypeMap]);
