@@ -47,6 +47,7 @@ type ImpersonationContextType = {
   impersonatedGroupName: string | null;
   groupCompanies: GroupCompany[];
   groupCompanyIds: string[];           // subconjunto activo (toggle)
+  activeSessionId: string | null;      // id de la sesion de auditoria activa
   /* acciones */
   startImpersonation: (params: ImpersonationParams) => void;
   startGroupImpersonation: (params: GroupImpersonationParams) => void;
@@ -70,6 +71,7 @@ const ImpersonationContext = createContext<ImpersonationContextType>({
   impersonatedGroupName: null,
   groupCompanies: [],
   groupCompanyIds: [],
+  activeSessionId: null,
   startImpersonation: () => {},
   startGroupImpersonation: () => {},
   toggleGroupCompany: () => {},
@@ -87,6 +89,7 @@ type StoredImpersonation = {
   userId: string | null; userEmail: string | null; userFullName: string | null; role: string | null;
   groupId: string | null; groupName: string | null;
   groupCompanies: GroupCompany[]; groupCompanyIds: string[];
+  sessionId: string | null;
 };
 function readStorage(): StoredImpersonation | null {
   try { const r = sessionStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
@@ -109,6 +112,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   const [impersonatedGroupName,  setImpersonatedGroupName]  = useState<string | null>(null);
   const [groupCompanies,         setGroupCompanies]         = useState<GroupCompany[]>([]);
   const [groupCompanyIds,        setGroupCompanyIds]        = useState<string[]>([]);
+  const [activeSessionId,        setActiveSessionId]        = useState<string | null>(null);
 
   /* Restaurar desde sessionStorage en el primer mount del cliente.
      Usa deps=[] para que corra exactamente UNA VEZ después de la hidratación, sin
@@ -127,11 +131,13 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
       setImpersonatedRole(s.role);
       setImpersonatedGroupId(null); setImpersonatedGroupName(null);
       setGroupCompanies([]); setGroupCompanyIds([]);
+      setActiveSessionId(s.sessionId ?? null);
     } else if (s.groupId) {
       setImpersonationMode('group');
       setImpersonatedGroupId(s.groupId); setImpersonatedGroupName(s.groupName);
       setGroupCompanies(s.groupCompanies ?? []); setGroupCompanyIds(s.groupCompanyIds ?? []);
       setImpersonatedCompanyId(null); setImpersonatedCompanyName(null);
+      setActiveSessionId(s.sessionId ?? null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -194,9 +200,25 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
 
   function startImpersonation(params: ImpersonationParams) {
     const _mode = params.userId !== null ? 'user' : 'company';
+    const sessionId = crypto.randomUUID();
     writeStorage({ mode: _mode, companyId: params.companyId, companyName: params.companyName,
       userId: params.userId, userEmail: params.userEmail, userFullName: params.userFullName,
-      role: params.role, groupId: null, groupName: null, groupCompanies: [], groupCompanyIds: [] });
+      role: params.role, groupId: null, groupName: null, groupCompanies: [], groupCompanyIds: [],
+      sessionId });
+    // Fire-and-forget DB insert — best-effort, no bloquea la navegación
+    if (user) {
+      void supabase.from('impersonation_sessions').insert({
+        id: sessionId,
+        actor_id: user.id,
+        actor_email: user.email,
+        mode: _mode,
+        target_company_id: params.companyId || null,
+        target_company_name: params.companyName || null,
+        target_user_id: params.userId || null,
+        target_user_email: params.userEmail || null,
+      });
+    }
+    setActiveSessionId(sessionId);
     setImpersonationMode(params.userId !== null ? 'user' : 'company');
     setImpersonatedCompanyId(params.companyId);
     setImpersonatedCompanyName(params.companyName);
@@ -211,10 +233,22 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   }
 
   function startGroupImpersonation(params: GroupImpersonationParams) {
+    const sessionId = crypto.randomUUID();
     writeStorage({ mode: 'group', companyId: null, companyName: null, userId: null,
       userEmail: null, userFullName: null, role: null, groupId: params.groupId,
       groupName: params.groupName, groupCompanies: params.companies,
-      groupCompanyIds: params.companies.map(c => c.id) });
+      groupCompanyIds: params.companies.map(c => c.id), sessionId });
+    if (user) {
+      void supabase.from('impersonation_sessions').insert({
+        id: sessionId,
+        actor_id: user.id,
+        actor_email: user.email,
+        mode: 'group',
+        target_group_id: params.groupId || null,
+        target_group_name: params.groupName || null,
+      });
+    }
+    setActiveSessionId(sessionId);
     setImpersonationMode('group');
     setImpersonatedGroupId(params.groupId);
     setImpersonatedGroupName(params.groupName);
@@ -240,7 +274,14 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   }
 
   function stopImpersonation() {
+    // Fire-and-forget DB update — best-effort
+    if (activeSessionId) {
+      void supabase.from('impersonation_sessions')
+        .update({ ended_at: new Date().toISOString() })
+        .eq('id', activeSessionId);
+    }
     clearStorage();
+    setActiveSessionId(null);
     setImpersonationMode('company');
     setImpersonatedCompanyId(null);
     setImpersonatedCompanyName(null);
@@ -270,6 +311,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
         impersonatedGroupName,
         groupCompanies,
         groupCompanyIds,
+        activeSessionId,
         startImpersonation,
         startGroupImpersonation,
         toggleGroupCompany,

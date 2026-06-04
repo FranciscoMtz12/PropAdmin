@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronRight, Eye, Shield } from "lucide-react";
+import { ChevronRight, Download, Eye, Shield } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import {
@@ -48,6 +48,7 @@ export default function SaproaImpersonarPage() {
   const [groups,                setGroups]                = useState<Group[]>([]);
   const [companies,             setCompanies]             = useState<Company[]>([]);
   const [loading,               setLoading]               = useState(true);
+  const [downloadingAudit,      setDownloadingAudit]      = useState(false);
   const [openGroupIds,          setOpenGroupIds]          = useState<Set<string>>(new Set<string>());
   const [openCompanyId,         setOpenCompanyId]         = useState<string | null>(null);
   const [usersByCompany,        setUsersByCompany]        = useState<Record<string, AppUser[]>>({});
@@ -130,6 +131,82 @@ export default function SaproaImpersonarPage() {
 
   const ungrouped = companies.filter(c => !c.group_id);
   const virtualUngrouped: Group = { id: UNGROUPED_ID, name: "Sin grupo", short_name: null, brand_color: "#6b7280" };
+
+  async function handleDownloadAudit() {
+    setDownloadingAudit(true);
+    try {
+      // Fetch all sessions, most recent first
+      const { data: sessions } = await supabase
+        .from('impersonation_sessions')
+        .select('id, actor_email, mode, target_company_name, target_user_email, target_group_name, started_at, ended_at')
+        .order('started_at', { ascending: false })
+        .limit(500);
+
+      const now = new Date().toLocaleString('es-MX', { timeZone: 'America/Monterrey' });
+      const lines: string[] = [
+        '# Historial de auditoría de impersonación',
+        '',
+        'Generado: ' + now,
+        '',
+      ];
+
+      if (!sessions || sessions.length === 0) {
+        lines.push('(Sin sesiones registradas)');
+      } else {
+        for (const s of sessions) {
+          const inicio = new Date(s.started_at).toLocaleString('es-MX', { timeZone: 'America/Monterrey' });
+          const fin = s.ended_at
+            ? new Date(s.ended_at).toLocaleString('es-MX', { timeZone: 'America/Monterrey' })
+            : 'Sesión aún abierta';
+          const durMin = s.ended_at
+            ? Math.round((new Date(s.ended_at).getTime() - new Date(s.started_at).getTime()) / 60000)
+            : null;
+
+          lines.push('## Sesión — ' + inicio + ' → ' + fin + (durMin !== null ? ' (' + durMin + ' min)' : ''));
+          lines.push('Actor: ' + s.actor_email);
+
+          if (s.mode === 'company') {
+            lines.push('Empresa: ' + (s.target_company_name ?? '—') + ' (modo: empresa completa)');
+          } else if (s.mode === 'user') {
+            lines.push('Empresa: ' + (s.target_company_name ?? '—') + ' / Usuario: ' + (s.target_user_email ?? '—') + ' (modo: usuario)');
+          } else if (s.mode === 'group') {
+            lines.push('Grupo: ' + (s.target_group_name ?? '—') + ' (modo: grupo)');
+          }
+
+          // Fetch actions for this session
+          const { data: actions } = await supabase
+            .from('impersonation_action_log')
+            .select('action, table_name, record_id, label, created_at')
+            .eq('session_id', s.id)
+            .order('created_at', { ascending: true });
+
+          if (!actions || actions.length === 0) {
+            lines.push('Acciones registradas: (ninguna en Fase 1)');
+          } else {
+            lines.push('Acciones registradas:');
+            for (const a of actions) {
+              const ts = new Date(a.created_at).toLocaleString('es-MX', { timeZone: 'America/Monterrey' });
+              const desc = a.label ? a.label : (a.record_id ? a.record_id : '—');
+              lines.push('  - [' + ts + '] ' + a.action + ' en ' + a.table_name + ': ' + desc);
+            }
+          }
+          lines.push('');
+        }
+      }
+
+      const content = lines.join(String.fromCharCode(10));
+      const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'auditoria-impersonacion-' + new Date().toISOString().slice(0, 10) + '.md';
+      a.click();
+      URL.revokeObjectURL(url);
+    } finally {
+      setDownloadingAudit(false);
+    }
+  }
+
 
   return (
     <PageContainer>
@@ -334,6 +411,26 @@ export default function SaproaImpersonarPage() {
           )}
         </div>
       </div>
+    {/* ── Botón de descarga de historial de auditoría ── */}
+      <div style={{ marginTop: 32, display: 'flex', justifyContent: 'flex-end' }}>
+        <button
+          type='button'
+          onClick={() => void handleDownloadAudit()}
+          disabled={downloadingAudit}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            padding: '8px 14px', borderRadius: 'var(--border-radius-sm)',
+            border: '1px solid var(--border-default)', background: 'var(--bg-card)',
+            color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 500,
+            cursor: downloadingAudit ? 'wait' : 'pointer',
+            opacity: downloadingAudit ? 0.6 : 1,
+          }}
+        >
+          <Download size={13} />
+          {downloadingAudit ? 'Generando...' : 'Descargar historial de auditoría'}
+        </button>
+      </div>
+
     </PageContainer>
   );
 }
