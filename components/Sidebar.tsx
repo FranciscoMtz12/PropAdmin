@@ -21,6 +21,7 @@ import {
   BarChart2,
   Building2,
   CalendarDays,
+  ClipboardList,
   CreditCard,
   DollarSign,
   Eye,
@@ -78,9 +79,10 @@ const SAPROA_SECTIONS: NavSection[] = [
   {
     label: "DEVELOPER",
     items: [
-      { label: "Impersonar", href: "/saproa-admin/impersonar", icon: Eye          },
-      { label: "Roadmap",    href: "/saproa-admin/roadmap",    icon: FileText     },
-      { label: "Design System", href: "/saproa-admin/design-system", icon: Layers },
+      { label: "Impersonar",    href: "/saproa-admin/impersonar",  icon: Eye           },
+      { label: "Auditoría",    href: "/saproa-admin/auditoria",   icon: ClipboardList },
+      { label: "Roadmap",      href: "/saproa-admin/roadmap",     icon: FileText      },
+      { label: "Design System", href: "/saproa-admin/design-system", icon: Layers    },
     ],
   },
   {

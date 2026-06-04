@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -78,46 +78,64 @@ const ImpersonationContext = createContext<ImpersonationContextType>({
   stopImpersonation: () => {},
 });
 
-/* ─── Provider ────────────────────────────────────────────────────── */
+/* ─── sessionStorage — persiste la impersonación entre navigations duras ── */
 
-
-/* ── sessionStorage — persiste la impersonación a través de navigations duras ── */
 const STORAGE_KEY = "saproa_impersonation_v1";
+
 type StoredImpersonation = {
   mode: "user" | "company" | "group";
-  companyId: string | null; companyName: string | null;
-  userId: string | null; userEmail: string | null; userFullName: string | null; role: string | null;
-  groupId: string | null; groupName: string | null;
-  groupCompanies: GroupCompany[]; groupCompanyIds: string[];
+  companyId: string | null;
+  companyName: string | null;
+  userId: string | null;
+  userEmail: string | null;
+  userFullName: string | null;
+  role: string | null;
+  groupId: string | null;
+  groupName: string | null;
+  groupCompanies: GroupCompany[];
+  groupCompanyIds: string[];
   sessionId: string | null;
 };
+
 function readStorage(): StoredImpersonation | null {
-  try { const r = sessionStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : null; } catch { return null; }
+  try {
+    const r = sessionStorage.getItem(STORAGE_KEY);
+    return r ? JSON.parse(r) : null;
+  } catch { return null; }
 }
-function writeStorage(s: StoredImpersonation) { try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {} }
-function clearStorage() { try { sessionStorage.removeItem(STORAGE_KEY); } catch {} }
+
+function writeStorage(s: StoredImpersonation) {
+  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
+}
+
+function clearStorage() {
+  try { sessionStorage.removeItem(STORAGE_KEY); } catch {}
+}
+
+/* ─── Provider ────────────────────────────────────────────────────── */
+
 export function ImpersonationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useCurrentUser();
   const isRealSuperAdmin = Boolean(user?.is_superadmin);
   const isGroupAdmin = user?.role === 'group_admin';
 
-  const [impersonationMode,      setImpersonationMode]      = useState<'user' | 'company' | 'group'>('company');
-  const [impersonatedCompanyId,  setImpersonatedCompanyId]  = useState<string | null>(null);
-  const [impersonatedCompanyName,setImpersonatedCompanyName]= useState<string | null>(null);
-  const [impersonatedUserId,     setImpersonatedUserId]     = useState<string | null>(null);
-  const [impersonatedUserEmail,  setImpersonatedUserEmail]  = useState<string | null>(null);
-  const [impersonatedUserFullName,setImpersonatedUserFullName]= useState<string | null>(null);
-  const [impersonatedRole,       setImpersonatedRole]       = useState<string | null>(null);
-  const [impersonatedGroupId,    setImpersonatedGroupId]    = useState<string | null>(null);
-  const [impersonatedGroupName,  setImpersonatedGroupName]  = useState<string | null>(null);
-  const [groupCompanies,         setGroupCompanies]         = useState<GroupCompany[]>([]);
-  const [groupCompanyIds,        setGroupCompanyIds]        = useState<string[]>([]);
-  const [activeSessionId,        setActiveSessionId]        = useState<string | null>(null);
+  /* Ref para cierre de sesión sin causar re-renders — sincronizado con activeSessionId */
+  const currentSessionIdRef = useRef<string | null>(null);
 
-  /* Restaurar desde sessionStorage en el primer mount del cliente.
-     Usa deps=[] para que corra exactamente UNA VEZ después de la hidratación, sin
-     depender de que isRealSuperAdmin ya esté confirmado. Si el usuario resulta NO
-     ser superadmin, el efecto de limpieza borrará el estado restaurado. */
+  const [impersonationMode,        setImpersonationMode]        = useState<'user' | 'company' | 'group'>('company');
+  const [impersonatedCompanyId,    setImpersonatedCompanyId]    = useState<string | null>(null);
+  const [impersonatedCompanyName,  setImpersonatedCompanyName]  = useState<string | null>(null);
+  const [impersonatedUserId,       setImpersonatedUserId]       = useState<string | null>(null);
+  const [impersonatedUserEmail,    setImpersonatedUserEmail]    = useState<string | null>(null);
+  const [impersonatedUserFullName, setImpersonatedUserFullName] = useState<string | null>(null);
+  const [impersonatedRole,         setImpersonatedRole]         = useState<string | null>(null);
+  const [impersonatedGroupId,      setImpersonatedGroupId]      = useState<string | null>(null);
+  const [impersonatedGroupName,    setImpersonatedGroupName]    = useState<string | null>(null);
+  const [groupCompanies,           setGroupCompanies]           = useState<GroupCompany[]>([]);
+  const [groupCompanyIds,          setGroupCompanyIds]          = useState<string[]>([]);
+  const [activeSessionId,          setActiveSessionId]          = useState<string | null>(null);
+
+  /* Restaurar desde sessionStorage en el primer mount del cliente. */
   useEffect(() => {
     const s = readStorage();
     if (!s) return;
@@ -129,21 +147,26 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
       setImpersonatedUserEmail(s.userEmail);
       setImpersonatedUserFullName(s.userFullName);
       setImpersonatedRole(s.role);
-      setImpersonatedGroupId(null); setImpersonatedGroupName(null);
-      setGroupCompanies([]); setGroupCompanyIds([]);
+      setImpersonatedGroupId(null);
+      setImpersonatedGroupName(null);
+      setGroupCompanies([]);
+      setGroupCompanyIds([]);
+      currentSessionIdRef.current = s.sessionId ?? null;
       setActiveSessionId(s.sessionId ?? null);
     } else if (s.groupId) {
       setImpersonationMode('group');
-      setImpersonatedGroupId(s.groupId); setImpersonatedGroupName(s.groupName);
-      setGroupCompanies(s.groupCompanies ?? []); setGroupCompanyIds(s.groupCompanyIds ?? []);
-      setImpersonatedCompanyId(null); setImpersonatedCompanyName(null);
+      setImpersonatedGroupId(s.groupId);
+      setImpersonatedGroupName(s.groupName);
+      setGroupCompanies(s.groupCompanies ?? []);
+      setGroupCompanyIds(s.groupCompanyIds ?? []);
+      setImpersonatedCompanyId(null);
+      setImpersonatedCompanyName(null);
+      currentSessionIdRef.current = s.sessionId ?? null;
       setActiveSessionId(s.sessionId ?? null);
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* Limpiar cuando el usuario se confirma como NO superadmin.
-     user !== null garantiza que esperamos a que el usuario cargue antes
-     de borrar el sessionStorage (evita borrar durante un reload). */
+  /* Limpiar si el usuario confirma ser NO superadmin. */
   useEffect(() => {
     if (!isRealSuperAdmin && !isGroupAdmin && user !== null) stopImpersonation();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -198,28 +221,51 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGroupAdmin, user && 'group_id' in user ? user.group_id : null]);
 
+  /* ─── Helpers de auditoría DB ────────────────────────────────────── */
+
+  function closeCurrentSession() {
+    const id = currentSessionIdRef.current;
+    if (!id) return;
+    currentSessionIdRef.current = null;
+    void supabase
+      .from('impersonation_sessions')
+      .update({ ended_at: new Date().toISOString() })
+      .eq('id', id);
+  }
+
+  /* ─── Acciones ─────────────────────────────────────────────────── */
+
   function startImpersonation(params: ImpersonationParams) {
-    const _mode = params.userId !== null ? 'user' : 'company';
+    const mode: 'user' | 'company' = params.userId !== null ? 'user' : 'company';
     const sessionId = crypto.randomUUID();
-    writeStorage({ mode: _mode, companyId: params.companyId, companyName: params.companyName,
+
+    writeStorage({
+      mode, companyId: params.companyId, companyName: params.companyName,
       userId: params.userId, userEmail: params.userEmail, userFullName: params.userFullName,
-      role: params.role, groupId: null, groupName: null, groupCompanies: [], groupCompanyIds: [],
-      sessionId });
-    // Fire-and-forget DB insert — best-effort, no bloquea la navegación
-    if (user) {
+      role: params.role, groupId: null, groupName: null,
+      groupCompanies: [], groupCompanyIds: [], sessionId,
+    });
+
+    closeCurrentSession();
+    currentSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
+
+    if (isRealSuperAdmin) {
       void supabase.from('impersonation_sessions').insert({
         id: sessionId,
-        actor_id: user.id,
-        actor_email: user.email,
-        mode: _mode,
-        target_company_id: params.companyId || null,
-        target_company_name: params.companyName || null,
-        target_user_id: params.userId || null,
-        target_user_email: params.userEmail || null,
+        actor_id:              user?.id    ?? null,
+        actor_email:           user?.email ?? null,
+        mode,
+        company_id:            params.companyId    || null,
+        company_name:          params.companyName  || null,
+        target_user_id:        params.userId       || null,
+        target_user_email:     params.userEmail    || null,
+        target_user_full_name: params.userFullName || null,
+        target_user_role:      params.role         || null,
       });
     }
-    setActiveSessionId(sessionId);
-    setImpersonationMode(params.userId !== null ? 'user' : 'company');
+
+    setImpersonationMode(mode);
     setImpersonatedCompanyId(params.companyId);
     setImpersonatedCompanyName(params.companyName);
     setImpersonatedUserId(params.userId);
@@ -234,21 +280,29 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
 
   function startGroupImpersonation(params: GroupImpersonationParams) {
     const sessionId = crypto.randomUUID();
-    writeStorage({ mode: 'group', companyId: null, companyName: null, userId: null,
+
+    writeStorage({
+      mode: 'group', companyId: null, companyName: null, userId: null,
       userEmail: null, userFullName: null, role: null, groupId: params.groupId,
       groupName: params.groupName, groupCompanies: params.companies,
-      groupCompanyIds: params.companies.map(c => c.id), sessionId });
-    if (user) {
+      groupCompanyIds: params.companies.map(c => c.id), sessionId,
+    });
+
+    closeCurrentSession();
+    currentSessionIdRef.current = sessionId;
+    setActiveSessionId(sessionId);
+
+    if (isRealSuperAdmin) {
       void supabase.from('impersonation_sessions').insert({
         id: sessionId,
-        actor_id: user.id,
-        actor_email: user.email,
-        mode: 'group',
-        target_group_id: params.groupId || null,
-        target_group_name: params.groupName || null,
+        actor_id:    user?.id    ?? null,
+        actor_email: user?.email ?? null,
+        mode:        'group',
+        group_id:    params.groupId   || null,
+        group_name:  params.groupName || null,
       });
     }
-    setActiveSessionId(sessionId);
+
     setImpersonationMode('group');
     setImpersonatedGroupId(params.groupId);
     setImpersonatedGroupName(params.groupName);
@@ -274,12 +328,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
   }
 
   function stopImpersonation() {
-    // Fire-and-forget DB update — best-effort
-    if (activeSessionId) {
-      void supabase.from('impersonation_sessions')
-        .update({ ended_at: new Date().toISOString() })
-        .eq('id', activeSessionId);
-    }
+    closeCurrentSession();
     clearStorage();
     setActiveSessionId(null);
     setImpersonationMode('company');
