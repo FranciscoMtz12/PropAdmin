@@ -109,6 +109,7 @@ import { staggerContainer, staggerItem } from "@/lib/animations";
 import { CHART } from "@/lib/chartColors";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useFontScale } from "@/lib/useFontScale";
 import { useNotifications } from "@/app/hooks/useNotifications";
@@ -1053,6 +1054,8 @@ export default function BuildingDetailPage() {
   const searchParams = useSearchParams();
   const buildingId   = params.buildingId as string;
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
   const { setPropertyAccent, resetPropertyAccent } = useTheme();
   const { fontScale } = useFontScale();
   const { notifications: allNotifications } = useNotifications(user?.company_id ?? "");
@@ -1283,8 +1286,9 @@ export default function BuildingDetailPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId) void loadBuilding();
-  }, [user, buildingId]);
+    if ((user?.company_id || isGroupMode) && buildingId) void loadBuilding();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, isGroupMode]);
 
   /* Aplicar color de empresa de esta propiedad como acento mientras estemos en el detalle */
   useEffect(() => {
@@ -1388,17 +1392,21 @@ export default function BuildingDetailPage() {
   /* ── Carga de datos ──────────────────────────────────────────────── */
 
   async function loadBuilding() {
-    if (!user?.company_id || !buildingId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId) return;
     setLoadingBuilding(true);
     setMsg("");
 
-    const { data, error } = await supabase
+    /* En modo grupo el company_id activo es null — buscamos el edificio solo por su ID.
+       En modo empresa/usuario filtramos también por company_id como capa extra de seguridad. */
+    const buildingQuery = supabase
       .from("buildings")
       .select("id, company_id, name, address, code, building_category, building_subcategory, building_subtype, latitude, longitude, land_sqm, construction_sqm, default_unit_sqm, building_tags, building_features, parent_building_id")
       .eq("id", buildingId)
-      .eq("company_id", user.company_id)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+
+    const { data, error } = user?.company_id
+      ? await buildingQuery.eq("company_id", user.company_id).single()
+      : await buildingQuery.single();
 
     if (error) { setMsg("No se pudo cargar el edificio."); setLoadingBuilding(false); return; }
 
@@ -1431,7 +1439,7 @@ export default function BuildingDetailPage() {
         .from("units")
         .select("id, status, created_at")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
+        .eq("company_id", b.company_id)
         .is("deleted_at", null),
 
       supabase
@@ -1459,7 +1467,7 @@ export default function BuildingDetailPage() {
         .from("assets")
         .select("id, asset_type, name, status, notes, created_at")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
+        .eq("company_id", b.company_id)
         .is("unit_id", null)
         .is("deleted_at", null)
         .order("created_at", { ascending: false }),
@@ -1516,7 +1524,7 @@ export default function BuildingDetailPage() {
         ? supabase.from("buildings")
             .select("id, name, code, building_category, building_subtype, total_sqm, land_sqm, construction_sqm")
             .eq("parent_building_id", buildingId)
-            .eq("company_id", user.company_id)
+            .eq("company_id", b.company_id)
             .is("deleted_at", null)
             .order("name")
         : Promise.resolve({ data: [] }),
@@ -1536,7 +1544,7 @@ export default function BuildingDetailPage() {
         .from("building_areas")
         .select("id, area_type, area_label, sqm, notes")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
+        .eq("company_id", b.company_id)
         .is("deleted_at", null)
         .order("created_at", { ascending: true }),
     ]);
@@ -1709,13 +1717,13 @@ export default function BuildingDetailPage() {
   /* ── Cajones de estacionamiento ─────────────────────────────────── */
 
   async function loadParkingData() {
-    if (!user?.company_id || !building) return;
+    if (!building) return;
     setLoadingParking(true);
     const { data: spots } = await supabase
       .from("parking_spots")
       .select("id, spot_number, status, tenant_id, lease_id, monthly_fee, notes, created_at")
       .eq("building_id", building.id)
-      .eq("company_id", user.company_id)
+      .eq("company_id", building.company_id)
       .is("deleted_at", null)
       .order("spot_number");
     const spotsArr = (spots || []) as ParkingSpot[];
@@ -1812,7 +1820,7 @@ export default function BuildingDetailPage() {
   }
 
   async function loadTypologiesTabData() {
-    if (!user?.company_id || !buildingId) return;
+    if (!buildingId) return;
     const { data: utData } = await supabase
       .from("unit_types")
       .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, has_fridge, has_washer, has_dryer, stove_type, sqm_min, sqm_max, entrega, has_ac, has_electricity_220, has_three_phase, has_gas_line, has_water_meter, has_network, sqm_bodega, sqm_oficina, sqm_patio, altura_libre, capacidad_electrica, acceso_tipo")
