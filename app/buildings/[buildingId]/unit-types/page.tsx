@@ -29,6 +29,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -151,6 +152,8 @@ export default function BuildingUnitTypesPage() {
     Usuario actual desde el contexto global.
   */
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   /*
     Estados de datos principales.
@@ -217,10 +220,11 @@ export default function BuildingUnitTypesPage() {
     - las tipologías de ese edificio
   */
   useEffect(() => {
-    if (user?.company_id && buildingId) {
+    if ((user?.company_id || isGroupMode) && buildingId) {
       loadPageData();
     }
-  }, [user, buildingId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, isGroupMode]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -243,21 +247,19 @@ export default function BuildingUnitTypesPage() {
     a la empresa del usuario actual.
   */
   async function loadPageData() {
-    if (!user?.company_id || !buildingId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId) return;
 
     setLoadingData(true);
     setMsg("");
 
-    /*
-      Traemos el edificio actual.
-    */
-    const { data: buildingData, error: buildingError } = await supabase
+    const buildingQ = supabase
       .from("buildings")
       .select("id, company_id, name, code, address")
       .eq("id", buildingId)
-      .eq("company_id", user.company_id)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    const { data: buildingData, error: buildingError } = user?.company_id
+      ? await buildingQ.eq("company_id", user.company_id).single()
+      : await buildingQ.single();
 
     if (buildingError) {
       setMsg("No se pudo cargar el edificio.");

@@ -31,6 +31,7 @@ import {
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -91,6 +92,8 @@ export default function CleaningUnitsPage() {
   const buildingId = params.buildingId as string;
 
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [building, setBuilding] = useState<Building | null>(null);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -108,10 +111,11 @@ export default function CleaningUnitsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId) {
+    if ((user?.company_id || isGroupMode) && buildingId) {
       loadPageData();
     }
-  }, [user, buildingId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, isGroupMode]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -125,25 +129,34 @@ export default function CleaningUnitsPage() {
   }, []);
 
   async function loadPageData() {
-    if (!user?.company_id || !buildingId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId) return;
 
     setLoadingPage(true);
     setMsg("");
 
-    const [buildingRes, unitsRes, schedulesRes] = await Promise.all([
-      supabase
-        .from("buildings")
-        .select("id, company_id, name, address")
-        .eq("id", buildingId)
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null)
-        .single(),
+    const buildingQ = supabase
+      .from("buildings")
+      .select("id, company_id, name, address")
+      .eq("id", buildingId)
+      .is("deleted_at", null);
+    const buildingRes = user?.company_id
+      ? await buildingQ.eq("company_id", user.company_id).single()
+      : await buildingQ.single();
 
+    if (buildingRes.error || !buildingRes.data) {
+      setMsg("No se pudo cargar la información del edificio.");
+      setLoadingPage(false);
+      return;
+    }
+    setBuilding(buildingRes.data as Building);
+    const bCid = (buildingRes.data as { company_id: string }).company_id;
+
+    const [unitsRes, schedulesRes] = await Promise.all([
       supabase
         .from("units")
         .select("id, unit_number, display_code, floor, status")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
+        .eq("company_id", bCid)
         .is("deleted_at", null)
         .order("floor", { ascending: true })
         .order("unit_number", { ascending: true }),
@@ -152,15 +165,9 @@ export default function CleaningUnitsPage() {
         .from("cleaning_unit_schedules")
         .select("id, unit_id, day_of_week, start_time, duration_hours, active")
         .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
+        .eq("company_id", bCid)
         .is("deleted_at", null),
     ]);
-
-    if (buildingRes.error || !buildingRes.data) {
-      setMsg("No se pudo cargar la información del edificio.");
-      setLoadingPage(false);
-      return;
-    }
 
     if (unitsRes.error) {
       setMsg("No se pudieron cargar las unidades.");
@@ -174,7 +181,6 @@ export default function CleaningUnitsPage() {
       return;
     }
 
-    setBuilding(buildingRes.data as Building);
     setUnits((unitsRes.data as Unit[]) || []);
     setSchedules((schedulesRes.data as CleaningUnitSchedule[]) || []);
     setLoadingPage(false);

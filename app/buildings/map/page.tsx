@@ -17,6 +17,7 @@ import toast from "react-hot-toast";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useActiveCompanyId } from "@/lib/useActiveCompanyId";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -57,6 +58,7 @@ type BuildingRow = {
 
 export default function BuildingsMapPage() {
   const { user, loading: userLoading } = useCurrentUser();
+  const activeCompanyId = useActiveCompanyId();
   const isSuperAdmin = user?.role === "superadmin" || Boolean(user?.is_superadmin);
 
   const [buildings, setBuildings] = useState<BuildingRow[]>([]);
@@ -65,19 +67,20 @@ export default function BuildingsMapPage() {
 
   useEffect(() => {
     if (userLoading) return;
-    if (!user?.company_id) return;
-    void loadBuildings(user.company_id);
-  }, [userLoading, user?.company_id]);
+    if (!user) return;
+    void loadBuildings(activeCompanyId);
+  }, [userLoading, user, activeCompanyId]);
 
-  async function loadBuildings(companyId: string) {
+  async function loadBuildings(companyId: string | null) {
     setLoadingPage(true);
     setMsg("");
-    const { data, error } = await supabase
+    let q = supabase
       .from("buildings")
       .select("id, name, address, latitude, longitude")
-      .eq("company_id", companyId)
       .is("deleted_at", null)
       .order("name", { ascending: true });
+    if (companyId) q = q.eq("company_id", companyId);
+    const { data, error } = await q;
 
     if (error) {
       setMsg(`No se pudieron cargar los edificios: ${error.message}`);

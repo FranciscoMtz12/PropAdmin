@@ -43,6 +43,7 @@ import toast from "react-hot-toast";
 import { sortByNatural } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -276,6 +277,8 @@ export default function BuildingUnitsPage() {
   const params     = useParams();
   const buildingId = params.buildingId as string;
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   /* Estado de datos */
   const [building, setBuilding]       = useState<Building | null>(null);
@@ -339,9 +342,9 @@ export default function BuildingUnitsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId) void loadPageData();
+    if ((user?.company_id || isGroupMode) && buildingId) void loadPageData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, buildingId]);
+  }, [user, buildingId, isGroupMode]);
 
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
@@ -357,18 +360,19 @@ export default function BuildingUnitsPage() {
   /* ── Carga de datos ──────────────────────────────────────────────── */
 
   async function loadPageData() {
-    if (!user?.company_id || !buildingId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId) return;
     setLoadingData(true);
     setMsg("");
 
-    /* 1. Edificio */
-    const { data: buildingData, error: buildingError } = await supabase
+    /* 1. Edificio — en modo grupo no filtramos por company_id (viene del edificio mismo) */
+    const buildingQ = supabase
       .from("buildings")
       .select("id, company_id, name, code, address, building_category, building_subtype")
       .eq("id", buildingId)
-      .eq("company_id", user.company_id)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    const { data: buildingData, error: buildingError } = user?.company_id
+      ? await buildingQ.eq("company_id", user.company_id).single()
+      : await buildingQ.single();
 
     if (buildingError) {
       setMsg("No se pudo cargar el edificio.");

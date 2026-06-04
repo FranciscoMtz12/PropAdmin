@@ -21,6 +21,7 @@ import { ArrowLeft, Brush, Save, Trash2 } from "lucide-react";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -58,6 +59,8 @@ export default function CleaningCommonPage() {
   const buildingId = params.buildingId as string;
 
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [morningSelected, setMorningSelected] = useState<string[]>([]);
   const [afternoonSelected, setAfternoonSelected] = useState<string[]>([]);
@@ -73,17 +76,18 @@ export default function CleaningCommonPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId) {
+    if ((user?.company_id || isGroupMode) && buildingId) {
       loadSchedule();
     }
-  }, [user, buildingId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, isGroupMode]);
 
   async function loadSchedule() {
+    /* company_id omitido en read: building_id ya aísla los datos al edificio correcto */
     const { data, error } = await supabase
       .from("cleaning_building_schedules")
       .select("*")
       .eq("building_id", buildingId)
-      .eq("company_id", user?.company_id)
       .eq("cleaning_type", "common")
       .is("deleted_at", null);
 

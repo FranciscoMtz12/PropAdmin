@@ -22,6 +22,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Bath, BedDouble, Edit3, Home, LayoutPanelTop, MoreHorizontal, PackageSearch, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
@@ -69,6 +70,8 @@ export default function UnitTypeDetailPage() {
   const unitTypeId = params.unitTypeId as string;
 
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [building, setBuilding] = useState<Building | null>(null);
   const [unitType, setUnitType] = useState<UnitTypeDetail | null>(null);
@@ -105,10 +108,11 @@ export default function UnitTypeDetailPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId && unitTypeId) {
+    if ((user?.company_id || isGroupMode) && buildingId && unitTypeId) {
       loadPageData();
     }
-  }, [user, buildingId, unitTypeId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, unitTypeId, isGroupMode]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -128,18 +132,19 @@ export default function UnitTypeDetailPage() {
     - assets base de la tipología
   */
   async function loadPageData() {
-    if (!user?.company_id || !buildingId || !unitTypeId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId || !unitTypeId) return;
 
     setLoadingData(true);
     setMsg("");
 
-    const { data: buildingData, error: buildingError } = await supabase
+    const buildingQ = supabase
       .from("buildings")
       .select("id, company_id, name, code")
       .eq("id", buildingId)
-      .eq("company_id", user.company_id)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    const { data: buildingData, error: buildingError } = user?.company_id
+      ? await buildingQ.eq("company_id", user.company_id).single()
+      : await buildingQ.single();
 
     if (buildingError) {
       setMsg("No se pudo cargar el edificio.");

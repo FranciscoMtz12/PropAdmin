@@ -30,6 +30,7 @@ import {
 import { naturalCompare } from "@/lib/sort-utils";
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -101,6 +102,8 @@ export default function BuildingCleaningPage() {
   const buildingId = params.buildingId as string;
 
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [building, setBuilding] = useState<Building | null>(null);
   const [buildingSchedules, setBuildingSchedules] = useState<CleaningBuildingSchedule[]>([]);
@@ -116,53 +119,58 @@ export default function BuildingCleaningPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId) {
+    if ((user?.company_id || isGroupMode) && buildingId) {
       loadPageData();
     }
-  }, [user, buildingId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, isGroupMode]);
 
   async function loadPageData() {
-    if (!user?.company_id || !buildingId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId) return;
 
     setLoadingPage(true);
     setMsg("");
 
-    const [buildingRes, buildingSchedulesRes, unitSchedulesRes, unitsRes] = await Promise.all([
-      supabase
-        .from("buildings")
-        .select("id, company_id, name, address, code")
-        .eq("id", buildingId)
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null)
-        .single(),
-
-      supabase
-        .from("cleaning_building_schedules")
-        .select("id, cleaning_type, day_of_week, time_block")
-        .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-
-      supabase
-        .from("cleaning_unit_schedules")
-        .select("id, unit_id, day_of_week, start_time, duration_hours, active")
-        .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-
-      supabase
-        .from("units")
-        .select("id, unit_number, display_code")
-        .eq("building_id", buildingId)
-        .eq("company_id", user.company_id)
-        .is("deleted_at", null),
-    ]);
+    const buildingQ = supabase
+      .from("buildings")
+      .select("id, company_id, name, address, code")
+      .eq("id", buildingId)
+      .is("deleted_at", null);
+    const buildingRes = user?.company_id
+      ? await buildingQ.eq("company_id", user.company_id).single()
+      : await buildingQ.single();
 
     if (buildingRes.error || !buildingRes.data) {
       setMsg("No se pudo cargar la información del edificio.");
       setLoadingPage(false);
       return;
     }
+    const bCid = (buildingRes.data as { company_id: string }).company_id;
+
+    const [buildingSchedulesRes, unitSchedulesRes, unitsRes] = await Promise.all([
+      supabase
+        .from("cleaning_building_schedules")
+        .select("id, cleaning_type, day_of_week, time_block")
+        .eq("building_id", buildingId)
+        .eq("company_id", bCid)
+        .is("deleted_at", null),
+
+      supabase
+        .from("cleaning_unit_schedules")
+        .select("id, unit_id, day_of_week, start_time, duration_hours, active")
+        .eq("building_id", buildingId)
+        .eq("company_id", bCid)
+        .is("deleted_at", null),
+
+      supabase
+        .from("units")
+        .select("id, unit_number, display_code")
+        .eq("building_id", buildingId)
+        .eq("company_id", bCid)
+        .is("deleted_at", null),
+    ]);
+
+    setBuilding(buildingRes.data as Building);
 
     if (buildingSchedulesRes.error) {
       setMsg("No se pudo cargar la programación de limpieza del edificio.");
@@ -182,7 +190,6 @@ export default function BuildingCleaningPage() {
       return;
     }
 
-    setBuilding(buildingRes.data as Building);
     setBuildingSchedules((buildingSchedulesRes.data as CleaningBuildingSchedule[]) || []);
     setUnitSchedules((unitSchedulesRes.data as CleaningUnitSchedule[]) || []);
     setUnits((unitsRes.data as Unit[]) || []);

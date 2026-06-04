@@ -19,6 +19,7 @@ import { z } from "zod";
 
 import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
+import { useImpersonation } from "@/contexts/ImpersonationContext";
 
 import AppBadge from "@/components/AppBadge";
 import AppCard from "@/components/AppCard";
@@ -155,6 +156,8 @@ export default function UnitAssetsPage() {
   const unitId = params.unitId as string;
 
   const { user, loading } = useCurrentUser();
+  const { impersonationMode } = useImpersonation();
+  const isGroupMode = impersonationMode === 'group';
 
   const [building, setBuilding] = useState<Building | null>(null);
   const [unit, setUnit] = useState<UnitDetail | null>(null);
@@ -188,10 +191,11 @@ export default function UnitAssetsPage() {
   }, [loading, user, router]);
 
   useEffect(() => {
-    if (user?.company_id && buildingId && unitId) {
+    if ((user?.company_id || isGroupMode) && buildingId && unitId) {
       void loadPageData();
     }
-  }, [user, buildingId, unitId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, buildingId, unitId, isGroupMode]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -241,18 +245,19 @@ export default function UnitAssetsPage() {
   }
 
   async function loadPageData() {
-    if (!user?.company_id || !buildingId || !unitId) return;
+    if ((!user?.company_id && !isGroupMode) || !buildingId || !unitId) return;
 
     setLoadingData(true);
     setMsg("");
 
-    const { data: buildingData, error: buildingError } = await supabase
+    const buildingQ = supabase
       .from("buildings")
       .select("id, company_id, name, code")
       .eq("id", buildingId)
-      .eq("company_id", user.company_id)
-      .is("deleted_at", null)
-      .single();
+      .is("deleted_at", null);
+    const { data: buildingData, error: buildingError } = user?.company_id
+      ? await buildingQ.eq("company_id", user.company_id).single()
+      : await buildingQ.single();
 
     if (buildingError) {
       setMsg("No se pudo cargar el edificio.");
@@ -261,13 +266,14 @@ export default function UnitAssetsPage() {
     }
 
     setBuilding(buildingData as Building);
+    const bCid = (buildingData as { company_id: string }).company_id;
 
     const { data: unitData, error: unitError } = await supabase
       .from("units")
       .select("id, company_id, building_id, unit_number, display_code")
       .eq("id", unitId)
       .eq("building_id", buildingId)
-      .eq("company_id", user.company_id)
+      .eq("company_id", bCid)
       .is("deleted_at", null)
       .single();
 
@@ -284,7 +290,7 @@ export default function UnitAssetsPage() {
       .select("id, company_id, building_id, unit_id, asset_type, name, status, notes")
       .eq("unit_id", unitId)
       .eq("building_id", buildingId)
-      .eq("company_id", user.company_id)
+      .eq("company_id", bCid)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
 
