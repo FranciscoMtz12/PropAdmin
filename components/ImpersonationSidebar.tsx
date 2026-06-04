@@ -545,7 +545,7 @@ export default function ImpersonationSidebar() {
         padding: "10px 16px",
       }}>
         <button
-          onClick={stopImpersonation}
+          onClick={() => { stopImpersonation(); router.push("/saproa-admin/impersonar"); }}
           style={{
             width: "100%", padding: "9px 14px",
             borderRadius: "var(--border-radius-md)",
@@ -601,7 +601,7 @@ export default function ImpersonationSidebar() {
               </div>
             </div>
             <button
-              onClick={stopImpersonation}
+              onClick={() => { stopImpersonation(); router.push("/saproa-admin/impersonar"); }}
               style={{
                 width: "100%", padding: "7px 12px",
                 borderRadius: "var(--border-radius-md)",

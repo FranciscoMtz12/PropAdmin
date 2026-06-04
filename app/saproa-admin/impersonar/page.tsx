@@ -382,7 +382,7 @@ export default function SaproaImpersonarPage() {
               )}
               <UiButton
                 variant="secondary"
-                onClick={() => { stopImpersonation(); router.push("/saproa-admin/overview"); }}
+                onClick={() => { stopImpersonation(); }}
                 style={{ marginTop: 8 }}
               >
                 Salir de vista simulada

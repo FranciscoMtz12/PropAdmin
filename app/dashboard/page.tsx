@@ -356,7 +356,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (loading) return;
     if (isRealSuperAdmin && !isImpersonating) {
-      router.replace('/saproa-admin/overview');
+      router.replace('/saproa-admin/impersonar');
     }
   }, [loading, isRealSuperAdmin, isImpersonating, router]);
 
