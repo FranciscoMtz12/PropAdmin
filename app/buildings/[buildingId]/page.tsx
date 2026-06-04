@@ -1290,9 +1290,10 @@ export default function BuildingDetailPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, buildingId, isGroupMode]);
 
-  /* Aplicar color de empresa de esta propiedad como acento mientras estemos en el detalle */
+  /* En modo grupo el acento es siempre el del grupo; solo en modo empresa individual
+     se cambia al color de la empresa del edificio */
   useEffect(() => {
-    if (!building?.company_id) return;
+    if (!building?.company_id || isGroupMode) return;
     let cancelled = false;
     supabase
       .from("companies")
@@ -1307,7 +1308,7 @@ export default function BuildingDetailPage() {
       resetPropertyAccent();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [building?.company_id]);
+  }, [building?.company_id, isGroupMode]);
 
   useEffect(() => {
     if (activeTab === "parking" && building && !loadingBuilding) void loadParkingData();
