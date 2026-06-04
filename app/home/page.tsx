@@ -167,8 +167,7 @@ export default function HomePage() {
   useEffect(() => {
     if (loading) return;
     if (!user) { router.replace("/login"); return; }
-    if (isRealSuperAdmin && !isImpersonating) { router.replace("/saproa-admin/impersonar"); return; }
-  }, [loading, user, isRealSuperAdmin, isImpersonating, router]);
+  }, [loading, user, router]);
 
   useEffect(() => {
     if (!loading && user && shouldLoadData && activeCompanyId) void fetchMetrics(activeCompanyId);
