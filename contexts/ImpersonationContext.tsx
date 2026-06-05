@@ -251,17 +251,19 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     setActiveSessionId(sessionId);
 
     if (isRealSuperAdmin) {
-      void supabase.from('impersonation_sessions').insert({
+      supabase.from('impersonation_sessions').insert({
         id: sessionId,
         actor_id:              user?.id    ?? null,
         actor_email:           user?.email ?? null,
         mode,
-        company_id:            params.companyId    || null,
-        company_name:          params.companyName  || null,
+        target_company_id:     params.companyId    || null,
+        target_company_name:   params.companyName  || null,
         target_user_id:        params.userId       || null,
         target_user_email:     params.userEmail    || null,
         target_user_full_name: params.userFullName || null,
         target_user_role:      params.role         || null,
+      }).then(({ error }) => {
+        if (error) console.error('[AUDIT INSERT] startImpersonation failed:', error);
       });
     }
 
@@ -293,13 +295,15 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     setActiveSessionId(sessionId);
 
     if (isRealSuperAdmin) {
-      void supabase.from('impersonation_sessions').insert({
+      supabase.from('impersonation_sessions').insert({
         id: sessionId,
-        actor_id:    user?.id    ?? null,
-        actor_email: user?.email ?? null,
-        mode:        'group',
-        group_id:    params.groupId   || null,
-        group_name:  params.groupName || null,
+        actor_id:         user?.id    ?? null,
+        actor_email:      user?.email ?? null,
+        mode:             'group',
+        target_group_id:  params.groupId   || null,
+        target_group_name: params.groupName || null,
+      }).then(({ error }) => {
+        if (error) console.error('[AUDIT INSERT] startGroupImpersonation failed:', error);
       });
     }
 
