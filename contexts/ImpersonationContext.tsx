@@ -233,6 +233,17 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
       .eq('id', id);
   }
 
+  /* Cierra cualquier sesión abierta del actor en DB (por si el tab se cerró sin
+     disparar stopImpersonation — huérfanas de sesiones anteriores). */
+  function closeOrphanedSessions() {
+    if (!user?.id) return;
+    void supabase
+      .from('impersonation_sessions')
+      .update({ ended_at: new Date().toISOString() })
+      .eq('actor_id', user.id)
+      .is('ended_at', null);
+  }
+
   /* ─── Acciones ─────────────────────────────────────────────────── */
 
   function startImpersonation(params: ImpersonationParams) {
@@ -247,6 +258,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     });
 
     closeCurrentSession();
+    closeOrphanedSessions();
     currentSessionIdRef.current = sessionId;
     setActiveSessionId(sessionId);
 
@@ -291,6 +303,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     });
 
     closeCurrentSession();
+    closeOrphanedSessions();
     currentSessionIdRef.current = sessionId;
     setActiveSessionId(sessionId);
 

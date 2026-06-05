@@ -24,14 +24,14 @@ type ImpersonationSession = {
   actor_id: string | null;
   actor_email: string | null;
   mode: "company" | "user" | "group";
-  company_id: string | null;
-  company_name: string | null;
+  target_company_id: string | null;
+  target_company_name: string | null;
   target_user_id: string | null;
   target_user_email: string | null;
   target_user_full_name: string | null;
   target_user_role: string | null;
-  group_id: string | null;
-  group_name: string | null;
+  target_group_id: string | null;
+  target_group_name: string | null;
   started_at: string;
   ended_at: string | null;
 };
@@ -85,11 +85,11 @@ function generateSessionMd(s: ImpersonationSession): string {
   ];
 
   if (s.mode === "group") {
-    lines.push(`- **Grupo:** ${s.group_name ?? "—"}`);
-    if (s.group_id) lines.push(`- **ID Grupo:** \`${s.group_id}\``);
+    lines.push(`- **Grupo:** ${s.target_group_name ?? "—"}`);
+    if (s.target_group_id) lines.push(`- **ID Grupo:** \`${s.target_group_id}\``);
   } else {
-    lines.push(`- **Empresa:** ${s.company_name ?? "—"}`);
-    if (s.company_id) lines.push(`- **ID Empresa:** \`${s.company_id}\``);
+    lines.push(`- **Empresa:** ${s.target_company_name ?? "—"}`);
+    if (s.target_company_id) lines.push(`- **ID Empresa:** \`${s.target_company_id}\``);
     if (s.mode === "user") {
       lines.push(`- **Usuario:** ${s.target_user_full_name ?? s.target_user_email ?? "—"}`);
       lines.push(`- **Email:** ${s.target_user_email ?? "—"}`);
@@ -142,8 +142,8 @@ export default function AuditoriaPage() {
   const uniqueTargets = useMemo(() => {
     const set = new Set<string>();
     sessions.forEach(s => {
-      if (s.company_name) set.add(s.company_name);
-      if (s.group_name) set.add(s.group_name);
+      if (s.target_company_name) set.add(s.target_company_name);
+      if (s.target_group_name) set.add(s.target_group_name);
     });
     return Array.from(set).sort();
   }, [sessions]);
@@ -158,7 +158,7 @@ export default function AuditoriaPage() {
     return sessions.filter(s => {
       if (modeFilter !== "all" && s.mode !== modeFilter) return false;
       if (companyFilter) {
-        const name = s.company_name ?? s.group_name ?? "";
+        const name = s.target_company_name ?? s.target_group_name ?? "";
         if (name !== companyFilter) return false;
       }
       if (actorFilter && s.actor_email !== actorFilter) return false;
@@ -373,7 +373,7 @@ function SessionCard({
   session: ImpersonationSession;
   onClick: () => void;
 }) {
-  const target   = session.mode === "group" ? session.group_name : session.company_name;
+  const target   = session.mode === "group" ? session.target_group_name : session.target_company_name;
   const duration = formatDuration(session.started_at, session.ended_at);
   const isActive = !session.ended_at;
 
@@ -504,13 +504,13 @@ function SessionDetail({
       {/* Objetivo */}
       {session.mode === "group" ? (
         <InfoBlock label="Grupo" rows={[
-          session.group_name ?? "—",
-          session.group_id ?? "",
+          session.target_group_name ?? "—",
+          session.target_group_id ?? "",
         ]} mono={[false, true]} />
       ) : (
         <InfoBlock label="Empresa objetivo" rows={[
-          session.company_name ?? "—",
-          session.company_id ?? "",
+          session.target_company_name ?? "—",
+          session.target_company_id ?? "",
         ]} mono={[false, true]} />
       )}
 
