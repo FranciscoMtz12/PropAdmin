@@ -227,21 +227,30 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     const id = currentSessionIdRef.current;
     if (!id) return;
     currentSessionIdRef.current = null;
-    void supabase
+    supabase
       .from('impersonation_sessions')
       .update({ ended_at: new Date().toISOString() })
-      .eq('id', id);
+      .eq('id', id)
+      .then(({ error }) => {
+        if (error) console.error('[AUDIT UPDATE] closeCurrentSession failed:', error);
+      });
   }
 
-  /* Cierra cualquier sesión abierta del actor en DB (por si el tab se cerró sin
-     disparar stopImpersonation — huérfanas de sesiones anteriores). */
+  /* Cierra TODAS las sesiones abiertas del actor en DB. Se llama en stopImpersonation
+     como backup para el caso en que closeCurrentSession no pudo (ref perdido por
+     cierre de tab, reload en otra pestaña, etc.). NO se llama en start* para evitar
+     race condition donde el orphan-cleanup llega al DB tras el INSERT y cierra la
+     sesión recién creada. */
   function closeOrphanedSessions() {
     if (!user?.id) return;
-    void supabase
+    supabase
       .from('impersonation_sessions')
       .update({ ended_at: new Date().toISOString() })
       .eq('actor_id', user.id)
-      .is('ended_at', null);
+      .is('ended_at', null)
+      .then(({ error }) => {
+        if (error) console.error('[AUDIT UPDATE] closeOrphanedSessions failed:', error);
+      });
   }
 
   /* ─── Acciones ─────────────────────────────────────────────────── */
@@ -258,7 +267,6 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     });
 
     closeCurrentSession();
-    closeOrphanedSessions();
     currentSessionIdRef.current = sessionId;
     setActiveSessionId(sessionId);
 
@@ -303,7 +311,6 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
     });
 
     closeCurrentSession();
-    closeOrphanedSessions();
     currentSessionIdRef.current = sessionId;
     setActiveSessionId(sessionId);
 
@@ -346,6 +353,7 @@ export function ImpersonationProvider({ children }: { children: React.ReactNode 
 
   function stopImpersonation() {
     closeCurrentSession();
+    closeOrphanedSessions(); // backup: cierra cualquier sesión abierta del actor si closeCurrentSession falló o el ref fue perdido
     clearStorage();
     setActiveSessionId(null);
     setImpersonationMode('company');
