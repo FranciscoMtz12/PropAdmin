@@ -49,7 +49,7 @@ import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import EntityCard from "@/components/EntityCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
@@ -954,15 +954,14 @@ export default function BuildingUnitsPage() {
       ) : null}
 
       {/* Métricas */}
-      <AppGrid minWidth={180} gap={16} style={{ marginBottom: 24 }}>
-        <MetricCard label="Total"         value={stats.total}       icon={<Warehouse size={18} />} helper="Unidades registradas" />
-        <MetricCard label="Vacantes"      value={stats.vacant}      icon={<DoorOpen size={18} />}  helper="Disponibles para ocupación" variant="blue" />
-        {["residential_multi", "residential_single"].includes(building.building_category ?? "") && (
-          <MetricCard label="Parciales"   value={stats.partial}     icon={<BedDouble size={18} />} helper="Rentadas por cuarto" variant="amber" />
-        )}
-        <MetricCard label="Rentados"      value={stats.rented}      icon={<BedDouble size={18} />} helper="Con lease activo" variant="green" />
-        <MetricCard label="Mantenimiento" value={stats.maintenance} icon={<Wrench size={18} />}    helper="Requieren atención" variant="amber" />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: stats.total, label: "Total" },
+        { value: stats.vacant, label: "Vacantes", color: "info" },
+        ...( ["residential_multi", "residential_single"].includes(building.building_category ?? "")
+          ? [{ value: stats.partial, label: "Parciales", color: "warning" as const }] : [] ),
+        { value: stats.rented, label: "Rentados", color: "success" },
+        { value: stats.maintenance, label: "Mant.", color: "warning" },
+      ]} />
 
       {/* Grid de departamentos */}
       <SectionCard

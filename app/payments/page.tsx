@@ -746,12 +746,6 @@ export default function PaymentsPage() {
         { value: pageLoading ? "…" : formatMXN(totalPending), label: "$ Pendiente", color: totalPending > 0 ? "warning" : "success" },
         { value: pageLoading ? "…" : formatMXN(totalPaid), label: "$ Pagado", color: "success" },
       ]} />
-      <div className="metric-grid-desktop-only" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(12.5rem, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard label="Pendientes de pagar" value={pageLoading ? "…" : pendingCount} icon={<Clock size={18} />} variant={pendingCount > 0 ? "amber" : "green"} />
-        <MetricCard label="Pagados" value={pageLoading ? "…" : paidCount} icon={<CheckCircle size={18} />} variant={paidCount > 0 ? "green" : "neutral"} />
-        <MetricCard label="Total pendiente" value={pageLoading ? "…" : formatMXN(totalPending)} icon={<DollarSign size={18} />} variant={totalPending > 0 ? "amber" : "green"} />
-        <MetricCard label="Total pagado" value={pageLoading ? "…" : formatMXN(totalPaid)} icon={<TrendingUp size={18} />} variant={totalPaid > 0 ? "green" : "neutral"} />
-      </div>
 
       {/* Tabs */}
       <AppTabs

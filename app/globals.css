@@ -1055,13 +1055,6 @@ a {
   --sidebar-radius: 0;
 }
 
-/* ════════════════════════════════════════════════════════════════════
-   MetricCircles — solo mobile ≤768px
-   ════════════════════════════════════════════════════════════════════ */
-
-@media (min-width: 769px) {
-  .metric-circles-mobile-only { display: none !important; }
-}
 
 /* ════════════════════════════════════════════════════════════════════
    Dashboard donuts — fila horizontal en mobile

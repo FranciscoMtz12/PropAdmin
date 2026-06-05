@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import SectionCard from "@/components/SectionCard";
 import AppTable from "@/components/AppTable";
 import AppBadge from "@/components/AppBadge";
@@ -211,36 +211,12 @@ export default function DashboardAdministracionPage() {
       />
 
       {/* ── Fila 1: Métricas ──────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.12rem, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard
-          label="Ocupación"
-          value={pageLoading ? "…" : `${occupiedUnits}/${totalUnits} depas`}
-          helper={pageLoading ? undefined : `${occPct}% ocupado`}
-          icon={<Building2 size={18} />}
-          variant={pageLoading ? "neutral" : occVariant}
-        />
-        <MetricCard
-          label="Cobranza del mes"
-          value={pageLoading ? "…" : formatMXN(collectedAmt)}
-          helper={pageLoading ? undefined : `de ${formatMXN(expectedAmt)} esperado`}
-          icon={<DollarSign size={18} />}
-          variant={pageLoading ? "neutral" : collVariant}
-        />
-        <MetricCard
-          label="Pagos pendientes"
-          value={pageLoading ? "…" : pendingCnt}
-          helper={pageLoading ? undefined : `${formatMXN(pendingAmt)} por cobrar`}
-          icon={<AlertCircle size={18} />}
-          variant={pageLoading ? "neutral" : pendingCnt > 0 ? "red" : "green"}
-        />
-        <MetricCard
-          label="Servicios por facturar"
-          value={pageLoading ? "…" : servicesPending}
-          helper="facturas pendientes"
-          icon={<Layers size={18} />}
-          variant={pageLoading ? "neutral" : servicesPending > 0 ? "amber" : "green"}
-        />
-      </div>
+      <MetricCircles metrics={[
+        { value: pageLoading ? "…" : `${occupiedUnits}/${totalUnits}`, label: "Ocupación", color: pageLoading ? "default" : occVariant === "green" ? "success" : occVariant === "amber" ? "warning" : "danger" },
+        { value: pageLoading ? "…" : formatMXN(collectedAmt), label: "Cobranza", color: pageLoading ? "default" : collVariant === "green" ? "success" : "warning" },
+        { value: pageLoading ? "…" : pendingCnt, label: "Pendientes", color: pageLoading ? "default" : pendingCnt > 0 ? "danger" : "success" },
+        { value: pageLoading ? "…" : servicesPending, label: "Servicios", color: pageLoading ? "default" : servicesPending > 0 ? "warning" : "success" },
+      ]} />
 
       {/* ── Fila 2: Dos columnas ──────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(21.25rem, 1fr))", gap: 24 }}>

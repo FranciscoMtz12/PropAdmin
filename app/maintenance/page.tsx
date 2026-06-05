@@ -1562,36 +1562,6 @@ export default function MaintenancePage() {
               { value: ticketTotals.inProg, label: "En proceso", color: "warning" },
               { value: ticketTotals.resolved, label: "Resueltos", color: "success" },
             ]} />
-            <AppGrid minWidth={220} className="metric-grid-desktop-only">
-              <MetricCard
-                label="Total tickets"
-                value={ticketTotals.total}
-                icon={<ClipboardList size={18} />}
-                variant="neutral"
-                helper="Todos los registros"
-              />
-              <MetricCard
-                label="Abiertos"
-                value={ticketTotals.open}
-                icon={<CircleAlert size={18} />}
-                variant="red"
-                helper="Pendientes de atención"
-              />
-              <MetricCard
-                label="En proceso"
-                value={ticketTotals.inProg}
-                icon={<Wrench size={18} />}
-                variant="amber"
-                helper="En seguimiento"
-              />
-              <MetricCard
-                label="Resueltos este mes"
-                value={ticketTotals.resolved}
-                icon={<ShieldCheck size={18} />}
-                variant="green"
-                helper="Cerrados el mes actual"
-              />
-            </AppGrid>
 
             {/* Filtros */}
             <AppCard>
@@ -1845,32 +1815,12 @@ export default function MaintenancePage() {
         {activeMainTab === "calendar" ? (
           <div style={{ display: "grid", gap: 18 }}>
 
-            <AppGrid minWidth={220} className="metric-grid-desktop-only">
-              <MetricCard
-                label="Vista activa"
-                value={viewMode === "week" ? "Semana" : viewMode === "month" ? "Mes" : "Año"}
-                helper={currentLabel}
-                icon={<CalendarClock size={18} />}
-              />
-              <MetricCard
-                label="Categorías"
-                value={String(calendarTotals.categories)}
-                helper="Tipos activos"
-                icon={<ClipboardList size={18} />}
-              />
-              <MetricCard
-                label="Programados"
-                value={String(calendarTotals.upcoming)}
-                helper={selectedCalendarBuildingLabel}
-                icon={<ShieldCheck size={18} />}
-              />
-              <MetricCard
-                label="Correctivos"
-                value={String(calendarTotals.corrective)}
-                helper="Seguimiento"
-                icon={<CircleAlert size={18} />}
-              />
-            </AppGrid>
+            <MetricCircles metrics={[
+              { value: viewMode === "week" ? "Sem" : viewMode === "month" ? "Mes" : "Año", label: "Vista" },
+              { value: calendarTotals.categories, label: "Categ." },
+              { value: calendarTotals.upcoming, label: "Progr.", color: "success" },
+              { value: calendarTotals.corrective, label: "Correc.", color: "warning" },
+            ]} />
 
             <SectionCard
               title="Calendario de mantenimiento"

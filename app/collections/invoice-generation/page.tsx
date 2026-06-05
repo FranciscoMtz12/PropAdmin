@@ -25,7 +25,7 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import UiButton from "@/components/UiButton";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 
 type ExpectedInvoiceItemRow = {
   lease_id: string;
@@ -548,87 +548,12 @@ export default function InvoiceGenerationPage() {
         titleIcon={<FileText size={20} />}
       />
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Contratos pendientes"
-          value={String(pendingGroups.length)}
-          helper="Todos sus conceptos siguen pendientes"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-amber)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CalendarClock size={18} color="var(--color-warning-text)" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Parciales"
-          value={String(partialGroups.length)}
-          helper="Algunas facturas ya fueron generadas"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-purple)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <RefreshCcw size={18} color="#3730A3" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Completos"
-          value={String(generatedGroups.length)}
-          helper="Todos sus conceptos ya están generados"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-green)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CheckCircle2 size={18} color="#166534" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Facturas generadas"
-          value={`${totalGeneratedInvoices}/${totalExpectedInvoices}`}
-          helper={`${getMonthLabel(periodMonth)} ${periodYear}`}
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--bg-card-hover)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <Wallet size={18} color="#374151" />
-            </div>
-          }
-        />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: String(pendingGroups.length), label: "Pendientes", color: pendingGroups.length > 0 ? "warning" : "default" },
+        { value: String(partialGroups.length), label: "Parciales", color: partialGroups.length > 0 ? "info" : "default" },
+        { value: String(generatedGroups.length), label: "Completos", color: "success" },
+        { value: `${totalGeneratedInvoices}/${totalExpectedInvoices}`, label: "Facturas" },
+      ]} />
 
       <AppCard style={{ marginTop: 16, marginBottom: 16 }}>
         <div

@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import SectionCard from "@/components/SectionCard";
 import AppTable from "@/components/AppTable";
 import AppBadge from "@/components/AppBadge";
@@ -140,34 +140,12 @@ export default function DashboardComprasPage() {
       />
 
       {/* ── Fila 1: Métricas ──────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.12rem, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard
-          label="OCs pendientes de aprobar"
-          value={pageLoading ? "…" : pendingApprove.length}
-          icon={<Clock size={18} />}
-          variant={pageLoading ? "neutral" : pendingApprove.length > 0 ? "amber" : "green"}
-        />
-        <MetricCard
-          label="OCs enviadas a proveedor"
-          value={pageLoading ? "…" : sentOrders.length}
-          icon={<Send size={18} />}
-          variant={pageLoading ? "neutral" : "blue"}
-        />
-        <MetricCard
-          label="Gasto del mes"
-          value={pageLoading ? "…" : formatMXN(thisMonthSpent)}
-          helper={pageLoading ? undefined : spentHelper}
-          icon={<TrendingUp size={18} />}
-          variant="neutral"
-        />
-        <MetricCard
-          label="OCs con faltantes"
-          value={pageLoading ? "…" : partialOrders.length}
-          helper="con recepción parcial"
-          icon={<AlertTriangle size={18} />}
-          variant={pageLoading ? "neutral" : partialOrders.length > 0 ? "amber" : "green"}
-        />
-      </div>
+      <MetricCircles metrics={[
+        { value: pageLoading ? "…" : pendingApprove.length, label: "Por aprobar", color: pageLoading ? "default" : pendingApprove.length > 0 ? "warning" : "success" },
+        { value: pageLoading ? "…" : sentOrders.length, label: "Enviadas", color: "info" },
+        { value: pageLoading ? "…" : formatMXN(thisMonthSpent), label: "Gasto mes" },
+        { value: pageLoading ? "…" : partialOrders.length, label: "Faltantes", color: pageLoading ? "default" : partialOrders.length > 0 ? "warning" : "success" },
+      ]} />
 
       {/* ── Fila 2: Dos columnas ──────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(21.25rem, 1fr))", gap: 24 }}>

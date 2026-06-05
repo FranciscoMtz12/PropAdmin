@@ -23,7 +23,7 @@ import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 
 type ReportedPayment = {
   id: string;
@@ -393,87 +393,12 @@ export default function ReportedPaymentsPage() {
         titleIcon={<Wallet size={20} />}
       />
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Pendientes"
-          value={String(pendingPayments.length)}
-          helper="En espera de decisión"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-amber)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <Clock3 size={18} color="var(--icon-color-amber)" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Aprobados"
-          value={String(approvedPayments.length)}
-          helper="Ya aplicados"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-green)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CheckCircle size={18} color="var(--icon-color-green)" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Rechazados"
-          value={String(rejectedPayments.length)}
-          helper="Con motivo registrado"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-red)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <XCircle size={18} color="var(--icon-color-red)" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Monto pendiente"
-          value={formatCurrency(pendingTotalAmount)}
-          helper="Reportado por revisar"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-blue)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CreditCard size={18} color="var(--icon-color-blue)" />
-            </div>
-          }
-        />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: String(pendingPayments.length), label: "Pendientes", color: pendingPayments.length > 0 ? "warning" : "default" },
+        { value: String(approvedPayments.length), label: "Aprobados", color: "success" },
+        { value: String(rejectedPayments.length), label: "Rechazados", color: rejectedPayments.length > 0 ? "danger" : "default" },
+        { value: formatCurrency(pendingTotalAmount), label: "$ Pend.", color: pendingTotalAmount > 0 ? "warning" : "default" },
+      ]} />
 
       {pageError ? (
         <AppCard

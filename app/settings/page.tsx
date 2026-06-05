@@ -23,7 +23,7 @@ import AppGrid from "@/components/AppGrid";
 import AppSelect from "@/components/AppSelect";
 import AppTable from "@/components/AppTable";
 import AppTabs, { AppTabPanel } from "@/components/AppTabs";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
@@ -1084,20 +1084,12 @@ export default function SettingsPage() {
         {activeTab === "usuarios" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {/* Métricas */}
-            <AppGrid minWidth={200}>
-              <MetricCard label="Total" value={String(totalUsers)} helper="Todos los activos"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><Users size={18} color="var(--metric-value-blue)" /></div>}
-              />
-              <MetricCard label="Admins" value={String(totalAdmins)} helper="Roles administrativos"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-purple)", display: "grid", placeItems: "center" }}><Shield size={18} color="#7C3AED" /></div>}
-              />
-              <MetricCard label="Campo" value={String(totalField)} helper="Equipo operativo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><Building2 size={18} color="var(--metric-value-green)" /></div>}
-              />
-              <MetricCard label="Inquilinos" value={String(totalTenants)} helper="Portal activo"
-                icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-amber)", display: "grid", placeItems: "center" }}><Users size={18} color="var(--metric-value-amber)" /></div>}
-              />
-            </AppGrid>
+            <MetricCircles metrics={[
+              { value: String(totalUsers), label: "Total", color: "info" },
+              { value: String(totalAdmins), label: "Admins" },
+              { value: String(totalField), label: "Campo", color: "success" },
+              { value: String(totalTenants), label: "Inquil.", color: "warning" },
+            ]} />
 
             {/* Lista de usuarios */}
             <SectionCard title="Usuarios de la empresa" icon={<Users size={18} />}>

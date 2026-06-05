@@ -61,7 +61,7 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppBadge from "@/components/AppBadge";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import Modal from "@/components/Modal";
 import UiButton from "@/components/UiButton";
 import AppFormField from "@/components/AppFormField";
@@ -848,20 +848,10 @@ export default function ReportePagosPage() {
       ) : null}
 
       {/* Métricas */}
-      <AppGrid minWidth={220} style={{ marginBottom: 20 }}>
-        <MetricCard
-          label="Reportes del mes"
-          value={metrics.totalReports}
-          variant="neutral"
-          icon={<FileText size={18} />}
-        />
-        <MetricCard
-          label="OCs incluidas"
-          value={metrics.totalItems}
-          variant="blue"
-          icon={<ShoppingCart size={18} />}
-        />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: metrics.totalReports, label: "Reportes" },
+        { value: metrics.totalItems, label: "OCs", color: "info" },
+      ]} />
 
       {/* ── OCs facturadas pendientes de reportar ─────────────── */}
       <AppCard style={{ marginBottom: 16 }}>

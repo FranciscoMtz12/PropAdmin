@@ -1205,35 +1205,6 @@ export default function CollectionsPage() {
           { value: formatCurrency(metrics.vencido), label: "Vencido", color: "danger" },
         ]} />
       </div>
-      <AppGrid minWidth={200} className="metric-grid-desktop-only" style={{ marginTop: 24 }}>
-        <MetricCard
-          label="Total a cobrar"
-          value={formatCurrency(metrics.totalDue)}
-          helper={monthLabel}
-          icon={<Wallet size={18} />}
-        />
-        <MetricCard
-          label="Cobrado"
-          value={formatCurrency(metrics.collected)}
-          helper="Pagos confirmados"
-          variant="green"
-          icon={<CheckCircle2 size={18} />}
-        />
-        <MetricCard
-          label="Pendiente"
-          value={formatCurrency(metrics.pendiente)}
-          helper="Pendiente + parcial"
-          variant="amber"
-          icon={<Clock3 size={18} />}
-        />
-        <MetricCard
-          label="Vencido"
-          value={formatCurrency(metrics.vencido)}
-          helper="Requiere seguimiento"
-          variant="red"
-          icon={<AlertCircle size={18} />}
-        />
-      </AppGrid>
 
       {/* ── Gráfica donut + barra de cantidades ── */}
       <div className="collections-chart-row" style={{ ...chartRowStyle, marginTop: 24 }}>

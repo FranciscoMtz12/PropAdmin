@@ -50,12 +50,12 @@ function formatMetricValue(value: string | number): string {
   return result.length > 5 ? result.slice(0, 5) : result;
 }
 
-/* Todos los círculos tienen siempre el mismo ancho: 1/6 del contenedor.
-   El espacio sobrante cuando hay menos de 6 se distribuye con space-evenly.
-   NOTA: % en font-size resuelve al font-size heredado (no al ancho del padre),
-   por eso usamos cqw (CSS Container Queries): el círculo se declara container
-   y sus hijos usan 1cqw = 1% del ancho del propio círculo. */
-const CIRCLE_WIDTH = "calc((100% - 30px) / 6)";
+/* Cada círculo crece hasta 1/6 del contenedor pero no pasa de 88px.
+   En móvil (≤375px, 6 items) queda ≈57px — igual que antes.
+   En desktop la cota de 88px evita celdas gigantes; justifyContent:center
+   los agrupa en el centro sin estirarlos al ancho completo.
+   cqw: container queries para que el texto escale con el círculo real. */
+const CIRCLE_WIDTH = "min(calc((100% - 30px) / 6), 88px)";
 const NUM_FS = "clamp(10px, 27cqw, 30px)";
 const LBL_FS = "clamp(8px, 13cqw, 15px)";
 
@@ -87,13 +87,12 @@ export default function MetricCircles({ metrics }: MetricCirclesProps) {
 
   return (
     <div
-      className="metric-circles-mobile-only"
       style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}
     >
       {rows.map((rowItems, ri) => (
         <div
           key={ri}
-          style={{ display: "flex", justifyContent: "space-evenly" }}
+          style={{ display: "flex", justifyContent: "center", gap: 5 }}
         >
           {rowItems.map((m, i) => (
             <div key={i} style={circleStyle}>

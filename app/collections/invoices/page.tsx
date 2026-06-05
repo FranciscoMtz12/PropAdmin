@@ -13,7 +13,7 @@ import toast from "react-hot-toast";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppTable from "@/components/AppTable";
@@ -247,28 +247,12 @@ export default function AdminInvoicesPage() {
         }
       />
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Facturas visibles"
-          value={String(metrics.totalInvoices)}
-          icon={<FileText size={18} />}
-        />
-        <MetricCard
-          label="Monto total"
-          value={formatCurrency(metrics.totalAmount)}
-          icon={<Building2 size={18} />}
-        />
-        <MetricCard
-          label="Con PDF y XML"
-          value={String(metrics.withFilesCount)}
-          icon={<FileText size={18} />}
-        />
-        <MetricCard
-          label="Ligadas a cobro"
-          value={String(metrics.linkedCount)}
-          icon={<Building2 size={18} />}
-        />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: String(metrics.totalInvoices), label: "Facturas" },
+        { value: formatCurrency(metrics.totalAmount), label: "Monto" },
+        { value: String(metrics.withFilesCount), label: "Con docs", color: "success" },
+        { value: String(metrics.linkedCount), label: "Ligadas", color: "info" },
+      ]} />
 
       <SectionCard
         title="Listado administrativo"

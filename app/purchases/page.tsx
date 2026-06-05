@@ -1674,24 +1674,6 @@ export default function PurchasesPage() {
       ]} />
 
       {/* Métricas — stat bar compacta (desktop) */}
-      <div className="purchases-statbar metric-grid-desktop-only" style={{ display: "flex", background: "var(--bg-card)", border: "1px solid var(--border-default)", borderRadius: "var(--border-radius-lg)", marginBottom: 20, overflow: "hidden" }}>
-        {[
-          { label: "Total OC",        value: metrics.total,     sub: "todas" },
-          { label: "Borradores",      value: metrics.draft,     sub: "sin enviar" },
-          { label: "Por enviar",      value: metrics.pending,   sub: "aprobadas", color: "var(--metric-value-amber)" },
-          { label: "Enviadas",        value: metrics.sent,      sub: "al proveedor", color: "var(--metric-value-blue)" },
-          { label: "Surtido parcial", value: metrics.partial,   sub: "entrega", color: "var(--metric-value-amber)" },
-          { label: "Completadas",     value: metrics.received,  sub: "recibidas", color: "var(--metric-value-green)" },
-          { label: "Facturadas",      value: metrics.invoiced,  sub: "cerradas", color: "var(--color-media)" },
-          { label: "Canceladas",      value: metrics.cancelled, sub: "anuladas", color: "var(--metric-value-red)" },
-        ].map((s, i, arr) => (
-          <div key={i} className="purchases-statbar-cell" style={{ flex: 1, padding: "14px 16px", borderRight: i < arr.length - 1 ? "1px solid var(--border-default)" : "none", textAlign: "center" }}>
-            <div style={{ fontSize: "0.6875rem", fontWeight: 600, letterSpacing: "0.08em", color: "var(--text-secondary)", marginBottom: 4, textTransform: "uppercase" }}>{s.label}</div>
-            <div style={{ fontSize: "1.375rem", fontWeight: 700, color: s.color ?? "var(--text-primary)" }}>{s.value}</div>
-            <div style={{ fontSize: "0.625rem", color: "var(--text-secondary)", marginTop: 2 }}>{s.sub}</div>
-          </div>
-        ))}
-      </div>
 
       {/* Filtros */}
       <AppCard style={{ marginBottom: 16 }}>

@@ -12,7 +12,7 @@ import { useCurrentUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import SectionCard from "@/components/SectionCard";
 import AppBadge from "@/components/AppBadge";
 import AppEmptyState from "@/components/AppEmptyState";
@@ -282,12 +282,12 @@ export default function CobranzaMedidoresPage() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(11.25rem, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard label="Edificios con servicios" value={filteredGroups.length} icon={<MapPin size={18} />} />
-        <MetricCard label="Lecturas pendientes"  value={pageLoading ? "…" : pendingReadings}  icon={<Zap size={18} />}      variant={pendingReadings  > 0 ? "amber" : "green"} />
-        <MetricCard label="Facturas pendientes"  value={pageLoading ? "…" : pendingInvoices}  icon={<FileText size={18} />} variant={pendingInvoices  > 0 ? "amber" : "green"} />
-        <MetricCard label="Cobros generados"     value={pageLoading ? "…" : cobrosCount}      icon={<FileText size={18} />} variant={cobrosCount      > 0 ? "green" : "neutral"} />
-      </div>
+      <MetricCircles metrics={[
+        { value: filteredGroups.length, label: "Edificios" },
+        { value: pageLoading ? "…" : pendingReadings, label: "Lecturas", color: pendingReadings > 0 ? "warning" : "success" },
+        { value: pageLoading ? "…" : pendingInvoices, label: "Facturas", color: pendingInvoices > 0 ? "warning" : "success" },
+        { value: pageLoading ? "…" : cobrosCount, label: "Cobros", color: cobrosCount > 0 ? "success" : "default" },
+      ]} />
 
       {pageLoading ? (
         <p style={{ color: "var(--text-muted)" }}>Cargando...</p>

@@ -19,7 +19,7 @@ import SectionCard from "@/components/SectionCard";
 import AppTable from "@/components/AppTable";
 import AppBadge from "@/components/AppBadge";
 import AppGrid from "@/components/AppGrid";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 
 type FeedbackType = "idea" | "problema" | "pregunta";
 type FeedbackStatus = "nuevo" | "revisado" | "en_progreso" | "resuelto";
@@ -137,17 +137,11 @@ export default function SaproaFeedbackPage() {
     <PageContainer>
       <PageHeader title="Buzón de feedback" titleIcon={<MessageSquare size={18} />} />
 
-      <AppGrid minWidth={220}>
-        <MetricCard label="Total" value={String(total)} helper="Todos los registros"
-          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-blue)", display: "grid", placeItems: "center" }}><MessageSquare size={18} color="var(--metric-value-blue)" /></div>}
-        />
-        <MetricCard label="Pendientes" value={String(pending)} helper="Sin revisar"
-          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-red)", display: "grid", placeItems: "center" }}><Clock3 size={18} color="var(--metric-value-red)" /></div>}
-        />
-        <MetricCard label="Resueltos" value={String(resolved)} helper="Ya cerrados"
-          icon={<div style={{ width: 36, height: 36, borderRadius: "var(--border-radius-md)", background: "var(--icon-bg-green)", display: "grid", placeItems: "center" }}><CheckCircle2 size={18} color="var(--metric-value-green)" /></div>}
-        />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: String(total), label: "Total", color: "info" },
+        { value: String(pending), label: "Pendientes", color: pending > 0 ? "danger" : "default" },
+        { value: String(resolved), label: "Resueltos", color: resolved > 0 ? "success" : "default" },
+      ]} />
 
       <SectionCard title="Feedback recibido" icon={<MessageSquare size={18} />} style={{ marginTop: 16 }}>
         <AppTable<FeedbackRow>

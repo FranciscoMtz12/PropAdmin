@@ -118,6 +118,7 @@ import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
 import SectionCard from "@/components/SectionCard";
 import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import UiButton from "@/components/UiButton";
 import Modal from "@/components/Modal";
 import AppFormField from "@/components/AppFormField";
@@ -4107,25 +4108,11 @@ export default function BuildingDetailPage() {
             )}
             <div style={{ display: "grid", gap: 24 }}>
             {/* Métricas */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(10rem, 1fr))", gap: 16 }}>
-              <MetricCard
-                label="Total equipamiento"
-                value={buildingAssets.length}
-                icon={<Package size={18} />}
-              />
-              <MetricCard
-                label="Activos"
-                value={activeAssets.length}
-                icon={<Package size={18} />}
-                variant="green"
-              />
-              <MetricCard
-                label="Inactivos / Pendientes"
-                value={inactiveAssets.length}
-                icon={<Package size={18} />}
-                variant="amber"
-              />
-            </div>
+            <MetricCircles metrics={[
+              { value: buildingAssets.length, label: "Total" },
+              { value: activeAssets.length, label: "Activos", color: "success" },
+              { value: inactiveAssets.length, label: "Inactivos", color: "warning" },
+            ]} />
 
             {/* Lista */}
             <SectionCard
@@ -5323,14 +5310,17 @@ export default function BuildingDetailPage() {
       {activeTab === "bodegas" && hasBodegasTab ? (
         <div style={{ display: "grid", gap: 20 }}>
           {/* Métricas */}
-          {childBuildings.length > 0 && (
-            <AppGrid minWidth={160} gap={16}>
-              <MetricCard label="Total"       value={String(childBuildings.length)}                                    icon={<Warehouse size={18} />} helper="Bodegas en el parque" />
-              <MetricCard label="Disponibles" value={String(childBuildings.filter(cb => !bodegaOccupied.has(cb.id)).length)} icon={<Warehouse size={18} />} helper="Sin lease activo" variant="blue" />
-              <MetricCard label="Rentadas"    value={String(childBuildings.filter(cb => bodegaOccupied.has(cb.id)).length)}  icon={<Warehouse size={18} />} helper="Con lease activo" variant="green" />
-              {(() => { const total = childBuildings.reduce((s, cb) => s + (cb.construction_sqm ?? 0), 0); return total > 0 ? <MetricCard label="M² construcción" value={`${total.toLocaleString("es-MX")} m²`} icon={<Ruler size={18} />} helper="Suma de m² construidos" /> : null; })()}
-            </AppGrid>
-          )}
+          {childBuildings.length > 0 && (() => {
+            const totalSqmBod = childBuildings.reduce((s, cb) => s + (cb.construction_sqm ?? 0), 0);
+            return (
+              <MetricCircles metrics={[
+                { value: String(childBuildings.length), label: "Total" },
+                { value: String(childBuildings.filter(cb => !bodegaOccupied.has(cb.id)).length), label: "Disponibles", color: "info" },
+                { value: String(childBuildings.filter(cb => bodegaOccupied.has(cb.id)).length), label: "Rentadas", color: "success" },
+                ...(totalSqmBod > 0 ? [{ value: `${totalSqmBod.toLocaleString("es-MX")}m²`, label: "M²" }] : []),
+              ]} />
+            );
+          })()}
           <SectionCard
             title="Bodegas del parque"
             subtitle="Naves industriales que forman parte de este parque."

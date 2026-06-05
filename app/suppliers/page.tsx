@@ -544,11 +544,6 @@ export default function SuppliersPage() {
       ]} />
 
       {/* Métricas desktop */}
-      <AppGrid minWidth={220} className="metric-grid-desktop-only" style={{ marginBottom: 20 }}>
-        <MetricCard label="Total proveedores" value={total}         variant="neutral" icon={<Package size={18} />} />
-        <MetricCard label="Activos"           value={activeCount}   variant="green"   />
-        <MetricCard label="Inactivos"         value={inactiveCount} variant="amber"   />
-      </AppGrid>
 
       {/* Lista */}
       {loading ? (

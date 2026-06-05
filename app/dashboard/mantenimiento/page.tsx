@@ -8,7 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import PageContainer from "@/components/PageContainer";
 import PageHeader from "@/components/PageHeader";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import SectionCard from "@/components/SectionCard";
 import AppTable from "@/components/AppTable";
 import AppBadge from "@/components/AppBadge";
@@ -187,34 +187,12 @@ export default function DashboardMantenimientoPage() {
       />
 
       {/* ── Fila 1: Métricas ──────────────────────────────────────── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(13.12rem, 1fr))", gap: 16, marginBottom: 24 }}>
-        <MetricCard
-          label="Tickets abiertos"
-          value={pageLoading ? "…" : openTickets.length}
-          icon={<AlertTriangle size={18} />}
-          variant={ticketsVariant}
-        />
-        <MetricCard
-          label="Resueltos este mes"
-          value={pageLoading ? "…" : resolvedCount}
-          icon={<CheckCircle size={18} />}
-          variant={pageLoading ? "neutral" : resolvedCount > 0 ? "green" : "neutral"}
-        />
-        <MetricCard
-          label="Limpieza hoy"
-          value={pageLoading ? "…" : cleaningToday}
-          helper="tareas programadas"
-          icon={<Wrench size={18} />}
-          variant="neutral"
-        />
-        <MetricCard
-          label="Materiales pendientes"
-          value={pageLoading ? "…" : materialsPending}
-          helper="OCs pendientes / enviadas"
-          icon={<ShoppingCart size={18} />}
-          variant={pageLoading ? "neutral" : materialsPending > 0 ? "amber" : "green"}
-        />
-      </div>
+      <MetricCircles metrics={[
+        { value: pageLoading ? "…" : openTickets.length, label: "Abiertos", color: pageLoading ? "default" : ticketsVariant === "green" ? "success" : ticketsVariant === "amber" ? "warning" : "danger" },
+        { value: pageLoading ? "…" : resolvedCount, label: "Resueltos", color: pageLoading ? "default" : resolvedCount > 0 ? "success" : "default" },
+        { value: pageLoading ? "…" : cleaningToday, label: "Limpieza" },
+        { value: pageLoading ? "…" : materialsPending, label: "Materiales", color: pageLoading ? "default" : materialsPending > 0 ? "warning" : "success" },
+      ]} />
 
       {/* ── Fila 2: Dos columnas ──────────────────────────────────── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(21.25rem, 1fr))", gap: 24 }}>

@@ -24,7 +24,7 @@ import PageHeader from "@/components/PageHeader";
 import AppCard from "@/components/AppCard";
 import AppGrid from "@/components/AppGrid";
 import AppSelect from "@/components/AppSelect";
-import MetricCard from "@/components/MetricCard";
+import MetricCircles from "@/components/MetricCircles";
 import UiButton from "@/components/UiButton";
 
 
@@ -245,68 +245,12 @@ export default function PendingInvoiceUploadsPage() {
         }
       />
 
-      <AppGrid minWidth={220}>
-        <MetricCard
-          label="Pendientes"
-          value={String(filteredRows.length)}
-          helper="Falta cargar XML/PDF"
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: filteredRows.length > 0
-                  ? "var(--icon-bg-amber)"
-                  : "var(--icon-bg-neutral)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <FileUp
-                size={18}
-                color={filteredRows.length > 0
-                  ? "var(--icon-color-amber)"
-                  : "var(--icon-color-neutral)"}
-              />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Periodo actual"
-          value={String(currentPeriodCount)}
-          helper={`${getMonthLabel(currentMonth)} ${currentYear}`}
-          icon={
-            <div
-              style={{
-                width: 36,
-                height: 36,
-                borderRadius: "var(--border-radius-md)",
-                background: "var(--icon-bg-blue)",
-                display: "grid",
-                placeItems: "center",
-              }}
-            >
-              <CalendarClock size={18} color="var(--icon-color-blue)" />
-            </div>
-          }
-        />
-
-        <MetricCard
-          label="Renta"
-          value={String(groupedByConcept.rent)}
-          helper="Pendientes filtrados"
-          icon={<Home size={18} />}
-        />
-
-        <MetricCard
-          label="Electricidad / Agua"
-          value={String(groupedByConcept.electricity + groupedByConcept.water)}
-          helper="Servicios filtrados"
-          icon={<Zap size={18} />}
-        />
-      </AppGrid>
+      <MetricCircles metrics={[
+        { value: String(filteredRows.length), label: "Pendientes", color: filteredRows.length > 0 ? "warning" : "success" },
+        { value: String(currentPeriodCount), label: "Periodo" },
+        { value: String(groupedByConcept.rent), label: "Renta" },
+        { value: String(groupedByConcept.electricity + groupedByConcept.water), label: "Servicios" },
+      ]} />
 
       {pageError ? (
         <AppCard
