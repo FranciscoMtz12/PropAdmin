@@ -1057,6 +1057,28 @@ a {
 
 
 /* ════════════════════════════════════════════════════════════════════
+   Login — enlace de registro
+   ════════════════════════════════════════════════════════════════════ */
+
+.login-register-link {
+  font-size: 0.8125rem;
+  color: rgba(255,255,255,0.45);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+.login-register-link:hover {
+  color: rgba(255,255,255,0.8);
+}
+.login-register-link .login-register-cta {
+  color: var(--accent);
+  font-weight: 600;
+  transition: opacity 0.2s;
+}
+.login-register-link:hover .login-register-cta {
+  opacity: 0.85;
+}
+
+/* ════════════════════════════════════════════════════════════════════
    Dashboard donuts — fila horizontal en mobile
    ════════════════════════════════════════════════════════════════════ */
 

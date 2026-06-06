@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useForm } from "react-hook-form";
@@ -340,6 +341,14 @@ export default function LoginPage() {
             </button>
           </form>
         )}
+
+        {/* Enlace de registro */}
+        <div style={{ marginTop: "1.25rem", paddingTop: "1rem", borderTop: "1px solid rgba(255,255,255,.08)", textAlign: "center" }}>
+          <Link href="/register" className="login-register-link">
+            ¿Empresa nueva en SAPROA?{" "}
+            <span className="login-register-cta">Registrar empresa</span>
+          </Link>
+        </div>
       </div>
 
       {/* Footer */}
