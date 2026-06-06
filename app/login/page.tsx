@@ -103,7 +103,10 @@ export default function LoginPage() {
       await supabase.auth.signOut();
       return;
     }
-    // RouteGuard handles the redirect — no competing router.push needed
+    // Redirect explícito después de confirmar el perfil. Usa replace (no push) para no
+    // agregar al historial. RouteGuard también redirige, pero esta llamada garantiza que
+    // la navegación ocurra aunque el effect de RouteGuard tenga un window de timing ajustado.
+    router.replace(profile.destination);
   });
 
   const onActivate = activateForm.handleSubmit(async (data) => {

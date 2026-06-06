@@ -76,6 +76,18 @@ export default function RouteGuard() {
     if (welcomeTransition && pathname && !isAdminPublicPath(pathname)) setWelcomeTransition(false);
   }, [welcomeTransition, pathname]);
 
+  // Fallback: si welcomeTransition lleva >4s activo y seguimos en login/register con usuario
+  // ya cargado, la redirección normal no se disparó — forzamos la navegación para no quedar
+  // atascados en el splash.
+  useEffect(() => {
+    if (!welcomeTransition || !pathname || !isAdminPublicPath(pathname) || !user) return;
+    const t = setTimeout(() => {
+      const dest = user.role ? getAdminDestination(user.role, Boolean(user.is_superadmin)) : "/home";
+      router.replace(dest);
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [welcomeTransition, pathname, user, router]);
+
   useEffect(() => {
     if (!pathname || loading) return;
     setIsValidating(false);
