@@ -527,8 +527,14 @@ export default function SettingsPage() {
     setSavingI(true);
     let logoUrl = mLogoUrl;
     let logoDarkUrl = mLogoDarkUrl;
-    if (logoFile) logoUrl = await uploadLogo(logoFile, false);
-    if (logoDarkFile) logoDarkUrl = await uploadLogo(logoDarkFile, true);
+    try {
+      if (logoFile) logoUrl = await uploadLogo(logoFile, false);
+      if (logoDarkFile) logoDarkUrl = await uploadLogo(logoDarkFile, true);
+    } catch (uploadErr) {
+      setSavingI(false);
+      toast.error(`Error al subir el logo: ${uploadErr instanceof Error ? uploadErr.message : "Error desconocido"}`);
+      return;
+    }
     const { error } = await supabase.from("companies").update({
       name: gName.trim(),
       short_name: gShort.trim() || null,
@@ -538,7 +544,7 @@ export default function SettingsPage() {
       logo_dark_url: logoDarkUrl || null,
     }).eq("id", company.id);
     setSavingI(false);
-    if (error) { toast.error("Error al guardar"); return; }
+    if (error) { toast.error(`Error al guardar: ${error.message}`); return; }
     setMLogoUrl(logoUrl); setMLogoDarkUrl(logoDarkUrl);
     if (logoUrl) getSignedUrl("company-assets", logoUrl).then(u => setMLogoDisplayUrl(u ?? ""));
     if (logoDarkUrl) getSignedUrl("company-assets", logoDarkUrl).then(u => setMLogoDarkDisplayUrl(u ?? ""));
@@ -550,7 +556,8 @@ export default function SettingsPage() {
   async function uploadLogoGroup(file: File): Promise<string> {
     const ext = file.name.split(".").pop();
     const path = `groups/${company!.id}/logo_group.${ext}`;
-    await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
+    if (error) throw new Error(error.message);
     return path;
   }
 
@@ -567,12 +574,18 @@ export default function SettingsPage() {
     if (!company) return;
     setSavingGroup(true);
     let logoGroupUrl = mLogoGroupUrl;
-    if (logoGroupFile) logoGroupUrl = await uploadLogoGroup(logoGroupFile);
+    try {
+      if (logoGroupFile) logoGroupUrl = await uploadLogoGroup(logoGroupFile);
+    } catch (uploadErr) {
+      setSavingGroup(false);
+      toast.error(`Error al subir el logo del grupo: ${uploadErr instanceof Error ? uploadErr.message : "Error desconocido"}`);
+      return;
+    }
     const { error } = await supabase.from("companies").update({
       logo_group_url: logoGroupUrl || null,
     }).eq("id", company.id);
     setSavingGroup(false);
-    if (error) { toast.error("Error al guardar"); return; }
+    if (error) { toast.error(`Error al guardar: ${error.message}`); return; }
     setMLogoGroupUrl(logoGroupUrl);
     if (logoGroupUrl) getSignedUrl("company-assets", logoGroupUrl).then(u => setMLogoGroupDisplayUrl(u ?? ""));
     setLogoGroupFile(null); setLogoGroupPreview("");
@@ -582,7 +595,8 @@ export default function SettingsPage() {
   async function uploadLogo(file: File, dark: boolean): Promise<string> {
     const ext = file.name.split(".").pop();
     const path = `logos/${company!.id}/logo${dark ? "_dark" : ""}.${ext}`;
-    await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
+    const { error } = await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
+    if (error) throw new Error(error.message);
     return path;
   }
 
