@@ -344,8 +344,8 @@ export default function UnitTypeAssetsPage() {
         subtitle="Configura los equipos plantilla de la tipología con el mismo patrón visual del resto del sistema."
         actions={
           <>
-            <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}`}>
-              Volver a la tipología
+            <UiButton href={`/buildings/${building.id}/unit-types`}>
+              Volver a tipologías
             </UiButton>
             <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
               <Plus size={16} />

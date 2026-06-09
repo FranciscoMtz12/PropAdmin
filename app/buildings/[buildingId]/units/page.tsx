@@ -23,6 +23,7 @@ import {
   Bath,
   BedDouble,
   Check,
+  CheckCircle2,
   Clock,
   Copy,
   DoorOpen,
@@ -812,6 +813,24 @@ export default function BuildingUnitsPage() {
     await loadPageData();
   });
 
+  const [markingReviewed, setMarkingReviewed] = useState(false);
+
+  async function markAsReviewed(unit: UnitRow) {
+    if (!user?.company_id) return;
+    setMarkingReviewed(true);
+    const { error } = await supabase
+      .from("units")
+      .update({ needs_review: false })
+      .eq("id", unit.id)
+      .eq("company_id", user.company_id);
+    setMarkingReviewed(false);
+    if (error) { setMsg("No se pudo marcar como revisada."); return; }
+    setIsEditModalOpen(false);
+    setEditingUnit(null);
+    setMsg(`${labels.unit} marcado como revisado.`);
+    await loadPageData();
+  }
+
   function closeDeleteModal() {
     if (deleting) return;
     setIsDeleteModalOpen(false);
@@ -1044,6 +1063,23 @@ export default function BuildingUnitsPage() {
                   }
                   statusIndicator={<StatusCircle status={unit.status} />}
                   actions={
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      {unit.needs_review && (
+                        <button
+                          type="button"
+                          title="Revisar unidad"
+                          onClick={(e) => { e.stopPropagation(); openEditModal(unit); }}
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            width: 30, height: 30, borderRadius: "var(--border-radius-sm)",
+                            border: "1px solid var(--metric-border-amber)",
+                            background: "var(--badge-bg-amber)", cursor: "pointer",
+                            color: "var(--badge-text-amber)",
+                          }}
+                        >
+                          <CheckCircle2 size={15} />
+                        </button>
+                      )}
                     <div
                       style={{ position: "relative" }}
                       ref={openActionsUnitId === unit.id ? actionsMenuRef : undefined}
@@ -1063,6 +1099,7 @@ export default function BuildingUnitsPage() {
                           <button type="button" onClick={() => openDeleteModal(unit)}                  style={dropdownDeleteItemStyle}><Trash2 size={14} /> Eliminar</button>
                         </div>
                       )}
+                    </div>
                     </div>
                   }
                 >
@@ -1150,6 +1187,27 @@ export default function BuildingUnitsPage() {
           {selectedTypeForEdit ? (
             <TypePreview type={selectedTypeForEdit} />
           ) : null}
+
+          {editingUnit?.needs_review && (
+            <div style={{
+              display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+              borderRadius: "var(--border-radius-md)", marginBottom: 4,
+              background: "var(--badge-bg-amber)", border: "1px solid var(--metric-border-amber)",
+            }}>
+              <CheckCircle2 size={16} style={{ color: "var(--badge-text-amber)", flexShrink: 0 }} />
+              <span style={{ fontSize: "0.8125rem", color: "var(--badge-text-amber)", flex: 1 }}>
+                Esta unidad está pendiente de revisión.
+              </span>
+              <UiButton
+                type="button"
+                variant="primary"
+                disabled={markingReviewed}
+                onClick={() => editingUnit && void markAsReviewed(editingUnit)}
+              >
+                {markingReviewed ? "Marcando..." : "Marcar como revisada"}
+              </UiButton>
+            </div>
+          )}
 
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <UiButton type="submit" disabled={editForm.formState.isSubmitting} variant="primary">

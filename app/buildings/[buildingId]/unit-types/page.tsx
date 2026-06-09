@@ -560,7 +560,6 @@ export default function BuildingUnitTypesPage() {
 
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, flexWrap: "wrap" }}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}`}>Ver tipología</UiButton>
                     <UiButton href={`/buildings/${building.id}/unit-types/${unitType.id}/assets`}>Administrar equipamiento base</UiButton>
                   </div>
                   <div

@@ -1209,6 +1209,7 @@ export default function BuildingDetailPage() {
   const [isTypologiesWizardOpen, setIsTypologiesWizardOpen] = useState(false);
   const [openActionsUnitTypeIdTab, setOpenActionsUnitTypeIdTab] = useState<string | null>(null);
   const [editUTModal, setEditUTModal] = useState<EditTypologyData | null>(null);
+  const [duplicateUTModal, setDuplicateUTModal] = useState<EditTypologyData | null>(null);
   const [deleteUTTarget, setDeleteUTTarget] = useState<UnitTypeForTab | null>(null);
   const [deletingUT, setDeletingUT] = useState(false);
 
@@ -4007,6 +4008,23 @@ export default function BuildingDetailPage() {
                             </button>
                             <button
                               type="button"
+                              onClick={() => {
+                                setDuplicateUTModal({
+                                  id: ut.id, name: ut.name,
+                                  bedrooms: ut.bedrooms, bathrooms: ut.bathrooms,
+                                  has_living_room: ut.has_living_room, has_dining_room: ut.has_dining_room,
+                                  has_patio: ut.has_patio, has_fridge: ut.has_fridge,
+                                  has_washer: ut.has_washer, has_dryer: ut.has_dryer,
+                                  stove_type: ut.stove_type,
+                                });
+                                setOpenActionsUnitTypeIdTab(null);
+                              }}
+                              style={dropdownActionButtonStyle}
+                            >
+                              <Copy size={14} /> Duplicar
+                            </button>
+                            <button
+                              type="button"
                               onClick={() => { setDeleteUTTarget(ut); setOpenActionsUnitTypeIdTab(null); }}
                               style={dropdownDeleteItemStyle}
                             >
@@ -4073,7 +4091,6 @@ export default function BuildingDetailPage() {
 
                     {/* Action buttons */}
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}`}>Ver tipología</UiButton>
                       <UiButton href={`/buildings/${buildingId}/unit-types/${ut.id}/assets`}>Administrar equipamiento</UiButton>
                     </div>
                   </motion.div>
@@ -7062,6 +7079,20 @@ export default function BuildingDetailPage() {
         onClose={() => setEditUTModal(null)}
         onSuccess={async () => {
           setEditUTModal(null);
+          setTypologiesTabLoaded(false);
+          await loadTypologiesTabData();
+        }}
+      />
+
+      {/* ── Wizard duplicar tipología (tab Tipologías) ── */}
+      <UnitTypeWizardModal
+        open={duplicateUTModal !== null}
+        buildingId={building?.id ?? ""}
+        companyId={building?.company_id ?? ""}
+        duplicateFrom={duplicateUTModal}
+        onClose={() => setDuplicateUTModal(null)}
+        onSuccess={async () => {
+          setDuplicateUTModal(null);
           setTypologiesTabLoaded(false);
           await loadTypologiesTabData();
         }}

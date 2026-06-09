@@ -31,6 +31,7 @@ export interface EditTypologyData {
 interface Props {
   open: boolean; buildingId: string; companyId: string;
   editTypology?: EditTypologyData | null;
+  duplicateFrom?: EditTypologyData | null;
   onClose: () => void; onSuccess: () => void;
 }
 
@@ -792,7 +793,7 @@ function clearDraft(buildingId: string) {
 
 /* ─── Main component ─────────────────────────────────────────────────── */
 
-export default function UnitTypeWizardModal({ open, buildingId, companyId, editTypology, onClose, onSuccess }: Props) {
+export default function UnitTypeWizardModal({ open, buildingId, companyId, editTypology, duplicateFrom, onClose, onSuccess }: Props) {
   const [step, setStep]           = useState(1);
   const [stepDir, setStepDir]     = useState<"left" | "right">("right");
   const [s1, setS1]               = useState<Step1>({ ...S1 });
@@ -858,7 +859,40 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, editTypology?.id]);
 
-  const prefix = editTypology ? "Editar tipología" : "Nueva tipología";
+  /* Pre-populate from duplicate source */
+  useEffect(() => {
+    if (open && duplicateFrom) {
+      setS1({ name: `${duplicateFrom.name} (copia)`, sqm: "", description: "" });
+      setS2((prev) => ({
+        ...prev,
+        hasSala:    duplicateFrom.has_living_room,
+        hasComedor: duplicateFrom.has_dining_room,
+        hasPatio:   duplicateFrom.has_patio,
+        bedrooms:   duplicateFrom.bedrooms,
+      }));
+      setEq(() => ({
+        ...JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment,
+        cocina: {
+          ...DEFAULT_EQ.cocina,
+          stoveType: duplicateFrom.stove_type === "GAS" ? "GAS"
+            : duplicateFrom.stove_type === "ELECTRIC" ? "ELECTRIC"
+            : duplicateFrom.stove_type === "INDUCTION" ? "INDUCTION"
+            : "NONE",
+          fridge: duplicateFrom.has_fridge ? "FRIDGE" : "NONE",
+        },
+        lavanderia: {
+          ...DEFAULT_EQ.lavanderia,
+          washer: duplicateFrom.has_washer ? "YES" : "NO",
+          dryer:  duplicateFrom.has_dryer  ? "ELECTRIC" : "NONE",
+        },
+        bedrooms: Array.from({ length: duplicateFrom.bedrooms }, () => ({ ...DEFAULT_BEDROOM_EQ })),
+      }));
+      setDraftFound(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, duplicateFrom?.id]);
+
+  const prefix = editTypology ? "Editar tipología" : duplicateFrom ? "Duplicar tipología" : "Nueva tipología";
   const STEP_TITLES = [`${prefix} — Información`, `${prefix} — Espacios`, `${prefix} — Equipamiento`, `${prefix} — Resumen`];
 
   const STEP_INPUT: React.CSSProperties = {
@@ -1686,7 +1720,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
             )
           ) : (
             <UiButton type="button" variant="primary" onClick={() => editTypology ? void handleEdit() : void handleCreate()} disabled={saving}>
-              {saving ? (editTypology ? "Guardando..." : "Creando...") : (editTypology ? "Guardar cambios" : "Crear tipología")}
+              {saving
+                ? (editTypology ? "Guardando..." : "Creando...")
+                : (editTypology ? "Guardar cambios" : duplicateFrom ? "Crear copia" : "Crear tipología")}
             </UiButton>
           )}
         </div>
