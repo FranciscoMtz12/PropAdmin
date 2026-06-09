@@ -1216,7 +1216,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
       <StepIndicator step={step} />
 
       <AnimatePresence mode="wait">
-        <motion.div key={step} variants={slideStep(stepDir)} initial="hidden" animate="show" exit="hidden" style={{ overflow: "hidden" }}>
+        <motion.div key={step} variants={slideStep(stepDir)} initial="hidden" animate="show" exit="hidden" style={{ overflowX: "hidden" }}>
 
       {/* ── PASO 1: Información ── */}
       {step === 1 && (
@@ -1691,6 +1691,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
         <div>
           {step > 1 && step !== 3 && (
             <UiButton type="button" variant="secondary" onClick={goBack} disabled={saving}>← Atrás</UiButton>
+          )}
+          {step === 3 && !step3PrevSpace && (
+            <UiButton type="button" variant="secondary" onClick={goBack} disabled={saving}>← Espacios</UiButton>
           )}
         </div>
         <div style={{ display: "flex", gap: 10 }}>
