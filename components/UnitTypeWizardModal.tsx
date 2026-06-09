@@ -26,6 +26,8 @@ export interface EditTypologyData {
   has_washer: boolean;
   has_dryer: boolean;
   stove_type: string;
+  assets: { name: string; asset_type: string }[];
+  wizard_state?: { s2: Step2; eq: Equipment } | null;
 }
 
 interface Props {
@@ -106,6 +108,207 @@ const DEFAULT_EQ: Equipment = {
   aireCentral: { capacity: "5" },
   comedor: { ac: "NONE", furniture: "NONE" },
 };
+
+/* ─── Legacy inference helpers ──────────────────────────────────────── */
+
+type LegacyAsset = { name: string; asset_type: string };
+
+function parseTonsToAc(prefix: string, tons: number): string {
+  if (tons <= 1) return `${prefix}_1T`;
+  if (tons <= 1.5) return `${prefix}_1_5T`;
+  if (tons <= 2) return `${prefix}_2T`;
+  if (tons <= 3) return `${prefix}_3T`;
+  return `${prefix}_5T`;
+}
+
+function inferAcFromAssets(assets: LegacyAsset[], sfx: string): string {
+  const a = assets.find(x =>
+    (x.asset_type === "MINISPLIT" || x.name.startsWith("Fan & coil")) &&
+    (sfx ? x.name.endsWith(`- ${sfx}`) : true)
+  );
+  if (!a) return "NONE";
+  const m = a.name.match(/([\d.]+)\s*ton/);
+  const tons = m ? parseFloat(m[1]) : 1;
+  const prefix = a.name.startsWith("Fan & coil") ? "FAN_COIL" : "MINI";
+  return parseTonsToAc(prefix, tons);
+}
+
+function inferBoilersFromAssets(assets: LegacyAsset[], sfxContains: string): BoilerUnit[] {
+  const boilerAssets = assets.filter(a =>
+    a.asset_type === "BOILER" && (!sfxContains || a.name.includes(sfxContains))
+  );
+  if (boilerAssets.length === 0) return [];
+  return boilerAssets.map(a => {
+    let type = "DEP_GAS";
+    if (a.name.includes("depósito eléctrico")) type = "DEP_ELEC";
+    else if (a.name.includes("depósito gas")) type = "DEP_GAS";
+    else if (a.name.includes("depósito solar")) type = "DEP_SOLAR";
+    else if (a.name.includes("de paso gas") || a.name.includes("paso gas")) type = "PASO_GAS";
+    else if (a.name.includes("de paso eléctrico") || a.name.includes("paso eléctrico")) type = "PASO_ELEC";
+    let capacity = "60L";
+    const capM = a.name.match(/(\d+L\+?)/);
+    if (capM) capacity = capM[1];
+    let services = "1";
+    const svcM = a.name.match(/(\d+)\s*servicio/);
+    if (svcM) services = svcM[1];
+    return { type, capacity, services };
+  });
+}
+
+function inferBedroomEqFromAssets(assets: LegacyAsset[], sfx: string): BedroomEq {
+  const b = { ...DEFAULT_BEDROOM_EQ };
+  const ends = (n: string) => n.endsWith(`- ${sfx}`);
+  if (assets.some(a => a.name === `Baño privado - ${sfx}`)) b.hasOwnBath = true;
+  if (assets.some(a => a.name.includes("Regadera normal") && ends(a.name))) b.shower = "NORMAL";
+  else if (assets.some(a => a.name.includes("Regadera eléctrica") && ends(a.name))) b.shower = "ELECTRIC";
+  else if (assets.some(a => a.name.includes("Regadera lluvia") && ends(a.name))) b.shower = "RAIN";
+  if (assets.some(a => a.name === `Tina - ${sfx}`)) b.hasTub = true;
+  if (assets.some(a => a.name === `Jacuzzi - ${sfx}`)) b.hasJacuzzi = true;
+  b.ac = inferAcFromAssets(assets, sfx);
+  if (assets.some(a => a.asset_type === "FAN" && ends(a.name))) b.fan = "YES";
+  if (assets.some(a => a.name === `Televisión - ${sfx}`)) b.tv = "YES";
+  const bedA = assets.find(a => ends(a.name) && (a.name.includes("Cama") || a.name.includes("Litera")));
+  if (bedA) {
+    if (bedA.name.includes("king")) b.bed = "KING";
+    else if (bedA.name.includes("queen")) b.bed = "QUEEN";
+    else if (bedA.name.includes("matrimonial")) b.bed = "MATRIMONIAL";
+    else if (bedA.name.includes("individual")) {
+      b.bed = "INDIVIDUAL";
+      const cm = bedA.name.match(/× (\d+)/); if (cm) b.bedCount = parseInt(cm[1]);
+    }
+    else if (bedA.name.includes("Litera")) b.bed = "LITERA";
+  }
+  const closetA = assets.find(a => ends(a.name) &&
+    (a.name.includes("Walk-in") || a.name.includes("Closet") || a.name.includes("Armario")));
+  if (closetA) {
+    if (closetA.name.includes("Walk-in")) b.closet = "WALK_IN";
+    else if (closetA.name.includes("Armario")) b.closet = "ARMARIO";
+    else b.closet = "CLOSET";
+  }
+  return b;
+}
+
+function inferWizardStateFromLegacy(
+  db: {
+    bedrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean;
+    has_fridge: boolean; has_washer: boolean; has_dryer: boolean; stove_type: string;
+  },
+  assets: LegacyAsset[]
+): { s2: Step2; eq: Equipment } {
+  const hasCocina = db.stove_type !== "NONE" || db.has_fridge
+    || assets.some(a => a.asset_type === "STOVE" || a.asset_type === "FRIDGE"
+        || a.name.endsWith("- Cocina") || a.name.includes("Cocina"));
+  const hasLavanderia = db.has_washer || db.has_dryer
+    || assets.some(a => a.asset_type === "WASHER" || a.asset_type === "DRYER"
+        || (a.asset_type === "BOILER" && a.name.includes("Lavandería")));
+  const hasCuartoServicio = assets.some(a => a.name.includes("Cuarto de servicio"));
+  const hasCuartoMaquinas = assets.some(a => a.name.includes("Cuarto de máquinas"));
+
+  const s2: Step2 = {
+    ...S2,
+    hasSala: db.has_living_room, hasComedor: db.has_dining_room, hasPatio: db.has_patio,
+    bedrooms: db.bedrooms, hasCocina, hasLavanderia, hasCuartoServicio, hasCuartoMaquinas,
+  };
+
+  const eq: Equipment = JSON.parse(JSON.stringify(DEFAULT_EQ));
+
+  // Bedrooms
+  eq.bedrooms = Array.from({ length: db.bedrooms }, (_, i) => {
+    const sfx = db.bedrooms > 1 ? `Recámara ${i + 1}` : "Recámara";
+    return inferBedroomEqFromAssets(assets, sfx);
+  });
+
+  // Cuarto de servicio
+  if (hasCuartoServicio) eq.cuartoServicio = inferBedroomEqFromAssets(assets, "Cuarto de servicio");
+
+  // Sala
+  if (db.has_living_room) {
+    const sala = { ...DEFAULT_EQ.sala };
+    sala.ac = inferAcFromAssets(assets, "Sala");
+    if (assets.some(a => a.asset_type === "FAN" && a.name.endsWith("- Sala"))) sala.fan = "YES";
+    if (assets.some(a => a.name === "Baño de visitas completo - Sala")) {
+      sala.guestBath = "FULL";
+      if (assets.some(a => a.name.includes("Regadera normal") && a.name.endsWith("- Sala"))) sala.guestBathShower = "NORMAL";
+      else if (assets.some(a => a.name.includes("Regadera eléctrica") && a.name.endsWith("- Sala"))) sala.guestBathShower = "ELECTRIC";
+      else if (assets.some(a => a.name.includes("Regadera lluvia") && a.name.endsWith("- Sala"))) sala.guestBathShower = "RAIN";
+      if (assets.some(a => a.name === "Tina - Sala")) sala.guestBathHasTub = true;
+      if (assets.some(a => a.name === "Jacuzzi - Sala")) sala.guestBathHasJacuzzi = true;
+    } else if (assets.some(a => a.name === "Medio baño de visitas - Sala")) {
+      sala.guestBath = "HALF";
+    }
+    const furMap: Record<string, string> = { "Juego de sala": "SALA", "Televisión - Sala": "TV", "Mesa de centro - Sala": "MESA_CENTRO" };
+    sala.furniture = Object.entries(furMap).filter(([n]) => assets.some(a => a.name === n)).map(([, v]) => v);
+    eq.sala = sala;
+  }
+
+  // Cocina
+  if (hasCocina) {
+    const cocina = { ...DEFAULT_EQ.cocina };
+    cocina.ac = inferAcFromAssets(assets, "Cocina");
+    const stoveA = assets.find(a => a.asset_type === "STOVE");
+    if (stoveA) {
+      const n = stoveA.name;
+      if (n.includes("gas")) { cocina.stoveType = "GAS"; }
+      else if (n.includes("eléctrica") || n.includes("electrica")) { cocina.stoveType = "ELECTRIC"; }
+      else if (n.toLowerCase().includes("nducción")) { cocina.stoveType = "INDUCTION"; }
+      const bm = n.match(/(\d)\s*quemadores/);
+      if (bm) cocina.stoveBurners = bm[1] === "2" ? "2Q" : bm[1] === "4" ? "4Q" : "6Q";
+      if (n.includes("zonas")) cocina.stoveBurners = "ZONAS";
+    } else {
+      cocina.stoveType = db.stove_type === "GAS" ? "GAS" : db.stove_type === "ELECTRIC" ? "ELECTRIC" : db.stove_type === "INDUCTION" ? "INDUCTION" : "NONE";
+    }
+    const fridgeA = assets.find(a => a.asset_type === "FRIDGE");
+    if (fridgeA) {
+      cocina.fridge = fridgeA.name.includes("Frigobar") ? "FRIGOBAR" : "FRIDGE";
+      const fm = fridgeA.name.match(/^(?:Refrigerador|Frigobar)\s*-\s*(.+)$/);
+      if (fm) cocina.fridgeModel = fm[1];
+    } else if (db.has_fridge) {
+      cocina.fridge = "FRIDGE";
+    }
+    if (assets.some(a => a.name === "Horno gas")) cocina.oven = "GAS";
+    else if (assets.some(a => a.name === "Horno eléctrico")) cocina.oven = "ELECTRIC";
+    const others: string[] = [];
+    if (assets.some(a => a.name === "Microondas")) others.push("MICROWAVE");
+    if (assets.some(a => a.name === "Lavavajillas")) others.push("DISHWASHER");
+    if (assets.some(a => a.name === "Campana extractora")) others.push("EXTRACTOR");
+    cocina.others = others;
+    if (assets.some(a => a.name === "Medio baño - Cocina")) cocina.hasHalfBath = true;
+    eq.cocina = cocina;
+  }
+
+  // Lavandería
+  if (hasLavanderia) {
+    const lav = { ...DEFAULT_EQ.lavanderia };
+    lav.boilers = inferBoilersFromAssets(assets, "Lavandería");
+    if (assets.some(a => a.name.includes("Centro de lavado vertical"))) {
+      lav.centroCarga = "YES";
+    } else {
+      if (assets.some(a => a.asset_type === "WASHER") || db.has_washer) lav.washer = "YES";
+      if (assets.some(a => a.asset_type === "DRYER" && a.name.toLowerCase().includes("gas"))) lav.dryer = "GAS";
+      else if (assets.some(a => a.asset_type === "DRYER") || db.has_dryer) lav.dryer = "ELECTRIC";
+    }
+    eq.lavanderia = lav;
+  }
+
+  // Cuarto de máquinas
+  if (hasCuartoMaquinas) {
+    eq.cuartoMaquinas = { boilers: inferBoilersFromAssets(assets, "Cuarto de máquinas") };
+    if (eq.cuartoMaquinas.boilers.length === 0) {
+      eq.cuartoMaquinas.boilers = [{ type: "DEP_GAS", capacity: "60L", services: "1" }];
+    }
+  }
+
+  // Comedor
+  if (db.has_dining_room) {
+    eq.comedor = { ...DEFAULT_EQ.comedor };
+    eq.comedor.ac = inferAcFromAssets(assets, "Comedor");
+    if (assets.some(a => a.name === "Comedor completo")) eq.comedor.furniture = "COMEDOR_COMPLETO";
+    else if (assets.some(a => a.name === "Solo mesa")) eq.comedor.furniture = "SOLO_MESA";
+    else if (assets.some(a => a.name === "Mesa y sillas")) eq.comedor.furniture = "MESA_SILLAS";
+  }
+
+  return { s2, eq };
+}
 
 /* ─── Space group definitions ────────────────────────────────────────── */
 
@@ -830,30 +1033,16 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
   useEffect(() => {
     if (open && editTypology) {
       setS1({ name: editTypology.name, sqm: "", description: "" });
-      setS2((prev) => ({
-        ...prev,
-        hasSala:    editTypology.has_living_room,
-        hasComedor: editTypology.has_dining_room,
-        hasPatio:   editTypology.has_patio,
-        bedrooms:   editTypology.bedrooms,
-      }));
-      setEq((prev) => ({
-        ...JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment,
-        cocina: {
-          ...DEFAULT_EQ.cocina,
-          stoveType: editTypology.stove_type === "GAS" ? "GAS"
-            : editTypology.stove_type === "ELECTRIC" ? "ELECTRIC"
-            : editTypology.stove_type === "INDUCTION" ? "INDUCTION"
-            : "NONE",
-          fridge: editTypology.has_fridge ? "FRIDGE" : "NONE",
-        },
-        lavanderia: {
-          ...DEFAULT_EQ.lavanderia,
-          washer: editTypology.has_washer ? "YES" : "NO",
-          dryer:  editTypology.has_dryer  ? "ELECTRIC" : "NONE",
-        },
-        bedrooms: Array.from({ length: editTypology.bedrooms }, () => ({ ...DEFAULT_BEDROOM_EQ })),
-      }));
+      if (editTypology.wizard_state?.s2 && editTypology.wizard_state?.eq) {
+        // Full fidelity restore from persisted state
+        setS2(editTypology.wizard_state.s2);
+        setEq(editTypology.wizard_state.eq);
+      } else {
+        // Legacy: infer spaces and equipment from unit_type_assets + columns
+        const inferred = inferWizardStateFromLegacy(editTypology, editTypology.assets ?? []);
+        setS2(inferred.s2);
+        setEq(inferred.eq);
+      }
       setDraftFound(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -863,30 +1052,14 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
   useEffect(() => {
     if (open && duplicateFrom) {
       setS1({ name: `${duplicateFrom.name} (copia)`, sqm: "", description: "" });
-      setS2((prev) => ({
-        ...prev,
-        hasSala:    duplicateFrom.has_living_room,
-        hasComedor: duplicateFrom.has_dining_room,
-        hasPatio:   duplicateFrom.has_patio,
-        bedrooms:   duplicateFrom.bedrooms,
-      }));
-      setEq(() => ({
-        ...JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment,
-        cocina: {
-          ...DEFAULT_EQ.cocina,
-          stoveType: duplicateFrom.stove_type === "GAS" ? "GAS"
-            : duplicateFrom.stove_type === "ELECTRIC" ? "ELECTRIC"
-            : duplicateFrom.stove_type === "INDUCTION" ? "INDUCTION"
-            : "NONE",
-          fridge: duplicateFrom.has_fridge ? "FRIDGE" : "NONE",
-        },
-        lavanderia: {
-          ...DEFAULT_EQ.lavanderia,
-          washer: duplicateFrom.has_washer ? "YES" : "NO",
-          dryer:  duplicateFrom.has_dryer  ? "ELECTRIC" : "NONE",
-        },
-        bedrooms: Array.from({ length: duplicateFrom.bedrooms }, () => ({ ...DEFAULT_BEDROOM_EQ })),
-      }));
+      if (duplicateFrom.wizard_state?.s2 && duplicateFrom.wizard_state?.eq) {
+        setS2(duplicateFrom.wizard_state.s2);
+        setEq(duplicateFrom.wizard_state.eq);
+      } else {
+        const inferred = inferWizardStateFromLegacy(duplicateFrom, duplicateFrom.assets ?? []);
+        setS2(inferred.s2);
+        setEq(inferred.eq);
+      }
       setDraftFound(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1008,7 +1181,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
   async function handleCreate() {
     if (!buildingId) return;
     setSaving(true);
-    const payload = { building_id: buildingId, company_id: companyId, ...buildPayload() };
+    const payload = { building_id: buildingId, company_id: companyId, ...buildPayload(), wizard_state: { s2, eq } };
     const { data: inserted, error } = await supabase.from("unit_types").insert(payload).select("id").single();
     if (error || !inserted) { toast.error(error?.message ?? "Error creando tipología"); setSaving(false); return; }
     const assetRows = buildAssetRows(s2, eq);
@@ -1023,7 +1196,9 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, editT
   async function handleEdit() {
     if (!editTypology) return;
     setSaving(true);
-    const { error } = await supabase.from("unit_types").update(buildPayload()).eq("id", editTypology.id);
+    const { error } = await supabase.from("unit_types")
+      .update({ ...buildPayload(), wizard_state: { s2, eq } })
+      .eq("id", editTypology.id);
     if (error) { toast.error(error.message ?? "Error actualizando tipología"); setSaving(false); return; }
     await supabase.from("unit_type_assets").delete().eq("unit_type_id", editTypology.id);
     const assetRows = buildAssetRows(s2, eq);

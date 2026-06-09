@@ -281,6 +281,7 @@ type UnitTypeForTab = {
   stove_type: string;
   asset_template_count: number;
   assets: UnitTypeAsset[];
+  wizard_state?: unknown;
   /* Commercial fields */
   sqm_min: number | null;
   sqm_max: number | null;
@@ -1820,11 +1821,11 @@ export default function BuildingDetailPage() {
     if (!buildingId) return;
     const { data: utData } = await supabase
       .from("unit_types")
-      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, has_fridge, has_washer, has_dryer, stove_type, sqm_min, sqm_max, entrega, has_ac, has_electricity_220, has_three_phase, has_gas_line, has_water_meter, has_network, sqm_bodega, sqm_oficina, sqm_patio, altura_libre, capacidad_electrica, acceso_tipo")
+      .select("id, name, bedrooms, bathrooms, has_living_room, has_dining_room, has_patio, has_fridge, has_washer, has_dryer, stove_type, wizard_state, sqm_min, sqm_max, entrega, has_ac, has_electricity_220, has_three_phase, has_gas_line, has_water_meter, has_network, sqm_bodega, sqm_oficina, sqm_patio, altura_libre, capacidad_electrica, acceso_tipo")
       .eq("building_id", buildingId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false });
-    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; has_fridge: boolean; has_washer: boolean; has_dryer: boolean; stove_type: string; sqm_min: number | null; sqm_max: number | null; entrega: string | null; has_ac: boolean; has_electricity_220: boolean; has_three_phase: boolean; has_gas_line: boolean; has_water_meter: boolean; has_network: boolean; sqm_bodega: number | null; sqm_oficina: number | null; sqm_patio: number | null; altura_libre: number | null; capacidad_electrica: string | null; acceso_tipo: string | null }>;
+    const rows = (utData || []) as Array<{ id: string; name: string; bedrooms: number; bathrooms: number; has_living_room: boolean; has_dining_room: boolean; has_patio: boolean; has_fridge: boolean; has_washer: boolean; has_dryer: boolean; stove_type: string; wizard_state?: unknown; sqm_min: number | null; sqm_max: number | null; entrega: string | null; has_ac: boolean; has_electricity_220: boolean; has_three_phase: boolean; has_gas_line: boolean; has_water_meter: boolean; has_network: boolean; sqm_bodega: number | null; sqm_oficina: number | null; sqm_patio: number | null; altura_libre: number | null; capacidad_electrica: string | null; acceso_tipo: string | null }>;
     const ids = rows.map((r) => r.id);
     let assetsMap: Record<string, UnitTypeAsset[]> = {};
     if (ids.length > 0) {
@@ -3999,6 +4000,8 @@ export default function BuildingDetailPage() {
                                   has_patio: ut.has_patio, has_fridge: ut.has_fridge,
                                   has_washer: ut.has_washer, has_dryer: ut.has_dryer,
                                   stove_type: ut.stove_type,
+                                  assets: ut.assets,
+                                  wizard_state: ut.wizard_state as EditTypologyData["wizard_state"],
                                 });
                                 setOpenActionsUnitTypeIdTab(null);
                               }}
@@ -4016,6 +4019,8 @@ export default function BuildingDetailPage() {
                                   has_patio: ut.has_patio, has_fridge: ut.has_fridge,
                                   has_washer: ut.has_washer, has_dryer: ut.has_dryer,
                                   stove_type: ut.stove_type,
+                                  assets: ut.assets,
+                                  wizard_state: ut.wizard_state as EditTypologyData["wizard_state"],
                                 });
                                 setOpenActionsUnitTypeIdTab(null);
                               }}
