@@ -16,6 +16,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser } from "@/contexts/UserContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
+import { getSignedUrl } from "@/lib/storage";
 import { type QuickLink, getAllowedModules, getDefaultQuickLinks, ICON_MAP } from "@/lib/quick-links";
 
 import AppBadge from "@/components/AppBadge";
@@ -253,6 +254,9 @@ export default function SettingsPage() {
   const [mLogoUrl, setMLogoUrl] = useState("");
   const [mLogoDarkUrl, setMLogoDarkUrl] = useState("");
   const [mLogoGroupUrl, setMLogoGroupUrl] = useState("");
+  const [mLogoDisplayUrl, setMLogoDisplayUrl] = useState("");
+  const [mLogoDarkDisplayUrl, setMLogoDarkDisplayUrl] = useState("");
+  const [mLogoGroupDisplayUrl, setMLogoGroupDisplayUrl] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [logoDarkFile, setLogoDarkFile] = useState<File | null>(null);
   const [logoGroupFile, setLogoGroupFile] = useState<File | null>(null);
@@ -391,6 +395,9 @@ export default function SettingsPage() {
       setMLogoUrl(data.logo_url ?? "");
       setMLogoDarkUrl(data.logo_dark_url ?? "");
       setMLogoGroupUrl(data.logo_group_url ?? "");
+      if (data.logo_url) getSignedUrl("company-assets", data.logo_url).then(u => setMLogoDisplayUrl(u ?? ""));
+      if (data.logo_dark_url) getSignedUrl("company-assets", data.logo_dark_url).then(u => setMLogoDarkDisplayUrl(u ?? ""));
+      if (data.logo_group_url) getSignedUrl("company-assets", data.logo_group_url).then(u => setMLogoGroupDisplayUrl(u ?? ""));
       setGroupId(data.group_id ?? null);
       if (data.group_id) {
         const { data: grp } = await supabase
@@ -533,6 +540,8 @@ export default function SettingsPage() {
     setSavingI(false);
     if (error) { toast.error("Error al guardar"); return; }
     setMLogoUrl(logoUrl); setMLogoDarkUrl(logoDarkUrl);
+    if (logoUrl) getSignedUrl("company-assets", logoUrl).then(u => setMLogoDisplayUrl(u ?? ""));
+    if (logoDarkUrl) getSignedUrl("company-assets", logoDarkUrl).then(u => setMLogoDarkDisplayUrl(u ?? ""));
     setLogoFile(null); setLogoDarkFile(null);
     setLogoPreview(""); setLogoDarkPreview("");
     toast.success("Identidad visual guardada");
@@ -542,8 +551,7 @@ export default function SettingsPage() {
     const ext = file.name.split(".").pop();
     const path = `groups/${company!.id}/logo_group.${ext}`;
     await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
-    const { data: pub } = supabase.storage.from("company-assets").getPublicUrl(path);
-    return pub.publicUrl;
+    return path;
   }
 
   function handleLogoGroupInput(e: React.ChangeEvent<HTMLInputElement>) {
@@ -566,6 +574,7 @@ export default function SettingsPage() {
     setSavingGroup(false);
     if (error) { toast.error("Error al guardar"); return; }
     setMLogoGroupUrl(logoGroupUrl);
+    if (logoGroupUrl) getSignedUrl("company-assets", logoGroupUrl).then(u => setMLogoGroupDisplayUrl(u ?? ""));
     setLogoGroupFile(null); setLogoGroupPreview("");
     toast.success("Logo de grupo guardado");
   }
@@ -574,8 +583,7 @@ export default function SettingsPage() {
     const ext = file.name.split(".").pop();
     const path = `logos/${company!.id}/logo${dark ? "_dark" : ""}.${ext}`;
     await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
-    const { data: pub } = supabase.storage.from("company-assets").getPublicUrl(path);
-    return pub.publicUrl;
+    return path;
   }
 
   async function saveMarca() {
@@ -591,6 +599,8 @@ export default function SettingsPage() {
     setSavingM(false);
     if (error) { toast.error("Error al guardar"); return; }
     setMLogoUrl(logoUrl); setMLogoDarkUrl(logoDarkUrl);
+    if (logoUrl) getSignedUrl("company-assets", logoUrl).then(u => setMLogoDisplayUrl(u ?? ""));
+    if (logoDarkUrl) getSignedUrl("company-assets", logoDarkUrl).then(u => setMLogoDarkDisplayUrl(u ?? ""));
     setLogoFile(null); setLogoDarkFile(null);
     setLogoPreview(""); setLogoDarkPreview("");
     toast.success("Marca guardada");
@@ -845,8 +855,8 @@ export default function SettingsPage() {
               <SubSectionTitle title="Logos" />
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "1rem", marginBottom: "1.75rem" }}>
                 {([
-                  { label: "Logo principal", hint: "Sobre fondo claro", preview: logoPreview || mLogoUrl, dark: false, bg: "#ffffff", emptyColor: "#6b7280", ref: logoInputRef },
-                  { label: "Logo modo oscuro", hint: "Sobre fondo oscuro", preview: logoDarkPreview || mLogoDarkUrl, dark: true, bg: "#111827", emptyColor: "#9ca3af", ref: logoDarkInputRef },
+                  { label: "Logo principal", hint: "Sobre fondo claro", preview: logoPreview || mLogoDisplayUrl, dark: false, bg: "#ffffff", emptyColor: "#6b7280", ref: logoInputRef },
+                  { label: "Logo modo oscuro", hint: "Sobre fondo oscuro", preview: logoDarkPreview || mLogoDarkDisplayUrl, dark: true, bg: "#111827", emptyColor: "#9ca3af", ref: logoDarkInputRef },
                 ] as const).map(({ label, hint, preview, dark, bg, emptyColor, ref }) => (
                   <div key={String(dark)}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
@@ -970,10 +980,10 @@ export default function SettingsPage() {
                     minHeight: 120, display: "flex", alignItems: "center", justifyContent: "center",
                     overflow: "hidden",
                   }}>
-                    {(logoGroupPreview || mLogoGroupUrl) ? (
+                    {(logoGroupPreview || mLogoGroupDisplayUrl) ? (
                       <>
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={logoGroupPreview || mLogoGroupUrl} alt="" style={{ maxWidth: "80%", maxHeight: 100, objectFit: "contain", display: "block" }} />
+                        <img src={logoGroupPreview || mLogoGroupDisplayUrl} alt="" style={{ maxWidth: "80%", maxHeight: 100, objectFit: "contain", display: "block" }} />
                         <button
                           type="button"
                           onClick={() => { setLogoGroupFile(null); setLogoGroupPreview(""); setMLogoGroupUrl(""); }}

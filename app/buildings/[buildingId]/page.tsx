@@ -152,7 +152,7 @@ import BuildingServicesTab from "@/components/BuildingServicesTab";
 import type { UtilityServiceType } from "@/lib/types";
 import { SERVICE_TYPE_LABEL } from "@/lib/types";
 import { sortByNatural } from "@/lib/sort-utils";
-import UnitTypeWizardModal from "@/components/UnitTypeWizardModal";
+import UnitTypeWizardModal, { type EditTypologyData } from "@/components/UnitTypeWizardModal";
 import CommercialTypologyModal from "@/components/CommercialTypologyModal";
 import IndustrialTypologyModal from "@/components/IndustrialTypologyModal";
 
@@ -1208,13 +1208,7 @@ export default function BuildingDetailPage() {
   const [typologiesTabLoaded, setTypologiesTabLoaded] = useState(false);
   const [isTypologiesWizardOpen, setIsTypologiesWizardOpen] = useState(false);
   const [openActionsUnitTypeIdTab, setOpenActionsUnitTypeIdTab] = useState<string | null>(null);
-  const [editUTModal, setEditUTModal] = useState<UnitTypeForTab | null>(null);
-  const [editUTName, setEditUTName] = useState("");
-  const [editUTBedrooms, setEditUTBedrooms] = useState(1);
-  const [editUTBathrooms, setEditUTBathrooms] = useState(1);
-  const [editUTStoveType, setEditUTStoveType] = useState<"NONE" | "GAS" | "ELECTRIC">("NONE");
-  const [editUTMsg, setEditUTMsg] = useState("");
-  const [savingUnitTypeEdit, setSavingUnitTypeEdit] = useState(false);
+  const [editUTModal, setEditUTModal] = useState<EditTypologyData | null>(null);
   const [deleteUTTarget, setDeleteUTTarget] = useState<UnitTypeForTab | null>(null);
   const [deletingUT, setDeletingUT] = useState(false);
 
@@ -3997,12 +3991,14 @@ export default function BuildingDetailPage() {
                             <button
                               type="button"
                               onClick={() => {
-                                setEditUTModal(ut);
-                                setEditUTName(ut.name);
-                                setEditUTBedrooms(ut.bedrooms);
-                                setEditUTBathrooms(ut.bathrooms);
-                                setEditUTStoveType(ut.stove_type as "NONE" | "GAS" | "ELECTRIC");
-                                setEditUTMsg("");
+                                setEditUTModal({
+                                  id: ut.id, name: ut.name,
+                                  bedrooms: ut.bedrooms, bathrooms: ut.bathrooms,
+                                  has_living_room: ut.has_living_room, has_dining_room: ut.has_dining_room,
+                                  has_patio: ut.has_patio, has_fridge: ut.has_fridge,
+                                  has_washer: ut.has_washer, has_dryer: ut.has_dryer,
+                                  stove_type: ut.stove_type,
+                                });
                                 setOpenActionsUnitTypeIdTab(null);
                               }}
                               style={dropdownActionButtonStyle}
@@ -7057,65 +7053,19 @@ export default function BuildingDetailPage() {
         );
       })()}
 
-      {/* ── Modal editar tipología (tab Tipologías) ── */}
-      <Modal
+      {/* ── Wizard editar tipología (tab Tipologías) ── */}
+      <UnitTypeWizardModal
         open={editUTModal !== null}
-        onClose={() => { if (!savingUnitTypeEdit) { setEditUTModal(null); setEditUTMsg(""); } }}
-        title="Editar tipología"
-      >
-        {editUTMsg ? <p style={errorBannerStyle}>{editUTMsg}</p> : null}
-        <AppFormField label="Nombre" required>
-          <input
-            value={editUTName}
-            onChange={(e) => setEditUTName(e.target.value)}
-            placeholder="Ej. Tipo A"
-            style={INPUT_STYLE}
-          />
-        </AppFormField>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <AppFormField label="Recámaras">
-            <input type="number" min={0} value={editUTBedrooms} onChange={(e) => setEditUTBedrooms(Number(e.target.value))} style={INPUT_STYLE} />
-          </AppFormField>
-          <AppFormField label="Baños">
-            <input type="number" min={0} value={editUTBathrooms} onChange={(e) => setEditUTBathrooms(Number(e.target.value))} style={INPUT_STYLE} />
-          </AppFormField>
-        </div>
-        <AppFormField label="Tipo de estufa">
-          <AppSelect value={editUTStoveType} onChange={(e) => setEditUTStoveType(e.target.value as "NONE" | "GAS" | "ELECTRIC")}>
-            <option value="NONE">Sin estufa</option>
-            <option value="GAS">Gas</option>
-            <option value="ELECTRIC">Eléctrica</option>
-          </AppSelect>
-        </AppFormField>
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 16 }}>
-          <UiButton variant="secondary" onClick={() => { setEditUTModal(null); setEditUTMsg(""); }} disabled={savingUnitTypeEdit}>Cancelar</UiButton>
-          <UiButton
-            variant="primary"
-            disabled={savingUnitTypeEdit || !editUTName.trim()}
-            onClick={async () => {
-              if (!editUTModal || !editUTName.trim()) return;
-              setSavingUnitTypeEdit(true);
-              const { error } = await supabase
-                .from("unit_types")
-                .update({ name: editUTName.trim(), bedrooms: editUTBedrooms, bathrooms: editUTBathrooms, stove_type: editUTStoveType })
-                .eq("id", editUTModal.id)
-                .eq("building_id", buildingId);
-              if (error) {
-                setEditUTMsg(error.message);
-                setSavingUnitTypeEdit(false);
-                return;
-              }
-              setEditUTModal(null);
-              setSavingUnitTypeEdit(false);
-              setTypologiesTabLoaded(false);
-              await loadTypologiesTabData();
-              toast.success("Tipología actualizada");
-            }}
-          >
-            {savingUnitTypeEdit ? "Guardando..." : "Guardar cambios"}
-          </UiButton>
-        </div>
-      </Modal>
+        buildingId={building?.id ?? ""}
+        companyId={building?.company_id ?? ""}
+        editTypology={editUTModal}
+        onClose={() => setEditUTModal(null)}
+        onSuccess={async () => {
+          setEditUTModal(null);
+          setTypologiesTabLoaded(false);
+          await loadTypologiesTabData();
+        }}
+      />
 
       {/* ── Modal eliminar tipología (tab Tipologías) ── */}
       <DeleteConfirmModal

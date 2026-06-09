@@ -137,8 +137,7 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "SISTEMA",
     items: [
-      { label: "Ajustes del sistema", href: "/settings",  icon: Settings, notifModules: ["configuracion"] },
-      { label: "Feedback",      href: "/feedback",   icon: MessageSquare },
+      { label: "Feedback", href: "/feedback", icon: MessageSquare },
     ],
   },
 ];

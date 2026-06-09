@@ -617,7 +617,7 @@ export default function BuildingUnitsPage() {
         building_id:  building.id,
         unit_number:  unitNum,
         display_code: displayCode,
-        floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
+        floor:        data.floor && data.floor.trim() && !isNaN(Number(data.floor)) ? Number(data.floor) : null,
         status:       "VACANT",
         needs_review: isBulk,
       };
@@ -799,7 +799,7 @@ export default function BuildingUnitsPage() {
       .update({
         unit_number:  data.unitNumber.trim(),
         display_code: displayCode,
-        floor:        data.floor && data.floor.trim() ? Number(data.floor) : null,
+        floor:        data.floor && data.floor.trim() && !isNaN(Number(data.floor)) ? Number(data.floor) : null,
         unit_type_id: data.unitTypeId || editingUnit.unit_type_id,
       })
       .eq("id", editingUnit.id)
@@ -1010,7 +1010,8 @@ export default function BuildingUnitsPage() {
                         width: 18,
                         height: 18,
                         borderRadius: "50%",
-                        background: "var(--metric-bg-amber)",
+                        background: "var(--badge-text-amber)",
+                        border: "2px solid var(--bg-card)",
                         zIndex: 10,
                         pointerEvents: "none",
                       }}
@@ -1138,9 +1139,9 @@ export default function BuildingUnitsPage() {
             </AppFormField>
             <AppFormField label="Piso">
               <input
-                type="number" min={0}
+                type="text" maxLength={4}
                 {...editForm.register("floor")}
-                placeholder="Ej. 1" style={INPUT_STYLE}
+                placeholder="Ej. 1, PB, PA" style={INPUT_STYLE}
               />
             </AppFormField>
           </div>
@@ -1293,7 +1294,7 @@ export default function BuildingUnitsPage() {
                   {createForm.formState.errors.unitTypeId ? <p style={errorTextStyle}>{createForm.formState.errors.unitTypeId.message}</p> : null}
                 </AppFormField>
                 <AppFormField label="Piso">
-                  <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
+                  <input type="text" maxLength={4} {...createForm.register("floor")} placeholder="Ej. 1, PB, PA" style={INPUT_STYLE} />
                 </AppFormField>
               </div>
               {selectedTypeForCreate ? <TypePreview type={selectedTypeForCreate} /> : null}
@@ -1314,7 +1315,7 @@ export default function BuildingUnitsPage() {
                 </AppFormField>
                 {getCommercialFieldConfig(building.building_subtype).showFloor && (
                   <AppFormField label="Piso">
-                    <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
+                    <input type="text" maxLength={4} {...createForm.register("floor")} placeholder="Ej. 1, PB, PA" style={INPUT_STYLE} />
                   </AppFormField>
                 )}
               </div>
@@ -1361,7 +1362,7 @@ export default function BuildingUnitsPage() {
                   Total: <strong>{total > 0 ? `${total.toLocaleString("es-MX")} m²` : "—"}</strong>
                 </p>
                 <AppFormField label="Piso">
-                  <input type="number" min={0} {...createForm.register("floor")} placeholder="Ej. 1" style={INPUT_STYLE} />
+                  <input type="text" maxLength={4} {...createForm.register("floor")} placeholder="Ej. 1, PB, PA" style={INPUT_STYLE} />
                 </AppFormField>
               </>
             );

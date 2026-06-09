@@ -14,8 +14,23 @@ import toast from "react-hot-toast";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 
+export interface EditTypologyData {
+  id: string;
+  name: string;
+  bedrooms: number;
+  bathrooms: number;
+  has_living_room: boolean;
+  has_dining_room: boolean;
+  has_patio: boolean;
+  has_fridge: boolean;
+  has_washer: boolean;
+  has_dryer: boolean;
+  stove_type: string;
+}
+
 interface Props {
   open: boolean; buildingId: string; companyId: string;
+  editTypology?: EditTypologyData | null;
   onClose: () => void; onSuccess: () => void;
 }
 
@@ -33,7 +48,7 @@ type BedroomEq = {
   bed: string; bedCount: number; closet: string; tv: string; furnitureOther: string[];
   hasOwnBath: boolean; shower: string; hasTub: boolean; hasJacuzzi: boolean;
 };
-type SalaEq = { ac: string; fan: string; furniture: string[]; furnitureOther: string[]; guestBath: string; guestBathShower: string };
+type SalaEq = { ac: string; fan: string; furniture: string[]; furnitureOther: string[]; guestBath: string; guestBathShower: string; guestBathHasTub: boolean; guestBathHasJacuzzi: boolean };
 type CocinaEq = {
   ac: string; hasHalfBath: boolean;
   stoveType: string; stoveBurners: string; oven: string;
@@ -82,7 +97,7 @@ const DEFAULT_BEDROOM_EQ: BedroomEq = {
 const DEFAULT_EQ: Equipment = {
   bedrooms: [{ ...DEFAULT_BEDROOM_EQ }],
   cuartoServicio: { ...DEFAULT_BEDROOM_EQ },
-  sala: { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [], guestBath: "NONE", guestBathShower: "NONE" },
+  sala: { ac: "NONE", fan: "NO", furniture: [], furnitureOther: [], guestBath: "NONE", guestBathShower: "NONE", guestBathHasTub: false, guestBathHasJacuzzi: false },
   cocina: { ac: "NONE", hasHalfBath: false, stoveType: "NONE", stoveBurners: "4Q", oven: "NONE", fridge: "NONE", fridgeModel: "", others: [] },
   lavanderia: { boilers: [], centroCarga: "NO", washer: "NO", dryer: "NONE" },
   cuartoMaquinas: { boilers: [{ type: "DEP_GAS", capacity: "60L", services: "1" }] },
@@ -464,8 +479,10 @@ function buildAssetRows(s2: Step2, eq: Equipment): AssetRow[] {
     for (const f of eq.sala.furnitureOther) add("OTHER", `${f} - Sala`);
     if (eq.sala.guestBath !== "NONE") {
       add("OTHER", eq.sala.guestBath === "FULL" ? "Baño de visitas completo - Sala" : "Medio baño de visitas - Sala");
-      if (eq.sala.guestBath === "FULL" && eq.sala.guestBathShower !== "NONE" && SHOWER_LABEL[eq.sala.guestBathShower]) {
-        add("OTHER", `${SHOWER_LABEL[eq.sala.guestBathShower]} - Sala`);
+      if (eq.sala.guestBath === "FULL") {
+        if (eq.sala.guestBathShower !== "NONE" && SHOWER_LABEL[eq.sala.guestBathShower]) add("OTHER", `${SHOWER_LABEL[eq.sala.guestBathShower]} - Sala`);
+        if (eq.sala.guestBathHasTub) add("OTHER", "Tina - Sala");
+        if (eq.sala.guestBathHasJacuzzi) add("OTHER", "Jacuzzi - Sala");
       }
     }
   }
@@ -599,8 +616,10 @@ function buildSummaryGroups(s2: Step2, eq: Equipment): SummaryGroup[] {
     for (const f of eq.sala.furnitureOther) items.push(f);
     if (eq.sala.guestBath !== "NONE") {
       items.push(eq.sala.guestBath === "FULL" ? "Baño de visitas completo" : "Medio baño de visitas");
-      if (eq.sala.guestBath === "FULL" && eq.sala.guestBathShower !== "NONE" && SHOWER_LABEL[eq.sala.guestBathShower]) {
-        items.push(SHOWER_LABEL[eq.sala.guestBathShower]);
+      if (eq.sala.guestBath === "FULL") {
+        if (eq.sala.guestBathShower !== "NONE" && SHOWER_LABEL[eq.sala.guestBathShower]) items.push(SHOWER_LABEL[eq.sala.guestBathShower]);
+        if (eq.sala.guestBathHasTub) items.push("Tina");
+        if (eq.sala.guestBathHasJacuzzi) items.push("Jacuzzi");
       }
     }
     groups.push({ key: "sala", label: "Sala", Icon: Sofa, items });
@@ -773,7 +792,7 @@ function clearDraft(buildingId: string) {
 
 /* ─── Main component ─────────────────────────────────────────────────── */
 
-export default function UnitTypeWizardModal({ open, buildingId, companyId, onClose, onSuccess }: Props) {
+export default function UnitTypeWizardModal({ open, buildingId, companyId, editTypology, onClose, onSuccess }: Props) {
   const [step, setStep]           = useState(1);
   const [stepDir, setStepDir]     = useState<"left" | "right">("right");
   const [s1, setS1]               = useState<Step1>({ ...S1 });
@@ -798,15 +817,49 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     return () => { if (draftTimer.current) clearTimeout(draftTimer.current); };
   }, [open, buildingId, step, s1, s2, eq]);
 
-  /* Check for existing draft when modal opens */
+  /* Check for existing draft when modal opens (skip in edit mode) */
   useEffect(() => {
-    if (open && buildingId) {
+    if (open && buildingId && !editTypology) {
       const draft = loadDraftData(buildingId);
       if (draft && draft.s1.name.trim()) setDraftFound(true);
     }
-  }, [open, buildingId]);
+  }, [open, buildingId, editTypology]);
 
-  const STEP_TITLES = ["Nueva tipología — Información", "Nueva tipología — Espacios", "Nueva tipología — Equipamiento", "Nueva tipología — Resumen"];
+  /* Pre-populate wizard state when entering edit mode */
+  useEffect(() => {
+    if (open && editTypology) {
+      setS1({ name: editTypology.name, sqm: "", description: "" });
+      setS2((prev) => ({
+        ...prev,
+        hasSala:    editTypology.has_living_room,
+        hasComedor: editTypology.has_dining_room,
+        hasPatio:   editTypology.has_patio,
+        bedrooms:   editTypology.bedrooms,
+      }));
+      setEq((prev) => ({
+        ...JSON.parse(JSON.stringify(DEFAULT_EQ)) as Equipment,
+        cocina: {
+          ...DEFAULT_EQ.cocina,
+          stoveType: editTypology.stove_type === "GAS" ? "GAS"
+            : editTypology.stove_type === "ELECTRIC" ? "ELECTRIC"
+            : editTypology.stove_type === "INDUCTION" ? "INDUCTION"
+            : "NONE",
+          fridge: editTypology.has_fridge ? "FRIDGE" : "NONE",
+        },
+        lavanderia: {
+          ...DEFAULT_EQ.lavanderia,
+          washer: editTypology.has_washer ? "YES" : "NO",
+          dryer:  editTypology.has_dryer  ? "ELECTRIC" : "NONE",
+        },
+        bedrooms: Array.from({ length: editTypology.bedrooms }, () => ({ ...DEFAULT_BEDROOM_EQ })),
+      }));
+      setDraftFound(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, editTypology?.id]);
+
+  const prefix = editTypology ? "Editar tipología" : "Nueva tipología";
+  const STEP_TITLES = [`${prefix} — Información`, `${prefix} — Espacios`, `${prefix} — Equipamiento`, `${prefix} — Resumen`];
 
   const STEP_INPUT: React.CSSProperties = {
     width: "100%", padding: 10, border: "1px solid var(--border-default)",
@@ -900,10 +953,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
     setEq((prev) => ({ ...prev, comedor: { ...prev.comedor, [key]: val } }));
   }
 
-  /* ── Create ── */
-  async function handleCreate() {
-    if (!buildingId) return;
-    setSaving(true);
+  function buildPayload() {
     const showFuncionales = !s2.hasLavanderia && !s2.hasCuartoMaquinas;
     const hasWasher =
       (s2.hasLavanderia && (eq.lavanderia.centroCarga === "YES" || eq.lavanderia.washer === "YES")) ||
@@ -912,15 +962,19 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       (s2.hasLavanderia && eq.lavanderia.centroCarga !== "YES" && eq.lavanderia.dryer !== "NONE") ||
       (showFuncionales && eq.equiposFuncionales.centroCarga !== "YES" && eq.equiposFuncionales.dryer !== "NONE");
     const stoveType = eq.cocina.stoveType === "GAS" ? "GAS" : eq.cocina.stoveType === "ELECTRIC" ? "ELECTRIC" : eq.cocina.stoveType === "INDUCTION" ? "ELECTRIC" : "NONE";
-    const bathroomsComplete = computeBathroomsComplete(s2, eq);
-
-    const payload = {
-      building_id: buildingId, company_id: companyId,
-      name: s1.name.trim(), bedrooms: s2.bedrooms, bathrooms: bathroomsComplete,
+    return {
+      name: s1.name.trim(), bedrooms: s2.bedrooms, bathrooms: computeBathroomsComplete(s2, eq),
       has_living_room: s2.hasSala, has_dining_room: s2.hasComedor, has_patio: s2.hasPatio,
       has_fridge: eq.cocina.fridge !== "NONE", has_washer: hasWasher, has_dryer: hasDryer,
       stove_type: stoveType,
     };
+  }
+
+  /* ── Create ── */
+  async function handleCreate() {
+    if (!buildingId) return;
+    setSaving(true);
+    const payload = { building_id: buildingId, company_id: companyId, ...buildPayload() };
     const { data: inserted, error } = await supabase.from("unit_types").insert(payload).select("id").single();
     if (error || !inserted) { toast.error(error?.message ?? "Error creando tipología"); setSaving(false); return; }
     const assetRows = buildAssetRows(s2, eq);
@@ -928,6 +982,21 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
       await supabase.from("unit_type_assets").insert(assetRows.map((r) => ({ ...r, unit_type_id: inserted.id })));
     }
     toast.success("Tipología creada con equipamiento");
+    reset(); onSuccess(); onClose();
+  }
+
+  /* ── Edit (update existing) ── */
+  async function handleEdit() {
+    if (!editTypology) return;
+    setSaving(true);
+    const { error } = await supabase.from("unit_types").update(buildPayload()).eq("id", editTypology.id);
+    if (error) { toast.error(error.message ?? "Error actualizando tipología"); setSaving(false); return; }
+    await supabase.from("unit_type_assets").delete().eq("unit_type_id", editTypology.id);
+    const assetRows = buildAssetRows(s2, eq);
+    if (assetRows.length > 0) {
+      await supabase.from("unit_type_assets").insert(assetRows.map((r) => ({ ...r, unit_type_id: editTypology.id })));
+    }
+    toast.success("Tipología actualizada");
     reset(); onSuccess(); onClose();
   }
 
@@ -1046,7 +1115,7 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
   }
   function salaCount(s: SalaEq) {
     return (s.ac !== "NONE" ? 1 : 0) + (s.fan === "YES" ? 1 : 0) + s.furniture.length + s.furnitureOther.length
-      + (s.guestBath !== "NONE" ? 1 : 0);
+      + (s.guestBath !== "NONE" ? 1 : 0) + (s.guestBath === "FULL" && s.guestBathHasTub ? 1 : 0) + (s.guestBath === "FULL" && s.guestBathHasJacuzzi ? 1 : 0);
   }
   function cocinaCount(c: CocinaEq) {
     return (c.ac !== "NONE" ? 1 : 0) + (c.stoveType !== "NONE" ? 1 : 0) + (c.oven !== "NONE" ? 1 : 0) + (c.fridge !== "NONE" ? 1 : 0) + c.others.length
@@ -1298,9 +1367,22 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
                 <PillsInput value={eq.sala.furnitureOther} onChange={(v) => setSala("furnitureOther", v)} placeholder="Otro mobiliario..." />
               </div>)}
               {eqRow("Baño de visitas", <div style={{ display: "grid", gap: 8 }}>
-                <Radio value={eq.sala.guestBath} onChange={(v) => { setSala("guestBath", v); if (v !== "FULL") setSala("guestBathShower", "NONE"); }} options={[{ value: "NONE", label: "No incluye" }, { value: "HALF", label: "Medio baño" }, { value: "FULL", label: "Baño completo" }]} />
-                <Expand show={eq.sala.guestBath === "FULL"} id="guest-shower">
-                  {eqRow("Regadera", <Radio value={eq.sala.guestBathShower} onChange={(v) => setSala("guestBathShower", v)} options={SHOWER_OPTIONS} />)}
+                <Radio value={eq.sala.guestBath} onChange={(v) => { setSala("guestBath", v); if (v !== "FULL") { setSala("guestBathShower", "NONE"); setSala("guestBathHasTub", false); setSala("guestBathHasJacuzzi", false); } }} options={[{ value: "NONE", label: "No incluye" }, { value: "HALF", label: "Medio baño" }, { value: "FULL", label: "Baño completo" }]} />
+                <Expand show={eq.sala.guestBath === "FULL"} id="guest-bath-details">
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 8 }}>
+                    <div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: 4 }}>Regadera</div>
+                      <Radio value={eq.sala.guestBathShower !== "NONE" ? "YES" : "NO"} onChange={(v) => setSala("guestBathShower", v === "YES" ? "NORMAL" : "NONE")} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: 4 }}>Tina</div>
+                      <Radio value={eq.sala.guestBathHasTub ? "YES" : "NO"} onChange={(v) => setSala("guestBathHasTub", v === "YES")} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: 4 }}>Jacuzzi</div>
+                      <Radio value={eq.sala.guestBathHasJacuzzi ? "YES" : "NO"} onChange={(v) => setSala("guestBathHasJacuzzi", v === "YES")} options={[{ value: "NO", label: "No" }, { value: "YES", label: "Sí" }]} />
+                    </div>
+                  </div>
                 </Expand>
               </div>)}
             </>
@@ -1603,8 +1685,8 @@ export default function UnitTypeWizardModal({ open, buildingId, companyId, onClo
               <UiButton type="button" variant="primary" onClick={goNext}>Siguiente</UiButton>
             )
           ) : (
-            <UiButton type="button" variant="primary" onClick={() => void handleCreate()} disabled={saving}>
-              {saving ? "Creando..." : "Crear tipología"}
+            <UiButton type="button" variant="primary" onClick={() => editTypology ? void handleEdit() : void handleCreate()} disabled={saving}>
+              {saving ? (editTypology ? "Guardando..." : "Creando...") : (editTypology ? "Guardar cambios" : "Crear tipología")}
             </UiButton>
           )}
         </div>

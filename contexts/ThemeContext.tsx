@@ -29,6 +29,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useCurrentUser, type AdminUser } from "@/contexts/UserContext";
 import { useImpersonation } from "@/contexts/ImpersonationContext";
 import { generateMetallicGradient } from "@/lib/color-utils";
+import { getSignedUrl } from "@/lib/storage";
 
 /* ─── Tipos ───────────────────────────────────────────────────────── */
 
@@ -320,7 +321,8 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const displayGroupName = rawName.startsWith("Grupo") ? rawName : `Grupo ${rawName}`;
     setShortName(displayGroupName);
     setPlatformName(displayGroupName);
-    setLogoUrl((data as any)?.logo_url ?? null);
+    const rawUrl = (data as any)?.logo_url ?? null;
+    setLogoUrl(rawUrl ? (await getSignedUrl("company-assets", rawUrl)) : null);
     setLogoDarkUrl(null);
     setLogoGroupUrl(null);
   }
@@ -356,10 +358,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     if (!data) return;
 
     /* Logos, nombre y datos de contacto siempre desde companies */
-    setLogoUrl(data.logo_url ?? null);
-    setLogoPrintUrl(data.logo_print_url ?? null);
-    setLogoDarkUrl(data.logo_dark_url ?? null);
-    setLogoGroupUrl(data.logo_group_url ?? null);
+    const [signedLogo, signedLogoPrint, signedLogoDark, signedLogoGroup] = await Promise.all([
+      data.logo_url       ? getSignedUrl("company-assets", data.logo_url)       : null,
+      data.logo_print_url ? getSignedUrl("company-assets", data.logo_print_url) : null,
+      data.logo_dark_url  ? getSignedUrl("company-assets", data.logo_dark_url)  : null,
+      data.logo_group_url ? getSignedUrl("company-assets", data.logo_group_url) : null,
+    ]);
+    setLogoUrl(signedLogo);
+    setLogoPrintUrl(signedLogoPrint);
+    setLogoDarkUrl(signedLogoDark);
+    setLogoGroupUrl(signedLogoGroup);
     if (data.short_name) setShortName(data.short_name);
     setLegalName(data.legal_name      || "");
     setCompanyAddress(data.address    || "");

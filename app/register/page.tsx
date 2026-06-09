@@ -258,10 +258,7 @@ export default function RegisterPage() {
           .from("company-assets")
           .upload(path, logoFile, { upsert: true });
         if (!upErr) {
-          const { data: pub } = supabase.storage
-            .from("company-assets")
-            .getPublicUrl(path);
-          logoUrl = pub.publicUrl;
+          logoUrl = path;
         }
       }
 
