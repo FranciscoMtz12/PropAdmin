@@ -1071,6 +1071,16 @@ export default function BuildingDetailPage() {
   const [collectionRecords, setCollectionRecords] = useState<CollectionRecord[]>([]);
   const [leasesForTrend, setLeasesForTrend] = useState<LeaseForTrend[]>([]);
   const [buildingAssets, setBuildingAssets] = useState<BuildingAssetRow[]>([]);
+  const [houseUnit, setHouseUnit] = useState<{
+    id: string;
+    rental_type: string | null;
+    unit_types: {
+      id: string;
+      bedrooms: number | null;
+      bathrooms: number | null;
+      wizard_state: unknown | null;
+    } | null;
+  } | null>(null);
 
   /* Estado de UI */
   const [activeTab, setActiveTab]             = useState(searchParams.get("tab") ?? "overview");
@@ -1414,6 +1424,19 @@ export default function BuildingDetailPage() {
     setCode(b.code || "");
     setAddress(b.address || "");
     setBuildingCategory(b.building_category || "residential");
+
+    setHouseUnit(null);
+
+    if (b.building_category === "residential_single") {
+      const { data: huData } = await supabase
+        .from("units")
+        .select("id, rental_type, unit_types(id, bedrooms, bathrooms, wizard_state)")
+        .eq("building_id", buildingId as string)
+        .is("deleted_at", null)
+        .limit(1)
+        .maybeSingle();
+      setHouseUnit(huData as typeof houseUnit);
+    }
 
     /* Queries paralelas — units incluye created_at para tendencia */
     const [
