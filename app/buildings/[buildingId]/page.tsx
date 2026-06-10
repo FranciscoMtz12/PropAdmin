@@ -1086,6 +1086,7 @@ export default function BuildingDetailPage() {
   const [activeTab, setActiveTab]             = useState(searchParams.get("tab") ?? "overview");
   const [msg, setMsg]                         = useState("");
   const [loadingBuilding, setLoadingBuilding] = useState(true);
+  const [savingRentalType, setSavingRentalType] = useState(false);
   const [collectionMonths, setCollectionMonths] = useState<3 | 6>(3);
   const [savingBillingConcept, setSavingBillingConcept] =
     useState<BuildingBillingConceptCode | null>(null);
@@ -3374,7 +3375,7 @@ export default function BuildingDetailPage() {
             const bedrooms      = ut?.bedrooms ?? 0;
             const fullBathrooms = ut?.bathrooms ?? 0;
             const parkingSpots  = 0; // parking managed in the parking tab
-            const rentalMode    = houseUnit?.rental_type ?? undefined;
+            const rentalMode    = houseUnit?.rental_type ?? "whole";
 
             const pills = [
               { icon: <Bed size={14} />,      value: bedrooms,                      label: bedrooms === 1 ? "Recámara" : "Recámaras" },
@@ -3425,14 +3426,37 @@ export default function BuildingDetailPage() {
                         ))}
                       </div>
                     )}
-                    {rentalMode && (
-                      <div>
-                        <span style={{
-                          padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
-                          background: rentalMode === "whole" ? "#0369a11a" : "var(--accent-tint-soft)",
-                          color:      rentalMode === "whole" ? "var(--color-info-dark)"   : "var(--accent)",
-                        }}>
-                          {rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
+                    {rentalMode !== undefined && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <button
+                          type="button"
+                          disabled={savingRentalType}
+                          onClick={async () => {
+                            if (!houseUnit?.id) return;
+                            const newMode = rentalMode === "whole" ? "by_room" : "whole";
+                            setSavingRentalType(true);
+                            const { error } = await supabase
+                              .from("units")
+                              .update({ rental_type: newMode })
+                              .eq("id", houseUnit.id);
+                            setSavingRentalType(false);
+                            if (!error) {
+                              setHouseUnit((prev) => prev ? { ...prev, rental_type: newMode } : prev);
+                            }
+                          }}
+                          style={{
+                            padding: "4px 12px", borderRadius: 999, fontSize: "0.75rem", fontWeight: 600,
+                            cursor: savingRentalType ? "not-allowed" : "pointer",
+                            opacity: savingRentalType ? 0.6 : 1,
+                            border: "1px solid var(--border-default)",
+                            background: rentalMode === "whole" ? "#0369a11a" : "var(--accent-tint-soft)",
+                            color:      rentalMode === "whole" ? "var(--color-info-dark)" : "var(--accent)",
+                          }}
+                        >
+                          {savingRentalType ? "…" : rentalMode === "whole" ? "Renta completa" : "Renta por cuartos"}
+                        </button>
+                        <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)" }}>
+                          Toca para cambiar
                         </span>
                       </div>
                     )}
