@@ -765,6 +765,37 @@ export default function BuildingsPage() {
 
     const newBuildingId = newBuilding.id;
 
+    /* ── Casa: crear unit_type invisible + unit ── */
+    if (data.building_category === "residential_single") {
+      const { data: newUT, error: utErr } = await supabase
+        .from("unit_types")
+        .insert({
+          company_id: activeCompanyId,
+          building_id: newBuildingId,
+          name: "Casa",
+          bedrooms: 1,
+          bathrooms: 1,
+        })
+        .select("id")
+        .single();
+      if (!utErr && newUT) {
+        await supabase.from("units").insert({
+          company_id: activeCompanyId,
+          building_id: newBuildingId,
+          unit_type_id: newUT.id,
+          unit_number: "1",
+          display_code: null,
+          status: "VACANT",
+          rental_type: "whole",
+        });
+        /* Tareas de checklist propias de la casa */
+        await supabase.from("building_setup_tasks").insert([
+          { company_id: activeCompanyId, building_id: newBuildingId, task_key: "configure_spaces", feature_key: "house_setup", is_completed: false },
+          { company_id: activeCompanyId, building_id: newBuildingId, task_key: "add_first_lease",  feature_key: "house_setup", is_completed: false },
+        ]);
+      }
+    }
+
     if (selectedFeatureKeys.length > 0) {
       await supabase.from("building_feature_config").insert(
         selectedFeatureKeys.map((key) => {
@@ -779,7 +810,9 @@ export default function BuildingsPage() {
         })
       );
 
-      const taskRows = selectedFeatureKeys.flatMap((key) => {
+      const taskRows = selectedFeatureKeys
+        .filter((key) => !(data.building_category === "residential_single" && key === "house_setup"))
+        .flatMap((key) => {
         const feat = PROPERTY_FEATURES.find((f) => f.key === key);
         return (feat?.tasks ?? [])
           .filter((task) => !task.applicableTypes || task.applicableTypes.includes(data.building_category))
@@ -1696,85 +1729,6 @@ export default function BuildingsPage() {
               </AppFormField>
             )}
           </div>
-
-          {buildingCategory === "residential_single" && (() => {
-            const hf = editHouseFeatures;
-            const setHF = (key: string, val: unknown) =>
-              setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
-            return (
-              <div style={{ marginBottom: 4 }}>
-                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 10 }}>
-                  Características de la casa
-                </p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  <AppFormField label="Recámaras">
-                    <input type="number" min={0} placeholder="Ej: 3" style={INPUT_STYLE}
-                      value={(hf.bedrooms as number | undefined) ?? ""}
-                      onChange={(e) => setHF("bedrooms", e.target.value ? Number(e.target.value) : undefined)} />
-                  </AppFormField>
-                  <AppFormField label="Baños">
-                    <input type="number" min={0} step={0.5} placeholder="Ej: 2" style={INPUT_STYLE}
-                      value={(hf.bathrooms as number | undefined) ?? ""}
-                      onChange={(e) => setHF("bathrooms", e.target.value ? Number(e.target.value) : undefined)} />
-                  </AppFormField>
-                  <AppFormField label="Cajones">
-                    <input type="number" min={0} placeholder="Ej: 2" style={INPUT_STYLE}
-                      value={(hf.parking_spots as number | undefined) ?? ""}
-                      onChange={(e) => setHF("parking_spots", e.target.value ? Number(e.target.value) : undefined)} />
-                  </AppFormField>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                  {HOUSE_AMENITIES.map((a) => (
-                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                      <input type="checkbox" checked={!!(hf[a.key])}
-                        onChange={(e) => setHF(a.key, e.target.checked || undefined)}
-                        style={{ width: 15, height: 15, accentColor: "var(--color-info-dark)", cursor: "pointer" }} />
-                      {a.label}
-                    </label>
-                  ))}
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                    <input type="checkbox" checked={!!(hf.has_other)}
-                      onChange={(e) => {
-                        setHF("has_other", e.target.checked || undefined);
-                        if (!e.target.checked) setHF("other_notes", undefined);
-                      }}
-                      style={{ width: 15, height: 15, accentColor: "var(--color-info-dark)", cursor: "pointer" }} />
-                    Otro
-                  </label>
-                  {Boolean(hf.has_other) && (
-                    <div style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
-                      <textarea
-                        value={(hf.other_notes as string) ?? ""}
-                        onChange={(e) => setHF("other_notes", e.target.value || undefined)}
-                        placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
-                        rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <AppFormField label="Modalidad de renta">
-                  <div style={{ display: "flex", gap: 12 }}>
-                    {[
-                      { value: "complete", label: "Casa completa" },
-                      { value: "by_room", label: "Por cuarto" },
-                    ].map((opt) => (
-                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                        <input type="radio" name="edit_rental_mode" value={opt.value}
-                          checked={(hf.rental_mode as string | undefined) === opt.value}
-                          onChange={() => setHF("rental_mode", opt.value)}
-                          style={{ accentColor: "var(--color-info-dark)", cursor: "pointer" }} />
-                        {opt.label}
-                      </label>
-                    ))}
-                  </div>
-                </AppFormField>
-              </div>
-            );
-          })()}
 
           <AppFormField label="Dirección">
             <input
