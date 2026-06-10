@@ -36,6 +36,31 @@ export const PROPERTY_FEATURES: PropertyFeature[] = [
     ],
   },
   {
+    key: 'house_setup',
+    label: 'Configuración de la casa',
+    description: 'Espacios, equipamiento y primer contrato de la casa',
+    category: 'space',
+    icon: 'Home',
+    color: '#8B2252',
+    applicableTypes: ['residential_single'],
+    tasks: [
+      {
+        key: 'configure_spaces',
+        label: 'Configurar espacios y equipamiento',
+        description: 'Define las recámaras, baños y equipamiento de la casa usando el wizard',
+        route: '/buildings/[id]?tab=overview&openWizard=true',
+        applicableTypes: ['residential_single'],
+      },
+      {
+        key: 'add_first_lease',
+        label: 'Registrar primer contrato',
+        description: 'Da de alta el primer contrato de arrendamiento',
+        route: '/buildings/[id]?tab=leases',
+        applicableTypes: ['residential_single'],
+      },
+    ],
+  },
+  {
     key: 'parking',
     label: 'Estacionamiento',
     description: 'Cajones de estacionamiento asignables',
