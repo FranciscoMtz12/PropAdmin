@@ -1218,6 +1218,7 @@ export default function BuildingDetailPage() {
   const [buildingUnitTypes, setBuildingUnitTypes] = useState<UnitTypeForTab[]>([]);
   const [typologiesTabLoaded, setTypologiesTabLoaded] = useState(false);
   const [isTypologiesWizardOpen, setIsTypologiesWizardOpen] = useState(false);
+  const [isHouseWizardOpen, setIsHouseWizardOpen] = useState(false);
   const [openActionsUnitTypeIdTab, setOpenActionsUnitTypeIdTab] = useState<string | null>(null);
   const [editUTModal, setEditUTModal] = useState<EditTypologyData | null>(null);
   const [duplicateUTModal, setDuplicateUTModal] = useState<EditTypologyData | null>(null);
@@ -2364,7 +2365,7 @@ export default function BuildingDetailPage() {
         building_subcategory: null,
         building_subtype: (buildingCategory === "commercial" || buildingCategory === "industrial") ? (editSubtype || null) : null,
         building_tags: editBuildingTags,
-        building_features: Object.keys(editHouseFeatures).length ? editHouseFeatures : null,
+        building_features: buildingCategory !== "residential_single" && Object.keys(editHouseFeatures).length ? editHouseFeatures : null,
         land_sqm: editLandSqm.trim() ? Number(editLandSqm) : null,
         construction_sqm: editConstructionSqm.trim() ? Number(editConstructionSqm) : null,
         default_unit_sqm: buildingCategory !== "land" && buildingCategory !== "residential_single" && editDefaultUnitSqm.trim() ? Number(editDefaultUnitSqm) : null,
@@ -3386,16 +3387,24 @@ export default function BuildingDetailPage() {
             const hasAnyData = pills.filter(p => (p.value ?? 0) > 0).length > 0 || Boolean(rentalMode);
 
             return (
-              <SectionCard title="Ficha de la propiedad" icon={<Home size={18} />}>
+              <SectionCard
+                title="Ficha de la propiedad"
+                icon={<Home size={18} />}
+                action={
+                  <UiButton variant="secondary" onClick={() => setIsHouseWizardOpen(true)}>
+                    Configurar espacios
+                  </UiButton>
+                }
+              >
                 {!hasAnyData ? (
                   <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--text-muted)", fontSize: "0.8125rem" }}>
                     <span>Sin ficha configurada</span>
                     <button
                       type="button"
-                      onClick={openEditModal}
+                      onClick={() => setIsHouseWizardOpen(true)}
                       style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: "0.8125rem", textDecoration: "underline", padding: 0 }}
                     >
-                      Editar propiedad
+                      Configurar espacios
                     </button>
                     <span>para agregar los detalles</span>
                   </div>
@@ -5860,83 +5869,6 @@ export default function BuildingDetailPage() {
             )}
           </div>
 
-          {buildingCategory === "residential_single" && (() => {
-            const hf = editHouseFeatures;
-            const setHF = (key: string, val: unknown) => setEditHouseFeatures((prev) => ({ ...prev, [key]: val }));
-            return (
-              <div style={{ marginTop: 4 }}>
-                <p style={{ fontSize: "0.6875rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 12 }}>
-                  Características de la casa
-                </p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  <AppFormField label="Recámaras">
-                    <input type="number" value={String(hf.bedrooms ?? "")} onChange={(e) => setHF("bedrooms", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
-                  </AppFormField>
-                  <AppFormField label="Baños completos">
-                    <input type="number" value={String(hf.full_bathrooms ?? "")} onChange={(e) => setHF("full_bathrooms", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
-                  </AppFormField>
-                  <AppFormField label="Medios baños">
-                    <input type="number" value={String(hf.half_bathrooms ?? "")} onChange={(e) => setHF("half_bathrooms", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
-                  </AppFormField>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
-                  <AppFormField label="Cajones estacionamiento">
-                    <input type="number" value={String(hf.parking_spots ?? "")} onChange={(e) => setHF("parking_spots", e.target.value ? Number(e.target.value) : undefined)} placeholder="0" style={INPUT_STYLE} />
-                  </AppFormField>
-                  <AppFormField label="Niveles/pisos">
-                    <input type="number" value={String(hf.floors ?? "")} onChange={(e) => setHF("floors", e.target.value ? Number(e.target.value) : undefined)} placeholder="1" style={INPUT_STYLE} />
-                  </AppFormField>
-                  <AppFormField label="Año de construcción">
-                    <input type="number" value={String(hf.year_built ?? "")} onChange={(e) => setHF("year_built", e.target.value ? Number(e.target.value) : undefined)} placeholder="Ej: 2005" style={INPUT_STYLE} />
-                  </AppFormField>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 }}>
-                  {HOUSE_AMENITIES.map((a) => (
-                    <label key={a.key} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                      <input type="checkbox" checked={Boolean(hf[a.key])} onChange={(e) => setHF(a.key, e.target.checked)} style={{ accentColor: "var(--color-info-dark)" }} />
-                      {a.label}
-                    </label>
-                  ))}
-                </div>
-                <div style={{ marginBottom: 12 }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: "0.8125rem", color: "var(--text-primary)" }}>
-                    <input type="checkbox" checked={Boolean(hf.has_other)}
-                      onChange={(e) => {
-                        setHF("has_other", e.target.checked);
-                        if (!e.target.checked) setHF("other_notes", undefined);
-                      }}
-                      style={{ accentColor: "var(--color-info-dark)" }} />
-                    Otro
-                  </label>
-                  {Boolean(hf.has_other) && (
-                    <div style={{ marginTop: 8 }}>
-                      <p style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginBottom: 4 }}>Describe las características adicionales</p>
-                      <textarea
-                        value={(hf.other_notes as string) ?? ""}
-                        onChange={(e) => setHF("other_notes", e.target.value || undefined)}
-                        placeholder="Ej: Cuarto de TV, estudio, terraza techada..."
-                        rows={3}
-                        style={{ width: "100%", padding: "8px 12px", borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", fontSize: "0.8125rem", resize: "vertical", boxSizing: "border-box", background: "var(--bg-input, var(--bg-page))", color: "var(--text-primary)" }}
-                      />
-                    </div>
-                  )}
-                </div>
-                <AppFormField label="Modo de renta">
-                  <div style={{ display: "flex", gap: 20 }}>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
-                      <input type="radio" checked={hf.rental_mode === "whole"} onChange={() => setHF("rental_mode", "whole")} style={{ accentColor: "var(--color-info-dark)" }} />
-                      Casa completa
-                    </label>
-                    <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontSize: "0.8125rem" }}>
-                      <input type="radio" checked={hf.rental_mode === "by_room"} onChange={() => setHF("rental_mode", "by_room")} style={{ accentColor: "var(--accent)" }} />
-                      Por cuartos
-                    </label>
-                  </div>
-                </AppFormField>
-              </div>
-            );
-          })()}
-
           <AppFormField label="Dirección">
             <input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Ej. Av. Principal 123" style={INPUT_STYLE} />
           </AppFormField>
@@ -7143,6 +7075,35 @@ export default function BuildingDetailPage() {
           await loadTypologiesTabData();
         }}
       />
+
+      {/* ── Wizard editar espacios de casa ── */}
+      {isResidentialSingle && houseUnit?.unit_types && (
+        <UnitTypeWizardModal
+          open={isHouseWizardOpen}
+          buildingId={building?.id ?? ""}
+          companyId={building?.company_id ?? ""}
+          editTypology={{
+            id: houseUnit.unit_types.id,
+            name: "Casa",
+            bedrooms: houseUnit.unit_types.bedrooms ?? 1,
+            bathrooms: houseUnit.unit_types.bathrooms ?? 1,
+            has_living_room: false,
+            has_dining_room: false,
+            has_patio: false,
+            has_fridge: false,
+            has_washer: false,
+            has_dryer: false,
+            stove_type: "NONE",
+            assets: [],
+            wizard_state: houseUnit.unit_types.wizard_state as EditTypologyData["wizard_state"] ?? null,
+          }}
+          onClose={() => setIsHouseWizardOpen(false)}
+          onSuccess={async () => {
+            setIsHouseWizardOpen(false);
+            await loadBuilding();
+          }}
+        />
+      )}
 
       {/* ── Modal eliminar tipología (tab Tipologías) ── */}
       <DeleteConfirmModal
