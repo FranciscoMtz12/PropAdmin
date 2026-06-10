@@ -1427,15 +1427,17 @@ export default function BuildingDetailPage() {
 
     setHouseUnit(null);
 
+    let huData: { id: string } | null = null;
     if (b.building_category === "residential_single") {
-      const { data: huData } = await supabase
+      const { data: huRaw } = await supabase
         .from("units")
         .select("id, rental_type, unit_types(id, bedrooms, bathrooms, wizard_state)")
         .eq("building_id", buildingId as string)
         .is("deleted_at", null)
         .limit(1)
         .maybeSingle();
-      setHouseUnit(huData as typeof houseUnit);
+      huData = huRaw as typeof huData;
+      setHouseUnit(huRaw as typeof houseUnit);
     }
 
     /* Queries paralelas — units incluye created_at para tendencia */
@@ -1514,14 +1516,35 @@ export default function BuildingDetailPage() {
       setLeasesForTrend([]);
     }
 
-    /* Contratos directos del edificio (land, commercial, industrial, residential_single) — unit_id IS NULL */
-    if (["land", "commercial", "industrial", "residential_single"].includes(b.building_category ?? "")) {
-      type LLRow = { id: string; tenant_id: string; rent_amount: number; start_date: string | null; end_date: string | null; status: string; leased_sqm: number | null };
+    /* Contratos directos del edificio (land, commercial, industrial) — unit_id IS NULL */
+    if (["land", "commercial", "industrial"].includes(b.building_category ?? "")) {
+      type LLRow = { id: string; tenant_id: string; rent_amount: number; start_date: string | null; end_date: string | null; status: string; leased_sqm: number | null; room_number: string | null };
       const { data: llData } = await supabase
         .from("leases")
-        .select("id, tenant_id, rent_amount, start_date, end_date, status, leased_sqm")
+        .select("id, tenant_id, rent_amount, start_date, end_date, status, leased_sqm, room_number")
         .eq("building_id", buildingId)
         .is("unit_id", null)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false });
+      const llRows = (llData || []) as LLRow[];
+
+      const tIds = [...new Set(llRows.map((l) => l.tenant_id).filter(Boolean))];
+      const tenantNameMap: Record<string, string> = {};
+      if (tIds.length > 0) {
+        const { data: tData } = await supabase.from("tenants").select("id, full_name").in("id", tIds);
+        for (const t of (tData || []) as Array<{ id: string; full_name: string }>) {
+          tenantNameMap[t.id] = t.full_name;
+        }
+      }
+      setLandLeases(llRows.map((l) => ({ ...l, tenant_name: tenantNameMap[l.tenant_id] ?? null })));
+    } else if (b.building_category === "residential_single" && huData !== null) {
+      /* Contratos de casa — filtrar por unit_id real */
+      const huId = (huData as { id: string }).id;
+      type LLRow = { id: string; tenant_id: string; rent_amount: number; start_date: string | null; end_date: string | null; status: string; leased_sqm: number | null; room_number: string | null };
+      const { data: llData } = await supabase
+        .from("leases")
+        .select("id, tenant_id, rent_amount, start_date, end_date, status, leased_sqm, room_number")
+        .eq("unit_id", huId)
         .is("deleted_at", null)
         .order("created_at", { ascending: false });
       const llRows = (llData || []) as LLRow[];
@@ -3613,7 +3636,7 @@ export default function BuildingDetailPage() {
           {/* ── Información general: 2 columnas — datos | mapa ── */}
           <SectionCard
             title="Información general"
-            subtitle={`Datos base del ${labels.building.toLowerCase()}.`}
+            subtitle={`Datos base ${buildingOf(labels)}.`}
             icon={<Building2 size={18} />}
             action={
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -5206,6 +5229,17 @@ export default function BuildingDetailPage() {
               title={labels.leases}
               subtitle={`${labels.building} — contratos activos y disponibilidad.`}
               icon={<FileClockIcon size={18} />}
+              action={
+                isResidentialSingle && houseUnit?.id ? (
+                  <UiButton
+                    variant="secondary"
+                    icon={<Plus size={15} />}
+                    onClick={() => router.push(`/buildings/${buildingId as string}/units/${houseUnit.id}`)}
+                  >
+                    Gestionar contratos
+                  </UiButton>
+                ) : undefined
+              }
             >
               {/* Barra de ocupación del terreno — solo para terrenos */}
               {building.building_category === "land" && building.land_sqm != null && (

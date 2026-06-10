@@ -94,8 +94,9 @@ export const MIXED_USE_SUBCATEGORIES: { value: MixedUseSubcategoryKey; label: st
 ];
 
 export function getBuildingCategoryDefinition(category: string | null | undefined) {
+  const normalized = category === "residential_single" ? "house" : category;
   return (
-    BUILDING_CATEGORIES.find((item) => item.key === category) || {
+    BUILDING_CATEGORIES.find((item) => item.key === normalized) || {
       key: "residential" as BuildingCategoryKey,
       label: "Sin categoría",
       shortLabel: "Sin categoría",
