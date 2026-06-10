@@ -3369,23 +3369,21 @@ export default function BuildingDetailPage() {
 
           {/* ── Ficha de la propiedad — solo residential_single ── */}
           {isResidentialSingle && (() => {
-            const hf = building.building_features ?? {};
-            const bedrooms       = Number(hf.bedrooms ?? 0);
-            const fullBathrooms  = Number(hf.full_bathrooms ?? 0);
-            const parkingSpots   = Number(hf.parking_spots ?? 0);
-            const rentalMode     = hf.rental_mode as string | undefined;
+            const ut = houseUnit?.unit_types;
+            const bedrooms      = ut?.bedrooms ?? 0;
+            const fullBathrooms = ut?.bathrooms ?? 0;
+            const parkingSpots  = 0; // parking managed in the parking tab
+            const rentalMode    = houseUnit?.rental_type ?? undefined;
 
             const pills = [
               { icon: <Bed size={14} />,      value: bedrooms,                      label: bedrooms === 1 ? "Recámara" : "Recámaras" },
               { icon: <Droplets size={14} />, value: fullBathrooms,                  label: fullBathrooms === 1 ? "Baño" : "Baños"    },
-              { icon: <Car size={14} />,      value: parkingSpots,                   label: parkingSpots === 1 ? "Cajón" : "Cajones"  },
+              { icon: <Car size={14} />,      value: parkingSpots,                   label: "Cajones"                                 },
               { icon: <Ruler size={14} />,    value: building.construction_sqm ?? 0, label: "m² const."                              },
               { icon: <MapPin size={14} />,   value: building.land_sqm ?? 0,         label: "m² terreno"                             },
             ].filter((p) => (p.value ?? 0) > 0);
 
-            const activeAmenities = HOUSE_AMENITIES.filter((a) => Boolean(hf[a.key]));
-            const otherNotes = hf.other_notes as string | undefined;
-            const hasAnyData = pills.length > 0 || activeAmenities.length > 0 || otherNotes || rentalMode;
+            const hasAnyData = pills.filter(p => (p.value ?? 0) > 0).length > 0 || Boolean(rentalMode);
 
             return (
               <SectionCard title="Ficha de la propiedad" icon={<Home size={18} />}>
@@ -3415,20 +3413,6 @@ export default function BuildingDetailPage() {
                             <span style={{ fontWeight: 700, color: "var(--text-primary)" }}>{pill.value}</span>
                             <span style={{ color: "var(--text-muted)" }}>{pill.label}</span>
                           </div>
-                        ))}
-                      </div>
-                    )}
-                    {(activeAmenities.length > 0 || otherNotes) && (
-                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                        {activeAmenities.map((a) => (
-                          <span key={a.key} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "var(--color-success-subtle)", color: "var(--text-primary)", fontWeight: 500 }}>
-                            {a.label}
-                          </span>
-                        ))}
-                        {otherNotes && String(otherNotes).split("\n").map((l) => l.trim()).filter((l) => l.length > 0).map((line, idx) => (
-                          <span key={idx} style={{ padding: "4px 10px", borderRadius: "var(--border-radius-lg)", fontSize: "0.75rem", background: "var(--color-success-subtle)", color: "var(--text-primary)", fontWeight: 500 }}>
-                            {line.length > 40 ? line.slice(0, 38) + "…" : line}
-                          </span>
                         ))}
                       </div>
                     )}
