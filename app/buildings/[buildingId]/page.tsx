@@ -885,6 +885,7 @@ const TASK_TAB_MAP: Record<string, string> = {
   add_first_unit:         'overview',
   setup_security_service: 'overview',
   setup_loading_dock:     'assets',
+  configure_spaces:       'overview',
 }
 
 /* ─── Mapa task_key → categoría del checklist ────────────────────────── */
@@ -908,6 +909,7 @@ const TASK_CATEGORY_MAP: Record<string, 'estructura' | 'servicios' | 'operacion'
   add_first_asset:         'documentos',
   setup_common_areas:      'documentos',
   setup_service_storage:   'documentos',
+  configure_spaces:        'estructura',
 }
 
 /* ─── Mapa task_key → label y ruta (derivado de PROPERTY_FEATURES) ─────── */
@@ -1430,14 +1432,16 @@ export default function BuildingDetailPage() {
     setHouseUnit(null);
 
     let huData: { id: string } | null = null;
+    let huRaw: { id: string; rental_type: string | null; unit_types?: { id: string; bedrooms: number | null; bathrooms: number | null; wizard_state?: unknown } | null } | null = null;
     if (b.building_category === "residential_single") {
-      const { data: huRaw } = await supabase
+      const { data: huRawInner } = await supabase
         .from("units")
         .select("id, rental_type, unit_types(id, bedrooms, bathrooms, wizard_state)")
         .eq("building_id", buildingId as string)
         .is("deleted_at", null)
         .limit(1)
         .maybeSingle();
+      huRaw = huRawInner as typeof huRaw;
       huData = huRaw as typeof huData;
       setHouseUnit(huRaw as typeof houseUnit);
     }
@@ -1739,6 +1743,7 @@ export default function BuildingDetailPage() {
       { key: 'setup_security_booth',    done: false },
       { key: 'setup_service_storage',   done: false },
       { key: 'setup_security_service',  done: false },
+      { key: 'configure_spaces',        done: Boolean((huRaw as { unit_types?: { wizard_state?: unknown } | null } | null)?.unit_types?.wizard_state) },
     ];
 
     const keysToComplete = tasks
@@ -6308,7 +6313,8 @@ export default function BuildingDetailPage() {
             const visibleSetupTasks = setupTasks.filter((t) => {
               const feature = PROPERTY_FEATURES.find((f) => f.key === t.feature_key);
               const task = feature?.tasks.find((tk) => tk.key === t.task_key);
-              if (!task?.applicableTypes) return true;
+              if (!task) return false;  // task not found in PROPERTY_FEATURES → exclude
+              if (!task.applicableTypes) return true;
               return task.applicableTypes.includes(building.building_category ?? "");
             });
             const pendingCount   = visibleSetupTasks.filter((t) => !t.is_completed).length;
