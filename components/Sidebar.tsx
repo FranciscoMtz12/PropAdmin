@@ -106,7 +106,8 @@ const ALL_ADMIN_SECTIONS: NavSection[] = [
   {
     label: "GENERAL",
     items: [
-      { label: "Propiedades", href: "/buildings", icon: Building2,    notifModules: ["unidades", "propiedades", "servicios", "contratos"] },
+      { label: "Propiedades", href: "/buildings",   icon: Building2,    notifModules: ["unidades", "propiedades", "servicios", "contratos"] },
+      { label: "Espacios ✦", href: "/propiedades", icon: Building2 },
       { label: "Analytics",  href: "/analytics", icon: BarChart2 },
       { label: "Calendario", href: "/calendar",  icon: CalendarDays },
     ],
@@ -161,7 +162,7 @@ const FIELD_ITEMS: SidebarItem[] = [
 /* ─── Role-based section filtering ──────────────────────────────── */
 
 const ROLE_ALLOWED: Record<string, string[]> = {
-  titular:        ["/dashboard", "/buildings", "/analytics", "/servicios", "/payments", "/cobranza", "/collections", "/tenants", "/purchases", "/suppliers", "/maintenance", "/cleaning", "/settings"],
+  titular:        ["/dashboard", "/buildings", "/propiedades", "/analytics", "/servicios", "/payments", "/cobranza", "/collections", "/tenants", "/purchases", "/suppliers", "/maintenance", "/cleaning", "/settings"],
   administracion: ["/dashboard", "/buildings", "/servicios", "/payments", "/cobranza", "/collections", "/tenants"],
   directivo:      ["/dashboard", "/buildings", "/analytics", "/cobranza", "/collections", "/tenants"],
   compras:        ["/dashboard", "/purchases", "/suppliers"],
