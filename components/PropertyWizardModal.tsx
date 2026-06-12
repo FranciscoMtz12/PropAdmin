@@ -34,20 +34,21 @@ type PropTypeValue =
 interface PropTypeOption {
   value: PropTypeValue;
   label: string;
+  shortLabel: string;
   icon: React.ElementType;
   color: string;
   spaceType: string;
 }
 
 const PROP_TYPES: PropTypeOption[] = [
-  { value: "residencial_multi",  label: "Residencial multifamiliar", icon: Building2, color: "#4f46e5", spaceType: "apartment" },
-  { value: "residencial_uni",    label: "Casa unifamiliar",          icon: Home,      color: "#059669", spaceType: "house" },
-  { value: "comercial",          label: "Comercial / Plaza",         icon: Store,     color: "#d97706", spaceType: "commercial_local" },
-  { value: "oficinas",           label: "Comercial · Oficinas",      icon: Briefcase, color: "#0ea5e9", spaceType: "office" },
-  { value: "industrial_parque",  label: "Industrial · Parque",       icon: Factory,   color: "#6b7280", spaceType: "warehouse" },
-  { value: "industrial_bodega",  label: "Bodega",                    icon: Package,   color: "#78716c", spaceType: "warehouse" },
-  { value: "terreno",            label: "Terreno",                   icon: MapPin,    color: "#16a34a", spaceType: "land_lot" },
-  { value: "estacionamiento",    label: "Estacionamiento",           icon: Car,       color: "#7c3aed", spaceType: "parking" },
+  { value: "residencial_multi",  label: "Residencial multifamiliar", shortLabel: "Residencial",    icon: Building2, color: "#4f46e5", spaceType: "apartment" },
+  { value: "residencial_uni",    label: "Casa unifamiliar",          shortLabel: "Casa",            icon: Home,      color: "#059669", spaceType: "house" },
+  { value: "comercial",          label: "Comercial / Plaza",         shortLabel: "Comercial",       icon: Store,     color: "#d97706", spaceType: "commercial_local" },
+  { value: "oficinas",           label: "Comercial · Oficinas",      shortLabel: "Oficinas",        icon: Briefcase, color: "#0ea5e9", spaceType: "office" },
+  { value: "industrial_parque",  label: "Industrial · Parque",       shortLabel: "Parque",          icon: Factory,   color: "#6b7280", spaceType: "warehouse" },
+  { value: "industrial_bodega",  label: "Bodega",                    shortLabel: "Bodega",          icon: Package,   color: "#78716c", spaceType: "warehouse" },
+  { value: "terreno",            label: "Terreno",                   shortLabel: "Terreno",         icon: MapPin,    color: "#16a34a", spaceType: "land_lot" },
+  { value: "estacionamiento",    label: "Estacionamiento",           shortLabel: "Estac.",          icon: Car,       color: "#7c3aed", spaceType: "parking" },
 ];
 
 const MULTI_FLOOR_TYPES: PropTypeValue[] = ["residencial_multi", "comercial"];
@@ -72,6 +73,24 @@ interface PisoConfig {
   strategy: "free_metraje" | "fixed_units";
 }
 
+// Caso C — zona de una propiedad mixta
+interface ZonaConfig {
+  tipo: PropTypeValue;
+  nombre: string;
+  pisoInicio: number;
+  pisoFin: number;
+  // Para multi-piso (residencial_multi, comercial): conteo por piso
+  floors: FloorConfig[];
+  // Para oficinas: config de metraje por piso
+  pisos: PisoConfig[];
+  // Para bodega/parque
+  parqueMode: "single" | "parque";
+  naves: NaveConfig[];
+  // Para espacio único
+  rentalMode: "whole" | "by_subdivision" | "both";
+  numSubdivisions: number;
+}
+
 interface WizardState {
   // Paso 1
   selectedTypes: PropTypeValue[];
@@ -90,6 +109,9 @@ interface WizardState {
   pisos: PisoConfig[];
   // lateral panel state (shared)
   activeLateralKey: string;
+  // Paso 3 — Caso C: mixto por zonas
+  zonas: ZonaConfig[];
+  activeZonaKey: string;
   // Paso 4
   assets: AssetDraft[];
 }
@@ -107,6 +129,8 @@ function initState(): WizardState {
       { totalSqm: "600", minDivisionSqm: "100", strategy: "free_metraje" },
     ],
     activeLateralKey: "0",
+    zonas: [],
+    activeZonaKey: "0",
     assets: [],
   };
 }
@@ -116,7 +140,14 @@ function initState(): WizardState {
 function calcPropertyLabel(types: PropTypeValue[]): string {
   if (types.length === 0) return "";
   if (types.length === 1) return PROP_TYPES.find((t) => t.value === types[0])?.label ?? "";
-  return `Mixto · ${types.map((v) => PROP_TYPES.find((t) => t.value === v)?.label ?? v).join(" + ")}`;
+  return `Mixto · ${types.map((v) => PROP_TYPES.find((t) => t.value === v)?.shortLabel ?? v).join(" + ")}`;
+}
+
+function calcLabelFromZonas(zonas: ZonaConfig[]): string {
+  const uniqueTypes = [...new Set(zonas.map((z) => z.tipo))];
+  if (uniqueTypes.length === 0) return "Mixto";
+  if (uniqueTypes.length === 1) return PROP_TYPES.find((t) => t.value === uniqueTypes[0])?.label ?? uniqueTypes[0];
+  return `Mixto · ${uniqueTypes.map((v) => PROP_TYPES.find((t) => t.value === v)?.shortLabel ?? v).join(" + ")}`;
 }
 
 function genFloorSpaceCodes(floors: FloorConfig[]) {
@@ -125,6 +156,54 @@ function genFloorSpaceCodes(floors: FloorConfig[]) {
     for (let i = 1; i <= f.count; i++)
       result.push({ code: `${f.floor}${String(i).padStart(2, "0")}`, floor: String(f.floor) });
   return result;
+}
+
+function initZona(tipo: PropTypeValue, idx: number, pisoStart: number): ZonaConfig {
+  return {
+    tipo,
+    nombre: `Zona ${idx + 1}`,
+    pisoInicio: pisoStart,
+    pisoFin: pisoStart,
+    floors: [{ floor: pisoStart, count: 3 }],
+    pisos: [{ totalSqm: "600", minDivisionSqm: "100", strategy: "free_metraje" }],
+    parqueMode: "single",
+    naves: [{ mode: "whole", numBodegas: 2, totalSqm: "" }],
+    rentalMode: "whole",
+    numSubdivisions: 2,
+  };
+}
+
+function syncZonaFloors(zona: ZonaConfig): ZonaConfig {
+  const ini = Math.max(1, zona.pisoInicio);
+  const fin = Math.max(ini, zona.pisoFin);
+  const n = fin - ini + 1;
+  const floors = Array.from({ length: n }, (_, i) => {
+    const f = ini + i;
+    return zona.floors.find((x) => x.floor === f) ?? { floor: f, count: 3 };
+  });
+  const pisos = Array.from({ length: n }, (_, i) =>
+    zona.pisos[i] ?? { totalSqm: "600", minDivisionSqm: "100", strategy: "free_metraje" as const }
+  );
+  return { ...zona, pisoInicio: ini, pisoFin: fin, floors, pisos };
+}
+
+function detectOverlaps(zonas: ZonaConfig[]): boolean {
+  for (let i = 0; i < zonas.length; i++)
+    for (let j = i + 1; j < zonas.length; j++)
+      if (zonas[i].pisoInicio <= zonas[j].pisoFin && zonas[j].pisoInicio <= zonas[i].pisoFin)
+        return true;
+  return false;
+}
+
+function calcZonaSpaces(zona: ZonaConfig): number {
+  const isMulti = MULTI_FLOOR_TYPES.includes(zona.tipo);
+  const isOfc = zona.tipo === "oficinas";
+  const isPrq = zona.tipo === "industrial_parque" ||
+                (zona.tipo === "industrial_bodega" && zona.parqueMode === "parque");
+  if (isMulti) return zona.floors.reduce((s, f) => s + f.count, 0);
+  if (isOfc) return zona.pisos.length;
+  if (isPrq) return zona.naves.reduce((s, n) => s + (n.mode === "whole" ? 1 : n.numBodegas), 0);
+  return 1;
 }
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
@@ -679,6 +758,313 @@ function PisoPanel({ state, onChange }: {
   );
 }
 
+// ─── Step 3 — Mixto por zonas (Caso C) ──────────────────────────────────────
+
+/** Config de una zona: rango de pisos + comportamiento por tipo */
+function ZonaDetail({
+  zona, onChange, selectedTypes,
+}: {
+  zona: ZonaConfig;
+  onChange: (patch: Partial<ZonaConfig>) => void;
+  selectedTypes: PropTypeValue[];
+}) {
+  const tipoProp = PROP_TYPES.find((p) => p.value === zona.tipo);
+  const isMulti = MULTI_FLOOR_TYPES.includes(zona.tipo);
+  const isOfc   = zona.tipo === "oficinas";
+  const isPrq   = zona.tipo === "industrial_parque" ||
+                  (zona.tipo === "industrial_bodega" && zona.parqueMode === "parque");
+  const isBod   = zona.tipo === "industrial_bodega";
+  const isSingle = ["residencial_uni", "terreno", "estacionamiento"].includes(zona.tipo);
+
+  function setRange(ini: number, fin: number) {
+    const updated = syncZonaFloors({ ...zona, pisoInicio: ini, pisoFin: fin });
+    onChange(updated);
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {/* Nombre */}
+      <AppFormField label="Nombre de la zona">
+        <input style={INPUT_STYLE} value={zona.nombre}
+          onChange={(e) => onChange({ nombre: e.target.value })}
+          placeholder="Ej. Locales planta baja, Deptos torre" />
+      </AppFormField>
+
+      {/* Tipo selector — solo los elegidos en Step 1 */}
+      <AppFormField label="Tipo de uso">
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {selectedTypes.map((tv) => {
+            const pt = PROP_TYPES.find((p) => p.value === tv);
+            if (!pt) return null;
+            const active = zona.tipo === tv;
+            return (
+              <button key={tv} type="button"
+                onClick={() => onChange({ tipo: tv })}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6,
+                  padding: "5px 12px", borderRadius: 999, cursor: "pointer",
+                  border: active ? `2px solid ${pt.color}` : "1.5px solid var(--border-default)",
+                  background: active ? `${pt.color}18` : "var(--bg-card)",
+                  color: active ? pt.color : "var(--text-secondary)",
+                  fontWeight: active ? 700 : 500, fontSize: "0.8125rem" }}>
+                <pt.icon size={13} />
+                {pt.label}
+              </button>
+            );
+          })}
+        </div>
+      </AppFormField>
+
+      {/* Rango de pisos */}
+      <div>
+        <label style={{ display: "block", marginBottom: 8, fontSize: "0.875rem",
+          fontWeight: 600, color: "var(--text-primary)" }}>
+          Rango de pisos
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <input style={{ ...INPUT_STYLE, width: 80, textAlign: "center" }} type="number" min={1}
+            value={zona.pisoInicio}
+            onChange={(e) => setRange(Math.max(1, parseInt(e.target.value) || 1), zona.pisoFin)} />
+          <span style={{ color: "var(--text-muted)", fontSize: "0.875rem", flexShrink: 0 }}>hasta</span>
+          <input style={{ ...INPUT_STYLE, width: 80, textAlign: "center" }} type="number" min={zona.pisoInicio}
+            value={zona.pisoFin}
+            onChange={(e) => setRange(zona.pisoInicio, Math.max(zona.pisoInicio, parseInt(e.target.value) || zona.pisoInicio))} />
+        </div>
+      </div>
+
+      {/* Config per tipo */}
+      {isMulti && (
+        <div>
+          <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
+            Espacios por piso
+          </p>
+          {zona.floors.map((f, idx) => (
+            <Counter key={f.floor} label={`Piso ${f.floor}`} value={f.count}
+              onChange={(v) => {
+                const nf = [...zona.floors]; nf[idx] = { ...nf[idx], count: v };
+                onChange({ floors: nf });
+              }} min={1} max={20} />
+          ))}
+          <p style={{ margin: "8px 0 0", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+            Total: {zona.floors.reduce((s, f) => s + f.count, 0)} espacios
+          </p>
+        </div>
+      )}
+
+      {isOfc && (
+        <div>
+          <p style={{ margin: "0 0 10px", fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
+            Metraje por piso
+          </p>
+          {zona.pisos.map((p, idx) => (
+            <div key={idx} style={{ padding: "12px 0", borderBottom: "1px solid var(--border-default)", display: "grid", gap: 10 }}>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: "0.8125rem", color: "var(--text-primary)" }}>
+                Piso {zona.pisoInicio + idx}
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <AppFormField label="m² totales">
+                  <input style={INPUT_STYLE} type="number" value={p.totalSqm} min={1}
+                    onChange={(e) => {
+                      const np = [...zona.pisos]; np[idx] = { ...np[idx], totalSqm: e.target.value };
+                      onChange({ pisos: np });
+                    }} placeholder="600" />
+                </AppFormField>
+                <AppFormField label="Mínimo m²">
+                  <input style={INPUT_STYLE} type="number" value={p.minDivisionSqm} min={1}
+                    onChange={(e) => {
+                      const np = [...zona.pisos]; np[idx] = { ...np[idx], minDivisionSqm: e.target.value };
+                      onChange({ pisos: np });
+                    }} placeholder="100" />
+                </AppFormField>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([
+                  { v: "free_metraje" as const, label: "Metraje libre" },
+                  { v: "fixed_units"  as const, label: "Cubículos fijos" },
+                ] as const).map(({ v, label }) => (
+                  <button key={v} type="button"
+                    onClick={() => { const np = [...zona.pisos]; np[idx] = { ...np[idx], strategy: v }; onChange({ pisos: np }); }}
+                    style={{ flex: 1, padding: "7px 10px", borderRadius: "var(--border-radius-sm)", cursor: "pointer",
+                      border: p.strategy === v ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                      background: p.strategy === v ? "var(--accent-tint, rgba(99,102,241,0.08))" : "var(--bg-card)",
+                      color: p.strategy === v ? "var(--accent)" : "var(--text-secondary)",
+                      fontWeight: p.strategy === v ? 700 : 500, fontSize: "0.75rem" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isBod && (
+        <AppFormField label="¿Tipo de bodega?">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            {([
+              { v: "single" as const, label: "Una sola nave" },
+              { v: "parque" as const, label: "Parque de naves" },
+            ] as const).map(({ v, label }) => (
+              <button key={v} type="button" onClick={() => onChange({ parqueMode: v })}
+                style={{ padding: "10px", borderRadius: "var(--border-radius-md)", cursor: "pointer", textAlign: "left",
+                  border: zona.parqueMode === v ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                  background: zona.parqueMode === v ? "var(--accent-tint, rgba(99,102,241,0.08))" : "var(--bg-card)",
+                  fontWeight: zona.parqueMode === v ? 700 : 500, fontSize: "0.8125rem",
+                  color: zona.parqueMode === v ? "var(--accent)" : "var(--text-primary)" }}>
+                {label}
+              </button>
+            ))}
+          </div>
+        </AppFormField>
+      )}
+
+      {isPrq && (
+        <div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>Naves</p>
+            <button type="button" onClick={() => onChange({ naves: [...zona.naves, { mode: "whole", numBodegas: 2, totalSqm: "" }] })}
+              style={{ display: "flex", alignItems: "center", gap: 4, border: "none", background: "transparent",
+                color: "var(--accent)", cursor: "pointer", fontSize: "0.8125rem", fontWeight: 600 }}>
+              <Plus size={13} /> Nave
+            </button>
+          </div>
+          {zona.naves.map((nave, ni) => (
+            <div key={ni} style={{ padding: "10px 0", borderBottom: "1px solid var(--border-default)", display: "grid", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span style={{ fontWeight: 600, fontSize: "0.8125rem", color: "var(--text-primary)" }}>Nave {ni + 1}</span>
+                {zona.naves.length > 1 && (
+                  <button type="button" onClick={() => onChange({ naves: zona.naves.filter((_, i) => i !== ni) })}
+                    style={{ border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer" }}>
+                    <Trash2 size={13} />
+                  </button>
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                {([
+                  { v: "whole"       as const, label: "Completa" },
+                  { v: "subdividida" as const, label: "Dividida" },
+                ] as const).map(({ v, label }) => (
+                  <button key={v} type="button"
+                    onClick={() => { const nn = [...zona.naves]; nn[ni] = { ...nn[ni], mode: v }; onChange({ naves: nn }); }}
+                    style={{ flex: 1, padding: "6px", borderRadius: "var(--border-radius-sm)", cursor: "pointer",
+                      border: nave.mode === v ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                      background: nave.mode === v ? "var(--accent-tint, rgba(99,102,241,0.08))" : "var(--bg-card)",
+                      fontSize: "0.75rem", fontWeight: nave.mode === v ? 700 : 500,
+                      color: nave.mode === v ? "var(--accent)" : "var(--text-secondary)" }}>
+                    {label}
+                  </button>
+                ))}
+              </div>
+              {nave.mode === "subdividida" && (
+                <Counter label="Bodegas" value={nave.numBodegas} min={2} max={20}
+                  onChange={(v) => { const nn = [...zona.naves]; nn[ni] = { ...nn[ni], numBodegas: v }; onChange({ naves: nn }); }} />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {isSingle && (
+        <AppFormField label="¿Cómo se renta?">
+          <div style={{ display: "grid", gap: 8 }}>
+            {([
+              { v: "whole"          as const, label: "Completo",           desc: "Un solo contrato" },
+              { v: "by_subdivision" as const, label: "Por cuartos/partes", desc: "Contratos individuales" },
+              { v: "both"           as const, label: "Ambos modos",         desc: "Flexible" },
+            ] as const).map(({ v, label, desc }) => (
+              <button key={v} type="button" onClick={() => onChange({ rentalMode: v })}
+                style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                  borderRadius: "var(--border-radius-md)", textAlign: "left", cursor: "pointer",
+                  border: zona.rentalMode === v ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                  background: zona.rentalMode === v ? "var(--accent-tint, rgba(99,102,241,0.08))" : "var(--bg-card)" }}>
+                <div style={{ width: 14, height: 14, borderRadius: "50%", flexShrink: 0,
+                  border: zona.rentalMode === v ? "none" : "1.5px solid var(--border-default)",
+                  background: zona.rentalMode === v ? "var(--accent)" : "transparent" }} />
+                <div>
+                  <p style={{ margin: 0, fontWeight: 700, fontSize: "0.8125rem", color: "var(--text-primary)" }}>{label}</p>
+                  <p style={{ margin: 0, fontSize: "0.6875rem", color: "var(--text-muted)" }}>{desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </AppFormField>
+      )}
+    </div>
+  );
+}
+
+function Step3Mixto({ state, onChange }: { state: WizardState; onChange: (p: Partial<WizardState>) => void; }) {
+  const zonas = state.zonas;
+  const hasOverlap = zonas.length >= 2 && detectOverlaps(zonas);
+  const activeIdx = Math.min(parseInt(state.activeZonaKey) || 0, Math.max(0, zonas.length - 1));
+  const activeKey = String(activeIdx);
+  const zona = zonas[activeIdx];
+
+  function updateZona(idx: number, patch: Partial<ZonaConfig>) {
+    const next = [...zonas];
+    next[idx] = { ...next[idx], ...patch };
+    onChange({ zonas: next });
+  }
+
+  function addZona() {
+    if (zonas.length >= 10) return;
+    const lastPisoFin = zonas.length > 0 ? zonas[zonas.length - 1].pisoFin : 0;
+    const tipo = state.selectedTypes[zonas.length % state.selectedTypes.length];
+    const next = [...zonas, initZona(tipo, zonas.length, lastPisoFin + 1)];
+    onChange({ zonas: next, activeZonaKey: String(next.length - 1) });
+  }
+
+  function removeZona(idx: number) {
+    if (zonas.length <= 1) return;
+    const next = zonas.filter((_, i) => i !== idx);
+    onChange({ zonas: next, activeZonaKey: String(Math.min(activeIdx, next.length - 1)) });
+  }
+
+  const items = zonas.map((z, i) => {
+    const pt = PROP_TYPES.find((p) => p.value === z.tipo);
+    const floorRange = z.pisoInicio === z.pisoFin ? `P${z.pisoInicio}` : `P${z.pisoInicio}–${z.pisoFin}`;
+    return {
+      key: String(i),
+      label: z.nombre,
+      description: `${pt?.label ?? z.tipo} · ${floorRange}`,
+    };
+  });
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      {hasOverlap && (
+        <div style={{ padding: "8px 14px", borderRadius: "var(--border-radius-md)",
+          background: "var(--badge-bg-amber)", border: "1px solid var(--metric-border-amber)",
+          color: "var(--badge-text-amber)", fontSize: "0.8125rem", fontWeight: 600 }}>
+          ⚠️ Dos o más zonas tienen rangos de pisos superpuestos — los spaces se crearán igual, pero revisa los rangos.
+        </div>
+      )}
+
+      <LateralPanel items={items} activeKey={activeKey}
+        onSelect={(k) => onChange({ activeZonaKey: k })}
+        onAdd={addZona} addLabel="Agregar zona">
+        {zona ? (
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <p style={{ margin: 0, fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+              {zona.nombre}
+            </p>
+            {zonas.length > 1 && (
+              <button type="button" onClick={() => removeZona(activeIdx)}
+                style={{ border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", padding: 4 }}>
+                <Trash2 size={15} />
+              </button>
+            )}
+          </div>
+        ) : null}
+        {zona ? (
+          <ZonaDetail zona={zona} onChange={(p) => updateZona(activeIdx, p)} selectedTypes={state.selectedTypes} />
+        ) : (
+          <p style={{ color: "var(--text-muted)", fontSize: "0.875rem" }}>Agrega una zona para comenzar.</p>
+        )}
+      </LateralPanel>
+    </div>
+  );
+}
+
 // ─── Step 4 — Assets ─────────────────────────────────────────────────────────
 
 function Step4Assets({ assets, onChange }: { assets: AssetDraft[]; onChange: (a: AssetDraft[]) => void; }) {
@@ -716,19 +1102,43 @@ function Step4Assets({ assets, onChange }: { assets: AssetDraft[]; onChange: (a:
 // ─── Step 5 — Resumen ────────────────────────────────────────────────────────
 
 function Step5Summary({ state }: { state: WizardState; }) {
-  const label = calcPropertyLabel(state.selectedTypes);
   const singleType = state.selectedTypes.length === 1 ? state.selectedTypes[0] : null;
+  const isMixto = state.selectedTypes.length > 1;
+  const label = singleType
+    ? calcPropertyLabel(state.selectedTypes)
+    : calcLabelFromZonas(state.zonas);
   const isParque = singleType === "industrial_parque" ||
                    (singleType === "industrial_bodega" && state.parqueMode === "parque");
   const isOficinas = singleType === "oficinas";
   const isMultiFloor = !isParque && !isOficinas && singleType && MULTI_FLOOR_TYPES.includes(singleType);
-  const isMixto = state.selectedTypes.length > 1;
 
   let totalSpaces = 0;
   if (isParque) totalSpaces = state.naves.reduce((s, n) => s + (n.mode === "whole" ? 1 : n.numBodegas), 0);
   else if (isOficinas) totalSpaces = state.pisos.length;
   else if (isMultiFloor) totalSpaces = state.floors.reduce((s, f) => s + f.count, 0);
   else if (!isMixto && singleType) totalSpaces = 1;
+  else if (isMixto) totalSpaces = state.zonas.reduce((s, z) => s + calcZonaSpaces(z), 0);
+
+  const zonaBreakdownItems = isMixto
+    ? state.zonas.map((zona) => {
+        const floorRange = zona.pisoInicio === zona.pisoFin
+          ? `P${zona.pisoInicio}`
+          : `P${zona.pisoInicio}–${zona.pisoFin}`;
+        const isMultiZ = MULTI_FLOOR_TYPES.includes(zona.tipo);
+        const isOfcZ = zona.tipo === "oficinas";
+        if (isMultiZ) {
+          const total = zona.floors.reduce((s, f) => s + f.count, 0);
+          const tLabel = zona.tipo === "comercial" ? "locales" : "deptos";
+          return `${total} ${tLabel} (${floorRange})`;
+        } else if (isOfcZ) {
+          const totalM = zona.pisos.reduce((s, p) => s + (Number(p.totalSqm) || 0), 0);
+          return `${totalM.toLocaleString("es-MX")}m² oficinas (${floorRange})`;
+        } else {
+          const pt = PROP_TYPES.find((p) => p.value === zona.tipo);
+          return `${zona.nombre} · ${pt?.shortLabel ?? zona.tipo} (${floorRange})`;
+        }
+      })
+    : [];
 
   return (
     <div style={{ display: "grid", gap: 14 }}>
@@ -748,11 +1158,9 @@ function Step5Summary({ state }: { state: WizardState; }) {
       <div style={{ display: "flex", gap: 24 }}>
         <div style={{ textAlign: "center" }}>
           <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "var(--text-primary)" }}>
-            {isMixto ? "—" : totalSpaces}
+            {totalSpaces}
           </p>
-          <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
-            {isMixto ? "espacios (fase 3.3)" : "espacios"}
-          </p>
+          <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>espacios</p>
         </div>
         {(isParque || isOficinas) && (
           <div style={{ textAlign: "center" }}>
@@ -762,6 +1170,14 @@ function Step5Summary({ state }: { state: WizardState; }) {
             <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>
               {isParque ? "naves" : "pisos"}
             </p>
+          </div>
+        )}
+        {isMixto && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "var(--text-primary)" }}>
+              {state.zonas.length}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>zonas</p>
           </div>
         )}
         <div style={{ textAlign: "center" }}>
@@ -784,6 +1200,9 @@ function Step5Summary({ state }: { state: WizardState; }) {
       {isMultiFloor && (
         <SummaryBadges label="Distribución por piso"
           items={state.floors.map((f) => `Piso ${f.floor}: ${f.count} esp.`)} />
+      )}
+      {isMixto && zonaBreakdownItems.length > 0 && (
+        <SummaryBadges label="Desglose por zona" items={zonaBreakdownItems} />
       )}
     </div>
   );
@@ -843,6 +1262,10 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
   function goNext() {
     if (step === 1 && state.selectedTypes.length === 0) { setErr("Elige al menos un tipo de propiedad."); return; }
     if (step === 2 && !state.name.trim()) { setErr("El nombre es obligatorio."); return; }
+    if (step === 2 && state.selectedTypes.length > 1 && state.zonas.length === 0) {
+      const initZonas = state.selectedTypes.map((tipo, idx) => initZona(tipo, idx, idx + 1));
+      setState((s) => ({ ...s, zonas: initZonas, activeZonaKey: "0" }));
+    }
     setErr(""); setStepDir("right"); setStep((s) => Math.min(STEPS.length, s + 1));
   }
 
@@ -852,8 +1275,10 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
     if (!companyId) { setErr("No hay empresa activa seleccionada."); return; }
     setLoading(true); setErr("");
     try {
-      const label = calcPropertyLabel(state.selectedTypes);
       const singleType = state.selectedTypes.length === 1 ? state.selectedTypes[0] : null;
+      const label = singleType
+        ? calcPropertyLabel(state.selectedTypes)
+        : calcLabelFromZonas(state.zonas);
 
       // ── 1. Insertar propiedad ───────────────────────────────────────────────
       const { data: prop, error: propErr } = await supabase.from("properties")
@@ -973,8 +1398,90 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
           const { error: subErr } = await supabase.from("space_subdivisions").insert(subRows);
           if (subErr) throw new Error(subErr.message);
         }
+      } else if (state.selectedTypes.length > 1) {
+        // — Caso C: Mixto por zonas —
+        for (let zi = 0; zi < state.zonas.length; zi++) {
+          const zona = state.zonas[zi];
+          const spaceType = PROP_TYPES.find((p) => p.value === zona.tipo)?.spaceType ?? "apartment";
+          const isMultiZ = MULTI_FLOOR_TYPES.includes(zona.tipo);
+          const isOfcZ   = zona.tipo === "oficinas";
+          const isPrqZ   = zona.tipo === "industrial_parque" ||
+                           (zona.tipo === "industrial_bodega" && zona.parqueMode === "parque");
+
+          if (isMultiZ) {
+            const spaceRows = genFloorSpaceCodes(zona.floors).map(({ code, floor }) => ({
+              company_id: companyId, property_id: pid,
+              space_type: spaceType, rental_mode: "whole", is_rentable: true,
+              code, floor, status: "VACANT", is_test: isTest,
+            }));
+            if (spaceRows.length > 0) {
+              const { error: spErr } = await supabase.from("spaces").insert(spaceRows);
+              if (spErr) throw new Error(spErr.message);
+            }
+          } else if (isOfcZ) {
+            const sgRows = zona.pisos.map((_, pi) => ({
+              company_id: companyId, property_id: pid,
+              name: `Piso ${zona.pisoInicio + pi}`, group_type: "piso",
+              sort_order: zona.pisoInicio + pi,
+            }));
+            const { data: sgs, error: sgErr } = await supabase.from("space_groups").insert(sgRows).select("id");
+            if (sgErr || !sgs) throw new Error(sgErr?.message ?? "Error al crear pisos de oficinas");
+            const spaceRows = zona.pisos.map((p, pi) => ({
+              company_id: companyId, property_id: pid, space_group_id: sgs[pi].id,
+              space_type: "office", rental_mode: "both", is_rentable: true,
+              code: `P${zona.pisoInicio + pi}-OF`, floor: String(zona.pisoInicio + pi),
+              total_sqm: p.totalSqm ? Number(p.totalSqm) : null,
+              is_divisible: true, divisible_strategy: p.strategy,
+              min_division_sqm: p.minDivisionSqm ? Number(p.minDivisionSqm) : null,
+              status: "VACANT", is_test: isTest,
+            }));
+            const { error: spErr } = await supabase.from("spaces").insert(spaceRows);
+            if (spErr) throw new Error(spErr.message);
+          } else if (isPrqZ) {
+            const sgRows = zona.naves.map((_, ni) => ({
+              company_id: companyId, property_id: pid,
+              name: `Nave ${ni + 1}`, group_type: "nave", sort_order: ni + 1,
+            }));
+            const { data: sgs, error: sgErr } = await supabase.from("space_groups").insert(sgRows).select("id");
+            if (sgErr || !sgs) throw new Error(sgErr?.message ?? "Error al crear naves");
+            const spaceRowsP: Record<string, unknown>[] = [];
+            for (let ni = 0; ni < zona.naves.length; ni++) {
+              const nave = zona.naves[ni];
+              const sgId = sgs[ni].id;
+              if (nave.mode === "whole") {
+                spaceRowsP.push({
+                  company_id: companyId, property_id: pid, space_group_id: sgId,
+                  space_type: "warehouse", rental_mode: "whole", is_rentable: true,
+                  code: `N${ni + 1}-BOD`,
+                  total_sqm: nave.totalSqm ? Number(nave.totalSqm) : null,
+                  status: "VACANT", is_test: isTest,
+                });
+              } else {
+                for (let j = 0; j < nave.numBodegas; j++) {
+                  spaceRowsP.push({
+                    company_id: companyId, property_id: pid, space_group_id: sgId,
+                    space_type: "warehouse", rental_mode: "whole", is_rentable: true,
+                    code: `N${ni + 1}-B${j + 1}`, status: "VACANT", is_test: isTest,
+                  });
+                }
+              }
+            }
+            if (spaceRowsP.length > 0) {
+              const { error: spErr } = await supabase.from("spaces").insert(spaceRowsP);
+              if (spErr) throw new Error(spErr.message);
+            }
+          } else {
+            // bodega sola / terreno / casa / estacionamiento en zona
+            const { error: spErr } = await supabase.from("spaces").insert({
+              company_id: companyId, property_id: pid,
+              space_type: spaceType, rental_mode: zona.rentalMode, is_rentable: true,
+              code: `Z${zi + 1}`, floor: String(zona.pisoInicio),
+              status: "VACANT", is_test: isTest,
+            });
+            if (spErr) throw new Error(spErr.message);
+          }
+        }
       }
-      // multi-tipo → property sin spaces por ahora (fase 3.3)
 
       // ── 3. Insertar assets a nivel propiedad ──────────────────────────────
       const validAssets = state.assets.filter((a) => a.nombre.trim());
@@ -1017,21 +1524,7 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
         return <Step2 state={state} onChange={patch} showLandSqm={showLandSqm} />;
       case 3:
         if (state.selectedTypes.length > 1) {
-          return (
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
-              justifyContent: "center", gap: 16, padding: "40px 24px", textAlign: "center" }}>
-              <Building2 size={40} color="var(--text-muted)" />
-              <div>
-                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: "1rem", color: "var(--text-primary)" }}>
-                  Próximamente — Fase 3.3
-                </p>
-                <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)", maxWidth: 360 }}>
-                  Las propiedades mixtas con zonas se configuran en la fase 3.3.
-                  Puedes continuar y agregar los espacios después.
-                </p>
-              </div>
-            </div>
-          );
+          return <Step3Mixto state={state} onChange={patch} />;
         }
         switch (singleType) {
           case "residencial_multi":
