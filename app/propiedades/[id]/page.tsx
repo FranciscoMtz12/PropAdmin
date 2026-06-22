@@ -271,7 +271,7 @@ function buildSteps(type: ChecklistType, spaces: SpaceRow[], cl: ChecklistState)
     return [
       { n: 1, label: "Configurar la casa",   desc: "Define recámaras, baños y características",   done: configured,         enabled: true,       upcoming: !configured },
       { n: 2, label: "Configurar servicios", desc: "Da de alta medidores de luz, agua o gas",      done: false,              enabled: configured, upcoming: true },
-      { n: 3, label: "Registrar contrato",   desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease,  enabled: cl.hasActiveLease,      upcoming: false },
+      { n: 3, label: "Registrar contrato",   desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease,  enabled: true,      upcoming: false },
     ];
   }
   if (type === "bodega_simple") {
@@ -279,14 +279,14 @@ function buildSteps(type: ChecklistType, spaces: SpaceRow[], cl: ChecklistState)
     return [
       { n: 1, label: "Configurar el espacio", desc: "Define metraje y características",             done: configured,        enabled: true,       upcoming: !configured },
       { n: 2, label: "Configurar servicios",  desc: "Da de alta medidores de luz, agua o gas",      done: false,             enabled: configured, upcoming: true },
-      { n: 3, label: "Registrar contrato",    desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease, enabled: cl.hasActiveLease,      upcoming: false },
+      { n: 3, label: "Registrar contrato",    desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease, enabled: true,      upcoming: false },
     ];
   }
   return [
     { n: 1, label: "Crear tipologías",         desc: "Define los tipos de unidad disponibles",        done: cl.hasTemplates,         enabled: true,                    upcoming: false },
     { n: 2, label: "Asignar tipologías",        desc: "Asigna cada espacio a una tipología",           done: cl.hasAssignedTemplates, enabled: cl.hasTemplates,         upcoming: false },
     { n: 3, label: "Configurar servicios",      desc: "Da de alta medidores de luz, agua o gas",       done: false,                   enabled: cl.hasAssignedTemplates, upcoming: true },
-    { n: 4, label: "Registrar primer contrato", desc: "Registra el primer contrato de arrendamiento",  done: cl.hasActiveLease,       enabled: false,                   upcoming: false },
+    { n: 4, label: "Registrar primer contrato", desc: "Registra el primer contrato de arrendamiento",  done: cl.hasActiveLease,       enabled: cl.hasAssignedTemplates, upcoming: false },
   ];
 }
 
