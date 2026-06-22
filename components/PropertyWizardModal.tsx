@@ -208,31 +208,6 @@ function calcZonaSpaces(zona: ZonaConfig): number {
 
 // ─── Shared sub-components ───────────────────────────────────────────────────
 
-function CounterRow({ label, value, onChange, min, max }: {
-  label: string; value: number; onChange: (v: number) => void; min: number; max: number;
-}) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "10px 0", borderBottom: "1px solid var(--border-default)" }}>
-      <span style={{ fontSize: "0.875rem", color: "var(--text-primary)", fontWeight: 500 }}>{label}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        {(["−", "+"] as const).map((sym) => (
-          <button key={sym} type="button"
-            onClick={() => onChange(sym === "−" ? Math.max(min, value - 1) : Math.min(max, value + 1))}
-            style={{ width: 30, height: 30, borderRadius: "var(--border-radius-sm)",
-              border: "1px solid var(--border-default)", background: "var(--bg-card)",
-              color: "var(--text-primary)", cursor: "pointer", fontSize: "1.125rem",
-              display: "flex", alignItems: "center", justifyContent: "center" }}>
-            {sym}
-          </button>
-        ))}
-        {/* render value between buttons */}
-      </div>
-    </div>
-  );
-}
-
-// CounterRow renders +/- but value needs to be between — let's use an inline render instead
 function Counter({ label, value, onChange, min, max }: {
   label: string; value: number; onChange: (v: number) => void; min: number; max: number;
 }) {
@@ -329,7 +304,7 @@ function LateralPanel({
             initial={{ opacity: 0, x: 8 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -8 }}
-            transition={{ duration: 0.15, ease: "easeOut" }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
             style={{ padding: "16px 18px", height: "100%" }}>
             {children}
           </motion.div>
