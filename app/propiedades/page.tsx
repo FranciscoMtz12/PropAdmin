@@ -7,6 +7,7 @@
 */
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Building2, Plus } from "lucide-react";
 import { motion } from "framer-motion";
 import PageContainer from "@/components/PageContainer";
@@ -35,6 +36,7 @@ interface PropertyRow {
 
 export default function PropiedadesPage() {
   const companyId = useActiveCompanyId();
+  const router = useRouter();
   const [properties, setProperties] = useState<PropertyRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [wizardOpen, setWizardOpen] = useState(false);
@@ -144,7 +146,7 @@ export default function PropiedadesPage() {
         >
           {properties.map((p) => (
             <motion.div key={p.id} variants={staggerItem}>
-              <PropertyCard property={p} />
+              <PropertyCard property={p} onClick={() => router.push(`/propiedades/${p.id}`)} />
             </motion.div>
           ))}
         </motion.div>
@@ -163,13 +165,14 @@ export default function PropiedadesPage() {
 
 // ─── Property Card ────────────────────────────────────────────────────────────
 
-function PropertyCard({ property: p }: { property: PropertyRow }) {
+function PropertyCard({ property: p, onClick }: { property: PropertyRow; onClick?: () => void }) {
   const occupancy =
     p.total_spaces > 0 ? Math.round((p.rented_spaces / p.total_spaces) * 100) : null;
 
   return (
     <EntityCard
       title={p.name}
+      onClick={onClick}
       subtitle={p.address ?? undefined}
       badge={
         p.property_label ? (
