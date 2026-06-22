@@ -101,7 +101,7 @@ export default function PropertyDetailPage() {
         .eq("id", id)
         .is("deleted_at", null)
         .single();
-      if (propErr || !propData) { setNotFound(true); return; }
+      if (propErr || !propData) { setNotFound(true); setLoading(false); return; }
       setProperty(propData);
 
       const { data: spacesData } = await supabase
@@ -129,9 +129,8 @@ export default function PropertyDetailPage() {
         const { data: lsData } = await supabase
           .from("lease_spaces")
           .select("lease_id")
-          .in("space_id", spaceIds)
-          .limit(50);
-        const leaseIds = [...new Set((lsData ?? []).map((r) => r.lease_id))];
+          .in("space_id", spaceIds);
+        const leaseIds = [...new Set((lsData ?? []).map((r: { lease_id: string }) => r.lease_id))];
         if (leaseIds.length > 0) {
           const { data: activeLeases } = await supabase
             .from("leases")
@@ -272,7 +271,7 @@ function buildSteps(type: ChecklistType, spaces: SpaceRow[], cl: ChecklistState)
     return [
       { n: 1, label: "Configurar la casa",   desc: "Define recámaras, baños y características",   done: configured,         enabled: true,       upcoming: !configured },
       { n: 2, label: "Configurar servicios", desc: "Da de alta medidores de luz, agua o gas",      done: false,              enabled: configured, upcoming: true },
-      { n: 3, label: "Registrar contrato",   desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease,  enabled: false,      upcoming: false },
+      { n: 3, label: "Registrar contrato",   desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease,  enabled: cl.hasActiveLease,      upcoming: false },
     ];
   }
   if (type === "bodega_simple") {
@@ -280,7 +279,7 @@ function buildSteps(type: ChecklistType, spaces: SpaceRow[], cl: ChecklistState)
     return [
       { n: 1, label: "Configurar el espacio", desc: "Define metraje y características",             done: configured,        enabled: true,       upcoming: !configured },
       { n: 2, label: "Configurar servicios",  desc: "Da de alta medidores de luz, agua o gas",      done: false,             enabled: configured, upcoming: true },
-      { n: 3, label: "Registrar contrato",    desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease, enabled: false,      upcoming: false },
+      { n: 3, label: "Registrar contrato",    desc: "Registra el primer contrato de arrendamiento", done: cl.hasActiveLease, enabled: cl.hasActiveLease,      upcoming: false },
     ];
   }
   return [
@@ -381,7 +380,7 @@ function SetupChecklist({ type, spaces, checklist }: SetupChecklistProps) {
                     background: step.enabled ? "var(--accent)" : "var(--border-default)",
                     display: "flex", alignItems: "center", justifyContent: "center",
                     fontSize: "0.6875rem", fontWeight: 800,
-                    color: step.enabled ? "#fff" : "var(--text-muted)",
+                    color: step.enabled ? "var(--text-inverse, #fff)" : "var(--text-muted)",
                   }}>
                     {step.n}
                   </div>
