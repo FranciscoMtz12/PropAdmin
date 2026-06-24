@@ -39,6 +39,7 @@ import SensitiveField    from "@/components/SensitiveField";
 import AppStatBar        from "@/components/AppStatBar";
 import AppIconBox        from "@/components/AppIconBox";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
+import WizardShell       from "@/components/WizardShell";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -597,6 +598,15 @@ function ColorSwatch({ token, usage, transparent }: ColorToken) {
   );
 }
 
+// ─── WizardKit — pasos de demo ───────────────────────────────────────────────
+
+const WK_STEPS = [
+  { label: "Datos generales" },
+  { label: "Ubicación" },
+  { label: "Configuración" },
+  { label: "Resumen" },
+];
+
 // ─── Página principal ─────────────────────────────────────────────────────────
 
 const PANEL_W = 264;
@@ -620,6 +630,12 @@ export default function DesignSystemPage() {
   const [customColor, setCustomColor] = useState<string | null>(null);
   const [toggle1, setToggle1]         = useState(true);
   const [toggle2, setToggle2]         = useState(false);
+  const [wkCreateOpen, setWkCreateOpen] = useState(false);
+  const [wkCreateStep, setWkCreateStep] = useState(1);
+  const [wkCreateDir, setWkCreateDir]   = useState<"left" | "right">("right");
+  const [wkEditOpen, setWkEditOpen]     = useState(false);
+  const [wkEditStep, setWkEditStep]     = useState(1);
+  const [wkEditDir, setWkEditDir]       = useState<"left" | "right">("right");
 
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
@@ -633,6 +649,19 @@ export default function DesignSystemPage() {
     setRadius(v);
     setTheme("clasico");
   }, []);
+
+  const wkCreateNext = useCallback(() => {
+    setWkCreateDir("right");
+    setWkCreateStep((s) => Math.min(s + 1, WK_STEPS.length));
+  }, []);
+  const wkCreateBack = useCallback(() => {
+    setWkCreateDir("left");
+    setWkCreateStep((s) => Math.max(s - 1, 1));
+  }, []);
+  const wkEditJump = useCallback((target: number) => {
+    setWkEditDir((prev) => (target > wkEditStep ? "right" : "left"));
+    setWkEditStep(target);
+  }, [wkEditStep]);
 
   const catalogVars: Record<string, string> = {
     ...(isDark ? DARK_VARS : LIGHT_VARS),
@@ -1420,6 +1449,198 @@ ${notes.trim() || "(sin notas)"}
                   </div>
                 </div>
               </div>
+            </CatalogSection>
+
+            {/* ── 22. WizardKit ─── */}
+            <CatalogSection title="WizardKit" componentNames={["WizardShell"]}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "16px", lineHeight: 1.6 }}>
+                <code style={{ fontSize: "0.6875rem" }}>WizardShell</code> soporta dos modos.{" "}
+                <strong>Crear</strong>: flujo lineal, pasos bloqueados, footer con ← Atrás / Siguiente → / acción final.{" "}
+                <strong>Editar</strong>: pasos clickeables, hint de navegación libre, footer con Cerrar + Guardar cambios.
+              </p>
+
+              <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                <UiButton
+                  variant="primary"
+                  type="button"
+                  onClick={() => { setWkCreateStep(1); setWkCreateDir("right"); setWkCreateOpen(true); }}
+                >
+                  Abrir modo crear →
+                </UiButton>
+                <UiButton
+                  variant="secondary"
+                  type="button"
+                  onClick={() => { setWkEditStep(2); setWkEditDir("right"); setWkEditOpen(true); }}
+                >
+                  Abrir modo editar (paso 2) →
+                </UiButton>
+              </div>
+
+              {/* Wizard crear */}
+              <WizardShell
+                open={wkCreateOpen}
+                title="Nueva propiedad"
+                steps={WK_STEPS}
+                currentStep={wkCreateStep}
+                stepDir={wkCreateDir}
+                mode="create"
+                onNext={wkCreateNext}
+                onBack={wkCreateBack}
+                onCancel={() => setWkCreateOpen(false)}
+                onFinish={() => setWkCreateOpen(false)}
+                finalLabel="Crear propiedad"
+              >
+                {wkCreateStep === 1 && (
+                  <div style={{ display: "grid", gap: 16 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Datos generales</p>
+                    {[["Nombre de la propiedad", "Ej. Torre Reforma 222"], ["Código interno", "Ej. TRF-01"]].map(([label, placeholder]) => (
+                      <div key={label}>
+                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</label>
+                        <div style={{ height: 40, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", padding: "0 12px", display: "flex", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-placeholder)" }}>{placeholder}</span>
+                        </div>
+                      </div>
+                    ))}
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                      {[["Tipo", "Oficinas"], ["Categoría", "Clase A"]].map(([label, placeholder]) => (
+                        <div key={label}>
+                          <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</label>
+                          <div style={{ height: 40, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", padding: "0 12px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <span style={{ fontSize: "0.8125rem", color: "var(--text-placeholder)" }}>{placeholder}</span>
+                            <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {wkCreateStep === 2 && (
+                  <div style={{ display: "grid", gap: 16 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Ubicación</p>
+                    {[["Dirección", "Ej. Paseo de la Reforma 222"], ["Ciudad", "Ciudad de México"], ["Código postal", "06600"]].map(([label, placeholder]) => (
+                      <div key={label}>
+                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</label>
+                        <div style={{ height: 40, borderRadius: "var(--border-radius-md)", border: "1px solid var(--border-default)", background: "var(--bg-input)", padding: "0 12px", display: "flex", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-placeholder)" }}>{placeholder}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {wkCreateStep === 3 && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Configuración</p>
+                    {[
+                      { label: "Acepta mascotas",  checked: true  },
+                      { label: "Área de fumadores", checked: false },
+                      { label: "Acceso 24 hrs",    checked: true  },
+                      { label: "Estacionamiento",  checked: false },
+                    ].map(({ label, checked }) => (
+                      <label key={label} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                        <input type="checkbox" defaultChecked={checked} style={{ width: 18, height: 18, accentColor: accent, cursor: "pointer" }} />
+                        <span style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {wkCreateStep === 4 && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Resumen</p>
+                    <div style={{ borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-table-header)", overflow: "hidden" }}>
+                      {[
+                        ["Nombre", "Torre Reforma 222"],
+                        ["Código", "TRF-01"],
+                        ["Tipo", "Oficinas · Clase A"],
+                        ["Dirección", "Paseo de la Reforma 222, CDMX 06600"],
+                        ["Extras", "Acepta mascotas · Acceso 24 hrs"],
+                      ].map(([k, v], idx, arr) => (
+                        <div key={k} style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, padding: "10px 16px", borderBottom: idx < arr.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>{k}</span>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </WizardShell>
+
+              {/* Wizard editar */}
+              <WizardShell
+                open={wkEditOpen}
+                title="Editar propiedad — Torre Reforma 222"
+                steps={WK_STEPS}
+                currentStep={wkEditStep}
+                stepDir={wkEditDir}
+                mode="edit"
+                onNext={() => {}}
+                onBack={() => {}}
+                onCancel={() => setWkEditOpen(false)}
+                onFinish={() => {}}
+                onSave={() => setWkEditOpen(false)}
+                onStepChange={wkEditJump}
+              >
+                {wkEditStep === 1 && (
+                  <div style={{ display: "grid", gap: 16 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Datos generales</p>
+                    {[["Nombre de la propiedad", "Torre Reforma 222"], ["Código interno", "TRF-01"]].map(([label, value]) => (
+                      <div key={label}>
+                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</label>
+                        <div style={{ height: 40, borderRadius: "var(--border-radius-md)", border: `1px solid ${accent}`, background: "var(--bg-input)", padding: "0 12px", display: "flex", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>{value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {wkEditStep === 2 && (
+                  <div style={{ display: "grid", gap: 16 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Ubicación</p>
+                    {[["Dirección", "Paseo de la Reforma 222"], ["Ciudad", "Ciudad de México"], ["Código postal", "06600"]].map(([label, value]) => (
+                      <div key={label}>
+                        <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</label>
+                        <div style={{ height: 40, borderRadius: "var(--border-radius-md)", border: `1px solid ${accent}`, background: "var(--bg-input)", padding: "0 12px", display: "flex", alignItems: "center" }}>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)" }}>{value}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {wkEditStep === 3 && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Configuración</p>
+                    {[
+                      { label: "Acepta mascotas",  checked: true  },
+                      { label: "Área de fumadores", checked: false },
+                      { label: "Acceso 24 hrs",    checked: true  },
+                      { label: "Estacionamiento",  checked: false },
+                    ].map(({ label, checked }) => (
+                      <label key={label} style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                        <input type="checkbox" defaultChecked={checked} style={{ width: 18, height: 18, accentColor: accent, cursor: "pointer" }} />
+                        <span style={{ fontSize: "0.875rem", color: "var(--text-primary)" }}>{label}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                {wkEditStep === 4 && (
+                  <div style={{ display: "grid", gap: 12 }}>
+                    <p style={{ fontSize: "0.8125rem", fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>Resumen</p>
+                    <div style={{ borderRadius: "var(--border-radius-lg)", border: "1px solid var(--border-default)", background: "var(--bg-table-header)", overflow: "hidden" }}>
+                      {[
+                        ["Nombre", "Torre Reforma 222"],
+                        ["Código", "TRF-01"],
+                        ["Tipo", "Oficinas · Clase A"],
+                        ["Dirección", "Paseo de la Reforma 222, CDMX 06600"],
+                        ["Extras", "Acepta mascotas · Acceso 24 hrs"],
+                      ].map(([k, v], idx, arr) => (
+                        <div key={k} style={{ display: "grid", gridTemplateColumns: "140px 1fr", gap: 12, padding: "10px 16px", borderBottom: idx < arr.length - 1 ? "1px solid var(--border-default)" : "none" }}>
+                          <span style={{ fontSize: "0.75rem", fontWeight: 600, color: "var(--text-muted)" }}>{k}</span>
+                          <span style={{ fontSize: "0.8125rem", color: "var(--text-primary)", fontWeight: 500 }}>{v}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </WizardShell>
             </CatalogSection>
 
           </div>
