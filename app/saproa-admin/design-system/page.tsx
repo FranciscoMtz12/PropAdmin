@@ -40,6 +40,7 @@ import AppStatBar        from "@/components/AppStatBar";
 import AppIconBox        from "@/components/AppIconBox";
 import DeleteConfirmModal from "@/components/DeleteConfirmModal";
 import WizardShell       from "@/components/WizardShell";
+import SpaceTemplateWizardModal from "@/components/SpaceTemplateWizardModal";
 
 // ─── Tipos ───────────────────────────────────────────────────────────────────
 
@@ -636,6 +637,10 @@ export default function DesignSystemPage() {
   const [wkEditOpen, setWkEditOpen]     = useState(false);
   const [wkEditStep, setWkEditStep]     = useState(1);
   const [wkEditDir, setWkEditDir]       = useState<"left" | "right">("right");
+  const [stWizardOpen, setStWizardOpen] = useState(false);
+  const [stWizardType, setStWizardType] = useState("apartment");
+  const TEST_PROPERTY_ID = "0d0553a7-cf0f-4538-b377-975a7d479ad8";
+  const TEST_COMPANY_ID  = "2672224b-b1d9-46fc-83b5-7b3f2cab29dd";
 
   const colorPickerRef = useRef<HTMLInputElement>(null);
 
@@ -1641,6 +1646,40 @@ ${notes.trim() || "(sin notas)"}
                   </div>
                 )}
               </WizardShell>
+            </CatalogSection>
+
+            {/* ── 23. SpaceTemplateWizardModal ─── */}
+            <CatalogSection title="SpaceTemplateWizardModal" componentNames={["SpaceTemplateWizardModal"]}>
+              <p style={{ fontSize: "0.6875rem", color: "var(--text-muted)", marginBottom: "14px", lineHeight: 1.6 }}>
+                Wizard de Fase 4 Pieza 1-A. Crea/edita <code>space_templates</code> con perfil residencial (apartment / loft / house).
+                Tipos no residenciales muestran el placeholder "perfil en construcción".
+                Datos guardados en <code>space_templates</code> + <code>space_template_assets</code>.
+              </p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+                {[
+                  { type: "apartment", label: "Departamento" },
+                  { type: "loft",      label: "Loft"         },
+                  { type: "house",     label: "Casa"         },
+                  { type: "warehouse", label: "Bodega (placeholder)" },
+                ].map(({ type, label }) => (
+                  <UiButton
+                    key={type}
+                    type="button"
+                    variant={type === "warehouse" ? "ghost" : "secondary"}
+                    onClick={() => { setStWizardType(type); setStWizardOpen(true); }}
+                  >
+                    {label}
+                  </UiButton>
+                ))}
+              </div>
+              <SpaceTemplateWizardModal
+                open={stWizardOpen}
+                propertyId={TEST_PROPERTY_ID}
+                companyId={TEST_COMPANY_ID}
+                spaceType={stWizardType}
+                onClose={() => setStWizardOpen(false)}
+                onSuccess={() => { setStWizardOpen(false); }}
+              />
             </CatalogSection>
 
           </div>
