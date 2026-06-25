@@ -82,6 +82,7 @@ import UiButton from "@/components/UiButton";
 import AppSelect from "@/components/AppSelect";
 import AppFormField from "@/components/AppFormField";
 import AppEmptyState from "@/components/AppEmptyState";
+import PropertyWizardModal from "@/components/PropertyWizardModal";
 import {
   getPropertyType,
   getSubtypeLabel,
@@ -319,6 +320,7 @@ export default function BuildingsPage() {
 
   /* Estado de modales */
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isNewWizardOpen, setIsNewWizardOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [buildingEditingId, setBuildingEditingId] = useState<string | null>(null);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -919,7 +921,7 @@ export default function BuildingsPage() {
               Ver mapa
             </UiButton>
             {!isGroupMode && (
-              <UiButton onClick={() => setIsCreateModalOpen(true)} variant="primary">
+              <UiButton onClick={() => setIsNewWizardOpen(true)} variant="primary">
                 <Plus size={16} />
                 Nueva propiedad
               </UiButton>
@@ -1137,7 +1139,7 @@ export default function BuildingsPage() {
             </p>
             <button
               type="button"
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() => setIsNewWizardOpen(true)}
               style={{
                 display: "inline-flex", alignItems: "center", gap: 8,
                 padding: "12px 28px", fontSize: "0.9375rem", fontWeight: 700,
@@ -2267,6 +2269,14 @@ export default function BuildingsPage() {
           })()}
         </form>
       </Modal>
+
+      {/* ── Wizard NUEVO de creación — crea en tabla properties ── */}
+      <PropertyWizardModal
+        open={isNewWizardOpen}
+        companyId={activeCompanyId ?? null}
+        onClose={() => setIsNewWizardOpen(false)}
+        onSuccess={() => { setIsNewWizardOpen(false); router.push("/propiedades"); }}
+      />
     </PageContainer>
   );
 }
