@@ -58,11 +58,17 @@ function spaceTypeLabel(t: string): string {
   return SPACE_TYPE_LABEL[t] ?? t;
 }
 
-function getChecklistType(spaces: SpaceRow[]): ChecklistType {
+function getChecklistType(spaces: SpaceRow[], propertyLabel?: string | null): ChecklistType {
   const types = [...new Set(spaces.map((s) => s.space_type))];
   if (types.length >= 2) return "mixto";
-  const type = types[0] ?? "apartment";
-  if (type === "house" && spaces.length === 1) return "casa";
+  const type = types[0];
+  if (!type) {
+    const lbl = (propertyLabel ?? "").toLowerCase();
+    if (lbl.includes("unifamiliar") || lbl.includes("casa")) return "casa";
+    if (lbl.includes("bodega") || lbl.includes("terreno")) return "bodega_simple";
+    return "multi";
+  }
+  if ((type === "house" || type === "loft") && spaces.length === 1) return "casa";
   if ((type === "warehouse" || type === "land_lot") && spaces.length === 1) return "bodega_simple";
   return "multi";
 }
@@ -185,7 +191,7 @@ export default function PropertyDetailPage() {
     </PageContainer>
   );
 
-  const checklistType = getChecklistType(spaces);
+  const checklistType = getChecklistType(spaces, property.property_label);
 
   return (
     <PageContainer>

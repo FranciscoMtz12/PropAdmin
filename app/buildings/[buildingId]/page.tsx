@@ -3506,7 +3506,7 @@ export default function BuildingDetailPage() {
             const ob3Done = utilityMeters.length > 0;
             const ob4Done = activeLeasesCount > 0;
             const obDone  = [ob1Done, ob2Done, ob3Done, ob4Done].filter(Boolean).length;
-            if (obDone === 4 || isLand || isIndustrialPark || isPlazaComercial) return null;
+            if (obDone === 4 || isLand || isIndustrialPark || isPlazaComercial || isResidentialSingle) return null;
             const isEmpty = obDone === 0;
             const circ    = 2 * Math.PI * 14;
             const dashOff = circ * (1 - obDone / 4);
@@ -3648,6 +3648,141 @@ export default function BuildingDetailPage() {
                         <SkipForward size={13} />
                         Ya tengo experiencia, omitir
                       </button>
+                    </div>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            );
+          })()}
+
+          {/* ── Checklist de configuración — solo casa unifamiliar ── */}
+          {isResidentialSingle && (() => {
+            const casaStep1Done = houseUnit !== null && houseUnit.unit_types !== null &&
+              (houseUnit.unit_types.bedrooms !== null || houseUnit.unit_types.bathrooms !== null);
+            const casaStep2Done = utilityMeters.length > 0;
+            const casaStep3Done = activeLeasesCount > 0;
+            const casaDone = [casaStep1Done, casaStep2Done, casaStep3Done].filter(Boolean).length;
+            if (casaDone === 3) return null;
+            const isEmpty = casaDone === 0;
+            const circ    = 2 * Math.PI * 14;
+            const dashOff = circ * (1 - casaDone / 3);
+            const steps = [
+              { n: 1, label: "Configurar la casa",   desc: "Define recámaras, baños y características",   done: casaStep1Done, enabled: true,          action: () => { handleTabChange("overview"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 2, label: "Configurar servicios", desc: "Da de alta medidores de luz, agua o gas",      done: casaStep2Done, enabled: casaStep1Done,  action: () => { handleTabChange("services"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+              { n: 3, label: "Registrar contrato",   desc: "Registra el primer contrato de arrendamiento", done: casaStep3Done, enabled: true,            action: () => { handleTabChange("leases"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+            ];
+            return (
+              <AnimatePresence>
+                <motion.div
+                  key="casa-checklist"
+                  initial={{ opacity: 0, y: -8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8, height: 0 }}
+                  transition={{ duration: 0.25 }}
+                  style={{ marginBottom: 24 }}
+                >
+                  <div style={{
+                    borderRadius: "var(--border-radius-lg)",
+                    background: isEmpty ? "var(--accent-tint-subtle)" : "var(--bg-card)",
+                    border: isEmpty ? "1.5px solid var(--accent-tint-medium)" : "1px solid var(--border-default)",
+                    borderLeft: "4px solid var(--accent)",
+                    padding: 20,
+                  }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 12, marginBottom: 20 }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        {isEmpty ? (
+                          <>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              <PartyPopper size={18} color="var(--accent)" />
+                              <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                                ¡Tu propiedad está lista! Configúrala paso a paso.
+                              </span>
+                            </div>
+                            <p style={{ margin: 0, fontSize: "0.8125rem", color: "var(--text-muted)" }}>
+                              Sigue estos 3 pasos para dejar la casa completamente operativa.
+                            </p>
+                          </>
+                        ) : (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <CheckSquare size={18} color="var(--accent)" />
+                            <span style={{ fontWeight: 700, fontSize: "0.9375rem", color: "var(--text-primary)" }}>
+                              Configuración en progreso — {casaDone}/3 completados
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      <svg width="36" height="36" style={{ flexShrink: 0 }}>
+                        <circle cx="18" cy="18" r="14" fill="none" stroke="var(--border-default)" strokeWidth="3.5" />
+                        <circle
+                          cx="18" cy="18" r="14" fill="none"
+                          stroke="var(--accent)" strokeWidth="3.5"
+                          strokeLinecap="round"
+                          strokeDasharray={circ}
+                          strokeDashoffset={dashOff}
+                          transform="rotate(-90 18 18)"
+                          style={{ transition: "stroke-dashoffset 0.5s ease" }}
+                        />
+                        <text x="18" y="23" textAnchor="middle" fontSize="9" fill="var(--text-primary)" fontWeight="700">{casaDone}/3</text>
+                      </svg>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {steps.map((step) => (
+                        <div
+                          key={step.n}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 12,
+                            padding: "10px 14px",
+                            borderRadius: "var(--border-radius-md)",
+                            background: step.done ? "rgba(16,185,129,0.06)" : step.enabled ? "var(--bg-page)" : "transparent",
+                            border: step.done ? "1px solid rgba(16,185,129,0.2)" : step.enabled ? "1px solid var(--border-default)" : "1px solid transparent",
+                            opacity: (!step.done && !step.enabled) ? 0.45 : 1,
+                            transition: "opacity 0.2s",
+                          }}
+                        >
+                          {step.done ? (
+                            <CheckCircle2 size={22} color="var(--metric-value-green)" style={{ flexShrink: 0 }} />
+                          ) : (
+                            <div style={{
+                              width: 22, height: 22, borderRadius: 999, flexShrink: 0,
+                              background: step.enabled ? "var(--accent)" : "var(--border-default)",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              fontSize: "0.6875rem", fontWeight: 800,
+                              color: step.enabled ? "#fff" : "var(--text-muted)",
+                            }}>
+                              {step.n}
+                            </div>
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{
+                              fontSize: "0.8125rem", fontWeight: 600,
+                              color: step.done ? "var(--metric-value-green)" : step.enabled ? "var(--text-primary)" : "var(--text-muted)",
+                              textDecoration: step.done ? "line-through" : "none",
+                            }}>
+                              {step.label}
+                            </div>
+                            {!step.done && (
+                              <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", marginTop: 1 }}>
+                                {step.enabled ? step.desc : `Completa el paso ${step.n - 1} primero`}
+                              </div>
+                            )}
+                          </div>
+                          {!step.done && step.enabled && (
+                            <button
+                              type="button"
+                              onClick={step.action}
+                              style={{
+                                background: "var(--accent)", color: "#fff",
+                                border: "none", padding: "6px 14px",
+                                borderRadius: "var(--border-radius-sm)",
+                                fontSize: "0.75rem", fontWeight: 700,
+                                cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap",
+                              }}
+                            >
+                              {step.label} →
+                            </button>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </motion.div>
