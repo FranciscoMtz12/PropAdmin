@@ -10,6 +10,10 @@ import {
   Shirt, Sofa, Sun, TreePine, UtensilsCrossed, Wind, Wrench, Plus, X,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import WarehouseWizard from "@/components/space-wizard/WarehouseWizard";
+import OfficeWizard from "@/components/space-wizard/OfficeWizard";
+import CommercialLocalWizard from "@/components/space-wizard/CommercialLocalWizard";
+import type { NonResidentialProps } from "@/components/space-wizard/types";
 
 /* ─── Types ─────────────────────────────────────────────────────────── */
 
@@ -117,6 +121,13 @@ const WIZARD_STEPS = [
 ];
 
 const RESIDENTIAL_TYPES = ["apartment", "loft", "house"];
+
+/** Profile map: one entry per non-residential space_type → its wizard component. */
+const NON_RESIDENTIAL_PROFILES: Record<string, React.ComponentType<NonResidentialProps>> = {
+  warehouse:        WarehouseWizard,
+  office:           OfficeWizard,
+  commercial_local: CommercialLocalWizard,
+};
 
 const SPACE_TYPE_DISPLAY: Record<string, string> = {
   apartment: "Departamento", loft: "Loft", house: "Casa",
@@ -1079,8 +1090,23 @@ export default function SpaceTemplateWizardModal({
     ? `Editar plantilla — ${typeDisplay}`
     : `Nueva plantilla — ${typeDisplay}`;
 
-  /* Non-residential placeholder (for Pieza 1-B) */
+  /* Non-residential: dispatch to profile component via map (no scattered ifs). */
   if (!isResidential) {
+    const ProfileWizard = NON_RESIDENTIAL_PROFILES[spaceType];
+    if (ProfileWizard) {
+      return (
+        <ProfileWizard
+          open={open}
+          propertyId={propertyId}
+          companyId={companyId}
+          spaceType={spaceType}
+          editTemplate={editTemplate ?? null}
+          onClose={onClose}
+          onSuccess={onSuccess}
+        />
+      );
+    }
+    /* Unknown space_type — future-proof fallback */
     return (
       <WizardShell
         open={open}
@@ -1096,7 +1122,6 @@ export default function SpaceTemplateWizardModal({
       >
         <div style={{ padding: "40px 0", textAlign: "center", color: "var(--text-muted)", fontSize: "0.9rem" }}>
           <p style={{ margin: 0 }}>El wizard para el tipo <strong style={{ color: "var(--text-primary)" }}>{typeDisplay}</strong> está en construcción.</p>
-          <p style={{ margin: "8px 0 0", fontSize: "0.8125rem" }}>Disponible en Fase 4 Pieza 1-B.</p>
         </div>
       </WizardShell>
     );

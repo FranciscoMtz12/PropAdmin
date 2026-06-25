@@ -1660,12 +1660,15 @@ ${notes.trim() || "(sin notas)"}
                   { type: "apartment", label: "Departamento" },
                   { type: "loft",      label: "Loft"         },
                   { type: "house",     label: "Casa"         },
-                  { type: "warehouse", label: "Bodega (placeholder)" },
+                  { type: "warehouse",        label: "Bodega"           },
+                  { type: "office",           label: "Oficina"          },
+                  { type: "commercial_local", label: "Local comercial"  },
+                  { type: "unknown_type",     label: "Tipo desconocido" },
                 ].map(({ type, label }) => (
                   <UiButton
                     key={type}
                     type="button"
-                    variant={type === "warehouse" ? "ghost" : "secondary"}
+                    variant={type === "unknown_type" ? "ghost" : "secondary"}
                     onClick={() => { setStWizardType(type); setStWizardOpen(true); }}
                   >
                     {label}
