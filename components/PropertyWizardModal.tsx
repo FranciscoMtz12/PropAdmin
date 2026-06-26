@@ -5,7 +5,8 @@ import dynamic from "next/dynamic";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Building2, Home, Store, Briefcase, Factory, Package,
-  MapPin, Car, Plus, Trash2,
+  MapPin, Car, Plus, Trash2, ChevronDown,
+  Waves, Leaf, Dumbbell, Calendar, Sparkles, Shield, Settings2, Droplets,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import WizardShell from "@/components/WizardShell";
@@ -55,6 +56,24 @@ const MULTI_FLOOR_TYPES: PropTypeValue[] = ["residencial_multi", "comercial"];
 const SINGLE_SPACE_TYPES: PropTypeValue[] = [
   "residencial_uni", "industrial_bodega", "terreno", "estacionamiento",
 ];
+
+const AMENITY_CATALOG = [
+  { key: "lobby",         label: "Lobby",            icon: Building2  },
+  { key: "alberca",       label: "Alberca",          icon: Waves      },
+  { key: "jardin",        label: "Jardín / patio",   icon: Leaf       },
+  { key: "salon_eventos", label: "Salón de eventos", icon: Calendar   },
+  { key: "gimnasio",      label: "Gimnasio",         icon: Dumbbell   },
+  { key: "roof_garden",   label: "Roof garden",      icon: Sparkles   },
+  { key: "estac_visitas", label: "Estac. visitas",   icon: Car        },
+] as const;
+
+const SERVICE_CATALOG = [
+  { key: "cuarto_maquinas",   label: "Cuarto de máquinas",      icon: Settings2 },
+  { key: "bano_servicio",     label: "Baño de servicio",        icon: Droplets  },
+  { key: "bodega_mtto",       label: "Bodega de mantenimiento", icon: Package   },
+  { key: "caseta_vigilancia", label: "Caseta de vigilancia",    icon: Shield    },
+  { key: "cuarto_basura",     label: "Cuarto de basura",        icon: Trash2    },
+] as const;
 
 interface FloorConfig   { floor: number; count: number; }
 interface AssetDraft    { tipo: string; nombre: string; }
@@ -112,6 +131,12 @@ interface WizardState {
   // Paso 3 — Caso C: mixto por zonas
   zonas: ZonaConfig[];
   activeZonaKey: string;
+  // Paso 3 — áreas sociales / comunes
+  amenities: { key: string; quantity: number }[];
+  customAmenities: { name: string; quantity: number }[];
+  // Paso 3 — áreas de servicio
+  serviceAreas: { key: string; quantity: number }[];
+  customServiceAreas: { name: string; quantity: number }[];
   // Paso 4
   assets: AssetDraft[];
 }
@@ -131,6 +156,8 @@ function initState(): WizardState {
     activeLateralKey: "0",
     zonas: [],
     activeZonaKey: "0",
+    amenities: [], customAmenities: [],
+    serviceAreas: [], customServiceAreas: [],
     assets: [],
   };
 }
@@ -1161,6 +1188,24 @@ function Step5Summary({ state }: { state: WizardState; }) {
           </p>
           <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>equipos</p>
         </div>
+        {(state.amenities.length > 0 || state.customAmenities.some((a) => a.name.trim())) && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "#0ea5e9" }}>
+              {state.amenities.reduce((s, a) => s + a.quantity, 0)
+               + state.customAmenities.filter((a) => a.name.trim()).reduce((s, a) => s + a.quantity, 0)}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>áreas sociales</p>
+          </div>
+        )}
+        {(state.serviceAreas.length > 0 || state.customServiceAreas.some((a) => a.name.trim())) && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "#d97706" }}>
+              {state.serviceAreas.reduce((s, a) => s + a.quantity, 0)
+               + state.customServiceAreas.filter((a) => a.name.trim()).reduce((s, a) => s + a.quantity, 0)}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>espacios servicio</p>
+          </div>
+        )}
       </div>
 
       {/* Distribución */}
@@ -1199,6 +1244,314 @@ function SummaryBadges({ label, items }: { label: string; items: string[] }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+// ─── Paso 3 — Acordeones ─────────────────────────────────────────────────────
+
+function Accordion({ title, summary, accentColor, open, onOpen, children }: {
+  title: string; summary: string; accentColor: string;
+  open: boolean; onOpen: () => void; children: React.ReactNode;
+}) {
+  const isVar   = accentColor.startsWith("var(");
+  const headerBg = open ? (isVar ? "var(--accent-tint-soft)" : `${accentColor}12`) : "var(--bg-card)";
+  const divider  = isVar ? "var(--border-default)" : `${accentColor}30`;
+  return (
+    <div style={{ border: `1px solid ${open ? accentColor : "var(--border-default)"}`,
+      borderRadius: "var(--border-radius-md)", overflow: "hidden" }}>
+      <button type="button" onClick={onOpen}
+        style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+          width: "100%", padding: "12px 16px", border: "none", cursor: "pointer",
+          background: headerBg, textAlign: "left", boxSizing: "border-box" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: accentColor, flexShrink: 0 }} />
+          <span style={{ fontWeight: 700, fontSize: "0.875rem",
+            color: open ? accentColor : "var(--text-primary)" }}>
+            {title}
+          </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {!open && summary && (
+            <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{summary}</span>
+          )}
+          <ChevronDown size={15} style={{ color: "var(--text-muted)",
+            transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+        </div>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            style={{ overflow: "hidden" }}>
+            <div style={{ padding: "12px 16px 16px", borderTop: `1px solid ${divider}` }}>
+              {children}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function RentalModeChips({ value, onChange }: {
+  value: "whole" | "by_subdivision" | "both";
+  onChange: (v: "whole" | "by_subdivision" | "both") => void;
+}) {
+  const modes = [
+    { value: "whole"          as const, label: "Completo"    },
+    { value: "by_subdivision" as const, label: "Por cuartos" },
+    { value: "both"           as const, label: "Ambos"       },
+  ] as const;
+  return (
+    <div>
+      <p style={{ margin: "0 0 8px", fontSize: "0.75rem", fontWeight: 700,
+        color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        Modo de renta
+      </p>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {modes.map((m) => (
+          <button key={m.value} type="button" onClick={() => onChange(m.value)}
+            style={{ padding: "5px 12px", borderRadius: 999, fontSize: "0.8125rem",
+              fontWeight: 600, cursor: "pointer",
+              border: value === m.value ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+              background: value === m.value ? "var(--accent-tint-soft)" : "var(--bg-card)",
+              color: value === m.value ? "var(--accent)" : "var(--text-secondary)" }}>
+            {m.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ItemTileGrid({ catalog, selected, customItems, accentColor,
+  onToggle, onChangeQty, onAddCustom, onUpdateCustom, onRemoveCustom }: {
+  catalog: readonly { key: string; label: string; icon: React.ElementType }[];
+  selected: { key: string; quantity: number }[];
+  customItems: { name: string; quantity: number }[];
+  accentColor: string;
+  onToggle: (key: string) => void;
+  onChangeQty: (key: string, qty: number) => void;
+  onAddCustom: () => void;
+  onUpdateCustom: (idx: number, patch: Partial<{ name: string; quantity: number }>) => void;
+  onRemoveCustom: (idx: number) => void;
+}) {
+  function getQty(key: string) { return selected.find((s) => s.key === key)?.quantity ?? 0; }
+
+  return (
+    <div style={{ display: "grid", gap: 14 }}>
+      <div style={{ display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(min(88px, 100%), 1fr))", gap: 8 }}>
+        {catalog.map(({ key, label, icon: Icon }) => {
+          const isSel = getQty(key) > 0;
+          const qty   = getQty(key);
+          return (
+            <div key={key} onClick={() => onToggle(key)}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
+                padding: "10px 6px", borderRadius: "var(--border-radius-md)", cursor: "pointer",
+                border: isSel ? `2px solid ${accentColor}` : "1.5px solid var(--border-default)",
+                background: isSel ? `${accentColor}12` : "var(--bg-card)",
+                userSelect: "none", textAlign: "center", boxSizing: "border-box" }}>
+              <Icon size={18} style={{ color: isSel ? accentColor : "var(--text-muted)" }} />
+              <span style={{ fontSize: "0.6875rem", fontWeight: isSel ? 700 : 500, lineHeight: 1.25,
+                color: isSel ? accentColor : "var(--text-secondary)" }}>
+                {label}
+              </span>
+              {isSel && (
+                <div style={{ display: "flex", alignItems: "center", gap: 3 }}
+                  onClick={(e) => e.stopPropagation()}>
+                  <button type="button" onClick={() => onChangeQty(key, Math.max(1, qty - 1))}
+                    style={{ width: 18, height: 18, borderRadius: "50%",
+                      border: `1px solid ${accentColor}`, background: "transparent",
+                      color: accentColor, cursor: "pointer", padding: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.875rem", lineHeight: 1 }}>−</button>
+                  <span style={{ fontSize: "0.75rem", fontWeight: 700, color: accentColor,
+                    minWidth: 12, textAlign: "center" }}>{qty}</span>
+                  <button type="button" onClick={() => onChangeQty(key, qty + 1)}
+                    style={{ width: 18, height: 18, borderRadius: "50%",
+                      border: `1px solid ${accentColor}`, background: "transparent",
+                      color: accentColor, cursor: "pointer", padding: 0,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: "0.875rem", lineHeight: 1 }}>+</button>
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div onClick={onAddCustom}
+          style={{ display: "flex", flexDirection: "column", alignItems: "center",
+            justifyContent: "center", gap: 5, padding: "10px 6px",
+            borderRadius: "var(--border-radius-md)", cursor: "pointer",
+            border: "1.5px dashed var(--border-default)", background: "var(--bg-card)" }}>
+          <Plus size={15} style={{ color: "var(--text-muted)" }} />
+          <span style={{ fontSize: "0.6875rem", color: "var(--text-muted)", fontWeight: 500 }}>Otro</span>
+        </div>
+      </div>
+
+      {customItems.length > 0 && (
+        <div style={{ display: "grid", gap: 8 }}>
+          {customItems.map((item, idx) => (
+            <div key={idx} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input value={item.name}
+                onChange={(e) => onUpdateCustom(idx, { name: e.target.value })}
+                placeholder="Nombre del área..."
+                style={{ ...INPUT_STYLE, flex: 1, marginBottom: 0 }} />
+              <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                <button type="button"
+                  onClick={() => onUpdateCustom(idx, { quantity: Math.max(1, item.quantity - 1) })}
+                  style={{ width: 26, height: 26, borderRadius: "var(--border-radius-sm)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    cursor: "pointer", display: "flex", alignItems: "center",
+                    justifyContent: "center" }}>−</button>
+                <span style={{ fontSize: "0.875rem", fontWeight: 700, minWidth: 20, textAlign: "center" }}>
+                  {item.quantity}
+                </span>
+                <button type="button"
+                  onClick={() => onUpdateCustom(idx, { quantity: item.quantity + 1 })}
+                  style={{ width: 26, height: 26, borderRadius: "var(--border-radius-sm)",
+                    border: "1px solid var(--border-default)", background: "var(--bg-card)",
+                    cursor: "pointer", display: "flex", alignItems: "center",
+                    justifyContent: "center" }}>+</button>
+              </div>
+              <button type="button" onClick={() => onRemoveCustom(idx)}
+                style={{ border: "none", background: "transparent", color: "var(--text-muted)",
+                  cursor: "pointer", padding: 4, display: "flex", alignItems: "center" }}>
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Step3WithAccordions({ state, onChange }: {
+  state: WizardState; onChange: (p: Partial<WizardState>) => void;
+}) {
+  const [openAcc, setOpenAcc] = useState<"rentable" | "social" | "service">("rentable");
+
+  const singleType = state.selectedTypes.length === 1 ? state.selectedTypes[0] : null;
+  const isMixto    = state.selectedTypes.length > 1;
+  const isParque   = singleType === "industrial_parque" ||
+                     (singleType === "industrial_bodega" && state.parqueMode === "parque");
+  const isOfc      = singleType === "oficinas";
+
+  let rentableCount = 0;
+  if (isMixto)       rentableCount = state.zonas.reduce((s, z) => s + calcZonaSpaces(z), 0);
+  else if (isParque) rentableCount = state.naves.reduce((s, n) => s + (n.mode === "whole" ? 1 : n.numBodegas), 0);
+  else if (isOfc)    rentableCount = state.pisos.length;
+  else if (singleType && MULTI_FLOOR_TYPES.includes(singleType))
+                     rentableCount = state.floors.reduce((s, f) => s + f.count, 0);
+  else               rentableCount = 1;
+
+  const amenityCount = state.amenities.reduce((s, a) => s + a.quantity, 0)
+                     + state.customAmenities.filter((a) => a.name.trim()).reduce((s, a) => s + a.quantity, 0);
+  const serviceCount = state.serviceAreas.reduce((s, a) => s + a.quantity, 0)
+                     + state.customServiceAreas.filter((a) => a.name.trim()).reduce((s, a) => s + a.quantity, 0);
+
+  let rentableContent: React.ReactNode = null;
+  if (isMixto) {
+    rentableContent = <Step3Mixto state={state} onChange={onChange} />;
+  } else {
+    switch (singleType) {
+      case "residencial_multi":
+      case "comercial":
+        rentableContent = (
+          <div style={{ display: "grid", gap: 20 }}>
+            <Step3Multi floors={state.floors} onChange={(f) => onChange({ floors: f })} />
+            <RentalModeChips value={state.rentalMode} onChange={(v) => onChange({ rentalMode: v })} />
+          </div>
+        );
+        break;
+      case "residencial_uni":
+      case "terreno":
+      case "estacionamiento":
+        rentableContent = <Step3Single rentalMode={state.rentalMode}
+          numSubdivisions={state.numSubdivisions} onChange={onChange} />;
+        break;
+      case "industrial_bodega":
+        rentableContent = <Step3BodegaChoice state={state} onChange={onChange} />;
+        break;
+      case "industrial_parque":
+        rentableContent = <NavePanel state={state} onChange={onChange} />;
+        break;
+      case "oficinas":
+        rentableContent = <PisoPanel state={state} onChange={onChange} />;
+        break;
+    }
+  }
+
+  function toggleAmenity(key: string) {
+    if (state.amenities.some((a) => a.key === key))
+      onChange({ amenities: state.amenities.filter((a) => a.key !== key) });
+    else
+      onChange({ amenities: [...state.amenities, { key, quantity: 1 }] });
+  }
+
+  function toggleService(key: string) {
+    if (state.serviceAreas.some((a) => a.key === key))
+      onChange({ serviceAreas: state.serviceAreas.filter((a) => a.key !== key) });
+    else
+      onChange({ serviceAreas: [...state.serviceAreas, { key, quantity: 1 }] });
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      <Accordion title="Espacios rentables"
+        summary={`${rentableCount} espacio${rentableCount !== 1 ? "s" : ""}`}
+        accentColor="var(--accent)" open={openAcc === "rentable"} onOpen={() => setOpenAcc("rentable")}>
+        {rentableContent}
+      </Accordion>
+
+      <Accordion title="Áreas sociales / comunes"
+        summary={amenityCount > 0 ? `${amenityCount} área${amenityCount !== 1 ? "s" : ""}` : "Sin agregar"}
+        accentColor="#0ea5e9" open={openAcc === "social"} onOpen={() => setOpenAcc("social")}>
+        <ItemTileGrid
+          catalog={AMENITY_CATALOG}
+          selected={state.amenities}
+          customItems={state.customAmenities}
+          accentColor="#0ea5e9"
+          onToggle={toggleAmenity}
+          onChangeQty={(key, qty) =>
+            onChange({ amenities: state.amenities.map((a) => a.key === key ? { ...a, quantity: qty } : a) })}
+          onAddCustom={() =>
+            onChange({ customAmenities: [...state.customAmenities, { name: "", quantity: 1 }] })}
+          onUpdateCustom={(idx, p) => {
+            const n = [...state.customAmenities]; n[idx] = { ...n[idx], ...p };
+            onChange({ customAmenities: n });
+          }}
+          onRemoveCustom={(idx) =>
+            onChange({ customAmenities: state.customAmenities.filter((_, i) => i !== idx) })}
+        />
+      </Accordion>
+
+      <Accordion title="Espacios de servicio"
+        summary={serviceCount > 0 ? `${serviceCount} espacio${serviceCount !== 1 ? "s" : ""}` : "Sin agregar"}
+        accentColor="#d97706" open={openAcc === "service"} onOpen={() => setOpenAcc("service")}>
+        <ItemTileGrid
+          catalog={SERVICE_CATALOG}
+          selected={state.serviceAreas}
+          customItems={state.customServiceAreas}
+          accentColor="#d97706"
+          onToggle={toggleService}
+          onChangeQty={(key, qty) =>
+            onChange({ serviceAreas: state.serviceAreas.map((a) => a.key === key ? { ...a, quantity: qty } : a) })}
+          onAddCustom={() =>
+            onChange({ customServiceAreas: [...state.customServiceAreas, { name: "", quantity: 1 }] })}
+          onUpdateCustom={(idx, p) => {
+            const n = [...state.customServiceAreas]; n[idx] = { ...n[idx], ...p };
+            onChange({ customServiceAreas: n });
+          }}
+          onRemoveCustom={(idx) =>
+            onChange({ customServiceAreas: state.customServiceAreas.filter((_, i) => i !== idx) })}
+        />
+      </Accordion>
     </div>
   );
 }
@@ -1458,7 +1811,60 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
         }
       }
 
-      // ── 3. Insertar assets a nivel propiedad ──────────────────────────────
+      // ── 3. Insertar amenidades y áreas de servicio ────────────────────────
+      const amenityRows: Record<string, unknown>[] = [];
+      for (const a of state.amenities) {
+        for (let i = 0; i < a.quantity; i++) {
+          amenityRows.push({
+            company_id: companyId, property_id: pid,
+            space_type: "amenity", rental_mode: "whole", is_rentable: false,
+            code: `AME-${a.key.toUpperCase()}${a.quantity > 1 ? `-${i + 1}` : ""}`,
+            status: "VACANT", is_test: isTest,
+          });
+        }
+      }
+      for (const a of state.customAmenities.filter((c) => c.name.trim())) {
+        for (let i = 0; i < a.quantity; i++) {
+          amenityRows.push({
+            company_id: companyId, property_id: pid,
+            space_type: "amenity", rental_mode: "whole", is_rentable: false,
+            code: `AME-${a.name.trim().slice(0, 8).toUpperCase().replace(/\s+/g, "_")}${a.quantity > 1 ? `-${i + 1}` : ""}`,
+            status: "VACANT", is_test: isTest,
+          });
+        }
+      }
+      if (amenityRows.length > 0) {
+        const { error: ameErr } = await supabase.from("spaces").insert(amenityRows);
+        if (ameErr) throw new Error(ameErr.message);
+      }
+
+      const serviceRows: Record<string, unknown>[] = [];
+      for (const s of state.serviceAreas) {
+        for (let i = 0; i < s.quantity; i++) {
+          serviceRows.push({
+            company_id: companyId, property_id: pid,
+            space_type: "service_area", rental_mode: "whole", is_rentable: false,
+            code: `SRV-${s.key.toUpperCase()}${s.quantity > 1 ? `-${i + 1}` : ""}`,
+            status: "VACANT", is_test: isTest,
+          });
+        }
+      }
+      for (const s of state.customServiceAreas.filter((c) => c.name.trim())) {
+        for (let i = 0; i < s.quantity; i++) {
+          serviceRows.push({
+            company_id: companyId, property_id: pid,
+            space_type: "service_area", rental_mode: "whole", is_rentable: false,
+            code: `SRV-${s.name.trim().slice(0, 8).toUpperCase().replace(/\s+/g, "_")}${s.quantity > 1 ? `-${i + 1}` : ""}`,
+            status: "VACANT", is_test: isTest,
+          });
+        }
+      }
+      if (serviceRows.length > 0) {
+        const { error: srvErr } = await supabase.from("spaces").insert(serviceRows);
+        if (srvErr) throw new Error(srvErr.message);
+      }
+
+      // ── 4. Insertar assets a nivel propiedad ──────────────────────────────
       const validAssets = state.assets.filter((a) => a.nombre.trim());
       if (validAssets.length > 0) {
         const { error: aErr } = await supabase.from("assets").insert(
@@ -1498,26 +1904,7 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
       case 2:
         return <Step2 state={state} onChange={patch} showLandSqm={showLandSqm} />;
       case 3:
-        if (state.selectedTypes.length > 1) {
-          return <Step3Mixto state={state} onChange={patch} />;
-        }
-        switch (singleType) {
-          case "residencial_multi":
-          case "comercial":
-            return <Step3Multi floors={state.floors} onChange={(f) => patch({ floors: f })} />;
-          case "residencial_uni":
-          case "terreno":
-          case "estacionamiento":
-            return <Step3Single rentalMode={state.rentalMode} numSubdivisions={state.numSubdivisions} onChange={patch} />;
-          case "industrial_bodega":
-            return <Step3BodegaChoice state={state} onChange={patch} />;
-          case "industrial_parque":
-            return <NavePanel state={state} onChange={patch} />;
-          case "oficinas":
-            return <PisoPanel state={state} onChange={patch} />;
-          default:
-            return null;
-        }
+        return <Step3WithAccordions state={state} onChange={patch} />;
       case 4:
         return <Step4Assets assets={state.assets} onChange={(a) => patch({ assets: a })} />;
       case 5:
