@@ -7,6 +7,7 @@ import {
   Building2, Home, Store, Briefcase, Factory, Package,
   MapPin, Car, Plus, Trash2, ChevronDown,
   Waves, Leaf, Dumbbell, Calendar, Sparkles, Shield, Settings2, Droplets,
+  Zap, Wifi, Flame, Wrench, Camera, ArrowUpDown, DoorOpen, Gauge,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import WizardShell from "@/components/WizardShell";
@@ -75,6 +76,29 @@ const SERVICE_CATALOG = [
   { key: "cuarto_basura",     label: "Cuarto de basura",        icon: Trash2    },
 ] as const;
 
+// Paso 4 — Servicios de propiedad
+const PROPERTY_SERVICES_CATALOG = [
+  { key: "electricidad",  label: "Electricidad",  icon: Zap      },
+  { key: "agua",          label: "Agua",           icon: Droplets },
+  { key: "gas",           label: "Gas",            icon: Flame    },
+  { key: "internet",      label: "Internet",       icon: Wifi     },
+  { key: "vigilancia",    label: "Vigilancia",     icon: Shield   },
+  { key: "limpieza",      label: "Limpieza",       icon: Sparkles },
+  { key: "mantenimiento", label: "Mantenimiento",  icon: Wrench   },
+] as const;
+
+// Paso 5 — Equipo / instalaciones
+const EQUIPMENT_CATALOG = [
+  { key: "cisterna",       label: "Cisterna",         icon: Droplets,    asset_type: "hidráulico"    },
+  { key: "elevador",       label: "Elevador",          icon: ArrowUpDown, asset_type: "elevación"     },
+  { key: "hidroneumatico", label: "Hidroneumático",    icon: Waves,       asset_type: "hidráulico"    },
+  { key: "camaras_cctv",   label: "Cámaras CCTV",     icon: Camera,      asset_type: "seguridad"     },
+  { key: "caldera",        label: "Caldera",           icon: Flame,       asset_type: "climatización" },
+  { key: "planta_luz",     label: "Planta de luz",     icon: Zap,         asset_type: "eléctrico"     },
+  { key: "porton_elec",    label: "Portón eléctrico",  icon: DoorOpen,    asset_type: "acceso"        },
+  { key: "bomba",          label: "Bomba",             icon: Gauge,       asset_type: "hidráulico"    },
+] as const;
+
 interface FloorConfig   { floor: number; count: number; }
 interface AssetDraft    { tipo: string; nombre: string; }
 
@@ -137,7 +161,13 @@ interface WizardState {
   // Paso 3 — áreas de servicio
   serviceAreas: { key: string; quantity: number }[];
   customServiceAreas: { name: string; quantity: number }[];
-  // Paso 4
+  // Paso 4 — Servicios de la propiedad
+  services: string[];
+  customServices: string[];
+  // Paso 5 — Equipo / instalaciones
+  equipmentSelected: { key: string; quantity: number }[];
+  customEquipment: { name: string; quantity: number }[];
+  // Legacy (kept for backward compat with initState)
   assets: AssetDraft[];
 }
 
@@ -158,6 +188,8 @@ function initState(): WizardState {
     activeZonaKey: "0",
     amenities: [], customAmenities: [],
     serviceAreas: [], customServiceAreas: [],
+    services: [], customServices: [],
+    equipmentSelected: [], customEquipment: [],
     assets: [],
   };
 }
@@ -1182,12 +1214,23 @@ function Step5Summary({ state }: { state: WizardState; }) {
             <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>zonas</p>
           </div>
         )}
-        <div style={{ textAlign: "center" }}>
-          <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "var(--text-primary)" }}>
-            {state.assets.filter((a) => a.nombre.trim()).length}
-          </p>
-          <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>equipos</p>
-        </div>
+        {(state.equipmentSelected.length > 0 || state.customEquipment.some((e) => e.name.trim())) && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "var(--text-primary)" }}>
+              {state.equipmentSelected.reduce((s, e) => s + e.quantity, 0)
+               + state.customEquipment.filter((e) => e.name.trim()).reduce((s, e) => s + e.quantity, 0)}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>equipos</p>
+          </div>
+        )}
+        {(state.services.length > 0 || state.customServices.some((s) => s.trim())) && (
+          <div style={{ textAlign: "center" }}>
+            <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "var(--text-primary)" }}>
+              {state.services.length + state.customServices.filter((s) => s.trim()).length}
+            </p>
+            <p style={{ margin: 0, fontSize: "0.75rem", color: "var(--text-muted)" }}>servicios</p>
+          </div>
+        )}
         {(state.amenities.length > 0 || state.customAmenities.some((a) => a.name.trim())) && (
           <div style={{ textAlign: "center" }}>
             <p style={{ margin: "0 0 3px", fontWeight: 700, fontSize: "1.5rem", color: "#0ea5e9" }}>
@@ -1223,6 +1266,29 @@ function Step5Summary({ state }: { state: WizardState; }) {
       )}
       {isMixto && zonaBreakdownItems.length > 0 && (
         <SummaryBadges label="Desglose por zona" items={zonaBreakdownItems} />
+      )}
+      {(state.services.length > 0 || state.customServices.some((s) => s.trim())) && (
+        <SummaryBadges label="Servicios incluidos"
+          items={[
+            ...PROPERTY_SERVICES_CATALOG.filter((c) => state.services.includes(c.key)).map((c) => c.label),
+            ...state.customServices.filter((s) => s.trim()),
+          ]} />
+      )}
+      {(state.equipmentSelected.length > 0 || state.customEquipment.some((e) => e.name.trim())) && (
+        <SummaryBadges label="Equipos registrados"
+          items={[
+            ...state.equipmentSelected.flatMap((e) => {
+              const cat = EQUIPMENT_CATALOG.find((c) => c.key === e.key);
+              return Array.from({ length: e.quantity }, (_, i) =>
+                `${cat?.label ?? e.key}${e.quantity > 1 ? ` ${i + 1}` : ""}`
+              );
+            }),
+            ...state.customEquipment.filter((e) => e.name.trim()).flatMap((e) =>
+              Array.from({ length: e.quantity }, (_, i) =>
+                `${e.name.trim()}${e.quantity > 1 ? ` ${i + 1}` : ""}`
+              )
+            ),
+          ]} />
       )}
     </div>
   );
@@ -1340,6 +1406,8 @@ function ItemTileGrid({ catalog, selected, customItems, accentColor,
   onUpdateCustom: (idx: number, patch: Partial<{ name: string; quantity: number }>) => void;
   onRemoveCustom: (idx: number) => void;
 }) {
+  const isVar = accentColor.startsWith("var(");
+  const selBg = isVar ? "var(--accent-tint-soft)" : `${accentColor}12`;
   function getQty(key: string) { return selected.find((s) => s.key === key)?.quantity ?? 0; }
 
   return (
@@ -1354,7 +1422,7 @@ function ItemTileGrid({ catalog, selected, customItems, accentColor,
               style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
                 padding: "10px 6px", borderRadius: "var(--border-radius-md)", cursor: "pointer",
                 border: isSel ? `2px solid ${accentColor}` : "1.5px solid var(--border-default)",
-                background: isSel ? `${accentColor}12` : "var(--bg-card)",
+                background: isSel ? selBg : "var(--bg-card)",
                 userSelect: "none", textAlign: "center", boxSizing: "border-box" }}>
               <Icon size={18} style={{ color: isSel ? accentColor : "var(--text-muted)" }} />
               <span style={{ fontSize: "0.6875rem", fontWeight: isSel ? 700 : 500, lineHeight: 1.25,
@@ -1556,12 +1624,115 @@ function Step3WithAccordions({ state, onChange }: {
   );
 }
 
+// ─── Step 4 — Servicios ──────────────────────────────────────────────────────
+
+function Step4Services({ state, onChange }: {
+  state: WizardState; onChange: (p: Partial<WizardState>) => void;
+}) {
+  function toggle(key: string) {
+    const cur = state.services;
+    onChange({ services: cur.includes(key) ? cur.filter((s) => s !== key) : [...cur, key] });
+  }
+  return (
+    <div style={{ display: "grid", gap: 20 }}>
+      <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+        ¿Qué servicios maneja la propiedad? Esto define los medidores y distribución de costos que capturas después.
+      </p>
+      <div style={{ display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(min(110px, 100%), 1fr))", gap: 10 }}>
+        {PROPERTY_SERVICES_CATALOG.map(({ key, label, icon: Icon }) => {
+          const active = state.services.includes(key);
+          return (
+            <button key={key} type="button" onClick={() => toggle(key)}
+              style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8,
+                padding: "14px 10px", borderRadius: "var(--border-radius-md)", cursor: "pointer",
+                border: active ? "2px solid var(--accent)" : "1.5px solid var(--border-default)",
+                background: active ? "var(--accent-tint-soft)" : "var(--bg-card)",
+                color: active ? "var(--accent)" : "var(--text-secondary)",
+                fontWeight: active ? 700 : 500, fontSize: "0.8125rem",
+                textAlign: "center", transition: "all 0.15s ease",
+                boxSizing: "border-box" }}>
+              <Icon size={22} />
+              <span style={{ lineHeight: 1.2 }}>{label}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div>
+        <p style={{ margin: "0 0 10px", fontSize: "0.75rem", fontWeight: 700,
+          color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          Otros servicios
+        </p>
+        {state.customServices.map((s, idx) => (
+          <div key={idx} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <input style={{ ...INPUT_STYLE, flex: 1 }} value={s}
+              onChange={(e) => {
+                const n = [...state.customServices]; n[idx] = e.target.value;
+                onChange({ customServices: n });
+              }}
+              placeholder="Nombre del servicio" />
+            <button type="button"
+              onClick={() => onChange({ customServices: state.customServices.filter((_, i) => i !== idx) })}
+              style={{ border: "none", background: "transparent", color: "var(--text-muted)",
+                cursor: "pointer", padding: 6, display: "flex", alignItems: "center" }}>
+              <Trash2 size={15} />
+            </button>
+          </div>
+        ))}
+        <button type="button"
+          onClick={() => onChange({ customServices: [...state.customServices, ""] })}
+          style={{ display: "flex", alignItems: "center", gap: 6, border: "none",
+            background: "transparent", color: "var(--accent)", cursor: "pointer",
+            fontSize: "0.8125rem", fontWeight: 600, padding: "4px 0" }}>
+          <Plus size={14} /> Agregar otro servicio
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Step 5 — Equipo ─────────────────────────────────────────────────────────
+
+function Step5Equipment({ state, onChange }: {
+  state: WizardState; onChange: (p: Partial<WizardState>) => void;
+}) {
+  function toggle(key: string) {
+    if (state.equipmentSelected.some((e) => e.key === key))
+      onChange({ equipmentSelected: state.equipmentSelected.filter((e) => e.key !== key) });
+    else
+      onChange({ equipmentSelected: [...state.equipmentSelected, { key, quantity: 1 }] });
+  }
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      <p style={{ margin: 0, fontSize: "0.875rem", color: "var(--text-muted)" }}>
+        Opcional. Registra equipos e instalaciones de toda la propiedad (cisterna, elevador, cámaras, etc.).
+      </p>
+      <ItemTileGrid
+        catalog={EQUIPMENT_CATALOG}
+        selected={state.equipmentSelected}
+        customItems={state.customEquipment}
+        accentColor="var(--accent)"
+        onToggle={toggle}
+        onChangeQty={(key, qty) =>
+          onChange({ equipmentSelected: state.equipmentSelected.map((e) => e.key === key ? { ...e, quantity: qty } : e) })}
+        onAddCustom={() => onChange({ customEquipment: [...state.customEquipment, { name: "", quantity: 1 }] })}
+        onUpdateCustom={(idx, p) => {
+          const n = [...state.customEquipment]; n[idx] = { ...n[idx], ...p };
+          onChange({ customEquipment: n });
+        }}
+        onRemoveCustom={(idx) => onChange({ customEquipment: state.customEquipment.filter((_, i) => i !== idx) })}
+      />
+    </div>
+  );
+}
+
 // ─── Main Modal ───────────────────────────────────────────────────────────────
 
 const STEPS = [
   { label: "Tipo" },
   { label: "Información" },
   { label: "Estructura" },
+  { label: "Servicios" },
   { label: "Equipo" },
   { label: "Resumen" },
 ];
@@ -1619,6 +1790,7 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
           longitude: state.longitude,
           property_label: label,
           total_sqm: state.landSqm ? Number(state.landSqm) : null,
+          services: [...state.services, ...state.customServices.filter((s) => s.trim())],
           is_test: isTest,
         })
         .select("id").single();
@@ -1864,15 +2036,31 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
         if (srvErr) throw new Error(srvErr.message);
       }
 
-      // ── 4. Insertar assets a nivel propiedad ──────────────────────────────
-      const validAssets = state.assets.filter((a) => a.nombre.trim());
-      if (validAssets.length > 0) {
-        const { error: aErr } = await supabase.from("assets").insert(
-          validAssets.map((a) => ({
+      // ── 4. Insertar equipos como assets ───────────────────────────────────
+      const equipmentRows: Record<string, unknown>[] = [];
+      for (const e of state.equipmentSelected) {
+        const cat = EQUIPMENT_CATALOG.find((c) => c.key === e.key);
+        for (let i = 0; i < e.quantity; i++) {
+          equipmentRows.push({
             company_id: companyId, property_id: pid,
-            asset_type: a.tipo.trim() || "general", name: a.nombre.trim(), status: "ACTIVE",
-          }))
-        );
+            asset_type: cat?.asset_type ?? "general",
+            name: `${cat?.label ?? e.key}${e.quantity > 1 ? ` ${i + 1}` : ""}`,
+            status: "ACTIVE",
+          });
+        }
+      }
+      for (const e of state.customEquipment.filter((c) => c.name.trim())) {
+        for (let i = 0; i < e.quantity; i++) {
+          equipmentRows.push({
+            company_id: companyId, property_id: pid,
+            asset_type: "general",
+            name: `${e.name.trim()}${e.quantity > 1 ? ` ${i + 1}` : ""}`,
+            status: "ACTIVE",
+          });
+        }
+      }
+      if (equipmentRows.length > 0) {
+        const { error: aErr } = await supabase.from("assets").insert(equipmentRows);
         if (aErr) throw new Error(aErr.message);
       }
 
@@ -1906,8 +2094,10 @@ export default function PropertyWizardModal({ open, companyId, isTest = false, o
       case 3:
         return <Step3WithAccordions state={state} onChange={patch} />;
       case 4:
-        return <Step4Assets assets={state.assets} onChange={(a) => patch({ assets: a })} />;
+        return <Step4Services state={state} onChange={patch} />;
       case 5:
+        return <Step5Equipment state={state} onChange={patch} />;
+      case 6:
         return <Step5Summary state={state} />;
       default:
         return null;
